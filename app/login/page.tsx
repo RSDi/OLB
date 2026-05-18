@@ -46,11 +46,6 @@ export default function LoginPage() {
       }}>
         {/* Logo */}
         <div style={{ marginBottom: 28 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 10,
-            background: "var(--rsd-accent)",
-            marginBottom: 16,
-          }}/>
           <div style={{ fontSize: 20, fontWeight: 700, color: "var(--gw-ink)", lineHeight: 1.2 }}>
             Staff Portal
           </div>

@@ -30,10 +30,6 @@ export function PublicNav() {
       }}>
         {/* Logo */}
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 9,
-            background: "var(--rsd-accent)",
-          }}/>
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
             <span style={{ fontWeight: 800, fontSize: 14, color: "var(--gw-fg)", lineHeight: 1, letterSpacing: "-.01em" }}>
               Millard Community

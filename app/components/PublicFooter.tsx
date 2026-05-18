@@ -20,10 +20,6 @@ export function PublicFooter() {
           {/* Brand */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: "var(--rsd-accent)",
-              }}/>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 13, color: "#fff", lineHeight: 1 }}>Millard Community</div>
                 <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,.45)", lineHeight: 1, marginTop: 2 }}>CHURCH</div>

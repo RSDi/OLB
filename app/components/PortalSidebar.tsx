@@ -53,10 +53,6 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
         textDecoration: "none",
         flexShrink: 0,
       }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-          background: "var(--rsd-accent)",
-        }}/>
         {!c && (
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 11, color: "#fff", lineHeight: 1 }}>Millard Community</div>
