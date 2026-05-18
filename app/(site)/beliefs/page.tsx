@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ScriptureRef } from "../../components/ScriptureRef";
 
 export const metadata: Metadata = {
   title: "Beliefs — Millard Community Church",
@@ -143,13 +144,7 @@ export default function BeliefsPage() {
                   background: "var(--rsd-accent-bg)",
                 }}>
                   {belief.refs.map(ref => (
-                    <span key={ref} style={{
-                      fontSize: 12, fontWeight: 600,
-                      color: "var(--rsd-accent)",
-                      lineHeight: 1.4,
-                    }}>
-                      {ref}
-                    </span>
+                    <ScriptureRef key={ref}>{ref}</ScriptureRef>
                   ))}
                 </div>
               </div>
