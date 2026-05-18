@@ -39,7 +39,6 @@ export function PublicFooter() {
               { href: "/", label: "Home" },
               { href: "/beliefs", label: "Beliefs" },
               { href: "/messages", label: "Messages" },
-              { href: "/assistance", label: "Assistance" },
             ].map(l => (
               <Link key={l.href} href={l.href} style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.65)", transition: "color 150ms" }}
                 onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#fff")}

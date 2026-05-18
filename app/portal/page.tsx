@@ -42,23 +42,23 @@ export default function PortalDashboard() {
 
       {/* Quick actions */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Link href="/portal/maintenance" style={{
+        <Link href="/assistance" style={{
           display: "inline-flex", alignItems: "center", gap: 8,
           padding: "10px 20px", borderRadius: 100,
           background: "var(--rsd-accent)", color: "var(--rsd-accent-on)",
           fontSize: 13, fontWeight: 700, textDecoration: "none",
         }}>
-          <Icons.Wrench width={14} height={14}/>
-          View All Requests
+          <Icons.ArrowRight width={14} height={14}/>
+          Assistance
         </Link>
-        <Link href="/assistance/maintenance" style={{
+        <Link href="/portal/maintenance" style={{
           display: "inline-flex", alignItems: "center", gap: 8,
           padding: "10px 20px", borderRadius: 100,
           background: "var(--gw-bg-elev)", border: "1px solid var(--gw-border)",
           fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none",
         }}>
-          <Icons.ArrowRight width={14} height={14}/>
-          Public Request Form
+          <Icons.Wrench width={14} height={14}/>
+          View All Requests
         </Link>
       </div>
 

@@ -5,10 +5,9 @@ import { usePathname } from "next/navigation";
 import { Icons } from "./icons";
 
 const NAV_LINKS = [
-  { href: "/",           label: "Home" },
-  { href: "/beliefs",    label: "Beliefs" },
-  { href: "/messages",   label: "Messages" },
-  { href: "/assistance", label: "Assistance" },
+  { href: "/",        label: "Home" },
+  { href: "/beliefs", label: "Beliefs" },
+  { href: "/messages", label: "Messages" },
 ];
 
 export function PublicNav() {
