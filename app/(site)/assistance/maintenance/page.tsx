@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
-import { Icons } from "../../components/icons";
-import { Input, Textarea, Select, Pill } from "../../components/ui";
+import { Icons } from "../../../components/icons";
+import { Input, Textarea, Select, Pill } from "../../../components/ui";
 
 const LOCATIONS = [
-  "Sanctuary", "Fellowship Hall", "Nursery", "Youth Room",
+  "Main Meeting Room", "Nursery", "Youth Room",
   "Children's Wing", "Offices", "Kitchen", "Restrooms",
   "Parking Lot", "Exterior / Grounds", "Other",
 ];
@@ -116,9 +116,8 @@ export default function MaintenancePage() {
         textAlign: "center",
       }}>
         <div style={{ maxWidth: 600, margin: "0 auto" }}>
-          <div className="rsd-eyebrow" style={{ marginBottom: 14 }}>Facilities</div>
           <h1 style={{ margin: "0 0 16px", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1.1 }}>
-            Maintenance Request
+            Request
           </h1>
           <p style={{ margin: 0, fontSize: 18, color: "var(--gw-fg-muted)", lineHeight: 1.7, fontWeight: 500 }}>
             Notice something that needs attention? Submit a request and our facilities team will take care of it.

@@ -16,12 +16,12 @@
   --gw-surface-2: rgb(242, 242, 242);
   --gw-surface: rgb(255, 255, 255);
 
-  /* Brand — Rose */
-  --gw-rose: rgb(244, 63, 94);
-  --gw-rose-soft: rgb(251, 113, 133);
-  --gw-rose-bg: rgb(255, 228, 230);
-  --gw-rose-dark: rgb(44, 4, 8);
-  --gw-rose-border-bg: rgb(70, 15, 25);
+  /* Brand — Sage */
+  --gw-rose: rgb(108, 140, 89);
+  --gw-rose-soft: rgb(142, 172, 122);
+  --gw-rose-bg: rgb(230, 241, 224);
+  --gw-rose-dark: rgb(22, 42, 15);
+  --gw-rose-border-bg: rgb(36, 64, 28);
 
   /* Semantic */
   --gw-success: rgb(34, 197, 94);
@@ -73,7 +73,7 @@
   --rsd-kpi-num: 36px;
   --rsd-side-w: 256px;
 
-  /* Accent — Rose */
+  /* Accent — Dark Sage */
   --rsd-accent: var(--gw-rose);
   --rsd-accent-soft: var(--gw-rose-soft);
   --rsd-accent-on: var(--gw-rose-dark);
@@ -211,10 +211,10 @@ main::-webkit-scrollbar-track { background: transparent; }
   white-space: nowrap;
 }
 .rsd-chip-success { background: var(--gw-success-bg); color: #16a34a; border-color: rgba(34,197,94,.3); }
-.rsd-chip-warn    { background: var(--gw-rose-bg); color: #be123c; border-color: rgba(244,63,94,.35); }
+.rsd-chip-warn    { background: var(--gw-rose-bg); color: #3a6b28; border-color: rgba(108,140,89,.35); }
 .rsd-chip-error   { background: var(--gw-error-bg); color: #c53030; border-color: rgba(229,62,62,.3); }
 .rsd-chip-mute    { background: var(--gw-bg); color: var(--gw-fg-muted); border-color: var(--gw-border); }
-.rsd-chip-accent  { background: var(--gw-rose-bg); color: #be123c; border-color: rgba(244,63,94,.35); }
+.rsd-chip-accent  { background: var(--gw-rose-bg); color: #3a6b28; border-color: rgba(108,140,89,.35); }
 
 [data-theme="dark"] .rsd-chip-success { background: var(--gw-success-bg-dark); color: #4ade80; }
 [data-theme="dark"] .rsd-chip-warn    { background: var(--gw-rose-border-bg); color: var(--gw-rose-soft); }

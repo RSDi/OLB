@@ -43,7 +43,7 @@ export function KpiCard({ label, value, sub, accent }: {
   return (
     <div className="rsd-card" style={{
       padding: "var(--rsd-kpi-pad)", gap: 10,
-      ...(accent ? { background: "var(--gw-rose-bg)", border: "1px solid rgba(244,63,94,.25)" } : {}),
+      ...(accent ? { background: "var(--gw-rose-bg)", border: "1px solid rgba(108,140,89,.25)" } : {}),
     }}>
       <span className="rsd-eyebrow">{label}</span>
       <span style={{

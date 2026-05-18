@@ -3,12 +3,12 @@ import { Icons } from "../../components/icons";
 const SERIES = ["All", "Foundations", "Guest", "Special"];
 
 const SERMONS = [
-  { title: "Walking in Faith", series: "Foundations", speaker: "Pastor Jim", date: "May 11, 2025", duration: "42 min", tag: "Series" },
-  { title: "The Power of Community", series: "Foundations", speaker: "Pastor Jim", date: "May 4, 2025", duration: "38 min", tag: "Series" },
+  { title: "Walking in Faith", series: "Foundations", speaker: "Jim", date: "May 11, 2025", duration: "42 min", tag: "Series" },
+  { title: "The Power of Community", series: "Foundations", speaker: "Jim", date: "May 4, 2025", duration: "38 min", tag: "Series" },
   { title: "Grace That Transforms", series: "Foundations", speaker: "Guest Speaker", date: "Apr 27, 2025", duration: "45 min", tag: "Guest" },
-  { title: "Hope Anchors the Soul", series: "Foundations", speaker: "Pastor Jim", date: "Apr 20, 2025", duration: "41 min", tag: "Series" },
-  { title: "The Prodigal Returns", series: "Foundations", speaker: "Pastor Jim", date: "Apr 13, 2025", duration: "39 min", tag: "Series" },
-  { title: "Good Friday Reflection", series: "Special", speaker: "Pastor Jim", date: "Apr 18, 2025", duration: "30 min", tag: "Special" },
+  { title: "Hope Anchors the Soul", series: "Foundations", speaker: "Jim", date: "Apr 20, 2025", duration: "41 min", tag: "Series" },
+  { title: "The Prodigal Returns", series: "Foundations", speaker: "Jim", date: "Apr 13, 2025", duration: "39 min", tag: "Series" },
+  { title: "Good Friday Reflection", series: "Special", speaker: "Jim", date: "Apr 18, 2025", duration: "30 min", tag: "Special" },
 ];
 
 const chipClass = (tag: string) =>
@@ -16,7 +16,7 @@ const chipClass = (tag: string) =>
   : tag === "Special" ? "rsd-chip rsd-chip-success"
   : "rsd-chip rsd-chip-accent";
 
-export default function SermonsPage() {
+export default function MessagesPage() {
   return (
     <>
       {/* Header */}
@@ -27,9 +27,8 @@ export default function SermonsPage() {
         textAlign: "center",
       }}>
         <div style={{ maxWidth: 600, margin: "0 auto" }}>
-          <div className="rsd-eyebrow" style={{ marginBottom: 14 }}>Messages</div>
           <h1 style={{ margin: "0 0 16px", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1.1 }}>
-            Sermons
+            Messages
           </h1>
           <p style={{ margin: 0, fontSize: 18, color: "var(--gw-fg-muted)", lineHeight: 1.7, fontWeight: 500 }}>
             Watch or listen to our recent messages. Catch up on a series or share with a friend.
@@ -69,8 +68,8 @@ export default function SermonsPage() {
                 }}>
                   <div style={{
                     width: 48, height: 48, borderRadius: "50%",
-                    background: "rgba(244,63,94,.2)",
-                    border: "1px solid rgba(244,63,94,.35)",
+                    background: "rgba(108,140,89,.2)",
+                    border: "1px solid rgba(108,140,89,.35)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: "var(--rsd-accent)",
                   }}>

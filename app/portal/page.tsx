@@ -3,17 +3,17 @@ import { Icons } from "../components/icons";
 import { KpiCard } from "../components/ui";
 
 const RECENT_REQUESTS = [
-  { id: 1, title: "HVAC not cooling — Sanctuary", location: "Sanctuary", priority: "high", status: "open", submitted: "May 16", submitter: "Tom G." },
-  { id: 2, title: "Light bulb out — Hallway B", location: "Offices", priority: "low", status: "in_progress", submitted: "May 15", submitter: "Linda R." },
-  { id: 3, title: "Sink dripping — Women's restroom", location: "Restrooms", priority: "medium", status: "open", submitted: "May 14", submitter: "Amy C." },
-  { id: 4, title: "Projector bulb dim — Fellowship Hall", location: "Fellowship Hall", priority: "medium", status: "open", submitted: "May 13", submitter: "Mark H." },
+  { id: 1, title: "HVAC not cooling — Main Meeting Room", location: "Main Meeting Room", priority: "high", status: "open", submitted: "May 16", submitter: "Jeff M." },
+  { id: 2, title: "Light bulb out — Hallway B", location: "Offices", priority: "low", status: "in_progress", submitted: "May 15", submitter: "Andy M." },
+  { id: 3, title: "Sink dripping — Women's restroom", location: "Restrooms", priority: "medium", status: "open", submitted: "May 14", submitter: "Jeff M." },
+  { id: 4, title: "Projector bulb dim — Main Meeting Room", location: "Main Meeting Room", priority: "medium", status: "open", submitted: "May 13", submitter: "Jerod S." },
 ];
 
 const UPCOMING_EVENTS = [
   { name: "Sunday Morning Services", date: "May 18", time: "9:00 AM & 10:45 AM" },
   { name: "Youth Group", date: "May 21", time: "6:30 PM" },
   { name: "Women's Bible Study", date: "May 22", time: "10:00 AM" },
-  { name: "Deacon Meeting", date: "May 26", time: "7:00 PM" },
+  { name: "Building Committee Meeting", date: "May 26", time: "7:00 PM" },
 ];
 
 const priorityChip = (p: string) => {
@@ -51,7 +51,7 @@ export default function PortalDashboard() {
           <Icons.Wrench width={14} height={14}/>
           View All Requests
         </Link>
-        <Link href="/maintenance" style={{
+        <Link href="/assistance/maintenance" style={{
           display: "inline-flex", alignItems: "center", gap: 8,
           padding: "10px 20px", borderRadius: 100,
           background: "var(--gw-bg-elev)", border: "1px solid var(--gw-border)",
@@ -127,7 +127,7 @@ export default function PortalDashboard() {
               }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: 9,
-                  background: "var(--rsd-accent-bg)", border: "1px solid rgba(244,63,94,.2)",
+                  background: "var(--rsd-accent-bg)", border: "1px solid rgba(108,140,89,.2)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   color: "var(--rsd-accent)", flexShrink: 0,
                 }}>

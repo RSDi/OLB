@@ -6,10 +6,9 @@ import { Icons } from "./icons";
 
 const NAV_LINKS = [
   { href: "/",           label: "Home" },
-  { href: "/about",      label: "About" },
-  { href: "/services",   label: "Services" },
-  { href: "/sermons",    label: "Sermons" },
-  { href: "/maintenance",label: "Maintenance" },
+  { href: "/beliefs",    label: "Beliefs" },
+  { href: "/messages",   label: "Messages" },
+  { href: "/assistance", label: "Assistance" },
 ];
 
 export function PublicNav() {
@@ -34,10 +33,7 @@ export function PublicNav() {
           <div style={{
             width: 36, height: 36, borderRadius: 9,
             background: "var(--rsd-accent)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <Icons.Cross width={18} height={18} style={{ color: "var(--rsd-accent-on)", strokeWidth: 2.5 }}/>
-          </div>
+          }}/>
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
             <span style={{ fontWeight: 800, fontSize: 14, color: "var(--gw-fg)", lineHeight: 1, letterSpacing: "-.01em" }}>
               Millard Community
@@ -90,7 +86,7 @@ export function PublicNav() {
             }}
           >
             <Icons.Shield width={13} height={13}/>
-            Staff Portal
+            Login
           </Link>
 
           {/* Mobile hamburger */}
@@ -152,7 +148,7 @@ export function PublicNav() {
               }}
             >
               <Icons.Shield width={16} height={16}/>
-              Staff Portal
+              Login
             </Link>
           </div>
         </div>

@@ -1,12 +1,12 @@
 import { Icons } from "../../components/icons";
 
 const DOCS = [
-  { title: "Sunday Morning Runsheet", category: "Worship", updated: "May 10, 2025", author: "Sarah M.", excerpt: "Step-by-step timeline for Sunday services including tech, worship team, and hospitality cues." },
-  { title: "Facilities Opening & Closing", category: "Facilities", updated: "Apr 28, 2025", author: "Tom G.", excerpt: "Checklist for opening and closing the building — lights, HVAC, security, and locks." },
-  { title: "AV & Sound System Guide", category: "Tech", updated: "Apr 20, 2025", author: "Mark H.", excerpt: "How to set up and operate the audio/visual system for services and events." },
-  { title: "Emergency Response Procedures", category: "Safety", updated: "Mar 15, 2025", author: "Pastor Jim", excerpt: "What to do in a medical emergency, fire, severe weather, or security incident." },
-  { title: "Volunteer Onboarding", category: "People", updated: "Mar 5, 2025", author: "Amy C.", excerpt: "Overview of volunteer roles, expectations, background check process, and training." },
-  { title: "Youth Ministry Guidelines", category: "Youth", updated: "Feb 22, 2025", author: "Mark H.", excerpt: "Policies and procedures for working with minors, ratios, check-in/out, and safety." },
+  { title: "Sunday Morning Runsheet", category: "Worship", updated: "May 10, 2025", author: "Jeff M.", excerpt: "Step-by-step timeline for Sunday services including tech, worship team, and hospitality cues." },
+  { title: "Facilities Opening & Closing", category: "Facilities", updated: "Apr 28, 2025", author: "Andy M.", excerpt: "Checklist for opening and closing the building — lights, HVAC, security, and locks." },
+  { title: "AV & Sound System Guide", category: "Tech", updated: "Apr 20, 2025", author: "Jerod S.", excerpt: "How to set up and operate the audio/visual system for services and events." },
+  { title: "Emergency Response Procedures", category: "Safety", updated: "Mar 15, 2025", author: "Jeff M.", excerpt: "What to do in a medical emergency, fire, severe weather, or security incident." },
+  { title: "Volunteer Onboarding", category: "People", updated: "Mar 5, 2025", author: "Andy M.", excerpt: "Overview of volunteer roles, expectations, background check process, and training." },
+  { title: "Youth Ministry Guidelines", category: "Youth", updated: "Feb 22, 2025", author: "Jerod S.", excerpt: "Policies and procedures for working with minors, ratios, check-in/out, and safety." },
 ];
 
 const catColor = (c: string) => {

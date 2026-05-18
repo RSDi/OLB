@@ -23,10 +23,7 @@ export function PublicFooter() {
               <div style={{
                 width: 32, height: 32, borderRadius: 8,
                 background: "var(--rsd-accent)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <Icons.Cross width={16} height={16} style={{ color: "var(--rsd-accent-on)", strokeWidth: 2.5 }}/>
-              </div>
+              }}/>
               <div>
                 <div style={{ fontWeight: 800, fontSize: 13, color: "#fff", lineHeight: 1 }}>Millard Community</div>
                 <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,.45)", lineHeight: 1, marginTop: 2 }}>CHURCH</div>
@@ -44,10 +41,9 @@ export function PublicFooter() {
             </div>
             {[
               { href: "/", label: "Home" },
-              { href: "/about", label: "About Us" },
-              { href: "/services", label: "Services" },
-              { href: "/sermons", label: "Sermons" },
-              { href: "/maintenance", label: "Maintenance" },
+              { href: "/beliefs", label: "Beliefs" },
+              { href: "/messages", label: "Messages" },
+              { href: "/assistance", label: "Assistance" },
             ].map(l => (
               <Link key={l.href} href={l.href} style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.65)", transition: "color 150ms" }}
                 onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#fff")}
@@ -64,8 +60,7 @@ export function PublicFooter() {
               Contact
             </div>
             {[
-              { icon: <Icons.MapPin width={13} height={13}/>, text: "Millard, Nebraska" },
-              { icon: <Icons.Phone width={13} height={13}/>, text: "(402) 000-0000" },
+              { icon: <Icons.MapPin width={13} height={13}/>, text: "9001 Q Street, Omaha, NE 68127" },
               { icon: <Icons.Mail width={13} height={13}/>, text: "info@millardcommunitychurch.com" },
             ].map((item, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, fontWeight: 500, lineHeight: 1.4 }}>
@@ -81,8 +76,9 @@ export function PublicFooter() {
               Service Times
             </div>
             {[
-              { day: "Sunday", time: "9:00 AM & 10:45 AM" },
-              { day: "Wednesday", time: "6:30 PM" },
+              { day: "Sunday 9:30 AM", time: "Bible Study & Children's Ministry" },
+              { day: "Sunday 11:00 AM", time: "Congregational Singing & Preaching" },
+              { day: "Wednesday 7:00 PM", time: "Bible Study & Children's Ministry" },
             ].map(s => (
               <div key={s.day} style={{ fontSize: 13, fontWeight: 500 }}>
                 <div style={{ fontWeight: 700, color: "#fff" }}>{s.day}</div>
@@ -103,7 +99,7 @@ export function PublicFooter() {
           </span>
           <Link href="/portal" style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.35)", display: "flex", alignItems: "center", gap: 5 }}>
             <Icons.Shield width={12} height={12}/>
-            Staff Portal
+            Login
           </Link>
         </div>
       </div>

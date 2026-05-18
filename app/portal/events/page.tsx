@@ -1,11 +1,11 @@
 import { Icons } from "../../components/icons";
 
 const EVENTS = [
-  { name: "Sunday Morning Services", date: "May 18, 2025", time: "9:00 AM & 10:45 AM", location: "Sanctuary", category: "Worship", recurring: true },
+  { name: "Sunday Morning Services", date: "May 18, 2025", time: "9:00 AM & 10:45 AM", location: "Main Meeting Room", category: "Worship", recurring: true },
   { name: "Youth Group", date: "May 21, 2025", time: "6:30 PM", location: "Youth Room", category: "Youth", recurring: true },
-  { name: "Women's Bible Study", date: "May 22, 2025", time: "10:00 AM", location: "Fellowship Hall", category: "Study", recurring: true },
-  { name: "Deacon Meeting", date: "May 26, 2025", time: "7:00 PM", location: "Offices", category: "Admin", recurring: false },
-  { name: "Sunday Morning Services", date: "May 25, 2025", time: "9:00 AM & 10:45 AM", location: "Sanctuary", category: "Worship", recurring: true },
+  { name: "Women's Bible Study", date: "May 22, 2025", time: "10:00 AM", location: "Main Meeting Room", category: "Study", recurring: true },
+  { name: "Building Committee Meeting", date: "May 26, 2025", time: "7:00 PM", location: "Offices", category: "Admin", recurring: false },
+  { name: "Sunday Morning Services", date: "May 25, 2025", time: "9:00 AM & 10:45 AM", location: "Main Meeting Room", category: "Worship", recurring: true },
   { name: "Community Cookout", date: "Jun 1, 2025", time: "12:00 PM", location: "Parking Lot", category: "Outreach", recurring: false },
 ];
 

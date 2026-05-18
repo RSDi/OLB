@@ -49,11 +49,8 @@ export default function LoginPage() {
           <div style={{
             width: 40, height: 40, borderRadius: 10,
             background: "var(--rsd-accent)",
-            display: "flex", alignItems: "center", justifyContent: "center",
             marginBottom: 16,
-          }}>
-            <Icons.Cross width={20} height={20} style={{ color: "var(--rsd-accent-on)", strokeWidth: 2.5 }}/>
-          </div>
+          }}/>
           <div style={{ fontSize: 20, fontWeight: 700, color: "var(--gw-ink)", lineHeight: 1.2 }}>
             Staff Portal
           </div>
@@ -105,7 +102,7 @@ export default function LoginPage() {
             disabled={pending}
             style={{
               marginTop: 4, height: 44,
-              background: pending ? "rgba(244,63,94,.6)" : "var(--rsd-accent)",
+              background: pending ? "rgba(108,140,89,.6)" : "var(--rsd-accent)",
               color: "var(--rsd-accent-on)", border: "none", borderRadius: 8,
               fontSize: 14, fontWeight: 700,
               cursor: pending ? "not-allowed" : "pointer",

@@ -56,10 +56,7 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
         <div style={{
           width: 28, height: 28, borderRadius: 7, flexShrink: 0,
           background: "var(--rsd-accent)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <Icons.Cross width={14} height={14} style={{ color: "var(--rsd-accent-on)", strokeWidth: 2.5 }}/>
-        </div>
+        }}/>
         {!c && (
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 11, color: "#fff", lineHeight: 1 }}>Millard Community</div>
