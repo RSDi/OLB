@@ -28,7 +28,7 @@ export default function HomePage() {
   return (
     <>
       {/* ── Hero ── */}
-      <section style={{
+      <section className="gw-hero" style={{
         background: "linear-gradient(135deg, var(--gw-ink) 0%, var(--gw-ink-3) 100%)",
         color: "#fff",
         padding: "96px 24px 88px",
@@ -108,7 +108,7 @@ export default function HomePage() {
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
         }}>
           {MEETING_TIMES.map((block, bi) => (
-            <div key={block.day} style={{
+            <div key={block.day} className="gw-times-block" style={{
               padding: "28px 0",
               borderRight: bi < MEETING_TIMES.length - 1 ? "1px solid rgba(44,4,8,.2)" : "none",
               paddingRight: bi < MEETING_TIMES.length - 1 ? 40 : 0,
@@ -144,7 +144,7 @@ export default function HomePage() {
             </div>
           ))}
           {/* Address */}
-          <div style={{
+          <div className="gw-times-address" style={{
             padding: "28px 0 28px 40px",
             borderLeft: "1px solid rgba(44,4,8,.2)",
             display: "flex", flexDirection: "column", justifyContent: "center", gap: 6,
@@ -166,7 +166,7 @@ export default function HomePage() {
       </section>
 
       {/* ── About / Beliefs teaser ── */}
-      <section style={{ padding: "88px 24px", background: "var(--gw-bg)" }}>
+      <section className="gw-section" style={{ padding: "88px 24px", background: "var(--gw-bg)" }}>
         <div style={{
           maxWidth: 1000, margin: "0 auto",
           display: "grid",
@@ -245,7 +245,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Messages / Podcast ── */}
-      <section style={{ padding: "88px 24px", background: "var(--gw-bg-elev)" }}>
+      <section className="gw-section" style={{ padding: "88px 24px", background: "var(--gw-bg-elev)" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <div style={{
             display: "flex", alignItems: "flex-end",
@@ -316,7 +316,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Location CTA ── */}
-      <section style={{
+      <section className="gw-section" style={{
         padding: "88px 24px",
         background: "var(--gw-ink)",
         color: "#fff", textAlign: "center",

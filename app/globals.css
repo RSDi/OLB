@@ -318,3 +318,72 @@ main::-webkit-scrollbar-track { background: transparent; }
   from { opacity: 0; transform: translateX(-6px) scale(.97); }
   to   { opacity: 1; transform: translateX(0) scale(1); }
 }
+
+/* ── Responsive layout helpers ── */
+.beliefs-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 0 48px;
+}
+.form-col-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-col-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+/* ── Mobile ── */
+@media (max-width: 767px) {
+  /* Sidebar portal on mobile */
+  .rsd-app {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 64px 1fr;
+    grid-template-areas: "topbar" "main";
+  }
+  .rsd-app .rsd-sidebar {
+    position: fixed; inset: 0; z-index: 200;
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform 200ms var(--gw-ease);
+    overflow-y: auto;
+  }
+  .rsd-app .rsd-sidebar.rsd-mob-open {
+    transform: translateX(0);
+  }
+  .rsd-app main { padding: 20px 16px; }
+
+  /* KPI grid: 2-up on mobile */
+  .rsd-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Beliefs two-column → stacked */
+  .beliefs-grid { grid-template-columns: 1fr; gap: 20px 0; }
+  .beliefs-grid > div:first-child { padding-top: 0; }
+  .gw-section-b { padding: 40px 20px 60px !important; }
+
+  /* Form column grids → stacked */
+  .form-col-2,
+  .form-col-3 { grid-template-columns: 1fr; }
+
+  /* Public page section padding */
+  .gw-hero    { padding: 56px 20px 48px !important; }
+  .gw-section { padding: 56px 20px !important; }
+  .gw-section-b { padding: 56px 20px 72px !important; }
+
+  /* Meeting times strip: tighter padding */
+  .gw-times-block {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(44,4,8,.15);
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .gw-times-block:last-child { border-bottom: none; }
+  .gw-times-address {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-top: 1px solid rgba(44,4,8,.15);
+  }
+}

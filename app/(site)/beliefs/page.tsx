@@ -105,15 +105,13 @@ export default function BeliefsPage() {
       </section>
 
       {/* Beliefs list */}
-      <section style={{ padding: "64px 24px 96px", background: "var(--gw-bg)" }}>
+      <section className="gw-section-b" style={{ padding: "64px 24px 96px", background: "var(--gw-bg)" }}>
         <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: 0 }}>
           {BELIEFS.map((belief, i) => (
             <div
               key={belief.num}
+              className="beliefs-grid"
               style={{
-                display: "grid",
-                gridTemplateColumns: "220px 1fr",
-                gap: "0 48px",
                 padding: "56px 0",
                 borderBottom: i < BELIEFS.length - 1 ? "1px solid var(--gw-border)" : "none",
               }}
@@ -175,11 +173,6 @@ export default function BeliefsPage() {
         </div>
       </section>
 
-      <style>{`
-        @media (max-width: 640px) {
-          .beliefs-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
     </>
   );
 }

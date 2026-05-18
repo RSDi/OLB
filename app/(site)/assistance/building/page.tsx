@@ -131,7 +131,7 @@ export default function BuildingRequestPage() {
               <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Your Contact Info</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <Input label="Full Name" value={form.name} onChange={set("name")} placeholder="Jane Smith" required />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="form-col-2">
                   <Input label="Email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" required />
                   <Input label="Phone" type="tel" value={form.phone} onChange={set("phone")} placeholder="(555) 000-0000" />
                 </div>
@@ -142,7 +142,7 @@ export default function BuildingRequestPage() {
             <div className="rsd-card">
               <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Event Details</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="form-col-2">
                   <Select label="Event Type" value={form.eventType} onChange={set("eventType")} required>
                     {EVENT_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </Select>
@@ -150,7 +150,7 @@ export default function BuildingRequestPage() {
                     {SPACES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </Select>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div className="form-col-3">
                   <Input label="Date" type="date" value={form.date} onChange={set("date")} required />
                   <Input label="Start Time" type="time" value={form.startTime} onChange={set("startTime")} required />
                   <Input label="End Time" type="time" value={form.endTime} onChange={set("endTime")} required />
