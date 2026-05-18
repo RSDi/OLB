@@ -56,7 +56,7 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
         {!c && (
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: 11, color: "#fff", lineHeight: 1 }}>Millard Community</div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,.4)", lineHeight: 1, marginTop: 2, letterSpacing: ".04em" }}>STAFF PORTAL</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,.4)", lineHeight: 1, marginTop: 2, letterSpacing: ".04em" }}>MEMBER PORTAL</div>
           </div>
         )}
       </Link>

@@ -47,7 +47,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 20, fontWeight: 700, color: "var(--gw-ink)", lineHeight: 1.2 }}>
-            Staff Portal
+            Member Portal
           </div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", marginTop: 4 }}>
             Millard Community Church
