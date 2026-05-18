@@ -118,8 +118,7 @@ export default function BuildingRequestPage() {
           }}>
             <Icons.Info width={16} height={16} style={{ color: "var(--rsd-accent)", flexShrink: 0, marginTop: 2 }}/>
             <div style={{ fontSize: 13, fontWeight: 500, color: "var(--gw-fg)", lineHeight: 1.6 }}>
-              Requests are reviewed by staff before confirmation. You will be contacted within 2–3 business days.
-              A member of the church must sponsor all building use requests.
+              Requests are reviewed by the building committee before confirmation. You will be contacted as soon as that has happened.
             </div>
           </div>
 
