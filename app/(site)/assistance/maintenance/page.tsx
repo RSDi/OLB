@@ -56,12 +56,6 @@ function MaintenanceForm() {
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-        <Input label="Your Name *" name="name" type="text" placeholder="Jane Smith" required />
-        <Input label="Email Address *" name="email" type="email" placeholder="jane@example.com" required />
-      </div>
-      <Input label="Phone (optional)" name="phone" type="tel" placeholder="(402) 000-0000" />
-
       <Select label="Location *" name="location" required>
         <option value="">Select a location…</option>
         {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}

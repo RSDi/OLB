@@ -24,7 +24,6 @@ const SPACES = [
 
 export default function BuildingRequestPage() {
   const [form, setForm] = useState({
-    name: "", email: "", phone: "",
     eventType: "", space: "",
     date: "", startTime: "", endTime: "",
     attendance: "",
@@ -65,11 +64,11 @@ export default function BuildingRequestPage() {
               Request Received
             </h2>
             <p style={{ margin: 0, fontSize: 16, lineHeight: 1.7, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-              Thank you! We&apos;ll review your building use request and follow up at the contact info you provided.
+              Thank you! We&apos;ll review your building use request and be in touch shortly.
             </p>
           </div>
           <button
-            onClick={() => { setSubmitted(false); setForm({ name: "", email: "", phone: "", eventType: "", space: "", date: "", startTime: "", endTime: "", attendance: "", notes: "" }); }}
+            onClick={() => { setSubmitted(false); setForm({ eventType: "", space: "", date: "", startTime: "", endTime: "", attendance: "", notes: "" }); }}
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "10px 20px", borderRadius: 100,
@@ -125,18 +124,6 @@ export default function BuildingRequestPage() {
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-            {/* Contact */}
-            <div className="rsd-card">
-              <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>Your Contact Info</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <Input label="Full Name" value={form.name} onChange={set("name")} placeholder="Jane Smith" required />
-                <div className="form-col-2">
-                  <Input label="Email" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" required />
-                  <Input label="Phone" type="tel" value={form.phone} onChange={set("phone")} placeholder="(555) 000-0000" />
-                </div>
-              </div>
-            </div>
 
             {/* Event details */}
             <div className="rsd-card">
