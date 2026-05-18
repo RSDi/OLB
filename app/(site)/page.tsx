@@ -42,18 +42,6 @@ export default function HomePage() {
           pointerEvents: "none",
         }}/>
         <div style={{ maxWidth: 700, margin: "0 auto", position: "relative" }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: "rgba(255,255,255,.07)",
-            border: "1px solid rgba(255,255,255,.12)",
-            borderRadius: 100, padding: "6px 16px",
-            fontSize: 12, fontWeight: 700, letterSpacing: ".06em",
-            textTransform: "uppercase", color: "var(--gw-rose-soft)",
-            marginBottom: 32,
-          }}>
-            Millard Community Church
-          </div>
-
           <h1 style={{
             margin: "0 0 24px",
             fontSize: "clamp(32px, 6vw, 60px)",
