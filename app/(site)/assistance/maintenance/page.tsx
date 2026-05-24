@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Icons } from "../../../components/icons";
 import { Input, Textarea, Select, Pill } from "../../../components/ui";
+import { createClient } from "../../../../lib/supabase/client";
 
 const LOCATIONS = [
   "Main Meeting Room", "Nursery", "Youth Room",
@@ -25,8 +26,28 @@ function MaintenanceForm() {
     e.preventDefault();
     setPending(true);
     setError(null);
-    await new Promise(r => setTimeout(r, 800));
+
+    const formData = new FormData(e.currentTarget);
+    const supabase = createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error: insertError } = await supabase
+      .from("maintenance_requests")
+      .insert({
+        location: formData.get("location") as string,
+        priority: formData.get("priority") as string,
+        description: formData.get("description") as string,
+        submitted_by: user?.id ?? null,
+      });
+
     setPending(false);
+
+    if (insertError) {
+      setError("Failed to submit request. Please try again.");
+      return;
+    }
+
     setSubmitted(true);
   }
 
@@ -111,7 +132,7 @@ export default function MaintenancePage() {
       }}>
         <div style={{ maxWidth: 600, margin: "0 auto" }}>
           <h1 style={{ margin: "0 0 16px", fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1.1 }}>
-            Request
+            Maintenance Request
           </h1>
           <p style={{ margin: 0, fontSize: 18, color: "var(--gw-fg-muted)", lineHeight: 1.7, fontWeight: 500 }}>
             Notice something that needs attention? Submit a request and our facilities team will take care of it.

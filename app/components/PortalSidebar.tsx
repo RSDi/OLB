@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Icons } from "./icons";
+import { createClient } from "../../lib/supabase/client";
 
 const NAV = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true },
@@ -20,7 +21,11 @@ interface PortalSidebarProps {
 
 export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: PortalSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
     setIsMobile(mq.matches);
@@ -29,10 +34,43 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
     return () => mq.removeEventListener("change", h);
   }, []);
 
+  useEffect(() => {
+    const supabase = createClient();
+
+    // Determine if the signed-in user is an admin. RLS lets every signed-in
+    // user read their own row, so this works without elevated privileges.
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: me } = await supabase
+        .from("members")
+        .select("is_admin")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const admin = Boolean(me?.is_admin);
+      setIsAdmin(admin);
+
+      // Pending count is only meaningful (and visible via RLS) to admins.
+      if (admin) {
+        const { count } = await supabase
+          .from("members")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending");
+        setPendingCount(count ?? 0);
+      }
+    })();
+  }, []);
+
   const c = isMobile ? false : collapsed;
 
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   return (
     <aside className={`rsd-sidebar${mobileOpen ? " rsd-mob-open" : ""}`} style={{
@@ -63,8 +101,9 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
 
       {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
-        {NAV.map(item => {
+        {NAV.filter(item => item.href !== "/portal/settings" || isAdmin).map(item => {
           const active = isActive(item.href, item.exact);
+          const isSettings = item.href === "/portal/settings";
           return (
             <Link
               key={item.href}
@@ -85,16 +124,42 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
                 fontWeight: 700, fontSize: 13, lineHeight: 1,
                 textDecoration: "none",
                 transition: "background 150ms",
+                position: "relative",
               }}
             >
-              <span style={{ display: "flex", flexShrink: 0, color: active ? "var(--rsd-accent)" : "rgba(255,255,255,.5)" }}>
+              <span style={{ display: "flex", flexShrink: 0, color: active ? "var(--rsd-accent)" : "rgba(255,255,255,.5)", position: "relative" }}>
                 {item.icon}
+                {isSettings && pendingCount > 0 && (
+                  <span style={{
+                    position: "absolute", top: -4, right: -4,
+                    width: 14, height: 14, borderRadius: "50%",
+                    background: "var(--gw-error)", color: "#fff",
+                    fontSize: 9, fontWeight: 800,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    lineHeight: 1,
+                  }}>
+                    {pendingCount > 9 ? "9+" : pendingCount}
+                  </span>
+                )}
               </span>
               {c ? (
                 <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".04em", opacity: 0.75 }}>
                   {item.label}
                 </span>
-              ) : item.label}
+              ) : (
+                <span style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  {item.label}
+                  {isSettings && pendingCount > 0 && !c && (
+                    <span style={{
+                      background: "var(--gw-error)", color: "#fff",
+                      fontSize: 10, fontWeight: 800, borderRadius: 100,
+                      padding: "2px 6px", lineHeight: 1.4,
+                    }}>
+                      {pendingCount}
+                    </span>
+                  )}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -120,20 +185,20 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
             {!c && "Collapse"}
           </button>
         )}
-        <Link
-          href="/login"
+        <button
+          onClick={handleSignOut}
           style={{
             display: "flex", alignItems: "center", justifyContent: c ? "center" : "flex-start",
-            gap: 10, padding: "10px 12px", borderRadius: 10,
+            gap: 10, padding: "10px 12px", borderRadius: 10, width: "100%",
             color: "rgba(255,255,255,.5)", fontWeight: 700, fontSize: 13,
-            textDecoration: "none", transition: "color 150ms",
+            background: "none", border: "none", cursor: "pointer", transition: "color 150ms",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--gw-error)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.5)")}
+          onMouseEnter={e => (e.currentTarget.style.color = "var(--gw-error)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,.5)")}
         >
           <Icons.LogOut width={16} height={16}/>
           {!c && "Sign out"}
-        </Link>
+        </button>
       </div>
     </aside>
   );

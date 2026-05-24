@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Icons } from "../../../components/icons";
 import { Input, Textarea, Select } from "../../../components/ui";
+import { createClient } from "../../../../lib/supabase/client";
 
 const EVENT_TYPES = [
   { value: "", label: "Select event type..." },
@@ -31,6 +32,7 @@ export default function BuildingRequestPage() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(f => ({ ...f, [field]: e.target.value }));
@@ -38,8 +40,31 @@ export default function BuildingRequestPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(r => setTimeout(r, 900));
+    setError(null);
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error: insertError } = await supabase
+      .from("building_requests")
+      .insert({
+        event_type: form.eventType,
+        space: form.space,
+        event_date: form.date,
+        start_time: form.startTime,
+        end_time: form.endTime,
+        attendance: form.attendance ? parseInt(form.attendance) : null,
+        notes: form.notes || null,
+        submitted_by: user?.id ?? null,
+      });
+
     setLoading(false);
+
+    if (insertError) {
+      setError("Failed to submit request. Please try again.");
+      return;
+    }
+
     setSubmitted(true);
   };
 
@@ -68,7 +93,10 @@ export default function BuildingRequestPage() {
             </p>
           </div>
           <button
-            onClick={() => { setSubmitted(false); setForm({ eventType: "", space: "", date: "", startTime: "", endTime: "", attendance: "", notes: "" }); }}
+            onClick={() => {
+              setSubmitted(false);
+              setForm({ eventType: "", space: "", date: "", startTime: "", endTime: "", attendance: "", notes: "" });
+            }}
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "10px 20px", borderRadius: 100,
@@ -155,6 +183,19 @@ export default function BuildingRequestPage() {
                 rows={4}
               />
             </div>
+
+            {error && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10,
+                background: "var(--gw-error-bg)",
+                border: "1px solid rgba(229,62,62,.25)",
+                borderRadius: 10, padding: "12px 16px",
+                fontSize: 13, color: "var(--gw-error)", fontWeight: 600,
+              }}>
+                <Icons.AlertCircle width={16} height={16}/>
+                {error}
+              </div>
+            )}
 
             <button
               type="submit"
