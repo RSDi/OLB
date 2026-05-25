@@ -79,6 +79,42 @@ export async function addMemberRelationship(
   return { success: true };
 }
 
+export interface UpdateOwnProfileInput {
+  fullName: string;
+  phone: string | null;
+  birthday: string | null; // YYYY-MM-DD
+  avatarUrl: string | null;
+}
+
+// Self-update for the directory. The DB enforces the column firewall via
+// the trigger from migration 0021 — this action just builds the patch and
+// targets the row matching the signed-in user.
+export async function updateOwnProfile(
+  input: UpdateOwnProfileInput
+): Promise<MemberActionResult> {
+  if (!input.fullName.trim()) return { error: "Name is required." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+
+  const { error } = await supabase
+    .from("members")
+    .update({
+      full_name: input.fullName.trim(),
+      phone: input.phone?.trim() || null,
+      birthday: input.birthday || null,
+      avatar_url: input.avatarUrl?.trim() || null,
+    })
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/directory");
+  return { success: true };
+}
+
 export async function removeMemberRelationship(
   memberId: string,
   relatedMemberId: string,

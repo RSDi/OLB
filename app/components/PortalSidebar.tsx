@@ -19,6 +19,7 @@ const NAV: NavItem[] = [
   { href: "/portal/maintenance", label: "Maintenance", icon: <Icons.Wrench width={16} height={16}/> },
   { href: "/portal/pm", label: "PM", icon: <Icons.Clock width={16} height={16}/>, staffOnly: true },
   { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/> },
+  { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
 ];

@@ -14,6 +14,14 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/pm/templates": { title: "PM Templates", subtitle: "Facilities" },
   "/portal/pm/templates/new": { title: "New template", subtitle: "Facilities" },
   "/portal/events":      { title: "Events",       subtitle: "Calendar" },
+  "/portal/directory":              { title: "Directory",     subtitle: "Community" },
+  "/portal/directory/households":   { title: "Households",    subtitle: "Directory" },
+  "/portal/directory/all":          { title: "All members",   subtitle: "Directory" },
+  "/portal/directory/birthdays":    { title: "Birthdays",     subtitle: "Directory" },
+  "/portal/directory/anniversaries":{ title: "Anniversaries", subtitle: "Directory" },
+  "/portal/directory/phones":       { title: "Phone tree",    subtitle: "Directory" },
+  "/portal/directory/extended":     { title: "Extended family", subtitle: "Directory" },
+  "/portal/directory/memorials":    { title: "Asleep in Jesus", subtitle: "Directory" },
   "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
   "/portal/settings":    { title: "Settings",     subtitle: "Admin" },
 };
@@ -36,6 +44,8 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       ? { title: "PM Task", subtitle: "Facilities" }
       : pathname.startsWith("/portal/events/")
       ? { title: "Edit event", subtitle: "Calendar" }
+      : pathname.startsWith("/portal/directory/")
+      ? { title: "Member", subtitle: "Community" }
       : { title: "Portal", subtitle: "" });
 
   return (
