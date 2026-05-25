@@ -15,6 +15,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/pm/templates/new": { title: "New template", subtitle: "Facilities" },
   "/portal/events":      { title: "Events",       subtitle: "Calendar" },
   "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
+  "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
   "/portal/settings":    { title: "Settings",     subtitle: "Admin" },
 };
 
@@ -36,6 +37,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       ? { title: "PM Task", subtitle: "Facilities" }
       : pathname.startsWith("/portal/events/")
       ? { title: "Edit event", subtitle: "Calendar" }
+      : pathname.endsWith("/history") && pathname.startsWith("/portal/docs/")
+      ? { title: "History", subtitle: "Operations" }
+      : pathname.startsWith("/portal/docs/")
+      ? { title: "Playbook", subtitle: "Operations" }
       : { title: "Portal", subtitle: "" });
 
   return (

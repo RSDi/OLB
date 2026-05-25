@@ -11,6 +11,7 @@ import { TypesTab } from "./TypesTab";
 import { SuppliesTab } from "./SuppliesTab";
 import { AssignmentsTab } from "./AssignmentsTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
+import { PlaybooksTab } from "./PlaybooksTab";
 import { DeletedTab } from "./DeletedTab";
 
 type Tab =
@@ -22,6 +23,7 @@ type Tab =
   | "supplies"
   | "assignments"
   | "event_categories"
+  | "playbooks"
   | "deleted";
 
 export default function SettingsPage() {
@@ -87,6 +89,7 @@ export default function SettingsPage() {
     { key: "supplies", label: "Supplies", visible: true },
     { key: "assignments", label: "Assignments", visible: true },
     { key: "event_categories", label: "Event Categories", visible: true },
+    { key: "playbooks", label: "Playbooks", visible: true },
     { key: "deleted", label: "Deleted", visible: showDeleted },
   ];
 
@@ -135,6 +138,7 @@ export default function SettingsPage() {
       {tab === "supplies" && <SuppliesTab me={me} />}
       {tab === "assignments" && <AssignmentsTab />}
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
+      {tab === "playbooks" && <PlaybooksTab me={me} />}
       {tab === "deleted" && showDeleted && <DeletedTab />}
     </>
   );
