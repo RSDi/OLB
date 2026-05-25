@@ -4,13 +4,23 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icons } from "./icons";
 import { createClient } from "../../lib/supabase/client";
+import { isStaff, isSuperAdmin, type MemberLike } from "../../lib/auth/permissions";
 
-const NAV = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  exact?: boolean;
+  staffOnly?: boolean;
+}
+
+const NAV: NavItem[] = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true },
   { href: "/portal/maintenance", label: "Maintenance", icon: <Icons.Wrench width={16} height={16}/> },
+  { href: "/portal/pm", label: "PM", icon: <Icons.Clock width={16} height={16}/>, staffOnly: true },
   { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/> },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
-  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/> },
+  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
 ];
 
 interface PortalSidebarProps {
@@ -24,7 +34,10 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [member, setMember] = useState<MemberLike | null>(null);
+  // Staff (admin + super_admin) see Settings; the pending-count badge stays
+  // super-admin-only since admins can't action the member queue.
+  const canSeeSettings = isStaff(member);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -37,21 +50,22 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
   useEffect(() => {
     const supabase = createClient();
 
-    // Determine if the signed-in user is an admin. RLS lets every signed-in
-    // user read their own row, so this works without elevated privileges.
+    // Determine the signed-in user's role. RLS lets every signed-in user
+    // read their own row, so this works without elevated privileges.
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data: me } = await supabase
         .from("members")
-        .select("is_admin")
+        .select("role, status")
         .eq("user_id", user.id)
         .maybeSingle();
-      const admin = Boolean(me?.is_admin);
-      setIsAdmin(admin);
+      const memberLike = (me as MemberLike | null) ?? null;
+      setMember(memberLike);
 
-      // Pending count is only meaningful (and visible via RLS) to admins.
-      if (admin) {
+      // Pending count is only meaningful (and visible via RLS) to staff. In
+      // Phase 1 only super-admins can act on it, so we gate it there.
+      if (isSuperAdmin(memberLike)) {
         const { count } = await supabase
           .from("members")
           .select("id", { count: "exact", head: true })
@@ -101,7 +115,7 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
 
       {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
-        {NAV.filter(item => item.href !== "/portal/settings" || isAdmin).map(item => {
+        {NAV.filter(item => !item.staffOnly || canSeeSettings).map(item => {
           const active = isActive(item.href, item.exact);
           const isSettings = item.href === "/portal/settings";
           return (

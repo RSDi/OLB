@@ -7,6 +7,12 @@ import { usePathname } from "next/navigation";
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
   "/portal/maintenance": { title: "Maintenance",  subtitle: "Facilities" },
+  "/portal/maintenance/new": { title: "New request", subtitle: "Facilities" },
+  "/portal/events/new": { title: "New event", subtitle: "Calendar" },
+  "/portal/pm":           { title: "Preventative", subtitle: "Facilities" },
+  "/portal/pm/calendar":  { title: "PM Calendar", subtitle: "Facilities" },
+  "/portal/pm/templates": { title: "PM Templates", subtitle: "Facilities" },
+  "/portal/pm/templates/new": { title: "New template", subtitle: "Facilities" },
   "/portal/events":      { title: "Events",       subtitle: "Calendar" },
   "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
   "/portal/settings":    { title: "Settings",     subtitle: "Admin" },
@@ -16,7 +22,21 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  const meta = PAGE_META[pathname] ?? { title: "Portal", subtitle: "" };
+  // Exact match first; otherwise label individual ticket detail pages
+  // (`/portal/maintenance/<id>`, but not /new) as "Request".
+  const meta =
+    PAGE_META[pathname] ??
+    (pathname.startsWith("/portal/maintenance/") && pathname !== "/portal/maintenance/new"
+      ? { title: "Request", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/pm/templates/")
+      ? { title: "Edit template", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/pm/assets/")
+      ? { title: "Asset", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/pm/")
+      ? { title: "PM Task", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/events/")
+      ? { title: "Edit event", subtitle: "Calendar" }
+      : { title: "Portal", subtitle: "" });
 
   return (
     <div className={`rsd-app${collapsed ? " sidebar-collapsed" : ""}`}>

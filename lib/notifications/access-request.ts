@@ -23,14 +23,15 @@ export async function sendAccessRequestNotification({
   const from =
     process.env.MAIL_FROM ?? "MCC Portal <onboarding@resend.dev>";
 
-  // Fetch admin emails. Prefer DB-driven (is_admin=true, status=approved) so
-  // promoting a member to admin also opts them in. Falls back to ADMIN_EMAILS
-  // env if no admins are stored yet (very first deploy).
+  // Fetch super-admin emails. Only super-admins can approve/deny members
+  // (per the Phase 1 permission matrix), so emailing anyone else would just
+  // be noise. Falls back to ADMIN_EMAILS env if no DB super-admins exist yet
+  // (very first deploy, before the bootstrap insert lands).
   const admin = createAdminClient();
   const { data: admins } = await admin
     .from("members")
     .select("email")
-    .eq("is_admin", true)
+    .eq("role", "super_admin")
     .eq("status", "approved");
 
   const dbEmails = (admins ?? []).map((a) => a.email).filter(Boolean);

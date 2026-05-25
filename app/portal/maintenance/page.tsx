@@ -1,98 +1,307 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Icons } from "../../components/icons";
+import { createClient } from "../../../lib/supabase/server";
+import { isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
+import { QueueRow } from "./QueueRow";
 
-const REQUESTS = [
-  { id: 1, title: "HVAC not cooling — Main Meeting Room", location: "Main Meeting Room", priority: "high", status: "open", submitted: "May 16, 2025", submitter: "Jeff M.", description: "The air conditioning in the main meeting room is blowing warm air. Noticed during Sunday morning service." },
-  { id: 2, title: "Light bulb out — Hallway B", location: "Offices", priority: "low", status: "in_progress", submitted: "May 15, 2025", submitter: "Andy M.", description: "The fluorescent light in hallway B near the copy room is flickering and needs replacement." },
-  { id: 3, title: "Sink dripping — Women's restroom", location: "Restrooms", priority: "medium", status: "open", submitted: "May 14, 2025", submitter: "Jeff M.", description: "The faucet in the women's restroom has a slow drip." },
-  { id: 4, title: "Projector bulb dim — Main Meeting Room", location: "Main Meeting Room", priority: "medium", status: "open", submitted: "May 13, 2025", submitter: "Jerod S.", description: "The main projector bulb is noticeably dimmer than usual. May need replacement soon." },
-  { id: 5, title: "Exit sign light out — Side door", location: "Exterior / Grounds", priority: "high", status: "open", submitted: "May 12, 2025", submitter: "Jeff M.", description: "The exit sign light above the south side door is not working. This may be a code issue." },
-  { id: 6, title: "Broken chair — Youth Room", location: "Youth Room", priority: "low", status: "done", submitted: "May 10, 2025", submitter: "Jerod S.", description: "One of the folding chairs has a broken leg and should be removed from rotation." },
+type StatusFilter = "all" | "open" | "in_progress" | "done" | "cancelled";
+
+const STATUS_TABS: { key: StatusFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "open", label: "Open" },
+  { key: "in_progress", label: "In Progress" },
+  { key: "done", label: "Done" },
+  { key: "cancelled", label: "Cancelled" },
 ];
 
-const priorityChip = (p: string) => {
-  if (p === "emergency") return <span className="rsd-chip rsd-chip-error">Emergency</span>;
-  if (p === "high")      return <span className="rsd-chip rsd-chip-warn">High</span>;
-  if (p === "medium")    return <span className="rsd-chip rsd-chip-mute">Medium</span>;
-  return <span className="rsd-chip rsd-chip-success">Low</span>;
-};
+interface TicketRow {
+  id: string;
+  description: string;
+  status: "open" | "in_progress" | "done" | "cancelled";
+  created_at: string;
+  submitted_by: string | null;
+  assigned_to: string | null;
+  area: { name: string } | null;
+  priority: { id: string; label: string; chip_class: string; severity: number } | null;
+}
 
-const statusChip = (s: string) => {
-  if (s === "open")        return <span className="rsd-chip rsd-chip-warn">Open</span>;
-  if (s === "in_progress") return <span className="rsd-chip rsd-chip-accent">In Progress</span>;
-  return <span className="rsd-chip rsd-chip-success">Done</span>;
-};
+interface PriorityOption {
+  id: string;
+  label: string;
+  chip_class: string;
+}
 
-export default function PortalMaintenancePage() {
+interface StaffMember {
+  id: string;
+  full_name: string | null;
+  email: string;
+}
+
+export default async function PortalMaintenancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const params = await searchParams;
+  const status: StatusFilter = isValidStatus(params.status) ? params.status : "all";
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: meRow } = await supabase
+    .from("members")
+    .select("role, status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const me = (meRow as MemberLike | null) ?? null;
+  const staff = isStaff(me);
+  const superAdmin = isSuperAdmin(me);
+
+  // RLS already filters: staff sees all non-deleted; members see own only.
+  let query = supabase
+    .from("maintenance_requests")
+    .select(
+      `id, description, status, created_at, submitted_by, assigned_to,
+       area:areas(name),
+       priority:priorities(id, label, chip_class, severity)`
+    )
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+
+  if (status !== "all") {
+    query = query.eq("status", status);
+  }
+
+  const { data: ticketsRaw } = await query;
+  const tickets = (ticketsRaw as unknown as TicketRow[]) ?? [];
+
+  // Resolve submitter names. RLS lets staff see all members and lets a member
+  // see their own row, so this just works without elevated privileges.
+  const submitterIds = Array.from(
+    new Set(tickets.map((t) => t.submitted_by).filter((v): v is string => Boolean(v)))
+  );
+  const submitterMap: Record<string, { full_name: string | null; email: string }> = {};
+  if (submitterIds.length > 0) {
+    const { data: submitters } = await supabase
+      .from("members")
+      .select("user_id, full_name, email")
+      .in("user_id", submitterIds);
+    for (const s of submitters ?? []) {
+      submitterMap[s.user_id] = { full_name: s.full_name, email: s.email };
+    }
+  }
+
+  // Counts for stat chips (independent of the current status filter).
+  const { data: allForCounts } = await supabase
+    .from("maintenance_requests")
+    .select("status, priority:priorities(severity)")
+    .is("deleted_at", null);
+  const counts = countByStatus(
+    (allForCounts as unknown as { status: TicketRow["status"]; priority: { severity: number } | null }[]) ?? []
+  );
+
+  // Lookups for the inline row selects. Members never see the staff list (no
+  // assignment dropdown) so we skip that fetch for them.
+  const { data: prioritiesRaw } = await supabase
+    .from("priorities")
+    .select("id, label, chip_class")
+    .is("deleted_at", null)
+    .order("severity", { ascending: true });
+  const priorities = (prioritiesRaw as PriorityOption[]) ?? [];
+
+  let staffList: StaffMember[] = [];
+  if (staff) {
+    const { data: staffRows } = await supabase
+      .from("members")
+      .select("id, full_name, email")
+      .in("role", ["admin", "super_admin"])
+      .eq("status", "approved")
+      .order("full_name", { ascending: true });
+    staffList = staffRows ?? [];
+  }
+
   return (
     <>
-      {/* Header row */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
         <div>
-          <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>Facilities</div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>Maintenance Requests</h2>
+          <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
+            Facilities
+          </div>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
+            {staff ? "Maintenance Requests" : "My Requests"}
+          </h2>
         </div>
-        <Link href="/assistance/maintenance" style={{
-          display: "inline-flex", alignItems: "center", gap: 8,
-          padding: "10px 20px", borderRadius: 100,
-          background: "var(--rsd-accent)", color: "var(--rsd-accent-on)",
-          fontSize: 13, fontWeight: 700, textDecoration: "none",
-        }}>
-          <Icons.ArrowRight width={14} height={14}/>
-          Public Request Form
+        <Link
+          href="/portal/maintenance/new"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 20px",
+            borderRadius: 100,
+            background: "var(--rsd-accent)",
+            color: "var(--rsd-accent-on)",
+            fontSize: 13,
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          <Icons.Plus width={14} height={14} />
+          New request
         </Link>
       </div>
 
       {/* Stats */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {[
-          { label: "Open", count: REQUESTS.filter(r => r.status === "open").length, chip: "rsd-chip-warn" },
-          { label: "In Progress", count: REQUESTS.filter(r => r.status === "in_progress").length, chip: "rsd-chip-accent" },
-          { label: "Done", count: REQUESTS.filter(r => r.status === "done").length, chip: "rsd-chip-success" },
-          { label: "High Priority", count: REQUESTS.filter(r => r.priority === "high" || r.priority === "emergency").length, chip: "rsd-chip-error" },
-        ].map(s => (
-          <div key={s.label} className="rsd-card" style={{ padding: "14px 20px", gap: 6, flexDirection: "row", alignItems: "center" }}>
-            <span style={{ fontSize: 22, fontWeight: 800, color: "var(--gw-fg)", letterSpacing: "-.02em" }}>{s.count}</span>
-            <span className={`rsd-chip ${s.chip}`}>{s.label}</span>
-          </div>
-        ))}
+        <StatCard label="Open" value={counts.open} chip="rsd-chip-warn" />
+        <StatCard label="In Progress" value={counts.in_progress} chip="rsd-chip-accent" />
+        <StatCard label="Done" value={counts.done} chip="rsd-chip-success" />
+        <StatCard label="High Priority" value={counts.high_priority} chip="rsd-chip-error" />
       </div>
 
-      {/* Table card */}
+      {/* Status tabs */}
+      <div style={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+        {STATUS_TABS.map((t) => {
+          const href = t.key === "all" ? "/portal/maintenance" : `/portal/maintenance?status=${t.key}`;
+          const active = status === t.key;
+          return (
+            <Link
+              key={t.key}
+              href={href}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 8,
+                background: active ? "var(--gw-bg-elev)" : "transparent",
+                border: "1px solid",
+                borderColor: active ? "var(--gw-border)" : "transparent",
+                fontSize: 13,
+                fontWeight: 700,
+                color: active ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+                textDecoration: "none",
+              }}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
+        {superAdmin && (
+          <>
+            <span style={{ width: 1, height: 18, background: "var(--gw-border)", margin: "0 6px" }} />
+            <Link
+              href="/portal/maintenance/deleted"
+              style={{
+                padding: "8px 16px",
+                borderRadius: 8,
+                background: "transparent",
+                border: "1px solid transparent",
+                fontSize: 13,
+                fontWeight: 700,
+                color: "var(--gw-fg-muted)",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icons.Trash width={12} height={12} />
+              Deleted
+            </Link>
+          </>
+        )}
+      </div>
+
+      {/* Table */}
       <div className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--gw-border)" }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>All Requests</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
+            {tickets.length} {tickets.length === 1 ? "request" : "requests"}
+          </h3>
         </div>
-        <table className="rsd-tbl">
-          <thead>
-            <tr>
-              <th>Request</th>
-              <th>Location</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Submitted</th>
-              <th>By</th>
-            </tr>
-          </thead>
-          <tbody>
-            {REQUESTS.map(r => (
-              <tr key={r.id}>
-                <td>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gw-fg)" }}>{r.title}</div>
-                  <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 2, maxWidth: 340 }}>
-                    {r.description}
-                  </div>
-                </td>
-                <td>{r.location}</td>
-                <td>{priorityChip(r.priority)}</td>
-                <td>{statusChip(r.status)}</td>
-                <td style={{ whiteSpace: "nowrap" }}>{r.submitted}</td>
-                <td>{r.submitter}</td>
+        {tickets.length === 0 ? (
+          <div style={{ padding: "48px 24px", textAlign: "center" }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gw-fg)", marginBottom: 6 }}>
+              {status === "all" ? "No requests yet" : `No ${labelFor(status).toLowerCase()} requests`}
+            </div>
+            <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
+              {staff ? "Submitted requests will appear here." : "Submit one with + New request above."}
+            </div>
+          </div>
+        ) : (
+          <table className="rsd-tbl">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Area</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                {staff && <th>By</th>}
+                {staff && <th>Assigned</th>}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tickets.map((t) => (
+                <QueueRow
+                  key={t.id}
+                  ticket={t}
+                  submitter={t.submitted_by ? submitterMap[t.submitted_by] ?? null : null}
+                  staff={staff}
+                  priorities={priorities}
+                  staffList={staffList}
+                />
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </>
   );
+}
+
+function StatCard({ label, value, chip }: { label: string; value: number; chip: string }) {
+  return (
+    <div
+      className="rsd-card"
+      style={{ padding: "14px 20px", gap: 6, flexDirection: "row", alignItems: "center" }}
+    >
+      <span style={{ fontSize: 22, fontWeight: 800, color: "var(--gw-fg)", letterSpacing: "-.02em" }}>
+        {value}
+      </span>
+      <span className={`rsd-chip ${chip}`}>{label}</span>
+    </div>
+  );
+}
+
+function isValidStatus(s: string | undefined): s is StatusFilter {
+  return s === "open" || s === "in_progress" || s === "done" || s === "cancelled" || s === "all";
+}
+
+function labelFor(s: StatusFilter): string {
+  return STATUS_TABS.find((t) => t.key === s)?.label ?? "";
+}
+
+function countByStatus(
+  rows: { status: TicketRow["status"]; priority: { severity: number } | null }[]
+) {
+  const out = { open: 0, in_progress: 0, done: 0, cancelled: 0, high_priority: 0 };
+  for (const r of rows) {
+    out[r.status] = (out[r.status] ?? 0) + 1;
+    if ((r.priority?.severity ?? 0) >= 30 && (r.status === "open" || r.status === "in_progress")) {
+      out.high_priority += 1;
+    }
+  }
+  return out;
 }

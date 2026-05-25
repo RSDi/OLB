@@ -10,12 +10,13 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createAdminClient } from "../supabase/admin";
 import { isAdminEmail } from "./admin-emails";
 import { sendAccessRequestNotification } from "../notifications/access-request";
+import type { MemberRole, MemberStatus } from "./permissions";
 
-export type MemberStatus = "pending" | "approved" | "denied";
+export type { MemberRole, MemberStatus };
 
 export interface ResolvedMembership {
   status: MemberStatus;
-  isAdmin: boolean;
+  role: MemberRole;
 }
 
 export async function resolveMembership({
@@ -26,7 +27,7 @@ export async function resolveMembership({
   user: User;
 }): Promise<ResolvedMembership> {
   if (!user.email) {
-    return { status: "denied", isAdmin: false };
+    return { status: "denied", role: "member" };
   }
 
   const fullName =
@@ -48,7 +49,7 @@ export async function resolveMembership({
         .from("members")
         .update({
           status: "approved",
-          is_admin: true,
+          role: "super_admin",
           reviewed_at: new Date().toISOString(),
         })
         .eq("id", existing.id);
@@ -59,7 +60,7 @@ export async function resolveMembership({
         full_name: fullName,
         avatar_url: avatarUrl,
         status: "approved",
-        is_admin: true,
+        role: "super_admin",
         reviewed_at: new Date().toISOString(),
       });
     }
@@ -67,11 +68,39 @@ export async function resolveMembership({
 
   const { data: member } = await supabase
     .from("members")
-    .select("status, is_admin")
+    .select("status, role")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (!member) {
+    // Check for a pre-created (orphan) member row a super-admin set up with
+    // matching email but no user_id yet. If found, link it instead of
+    // creating a new pending row — preserve whatever role/status the
+    // super-admin set, and keep the pre-set name if there is one.
+    const admin = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : null;
+    const linkClient = admin ?? supabase;
+    const { data: orphan } = await linkClient
+      .from("members")
+      .select("id, status, role, full_name")
+      .ilike("email", user.email)
+      .is("user_id", null)
+      .maybeSingle();
+
+    if (orphan) {
+      await linkClient
+        .from("members")
+        .update({
+          user_id: user.id,
+          full_name: orphan.full_name ?? fullName,
+          avatar_url: avatarUrl,
+        })
+        .eq("id", orphan.id);
+      return {
+        status: orphan.status as MemberStatus,
+        role: (orphan.role as MemberRole) ?? "member",
+      };
+    }
+
     await supabase.from("members").insert({
       user_id: user.id,
       email: user.email,
@@ -81,11 +110,12 @@ export async function resolveMembership({
     sendAccessRequestNotification({ email: user.email, fullName }).catch(
       (err) => console.error("[notify] failed:", err)
     );
-    return { status: "pending", isAdmin: false };
+    return { status: "pending", role: "member" };
   }
 
   return {
     status: member.status as MemberStatus,
-    isAdmin: Boolean(member.is_admin),
+    role: (member.role as MemberRole) ?? "member",
   };
 }
+
