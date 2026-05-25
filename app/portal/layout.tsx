@@ -23,6 +23,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/directory/extended":     { title: "Extended family", subtitle: "Directory" },
   "/portal/directory/memorials":    { title: "Asleep in Jesus", subtitle: "Directory" },
   "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
+  "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
   "/portal/settings":    { title: "Settings",     subtitle: "Admin" },
 };
 
@@ -46,6 +47,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       ? { title: "Edit event", subtitle: "Calendar" }
       : pathname.startsWith("/portal/directory/")
       ? { title: "Member", subtitle: "Community" }
+      : pathname.endsWith("/history") && pathname.startsWith("/portal/docs/")
+      ? { title: "History", subtitle: "Operations" }
+      : pathname.startsWith("/portal/docs/")
+      ? { title: "Playbook", subtitle: "Operations" }
       : { title: "Portal", subtitle: "" });
 
   return (
