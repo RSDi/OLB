@@ -40,19 +40,11 @@ export default async function NewEventPage() {
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           flexWrap: "wrap",
           gap: 12,
         }}
       >
-        <div>
-          <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
-            Calendar
-          </div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
-            New Event
-          </h2>
-        </div>
         <Link
           href="/portal/events"
           style={{

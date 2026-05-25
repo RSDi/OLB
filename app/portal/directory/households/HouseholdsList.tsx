@@ -12,12 +12,10 @@ export function HouseholdsList({
   members,
   relationships,
   currentMemberId,
-  isSuperAdmin,
 }: {
   members: DirectoryMember[];
   relationships: DirectoryRelationship[];
   currentMemberId: string;
-  isSuperAdmin: boolean;
 }) {
   const [query, setQuery] = useState("");
   const households = useMemo(() => {
@@ -50,57 +48,26 @@ export function HouseholdsList({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           flexWrap: "wrap",
           gap: 12,
         }}
       >
-        <div>
-          <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
-            Directory
-          </div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
-            Households
-          </h2>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link
-            href="/portal/directory"
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "var(--gw-fg-muted)",
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <Icons.ChevronLeft width={12} height={12} />
-            All views
-          </Link>
-          {isSuperAdmin && (
-            <Link
-              href="/portal/settings"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "10px 18px",
-                borderRadius: 100,
-                background: "var(--gw-bg-elev)",
-                color: "var(--gw-fg)",
-                border: "1px solid var(--gw-border)",
-                fontSize: 12,
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
-            >
-              <Icons.Cog width={14} height={14} />
-              Manage members
-            </Link>
-          )}
-        </div>
+        <Link
+          href="/portal/directory"
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: "var(--gw-fg-muted)",
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <Icons.ChevronLeft width={12} height={12} />
+          All views
+        </Link>
       </div>
 
       <div style={{ position: "relative", maxWidth: 480 }}>

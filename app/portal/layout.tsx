@@ -59,6 +59,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed(v => !v)}
         mobileOpen={mobileOpen}
+        onNavigate={() => setMobileOpen(false)}
       />
       <PortalTopBar
         title={meta.title}

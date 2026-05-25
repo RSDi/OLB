@@ -16,7 +16,6 @@ export default async function HouseholdsPage() {
       members={members}
       relationships={relationships}
       currentMemberId={viewer.memberId}
-      isSuperAdmin={viewer.isSuperAdmin}
     />
   );
 }

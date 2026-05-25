@@ -28,9 +28,10 @@ interface PortalSidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   mobileOpen?: boolean;
+  onNavigate?: () => void;
 }
 
-export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: PortalSidebarProps) {
+export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen, onNavigate }: PortalSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
@@ -124,25 +125,27 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
               key={item.href}
               href={item.href}
               className="gw-press"
+              onClick={() => { if (isMobile) onNavigate?.(); }}
               style={{
                 display: "flex",
                 flexDirection: c ? "column" : "row",
                 alignItems: "center",
                 justifyContent: c ? "center" : "flex-start",
-                gap: c ? 3 : 10,
-                padding: c ? "7px 2px" : "8px 10px",
+                gap: c ? 3 : (isMobile ? 14 : 10),
+                padding: c ? "7px 2px" : (isMobile ? "14px 14px" : "8px 10px"),
                 borderRadius: 9,
                 background: active ? "var(--gw-ink-2)" : "transparent",
                 color: active ? "#fff" : "rgba(255,255,255,.65)",
                 border: "1px solid",
                 borderColor: active ? "var(--gw-stroke-dark)" : "transparent",
-                fontWeight: 700, fontSize: 13, lineHeight: 1,
+                fontWeight: 700, fontSize: isMobile ? 15 : 13, lineHeight: 1,
                 textDecoration: "none",
                 transition: "background 150ms",
                 position: "relative",
+                minHeight: isMobile ? 48 : undefined,
               }}
             >
-              <span style={{ display: "flex", flexShrink: 0, color: active ? "var(--rsd-accent)" : "rgba(255,255,255,.5)", position: "relative" }}>
+              <span style={{ display: "flex", flexShrink: 0, color: active ? "var(--rsd-accent)" : "rgba(255,255,255,.5)", position: "relative", transform: isMobile ? "scale(1.15)" : undefined, transformOrigin: "center" }}>
                 {item.icon}
                 {isSettings && pendingCount > 0 && (
                   <span style={{
@@ -204,14 +207,20 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen }: Porta
           onClick={handleSignOut}
           style={{
             display: "flex", alignItems: "center", justifyContent: c ? "center" : "flex-start",
-            gap: 10, padding: "10px 12px", borderRadius: 10, width: "100%",
-            color: "rgba(255,255,255,.5)", fontWeight: 700, fontSize: 13,
+            gap: isMobile ? 14 : 10,
+            padding: isMobile ? "14px 14px" : "10px 12px",
+            borderRadius: 10, width: "100%",
+            color: "rgba(255,255,255,.5)", fontWeight: 700,
+            fontSize: isMobile ? 15 : 13,
+            minHeight: isMobile ? 48 : undefined,
             background: "none", border: "none", cursor: "pointer", transition: "color 150ms",
           }}
           onMouseEnter={e => (e.currentTarget.style.color = "var(--gw-error)")}
           onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,.5)")}
         >
-          <Icons.LogOut width={16} height={16}/>
+          <span style={{ display: "flex", transform: isMobile ? "scale(1.15)" : undefined }}>
+            <Icons.LogOut width={16} height={16}/>
+          </span>
           {!c && "Sign out"}
         </button>
       </div>

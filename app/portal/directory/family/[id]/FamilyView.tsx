@@ -53,9 +53,6 @@ export function FamilyView({
             <Icons.ChevronLeft width={14} height={14} />
             All households
           </Link>
-          <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
-            Family
-          </div>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
             {surname}
           </h2>

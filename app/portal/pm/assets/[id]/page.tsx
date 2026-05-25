@@ -108,14 +108,9 @@ export default async function AssetDetailPage({
           gap: 12,
         }}
       >
-        <div>
-          <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
-            Facilities · Asset
-          </div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
-            {asset.name}
-          </h2>
-        </div>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
+          {asset.name}
+        </h2>
         <Link
           href="/portal/settings"
           style={{

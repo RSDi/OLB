@@ -92,14 +92,9 @@ export default async function EditTemplatePage({
           gap: 12,
         }}
       >
-        <div>
-          <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
-            Facilities · Preventative
-          </div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
-            {t.title}
-          </h2>
-        </div>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
+          {t.title}
+        </h2>
         <Link
           href="/portal/pm/templates"
           style={{

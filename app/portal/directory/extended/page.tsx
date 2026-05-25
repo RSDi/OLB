@@ -19,7 +19,6 @@ export default async function ExtendedPage() {
       members={members}
       relationships={relationships}
       currentMemberId={viewer.memberId}
-      isSuperAdmin={viewer.isSuperAdmin}
     />
   );
 }

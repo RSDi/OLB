@@ -95,17 +95,8 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div>
-        <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
-          Admin
-        </div>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
-          Settings
-        </h2>
-      </div>
-
       {/* Outer tabs */}
-      <div style={{ display: "flex", gap: 2, marginTop: 20, marginBottom: 24, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 2, marginBottom: 24, flexWrap: "wrap" }}>
         {tabs
           .filter((t) => t.visible)
           .map((t) => (

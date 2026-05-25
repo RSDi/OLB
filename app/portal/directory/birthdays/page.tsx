@@ -42,7 +42,7 @@ export default async function BirthdaysPage() {
 
   return (
     <>
-      <PageHeader title="Birthdays" eyebrow={`${CURRENT_YEAR}`} />
+      <PageHeader />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
@@ -144,23 +144,17 @@ function BirthdayRow({ member, border }: { member: DirectoryMember; border: bool
   );
 }
 
-function PageHeader({ title, eyebrow }: { title: string; eyebrow: string }) {
+function PageHeader() {
   return (
     <div
       style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
+        justifyContent: "flex-end",
         flexWrap: "wrap",
         gap: 12,
       }}
     >
-      <div>
-        <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
-          {eyebrow}
-        </div>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>{title}</h2>
-      </div>
       <Link
         href="/portal/directory"
         style={{

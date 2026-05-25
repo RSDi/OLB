@@ -119,14 +119,9 @@ export default async function TicketDetailPage({
           gap: 12,
         }}
       >
-        <div>
-          <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
-            Facilities · Request
-          </div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
-            {truncate(ticket.description, 80)}
-          </h2>
-        </div>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", flex: 1, minWidth: 0 }}>
+          {truncate(ticket.description, 80)}
+        </h2>
         <Link
           href="/portal/maintenance"
           style={{

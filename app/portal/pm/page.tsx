@@ -72,19 +72,11 @@ export default async function PmInstancesPage({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           flexWrap: "wrap",
           gap: 12,
         }}
       >
-        <div>
-          <div className="rsd-eyebrow" style={{ marginBottom: 6 }}>
-            Facilities · Preventative
-          </div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
-            PM Tasks
-          </h2>
-        </div>
         <div style={{ display: "flex", gap: 8 }}>
           <Link
             href="/portal/pm/calendar"
