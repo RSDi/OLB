@@ -1,12 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import ReactMarkdown from "react-markdown";
 import { createClient } from "../../../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../../../lib/auth/permissions";
-import {
-  MD_REHYPE_PLUGINS,
-  MD_REMARK_PLUGINS,
-} from "../../../../components/markdown-plugins";
+import { MarkdownView } from "../../../../components/MarkdownView";
 
 interface VersionRow {
   id: string;
@@ -226,12 +222,7 @@ export default async function PlaybookHistoryPage({
                     style={{ fontSize: 14, lineHeight: 1.7, color: "var(--gw-fg)" }}
                   >
                     {v.body_md.trim() ? (
-                      <ReactMarkdown
-                        remarkPlugins={[...MD_REMARK_PLUGINS]}
-                        rehypePlugins={[...MD_REHYPE_PLUGINS]}
-                      >
-                        {v.body_md}
-                      </ReactMarkdown>
+                      <MarkdownView>{v.body_md}</MarkdownView>
                     ) : (
                       <p style={{ margin: 0, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
                         (Empty body.)

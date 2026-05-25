@@ -387,3 +387,173 @@ main::-webkit-scrollbar-track { background: transparent; }
     border-top: 1px solid rgba(44,4,8,.15);
   }
 }
+
+/* Rendered markdown (playbooks, version snapshots, etc.).
+   Tailwind's reset strips list markers and shrinks heading spacing — we
+   restore the bits we want without dragging in a full typography plugin. */
+.rsd-markdown { color: var(--gw-fg); }
+.rsd-markdown > :first-child { margin-top: 0; }
+.rsd-markdown > :last-child  { margin-bottom: 0; }
+.rsd-markdown p { margin: 0 0 12px; }
+.rsd-markdown h1,
+.rsd-markdown h2,
+.rsd-markdown h3,
+.rsd-markdown h4 {
+  margin: 20px 0 8px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  line-height: 1.25;
+}
+.rsd-markdown h1 { font-size: 22px; }
+.rsd-markdown h2 { font-size: 18px; }
+.rsd-markdown h3 { font-size: 15px; }
+.rsd-markdown h4 { font-size: 14px; color: var(--gw-fg-muted); }
+.rsd-markdown ul,
+.rsd-markdown ol {
+  margin: 0 0 12px;
+  padding-inline-start: 28px;
+}
+.rsd-markdown ul { list-style: disc; }
+.rsd-markdown ol { list-style: decimal; }
+.rsd-markdown li { margin: 4px 0; }
+.rsd-markdown li > p { margin: 0; }
+.rsd-markdown ul ul,
+.rsd-markdown ul ol,
+.rsd-markdown ol ul,
+.rsd-markdown ol ol { margin: 4px 0; }
+.rsd-markdown a {
+  color: var(--rsd-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rsd-markdown code {
+  background: var(--gw-bg);
+  border: 1px solid var(--gw-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.rsd-markdown pre {
+  background: var(--gw-bg);
+  border: 1px solid var(--gw-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 0 0 12px;
+  overflow-x: auto;
+  font-size: 12.5px;
+}
+.rsd-markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+.rsd-markdown blockquote {
+  margin: 0 0 12px;
+  padding: 4px 14px;
+  border-left: 3px solid var(--gw-border);
+  color: var(--gw-fg-muted);
+}
+.rsd-markdown hr {
+  margin: 20px 0;
+  border: none;
+  border-top: 1px solid var(--gw-border);
+}
+.rsd-markdown table {
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+.rsd-markdown th,
+.rsd-markdown td {
+  border: 1px solid var(--gw-border);
+  padding: 6px 10px;
+  text-align: left;
+}
+.rsd-markdown th { background: var(--gw-bg); font-weight: 700; }
+.rsd-markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: 8px;
+  border: 1px solid var(--gw-border);
+}
+
+/* Click-to-play video cards rendered by MarkdownView from `[▶ Title](url)`. */
+.rsd-md-video-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 0;
+  padding: 12px 18px 12px 14px;
+  background: var(--gw-bg);
+  border: 1px solid var(--gw-border);
+  border-radius: 12px;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color 120ms, background 120ms;
+}
+.rsd-md-video-card:hover {
+  background: var(--gw-bg-elev);
+  border-color: var(--rsd-accent);
+}
+.rsd-md-video-card-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--rsd-accent);
+  color: var(--rsd-accent-on);
+  flex-shrink: 0;
+}
+.rsd-md-video-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rsd-md-video-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gw-fg);
+}
+.rsd-md-video-card-source {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gw-fg-muted);
+}
+
+/* Active video players (after click). */
+.rsd-md-video-player {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  margin: 12px 0;
+  border-radius: 8px;
+  border: 1px solid var(--gw-border);
+  background: #000;
+}
+.rsd-md-video-player-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  margin: 12px 0;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--gw-border);
+  background: #000;
+}
+.rsd-md-video-player-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}

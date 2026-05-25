@@ -3,13 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import ReactMarkdown from "react-markdown";
 import { Icons } from "../../../components/icons";
 import { MarkdownEditor } from "../../../components/MarkdownEditor";
-import {
-  MD_REHYPE_PLUGINS,
-  MD_REMARK_PLUGINS,
-} from "../../../components/markdown-plugins";
+import { MarkdownView } from "../../../components/MarkdownView";
 import { softDeletePlaybook, updatePlaybook } from "../../../../lib/playbooks/actions";
 
 export interface PlaybookDetailData {
@@ -383,12 +379,7 @@ export function PlaybookDetail({ data, canEdit, canDelete, categories }: Props) 
           }}
         >
           {data.body_md.trim() ? (
-            <ReactMarkdown
-              remarkPlugins={[...MD_REMARK_PLUGINS]}
-              rehypePlugins={[...MD_REHYPE_PLUGINS]}
-            >
-              {data.body_md}
-            </ReactMarkdown>
+            <MarkdownView>{data.body_md}</MarkdownView>
           ) : (
             <p style={{ margin: 0, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
               This playbook has no content yet.
