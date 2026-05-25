@@ -4,8 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Icons } from "../../../components/icons";
+import { MarkdownEditor } from "../../../components/MarkdownEditor";
+import {
+  MD_REHYPE_PLUGINS,
+  MD_REMARK_PLUGINS,
+} from "../../../components/markdown-plugins";
 import { softDeletePlaybook, updatePlaybook } from "../../../../lib/playbooks/actions";
 
 export interface PlaybookDetailData {
@@ -54,7 +58,6 @@ export function PlaybookDetail({ data, canEdit, canDelete, categories }: Props) 
   const [categoryId, setCategoryId] = useState<string | null>(data.category?.id ?? null);
   const [excerpt, setExcerpt] = useState(data.excerpt ?? "");
   const [bodyMd, setBodyMd] = useState(data.body_md);
-  const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -65,7 +68,6 @@ export function PlaybookDetail({ data, canEdit, canDelete, categories }: Props) 
     setCategoryId(data.category?.id ?? null);
     setExcerpt(data.excerpt ?? "");
     setBodyMd(data.body_md);
-    setShowPreview(false);
     setError(null);
     setMode("edit");
   }
@@ -358,78 +360,19 @@ export function PlaybookDetail({ data, canEdit, canDelete, categories }: Props) 
         />
       )}
 
-      {mode === "edit" && (
-        <div
-          style={{
-            marginTop: 16,
-            display: "flex",
-            gap: 4,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setShowPreview(false)}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              background: !showPreview ? "var(--gw-bg-elev)" : "transparent",
-              border: "1px solid",
-              borderColor: !showPreview ? "var(--gw-border)" : "transparent",
-              fontSize: 12,
-              fontWeight: 700,
-              color: !showPreview ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-              cursor: "pointer",
-            }}
-          >
-            Write
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowPreview(true)}
-            style={{
-              padding: "6px 14px",
-              borderRadius: 8,
-              background: showPreview ? "var(--gw-bg-elev)" : "transparent",
-              border: "1px solid",
-              borderColor: showPreview ? "var(--gw-border)" : "transparent",
-              fontSize: 12,
-              fontWeight: 700,
-              color: showPreview ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-              cursor: "pointer",
-            }}
-          >
-            Preview
-          </button>
+      {mode === "edit" ? (
+        <div style={{ marginTop: 16 }}>
+          <MarkdownEditor
+            value={bodyMd}
+            onChange={setBodyMd}
+            placeholder="Write the playbook in Markdown — headings (#), lists (-), links, code blocks, tables. Use the toolbar for inline formatting."
+          />
         </div>
-      )}
-
-      {mode === "edit" && !showPreview ? (
-        <textarea
-          value={bodyMd}
-          onChange={(e) => setBodyMd(e.target.value)}
-          placeholder="Write the playbook in Markdown — headings (#), lists (-), links, code blocks, tables, etc."
-          rows={20}
-          style={{
-            width: "100%",
-            marginTop: 8,
-            padding: "16px 18px",
-            background: "var(--gw-bg-elev)",
-            color: "var(--gw-fg)",
-            border: "1px solid var(--gw-border)",
-            borderRadius: 12,
-            fontSize: 13,
-            fontFamily:
-              "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-            lineHeight: 1.6,
-            resize: "vertical",
-            outline: "none",
-          }}
-        />
       ) : (
         <article
           className="rsd-markdown"
           style={{
-            marginTop: mode === "edit" ? 8 : 24,
+            marginTop: 24,
             padding: "24px 28px",
             background: "var(--gw-bg-elev)",
             border: "1px solid var(--gw-border)",
@@ -439,9 +382,12 @@ export function PlaybookDetail({ data, canEdit, canDelete, categories }: Props) 
             color: "var(--gw-fg)",
           }}
         >
-          {(mode === "edit" ? bodyMd : data.body_md).trim() ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {mode === "edit" ? bodyMd : data.body_md}
+          {data.body_md.trim() ? (
+            <ReactMarkdown
+              remarkPlugins={[...MD_REMARK_PLUGINS]}
+              rehypePlugins={[...MD_REHYPE_PLUGINS]}
+            >
+              {data.body_md}
             </ReactMarkdown>
           ) : (
             <p style={{ margin: 0, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>

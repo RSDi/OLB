@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MarkdownEditor } from "../../../components/MarkdownEditor";
 import { createPlaybook } from "../../../../lib/playbooks/actions";
 
 interface Props {
@@ -17,7 +16,6 @@ export function NewPlaybookForm({ categories }: Props) {
   const [categoryId, setCategoryId] = useState<string | null>(categories[0]?.id ?? null);
   const [excerpt, setExcerpt] = useState("");
   const [bodyMd, setBodyMd] = useState("");
-  const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -181,88 +179,13 @@ export function NewPlaybookForm({ categories }: Props) {
         }}
       />
 
-      <div style={{ marginTop: 16, display: "flex", gap: 4 }}>
-        <button
-          type="button"
-          onClick={() => setShowPreview(false)}
-          style={{
-            padding: "6px 14px",
-            borderRadius: 8,
-            background: !showPreview ? "var(--gw-bg-elev)" : "transparent",
-            border: "1px solid",
-            borderColor: !showPreview ? "var(--gw-border)" : "transparent",
-            fontSize: 12,
-            fontWeight: 700,
-            color: !showPreview ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-            cursor: "pointer",
-          }}
-        >
-          Write
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowPreview(true)}
-          style={{
-            padding: "6px 14px",
-            borderRadius: 8,
-            background: showPreview ? "var(--gw-bg-elev)" : "transparent",
-            border: "1px solid",
-            borderColor: showPreview ? "var(--gw-border)" : "transparent",
-            fontSize: 12,
-            fontWeight: 700,
-            color: showPreview ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-            cursor: "pointer",
-          }}
-        >
-          Preview
-        </button>
-      </div>
-
-      {!showPreview ? (
-        <textarea
+      <div style={{ marginTop: 16 }}>
+        <MarkdownEditor
           value={bodyMd}
-          onChange={(e) => setBodyMd(e.target.value)}
-          placeholder="Write the playbook in Markdown — headings (#), lists (-), links, code blocks, tables, etc."
-          rows={20}
-          style={{
-            width: "100%",
-            marginTop: 8,
-            padding: "16px 18px",
-            background: "var(--gw-bg-elev)",
-            color: "var(--gw-fg)",
-            border: "1px solid var(--gw-border)",
-            borderRadius: 12,
-            fontSize: 13,
-            fontFamily:
-              "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-            lineHeight: 1.6,
-            resize: "vertical",
-            outline: "none",
-          }}
+          onChange={setBodyMd}
+          placeholder="Write the playbook in Markdown — headings (#), lists (-), links, code blocks, tables. Use the toolbar for inline formatting."
         />
-      ) : (
-        <article
-          className="rsd-markdown"
-          style={{
-            marginTop: 8,
-            padding: "24px 28px",
-            background: "var(--gw-bg-elev)",
-            border: "1px solid var(--gw-border)",
-            borderRadius: 12,
-            fontSize: 14,
-            lineHeight: 1.7,
-            color: "var(--gw-fg)",
-          }}
-        >
-          {bodyMd.trim() ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{bodyMd}</ReactMarkdown>
-          ) : (
-            <p style={{ margin: 0, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
-              Nothing to preview yet.
-            </p>
-          )}
-        </article>
-      )}
+      </div>
 
       {error && (
         <div
