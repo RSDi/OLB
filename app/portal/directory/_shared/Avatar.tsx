@@ -40,7 +40,7 @@ export function Avatar({
           style={{ objectFit: "cover", width: "100%", height: "100%" }}
         />
       ) : (
-        <Icons.Users
+        <Icons.User
           width={Math.round(size * 0.45)}
           height={Math.round(size * 0.45)}
           style={{ color: "var(--gw-fg-muted)" }}

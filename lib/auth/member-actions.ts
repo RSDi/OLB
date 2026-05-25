@@ -144,3 +144,68 @@ export async function removeMemberRelationship(
   revalidatePath("/portal/settings");
   return { success: true };
 }
+
+// Soft-delete sets deleted_at = NOW(). RLS hides the row from non-super-admin
+// SELECTs; the column-restriction trigger blocks anyone but a super-admin
+// from setting it.
+export async function softDeleteMember(id: string): Promise<MemberActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+
+  const { data: me } = await supabase
+    .from("members")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (me && (me as { id: string }).id === id) {
+    return { error: "You can't delete your own account." };
+  }
+
+  const { error } = await supabase
+    .from("members")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/settings");
+  revalidatePath("/portal/directory");
+  return { success: true };
+}
+
+export async function restoreMember(id: string): Promise<MemberActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("members")
+    .update({ deleted_at: null })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/settings");
+  revalidatePath("/portal/directory");
+  return { success: true };
+}
+
+// Hard delete — only callable on rows that are already soft-deleted. The
+// guard happens server-side so a stale client can't escalate a soft-delete
+// into a permanent one in a single click.
+export async function hardDeleteMember(id: string): Promise<MemberActionResult> {
+  const supabase = await createClient();
+  const { data: target } = await supabase
+    .from("members")
+    .select("id, deleted_at")
+    .eq("id", id)
+    .maybeSingle();
+  if (!target) return { error: "Member not found." };
+  if (!(target as { deleted_at: string | null }).deleted_at) {
+    return { error: "Soft-delete the member first." };
+  }
+
+  const { error } = await supabase.from("members").delete().eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/settings");
+  return { success: true };
+}

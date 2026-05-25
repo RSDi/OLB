@@ -104,30 +104,39 @@ function dateToIso(v: unknown): string | null {
   return null;
 }
 
-function cellText(v: unknown): string | null {
+// Convert an ExcelJS cell value to a plain string, handling hyperlinks,
+// rich text, and formula cells. Returns null when no usable text is found —
+// the previous `String(v)` fallback turned rich-text objects into the
+// literal string "[object Object]", which got written to the DB.
+function flattenCellValue(v: unknown): string | null {
   if (v == null) return null;
-  if (typeof v === "string") {
-    const t = v.trim();
-    return t === "" ? null : t;
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  if (typeof o.text === "string") return o.text;
+  if (Array.isArray(o.richText)) {
+    return o.richText
+      .map((r) => (typeof (r as { text?: unknown })?.text === "string" ? (r as { text: string }).text : ""))
+      .join("");
   }
-  // exceljs hyperlink cell: { text, hyperlink }
-  if (typeof v === "object" && v !== null && "text" in v) {
-    const t = String((v as { text: unknown }).text).trim();
-    return t === "" ? null : t;
-  }
-  return String(v).trim() || null;
+  if ("result" in o) return flattenCellValue(o.result);
+  return null;
+}
+
+function cellText(v: unknown): string | null {
+  const t = flattenCellValue(v);
+  if (t == null) return null;
+  const trimmed = t.trim();
+  return trimmed === "" ? null : trimmed;
 }
 
 function rawCellText(v: unknown): string | null {
   // Like cellText but preserves leading whitespace (we use it for the name
   // column to detect indent).
-  if (v == null) return null;
-  if (typeof v === "string") return v === "" ? null : v;
-  if (typeof v === "object" && v !== null && "text" in v) {
-    const t = String((v as { text: unknown }).text);
-    return t === "" ? null : t;
-  }
-  return String(v) || null;
+  const t = flattenCellValue(v);
+  if (t == null) return null;
+  return t === "" ? null : t;
 }
 
 function stripPhonePrefix(raw: string | null): string | null {

@@ -133,24 +133,25 @@ export default async function PhoneTreePage() {
 
 function PhoneRow({ member }: { member: DirectoryMember }) {
   return (
-    <Link
-      href={`/portal/directory/${member.id}`}
+    <div
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         padding: "3px 0 3px 12px",
-        textDecoration: "none",
-        color: "var(--gw-fg)",
         gap: 12,
         fontSize: 13,
       }}
     >
-      <span style={{ fontWeight: 600 }}>{displayName(member)}</span>
+      <Link
+        href={`/portal/directory/${member.id}`}
+        style={{ fontWeight: 600, color: "var(--gw-fg)", textDecoration: "none" }}
+      >
+        {displayName(member)}
+      </Link>
       {member.phone ? (
         <a
           href={`tel:${member.phone}`}
-          onClick={(e) => e.stopPropagation()}
           style={{
             fontSize: 12,
             fontWeight: 600,
@@ -169,6 +170,6 @@ function PhoneRow({ member }: { member: DirectoryMember }) {
           no cell
         </span>
       )}
-    </Link>
+    </div>
   );
 }

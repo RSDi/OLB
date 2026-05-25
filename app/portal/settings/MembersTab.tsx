@@ -8,8 +8,10 @@ import {
   createMember,
   addMemberRelationship,
   removeMemberRelationship,
+  softDeleteMember,
   type RelationshipKind,
 } from "../../../lib/auth/member-actions";
+import { MemberEditForm } from "./MemberEditForm";
 
 interface Member {
   id: string;
@@ -52,6 +54,7 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -64,6 +67,7 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
         .select(
           "id, user_id, email, full_name, avatar_url, phone, birthday, status, role, requested_at, reviewed_at"
         )
+        .is("deleted_at", null)
         .order("requested_at", { ascending: false }),
       supabase
         .from("member_relationships")
@@ -116,12 +120,16 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
   }
 
   async function removeMember(id: string) {
-    if (!confirm("Permanently remove this member? This cannot be undone.")) return;
+    if (
+      !confirm(
+        "Delete this member? They'll move to Settings → Deleted, where you can restore or permanently remove them."
+      )
+    )
+      return;
     setActing(id);
     setError(null);
-    const supabase = createClient();
-    const { error: deleteError } = await supabase.from("members").delete().eq("id", id);
-    if (deleteError) setError(deleteError.message);
+    const result = await softDeleteMember(id);
+    if (result.error) setError(result.error);
     else await load();
     setActing(null);
   }
@@ -204,6 +212,13 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
     approved: byStatus("approved").length,
     denied: byStatus("denied").length,
   };
+  const q = query.trim().toLowerCase();
+  const visibleInTab = q
+    ? byStatus(tab).filter((m) =>
+        ((m.full_name ?? "").toLowerCase().includes(q) ||
+          (m.email ?? "").toLowerCase().includes(q))
+      )
+    : byStatus(tab);
 
   const tabs: { key: MemberStatus; label: string }[] = [
     { key: "pending", label: "Pending" },
@@ -247,6 +262,39 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
           />
         </div>
       )}
+
+      {/* Search */}
+      <div style={{ position: "relative", marginBottom: 14 }}>
+        <span
+          style={{
+            position: "absolute",
+            left: 12,
+            top: "50%",
+            transform: "translateY(-50%)",
+            color: "var(--gw-fg-muted)",
+            display: "flex",
+          }}
+        >
+          <Icons.Search width={14} height={14} />
+        </span>
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name or email"
+          style={{
+            width: "100%",
+            height: 36,
+            padding: "0 12px 0 36px",
+            borderRadius: 10,
+            border: "1px solid var(--gw-border)",
+            background: "var(--gw-bg)",
+            color: "var(--gw-fg)",
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        />
+      </div>
 
       {/* Status sub-tabs */}
       <div style={{ display: "flex", gap: 2, marginBottom: 20 }}>
@@ -316,10 +364,12 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
         <div style={{ padding: "40px 0", textAlign: "center", color: "var(--gw-fg-muted)", fontSize: 13 }}>
           Loading…
         </div>
-      ) : byStatus(tab).length === 0 ? (
+      ) : visibleInTab.length === 0 ? (
         <div className="rsd-card" style={{ textAlign: "center", padding: "40px 24px" }}>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            {tab === "pending"
+            {q
+              ? `No matches for "${query}" in ${tab}.`
+              : tab === "pending"
               ? "No pending requests"
               : tab === "approved"
               ? "No approved members yet"
@@ -328,7 +378,12 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {byStatus(tab).map((member) =>
+          {q && (
+            <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, marginBottom: 2 }}>
+              {visibleInTab.length} of {byStatus(tab).length} match
+            </div>
+          )}
+          {visibleInTab.map((member) =>
             editingId === member.id ? (
               <MemberEditForm
                 key={member.id}
@@ -346,6 +401,14 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
                 }
                 onRemoveRelationship={(relatedId, kind) =>
                   handleRemoveRelationship(member.id, relatedId, kind)
+                }
+                onDelete={
+                  member.user_id === currentUserId
+                    ? undefined
+                    : async () => {
+                        setEditingId(null);
+                        await removeMember(member.id);
+                      }
                 }
               />
             ) : (
@@ -427,7 +490,7 @@ function MemberRow({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={member.avatar_url} alt="" width={40} height={40} style={{ objectFit: "cover" }} />
         ) : (
-          <Icons.Users width={18} height={18} style={{ color: "var(--gw-fg-muted)" }} />
+          <Icons.User width={18} height={18} style={{ color: "var(--gw-fg-muted)" }} />
         )}
       </div>
 
@@ -577,408 +640,6 @@ function ActionBtn({
   );
 }
 
-function MemberEditForm({
-  member,
-  allMembers,
-  relationships,
-  pending,
-  onCancel,
-  onSave,
-  onAddRelationship,
-  onRemoveRelationship,
-}: {
-  member: Member;
-  allMembers: Member[];
-  relationships: Relationship[];
-  pending: boolean;
-  onCancel: () => void;
-  onSave: (fields: {
-    full_name: string | null;
-    avatar_url: string | null;
-    phone: string | null;
-    birthday: string | null;
-  }) => void | Promise<void>;
-  onAddRelationship: (relatedId: string, kind: RelationshipKind) => void | Promise<void>;
-  onRemoveRelationship: (relatedId: string, kind: RelationshipKind) => void | Promise<void>;
-}) {
-  const [fullName, setFullName] = useState(member.full_name ?? "");
-  const [avatarUrl, setAvatarUrl] = useState(member.avatar_url ?? "");
-  const [phone, setPhone] = useState(member.phone ?? "");
-  const [birthday, setBirthday] = useState(member.birthday ?? "");
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    await onSave({
-      full_name: fullName.trim() || null,
-      avatar_url: avatarUrl.trim() || null,
-      phone: phone.trim() || null,
-      birthday: birthday || null,
-    });
-  }
-
-  // Find this member's existing relationships by kind.
-  const myLinks = relationships.filter((r) => r.member_id === member.id);
-  const spouse = myLinks.find((r) => r.relationship === "spouse");
-  const parents = myLinks.filter((r) => r.relationship === "parent");
-  const children = myLinks.filter((r) => r.relationship === "child");
-  const memberById = new Map(allMembers.map((m) => [m.id, m]));
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="rsd-card"
-      style={{
-        flexDirection: "column",
-        gap: 12,
-        padding: "14px 18px",
-        opacity: pending ? 0.5 : 1,
-        transition: "opacity 150ms",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            flexShrink: 0,
-            background: "var(--gw-bg-elev)",
-            border: "1px solid var(--gw-border)",
-            overflow: "hidden",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="" width={40} height={40} style={{ objectFit: "cover" }} />
-          ) : (
-            <Icons.Users width={18} height={18} style={{ color: "var(--gw-fg-muted)" }} />
-          )}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-            {member.email}
-          </div>
-          <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 2 }}>
-            Email is read-only — it's tied to the sign-in account.
-          </div>
-        </div>
-      </div>
-
-      <Input
-        label="Full name"
-        value={fullName}
-        onChange={(e) => setFullName(e.target.value)}
-        placeholder="e.g. Jeff Malone"
-        autoFocus
-        disabled={pending}
-      />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Input
-          label="Phone"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="(402) 555-0100"
-          disabled={pending}
-        />
-        <Input
-          label="Birthday"
-          type="date"
-          value={birthday}
-          onChange={(e) => setBirthday(e.target.value)}
-          disabled={pending}
-        />
-      </div>
-      <Input
-        label="Avatar URL (optional)"
-        value={avatarUrl}
-        onChange={(e) => setAvatarUrl(e.target.value)}
-        placeholder="https://…"
-        disabled={pending}
-      />
-
-      <FamilySection
-        memberId={member.id}
-        allMembers={allMembers}
-        memberById={memberById}
-        spouse={spouse}
-        parents={parents}
-        children={children}
-        pending={pending}
-        onAdd={onAddRelationship}
-        onRemove={onRemoveRelationship}
-      />
-
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
-          Cancel
-        </Pill>
-        <Pill variant="accent" size="sm" type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Save"}
-        </Pill>
-      </div>
-    </form>
-  );
-}
-
-function FamilySection({
-  memberId,
-  allMembers,
-  memberById,
-  spouse,
-  parents,
-  children,
-  pending,
-  onAdd,
-  onRemove,
-}: {
-  memberId: string;
-  allMembers: Member[];
-  memberById: Map<string, Member>;
-  spouse: Relationship | undefined;
-  parents: Relationship[];
-  children: Relationship[];
-  pending: boolean;
-  onAdd: (relatedId: string, kind: RelationshipKind) => void | Promise<void>;
-  onRemove: (relatedId: string, kind: RelationshipKind) => void | Promise<void>;
-}) {
-  // Members eligible to be linked (everyone except self).
-  const candidates = allMembers
-    .filter((m) => m.id !== memberId)
-    .sort((a, b) => (a.full_name ?? a.email ?? "").localeCompare(b.full_name ?? b.email ?? ""));
-
-  const parentIds = new Set(parents.map((p) => p.related_member_id));
-  const childIds = new Set(children.map((c) => c.related_member_id));
-
-  return (
-    <fieldset
-      style={{
-        border: "1px solid var(--gw-border)",
-        borderRadius: 10,
-        padding: 16,
-        display: "flex",
-        flexDirection: "column",
-        gap: 14,
-      }}
-    >
-      <legend
-        style={{
-          padding: "0 8px",
-          fontSize: 12,
-          fontWeight: 700,
-          color: "var(--gw-fg-muted)",
-          textTransform: "uppercase",
-          letterSpacing: ".04em",
-        }}
-      >
-        Family
-      </legend>
-
-      <RelationshipRow
-        label="Spouse"
-        max={1}
-        existing={spouse ? [spouse] : []}
-        candidates={candidates.filter((c) => !spouse || c.id === spouse.related_member_id)}
-        memberById={memberById}
-        pending={pending}
-        onPick={(id) => onAdd(id, "spouse")}
-        onRemove={(id) => onRemove(id, "spouse")}
-      />
-
-      <RelationshipRow
-        label="Parents"
-        existing={parents}
-        candidates={candidates.filter((c) => !parentIds.has(c.id))}
-        memberById={memberById}
-        pending={pending}
-        onPick={(id) => onAdd(id, "parent")}
-        onRemove={(id) => onRemove(id, "parent")}
-      />
-
-      <RelationshipRow
-        label="Children"
-        existing={children}
-        candidates={candidates.filter((c) => !childIds.has(c.id))}
-        memberById={memberById}
-        pending={pending}
-        onPick={(id) => onAdd(id, "child")}
-        onRemove={(id) => onRemove(id, "child")}
-      />
-    </fieldset>
-  );
-}
-
-function RelationshipRow({
-  label,
-  max,
-  existing,
-  candidates,
-  memberById,
-  pending,
-  onPick,
-  onRemove,
-}: {
-  label: string;
-  max?: number;
-  existing: Relationship[];
-  candidates: Member[];
-  memberById: Map<string, Member>;
-  pending: boolean;
-  onPick: (relatedId: string) => void | Promise<void>;
-  onRemove: (relatedId: string) => void | Promise<void>;
-}) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [picked, setPicked] = useState("");
-  const atMax = typeof max === "number" && existing.length >= max;
-
-  function handlePick() {
-    if (!picked) return;
-    onPick(picked);
-    setPicked("");
-    setPickerOpen(false);
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: "var(--gw-fg-muted)",
-          textTransform: "uppercase",
-          letterSpacing: ".04em",
-        }}
-      >
-        {label}
-      </span>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-        {existing.length === 0 && !pickerOpen && (
-          <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, fontStyle: "italic" }}>
-            None
-          </span>
-        )}
-        {existing.map((r) => {
-          const m = memberById.get(r.related_member_id);
-          const display = m ? m.full_name ?? m.email ?? "Unknown" : "(deleted member)";
-          return (
-            <span
-              key={r.id}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "4px 4px 4px 10px",
-                borderRadius: 100,
-                background: "var(--rsd-accent-bg)",
-                color: "var(--rsd-accent)",
-                border: "1px solid rgba(108,140,89,.25)",
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              {display}
-              <button
-                type="button"
-                onClick={() => onRemove(r.related_member_id)}
-                disabled={pending}
-                title="Remove"
-                style={{
-                  width: 20,
-                  height: 20,
-                  padding: 0,
-                  borderRadius: "50%",
-                  background: "transparent",
-                  color: "inherit",
-                  border: "none",
-                  cursor: pending ? "not-allowed" : "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: 0.7,
-                }}
-              >
-                <Icons.X width={10} height={10} />
-              </button>
-            </span>
-          );
-        })}
-
-        {pickerOpen ? (
-          <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1, minWidth: 200 }}>
-            <select
-              value={picked}
-              onChange={(e) => setPicked(e.target.value)}
-              disabled={pending}
-              style={{
-                flex: 1,
-                height: 32,
-                padding: "0 28px 0 10px",
-                borderRadius: 8,
-                border: "1px solid var(--gw-border)",
-                background: "var(--gw-bg)",
-                color: "var(--gw-fg)",
-                fontSize: 12,
-                fontWeight: 600,
-                appearance: "none",
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 8px center",
-              }}
-            >
-              <option value="">— Pick a member —</option>
-              {candidates.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.full_name ?? c.email ?? "Unknown"}
-                </option>
-              ))}
-            </select>
-            <Pill variant="accent" size="sm" onClick={handlePick} disabled={pending || !picked}>
-              Add
-            </Pill>
-            <Pill
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setPickerOpen(false);
-                setPicked("");
-              }}
-              disabled={pending}
-            >
-              Cancel
-            </Pill>
-          </div>
-        ) : (
-          !atMax && (
-            <button
-              type="button"
-              onClick={() => setPickerOpen(true)}
-              disabled={pending || candidates.length === 0}
-              style={{
-                padding: "4px 10px",
-                borderRadius: 100,
-                background: "var(--gw-bg-elev)",
-                color: "var(--gw-fg-muted)",
-                border: "1px dashed var(--gw-border)",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: pending || candidates.length === 0 ? "not-allowed" : "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-              title={candidates.length === 0 ? "No other members to link" : "Add"}
-            >
-              <Icons.Plus width={10} height={10} /> Add
-            </button>
-          )
-        )}
-      </div>
-    </div>
-  );
-}
 
 function AddMemberForm({
   onCancel,

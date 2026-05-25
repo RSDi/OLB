@@ -1,137 +1,12 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { Avatar } from "../_shared/Avatar";
 import { displayName, firstName, lastNameLower } from "../_shared/format";
 import type { DirectoryMember, DirectoryRelationship } from "../_shared/data";
-
-interface Household {
-  key: string;
-  heads: DirectoryMember[];
-  children: DirectoryMember[];
-}
-
-function normalizeAddress(addr: string | null): string | null {
-  if (!addr) return null;
-  return addr.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-function computeHouseholds(
-  members: DirectoryMember[],
-  rels: DirectoryRelationship[]
-): Household[] {
-  const memberById = new Map(members.map((m) => [m.id, m]));
-  const approved = new Set(members.map((m) => m.id));
-
-  const parentsOf = new Map<string, string[]>();
-  const childrenOf = new Map<string, string[]>();
-  const spouseOf = new Map<string, string>();
-
-  for (const r of rels) {
-    if (!approved.has(r.member_id) || !approved.has(r.related_member_id)) continue;
-    if (r.relationship === "parent") {
-      const arr = parentsOf.get(r.member_id) ?? [];
-      arr.push(r.related_member_id);
-      parentsOf.set(r.member_id, arr);
-    } else if (r.relationship === "child") {
-      const arr = childrenOf.get(r.member_id) ?? [];
-      arr.push(r.related_member_id);
-      childrenOf.set(r.member_id, arr);
-    } else if (r.relationship === "spouse") {
-      spouseOf.set(r.member_id, r.related_member_id);
-    }
-  }
-
-  // Dependent = listed under a parent's household via relationships.
-  // Married members or members with their own children always head their own.
-  const isDependent = (id: string): boolean => {
-    if ((parentsOf.get(id) ?? []).length === 0) return false;
-    if (spouseOf.has(id)) return false;
-    if ((childrenOf.get(id) ?? []).length > 0) return false;
-    return true;
-  };
-
-  const heads = members.filter((m) => !isDependent(m.id));
-  const headIds = new Set(heads.map((h) => h.id));
-
-  // Pair couples. Skip the partner once handled.
-  const seenAsPartner = new Set<string>();
-  const households: Household[] = [];
-  const placed = new Set<string>(); // ids already in a household
-
-  for (const head of heads) {
-    if (seenAsPartner.has(head.id)) continue;
-    const spouseId = spouseOf.get(head.id);
-    const spouse =
-      spouseId && headIds.has(spouseId) ? memberById.get(spouseId) ?? null : null;
-    if (spouse) seenAsPartner.add(spouse.id);
-
-    const childIds = new Set<string>();
-    for (const cid of childrenOf.get(head.id) ?? []) {
-      if (isDependent(cid)) childIds.add(cid);
-    }
-    if (spouse) {
-      for (const cid of childrenOf.get(spouse.id) ?? []) {
-        if (isDependent(cid)) childIds.add(cid);
-      }
-    }
-    const children = [...childIds]
-      .map((id) => memberById.get(id))
-      .filter((m): m is DirectoryMember => Boolean(m))
-      .sort((a, b) => (a.birthday ?? "").localeCompare(b.birthday ?? ""));
-
-    households.push({
-      key: head.id,
-      heads: spouse ? [head, spouse] : [head],
-      children,
-    });
-    placed.add(head.id);
-    if (spouse) placed.add(spouse.id);
-    for (const c of children) placed.add(c.id);
-  }
-
-  // Address fallback — group any not-yet-placed members who share an exact
-  // normalized address. Handles the sibling-only households (BACKENS R20)
-  // where no anniversary or relationships exist.
-  const byAddr = new Map<string, DirectoryMember[]>();
-  for (const m of members) {
-    if (placed.has(m.id)) continue;
-    const key = normalizeAddress(m.address);
-    if (!key) continue;
-    const arr = byAddr.get(key) ?? [];
-    arr.push(m);
-    byAddr.set(key, arr);
-  }
-  for (const group of byAddr.values()) {
-    if (group.length < 2) continue;
-    // Order by birthday ascending (oldest first as head).
-    const sorted = [...group].sort((a, b) =>
-      (a.birthday ?? "").localeCompare(b.birthday ?? "")
-    );
-    households.push({
-      key: `addr-${sorted[0].id}`,
-      heads: [sorted[0]],
-      children: sorted.slice(1),
-    });
-    for (const m of group) placed.add(m.id);
-  }
-
-  // Remaining unplaced members become solo households.
-  for (const m of members) {
-    if (placed.has(m.id)) continue;
-    households.push({ key: m.id, heads: [m], children: [] });
-  }
-
-  households.sort((a, b) => {
-    const al = lastNameLower(a.heads[0]);
-    const bl = lastNameLower(b.heads[0]);
-    if (al !== bl) return al.localeCompare(bl);
-    return displayName(a.heads[0]).localeCompare(displayName(b.heads[0]));
-  });
-
-  return households;
-}
+import { computeHouseholds, type Household } from "../_shared/households";
 
 export function HouseholdsList({
   members,
@@ -145,10 +20,17 @@ export function HouseholdsList({
   isSuperAdmin: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const households = useMemo(
-    () => computeHouseholds(members, relationships),
-    [members, relationships]
-  );
+  const households = useMemo(() => {
+    // Only show actual households: couples (with or without kids), or any
+    // head with children / linked adult children. Solo singles with nobody
+    // attached aren't really a household — they live in All Members.
+    return computeHouseholds(members, relationships).filter(
+      (h) =>
+        h.heads.length > 1 ||
+        h.children.length > 0 ||
+        h.adultChildren.length > 0
+    );
+  }, [members, relationships]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -282,129 +164,102 @@ function HouseholdCard({
   household: Household;
   currentMemberId: string;
 }) {
-  const phones = household.heads.filter((h) => h.phone);
-  const emails = household.heads.filter((h) => h.email);
+  const router = useRouter();
+  const familyHref = `/portal/directory/family/${household.heads[0].id}`;
+
+  function handleCardClick(e: React.MouseEvent) {
+    // Inner links/buttons handle their own navigation.
+    if ((e.target as HTMLElement).closest("a, button")) return;
+    router.push(familyHref);
+  }
 
   return (
     <div
       className="rsd-card"
-      style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: "14px 18px" }}
+      onClick={handleCardClick}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") router.push(familyHref);
+      }}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+        padding: "14px 18px",
+        cursor: "pointer",
+      }}
     >
       <AvatarStack heads={household.heads} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            flexWrap: "wrap",
+            fontSize: 18,
+            fontWeight: 800,
+            letterSpacing: "-.02em",
+            color: "var(--gw-fg)",
             lineHeight: 1.2,
+            marginBottom: 8,
           }}
         >
-          {household.heads.map((h, i) => (
-            <span key={h.id} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              {i > 0 && (
-                <span style={{ color: "var(--gw-fg-muted)", fontSize: 14, fontWeight: 700 }}>&</span>
-              )}
-              <Link
-                href={`/portal/directory/${h.id}`}
-                style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "var(--gw-fg)",
-                  textDecoration: "none",
-                }}
-              >
-                {displayName(h)}
-              </Link>
-              {h.id === currentMemberId && <span className="rsd-chip rsd-chip-mute">You</span>}
-            </span>
+          {householdSurname(household)}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
+          {household.heads.map((h) => (
+            <HeadBlock
+              key={h.id}
+              member={h}
+              isSelf={h.id === currentMemberId}
+            />
           ))}
         </div>
 
-        {(phones.length > 0 || emails.length > 0) && (
+        {household.parents.length > 0 && (
           <div
             style={{
               fontSize: 12,
               color: "var(--gw-fg-muted)",
               fontWeight: 500,
-              marginTop: 4,
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-              alignItems: "center",
+              marginTop: 6,
             }}
           >
-            {phones.map((h) => (
-              <a
-                key={`p-${h.id}`}
-                href={`tel:${h.phone}`}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  color: "var(--gw-fg-muted)",
-                  textDecoration: "none",
-                }}
-              >
-                <Icons.Phone width={11} height={11} />
-                {h.phone}
-              </a>
-            ))}
-            {emails.map((h) => (
-              <a
-                key={`e-${h.id}`}
-                href={`mailto:${h.email}`}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  color: "var(--gw-fg-muted)",
-                  textDecoration: "none",
-                  maxWidth: 220,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <Icons.Mail width={11} height={11} />
-                {h.email}
-              </a>
+            Child of{" "}
+            {household.parents.map((p, i) => (
+              <span key={p.id}>
+                {i > 0 && " & "}
+                <Link
+                  href={`/portal/directory/${p.id}`}
+                  style={{
+                    color: "var(--gw-fg)",
+                    textDecoration: "none",
+                    fontWeight: 700,
+                  }}
+                >
+                  {displayName(p)}
+                </Link>
+              </span>
             ))}
           </div>
         )}
 
-        {household.children.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-            {household.children.map((c) => (
-              <Link
-                key={c.id}
-                href={`/portal/directory/${c.id}`}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "3px 10px",
-                  borderRadius: 100,
-                  background: "var(--gw-bg-elev)",
-                  border: "1px solid var(--gw-border)",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "var(--gw-fg-muted)",
-                  textDecoration: "none",
-                }}
-              >
-                {firstName(c)}
-              </Link>
-            ))}
-          </div>
+        {(household.children.length > 0 || household.adultChildren.length > 0) && (
+          <ChildrenGrid
+            dependents={household.children}
+            adults={household.adultChildren}
+          />
         )}
       </div>
 
       <Link
-        href={`/portal/directory/${household.heads[0].id}`}
-        aria-label={`Open ${displayName(household.heads[0])}`}
+        href={familyHref}
+        aria-label={`Open ${displayName(household.heads[0])} family`}
         style={{
           flexShrink: 0,
           color: "var(--gw-fg-muted)",
@@ -418,7 +273,179 @@ function HouseholdCard({
   );
 }
 
+function householdSurname(h: Household): string {
+  const raw = lastNameLower(h.heads[0]);
+  if (!raw) return "Household";
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function HeadBlock({
+  member,
+  isSelf,
+}: {
+  member: DirectoryMember;
+  isSelf: boolean;
+}) {
+  return (
+    <div
+      style={{
+        minWidth: 0,
+        padding: "8px 12px",
+        borderRadius: 10,
+        border: "1px solid var(--gw-border)",
+        background: "transparent",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          flexWrap: "wrap",
+          lineHeight: 1.2,
+        }}
+      >
+        <Link
+          href={`/portal/directory/${member.id}`}
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "var(--gw-fg)",
+            textDecoration: "none",
+          }}
+        >
+          {displayName(member)}
+        </Link>
+        {isSelf && <span className="rsd-chip rsd-chip-mute">You</span>}
+      </div>
+      {(member.phone || member.email) && (
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--gw-fg-muted)",
+            fontWeight: 500,
+            marginTop: 4,
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          {member.phone && (
+            <a
+              href={`tel:${member.phone}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                color: "var(--gw-fg-muted)",
+                textDecoration: "none",
+              }}
+            >
+              <Icons.Phone width={11} height={11} />
+              {member.phone}
+            </a>
+          )}
+          {member.email && (
+            <a
+              href={`mailto:${member.email}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                color: "var(--gw-fg-muted)",
+                textDecoration: "none",
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Icons.Mail width={11} height={11} />
+              {member.email}
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChildrenGrid({
+  dependents,
+  adults,
+}: {
+  dependents: DirectoryMember[];
+  adults: DirectoryMember[];
+}) {
+  const total = dependents.length + adults.length;
+  const rows = Math.min(3, total);
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        marginLeft: 4,
+        paddingLeft: 14,
+        borderLeft: "1px solid var(--gw-border)",
+        display: "grid",
+        gridAutoFlow: "column",
+        gridTemplateRows: `repeat(${rows}, auto)`,
+        columnGap: 24,
+        rowGap: 6,
+        justifyContent: "start",
+      }}
+    >
+      {dependents.map((c) => (
+        <ChildLink key={c.id} member={c} adult={false} />
+      ))}
+      {adults.map((c) => (
+        <ChildLink key={c.id} member={c} adult={true} />
+      ))}
+    </div>
+  );
+}
+
+function ChildLink({ member, adult }: { member: DirectoryMember; adult: boolean }) {
+  return (
+    <Link
+      href={`/portal/directory/${member.id}`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        color: adult ? "var(--rsd-accent)" : "var(--gw-fg)",
+        textDecoration: "none",
+      }}
+    >
+      <Avatar member={member} size={24} />
+      <span style={{ fontSize: 13, fontWeight: 600 }}>{firstName(member)}</span>
+    </Link>
+  );
+}
+
 function AvatarStack({ heads }: { heads: DirectoryMember[] }) {
+  // When no head has uploaded a personal photo, show a single grayscale
+  // house icon — better than stacking two generic people silhouettes.
+  const anyAvatar = heads.some((h) => h.avatar_url);
+  if (!anyAvatar) {
+    return (
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          flexShrink: 0,
+          background: "var(--gw-bg-elev)",
+          border: "1px solid var(--gw-border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Icons.Home width={20} height={20} style={{ color: "var(--gw-fg-muted)" }} />
+      </div>
+    );
+  }
   if (heads.length === 1) return <Avatar member={heads[0]} size={44} />;
   return (
     <div style={{ display: "flex", flexShrink: 0, width: 64, height: 44, position: "relative" }}>

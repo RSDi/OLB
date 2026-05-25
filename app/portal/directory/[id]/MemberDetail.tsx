@@ -4,7 +4,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { Input, Pill } from "../../../components/ui";
-import { updateOwnProfile } from "../../../../lib/auth/member-actions";
+import {
+  updateOwnProfile,
+  addMemberRelationship,
+  removeMemberRelationship,
+  softDeleteMember,
+  type RelationshipKind,
+} from "../../../../lib/auth/member-actions";
+import { createClient } from "../../../../lib/supabase/client";
+import {
+  MemberEditForm,
+  type EditFormMember,
+  type EditFormRelationship,
+} from "../../settings/MemberEditForm";
 
 interface DetailMember {
   id: string;
@@ -49,15 +61,77 @@ function formatFullDate(iso: string | null): string | null {
 export function MemberDetail({
   member,
   relationships,
+  family,
+  birthFamily,
+  allMembers,
+  allRelationships,
   isSelf,
   isSuperAdmin,
 }: {
   member: DetailMember;
   relationships: Related[];
+  family: { headId: string; name: string } | null;
+  birthFamily: { headId: string; name: string } | null;
+  allMembers: EditFormMember[];
+  allRelationships: EditFormRelationship[];
   isSelf: boolean;
   isSuperAdmin: boolean;
 }) {
   const [editing, setEditing] = useState(false);
+  const [adminEditing, setAdminEditing] = useState(false);
+  const [adminPending, setAdminPending] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const router = useRouter();
+
+  async function handleAdminSave(fields: {
+    full_name: string | null;
+    avatar_url: string | null;
+    phone: string | null;
+    birthday: string | null;
+  }) {
+    setAdminPending(true);
+    setAdminError(null);
+    const supabase = createClient();
+    const { error } = await supabase.from("members").update(fields).eq("id", member.id);
+    if (error) {
+      setAdminError(error.message);
+      setAdminPending(false);
+      return;
+    }
+    setAdminEditing(false);
+    setAdminPending(false);
+    router.refresh();
+  }
+
+  async function handleAdminAddRel(relatedId: string, kind: RelationshipKind) {
+    setAdminPending(true);
+    setAdminError(null);
+    const res = await addMemberRelationship(member.id, relatedId, kind);
+    if (res.error) setAdminError(res.error);
+    setAdminPending(false);
+    router.refresh();
+  }
+
+  async function handleAdminRemoveRel(relatedId: string, kind: RelationshipKind) {
+    setAdminPending(true);
+    setAdminError(null);
+    const res = await removeMemberRelationship(member.id, relatedId, kind);
+    if (res.error) setAdminError(res.error);
+    setAdminPending(false);
+    router.refresh();
+  }
+
+  async function handleAdminDelete() {
+    setAdminPending(true);
+    setAdminError(null);
+    const res = await softDeleteMember(member.id);
+    if (res.error) {
+      setAdminError(res.error);
+      setAdminPending(false);
+      return;
+    }
+    router.push("/portal/directory");
+  }
   const name = member.full_name ?? member.email ?? "Unknown";
   const birthdayLabel = formatMonthDay(member.birthday);
   const anniversaryLabel = formatMonthDay(member.anniversary);
@@ -85,59 +159,109 @@ export function MemberDetail({
           <Icons.ChevronLeft width={14} height={14} />
           Back to directory
         </Link>
-        {isSuperAdmin && !isSelf && (
-          <Link
-            href="/portal/settings"
+        {isSuperAdmin && !adminEditing && (
+          <button
+            type="button"
+            onClick={() => setAdminEditing(true)}
             style={{
               fontSize: 12,
               fontWeight: 700,
               color: "var(--gw-fg-muted)",
-              textDecoration: "none",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
             }}
           >
-            <Icons.Cog width={14} height={14} />
-            Manage in Settings
-          </Link>
+            <Icons.Pencil width={12} height={12} />
+            Edit
+          </button>
         )}
       </div>
 
-      {editing && isSelf ? (
+      {adminEditing ? (
+        <>
+          {adminError && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "var(--gw-error-bg)",
+                border: "1px solid rgba(229,62,62,.25)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                fontSize: 12,
+                color: "var(--gw-error)",
+                fontWeight: 600,
+              }}
+            >
+              <Icons.AlertCircle width={14} height={14} />
+              {adminError}
+            </div>
+          )}
+          <MemberEditForm
+            member={member}
+            allMembers={allMembers}
+            relationships={allRelationships}
+            pending={adminPending}
+            onCancel={() => {
+              setAdminEditing(false);
+              setAdminError(null);
+            }}
+            onSave={handleAdminSave}
+            onAddRelationship={handleAdminAddRel}
+            onRemoveRelationship={handleAdminRemoveRel}
+            onDelete={isSelf ? undefined : handleAdminDelete}
+          />
+        </>
+      ) : editing && isSelf ? (
         <EditForm
           member={member}
           onCancel={() => setEditing(false)}
           onSaved={() => setEditing(false)}
         />
       ) : (
-        <ProfileCard
-          member={member}
-          name={name}
-          birthdayLabel={birthdayLabel}
-          anniversaryLabel={anniversaryLabel}
-          deceasedLabel={deceasedLabel}
-          isSelf={isSelf}
-          onEdit={() => setEditing(true)}
-        />
-      )}
+        <>
+          <ProfileCard
+            member={member}
+            name={name}
+            birthdayLabel={birthdayLabel}
+            anniversaryLabel={anniversaryLabel}
+            deceasedLabel={deceasedLabel}
+            isSelf={isSelf}
+            onEdit={() => setEditing(true)}
+          />
 
-      {(spouse || parents.length > 0 || children.length > 0) && (
-        <div className="rsd-card" style={{ padding: "16px 20px", gap: 14 }}>
-          <div className="rsd-eyebrow">Family</div>
-          {spouse && (
-            <RelationRow label="Spouse" people={[spouse]} />
+          {(family || spouse || parents.length > 0 || children.length > 0) && (
+            <div className="rsd-card" style={{ padding: "16px 20px", gap: 14 }}>
+              {family && (
+                <FamilyRow
+                  families={
+                    birthFamily
+                      ? [family, { ...birthFamily, label: "Birth" }]
+                      : [family]
+                  }
+                />
+              )}
+              {spouse && (
+                <RelationRow label="Spouse" people={[spouse]} />
+              )}
+              {parents.length > 0 && (
+                <RelationRow label={parents.length === 1 ? "Parent" : "Parents"} people={parents} />
+              )}
+              {children.length > 0 && (
+                <RelationRow
+                  label={children.length === 1 ? "Child" : "Children"}
+                  people={children}
+                />
+              )}
+            </div>
           )}
-          {parents.length > 0 && (
-            <RelationRow label={parents.length === 1 ? "Parent" : "Parents"} people={parents} />
-          )}
-          {children.length > 0 && (
-            <RelationRow
-              label={children.length === 1 ? "Child" : "Children"}
-              people={children}
-            />
-          )}
-        </div>
+        </>
       )}
     </>
   );
@@ -187,7 +311,7 @@ function ProfileCard({
               style={{ objectFit: "cover", width: "100%", height: "100%" }}
             />
           ) : (
-            <Icons.Users width={36} height={36} style={{ color: "var(--gw-fg-muted)" }} />
+            <Icons.User width={36} height={36} style={{ color: "var(--gw-fg-muted)" }} />
           )}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -343,6 +467,69 @@ function ContactField({
       <span style={{ fontSize: 14, fontWeight: 600, color: value ? "var(--gw-fg)" : "var(--gw-fg-muted)" }}>
         {value ? children : "—"}
       </span>
+    </div>
+  );
+}
+
+function FamilyRow({
+  families,
+}: {
+  families: { headId: string; name: string; label?: string }[];
+}) {
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: "var(--gw-fg-muted)",
+          textTransform: "uppercase",
+          letterSpacing: ".04em",
+          minWidth: 80,
+        }}
+      >
+        Family
+      </span>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "baseline" }}>
+        {families.map((f) => (
+          <span
+            key={f.headId}
+            style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}
+          >
+            {f.label && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "var(--gw-fg-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: ".06em",
+                }}
+              >
+                {f.label}
+              </span>
+            )}
+            <Link
+              href={`/portal/directory/family/${f.headId}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "4px 12px",
+                borderRadius: 100,
+                background: "var(--rsd-accent-bg)",
+                color: "var(--rsd-accent)",
+                border: "1px solid rgba(108,140,89,.25)",
+                fontSize: 12,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              {f.name}
+            </Link>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

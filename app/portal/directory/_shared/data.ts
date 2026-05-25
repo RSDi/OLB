@@ -70,7 +70,11 @@ export async function loadMembers(opts: {
   includeMemorials?: boolean;
 }): Promise<DirectoryMember[]> {
   const supabase = await createClient();
-  let q = supabase.from("members").select(MEMBER_COLUMNS).eq("status", "approved");
+  let q = supabase
+    .from("members")
+    .select(MEMBER_COLUMNS)
+    .eq("status", "approved")
+    .is("deleted_at", null);
   if (opts.categories) q = q.in("directory_category", opts.categories);
   else if (!opts.includeMemorials) q = q.neq("directory_category", "memorial");
   const { data } = await q.order("full_name", { ascending: true });

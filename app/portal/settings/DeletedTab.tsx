@@ -6,10 +6,15 @@ import {
   restorePmTemplate,
   hardDeletePmTemplate,
 } from "../../../lib/pm/actions";
+import {
+  restoreMember,
+  hardDeleteMember,
+} from "../../../lib/auth/member-actions";
 
-type Kind = "areas" | "priorities" | "pm_templates";
+type Kind = "areas" | "priorities" | "pm_templates" | "members";
 
 const SUBTABS: { key: Kind; label: string }[] = [
+  { key: "members", label: "Members" },
   { key: "areas", label: "Areas" },
   { key: "priorities", label: "Priorities" },
   { key: "pm_templates", label: "PM Templates" },
@@ -37,12 +42,20 @@ interface DeletedPmTemplate {
   instance_count: number;
   deleted_at: string;
 }
+interface DeletedMember {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  directory_category: "regular" | "extended" | "memorial";
+  deleted_at: string;
+}
 
 export function DeletedTab() {
-  const [kind, setKind] = useState<Kind>("areas");
+  const [kind, setKind] = useState<Kind>("members");
   const [areas, setAreas] = useState<DeletedArea[]>([]);
   const [priorities, setPriorities] = useState<DeletedPriority[]>([]);
   const [templates, setTemplates] = useState<DeletedPmTemplate[]>([]);
+  const [members, setMembers] = useState<DeletedMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +67,7 @@ export function DeletedTab() {
       { data: a, error: ae },
       { data: p, error: pe },
       { data: t, error: te },
+      { data: m, error: me },
     ] = await Promise.all([
       supabase
         .from("areas")
@@ -73,9 +87,14 @@ export function DeletedTab() {
         )
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false }),
+      supabase
+        .from("members")
+        .select("id, full_name, email, directory_category, deleted_at")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false }),
     ]);
-    if (ae || pe || te) {
-      setError(ae?.message ?? pe?.message ?? te?.message ?? "Failed to load");
+    if (ae || pe || te || me) {
+      setError(ae?.message ?? pe?.message ?? te?.message ?? me?.message ?? "Failed to load");
     } else {
       setAreas((a as DeletedArea[]) ?? []);
       setPriorities((p as DeletedPriority[]) ?? []);
@@ -98,6 +117,7 @@ export function DeletedTab() {
           instance_count: row.instance_count?.[0]?.count ?? 0,
         }))
       );
+      setMembers((m as DeletedMember[]) ?? []);
     }
     setLoading(false);
   }, []);
@@ -111,6 +131,13 @@ export function DeletedTab() {
     setError(null);
     if (table === "pm_templates") {
       const result = await restorePmTemplate(id);
+      if (result.error) setError(result.error);
+      else await load();
+      setActing(null);
+      return;
+    }
+    if (table === "members") {
+      const result = await restoreMember(id);
       if (result.error) setError(result.error);
       else await load();
       setActing(null);
@@ -135,6 +162,13 @@ export function DeletedTab() {
       setActing(null);
       return;
     }
+    if (table === "members") {
+      const result = await hardDeleteMember(id);
+      if (result.error) setError(result.error);
+      else await load();
+      setActing(null);
+      return;
+    }
     const supabase = createClient();
     const { error: e } = await supabase.from(table).delete().eq("id", id);
     if (e) setError(e.message);
@@ -146,6 +180,7 @@ export function DeletedTab() {
     areas: areas.length,
     priorities: priorities.length,
     pm_templates: templates.length,
+    members: members.length,
   };
 
   return (
@@ -216,6 +251,39 @@ export function DeletedTab() {
         <div style={{ padding: "40px 0", textAlign: "center", color: "var(--gw-fg-muted)", fontSize: 13 }}>
           Loading…
         </div>
+      ) : kind === "members" ? (
+        members.length === 0 ? (
+          <EmptyDeleted label="No deleted members." />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {members.map((m) => {
+              const label = m.full_name ?? m.email ?? "Unknown";
+              const cat =
+                m.directory_category === "extended"
+                  ? "Extended family"
+                  : m.directory_category === "memorial"
+                  ? "Asleep in Jesus"
+                  : "Regular";
+              return (
+                <DeletedRow
+                  key={m.id}
+                  title={label}
+                  subtitle={`${cat}${m.email ? ` · ${m.email}` : ""} · deleted ${formatDate(m.deleted_at)}`}
+                  acting={acting === m.id}
+                  onRestore={() => restore("members", m.id)}
+                  onHardDelete={() =>
+                    hardDelete(
+                      "members",
+                      m.id,
+                      label,
+                      "Their family relationships will also be removed."
+                    )
+                  }
+                />
+              );
+            })}
+          </div>
+        )
       ) : kind === "areas" ? (
         areas.length === 0 ? (
           <EmptyDeleted label="No deleted areas." />
