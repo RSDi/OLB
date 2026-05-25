@@ -3,6 +3,7 @@ import { Icons } from "../../../components/icons";
 import { AccessDenied } from "../_shared/AccessDenied";
 import { loadMembers, loadViewer, type DirectoryMember } from "../_shared/data";
 import {
+  ageInYear,
   birthdayMilestone,
   dayOf,
   displayName,
@@ -81,6 +82,7 @@ export default async function BirthdaysPage() {
 function BirthdayRow({ member, border }: { member: DirectoryMember; border: boolean }) {
   const day = dayOf(member.birthday);
   const milestone = birthdayMilestone(member.birthday, CURRENT_YEAR);
+  const age = ageInYear(member.birthday, CURRENT_YEAR);
   const wiffle = wiffleballFlag(member.birthday, CURRENT_YEAR);
 
   return (
@@ -109,11 +111,22 @@ function BirthdayRow({ member, border }: { member: DirectoryMember; border: bool
         {day ?? "—"}
       </span>
       <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{displayName(member)}</span>
-      {milestone && (
+      {milestone ? (
         <span className="rsd-chip rsd-chip-accent" style={{ flexShrink: 0 }}>
           {milestone}
         </span>
-      )}
+      ) : age != null ? (
+        <span
+          style={{
+            flexShrink: 0,
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--gw-fg-muted)",
+          }}
+        >
+          turns {age}
+        </span>
+      ) : null}
       {wiffle && (
         <span
           className="rsd-chip"

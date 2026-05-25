@@ -50,6 +50,15 @@ export function monthName(m: number): string {
   return MONTH_NAMES[m - 1] ?? "";
 }
 
+// Age someone will turn during `year`. Returns null when the birthday has
+// no year recorded (month/day only).
+export function ageInYear(birthdayIso: string | null, year: number): number | null {
+  if (!birthdayIso) return null;
+  const birthYear = Number(birthdayIso.slice(0, 4));
+  if (!birthYear) return null;
+  return year - birthYear;
+}
+
 // Returns the milestone label that applies in `year` for someone with the
 // given birthday ISO. e.g. "Sweet 16" / "21st" / "50th" / null.
 export function birthdayMilestone(birthdayIso: string | null, year: number): string | null {
