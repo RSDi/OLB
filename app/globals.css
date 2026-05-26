@@ -318,6 +318,10 @@ main::-webkit-scrollbar-track { background: transparent; }
   from { opacity: 0; transform: translateX(-6px) scale(.97); }
   to   { opacity: 1; transform: translateX(0) scale(1); }
 }
+@keyframes gw-search-loading {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
 
 /* ── Responsive layout helpers ── */
 .beliefs-grid {

@@ -12,9 +12,16 @@
 //
 // Mobile (<768px) renders as a full-screen sheet; desktop as a centered
 // card over a backdrop. The two share the same internal layout.
+//
+// Polish (phase 4):
+//   - Match highlighting in titles/subtitles
+//   - Recent searches persisted in localStorage (max 5)
+//   - Loading indicator (thin progress bar) instead of flashing the empty
+//     state on every keystroke
 
 import {
   Fragment,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -24,6 +31,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "./icons";
 import { createClient } from "../../lib/supabase/client";
+
+const RECENT_KEY = "mcc-search-recent";
+const RECENT_MAX = 5;
 
 type EntityType =
   | "member"
@@ -85,6 +95,7 @@ export function GlobalSearch({ open, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const { recent, pushRecent, clearRecent } = useRecentSearches();
 
   // Track mobile breakpoint so we can render the full-screen sheet variant.
   useEffect(() => {
@@ -110,6 +121,10 @@ export function GlobalSearch({ open, onClose }: Props) {
 
   // Debounced search. Each keystroke schedules a fetch 250ms later; a newer
   // keystroke cancels the prior timer and aborts the in-flight request.
+  //
+  // We keep the previous results on screen while the new request is in
+  // flight so the list doesn't flash empty between keystrokes — only clear
+  // when the query gets too short to search.
   useEffect(() => {
     if (!open) return;
     const trimmed = query.trim();
@@ -145,6 +160,14 @@ export function GlobalSearch({ open, onClose }: Props) {
       clearTimeout(timer);
     };
   }, [open, query]);
+
+  // Called whenever the user actually opens a hit — success signal that the
+  // query was worth keeping in the recent list.
+  const handleSelect = useCallback(() => {
+    const trimmed = query.trim();
+    if (trimmed.length >= 2) pushRecent(trimmed);
+    onClose();
+  }, [query, pushRecent, onClose]);
 
   // Group results by entity type using the canonical order, and produce a
   // flat list of hits the keyboard navigation can index into.
@@ -193,12 +216,12 @@ export function GlobalSearch({ open, onClose }: Props) {
         if (!hit) return;
         e.preventDefault();
         router.push(hit.href);
-        onClose();
+        handleSelect();
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [open, flat, focused, router, onClose]);
+  }, [open, flat, focused, router, handleSelect]);
 
   // Keep the highlighted row in view when arrow keys push it offscreen.
   useEffect(() => {
@@ -210,9 +233,10 @@ export function GlobalSearch({ open, onClose }: Props) {
 
   if (!open) return null;
 
-  const showEmpty =
-    !loading && query.trim().length >= 2 && flat.length === 0;
-  const showHint = query.trim().length < 2;
+  const trimmed = query.trim();
+  const showEmpty = !loading && trimmed.length >= 2 && flat.length === 0;
+  const showHint = trimmed.length < 2;
+  const showRecent = showHint && recent.length > 0;
 
   // Shared inner layout.
   const inner = (
@@ -273,6 +297,9 @@ export function GlobalSearch({ open, onClose }: Props) {
         </button>
       </div>
 
+      {/* Loading bar — only animates while a fetch is in flight. */}
+      <LoadingBar visible={loading} />
+
       {/* Result list */}
       <div
         ref={listRef}
@@ -280,10 +307,20 @@ export function GlobalSearch({ open, onClose }: Props) {
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
-          padding: flat.length ? "6px 0" : 0,
+          padding: flat.length || showRecent ? "6px 0" : 0,
         }}
       >
-        {showHint && (
+        {showRecent && (
+          <RecentList
+            recent={recent}
+            onPick={(q) => {
+              setQuery(q);
+              requestAnimationFrame(() => inputRef.current?.focus());
+            }}
+            onClear={clearRecent}
+          />
+        )}
+        {showHint && !showRecent && (
           <EmptyState
             primary="Type to search"
             secondary="Members, maintenance, events, PM, playbooks — at least 2 characters."
@@ -291,7 +328,7 @@ export function GlobalSearch({ open, onClose }: Props) {
         )}
         {showEmpty && (
           <EmptyState
-            primary={`No results for "${query.trim()}"`}
+            primary={`No results for "${trimmed}"`}
             secondary="Try a different spelling or fewer words."
           />
         )}
@@ -302,9 +339,10 @@ export function GlobalSearch({ open, onClose }: Props) {
               {group && <GroupHeader label={ENTITY_META[group.type].groupLabel} />}
               <ResultRow
                 hit={hit}
+                query={trimmed}
                 focused={i === focused}
                 onMouseEnter={() => setFocused(i)}
-                onSelect={onClose}
+                onSelect={handleSelect}
                 hitIndex={i}
               />
             </Fragment>
@@ -394,12 +432,14 @@ function GroupHeader({ label }: { label: string }) {
 
 function ResultRow({
   hit,
+  query,
   focused,
   onMouseEnter,
   onSelect,
   hitIndex,
 }: {
   hit: SearchHit;
+  query: string;
   focused: boolean;
   onMouseEnter: () => void;
   onSelect: () => void;
@@ -452,7 +492,7 @@ function ResultRow({
             lineHeight: 1.3,
           }}
         >
-          {hit.title || "Untitled"}
+          {highlight(hit.title || "Untitled", query)}
         </div>
         {hit.subtitle && (
           <div
@@ -466,7 +506,7 @@ function ResultRow({
               marginTop: 2,
             }}
           >
-            {hit.subtitle}
+            {highlight(hit.subtitle, query)}
           </div>
         )}
       </div>
@@ -508,4 +548,192 @@ function EmptyState({
       </div>
     </div>
   );
+}
+
+function RecentList({
+  recent,
+  onPick,
+  onClear,
+}: {
+  recent: string[];
+  onPick: (q: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 18px 4px",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: ".08em",
+            textTransform: "uppercase",
+            color: "var(--gw-fg-muted)",
+          }}
+        >
+          Recent
+        </div>
+        <button
+          onClick={onClear}
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "var(--gw-fg-muted)",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            padding: 2,
+          }}
+        >
+          Clear
+        </button>
+      </div>
+      {recent.map((q) => (
+        <button
+          key={q}
+          onClick={() => onPick(q)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "8px 18px",
+            width: "100%",
+            background: "transparent",
+            border: "none",
+            color: "var(--gw-fg)",
+            cursor: "pointer",
+            textAlign: "left",
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
+          <span style={{ color: "var(--gw-fg-muted)", display: "flex" }}>
+            <Icons.Clock width={14} height={14} />
+          </span>
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {q}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// 2px progress bar across the top of the result list while a fetch is in
+// flight. Uses an indeterminate slide animation instead of a percentage so
+// we don't need to track progress.
+function LoadingBar({ visible }: { visible: boolean }) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        height: 2,
+        overflow: "hidden",
+        opacity: visible ? 1 : 0,
+        transition: "opacity 200ms",
+        background: "transparent",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(90deg, transparent 0%, var(--rsd-accent) 50%, transparent 100%)",
+          animation: visible ? "gw-search-loading 900ms linear infinite" : "none",
+          transform: "translateX(-100%)",
+        }}
+      />
+    </div>
+  );
+}
+
+// Wrap each case-insensitive match of `query` in a <mark>. Falls through to
+// plain text if no match (e.g. when trigram similarity caught the row but
+// not a literal substring).
+function highlight(text: string, query: string): React.ReactNode {
+  if (!query || query.length < 2) return text;
+  const q = query.trim();
+  if (!q) return text;
+  const lower = text.toLowerCase();
+  const needle = q.toLowerCase();
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  let idx = lower.indexOf(needle);
+  let key = 0;
+  while (idx !== -1) {
+    if (idx > cursor) parts.push(text.slice(cursor, idx));
+    parts.push(
+      <mark
+        key={key++}
+        style={{
+          background: "color-mix(in srgb, var(--rsd-accent) 22%, transparent)",
+          color: "inherit",
+          padding: "0 1px",
+          borderRadius: 2,
+        }}
+      >
+        {text.slice(idx, idx + needle.length)}
+      </mark>
+    );
+    cursor = idx + needle.length;
+    idx = lower.indexOf(needle, cursor);
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return parts.length > 0 ? parts : text;
+}
+
+// localStorage-backed list of recent queries. Returns the list, a function
+// to push a new query (de-duped, trimmed, capped), and a clear helper.
+function useRecentSearches() {
+  const [recent, setRecent] = useState<string[]>([]);
+
+  // Load once on mount.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RECENT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setRecent(parsed.filter((x): x is string => typeof x === "string").slice(0, RECENT_MAX));
+        }
+      }
+    } catch {
+      // Ignore localStorage errors (private mode, quota, malformed JSON).
+    }
+  }, []);
+
+  const pushRecent = useCallback((q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    setRecent((prev) => {
+      const next = [trimmed, ...prev.filter((x) => x.toLowerCase() !== trimmed.toLowerCase())].slice(
+        0,
+        RECENT_MAX
+      );
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore.
+      }
+      return next;
+    });
+  }, []);
+
+  const clearRecent = useCallback(() => {
+    setRecent([]);
+    try {
+      localStorage.removeItem(RECENT_KEY);
+    } catch {
+      // Ignore.
+    }
+  }, []);
+
+  return { recent, pushRecent, clearRecent };
 }
