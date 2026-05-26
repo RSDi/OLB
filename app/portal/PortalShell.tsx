@@ -7,11 +7,12 @@
 // so the sidebar can render without its own client-side Supabase round
 // trip.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
 import { PortalTopBar } from "../components/PortalTopBar";
 import { GlobalSearch } from "../components/GlobalSearch";
+import type { TopbarSearchHandle } from "../components/TopbarSearch";
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
@@ -46,16 +47,22 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const inlineSearchRef = useRef<TopbarSearchHandle>(null);
   const pathname = usePathname();
 
-  // Cmd+K / Ctrl+K opens the global search modal. We intercept early so it
-  // works even when the user is in an input on a page — overriding the
-  // browser's default (some browsers focus the URL bar on Ctrl+K).
+  // Cmd+K / Ctrl+K behavior depends on viewport: focus the inline topbar
+  // input if it's mounted (large viewports), otherwise toggle the modal
+  // (small + medium). We always intercept early so the shortcut works from
+  // any input on the page.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setSearchOpen(v => !v);
+        if (inlineSearchRef.current) {
+          inlineSearchRef.current.focus();
+        } else {
+          setSearchOpen(v => !v);
+        }
       }
     };
     document.addEventListener("keydown", handler);
@@ -98,6 +105,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
         subtitle={meta.subtitle}
         onMenuClick={() => setMobileOpen(v => !v)}
         onSearchClick={() => setSearchOpen(true)}
+        inlineSearchRef={inlineSearchRef}
       />
       {/* Mobile overlay */}
       {mobileOpen && (

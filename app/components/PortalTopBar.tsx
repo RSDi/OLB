@@ -1,13 +1,18 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { forwardRef, useEffect, useState, type ReactNode } from "react";
 import { Icons } from "./icons";
+import { TopbarSearch, type TopbarSearchHandle } from "./TopbarSearch";
 
 interface PortalTopBarProps {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
   onMenuClick?: () => void;
+  // Click handler for the pill button (small/medium viewports). Opens
+  // the modal in PortalShell. Ignored on large viewports where the
+  // inline TopbarSearch renders instead.
   onSearchClick?: () => void;
+  inlineSearchRef?: React.Ref<TopbarSearchHandle>;
 }
 
 export function PortalTopBar({
@@ -16,7 +21,19 @@ export function PortalTopBar({
   actions,
   onMenuClick,
   onSearchClick,
+  inlineSearchRef,
 }: PortalTopBarProps) {
+  const [variant, setVariant] = useState<"pill" | "inline" | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setVariant(mq.matches ? "inline" : "pill");
+    const handler = (e: MediaQueryListEvent) =>
+      setVariant(e.matches ? "inline" : "pill");
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   return (
     <header
       className="rsd-topbar"
@@ -50,8 +67,18 @@ export function PortalTopBar({
       </button>
 
       {/* Title */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: 16, color: "var(--gw-fg)", lineHeight: 1 }}>
+      <div style={{ flex: variant === "inline" ? "0 0 auto" : 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontWeight: 700,
+            fontSize: 16,
+            color: "var(--gw-fg)",
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
           {title}
         </div>
         {subtitle && (
@@ -69,10 +96,19 @@ export function PortalTopBar({
         )}
       </div>
 
+      {/* Inline search occupies the middle band on large viewports */}
+      {variant === "inline" && (
+        <div style={{ flex: 1, display: "flex", justifyContent: "center", minWidth: 0 }}>
+          <TopbarSearch ref={inlineSearchRef} />
+        </div>
+      )}
+
       {/* Right actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
         {actions}
-        {onSearchClick && <SearchTrigger onClick={onSearchClick} />}
+        {variant === "pill" && onSearchClick && (
+          <PillTrigger onClick={onSearchClick} />
+        )}
         <button
           className="gw-press"
           aria-label="Notifications"
@@ -96,11 +132,9 @@ export function PortalTopBar({
   );
 }
 
-// Search trigger: an icon-only circle button on mobile (same shape as the
-// bell), and a wider pill with the keyboard hint on desktop. The Mac vs.
-// Windows symbol is detected client-side; we render a neutral fallback
-// during SSR/hydration to avoid a flash.
-function SearchTrigger({ onClick }: { onClick: () => void }) {
+// Compact circular search button shown on mobile + medium viewports. Click
+// opens the GlobalSearch modal owned by PortalShell.
+function PillTrigger({ onClick }: { onClick: () => void }) {
   const [isMobile, setIsMobile] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
 
