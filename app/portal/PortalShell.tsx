@@ -97,6 +97,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
         title={meta.title}
         subtitle={meta.subtitle}
         onMenuClick={() => setMobileOpen(v => !v)}
+        onSearchClick={() => setSearchOpen(true)}
       />
       {/* Mobile overlay */}
       {mobileOpen && (
