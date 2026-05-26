@@ -1,15 +1,17 @@
 "use client";
 // Client shell wrapping every portal route.
 //
-// Owns UI-only state (collapse + mobile drawer) and computes the topbar
-// label from the current pathname. Auth/viewer data is fetched once in the
-// parent server `layout.tsx` and passed in via props so the sidebar can
-// render without its own client-side Supabase round trip.
+// Owns UI-only state (collapse + mobile drawer + global search modal) and
+// computes the topbar label from the current pathname. Auth/viewer data is
+// fetched once in the parent server `layout.tsx` and passed in via props
+// so the sidebar can render without its own client-side Supabase round
+// trip.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
 import { PortalTopBar } from "../components/PortalTopBar";
+import { GlobalSearch } from "../components/GlobalSearch";
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
@@ -43,7 +45,22 @@ interface Props {
 export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
+
+  // Cmd+K / Ctrl+K opens the global search modal. We intercept early so it
+  // works even when the user is in an input on a page — overriding the
+  // browser's default (some browsers focus the URL bar on Ctrl+K).
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen(v => !v);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
   // Exact match first; otherwise label individual ticket detail pages
   // (`/portal/maintenance/<id>`, but not /new) as "Request".
   const meta =
@@ -93,6 +110,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
         />
       )}
       <main>{children}</main>
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
