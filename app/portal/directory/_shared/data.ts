@@ -3,7 +3,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
-import { isStaff, isSuperAdmin, type MemberLike } from "../../../../lib/auth/permissions";
+import { getViewer } from "../../../../lib/auth/viewer";
 
 export type DirectoryCategory = "regular" | "extended" | "memorial";
 
@@ -36,29 +36,20 @@ export interface DirectoryViewer {
   isSuperAdmin: boolean;
 }
 
-// Auth + access guard reused across every view. Redirects to /login if no
-// session. Returns null if the viewer isn't approved/staff (caller renders
-// an inline notice).
+// Auth + access guard reused across every directory view. Redirects to
+// /login if no session. Returns null if the viewer isn't approved/staff
+// (caller renders an inline notice). Delegates the actual fetch to
+// `getViewer()` so the layout's cached lookup is reused — no duplicate
+// Supabase query per request.
 export async function loadViewer(): Promise<DirectoryViewer | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: meRow } = await supabase
-    .from("members")
-    .select("id, role, status")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const me = (meRow as (MemberLike & { id: string }) | null) ?? null;
-  if (!me) return null;
-  if (me.status !== "approved" && !isStaff(me)) return null;
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
+  if (viewer.status !== "approved" && !viewer.isStaff) return null;
   return {
-    memberId: me.id,
-    userId: user.id,
-    isStaff: isStaff(me),
-    isSuperAdmin: isSuperAdmin(me),
+    memberId: viewer.memberId,
+    userId: viewer.userId,
+    isStaff: viewer.isStaff,
+    isSuperAdmin: viewer.isSuperAdmin,
   };
 }
 

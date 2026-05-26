@@ -1,0 +1,98 @@
+"use client";
+// Client shell wrapping every portal route.
+//
+// Owns UI-only state (collapse + mobile drawer) and computes the topbar
+// label from the current pathname. Auth/viewer data is fetched once in the
+// parent server `layout.tsx` and passed in via props so the sidebar can
+// render without its own client-side Supabase round trip.
+
+import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
+import { PortalTopBar } from "../components/PortalTopBar";
+
+const PAGE_META: Record<string, { title: string; subtitle: string }> = {
+  "/portal":             { title: "Dashboard",    subtitle: "Overview" },
+  "/portal/maintenance": { title: "Maintenance",  subtitle: "Facilities" },
+  "/portal/maintenance/new": { title: "New request", subtitle: "Facilities" },
+  "/portal/events/new": { title: "New event", subtitle: "Calendar" },
+  "/portal/pm":           { title: "Preventative", subtitle: "Facilities" },
+  "/portal/pm/calendar":  { title: "PM Calendar", subtitle: "Facilities" },
+  "/portal/pm/templates": { title: "PM Templates", subtitle: "Facilities" },
+  "/portal/pm/templates/new": { title: "New template", subtitle: "Facilities" },
+  "/portal/events":      { title: "Events",       subtitle: "Calendar" },
+  "/portal/directory":              { title: "Directory",     subtitle: "Community" },
+  "/portal/directory/households":   { title: "Households",    subtitle: "Directory" },
+  "/portal/directory/all":          { title: "All members",   subtitle: "Directory" },
+  "/portal/directory/birthdays":    { title: "Birthdays",     subtitle: "Directory" },
+  "/portal/directory/anniversaries":{ title: "Anniversaries", subtitle: "Directory" },
+  "/portal/directory/phones":       { title: "Phone tree",    subtitle: "Directory" },
+  "/portal/directory/extended":     { title: "Extended family", subtitle: "Directory" },
+  "/portal/directory/memorials":    { title: "Asleep in Jesus", subtitle: "Directory" },
+  "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
+  "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
+  "/portal/settings":    { title: "Settings",     subtitle: "Admin" },
+};
+
+interface Props {
+  viewer: SidebarViewer | null;
+  pendingMembersCount: number;
+  children: React.ReactNode;
+}
+
+export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  // Exact match first; otherwise label individual ticket detail pages
+  // (`/portal/maintenance/<id>`, but not /new) as "Request".
+  const meta =
+    PAGE_META[pathname] ??
+    (pathname.startsWith("/portal/maintenance/") && pathname !== "/portal/maintenance/new"
+      ? { title: "Request", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/pm/templates/")
+      ? { title: "Edit template", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/pm/assets/")
+      ? { title: "Asset", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/pm/")
+      ? { title: "PM Task", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/events/")
+      ? { title: "Edit event", subtitle: "Calendar" }
+      : pathname.startsWith("/portal/directory/")
+      ? { title: "Member", subtitle: "Community" }
+      : pathname.endsWith("/history") && pathname.startsWith("/portal/docs/")
+      ? { title: "History", subtitle: "Operations" }
+      : pathname.startsWith("/portal/docs/")
+      ? { title: "Playbook", subtitle: "Operations" }
+      : { title: "Portal", subtitle: "" });
+
+  return (
+    <div className={`rsd-app${collapsed ? " sidebar-collapsed" : ""}`}>
+      <PortalSidebar
+        viewer={viewer}
+        pendingMembersCount={pendingMembersCount}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed(v => !v)}
+        mobileOpen={mobileOpen}
+        onNavigate={() => setMobileOpen(false)}
+      />
+      <PortalTopBar
+        title={meta.title}
+        subtitle={meta.subtitle}
+        onMenuClick={() => setMobileOpen(v => !v)}
+      />
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 1100,
+            background: "rgba(0,0,0,.4)",
+            animation: "gw-fade-in 160ms ease",
+          }}
+        />
+      )}
+      <main>{children}</main>
+    </div>
+  );
+}

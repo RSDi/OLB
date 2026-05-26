@@ -1,83 +1,37 @@
-"use client";
-import { useState } from "react";
-import { PortalSidebar } from "../components/PortalSidebar";
-import { PortalTopBar } from "../components/PortalTopBar";
-import { usePathname } from "next/navigation";
+// Server layout for the portal.
+//
+// Fetches the viewer once per request via React `cache()` (see
+// `lib/auth/viewer.ts`) so any nested server page that calls `getViewer()`
+// hits the cache instead of re-querying Supabase. Also fetches the
+// pending-approval count for super-admins so the sidebar badge can render
+// without a client round trip.
+//
+// All UI state (collapse, mobile drawer, page title computation) lives in
+// the `PortalShell` client component below.
 
-const PAGE_META: Record<string, { title: string; subtitle: string }> = {
-  "/portal":             { title: "Dashboard",    subtitle: "Overview" },
-  "/portal/maintenance": { title: "Maintenance",  subtitle: "Facilities" },
-  "/portal/maintenance/new": { title: "New request", subtitle: "Facilities" },
-  "/portal/events/new": { title: "New event", subtitle: "Calendar" },
-  "/portal/pm":           { title: "Preventative", subtitle: "Facilities" },
-  "/portal/pm/calendar":  { title: "PM Calendar", subtitle: "Facilities" },
-  "/portal/pm/templates": { title: "PM Templates", subtitle: "Facilities" },
-  "/portal/pm/templates/new": { title: "New template", subtitle: "Facilities" },
-  "/portal/events":      { title: "Events",       subtitle: "Calendar" },
-  "/portal/directory":              { title: "Directory",     subtitle: "Community" },
-  "/portal/directory/households":   { title: "Households",    subtitle: "Directory" },
-  "/portal/directory/all":          { title: "All members",   subtitle: "Directory" },
-  "/portal/directory/birthdays":    { title: "Birthdays",     subtitle: "Directory" },
-  "/portal/directory/anniversaries":{ title: "Anniversaries", subtitle: "Directory" },
-  "/portal/directory/phones":       { title: "Phone tree",    subtitle: "Directory" },
-  "/portal/directory/extended":     { title: "Extended family", subtitle: "Directory" },
-  "/portal/directory/memorials":    { title: "Asleep in Jesus", subtitle: "Directory" },
-  "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
-  "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
-  "/portal/settings":    { title: "Settings",     subtitle: "Admin" },
-};
+import { getPendingMembersCount, getViewer } from "../../lib/auth/viewer";
+import { PortalShell } from "./PortalShell";
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const pathname = usePathname();
-  // Exact match first; otherwise label individual ticket detail pages
-  // (`/portal/maintenance/<id>`, but not /new) as "Request".
-  const meta =
-    PAGE_META[pathname] ??
-    (pathname.startsWith("/portal/maintenance/") && pathname !== "/portal/maintenance/new"
-      ? { title: "Request", subtitle: "Facilities" }
-      : pathname.startsWith("/portal/pm/templates/")
-      ? { title: "Edit template", subtitle: "Facilities" }
-      : pathname.startsWith("/portal/pm/assets/")
-      ? { title: "Asset", subtitle: "Facilities" }
-      : pathname.startsWith("/portal/pm/")
-      ? { title: "PM Task", subtitle: "Facilities" }
-      : pathname.startsWith("/portal/events/")
-      ? { title: "Edit event", subtitle: "Calendar" }
-      : pathname.startsWith("/portal/directory/")
-      ? { title: "Member", subtitle: "Community" }
-      : pathname.endsWith("/history") && pathname.startsWith("/portal/docs/")
-      ? { title: "History", subtitle: "Operations" }
-      : pathname.startsWith("/portal/docs/")
-      ? { title: "Playbook", subtitle: "Operations" }
-      : { title: "Portal", subtitle: "" });
+export default async function PortalLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const viewer = await getViewer();
+  const pendingMembersCount = viewer?.isSuperAdmin
+    ? await getPendingMembersCount()
+    : 0;
 
   return (
-    <div className={`rsd-app${collapsed ? " sidebar-collapsed" : ""}`}>
-      <PortalSidebar
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed(v => !v)}
-        mobileOpen={mobileOpen}
-        onNavigate={() => setMobileOpen(false)}
-      />
-      <PortalTopBar
-        title={meta.title}
-        subtitle={meta.subtitle}
-        onMenuClick={() => setMobileOpen(v => !v)}
-      />
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          onClick={() => setMobileOpen(false)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 1100,
-            background: "rgba(0,0,0,.4)",
-            animation: "gw-fade-in 160ms ease",
-          }}
-        />
-      )}
-      <main>{children}</main>
-    </div>
+    <PortalShell
+      viewer={
+        viewer
+          ? { role: viewer.role, status: viewer.status, isStaff: viewer.isStaff }
+          : null
+      }
+      pendingMembersCount={pendingMembersCount}
+    >
+      {children}
+    </PortalShell>
   );
 }

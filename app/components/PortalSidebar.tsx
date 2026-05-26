@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icons } from "./icons";
 import { createClient } from "../../lib/supabase/client";
-import { isStaff, isSuperAdmin, type MemberLike } from "../../lib/auth/permissions";
+import type { MemberRole, MemberStatus } from "../../lib/auth/permissions";
 
 interface NavItem {
   href: string;
@@ -24,22 +24,39 @@ const NAV: NavItem[] = [
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
 ];
 
+// Trimmed viewer shape — sidebar only needs role/status to decide which nav
+// items to show. Layout fetches the full viewer once per request and hands
+// us this slice so we don't fire a duplicate Supabase query post-hydration.
+export interface SidebarViewer {
+  role: MemberRole;
+  status: MemberStatus;
+  isStaff: boolean;
+}
+
 interface PortalSidebarProps {
+  viewer: SidebarViewer | null;
+  pendingMembersCount: number;
   collapsed: boolean;
   onToggleCollapse: () => void;
   mobileOpen?: boolean;
   onNavigate?: () => void;
 }
 
-export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen, onNavigate }: PortalSidebarProps) {
+export function PortalSidebar({
+  viewer,
+  pendingMembersCount,
+  collapsed,
+  onToggleCollapse,
+  mobileOpen,
+  onNavigate,
+}: PortalSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [member, setMember] = useState<MemberLike | null>(null);
   // Staff (admin + super_admin) see Settings; the pending-count badge stays
   // super-admin-only since admins can't action the member queue.
-  const canSeeSettings = isStaff(member);
+  const canSeeSettings = viewer?.isStaff ?? false;
+  const pendingCount = pendingMembersCount;
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -47,34 +64,6 @@ export function PortalSidebar({ collapsed, onToggleCollapse, mobileOpen, onNavig
     const h = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", h);
     return () => mq.removeEventListener("change", h);
-  }, []);
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    // Determine the signed-in user's role. RLS lets every signed-in user
-    // read their own row, so this works without elevated privileges.
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: me } = await supabase
-        .from("members")
-        .select("role, status")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const memberLike = (me as MemberLike | null) ?? null;
-      setMember(memberLike);
-
-      // Pending count is only meaningful (and visible via RLS) to staff. In
-      // Phase 1 only super-admins can act on it, so we gate it there.
-      if (isSuperAdmin(memberLike)) {
-        const { count } = await supabase
-          .from("members")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "pending");
-        setPendingCount(count ?? 0);
-      }
-    })();
   }, []);
 
   const c = isMobile ? false : collapsed;
