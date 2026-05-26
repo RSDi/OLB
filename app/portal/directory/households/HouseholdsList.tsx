@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
@@ -176,15 +176,27 @@ function HouseholdCard({
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: 10,
+            alignItems: "stretch",
+            gap: 16,
           }}
         >
-          {household.heads.map((h) => (
-            <HeadBlock
-              key={h.id}
-              member={h}
-              isSelf={h.id === currentMemberId}
-            />
+          {household.heads.map((h, i) => (
+            <Fragment key={h.id}>
+              {i > 0 && (
+                <div
+                  aria-hidden
+                  style={{
+                    width: 1,
+                    alignSelf: "stretch",
+                    background: "var(--gw-border)",
+                  }}
+                />
+              )}
+              <HeadBlock
+                member={h}
+                isSelf={h.id === currentMemberId}
+              />
+            </Fragment>
           ))}
         </div>
 
@@ -254,15 +266,7 @@ function HeadBlock({
   isSelf: boolean;
 }) {
   return (
-    <div
-      style={{
-        minWidth: 0,
-        padding: "8px 12px",
-        borderRadius: 10,
-        border: "1px solid var(--gw-border)",
-        background: "transparent",
-      }}
-    >
+    <div style={{ minWidth: 0 }}>
       <div
         style={{
           display: "flex",
