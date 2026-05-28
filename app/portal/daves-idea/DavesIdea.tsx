@@ -233,6 +233,27 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
     await supabase.from("daves_idea_action_items").update({ routed_to: target }).eq("id", actionId);
   }
 
+  async function deleteRecording(recordingId: string) {
+    if (!confirm("Delete this recording? You can restore it from Settings → Deleted.")) return;
+    // Optimistic remove from the list. If something goes wrong, we surface
+    // it via setRecordError and the polling pass will resync on next tick.
+    const previous = recordings;
+    setRecordings(rs => rs.filter(r => r.id !== recordingId));
+    if (selectedId === recordingId) {
+      const remaining = previous.filter(r => r.id !== recordingId);
+      setSelectedId(remaining[0]?.id ?? null);
+    }
+    const { error } = await supabase
+      .from("daves_idea_recordings")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", recordingId);
+    if (error) {
+      setRecordings(previous);
+      setSelectedId(recordingId);
+      setRecordError(`Delete failed: ${error.message}`);
+    }
+  }
+
   async function reextractRecording(recordingId: string) {
     // Optimistic chip update so the user sees state change immediately.
     setRecordings(rs =>
@@ -423,6 +444,7 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
             onToggleDone={actionId => toggleDone(selected.id, actionId)}
             onRoute={(actionId, target) => routeAction(selected.id, actionId, target)}
             onReextract={() => reextractRecording(selected.id)}
+            onDelete={() => deleteRecording(selected.id)}
           />
         ) : (
           <div
@@ -580,11 +602,13 @@ function SelectedDetail({
   onToggleDone,
   onRoute,
   onReextract,
+  onDelete,
 }: {
   recording: DavesIdeaRecording;
   onToggleDone: (actionId: string) => void;
   onRoute: (actionId: string, target: string) => void;
   onReextract: () => Promise<void>;
+  onDelete: () => Promise<void>;
 }) {
   const [reextracting, setReextracting] = useState(false);
 
@@ -689,6 +713,26 @@ function SelectedDetail({
               Re-extracting…
             </span>
           )}
+          <button
+            onClick={onDelete}
+            className="gw-press"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 100,
+              background: "var(--gw-error-bg)",
+              color: "var(--gw-error)",
+              border: "1px solid rgba(229,62,62,.25)",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            <Icons.Trash width={11} height={11} />
+            Delete
+          </button>
         </div>
       </div>
 
