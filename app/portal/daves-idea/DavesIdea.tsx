@@ -89,10 +89,21 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
   const [elapsed, setElapsed] = useState(0);
   const [recordError, setRecordError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const elapsedRef = useRef(0);
+
+  // Mirror PortalSidebar's mobile breakpoint so the page's layout cuts over
+  // at the same width the chrome does.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const h = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
 
   const selected = recordings.find(r => r.id === selectedId) ?? recordings[0] ?? null;
 
@@ -295,8 +306,8 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
         className="rsd-card"
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) auto",
-          gap: 24,
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(0, 1fr) auto",
+          gap: isMobile ? 16 : 24,
           alignItems: "center",
           background: "linear-gradient(135deg, var(--gw-rose-bg) 0%, var(--gw-bg-elev) 100%)",
           border: "1px solid var(--gw-border)",
@@ -328,19 +339,22 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
               style={{
                 display: "inline-flex",
                 alignItems: "center",
+                justifyContent: "center",
                 gap: 8,
-                padding: "10px 18px",
+                padding: isMobile ? "14px 20px" : "10px 18px",
                 borderRadius: 100,
                 background: "var(--rsd-accent)",
                 color: "#fff",
                 border: "none",
-                fontSize: 13,
+                fontSize: isMobile ? 15 : 13,
                 fontWeight: 700,
                 cursor: isRecording || uploading ? "not-allowed" : "pointer",
                 opacity: isRecording || uploading ? 0.6 : 1,
+                width: isMobile ? "100%" : undefined,
+                minHeight: isMobile ? 48 : undefined,
               }}
             >
-              <Icons.Mic width={14} height={14} />
+              <Icons.Mic width={isMobile ? 18 : 14} height={isMobile ? 18 : 14} />
               {uploading ? "Uploading…" : "Start recording"}
             </button>
             {recordError && (
@@ -350,18 +364,30 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
             )}
           </div>
         </div>
-        <WatchMockup />
+        {!isMobile && <WatchMockup />}
       </section>
 
       <section
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(260px, 360px) minmax(0, 1fr)",
-          gap: 16,
+          gridTemplateColumns: isMobile ? "1fr" : "minmax(260px, 360px) minmax(0, 1fr)",
+          gap: isMobile ? 12 : 16,
           alignItems: "start",
         }}
       >
-        <div className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
+        <div
+          className="rsd-card"
+          style={{
+            gap: 0,
+            padding: 0,
+            overflow: "hidden",
+            // On mobile cap the list so it doesn't push the detail panel
+            // off-screen — user scrolls within the list when there are many.
+            maxHeight: isMobile ? 280 : undefined,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           <div
             style={{
               padding: "14px 18px",
@@ -382,7 +408,7 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
               Tap <strong style={{ color: "var(--gw-fg)" }}>Start recording</strong> to capture your first.
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", flexDirection: "column", overflowY: "auto", flex: 1, minHeight: 0 }}>
               {recordings.map(r => {
                 const active = r.id === selectedId;
                 return (
@@ -441,6 +467,7 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
         {selected ? (
           <SelectedDetail
             recording={selected}
+            isMobile={isMobile}
             onToggleDone={actionId => toggleDone(selected.id, actionId)}
             onRoute={(actionId, target) => routeAction(selected.id, actionId, target)}
             onReextract={() => reextractRecording(selected.id)}
@@ -599,12 +626,14 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
 
 function SelectedDetail({
   recording,
+  isMobile,
   onToggleDone,
   onRoute,
   onReextract,
   onDelete,
 }: {
   recording: DavesIdeaRecording;
+  isMobile: boolean;
   onToggleDone: (actionId: string) => void;
   onRoute: (actionId: string, target: string) => void;
   onReextract: () => Promise<void>;
@@ -660,9 +689,26 @@ function SelectedDetail({
             </div>
           )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: isMobile ? "row" : "column",
+            alignItems: isMobile ? "center" : "flex-end",
+            gap: 8,
+            width: isMobile ? "100%" : undefined,
+            flexWrap: "wrap",
+          }}
+        >
           {recording.audio_blob_url && (
-            <audio controls src={recording.audio_blob_url} style={{ maxWidth: 280, height: 36 }} />
+            <audio
+              controls
+              src={recording.audio_blob_url}
+              style={{
+                width: isMobile ? "100%" : undefined,
+                maxWidth: isMobile ? "100%" : 280,
+                height: 36,
+              }}
+            />
           )}
           {recording.audio_blob_url && (
             <a
@@ -1033,7 +1079,8 @@ function RecordingModal({ elapsed, onStop }: { elapsed: number; onStop: () => vo
           border: "1px solid var(--gw-border)",
           borderRadius: 16,
           padding: 32,
-          minWidth: 320,
+          width: "min(320px, calc(100vw - 32px))",
+          maxWidth: 320,
           textAlign: "center",
           boxShadow: "var(--gw-shadow-3)",
         }}
