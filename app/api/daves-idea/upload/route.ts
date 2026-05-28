@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         audio_url: blobUrl,
+        speech_model: "universal-3-pro",
         speaker_labels: true,
         webhook_url: `${baseUrl()}/api/daves-idea/transcription-webhook`,
       }),
