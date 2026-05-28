@@ -210,6 +210,41 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
     await supabase.from("daves_idea_action_items").update({ routed_to: target }).eq("id", actionId);
   }
 
+  async function reextractRecording(recordingId: string) {
+    // Optimistic chip update so the user sees state change immediately.
+    setRecordings(rs =>
+      rs.map(r => (r.id === recordingId ? { ...r, status: "extracting", error: null } : r))
+    );
+    try {
+      const res = await fetch(`/api/daves-idea/recordings/${recordingId}/reextract`, { method: "POST" });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Re-extract failed (${res.status})`);
+      }
+      const { recording } = (await res.json()) as { recording: DavesIdeaRecording };
+      setRecordings(rs =>
+        rs.map(r =>
+          r.id === recordingId
+            ? {
+                ...recording,
+                action_items: (recording.action_items ?? [])
+                  .slice()
+                  .sort((a, b) => a.sort_order - b.sort_order),
+              }
+            : r
+        )
+      );
+    } catch (err) {
+      setRecordings(rs =>
+        rs.map(r =>
+          r.id === recordingId
+            ? { ...r, status: "ready", error: err instanceof Error ? err.message : "Re-extract failed" }
+            : r
+        )
+      );
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <section
@@ -364,6 +399,7 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
             recording={selected}
             onToggleDone={actionId => toggleDone(selected.id, actionId)}
             onRoute={(actionId, target) => routeAction(selected.id, actionId, target)}
+            onReextract={() => reextractRecording(selected.id)}
           />
         ) : (
           <div
@@ -520,11 +556,15 @@ function SelectedDetail({
   recording,
   onToggleDone,
   onRoute,
+  onReextract,
 }: {
   recording: DavesIdeaRecording;
   onToggleDone: (actionId: string) => void;
   onRoute: (actionId: string, target: string) => void;
+  onReextract: () => Promise<void>;
 }) {
+  const [reextracting, setReextracting] = useState(false);
+
   const transcriptText = useMemo(() => {
     if (recording.utterances && recording.utterances.length > 0) {
       return recording.utterances.map(u => `${u.speaker}: ${u.text}`).join("\n\n");
@@ -534,6 +574,22 @@ function SelectedDetail({
 
   const sourceLabel =
     recording.source === "watch" ? "Apple Watch" : recording.source === "native" ? "iPhone" : "PWA";
+
+  // Re-extract only makes sense once a transcript exists. Hide while the
+  // pipeline is still moving so the button doesn't fight the polling state.
+  const canReextract =
+    !!recording.transcript &&
+    (recording.status === "ready" || recording.status === "failed") &&
+    !reextracting;
+
+  async function handleReextract() {
+    setReextracting(true);
+    try {
+      await onReextract();
+    } finally {
+      setReextracting(false);
+    }
+  }
 
   return (
     <div className="rsd-card" style={{ gap: 16 }}>
@@ -557,9 +613,38 @@ function SelectedDetail({
             </div>
           )}
         </div>
-        {recording.audio_blob_url && (
-          <audio controls src={recording.audio_blob_url} style={{ maxWidth: 280, height: 36 }} />
-        )}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+          {recording.audio_blob_url && (
+            <audio controls src={recording.audio_blob_url} style={{ maxWidth: 280, height: 36 }} />
+          )}
+          {canReextract && (
+            <button
+              onClick={handleReextract}
+              className="gw-press"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 100,
+                background: "var(--gw-bg-elev)",
+                color: "var(--gw-fg)",
+                border: "1px solid var(--gw-border)",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <Icons.Sparkles width={11} height={11} />
+              Re-run extraction
+            </button>
+          )}
+          {reextracting && (
+            <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+              Re-extracting…
+            </span>
+          )}
+        </div>
       </div>
 
       <div>

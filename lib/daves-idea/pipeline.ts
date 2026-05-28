@@ -129,7 +129,10 @@ async function sendCompletionEmail(opts: {
   });
 }
 
-export async function processTranscriptionCompleted(recordingId: string): Promise<void> {
+export async function processTranscriptionCompleted(
+  recordingId: string,
+  opts?: { force?: boolean }
+): Promise<void> {
   const admin = createAdminClient();
 
   // 1. Load the row.
@@ -147,9 +150,14 @@ export async function processTranscriptionCompleted(recordingId: string): Promis
     console.error("Pipeline: recording has no assemblyai_id", recordingId);
     return;
   }
-  if (recording.status === "ready") {
-    // Already processed (webhook can fire twice). Skip.
+  if (recording.status === "ready" && !opts?.force) {
+    // Already processed (webhook can fire twice). Skip unless forced.
     return;
+  }
+  if (opts?.force) {
+    // Re-extracting from scratch: nuke prior action items so the fresh run
+    // produces a clean list rather than appending to old ones.
+    await admin.from("daves_idea_action_items").delete().eq("recording_id", recordingId);
   }
 
   try {
@@ -189,6 +197,7 @@ export async function processTranscriptionCompleted(recordingId: string): Promis
     // 3. LLM extraction. If the transcript is empty (silent recording), skip.
     let title = "Untitled recording";
     let actions: string[] = [];
+    let extractionError: string | null = null;
     if (transcriptText.length > 0) {
       try {
         const out = await extractTitleAndActions(transcriptText);
@@ -196,7 +205,11 @@ export async function processTranscriptionCompleted(recordingId: string): Promis
         actions = out.actions;
       } catch (err) {
         console.error("LLM extraction failed", err);
-        // Continue with default title; don't fail the whole pipeline.
+        // Surface the failure on the row instead of silently producing an
+        // empty action list — otherwise the user sees a "ready" recording
+        // with no items and no explanation.
+        const msg = err instanceof Error ? err.message : "Extraction failed";
+        extractionError = msg.length > 280 ? msg.slice(0, 280) + "…" : msg;
       }
     }
 
@@ -211,10 +224,11 @@ export async function processTranscriptionCompleted(recordingId: string): Promis
       if (insertErr) console.error("Action item insert failed", insertErr);
     }
 
-    // 5. Mark ready with the LLM title.
+    // 5. Mark ready with the LLM title. `error` is cleared on success,
+    // populated when extraction failed — the UI already surfaces it in red.
     await admin
       .from("daves_idea_recordings")
-      .update({ title, status: "ready" })
+      .update({ title, status: "ready", error: extractionError })
       .eq("id", recordingId);
 
     // 6. Email the user.
