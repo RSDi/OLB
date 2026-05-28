@@ -58,6 +58,29 @@ function recordingTitle(r: DavesIdeaRecording): string {
   return "New recording — processing…";
 }
 
+// Build a download URL that forces save-as with a human-friendly filename.
+// Vercel Blob honors a `download=<filename>` query parameter by setting
+// Content-Disposition: attachment server-side. The audio's actual format
+// (m4a from Safari, webm from Chrome) comes from the stored blob's pathname.
+function audioDownloadHref(r: DavesIdeaRecording): string {
+  let blobUrl: URL;
+  try {
+    blobUrl = new URL(r.audio_blob_url);
+  } catch {
+    return r.audio_blob_url;
+  }
+  const ext = blobUrl.pathname.split(".").pop() || "audio";
+  // Slugify the title for the filename. Falls back to ISO date.
+  const slugSource = r.title || new Date(r.created_at).toISOString().replace(/[:.]/g, "-");
+  const slug = slugSource
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "recording";
+  blobUrl.searchParams.set("download", `daves-idea-${slug}.${ext}`);
+  return blobUrl.toString();
+}
+
 export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaRecording[] }) {
   const supabase = useMemo(() => createClient(), []);
   const [recordings, setRecordings] = useState<DavesIdeaRecording[]>(initialRecordings);
@@ -616,6 +639,28 @@ function SelectedDetail({
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
           {recording.audio_blob_url && (
             <audio controls src={recording.audio_blob_url} style={{ maxWidth: 280, height: 36 }} />
+          )}
+          {recording.audio_blob_url && (
+            <a
+              href={audioDownloadHref(recording)}
+              className="gw-press"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 100,
+                background: "var(--gw-bg-elev)",
+                color: "var(--gw-fg)",
+                border: "1px solid var(--gw-border)",
+                fontSize: 11,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              <Icons.ArrowRight width={11} height={11} style={{ transform: "rotate(90deg)" }} />
+              Download audio
+            </a>
           )}
           {canReextract && (
             <button
