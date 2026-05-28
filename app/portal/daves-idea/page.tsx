@@ -1,9 +1,27 @@
-import { redirect } from "next/navigation";
-import { getViewer } from "../../../lib/auth/viewer";
+import type { Metadata, Viewport } from "next";
 import { DavesIdea } from "./DavesIdea";
+import { loadDavesIdeaRecordings, loadDavesIdeaViewer } from "../../../lib/daves-idea/data";
+
+export const metadata: Metadata = {
+  title: "Dave's Idea",
+  manifest: "/daves-idea-manifest.webmanifest",
+  icons: {
+    icon: "/daves-idea-icon.svg",
+    apple: "/daves-idea-icon.svg",
+  },
+  appleWebApp: {
+    title: "Dave's Idea",
+    statusBarStyle: "black-translucent",
+    capable: true,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#6C8C59",
+};
 
 export default async function DavesIdeaPage() {
-  const viewer = await getViewer();
-  if (!viewer?.isStaff) redirect("/portal");
-  return <DavesIdea />;
+  await loadDavesIdeaViewer();
+  const recordings = await loadDavesIdeaRecordings();
+  return <DavesIdea initialRecordings={recordings} />;
 }

@@ -1,29 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "../../components/icons";
-
-type RecordingStatus = "Transcribed" | "Processing" | "Action items extracted";
-type Source = "Watch" | "Phone";
-
-interface ActionItem {
-  id: string;
-  text: string;
-  routedTo?: string;
-  done?: boolean;
-}
-
-interface Recording {
-  id: string;
-  title: string;
-  // ISO timestamp.
-  capturedAt: string;
-  durationSec: number;
-  source: Source;
-  status: RecordingStatus;
-  transcript: string;
-  actionItems: ActionItem[];
-}
+import { createClient } from "../../../lib/supabase/client";
+import type {
+  DavesIdeaActionItem,
+  DavesIdeaRecording,
+  RecordingStatus,
+} from "../../../lib/daves-idea/data";
 
 const INTEGRATIONS = [
   { id: "email", label: "Email follow-up", icon: "Mail" as const },
@@ -33,91 +17,19 @@ const INTEGRATIONS = [
   { id: "slack", label: "Slack #leadership", icon: "Bell" as const },
 ];
 
-const MOCK_RECORDINGS: Recording[] = [
-  {
-    id: "rec-1",
-    title: "Coffee with Dave — the Apple Watch idea",
-    capturedAt: "2026-05-28T13:42:00",
-    durationSec: 287,
-    source: "Watch",
-    status: "Action items extracted",
-    transcript:
-      "Jeff: I'm going to give Dave 50% of everything we make on this. We're going to make an Apple Watch app that works with the iPhone. You just start a recording easily and it takes that recording and automatically does the workflow — uploads it on the backend, transcribes it, then emails you the transcription with a link back to a web interface where you can manipulate the data.\n\nDave: Over time it could pull the action items out of that. Because it's on your watch and your phone, it could become a to-do tracker as well.\n\nDave: The thing for me — to the extent that it automates the first step. Picture you're in a meeting and you say, 'Hey, mind if I record this?' and you just hit it. It's not a ten-second fumble of you on your phone. There's a social benefit there. And then the minute it's done, even just an email follow-up would be hugely valuable. Someone more sophisticated would want other integrations — distill my to-do list into a HubSpot task, whatever.\n\nJeff: We might not even want to build this. But we're collecting ideas.",
-    actionItems: [
-      { id: "a1", text: "Sketch the watch-app one-tap flow", routedTo: "Notion Page" },
-      { id: "a1b", text: "Check if Evernote / Otter already nails this", done: true },
-      { id: "a1c", text: "Talk to Dave about 50/50 partnership terms", routedTo: "HubSpot Task" },
-    ],
-  },
-  {
-    id: "rec-2",
-    title: "Sermon prep — 1 Corinthians 13",
-    capturedAt: "2026-05-28T08:15:00",
-    durationSec: 612,
-    source: "Phone",
-    status: "Action items extracted",
-    transcript:
-      "Working through love is patient, love is kind. I want to land on the idea that patience isn't passive — it's an active choice to keep the door open. Hook for the opener: that moment in traffic where you're inches from honking. Pull the Greek for 'makrothumia' — long-suffering...",
-    actionItems: [
-      { id: "a2", text: "Pull Greek for 'makrothumia' and 'chrēstos'", routedTo: "Notion Page" },
-      { id: "a2b", text: "Write the traffic-jam cold open" },
-      { id: "a2c", text: "Ask Worship to look at 'The Love Of God' as closer", routedTo: "Slack #leadership" },
-    ],
-  },
-  {
-    id: "rec-3",
-    title: "Board call — Q3 budget check-in",
-    capturedAt: "2026-05-27T19:00:00",
-    durationSec: 2734,
-    source: "Phone",
-    status: "Action items extracted",
-    transcript:
-      "Reviewed YTD giving vs. forecast. Roof reserve is short by about 14k against the September repair window. Mike to circle with the facilities committee. Karen flagged the volunteer-background-check renewal cycle — we have 12 expiring before camp...",
-    actionItems: [
-      { id: "a3", text: "Pull 12 expiring background checks list", routedTo: "HubSpot Task" },
-      { id: "a3b", text: "Mike: circle with facilities re: roof reserve gap", routedTo: "Email follow-up" },
-      { id: "a3c", text: "Approve summer camp budget line in next meeting" },
-    ],
-  },
-  {
-    id: "rec-4",
-    title: "Voice memo — snow camp logistics",
-    capturedAt: "2026-05-27T14:22:00",
-    durationSec: 96,
-    source: "Watch",
-    status: "Transcribed",
-    transcript:
-      "Don't forget: bus deposit is due by the 15th, two chaperones still need medical forms, and the venue wants a final headcount three weeks out.",
-    actionItems: [
-      { id: "a4", text: "Pay bus deposit by 6/15" },
-      { id: "a4b", text: "Chase Hannah + Tyler for medical forms" },
-    ],
-  },
-  {
-    id: "rec-5",
-    title: "1:1 with Sarah — volunteer pipeline",
-    capturedAt: "2026-05-26T10:30:00",
-    durationSec: 1480,
-    source: "Phone",
-    status: "Action items extracted",
-    transcript:
-      "Sarah feels overloaded on the hospitality team. Suggested we bring on a second team lead for Sunday mornings. She named two people she'd want to ask: Marco and Becca. Both have been around two years plus.",
-    actionItems: [
-      { id: "a5", text: "Introduce Sarah to Marco for hospitality lead conversation", routedTo: "Email follow-up" },
-      { id: "a5b", text: "Background check Becca if she says yes" },
-    ],
-  },
-  {
-    id: "rec-6",
-    title: "Hallway sync — worship setlist",
-    capturedAt: "2026-05-25T11:05:00",
-    durationSec: 184,
-    source: "Watch",
-    status: "Processing",
-    transcript: "",
-    actionItems: [],
-  },
-];
+const STATUS_LABEL: Record<RecordingStatus, string> = {
+  uploading: "Uploading…",
+  transcribing: "Transcribing…",
+  extracting: "Extracting…",
+  ready: "Ready",
+  failed: "Failed",
+};
+
+function statusChipClass(s: RecordingStatus): string {
+  if (s === "ready") return "rsd-chip-warn";
+  if (s === "failed") return "rsd-chip-error";
+  return "rsd-chip-mute";
+}
 
 function formatDuration(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -139,106 +51,167 @@ function formatWhen(iso: string): string {
   return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-function statusChipClass(s: RecordingStatus): string {
-  if (s === "Action items extracted") return "rsd-chip-warn";
-  if (s === "Transcribed") return "rsd-chip-accent";
-  return "rsd-chip-mute";
+function recordingTitle(r: DavesIdeaRecording): string {
+  if (r.title) return r.title;
+  if (r.status === "failed") return "Failed recording";
+  if (r.status === "ready") return "Untitled recording";
+  return "New recording — processing…";
 }
 
-export function DavesIdea() {
-  const [recordings, setRecordings] = useState<Recording[]>(MOCK_RECORDINGS);
-  const [selectedId, setSelectedId] = useState<string>(MOCK_RECORDINGS[0].id);
+export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaRecording[] }) {
+  const supabase = useMemo(() => createClient(), []);
+  const [recordings, setRecordings] = useState<DavesIdeaRecording[]>(initialRecordings);
+  const [selectedId, setSelectedId] = useState<string | null>(initialRecordings[0]?.id ?? null);
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const elapsedRef = useRef(0);
 
-  const selected = recordings.find(r => r.id === selectedId) ?? recordings[0];
+  const selected = recordings.find(r => r.id === selectedId) ?? recordings[0] ?? null;
 
-  // Aggregate every action item across all recordings (skip ones marked done).
   const inbox = useMemo(() => {
     return recordings.flatMap(r =>
-      r.actionItems
+      r.action_items
         .filter(a => !a.done)
-        .map(a => ({ ...a, recordingId: r.id, recordingTitle: r.title }))
+        .map(a => ({ ...a, recordingTitle: recordingTitle(r) }))
     );
   }, [recordings]);
 
-  // Drive the fake recording timer while the mic modal is open.
   useEffect(() => {
     if (!isRecording) return;
-    const t = setInterval(() => setElapsed(e => e + 1), 1000);
+    const t = setInterval(() => {
+      setElapsed(e => {
+        const next = e + 1;
+        elapsedRef.current = next;
+        return next;
+      });
+    }, 1000);
     return () => clearInterval(t);
   }, [isRecording]);
 
-  function startFakeRecording() {
-    setIsRecording(true);
-    setElapsed(0);
+  useEffect(() => {
+    const inFlight = recordings.some(r => r.status !== "ready" && r.status !== "failed");
+    if (!inFlight) return;
+    const t = setInterval(async () => {
+      const { data, error } = await supabase
+        .from("daves_idea_recordings")
+        .select(
+          `id, user_id, title, audio_blob_url, duration_sec, source, status,
+           assemblyai_id, transcript, utterances, error, created_at, updated_at,
+           action_items:daves_idea_action_items(
+             id, recording_id, text, routed_to, done, sort_order, created_at, updated_at
+           )`
+        )
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      if (error || !data) return;
+      const fresh = (data as unknown as DavesIdeaRecording[]).map(r => ({
+        ...r,
+        action_items: (r.action_items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
+      }));
+      setRecordings(fresh);
+    }, 3000);
+    return () => clearInterval(t);
+  }, [recordings, supabase]);
+
+  async function startRecording() {
+    setRecordError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = e => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      mr.onstop = () => {
+        const mimeType = mr.mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        streamRef.current?.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+        void uploadRecording(blob, mimeType, elapsedRef.current);
+      };
+      elapsedRef.current = 0;
+      setElapsed(0);
+      mr.start();
+      mediaRecorderRef.current = mr;
+      setIsRecording(true);
+    } catch (err) {
+      setRecordError(
+        err instanceof Error && err.name === "NotAllowedError"
+          ? "Microphone access denied. Allow mic permission in your browser settings."
+          : "Couldn't access the microphone."
+      );
+    }
   }
 
-  function stopFakeRecording() {
-    if (elapsed < 1) {
+  function stopRecording() {
+    const mr = mediaRecorderRef.current;
+    if (!mr) {
       setIsRecording(false);
       return;
     }
-    const id = `rec-${Date.now()}`;
-    const newRec: Recording = {
-      id,
-      title: "New recording — uploading…",
-      capturedAt: new Date().toISOString(),
-      durationSec: elapsed,
-      source: "Watch",
-      status: "Processing",
-      transcript: "",
-      actionItems: [],
-    };
-    setRecordings(r => [newRec, ...r]);
-    setSelectedId(id);
+    if (mr.state !== "inactive") mr.stop();
     setIsRecording(false);
-
-    // Simulate the backend transcription + extraction pipeline.
-    setTimeout(() => {
-      setRecordings(rs =>
-        rs.map(r =>
-          r.id === id
-            ? {
-                ...r,
-                title: "New recording — captured from Watch",
-                status: "Action items extracted",
-                transcript:
-                  "(Mock transcript) This is what your transcribed recording would look like a few seconds after you tap Stop on the watch. The backend would have pulled the audio over, transcribed it, and pulled candidate action items into the inbox below.",
-                actionItems: [
-                  { id: `${id}-a1`, text: "Example extracted action item one" },
-                  { id: `${id}-a2`, text: "Example extracted action item two" },
-                ],
-              }
-            : r
-        )
-      );
-    }, 2200);
   }
 
-  function toggleDone(recId: string, actionId: string) {
+  async function uploadRecording(blob: Blob, mimeType: string, durationSec: number) {
+    setUploading(true);
+    setRecordError(null);
+    try {
+      const ext = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+      const form = new FormData();
+      form.append("audio", blob, `recording.${ext}`);
+      form.append("duration_sec", String(durationSec));
+      form.append("source", "pwa");
+      form.append("mime_type", mimeType);
+      const res = await fetch("/api/daves-idea/upload", { method: "POST", body: form });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Upload failed (${res.status})`);
+      }
+      const { recording } = (await res.json()) as { recording: DavesIdeaRecording };
+      setRecordings(rs => [{ ...recording, action_items: recording.action_items ?? [] }, ...rs]);
+      setSelectedId(recording.id);
+    } catch (err) {
+      setRecordError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function toggleDone(recordingId: string, actionId: string) {
+    const rec = recordings.find(r => r.id === recordingId);
+    const action = rec?.action_items.find(a => a.id === actionId);
+    if (!action) return;
+    const next = !action.done;
     setRecordings(rs =>
       rs.map(r =>
-        r.id === recId
-          ? { ...r, actionItems: r.actionItems.map(a => (a.id === actionId ? { ...a, done: !a.done } : a)) }
+        r.id === recordingId
+          ? { ...r, action_items: r.action_items.map(a => (a.id === actionId ? { ...a, done: next } : a)) }
           : r
       )
     );
+    await supabase.from("daves_idea_action_items").update({ done: next }).eq("id", actionId);
   }
 
-  function routeAction(recId: string, actionId: string, target: string) {
+  async function routeAction(recordingId: string, actionId: string, target: string) {
     setRecordings(rs =>
       rs.map(r =>
-        r.id === recId
-          ? { ...r, actionItems: r.actionItems.map(a => (a.id === actionId ? { ...a, routedTo: target } : a)) }
+        r.id === recordingId
+          ? { ...r, action_items: r.action_items.map(a => (a.id === actionId ? { ...a, routed_to: target } : a)) }
           : r
       )
     );
+    await supabase.from("daves_idea_action_items").update({ routed_to: target }).eq("id", actionId);
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Pitch + watch concept */}
       <section
         className="rsd-card"
         style={{
@@ -254,25 +227,25 @@ export function DavesIdea() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="rsd-chip rsd-chip-warn" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
               <Icons.Sparkles width={11} height={11} />
-              Concept
+              MVP
             </span>
             <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-              Captured 2026-05-28
+              Add to iPhone home screen for one-tap capture
             </span>
           </div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "var(--gw-fg)", lineHeight: 1.25 }}>
-            One-tap capture from your wrist. Transcript &amp; action items waiting in your inbox.
+            One-tap capture. Transcript &amp; action items waiting in your inbox.
           </h1>
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 640 }}>
-            Apple Watch + iPhone app. Tap once to start recording mid-conversation — no fumbling for your phone.
-            Backend transcribes the audio, emails you a link, and extracts candidate action items into a unified
-            inbox. From there, route each item to wherever your workflow already lives: HubSpot, Reminders,
-            Notion, Slack, or a follow-up email.
+            Tap once to start recording mid-conversation. Audio uploads, AssemblyAI transcribes with speaker
+            labels, Claude pulls candidate action items into the inbox below. From there, route each item to
+            HubSpot, Reminders, Notion, Slack, or a follow-up email.
           </p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
             <button
-              onClick={startFakeRecording}
+              onClick={startRecording}
               className="gw-press"
+              disabled={isRecording || uploading}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -284,21 +257,23 @@ export function DavesIdea() {
                 border: "none",
                 fontSize: 13,
                 fontWeight: 700,
-                cursor: "pointer",
+                cursor: isRecording || uploading ? "not-allowed" : "pointer",
+                opacity: isRecording || uploading ? 0.6 : 1,
               }}
             >
               <Icons.Mic width={14} height={14} />
-              Start recording (demo)
+              {uploading ? "Uploading…" : "Start recording"}
             </button>
-            <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, alignSelf: "center" }}>
-              Mock-only · no audio is captured
-            </span>
+            {recordError && (
+              <span style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600, alignSelf: "center" }}>
+                {recordError}
+              </span>
+            )}
           </div>
         </div>
         <WatchMockup />
       </section>
 
-      {/* Two-column: recordings list + selected detail */}
       <section
         style={{
           display: "grid",
@@ -307,7 +282,6 @@ export function DavesIdea() {
           alignItems: "start",
         }}
       >
-        {/* Recordings list */}
         <div className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
           <div
             style={{
@@ -318,251 +292,182 @@ export function DavesIdea() {
               justifyContent: "space-between",
             }}
           >
-            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gw-fg)" }}>
-              Recordings
-            </div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gw-fg)" }}>Recordings</div>
             <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
               {recordings.length} captured
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {recordings.map(r => {
-              const active = r.id === selectedId;
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => setSelectedId(r.id)}
-                  className="gw-press"
-                  style={{
-                    textAlign: "left",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 6,
-                    padding: "12px 18px",
-                    background: active ? "var(--gw-bg-elev)" : "transparent",
-                    border: "none",
-                    borderBottom: "1px solid var(--gw-border)",
-                    borderLeft: `3px solid ${active ? "var(--rsd-accent)" : "transparent"}`,
-                    cursor: "pointer",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 13,
-                        color: "var(--gw-fg)",
-                        lineHeight: 1.35,
-                        flex: 1,
-                        minWidth: 0,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {r.title}
+          {recordings.length === 0 ? (
+            <div style={{ padding: 28, textAlign: "center", color: "var(--gw-fg-muted)", fontSize: 13, fontWeight: 500 }}>
+              No recordings yet.<br />
+              Tap <strong style={{ color: "var(--gw-fg)" }}>Start recording</strong> to capture your first.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {recordings.map(r => {
+                const active = r.id === selectedId;
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => setSelectedId(r.id)}
+                    className="gw-press"
+                    style={{
+                      textAlign: "left",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                      padding: "12px 18px",
+                      background: active ? "var(--gw-bg-elev)" : "transparent",
+                      border: "none",
+                      borderBottom: "1px solid var(--gw-border)",
+                      borderLeft: `3px solid ${active ? "var(--rsd-accent)" : "transparent"}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 13,
+                          color: "var(--gw-fg)",
+                          lineHeight: 1.35,
+                          flex: 1,
+                          minWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {recordingTitle(r)}
+                      </div>
+                      <span style={{ color: "var(--gw-fg-muted)", flexShrink: 0 }}>
+                        {r.source === "watch" ? <Icons.Watch width={12} height={12} /> : <Icons.Phone width={12} height={12} />}
+                      </span>
                     </div>
-                    <span style={{ color: "var(--gw-fg-muted)", flexShrink: 0 }}>
-                      {r.source === "Watch" ? <Icons.Watch width={12} height={12} /> : <Icons.Phone width={12} height={12} />}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-                      {formatWhen(r.capturedAt)} · {formatDuration(r.durationSec)}
-                    </span>
-                    <span className={`rsd-chip ${statusChipClass(r.status)}`} style={{ fontSize: 10 }}>
-                      {r.status}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+                        {formatWhen(r.created_at)} · {formatDuration(r.duration_sec)}
+                      </span>
+                      <span className={`rsd-chip ${statusChipClass(r.status)}`} style={{ fontSize: 10 }}>
+                        {STATUS_LABEL[r.status]}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Selected detail */}
-        <div className="rsd-card" style={{ gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <span className={`rsd-chip ${statusChipClass(selected.status)}`}>{selected.status}</span>
-                <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-                  {selected.source === "Watch" ? "Apple Watch" : "iPhone"} · {formatDuration(selected.durationSec)}
-                </span>
-              </div>
-              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--gw-fg)", lineHeight: 1.3 }}>
-                {selected.title}
-              </h2>
-              <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
-                {formatWhen(selected.capturedAt)}
-              </div>
-            </div>
-            <button
-              className="gw-press"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 14px",
-                borderRadius: 100,
-                background: "var(--gw-bg-elev)",
-                color: "var(--gw-fg)",
-                border: "1px solid var(--gw-border)",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              <Icons.Mail width={12} height={12} />
-              Resend email
-            </button>
+        {selected ? (
+          <SelectedDetail
+            recording={selected}
+            onToggleDone={actionId => toggleDone(selected.id, actionId)}
+            onRoute={(actionId, target) => routeAction(selected.id, actionId, target)}
+          />
+        ) : (
+          <div
+            className="rsd-card"
+            style={{
+              padding: 40,
+              textAlign: "center",
+              color: "var(--gw-fg-muted)",
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
+            Select a recording to see the transcript and extracted action items.
           </div>
-
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase", marginBottom: 8 }}>
-              Transcript
-            </div>
-            <div
-              style={{
-                padding: 14,
-                borderRadius: 10,
-                background: "var(--gw-bg-elev)",
-                border: "1px solid var(--gw-border)",
-                fontSize: 13,
-                lineHeight: 1.65,
-                color: "var(--gw-fg)",
-                whiteSpace: "pre-wrap",
-                maxHeight: 280,
-                overflow: "auto",
-              }}
-            >
-              {selected.transcript || (
-                <span style={{ color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
-                  Transcription in progress…
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase", marginBottom: 8 }}>
-              Extracted action items
-            </div>
-            {selected.actionItems.length === 0 ? (
-              <div
-                style={{
-                  padding: 14,
-                  borderRadius: 10,
-                  border: "1px dashed var(--gw-border)",
-                  fontSize: 12,
-                  color: "var(--gw-fg-muted)",
-                  fontWeight: 500,
-                  textAlign: "center",
-                }}
-              >
-                None extracted yet.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {selected.actionItems.map(a => (
-                  <ActionRow
-                    key={a.id}
-                    action={a}
-                    onToggle={() => toggleDone(selected.id, a.id)}
-                    onRoute={target => routeAction(selected.id, a.id, target)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </section>
 
-      {/* Aggregated inbox */}
       <section className="rsd-card" style={{ gap: 14 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--gw-fg)" }}>
-              Today&rsquo;s action inbox
-            </h2>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--gw-fg)" }}>Action inbox</h2>
             <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 2 }}>
               Pulled across every recording. Route, check off, or ignore.
             </div>
           </div>
           <span className="rsd-chip rsd-chip-accent">{inbox.length} open</span>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {inbox.map(a => (
-            <div
-              key={a.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid var(--gw-border)",
-                background: "var(--gw-bg)",
-              }}
-            >
-              <button
-                onClick={() => toggleDone(a.recordingId, a.id)}
-                aria-label="Mark done"
+        {inbox.length === 0 ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--gw-fg-muted)", fontSize: 13, fontWeight: 500 }}>
+            Nothing to action right now.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {inbox.map(a => (
+              <div
+                key={a.id}
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 5,
-                  border: "1.5px solid var(--gw-border)",
-                  background: "var(--gw-bg-elev)",
-                  cursor: "pointer",
-                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--gw-border)",
+                  background: "var(--gw-bg)",
                 }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, color: "var(--gw-fg)", fontWeight: 600, lineHeight: 1.35 }}>
-                  {a.text}
+              >
+                <button
+                  onClick={() => toggleDone(a.recording_id, a.id)}
+                  aria-label="Mark done"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 5,
+                    border: "1.5px solid var(--gw-border)",
+                    background: "var(--gw-bg-elev)",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: "var(--gw-fg)", fontWeight: 600, lineHeight: 1.35 }}>
+                    {a.text}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 2 }}>
+                    from{" "}
+                    <button
+                      onClick={() => setSelectedId(a.recording_id)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        color: "var(--rsd-accent)",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      {a.recordingTitle}
+                    </button>
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 2 }}>
-                  from{" "}
-                  <button
-                    onClick={() => setSelectedId(a.recordingId)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      color: "var(--rsd-accent)",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      textDecoration: "underline",
-                    }}
-                  >
-                    {a.recordingTitle}
-                  </button>
-                </div>
+                {a.routed_to ? (
+                  <span className="rsd-chip rsd-chip-warn" style={{ fontSize: 10 }}>
+                    → {a.routed_to}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 10, color: "var(--gw-fg-faint)", fontWeight: 600 }}>
+                    not routed
+                  </span>
+                )}
               </div>
-              {a.routedTo ? (
-                <span className="rsd-chip rsd-chip-warn" style={{ fontSize: 10 }}>
-                  → {a.routedTo}
-                </span>
-              ) : (
-                <span style={{ fontSize: 10, color: "var(--gw-fg-faint)", fontWeight: 600 }}>
-                  not routed
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* Integrations strip */}
       <section className="rsd-card" style={{ gap: 12 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--gw-fg)" }}>
             Connected destinations
           </h2>
           <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 2 }}>
-            Where action items can be sent. Each is a one-click route from any extracted item.
+            Where action items can be sent. Routing is mock-labeled for now — real OAuth integrations are next.
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
@@ -598,7 +503,7 @@ export function DavesIdea() {
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>{i.label}</div>
-                  <div style={{ fontSize: 10, color: "var(--gw-success)", fontWeight: 700 }}>Connected</div>
+                  <div style={{ fontSize: 10, color: "var(--gw-fg-muted)", fontWeight: 700 }}>Label only</div>
                 </div>
               </div>
             );
@@ -606,9 +511,116 @@ export function DavesIdea() {
         </div>
       </section>
 
-      {isRecording && (
-        <RecordingModal elapsed={elapsed} onStop={stopFakeRecording} />
-      )}
+      {isRecording && <RecordingModal elapsed={elapsed} onStop={stopRecording} />}
+    </div>
+  );
+}
+
+function SelectedDetail({
+  recording,
+  onToggleDone,
+  onRoute,
+}: {
+  recording: DavesIdeaRecording;
+  onToggleDone: (actionId: string) => void;
+  onRoute: (actionId: string, target: string) => void;
+}) {
+  const transcriptText = useMemo(() => {
+    if (recording.utterances && recording.utterances.length > 0) {
+      return recording.utterances.map(u => `${u.speaker}: ${u.text}`).join("\n\n");
+    }
+    return recording.transcript ?? "";
+  }, [recording.utterances, recording.transcript]);
+
+  const sourceLabel =
+    recording.source === "watch" ? "Apple Watch" : recording.source === "native" ? "iPhone" : "PWA";
+
+  return (
+    <div className="rsd-card" style={{ gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span className={`rsd-chip ${statusChipClass(recording.status)}`}>{STATUS_LABEL[recording.status]}</span>
+            <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+              {sourceLabel} · {formatDuration(recording.duration_sec)}
+            </span>
+          </div>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--gw-fg)", lineHeight: 1.3 }}>
+            {recordingTitle(recording)}
+          </h2>
+          <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
+            {formatWhen(recording.created_at)}
+          </div>
+          {recording.error && (
+            <div style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600, marginTop: 8 }}>
+              {recording.error}
+            </div>
+          )}
+        </div>
+        {recording.audio_blob_url && (
+          <audio controls src={recording.audio_blob_url} style={{ maxWidth: 280, height: 36 }} />
+        )}
+      </div>
+
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase", marginBottom: 8 }}>
+          Transcript
+        </div>
+        <div
+          style={{
+            padding: 14,
+            borderRadius: 10,
+            background: "var(--gw-bg-elev)",
+            border: "1px solid var(--gw-border)",
+            fontSize: 13,
+            lineHeight: 1.65,
+            color: "var(--gw-fg)",
+            whiteSpace: "pre-wrap",
+            maxHeight: 320,
+            overflow: "auto",
+          }}
+        >
+          {transcriptText ? (
+            transcriptText
+          ) : (
+            <span style={{ color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
+              {recording.status === "failed" ? "Transcription failed." : "Transcription in progress…"}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase", marginBottom: 8 }}>
+          Extracted action items
+        </div>
+        {recording.action_items.length === 0 ? (
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 10,
+              border: "1px dashed var(--gw-border)",
+              fontSize: 12,
+              color: "var(--gw-fg-muted)",
+              fontWeight: 500,
+              textAlign: "center",
+            }}
+          >
+            {recording.status === "ready" ? "No action items extracted." : "Pending — will appear once extraction completes."}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {recording.action_items.map(a => (
+              <ActionRow
+                key={a.id}
+                action={a}
+                onToggle={() => onToggleDone(a.id)}
+                onRoute={target => onRoute(a.id, target)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -618,7 +630,7 @@ function ActionRow({
   onToggle,
   onRoute,
 }: {
-  action: ActionItem;
+  action: DavesIdeaActionItem;
   onToggle: () => void;
   onRoute: (target: string) => void;
 }) {
@@ -668,9 +680,9 @@ function ActionRow({
       >
         {action.text}
       </div>
-      {action.routedTo && (
+      {action.routed_to && (
         <span className="rsd-chip rsd-chip-warn" style={{ fontSize: 10 }}>
-          → {action.routedTo}
+          → {action.routed_to}
         </span>
       )}
       <div style={{ position: "relative" }}>
@@ -756,7 +768,6 @@ function WatchMockup() {
         justifyContent: "center",
       }}
     >
-      {/* Strap top */}
       <div
         style={{
           position: "absolute",
@@ -767,7 +778,6 @@ function WatchMockup() {
           borderRadius: "10px 10px 4px 4px",
         }}
       />
-      {/* Strap bottom */}
       <div
         style={{
           position: "absolute",
@@ -778,7 +788,6 @@ function WatchMockup() {
           borderRadius: "4px 4px 10px 10px",
         }}
       />
-      {/* Crown */}
       <div
         style={{
           position: "absolute",
@@ -790,7 +799,6 @@ function WatchMockup() {
           borderRadius: 2,
         }}
       />
-      {/* Watch case */}
       <div
         style={{
           width: 110,
@@ -867,8 +875,6 @@ function RecordingModal({ elapsed, onStop }: { elapsed: number; onStop: () => vo
             alignItems: "center",
             justifyContent: "center",
             margin: "0 auto 16px",
-            boxShadow:
-              "0 0 0 0 rgba(229,62,62,0.5)",
             animation: "rec-pulse 1.4s ease-out infinite",
           }}
         >
