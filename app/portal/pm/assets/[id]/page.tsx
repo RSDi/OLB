@@ -4,6 +4,11 @@ import { Icons } from "../../../../components/icons";
 import { createClient } from "../../../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../../../lib/auth/permissions";
 import { AssetSuppliesPanel, type AssetSupplyLink } from "./SuppliesPanel";
+import { LinkedContacts } from "../../../contacts/_shared/LinkedContacts";
+import {
+  loadLinkedContactsForEntity,
+  loadContactPickerOptions,
+} from "../../../contacts/_shared/data";
 
 interface Asset {
   id: string;
@@ -96,6 +101,11 @@ export default async function AssetDetailPage({
   );
 
   const attributeEntries = Object.entries(asset.attributes ?? {});
+
+  // Vendors attached to this asset. The asset page is staff-only already
+  // (redirect at top), so we always load these.
+  const linkedContacts = await loadLinkedContactsForEntity("pm_asset", asset.id);
+  const contactPickerOptions = await loadContactPickerOptions();
 
   return (
     <>
@@ -312,6 +322,14 @@ export default async function AssetDetailPage({
             assetId={asset.id}
             links={supplyLinks}
             allSupplies={allSupplies}
+          />
+
+          <LinkedContacts
+            entityType="pm_asset"
+            entityId={asset.id}
+            links={linkedContacts}
+            allContacts={contactPickerOptions}
+            canEdit
           />
         </div>
       </div>

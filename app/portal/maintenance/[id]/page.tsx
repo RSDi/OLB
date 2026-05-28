@@ -14,6 +14,11 @@ import {
   DeleteButton,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
+import { LinkedContacts } from "../../contacts/_shared/LinkedContacts";
+import {
+  loadLinkedContactsForEntity,
+  loadContactPickerOptions,
+} from "../../contacts/_shared/data";
 
 interface Ticket {
   id: string;
@@ -104,6 +109,14 @@ export default async function TicketDetailPage({
       .order("full_name", { ascending: true });
     staffList = staffRows ?? [];
   }
+
+  // Vendors / external contacts attached to this ticket. Staff-only —
+  // RLS hides everything for non-staff, but skip the queries to save a
+  // round-trip when we know they won't show.
+  const linkedContacts = staff
+    ? await loadLinkedContactsForEntity("maintenance_ticket", ticket.id)
+    : [];
+  const contactPickerOptions = staff ? await loadContactPickerOptions() : [];
 
   const canComment = staff || ticket.submitted_by === user.id;
 
@@ -241,6 +254,16 @@ export default async function TicketDetailPage({
               />
               {superAdmin && <DeleteButton ticketId={ticket.id} />}
             </div>
+          )}
+
+          {staff && (
+            <LinkedContacts
+              entityType="maintenance_ticket"
+              entityId={ticket.id}
+              links={linkedContacts}
+              allContacts={contactPickerOptions}
+              canEdit={staff}
+            />
           )}
         </div>
       </div>

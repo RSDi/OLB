@@ -22,6 +22,7 @@ interface EntityMeta {
 
 export const ENTITY_META: Record<EntityType, EntityMeta> = {
   member:      { groupLabel: "Members",       icon: Icons.Users },
+  contact:     { groupLabel: "Contacts",      icon: Icons.Briefcase },
   maintenance: { groupLabel: "Maintenance",   icon: Icons.Wrench },
   pm_task:     { groupLabel: "PM tasks",      icon: Icons.Clock },
   pm_template: { groupLabel: "PM templates",  icon: Icons.Clock },
