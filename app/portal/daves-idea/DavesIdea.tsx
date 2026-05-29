@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
+import { softDeleteDavesIdeaRecording } from "../../../lib/daves-idea/actions";
 import type {
   DavesIdeaActionItem,
   DavesIdeaRecording,
@@ -246,22 +247,20 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
 
   async function deleteRecording(recordingId: string) {
     if (!confirm("Delete this recording? You can restore it from Settings → Deleted.")) return;
-    // Optimistic remove from the list. If something goes wrong, we surface
-    // it via setRecordError and the polling pass will resync on next tick.
+    // Optimistic remove. The server action below uses the admin client with
+    // explicit ownership check so we bypass any RLS quirks the cookie-authed
+    // client might trip over. If it errors, we roll the UI back.
     const previous = recordings;
     setRecordings(rs => rs.filter(r => r.id !== recordingId));
     if (selectedId === recordingId) {
       const remaining = previous.filter(r => r.id !== recordingId);
       setSelectedId(remaining[0]?.id ?? null);
     }
-    const { error } = await supabase
-      .from("daves_idea_recordings")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", recordingId);
-    if (error) {
+    const result = await softDeleteDavesIdeaRecording(recordingId);
+    if (result.error) {
       setRecordings(previous);
       setSelectedId(recordingId);
-      setRecordError(`Delete failed: ${error.message}`);
+      setRecordError(`Delete failed: ${result.error}`);
     }
   }
 
