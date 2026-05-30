@@ -3,12 +3,13 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
-import { Input, Pill } from "../../../components/ui";
+import { Input, Pill, Textarea } from "../../../components/ui";
 import {
   updateOwnProfile,
   addMemberRelationship,
   removeMemberRelationship,
   softDeleteMember,
+  updateMemberNotes,
   type RelationshipKind,
 } from "../../../../lib/auth/member-actions";
 import { createClient } from "../../../../lib/supabase/client";
@@ -67,6 +68,8 @@ export function MemberDetail({
   allRelationships,
   isSelf,
   isSuperAdmin,
+  isStaff,
+  notes,
 }: {
   member: DetailMember;
   relationships: Related[];
@@ -76,6 +79,8 @@ export function MemberDetail({
   allRelationships: EditFormRelationship[];
   isSelf: boolean;
   isSuperAdmin: boolean;
+  isStaff: boolean;
+  notes: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [adminEditing, setAdminEditing] = useState(false);
@@ -261,9 +266,93 @@ export function MemberDetail({
               )}
             </div>
           )}
+
+          {isStaff && <NotesPanel memberId={member.id} initialNotes={notes} />}
         </>
       )}
     </>
+  );
+}
+
+function NotesPanel({ memberId, initialNotes }: { memberId: string; initialNotes: string }) {
+  const [value, setValue] = useState(initialNotes);
+  const [saved, setSaved] = useState(initialNotes);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const dirty = value !== saved;
+
+  function handleSave() {
+    setError(null);
+    startTransition(async () => {
+      const result = await updateMemberNotes(memberId, value);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setSaved(value);
+    });
+  }
+
+  return (
+    <div className="rsd-card" style={{ padding: "16px 20px", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "var(--gw-fg-muted)",
+            textTransform: "uppercase",
+            letterSpacing: ".04em",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <Icons.Pencil width={12} height={12} />
+          Staff notes
+        </span>
+        <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+          Private — visible to staff only
+        </span>
+      </div>
+
+      <Textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Pastoral notes, follow-ups, context… (not shown to the member)"
+        rows={4}
+        disabled={pending}
+      />
+
+      {error && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "var(--gw-error-bg)",
+            border: "1px solid rgba(229,62,62,.25)",
+            borderRadius: 10,
+            padding: "10px 14px",
+            fontSize: 12,
+            color: "var(--gw-error)",
+            fontWeight: 600,
+          }}
+        >
+          <Icons.AlertCircle width={14} height={14} />
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+        {!dirty && saved && !pending && (
+          <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>Saved</span>
+        )}
+        <Pill variant="accent" size="sm" onClick={handleSave} disabled={pending || !dirty}>
+          {pending ? "Saving…" : "Save notes"}
+        </Pill>
+      </div>
+    </div>
   );
 }
 

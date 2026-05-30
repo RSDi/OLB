@@ -209,3 +209,30 @@ export async function hardDeleteMember(id: string): Promise<MemberActionResult> 
   revalidatePath("/portal/settings");
   return { success: true };
 }
+
+// Staff-only private notes about a member (members_notes is 1:1 per member,
+// RLS-gated to staff). Upsert on the member_id primary key.
+export async function updateMemberNotes(
+  memberId: string,
+  notes: string
+): Promise<MemberActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in." };
+
+  const { error } = await supabase.from("members_notes").upsert(
+    {
+      member_id: memberId,
+      notes,
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "member_id" }
+  );
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/directory/${memberId}`);
+  return { success: true };
+}

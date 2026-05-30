@@ -198,6 +198,10 @@ main::-webkit-scrollbar-track { background: transparent; }
 .rsd-tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
 .rsd-tbl .strong { font-weight: 700; }
 
+/* Dashboard list rows — lighten on hover, matching the maintenance list. */
+.rsd-dash-row { transition: background-color 120ms ease; border-radius: 8px; }
+.rsd-dash-row:hover { background: var(--gw-bg); }
+
 /* Chip */
 .rsd-chip {
   display: inline-flex; align-items: center; gap: 6px;

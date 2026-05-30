@@ -59,14 +59,18 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
   }
 
   // Fire-and-forget email so a Resend hiccup doesn't fail the user's submit.
-  sendNewTicketNotification({
+  const notifyPayload = {
     ticketId: inserted.id,
+    areaId,
     submitterEmail: member?.email ?? user.email ?? null,
     submitterName: member?.full_name ?? null,
     areaName: area.name,
     priorityLabel: priority.label,
     description: trimmedDescription,
-  }).catch((err) => console.error("[notify] new-ticket failed:", err));
+  };
+  sendNewTicketNotification(notifyPayload).catch((err) =>
+    console.error("[notify] new-ticket email failed:", err),
+  );
 
   revalidatePath("/portal/maintenance");
 

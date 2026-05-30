@@ -10,9 +10,11 @@ import { AssetsTab } from "./AssetsTab";
 import { TypesTab } from "./TypesTab";
 import { SuppliesTab } from "./SuppliesTab";
 import { AssignmentsTab } from "./AssignmentsTab";
+import { VolunteerTeamsTab } from "./VolunteerTeamsTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
 import { PlaybooksTab } from "./PlaybooksTab";
 import { ContactCategoriesTab } from "./ContactCategoriesTab";
+import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
 
 type Tab =
@@ -23,9 +25,11 @@ type Tab =
   | "types"
   | "supplies"
   | "assignments"
+  | "volunteer_teams"
   | "event_categories"
   | "playbooks"
   | "contact_categories"
+  | "audit_log"
   | "deleted";
 
 export default function SettingsPage() {
@@ -90,9 +94,11 @@ export default function SettingsPage() {
     { key: "types", label: "Types", visible: true },
     { key: "supplies", label: "Supplies", visible: true },
     { key: "assignments", label: "Assignments", visible: true },
+    { key: "volunteer_teams", label: "Volunteer Teams", visible: true },
     { key: "event_categories", label: "Event Categories", visible: true },
     { key: "playbooks", label: "Playbooks", visible: true },
     { key: "contact_categories", label: "Contact Categories", visible: true },
+    { key: "audit_log", label: "Audit Log", visible: true },
     { key: "deleted", label: "Deleted", visible: showDeleted },
   ];
 
@@ -131,9 +137,11 @@ export default function SettingsPage() {
       {tab === "types" && <TypesTab />}
       {tab === "supplies" && <SuppliesTab me={me} />}
       {tab === "assignments" && <AssignmentsTab />}
+      {tab === "volunteer_teams" && <VolunteerTeamsTab />}
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}
       {tab === "contact_categories" && <ContactCategoriesTab me={me} />}
+      {tab === "audit_log" && <AuditLogTab />}
       {tab === "deleted" && showDeleted && <DeletedTab />}
     </>
   );

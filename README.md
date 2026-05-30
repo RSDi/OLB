@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Millard Community Church — Member Portal
 
-## Getting Started
+Internal portal for Millard Community Church: member directory, facilities &
+maintenance ticketing, preventive maintenance (PM), events, supplies,
+playbooks/docs, volunteer teams, and global search.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router) · React 19 · Supabase (Postgres + Auth + RLS)
+· Tailwind CSS 4 · deployed on Vercel.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+> ⚠️ This repo pins a customized build of Next.js. APIs and conventions may
+> differ from upstream — read the relevant guide in `node_modules/next/dist/docs/`
+> before writing framework code (see `AGENTS.md`).
+
+## Getting started
+
+1. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment**
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Fill in the values — see `.env.example` for what each variable is for. At a
+   minimum you need the three Supabase keys. Email (Resend) is optional; the app
+   degrades gracefully and skips sending if `RESEND_API_KEY` is unset.
+
+3. **Set up the database**
+
+   Apply the migrations in `supabase/migrations/` (numeric order) to your
+   Supabase project — via the Supabase SQL editor or the CLI:
+
+   ```bash
+   supabase db push
+   ```
+
+   Migrations are idempotent and define every table plus its row-level security
+   (RLS) policies.
+
+4. **Bootstrap the first admin**
+
+   Set `ADMIN_EMAILS` to your address before signing up; the first matching
+   account is promoted to super-admin so you can approve other members.
+
+5. **(Optional) Import an existing directory**
+
+   ```bash
+   npm run import-directory -- path/to/directory.xlsx --dry-run
+   ```
+
+   Reads members + relationships from an Excel workbook. Drop `--dry-run` to
+   write. Requires `.env.local` with the service-role key.
+
+6. **Run the dev server**
+
+   ```bash
+   npm run dev
+   ```
+
+   Open http://localhost:3000.
+
+## Scripts
+
+| Script | Purpose |
+| --- | --- |
+| `npm run dev` | Start the dev server |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build |
+| `npm run type-check` | `tsc --noEmit` |
+| `npm run lint` | ESLint |
+| `npm run import-directory` | One-shot Excel directory importer |
+
+## Project layout
+
+```
+app/                  Routes (App Router)
+  (site)/             Public marketing pages
+  portal/             Authenticated member portal
+    directory/        Members, households, birthdays, volunteer-team filter, …
+    maintenance/      Maintenance request tickets + comments
+    pm/               Preventive maintenance: templates, instances, calendar, assets
+    events/  supplies/  docs/   Events, supplies inventory, playbooks
+    settings/         Admin tabs (areas, priorities, assignments, volunteer teams, …)
+  api/cron/           Vercel cron (daily PM generation)
+lib/                  Server actions, Supabase clients, auth, notifications, search
+supabase/migrations/  Schema + RLS, applied in numeric order
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deployment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Hosted on Vercel via the GitHub integration — pushes to `main` deploy to
+production; PRs get preview deployments. Set the environment variables from
+`.env.example` in the Vercel project settings, and set the same `CRON_SECRET`
+there so the scheduled PM-generation job (`vercel.json` → `/api/cron/pm-generate`)
+is authenticated. Remember to apply new `supabase/migrations/` to the production
+database before (or together with) a deploy that depends on them.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## CI
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`.github/workflows/ci.yml` runs type-check and a production build on every PR
+and push to `main`. Lint runs informationally (the existing codebase has
+pre-existing eslint findings); tighten it to a hard gate once that baseline is
+cleaned up.
