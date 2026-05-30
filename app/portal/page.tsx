@@ -342,11 +342,13 @@ export default async function PortalDashboard() {
                   <Link
                     key={r.id}
                     href={`/portal/maintenance/${r.id}`}
+                    className="rsd-dash-row"
                     style={{
                       display: "flex",
                       alignItems: "flex-start",
                       gap: 12,
-                      padding: "12px 0",
+                      padding: "12px 10px",
+                      margin: "0 -10px",
                       borderBottom: i < recent.length - 1 ? "1px solid var(--gw-border)" : "none",
                       textDecoration: "none",
                       color: "inherit",
@@ -447,11 +449,13 @@ export default async function PortalDashboard() {
               <Link
                 key={e.id}
                 href={`/portal/events`}
+                className="rsd-dash-row"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
-                  padding: "12px 0",
+                  padding: "12px 10px",
+                  margin: "0 -10px",
                   borderBottom: i < upcomingEvents.length - 1 ? "1px solid var(--gw-border)" : "none",
                   textDecoration: "none",
                   color: "inherit",
@@ -520,11 +524,13 @@ export default async function PortalDashboard() {
                     <Link
                       key={t.id}
                       href={`/portal/pm/${t.id}`}
+                      className="rsd-dash-row"
                       style={{
                         display: "flex",
                         alignItems: "center",
                         gap: 12,
-                        padding: "12px 0",
+                        padding: "12px 10px",
+                        margin: "0 -10px",
                         borderBottom: i < duePmTasks.length - 1 ? "1px solid var(--gw-border)" : "none",
                         textDecoration: "none",
                         color: "inherit",
