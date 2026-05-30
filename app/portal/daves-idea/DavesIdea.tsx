@@ -11,12 +11,58 @@ import type {
 } from "../../../lib/daves-idea/data";
 
 const INTEGRATIONS = [
+  { id: "things", label: "Things", icon: "CheckCircle" as const },
   { id: "email", label: "Email follow-up", icon: "Mail" as const },
   { id: "hubspot", label: "HubSpot Task", icon: "Briefcase" as const },
-  { id: "reminders", label: "Apple Reminders", icon: "CheckCircle" as const },
+  { id: "reminders", label: "Apple Reminders", icon: "Clock" as const },
   { id: "notion", label: "Notion Page", icon: "FileText" as const },
   { id: "slack", label: "Slack #leadership", icon: "Bell" as const },
 ];
+
+// One-tap export to Things (culturedcode.com) via its URL scheme:
+// https://culturedcode.com/things/support/articles/2803573/
+//
+// The `add` command takes no auth token. We set the action text as the to-do
+// title and put a source line + a link back to this portal in the notes. No
+// `when` is sent, so the to-do lands in the Things Inbox to triage — the
+// GTD-friendly default. Only does anything on an Apple device with Things
+// installed; elsewhere the scheme is a silent no-op. We still set routed_to
+// either way so the inbox reflects the intent.
+//
+// Per the spec, values are percent-encoded (spaces → %20). We build the query
+// by hand rather than via URLSearchParams, which emits `+` for spaces — the
+// scheme parser expects %20, not `+`.
+function thingsNotes(recordingTitle: string | null): string {
+  const source = recordingTitle
+    ? `From "${recordingTitle}" · captured in Dave's Idea`
+    : "Captured in Dave's Idea";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return origin ? `${source}\n${origin}/portal/daves-idea` : source;
+}
+
+// Single to-do.
+function openInThings(title: string, recordingTitle: string | null) {
+  const url =
+    "things:///add?title=" +
+    encodeURIComponent(title) +
+    "&notes=" +
+    encodeURIComponent(thingsNotes(recordingTitle));
+  window.location.href = url;
+}
+
+// Multiple to-dos in one handoff via the `titles` parameter — newline-separated,
+// each newline encoded as %0a. All share the same notes (one source recording).
+// No auth token needed for adds.
+function openAllInThings(titles: string[], recordingTitle: string | null) {
+  if (titles.length === 0) return;
+  const titlesParam = titles.map(encodeURIComponent).join("%0a");
+  const url =
+    "things:///add?titles=" +
+    titlesParam +
+    "&notes=" +
+    encodeURIComponent(thingsNotes(recordingTitle));
+  window.location.href = url;
+}
 
 const STATUS_LABEL: Record<RecordingStatus, string> = {
   uploading: "Uploading…",
@@ -327,8 +373,8 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
           </h1>
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 640 }}>
             Tap once to start recording mid-conversation. Audio uploads, AssemblyAI transcribes with speaker
-            labels, Claude pulls candidate action items into the inbox below. From there, route each item to
-            HubSpot, Reminders, Notion, Slack, or a follow-up email.
+            labels, Claude pulls candidate action items into the inbox below. From there, send each item to
+            Things, or route it to Reminders, Notion, Slack, HubSpot, or a follow-up email.
           </p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
             <button
@@ -574,7 +620,8 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
             Connected destinations
           </h2>
           <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 2 }}>
-            Where action items can be sent. Routing is mock-labeled for now — real OAuth integrations are next.
+            Where action items can be sent. Things opens the app via its URL scheme and creates the
+            to-do; the rest are mock labels for now.
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
@@ -610,7 +657,15 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>{i.label}</div>
-                  <div style={{ fontSize: 10, color: "var(--gw-fg-muted)", fontWeight: 700 }}>Label only</div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: i.id === "things" ? "var(--rsd-accent)" : "var(--gw-fg-muted)",
+                    }}
+                  >
+                    {i.id === "things" ? "One-tap export" : "Label only"}
+                  </div>
                 </div>
               </div>
             );
@@ -649,6 +704,12 @@ function SelectedDetail({
 
   const sourceLabel =
     recording.source === "watch" ? "Apple Watch" : recording.source === "native" ? "iPhone" : "PWA";
+
+  // Items eligible for a batch send to Things: open (not done) and not already
+  // sent. Drives the "Send all" button and keeps re-clicks from duplicating.
+  const sendableToThings = recording.action_items.filter(
+    a => !a.done && a.routed_to !== "Things"
+  );
 
   // Re-extract only makes sense once a transcript exists. Hide while the
   // pipeline is still moving so the button doesn't fight the polling state.
@@ -810,8 +871,44 @@ function SelectedDetail({
       </div>
 
       <div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase", marginBottom: 8 }}>
-          Extracted action items
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            marginBottom: 8,
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase" }}>
+            Extracted action items
+          </div>
+          {sendableToThings.length > 0 && (
+            <button
+              onClick={() => {
+                openAllInThings(sendableToThings.map(a => a.text), recording.title);
+                sendableToThings.forEach(a => onRoute(a.id, "Things"));
+              }}
+              className="gw-press"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "5px 10px",
+                borderRadius: 100,
+                background: "var(--gw-bg-elev)",
+                color: "var(--gw-fg)",
+                border: "1px solid var(--gw-border)",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              <Icons.CheckCircle width={11} height={11} />
+              Send all to Things ({sendableToThings.length})
+            </button>
+          )}
         </div>
         {recording.action_items.length === 0 ? (
           <div
@@ -833,6 +930,7 @@ function SelectedDetail({
               <ActionRow
                 key={a.id}
                 action={a}
+                recordingTitle={recording.title}
                 onToggle={() => onToggleDone(a.id)}
                 onRoute={target => onRoute(a.id, target)}
               />
@@ -846,10 +944,12 @@ function SelectedDetail({
 
 function ActionRow({
   action,
+  recordingTitle,
   onToggle,
   onRoute,
 }: {
   action: DavesIdeaActionItem;
+  recordingTitle: string | null;
   onToggle: () => void;
   onRoute: (target: string) => void;
 }) {
@@ -943,6 +1043,7 @@ function ActionRow({
               <button
                 key={i.id}
                 onClick={() => {
+                  if (i.id === "things") openInThings(action.text, recordingTitle);
                   onRoute(i.label);
                   setOpen(false);
                 }}
