@@ -139,9 +139,23 @@ export default async function MemberDetailPage({
     relationship: "spouse" | "parent" | "child";
   }[];
 
+  // Staff-only private notes (RLS returns nothing for non-staff viewers).
+  const viewerIsStaff = isStaff(me);
+  let notes = "";
+  if (viewerIsStaff) {
+    const { data: notesRow } = await supabase
+      .from("members_notes")
+      .select("notes")
+      .eq("member_id", id)
+      .maybeSingle();
+    notes = (notesRow as { notes: string } | null)?.notes ?? "";
+  }
+
   return (
     <MemberDetail
       member={member}
+      isStaff={viewerIsStaff}
+      notes={notes}
       relationships={visibleRels.map((r) => ({
         relatedId: r.related_member_id,
         relatedName: nameById.get(r.related_member_id) ?? "Unknown",
