@@ -13,6 +13,7 @@ import { AssignmentsTab } from "./AssignmentsTab";
 import { VolunteerTeamsTab } from "./VolunteerTeamsTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
 import { PlaybooksTab } from "./PlaybooksTab";
+import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
 
 type Tab =
@@ -26,6 +27,7 @@ type Tab =
   | "volunteer_teams"
   | "event_categories"
   | "playbooks"
+  | "audit_log"
   | "deleted";
 
 export default function SettingsPage() {
@@ -93,6 +95,7 @@ export default function SettingsPage() {
     { key: "volunteer_teams", label: "Volunteer Teams", visible: true },
     { key: "event_categories", label: "Event Categories", visible: true },
     { key: "playbooks", label: "Playbooks", visible: true },
+    { key: "audit_log", label: "Audit Log", visible: true },
     { key: "deleted", label: "Deleted", visible: showDeleted },
   ];
 
@@ -134,6 +137,7 @@ export default function SettingsPage() {
       {tab === "volunteer_teams" && <VolunteerTeamsTab />}
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}
+      {tab === "audit_log" && <AuditLogTab />}
       {tab === "deleted" && showDeleted && <DeletedTab />}
     </>
   );

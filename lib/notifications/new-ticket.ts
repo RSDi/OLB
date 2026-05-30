@@ -1,6 +1,7 @@
-// Server-only. Sends an email to super-admins when a new maintenance ticket
-// is submitted. Mirrors access-request.ts in shape and graceful-degradation
-// behavior (no-ops if RESEND_API_KEY is missing).
+// Server-only. Emails super-admins plus the owners/helpers assigned to the
+// ticket's area when a new maintenance ticket is submitted. Mirrors
+// access-request.ts in shape and graceful-degradation behavior (no-ops if
+// RESEND_API_KEY is missing).
 
 import { createAdminClient } from "../supabase/admin";
 
@@ -8,6 +9,7 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export async function sendNewTicketNotification({
   ticketId,
+  areaId,
   submitterEmail,
   submitterName,
   areaName,
@@ -15,6 +17,7 @@ export async function sendNewTicketNotification({
   description,
 }: {
   ticketId: string;
+  areaId: string | null;
   submitterEmail: string | null;
   submitterName: string | null;
   areaName: string | null;
@@ -34,20 +37,39 @@ export async function sendNewTicketNotification({
   }
   const from = process.env.MAIL_FROM ?? "MCC Portal <onboarding@resend.dev>";
 
-  // Super-admins only per the Phase 1 permission matrix.
   const admin = createAdminClient();
+
+  // Super-admins always get a copy.
   const { data: recipients } = await admin
     .from("members")
     .select("email")
     .eq("role", "super_admin")
     .eq("status", "approved");
-
   const dbEmails = (recipients ?? []).map((r) => r.email).filter(Boolean);
+
+  // Route to the owners/helpers assigned to this ticket's area, so the people
+  // actually responsible for the area hear about it (not just super-admins).
+  let areaEmails: (string | null)[] = [];
+  if (areaId) {
+    const { data: areaMembers } = await admin
+      .from("area_members")
+      .select("members(email, status)")
+      .eq("area_id", areaId);
+    areaEmails = ((areaMembers as unknown as { members: { email: string | null; status: string } | null }[]) ?? [])
+      .map((am) => am.members)
+      .filter((m): m is { email: string | null; status: string } => !!m && m.status === "approved")
+      .map((m) => m.email);
+  }
+
   const envEmails = (process.env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const to = Array.from(new Set([...dbEmails, ...envEmails].map((e) => e.toLowerCase())));
+  const to = Array.from(
+    new Set(
+      [...dbEmails, ...areaEmails, ...envEmails].filter(Boolean).map((e) => e!.toLowerCase())
+    )
+  );
 
   if (to.length === 0) {
     console.warn("[notify] No super-admin recipients found for new ticket");

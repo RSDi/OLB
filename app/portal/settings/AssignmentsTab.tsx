@@ -138,8 +138,8 @@ export function AssignmentsTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 540 }}>
         Assign approved members as <strong>owners</strong> (1–2 per area, primary contacts) or{" "}
-        <strong>helpers</strong> (everyone else who can pitch in). Email notifications routed by
-        these assignments land in a future phase — for now this just records who's responsible.
+        <strong>helpers</strong> (everyone else who can pitch in). When a maintenance request is
+        submitted for an area, its owners and helpers are emailed alongside the super-admins.
       </div>
 
       {error && (

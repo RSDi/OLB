@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Type-check & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Build
+        run: npm run build
+        env:
+          # Build-time placeholders so the Supabase client can initialize.
+          # Real values come from Vercel's project env at deploy time.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+
+      # Informational only for now: the existing codebase has pre-existing
+      # eslint findings (mostly react-hooks/set-state-in-effect across the
+      # settings tabs). Surfaced here without failing the build so new work
+      # stays unblocked; tighten to a hard gate once the baseline is cleaned.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
