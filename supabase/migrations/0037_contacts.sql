@@ -1,4 +1,4 @@
--- 0036_contacts.sql
+-- 0037_contacts.sql
 --
 -- Vendors / external contacts directory. Lives parallel to `members`
 -- (which is the church member directory). Where members are people in the

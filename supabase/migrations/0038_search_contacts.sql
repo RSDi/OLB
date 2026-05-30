@@ -1,4 +1,4 @@
--- 0037_search_contacts.sql
+-- 0038_search_contacts.sql
 --
 -- Extends the global search RPC (0033) to include the new `contacts` table.
 -- A contact hit looks like a member hit in the UI — title is the contact's

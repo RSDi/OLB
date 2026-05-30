@@ -1,4 +1,4 @@
--- 0038_daves_idea.sql
+-- 0039_daves_idea.sql
 --
 -- Dave's Idea: one-tap audio capture → transcription → action items.
 --

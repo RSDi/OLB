@@ -1,4 +1,4 @@
--- 0039_daves_idea_soft_delete.sql
+-- 0040_daves_idea_soft_delete.sql
 --
 -- Relaxes RLS on daves_idea_recordings so the owner can see + update their
 -- soft-deleted rows (needed for the "Settings → Deleted" restore flow), and
