@@ -291,6 +291,18 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
     await supabase.from("daves_idea_action_items").update({ routed_to: target }).eq("id", actionId);
   }
 
+  async function editActionText(recordingId: string, actionId: string, text: string) {
+    setRecordings(rs =>
+      rs.map(r =>
+        r.id === recordingId
+          ? { ...r, action_items: r.action_items.map(a => (a.id === actionId ? { ...a, text } : a)) }
+          : r
+      )
+    );
+    // RLS lets owners update their own action items (same path toggle/route use).
+    await supabase.from("daves_idea_action_items").update({ text }).eq("id", actionId);
+  }
+
   async function deleteRecording(recordingId: string) {
     if (!confirm("Delete this recording? You can restore it from Settings → Deleted.")) return;
     // Optimistic remove. The server action below uses the admin client with
@@ -515,6 +527,7 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
             isMobile={isMobile}
             onToggleDone={actionId => toggleDone(selected.id, actionId)}
             onRoute={(actionId, target) => routeAction(selected.id, actionId, target)}
+            onEditAction={(actionId, text) => editActionText(selected.id, actionId, text)}
             onReextract={() => reextractRecording(selected.id)}
             onDelete={() => deleteRecording(selected.id)}
           />
@@ -683,6 +696,7 @@ function SelectedDetail({
   isMobile,
   onToggleDone,
   onRoute,
+  onEditAction,
   onReextract,
   onDelete,
 }: {
@@ -690,6 +704,7 @@ function SelectedDetail({
   isMobile: boolean;
   onToggleDone: (actionId: string) => void;
   onRoute: (actionId: string, target: string) => void;
+  onEditAction: (actionId: string, text: string) => void;
   onReextract: () => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
@@ -933,6 +948,7 @@ function SelectedDetail({
                 recordingTitle={recording.title}
                 onToggle={() => onToggleDone(a.id)}
                 onRoute={target => onRoute(a.id, target)}
+                onEdit={text => onEditAction(a.id, text)}
               />
             ))}
           </div>
@@ -947,13 +963,34 @@ function ActionRow({
   recordingTitle,
   onToggle,
   onRoute,
+  onEdit,
 }: {
   action: DavesIdeaActionItem;
   recordingTitle: string | null;
   onToggle: () => void;
   onRoute: (target: string) => void;
+  onEdit: (text: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(action.text);
+
+  function startEdit() {
+    setOpen(false);
+    setDraft(action.text);
+    setEditing(true);
+  }
+  function commitEdit() {
+    const trimmed = draft.trim();
+    // Persist only a real change; an empty edit is ignored.
+    if (trimmed && trimmed !== action.text) onEdit(trimmed);
+    setEditing(false);
+  }
+  function cancelEdit() {
+    setDraft(action.text);
+    setEditing(false);
+  }
+
   return (
     <div
       style={{
@@ -964,10 +1001,75 @@ function ActionRow({
         borderRadius: 10,
         border: "1px solid var(--gw-border)",
         background: action.done ? "var(--gw-bg-elev)" : "var(--gw-bg)",
-        opacity: action.done ? 0.55 : 1,
+        opacity: editing ? 1 : action.done ? 0.55 : 1,
         position: "relative",
       }}
     >
+      {editing ? (
+        <>
+          <input
+            autoFocus
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitEdit();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                cancelEdit();
+              }
+            }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--gw-fg)",
+              background: "var(--gw-bg-elev)",
+              border: "1px solid var(--rsd-accent)",
+              borderRadius: 8,
+              padding: "6px 10px",
+              outline: "none",
+            }}
+          />
+          <button
+            onClick={commitEdit}
+            className="gw-press"
+            style={{
+              padding: "5px 12px",
+              borderRadius: 100,
+              background: "var(--rsd-accent)",
+              color: "#fff",
+              border: "none",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            Save
+          </button>
+          <button
+            onClick={cancelEdit}
+            className="gw-press"
+            style={{
+              padding: "5px 10px",
+              borderRadius: 100,
+              background: "var(--gw-bg-elev)",
+              color: "var(--gw-fg)",
+              border: "1px solid var(--gw-border)",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            Cancel
+          </button>
+        </>
+      ) : (
+        <>
       <button
         onClick={onToggle}
         aria-label="Mark done"
@@ -1004,6 +1106,27 @@ function ActionRow({
           → {action.routed_to}
         </span>
       )}
+      <button
+        onClick={startEdit}
+        aria-label="Edit task"
+        title="Edit task"
+        className="gw-press"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 28,
+          height: 28,
+          borderRadius: 100,
+          background: "var(--gw-bg-elev)",
+          color: "var(--gw-fg-muted)",
+          border: "1px solid var(--gw-border)",
+          cursor: "pointer",
+          flexShrink: 0,
+        }}
+      >
+        <Icons.Pencil width={12} height={12} />
+      </button>
       <div style={{ position: "relative" }}>
         <button
           onClick={() => setOpen(o => !o)}
@@ -1070,6 +1193,8 @@ function ActionRow({
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }
