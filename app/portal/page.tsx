@@ -406,7 +406,7 @@ export default async function PortalDashboard() {
           )}
         </div>
 
-        {/* Upcoming events (placeholder until events feature lands) */}
+        {/* Upcoming events */}
         <div className="rsd-card" style={{ gap: 0 }}>
           <div
             style={{
