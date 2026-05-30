@@ -79,3 +79,30 @@ export async function loadRelationships(): Promise<DirectoryRelationship[]> {
     .select("member_id, related_member_id, relationship");
   return (data as DirectoryRelationship[] | null) ?? [];
 }
+
+export interface VolunteerTeam {
+  id: string;
+  name: string;
+}
+
+export async function loadVolunteerTeams(): Promise<VolunteerTeam[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("volunteer_teams")
+    .select("id, name")
+    .order("name", { ascending: true });
+  return (data as VolunteerTeam[] | null) ?? [];
+}
+
+// member_id -> [team_id, ...] for filtering the directory by volunteer team.
+export async function loadMemberTeamMap(): Promise<Record<string, string[]>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("member_volunteer_teams")
+    .select("member_id, team_id");
+  const map: Record<string, string[]> = {};
+  for (const row of (data as { member_id: string; team_id: string }[] | null) ?? []) {
+    (map[row.member_id] ??= []).push(row.team_id);
+  }
+  return map;
+}

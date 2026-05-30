@@ -4,21 +4,26 @@ import Link from "next/link";
 import { Icons } from "../../../components/icons";
 import { Avatar } from "../_shared/Avatar";
 import { displayName, lastNameLower } from "../_shared/format";
-import type { DirectoryMember } from "../_shared/data";
+import type { DirectoryMember, VolunteerTeam } from "../_shared/data";
 
 type CategoryFilter = "all" | "regular" | "extended";
 
 export function AllMembersList({
   members,
+  teams = [],
+  memberTeams = {},
   currentMemberId,
 }: {
   members: DirectoryMember[];
+  teams?: VolunteerTeam[];
+  memberTeams?: Record<string, string[]>;
   currentMemberId: string;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [hasEmail, setHasEmail] = useState(false);
   const [hasPhone, setHasPhone] = useState(false);
+  const [team, setTeam] = useState("all");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -27,6 +32,7 @@ export function AllMembersList({
         if (category !== "all" && m.directory_category !== category) return false;
         if (hasEmail && !m.email) return false;
         if (hasPhone && !m.phone && !m.home_phone) return false;
+        if (team !== "all" && !(memberTeams[m.id] ?? []).includes(team)) return false;
         if (q) {
           const hay = [m.full_name, m.nickname, m.email].filter(Boolean).join(" ").toLowerCase();
           if (!hay.includes(q)) return false;
@@ -39,7 +45,7 @@ export function AllMembersList({
         if (al !== bl) return al.localeCompare(bl);
         return displayName(a).localeCompare(displayName(b));
       });
-  }, [members, query, category, hasEmail, hasPhone]);
+  }, [members, query, category, hasEmail, hasPhone, team, memberTeams]);
 
   return (
     <>
@@ -108,6 +114,35 @@ export function AllMembersList({
           <span style={{ width: 1, height: 20, background: "var(--gw-border)", margin: "0 4px" }} />
           <ToggleChip label="Has email" active={hasEmail} onClick={() => setHasEmail((v) => !v)} />
           <ToggleChip label="Has phone" active={hasPhone} onClick={() => setHasPhone((v) => !v)} />
+          {teams.length > 0 && (
+            <>
+              <span style={{ width: 1, height: 20, background: "var(--gw-border)", margin: "0 4px" }} />
+              <select
+                value={team}
+                onChange={(e) => setTeam(e.target.value)}
+                aria-label="Filter by volunteer team"
+                style={{
+                  height: 32,
+                  padding: "0 28px 0 12px",
+                  borderRadius: 8,
+                  border: "1px solid",
+                  borderColor: team !== "all" ? "rgba(108,140,89,.25)" : "var(--gw-border)",
+                  background: team !== "all" ? "var(--rsd-accent-bg)" : "var(--gw-bg-elev)",
+                  color: team !== "all" ? "var(--rsd-accent)" : "var(--gw-fg-muted)",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                <option value="all">All volunteer teams</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
       </div>
 

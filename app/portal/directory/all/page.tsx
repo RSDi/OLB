@@ -1,5 +1,10 @@
 import { AccessDenied } from "../_shared/AccessDenied";
-import { loadMembers, loadViewer } from "../_shared/data";
+import {
+  loadMembers,
+  loadMemberTeamMap,
+  loadViewer,
+  loadVolunteerTeams,
+} from "../_shared/data";
 import { AllMembersList } from "./AllMembersList";
 
 export default async function AllMembersPage() {
@@ -7,6 +12,17 @@ export default async function AllMembersPage() {
   if (!viewer) return <AccessDenied />;
 
   // Include extended; memorials excluded by default.
-  const members = await loadMembers({ categories: ["regular", "extended"] });
-  return <AllMembersList members={members} currentMemberId={viewer.memberId} />;
+  const [members, teams, memberTeams] = await Promise.all([
+    loadMembers({ categories: ["regular", "extended"] }),
+    loadVolunteerTeams(),
+    loadMemberTeamMap(),
+  ]);
+  return (
+    <AllMembersList
+      members={members}
+      teams={teams}
+      memberTeams={memberTeams}
+      currentMemberId={viewer.memberId}
+    />
+  );
 }

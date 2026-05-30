@@ -113,19 +113,21 @@ export default function MessagesPage() {
 
                 {/* Actions */}
                 <div style={{ display: "flex", gap: 8, paddingTop: 4, borderTop: "1px solid var(--gw-border)" }}>
-                  <button style={{
+                  <button disabled title="Coming soon" style={{
                     flex: 1, height: 34, borderRadius: 100,
                     background: "var(--rsd-accent)", color: "var(--rsd-accent-on)",
                     border: "none", fontSize: 12, fontWeight: 700,
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    opacity: 0.5, cursor: "not-allowed",
                   }}>
                     <Icons.Play width={12} height={12}/> Watch
                   </button>
-                  <button style={{
+                  <button disabled title="Coming soon" style={{
                     flex: 1, height: 34, borderRadius: 100,
                     background: "var(--gw-bg)", border: "1px solid var(--gw-border)",
                     fontSize: 12, fontWeight: 700, color: "var(--gw-fg)",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    opacity: 0.5, cursor: "not-allowed",
                   }}>
                     <Icons.Music width={12} height={12}/> Audio
                   </button>
