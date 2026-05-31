@@ -13,6 +13,7 @@ export async function sendNewTicketNotification({
   submitterEmail,
   submitterName,
   areaName,
+  categoryName,
   priorityLabel,
   description,
 }: {
@@ -21,6 +22,7 @@ export async function sendNewTicketNotification({
   submitterEmail: string | null;
   submitterName: string | null;
   areaName: string | null;
+  categoryName?: string | null;
   priorityLabel: string | null;
   description: string;
 }) {
@@ -77,10 +79,11 @@ export async function sendNewTicketNotification({
   }
 
   const submitterLine = submitterName ?? submitterEmail ?? "(anonymous)";
-  const subject = `New maintenance request — ${areaName ?? "Unknown area"} (${priorityLabel ?? "no priority"})`;
+  const subject = `New ${categoryName ?? "task"} task${areaName ? ` — ${areaName}` : ""} (${priorityLabel ?? "no priority"})`;
   const body = `
-    <p>A new maintenance request has been submitted in the Member Portal:</p>
+    <p>A new task has been submitted in the Member Portal:</p>
     <p>
+      <strong>Category:</strong> ${escapeHtml(categoryName ?? "—")}<br/>
       <strong>Area:</strong> ${escapeHtml(areaName ?? "—")}<br/>
       <strong>Priority:</strong> ${escapeHtml(priorityLabel ?? "—")}<br/>
       <strong>Submitted by:</strong> ${escapeHtml(submitterLine)}

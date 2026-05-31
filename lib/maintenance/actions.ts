@@ -11,35 +11,44 @@ export interface CreateTicketResult {
 }
 
 export async function createTicket(formData: FormData): Promise<CreateTicketResult> {
+  const categoryId = formData.get("category_id");
   const areaId = formData.get("area_id");
   const priorityId = formData.get("priority_id");
   const description = formData.get("description");
 
-  if (typeof areaId !== "string" || !areaId) return { error: "Area is required." };
+  if (typeof categoryId !== "string" || !categoryId) return { error: "Category is required." };
   if (typeof priorityId !== "string" || !priorityId) return { error: "Priority is required." };
   if (typeof description !== "string" || !description.trim()) {
     return { error: "Description is required." };
   }
+  const cleanAreaId = typeof areaId === "string" && areaId ? areaId : null;
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "You must be signed in to submit a request." };
+    return { error: "You must be signed in to submit a task." };
   }
 
-  // Look up the area + priority + member metadata for the email body. RLS
-  // already lets the signed-in user read active areas/priorities and their
-  // own member row, so the regular server client is enough.
-  const [{ data: area }, { data: priority }, { data: member }] = await Promise.all([
-    supabase.from("areas").select("name").eq("id", areaId).maybeSingle(),
+  // Look up category + priority + member metadata (RLS lets the signed-in user
+  // read active lookups + their own member row, so the regular client is fine).
+  const [{ data: category }, { data: priority }, { data: member }] = await Promise.all([
+    supabase.from("task_categories").select("name").eq("id", categoryId).maybeSingle(),
     supabase.from("priorities").select("label").eq("id", priorityId).maybeSingle(),
     supabase.from("members").select("full_name, email").eq("user_id", user.id).maybeSingle(),
   ]);
 
-  if (!area) return { error: "Area no longer exists." };
+  if (!category) return { error: "Category no longer exists." };
   if (!priority) return { error: "Priority no longer exists." };
+  // Area is required for Maintenance tasks; optional for other categories.
+  if (category.name === "Maintenance" && !cleanAreaId) {
+    return { error: "Area is required for maintenance tasks." };
+  }
+
+  const { data: area } = cleanAreaId
+    ? await supabase.from("areas").select("name").eq("id", cleanAreaId).maybeSingle()
+    : { data: null as { name: string } | null };
 
   const trimmedDescription = description.trim();
 
@@ -47,7 +56,8 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
     .from("maintenance_requests")
     .insert({
       submitted_by: user.id,
-      area_id: areaId,
+      category_id: categoryId,
+      area_id: cleanAreaId,
       priority_id: priorityId,
       description: trimmedDescription,
     })
@@ -55,16 +65,17 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
     .single();
 
   if (insertError || !inserted) {
-    return { error: insertError?.message ?? "Failed to submit request." };
+    return { error: insertError?.message ?? "Failed to submit task." };
   }
 
   // Fire-and-forget email so a Resend hiccup doesn't fail the user's submit.
   const notifyPayload = {
     ticketId: inserted.id,
-    areaId,
+    areaId: cleanAreaId,
     submitterEmail: member?.email ?? user.email ?? null,
     submitterName: member?.full_name ?? null,
-    areaName: area.name,
+    areaName: area?.name ?? null,
+    categoryName: category.name,
     priorityLabel: priority.label,
     description: trimmedDescription,
   };

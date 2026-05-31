@@ -15,20 +15,30 @@ interface Priority {
   label: string;
   chip_class: string;
 }
+interface Category {
+  id: string;
+  name: string;
+}
 
 export function MaintenanceRequestForm({
   areas,
   priorities,
+  categories,
   initialDescription = "",
   initialPriorityKey = "",
 }: {
   areas: Area[];
   priorities: Priority[];
+  categories: Category[];
   initialDescription?: string;
   initialPriorityKey?: string;
 }) {
   const router = useRouter();
   const presetPriorityId = priorities.find((p) => p.key === initialPriorityKey)?.id ?? "";
+  const maintenanceId = categories.find((c) => c.name === "Maintenance")?.id ?? "";
+  const [categoryId, setCategoryId] = useState(maintenanceId || categories[0]?.id || "");
+  // Area only applies to maintenance tasks.
+  const showArea = categoryId === maintenanceId;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -72,7 +82,7 @@ export function MaintenanceRequestForm({
         >
           <Icons.CheckCircle width={24} height={24} />
         </div>
-        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Request submitted</h3>
+        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Task submitted</h3>
         <p
           style={{
             margin: 0,
@@ -82,7 +92,7 @@ export function MaintenanceRequestForm({
             lineHeight: 1.6,
           }}
         >
-          Thanks — your maintenance request was sent to the facilities team.
+          Thanks — your task was submitted.
         </p>
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
           <Pill
@@ -96,7 +106,7 @@ export function MaintenanceRequestForm({
             Submit another
           </Pill>
           <Pill variant="accent" size="sm" onClick={() => router.push("/portal/tasks")}>
-            View all requests
+            View all tasks
           </Pill>
         </div>
       </div>
@@ -105,14 +115,31 @@ export function MaintenanceRequestForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <Select label="Area *" name="area_id" required>
-        <option value="">Select an area…</option>
-        {areas.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
+      <Select
+        label="Category *"
+        name="category_id"
+        required
+        value={categoryId}
+        onChange={(e) => setCategoryId(e.target.value)}
+      >
+        <option value="">Select a category…</option>
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
           </option>
         ))}
       </Select>
+
+      {showArea && (
+        <Select label="Area *" name="area_id" required>
+          <option value="">Select an area…</option>
+          {areas.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </Select>
+      )}
 
       <Select label="Priority *" name="priority_id" required defaultValue={presetPriorityId}>
         <option value="">Select a priority…</option>
@@ -162,7 +189,7 @@ export function MaintenanceRequestForm({
           Cancel
         </Pill>
         <Pill variant="accent" size="md" type="submit" disabled={pending}>
-          {pending ? "Submitting…" : "Submit request"}
+          {pending ? "Submitting…" : "Submit task"}
         </Pill>
       </div>
     </form>

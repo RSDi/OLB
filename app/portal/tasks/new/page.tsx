@@ -17,7 +17,7 @@ export default async function NewMaintenanceRequestPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: areas }, { data: priorities }] = await Promise.all([
+  const [{ data: areas }, { data: priorities }, { data: categories }] = await Promise.all([
     supabase
       .from("areas")
       .select("id, name")
@@ -29,6 +29,12 @@ export default async function NewMaintenanceRequestPage({
       .select("id, key, label, chip_class")
       .is("deleted_at", null)
       .order("severity", { ascending: true }),
+    supabase
+      .from("task_categories")
+      .select("id, name")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true }),
   ]);
 
   return (
@@ -68,6 +74,7 @@ export default async function NewMaintenanceRequestPage({
           <MaintenanceRequestForm
             areas={areas ?? []}
             priorities={priorities ?? []}
+            categories={categories ?? []}
             initialDescription={description ?? ""}
             initialPriorityKey={priority ?? ""}
           />
