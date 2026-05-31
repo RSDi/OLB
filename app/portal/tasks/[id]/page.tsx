@@ -28,6 +28,7 @@ interface Ticket {
   updated_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
+  category: { name: string; chip_class: string } | null;
   area: { id: string; name: string } | null;
   priority: { id: string; label: string; chip_class: string } | null;
   assignee: { id: string; full_name: string | null; email: string } | null;
@@ -67,6 +68,7 @@ export default async function TicketDetailPage({
     .from("maintenance_requests")
     .select(
       `id, description, status, created_at, updated_at, submitted_by, assigned_to,
+       category:task_categories(name, chip_class),
        area:areas(id, name),
        priority:priorities(id, label, chip_class),
        assignee:members!assigned_to(id, full_name, email)`
@@ -162,6 +164,11 @@ export default async function TicketDetailPage({
           {/* Description */}
           <div className="rsd-card" style={{ gap: 14 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {ticket.category && (
+                <span className={`rsd-chip ${ticket.category.chip_class}`}>
+                  {ticket.category.name}
+                </span>
+              )}
               {ticket.priority && (
                 <span className={`rsd-chip ${ticket.priority.chip_class}`}>
                   {ticket.priority.label}
