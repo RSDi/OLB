@@ -24,11 +24,23 @@ export const viewport: Viewport = {
   themeColor: "#6C8C59",
 };
 
-export default async function DavesIdeaPage() {
+export default async function DavesIdeaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ r?: string; t?: string }>;
+}) {
   await loadDavesIdeaViewer();
-  const [recordings, members] = await Promise.all([
+  const [{ r, t }, recordings, members] = await Promise.all([
+    searchParams,
     loadDavesIdeaRecordings(),
     loadAssignableMembers(),
   ]);
-  return <DavesIdea initialRecordings={recordings} members={members} />;
+  return (
+    <DavesIdea
+      initialRecordings={recordings}
+      members={members}
+      initialSelectedId={r ?? null}
+      focusActionId={t ?? null}
+    />
+  );
 }

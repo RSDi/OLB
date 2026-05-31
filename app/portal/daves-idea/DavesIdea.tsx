@@ -40,7 +40,15 @@ interface ThingsAssignment {
   supporters?: string[];
 }
 
-function thingsNotes(recordingTitle: string | null, assignment?: ThingsAssignment): string {
+// Deep link back to a specific recording (and optionally a specific task) in
+// Dave's Idea, e.g. https://…/portal/daves-idea?r=<recId>&t=<actionId>.
+function davesIdeaUrl(recordingId: string, actionId?: string): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const base = `${origin}/portal/daves-idea?r=${recordingId}`;
+  return actionId ? `${base}&t=${actionId}` : base;
+}
+
+function thingsNotes(recordingTitle: string | null, assignment?: ThingsAssignment, link?: string): string {
   const lines: string[] = [
     recordingTitle ? `From "${recordingTitle}" · captured in Dave's Idea` : "Captured in Dave's Idea",
   ];
@@ -48,33 +56,37 @@ function thingsNotes(recordingTitle: string | null, assignment?: ThingsAssignmen
   if (assignment?.supporters && assignment.supporters.length > 0) {
     lines.push(`Support: ${assignment.supporters.join(", ")}`);
   }
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  if (origin) lines.push(`${origin}/portal/daves-idea`);
+  if (link) lines.push(link);
   return lines.join("\n");
 }
 
-// Single to-do. Carries the owner/supporters into the notes so responsibility
-// travels into Things.
-function openInThings(title: string, recordingTitle: string | null, assignment?: ThingsAssignment) {
+// Single to-do. Carries the owner/supporters + a link back to the exact task
+// into the notes.
+function openInThings(
+  title: string,
+  recordingTitle: string | null,
+  assignment?: ThingsAssignment,
+  link?: string
+) {
   const url =
     "things:///add?title=" +
     encodeURIComponent(title) +
     "&notes=" +
-    encodeURIComponent(thingsNotes(recordingTitle, assignment));
+    encodeURIComponent(thingsNotes(recordingTitle, assignment, link));
   window.location.href = url;
 }
 
 // Multiple to-dos in one handoff via the `titles` parameter — newline-separated,
 // each newline encoded as %0a. All share the same notes (one source recording).
 // No auth token needed for adds.
-function openAllInThings(titles: string[], recordingTitle: string | null) {
+function openAllInThings(titles: string[], recordingTitle: string | null, link?: string) {
   if (titles.length === 0) return;
   const titlesParam = titles.map(encodeURIComponent).join("%0a");
   const url =
     "things:///add?titles=" +
     titlesParam +
     "&notes=" +
-    encodeURIComponent(thingsNotes(recordingTitle));
+    encodeURIComponent(thingsNotes(recordingTitle, undefined, link));
   window.location.href = url;
 }
 
@@ -265,13 +277,21 @@ function audioDownloadHref(r: DavesIdeaRecording): string {
 export function DavesIdea({
   initialRecordings,
   members,
+  initialSelectedId = null,
+  focusActionId = null,
 }: {
   initialRecordings: DavesIdeaRecording[];
   members: AssignableMember[];
+  initialSelectedId?: string | null;
+  focusActionId?: string | null;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [recordings, setRecordings] = useState<DavesIdeaRecording[]>(initialRecordings);
-  const [selectedId, setSelectedId] = useState<string | null>(initialRecordings[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    (initialSelectedId && initialRecordings.some(r => r.id === initialSelectedId)
+      ? initialSelectedId
+      : initialRecordings[0]?.id) ?? null
+  );
   const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [recordError, setRecordError] = useState<string | null>(null);
@@ -703,6 +723,7 @@ export function DavesIdea({
             recording={selected}
             isMobile={isMobile}
             members={members}
+            focusActionId={selected.id === initialSelectedId ? focusActionId : null}
             onRename={title => editRecordingTitle(selected.id, title)}
             onToggleDone={actionId => toggleDone(selected.id, actionId)}
             onRoute={(actionId, target) => routeAction(selected.id, actionId, target)}
@@ -899,6 +920,7 @@ function SelectedDetail({
   recording,
   isMobile,
   members,
+  focusActionId,
   onRename,
   onToggleDone,
   onRoute,
@@ -911,6 +933,7 @@ function SelectedDetail({
   recording: DavesIdeaRecording;
   isMobile: boolean;
   members: AssignableMember[];
+  focusActionId?: string | null;
   onRename: (title: string) => void;
   onToggleDone: (actionId: string) => void;
   onRoute: (actionId: string, target: string) => void;
@@ -1201,7 +1224,7 @@ function SelectedDetail({
           {sendableToThings.length > 0 && (
             <button
               onClick={() => {
-                openAllInThings(sendableToThings.map(a => a.text), recording.title);
+                openAllInThings(sendableToThings.map(a => a.text), recording.title, davesIdeaUrl(recording.id));
                 sendableToThings.forEach(a => onRoute(a.id, "Things"));
               }}
               className="gw-press"
@@ -1247,6 +1270,7 @@ function SelectedDetail({
                 action={a}
                 recordingTitle={recording.title}
                 members={members}
+                focused={a.id === focusActionId}
                 onToggle={() => onToggleDone(a.id)}
                 onRoute={target => onRoute(a.id, target)}
                 onEdit={text => onEditAction(a.id, text)}
@@ -1270,6 +1294,7 @@ function ActionRow({
   onEdit,
   onSetOwner,
   onToggleSupporter,
+  focused,
 }: {
   action: DavesIdeaActionItem;
   recordingTitle: string | null;
@@ -1279,11 +1304,23 @@ function ActionRow({
   onEdit: (text: string) => void;
   onSetOwner: (memberId: string | null) => void;
   onToggleSupporter: (memberId: string) => void;
+  focused?: boolean;
 }) {
   const { open, setOpen, ref: sendToRef } = useDismissable();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(action.text);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [flash, setFlash] = useState(false);
+  // When opened via a deep link (from a Things to-do / maintenance ticket),
+  // scroll to and briefly highlight this task.
+  useEffect(() => {
+    if (!focused || !rowRef.current) return;
+    rowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFlash(true);
+    const t = setTimeout(() => setFlash(false), 2500);
+    return () => clearTimeout(t);
+  }, [focused]);
 
   // Guard against a row fetched without the column (older data / a select that
   // predates assignments) so the row renders instead of throwing.
@@ -1315,6 +1352,8 @@ function ActionRow({
 
   return (
     <div
+      ref={rowRef}
+      id={`task-${action.id}`}
       style={{
         display: "flex",
         alignItems: "center",
@@ -1325,6 +1364,8 @@ function ActionRow({
         background: action.done ? "var(--gw-bg-elev)" : "var(--gw-bg)",
         opacity: editing ? 1 : action.done ? 0.55 : 1,
         position: "relative",
+        boxShadow: flash ? "0 0 0 2px var(--rsd-accent)" : undefined,
+        transition: "box-shadow 200ms",
       }}
     >
       {editing ? (
@@ -1547,14 +1588,19 @@ function ActionRow({
                 key={i.id}
                 onClick={() => {
                   if (i.id === "things")
-                    openInThings(action.text, recordingTitle, {
-                      owner: owner ? memberLabel(owner) : null,
-                      supporters: supporters.map(memberLabel),
-                    });
+                    openInThings(
+                      action.text,
+                      recordingTitle,
+                      {
+                        owner: owner ? memberLabel(owner) : null,
+                        supporters: supporters.map(memberLabel),
+                      },
+                      davesIdeaUrl(action.recording_id, action.id)
+                    );
                   else if (i.id === "maintenance")
                     router.push(
                       `/portal/maintenance/new?description=${encodeURIComponent(
-                        `${action.text}\n\nFrom Dave's Idea recording: "${recordingTitle ?? "Untitled recording"}"`
+                        `${action.text}\n\nFrom Dave's Idea recording: "${recordingTitle ?? "Untitled recording"}"\n${davesIdeaUrl(action.recording_id, action.id)}`
                       )}`
                     );
                   onRoute(i.label);
