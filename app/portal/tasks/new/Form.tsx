@@ -95,7 +95,7 @@ export function MaintenanceRequestForm({
           >
             Submit another
           </Pill>
-          <Pill variant="accent" size="sm" onClick={() => router.push("/portal/maintenance")}>
+          <Pill variant="accent" size="sm" onClick={() => router.push("/portal/tasks")}>
             View all requests
           </Pill>
         </div>
@@ -156,7 +156,7 @@ export function MaintenanceRequestForm({
         <Pill
           variant="ghost"
           size="md"
-          onClick={() => router.push("/portal/maintenance")}
+          onClick={() => router.push("/portal/tasks")}
           disabled={pending}
         >
           Cancel

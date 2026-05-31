@@ -43,7 +43,7 @@ export default async function NewMaintenanceRequestPage({
         }}
       >
         <Link
-          href="/portal/maintenance"
+          href="/portal/tasks"
           style={{
             display: "inline-flex",
             alignItems: "center",

@@ -72,7 +72,7 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
     console.error("[notify] new-ticket email failed:", err),
   );
 
-  revalidatePath("/portal/maintenance");
+  revalidatePath("/portal/tasks");
 
   return { success: true, ticketId: inserted.id };
 }
@@ -98,8 +98,8 @@ export async function changeTicketStatus(
     .eq("id", ticketId);
   if (error) return { error: error.message };
 
-  revalidatePath("/portal/maintenance");
-  revalidatePath(`/portal/maintenance/${ticketId}`);
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${ticketId}`);
   return { success: true };
 }
 
@@ -116,8 +116,8 @@ export async function changeTicketPriority(
     .eq("id", ticketId);
   if (error) return { error: error.message };
 
-  revalidatePath("/portal/maintenance");
-  revalidatePath(`/portal/maintenance/${ticketId}`);
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${ticketId}`);
   return { success: true };
 }
 
@@ -132,8 +132,8 @@ export async function assignTicket(
     .eq("id", ticketId);
   if (error) return { error: error.message };
 
-  revalidatePath("/portal/maintenance");
-  revalidatePath(`/portal/maintenance/${ticketId}`);
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${ticketId}`);
   return { success: true };
 }
 
@@ -179,7 +179,7 @@ export async function addTicketComment(
   });
   if (error) return { error: error.message };
 
-  revalidatePath(`/portal/maintenance/${ticketId}`);
+  revalidatePath(`/portal/tasks/${ticketId}`);
   return { success: true };
 }
 
@@ -191,8 +191,8 @@ export async function softDeleteTicket(ticketId: string): Promise<ActionResult> 
     .eq("id", ticketId);
   if (error) return { error: error.message };
 
-  revalidatePath("/portal/maintenance");
-  revalidatePath("/portal/maintenance/deleted");
+  revalidatePath("/portal/tasks");
+  revalidatePath("/portal/tasks/deleted");
   return { success: true };
 }
 
@@ -204,8 +204,8 @@ export async function restoreTicket(ticketId: string): Promise<ActionResult> {
     .eq("id", ticketId);
   if (error) return { error: error.message };
 
-  revalidatePath("/portal/maintenance");
-  revalidatePath("/portal/maintenance/deleted");
+  revalidatePath("/portal/tasks");
+  revalidatePath("/portal/tasks/deleted");
   return { success: true };
 }
 
@@ -217,6 +217,6 @@ export async function hardDeleteTicket(ticketId: string): Promise<ActionResult> 
     .eq("id", ticketId);
   if (error) return { error: error.message };
 
-  revalidatePath("/portal/maintenance/deleted");
+  revalidatePath("/portal/tasks/deleted");
   return { success: true };
 }

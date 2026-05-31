@@ -172,8 +172,8 @@ const VALID_ENTITY_TYPES: ContactLinkEntityType[] = [
 
 function entityRevalidate(entityType: ContactLinkEntityType, entityId: string) {
   if (entityType === "maintenance_ticket") {
-    revalidatePath(`/portal/maintenance/${entityId}`);
-    revalidatePath("/portal/maintenance");
+    revalidatePath(`/portal/tasks/${entityId}`);
+    revalidatePath("/portal/tasks");
   } else if (entityType === "pm_asset") {
     revalidatePath(`/portal/pm/assets/${entityId}`);
   } else if (entityType === "playbook") {

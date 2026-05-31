@@ -30,7 +30,7 @@ export default async function DeletedMaintenancePage() {
     .eq("user_id", user.id)
     .maybeSingle();
   const me = (meRow as MemberLike | null) ?? null;
-  if (!isSuperAdmin(me)) redirect("/portal/maintenance");
+  if (!isSuperAdmin(me)) redirect("/portal/tasks");
 
   // RLS only lets super-admins see soft-deleted rows; we pass deleted_at IS
   // NOT NULL to switch the active staff/self policies off.
@@ -72,7 +72,7 @@ export default async function DeletedMaintenancePage() {
         }}
       >
         <Link
-          href="/portal/maintenance"
+          href="/portal/tasks"
           style={{
             display: "inline-flex",
             alignItems: "center",

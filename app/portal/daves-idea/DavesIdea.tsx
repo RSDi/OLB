@@ -1656,7 +1656,7 @@ function ActionRow({
                     );
                   else if (i.id === "maintenance")
                     router.push(
-                      `/portal/maintenance/new?priority=${action.priority ?? "medium"}&description=${encodeURIComponent(
+                      `/portal/tasks/new?priority=${action.priority ?? "medium"}&description=${encodeURIComponent(
                         `${action.text}\n\nFrom Dave's Idea recording: "${recordingTitle ?? "Untitled recording"}"\n${davesIdeaUrl(action.recording_id, action.id)}`
                       )}`
                     );

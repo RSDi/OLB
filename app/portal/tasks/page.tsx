@@ -137,7 +137,7 @@ export default async function PortalMaintenancePage({
         }}
       >
         <Link
-          href="/portal/maintenance/new"
+          href="/portal/tasks/new"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -167,7 +167,7 @@ export default async function PortalMaintenancePage({
       {/* Status tabs */}
       <div style={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
         {STATUS_TABS.map((t) => {
-          const href = t.key === "all" ? "/portal/maintenance" : `/portal/maintenance?status=${t.key}`;
+          const href = t.key === "all" ? "/portal/tasks" : `/portal/tasks?status=${t.key}`;
           const active = status === t.key;
           return (
             <Link
@@ -193,7 +193,7 @@ export default async function PortalMaintenancePage({
           <>
             <span style={{ width: 1, height: 18, background: "var(--gw-border)", margin: "0 6px" }} />
             <Link
-              href="/portal/maintenance/deleted"
+              href="/portal/tasks/deleted"
               style={{
                 padding: "8px 16px",
                 borderRadius: 8,

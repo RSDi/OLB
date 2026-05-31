@@ -16,7 +16,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true },
-  { href: "/portal/maintenance", label: "Maintenance", icon: <Icons.Wrench width={16} height={16}/> },
+  { href: "/portal/tasks", label: "Tasks & Projects", icon: <Icons.CheckCircle width={16} height={16}/> },
   { href: "/portal/pm", label: "PM", icon: <Icons.Clock width={16} height={16}/>, staffOnly: true },
   { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/> },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },

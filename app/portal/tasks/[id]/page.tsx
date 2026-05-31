@@ -136,7 +136,7 @@ export default async function TicketDetailPage({
           {truncate(ticket.description, 80)}
         </h2>
         <Link
-          href="/portal/maintenance"
+          href="/portal/tasks"
           style={{
             display: "inline-flex",
             alignItems: "center",

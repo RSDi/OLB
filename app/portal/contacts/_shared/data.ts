@@ -340,7 +340,7 @@ export async function loadResolvedLinksForContact(
     for (const r of (data as { id: string; description: string }[] | null) ?? []) {
       titleByKey.set(key("maintenance_ticket", r.id), {
         title: r.description?.slice(0, 80) ?? "Ticket",
-        href: `/portal/maintenance/${r.id}`,
+        href: `/portal/tasks/${r.id}`,
       });
     }
   }

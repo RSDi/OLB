@@ -53,7 +53,7 @@ export function QueueRow({
   const [hover, setHover] = useState(false);
 
   function handleRowClick() {
-    router.push(`/portal/maintenance/${ticket.id}`);
+    router.push(`/portal/tasks/${ticket.id}`);
   }
 
   function stop(e: MouseEvent) {

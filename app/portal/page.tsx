@@ -168,7 +168,7 @@ export default async function PortalDashboard() {
       {/* Quick actions */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <Link
-          href="/portal/maintenance/new"
+          href="/portal/tasks/new"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -186,7 +186,7 @@ export default async function PortalDashboard() {
           New maintenance request
         </Link>
         <Link
-          href="/portal/maintenance"
+          href="/portal/tasks"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -324,7 +324,7 @@ export default async function PortalDashboard() {
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{recentLabel}</h3>
             </div>
             <Link
-              href="/portal/maintenance"
+              href="/portal/tasks"
               style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
             >
               View all →
@@ -341,7 +341,7 @@ export default async function PortalDashboard() {
                 return (
                   <Link
                     key={r.id}
-                    href={`/portal/maintenance/${r.id}`}
+                    href={`/portal/tasks/${r.id}`}
                     className="rsd-dash-row"
                     style={{
                       display: "flex",

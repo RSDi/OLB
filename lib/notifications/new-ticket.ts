@@ -88,7 +88,7 @@ export async function sendNewTicketNotification({
     <blockquote style="margin:0 0 16px;padding:12px 16px;background:#f6f6f6;border-left:3px solid #ddd;">
       ${escapeHtml(description).replace(/\n/g, "<br/>")}
     </blockquote>
-    <p><a href="${siteUrl()}/portal/maintenance">View in portal</a></p>
+    <p><a href="${siteUrl()}/portal/tasks">View in portal</a></p>
   `;
 
   const res = await fetch(RESEND_ENDPOINT, {

@@ -16,8 +16,8 @@ import type { TopbarSearchHandle } from "../components/TopbarSearch";
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
-  "/portal/maintenance": { title: "Maintenance",  subtitle: "Facilities" },
-  "/portal/maintenance/new": { title: "New request", subtitle: "Facilities" },
+  "/portal/tasks": { title: "Tasks & Projects",  subtitle: "Portal" },
+  "/portal/tasks/new": { title: "New task", subtitle: "Portal" },
   "/portal/events/new": { title: "New event", subtitle: "Calendar" },
   "/portal/pm":           { title: "Preventative", subtitle: "Facilities" },
   "/portal/pm/calendar":  { title: "PM Calendar", subtitle: "Facilities" },
@@ -69,11 +69,11 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
     return () => document.removeEventListener("keydown", handler);
   }, []);
   // Exact match first; otherwise label individual ticket detail pages
-  // (`/portal/maintenance/<id>`, but not /new) as "Request".
+  // (`/portal/tasks/<id>`, but not /new) as "Request".
   const meta =
     PAGE_META[pathname] ??
-    (pathname.startsWith("/portal/maintenance/") && pathname !== "/portal/maintenance/new"
-      ? { title: "Request", subtitle: "Facilities" }
+    (pathname.startsWith("/portal/tasks/") && pathname !== "/portal/tasks/new"
+      ? { title: "Task", subtitle: "Portal" }
       : pathname.startsWith("/portal/pm/templates/")
       ? { title: "Edit template", subtitle: "Facilities" }
       : pathname.startsWith("/portal/pm/assets/")
