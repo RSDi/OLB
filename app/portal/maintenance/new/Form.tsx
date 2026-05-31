@@ -11,6 +11,7 @@ interface Area {
 }
 interface Priority {
   id: string;
+  key: string;
   label: string;
   chip_class: string;
 }
@@ -19,12 +20,15 @@ export function MaintenanceRequestForm({
   areas,
   priorities,
   initialDescription = "",
+  initialPriorityKey = "",
 }: {
   areas: Area[];
   priorities: Priority[];
   initialDescription?: string;
+  initialPriorityKey?: string;
 }) {
   const router = useRouter();
+  const presetPriorityId = priorities.find((p) => p.key === initialPriorityKey)?.id ?? "";
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -110,7 +114,7 @@ export function MaintenanceRequestForm({
         ))}
       </Select>
 
-      <Select label="Priority *" name="priority_id" required>
+      <Select label="Priority *" name="priority_id" required defaultValue={presetPriorityId}>
         <option value="">Select a priority…</option>
         {priorities.map((p) => (
           <option key={p.id} value={p.id}>

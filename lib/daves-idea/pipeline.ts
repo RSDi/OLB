@@ -46,15 +46,24 @@ const ExtractionSchema = z.object({
           .describe(
             'If the transcript makes someone responsible for THIS item (e.g. "Dave will pay the deposit", "ask Jeff to call the vendor"), their name as spoken — a first name or nickname. Null if no one is clearly named.'
           ),
+        priority: z
+          .enum(["low", "medium", "high", "emergency"])
+          .nullish()
+          .describe(
+            'Urgency for THIS item based on how it was discussed. "emergency" for critical/ASAP/right-away language; "high" for urgent/important/"we should get on this"; "low" for no-rush/someday/eventually; otherwise "medium". Default "medium" if no urgency cues.'
+          ),
       })
     )
     .max(15)
     .describe("Action items extracted from the transcript. Empty if none."),
 });
 
+type ActionPriority = "low" | "medium" | "high" | "emergency";
+
 interface ExtractedAction {
   text: string;
   suggested_assignee: string | null;
+  priority: ActionPriority;
 }
 
 function siteUrl(): string {
@@ -88,6 +97,7 @@ Given the transcript below, return:
 1. A short 3-8 word title that captures what was discussed.
 2. A list of concrete action items. Only include things that someone needs to DO — not observations or musings. If the speaker said "I should X" or "we need to Y" or "make sure to Z", that's an action. Skip anything vague. Phrase each action item as an imperative sentence (e.g. "Pay bus deposit by 6/15", not "the bus deposit needs to be paid").
 3. For each action item, if the transcript clearly names who is responsible for it (e.g. "Dave will pay the deposit", "ask Jeff to call the vendor"), set suggested_assignee to that person's name as spoken — a first name or nickname. If no one is clearly named for that item, leave it null. Do not guess.
+4. For each action item, set priority from how it was discussed: "emergency" for critical/ASAP/right-away language, "high" for urgent/important/"we should get on this", "low" for no-rush/someday, otherwise "medium". Don't inflate — only raise priority when the urgency is actually expressed.
 
 If there are no clear action items, return an empty list. Do not pad.
 
@@ -101,6 +111,7 @@ ${transcript}
     actions: object.action_items.map(a => ({
       text: a.text,
       suggested_assignee: a.suggested_assignee ?? null,
+      priority: a.priority ?? "medium",
     })),
   };
 }
@@ -237,6 +248,7 @@ export async function processTranscriptionCompleted(
         text: a.text,
         sort_order: idx,
         suggested_assignee_name: a.suggested_assignee?.trim() || null,
+        priority: a.priority,
       }));
       const { error: insertErr } = await admin.from("daves_idea_action_items").insert(rows);
       if (insertErr) console.error("Action item insert failed", insertErr);

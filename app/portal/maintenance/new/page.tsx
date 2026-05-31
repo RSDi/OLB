@@ -7,9 +7,9 @@ import { MaintenanceRequestForm } from "./Form";
 export default async function NewMaintenanceRequestPage({
   searchParams,
 }: {
-  searchParams: Promise<{ description?: string }>;
+  searchParams: Promise<{ description?: string; priority?: string }>;
 }) {
-  const { description } = await searchParams;
+  const { description, priority } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -26,7 +26,7 @@ export default async function NewMaintenanceRequestPage({
       .order("name", { ascending: true }),
     supabase
       .from("priorities")
-      .select("id, label, chip_class")
+      .select("id, key, label, chip_class")
       .is("deleted_at", null)
       .order("severity", { ascending: true }),
   ]);
@@ -69,6 +69,7 @@ export default async function NewMaintenanceRequestPage({
             areas={areas ?? []}
             priorities={priorities ?? []}
             initialDescription={description ?? ""}
+            initialPriorityKey={priority ?? ""}
           />
         </div>
       </div>

@@ -35,6 +35,8 @@ export interface DavesIdeaActionItem {
   routed_to: string | null;
   done: boolean;
   sort_order: number;
+  // LLM-inferred urgency from transcript cues; mirrors maintenance priority keys.
+  priority: "low" | "medium" | "high" | "emergency";
   // Assignment (label-only metadata on the recorder's own task).
   owner_member_id: string | null;
   supporter_member_ids: string[];
@@ -86,7 +88,7 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
       `id, user_id, title, audio_blob_url, duration_sec, source, status,
        assemblyai_id, transcript, utterances, error, created_at, updated_at,
        action_items:daves_idea_action_items(
-         id, recording_id, text, routed_to, done, sort_order,
+         id, recording_id, text, routed_to, done, sort_order, priority,
          owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
          created_at, updated_at
        )`

@@ -101,6 +101,18 @@ function memberLabel(m: AssignableMember | undefined): string {
   return m.full_name || m.nickname || "Member";
 }
 
+// LLM-inferred priority → chip label/color + a rank for sorting. Keys mirror
+// the maintenance `priorities` table.
+const PRIORITY_META: Record<string, { label: string; chip: string; rank: number }> = {
+  low: { label: "Low", chip: "rsd-chip-success", rank: 0 },
+  medium: { label: "Medium", chip: "rsd-chip-mute", rank: 1 },
+  high: { label: "High", chip: "rsd-chip-warn", rank: 2 },
+  emergency: { label: "Emergency", chip: "rsd-chip-error", rank: 3 },
+};
+function priorityMeta(p: string | null | undefined) {
+  return PRIORITY_META[p ?? "medium"] ?? PRIORITY_META.medium;
+}
+
 // Common English nicknames → formal first name(s). Lets a spoken first name in
 // the transcript ("Dave") connect to a member whose legal name is formal
 // ("David Orrick"). Not exhaustive — a member's `nickname` field always wins.
@@ -315,11 +327,14 @@ export function DavesIdea({
   const selected = recordings.find(r => r.id === selectedId) ?? recordings[0] ?? null;
 
   const inbox = useMemo(() => {
-    return recordings.flatMap(r =>
-      r.action_items
-        .filter(a => !a.done)
-        .map(a => ({ ...a, recordingTitle: recordingTitle(r) }))
-    );
+    return recordings
+      .flatMap(r =>
+        r.action_items
+          .filter(a => !a.done)
+          .map(a => ({ ...a, recordingTitle: recordingTitle(r) }))
+      )
+      // Highest urgency first; stable sort keeps recency within a tier.
+      .sort((a, b) => priorityMeta(b.priority).rank - priorityMeta(a.priority).rank);
   }, [recordings]);
 
   useEffect(() => {
@@ -344,7 +359,7 @@ export function DavesIdea({
           `id, user_id, title, audio_blob_url, duration_sec, source, status,
            assemblyai_id, transcript, utterances, error, created_at, updated_at,
            action_items:daves_idea_action_items(
-             id, recording_id, text, routed_to, done, sort_order,
+             id, recording_id, text, routed_to, done, sort_order, priority,
              owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
              created_at, updated_at
            )`
@@ -814,6 +829,11 @@ export function DavesIdea({
                     </button>
                   </div>
                 </div>
+                {(a.priority ?? "medium") !== "medium" && (
+                  <span className={`rsd-chip ${priorityMeta(a.priority).chip}`} style={{ fontSize: 10 }}>
+                    {priorityMeta(a.priority).label}
+                  </span>
+                )}
                 {findMember(members, a.owner_member_id) && (
                   <span
                     className="rsd-chip"
@@ -1333,6 +1353,7 @@ function ActionRow({
   // directory) so improvements + new members apply to existing recordings too.
   const suggestedMember = matchMemberName(action.suggested_assignee_name, members);
   const showSuggestion = !action.owner_member_id && !!action.suggested_assignee_name;
+  const showPriority = (action.priority ?? "medium") !== "medium";
 
   function startEdit() {
     setOpen(false);
@@ -1464,8 +1485,13 @@ function ActionRow({
         >
           {action.text}
         </div>
-        {(owner || supporters.length > 0 || showSuggestion) && (
+        {(showPriority || owner || supporters.length > 0 || showSuggestion) && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 5, alignItems: "center" }}>
+            {showPriority && (
+              <span className={`rsd-chip ${priorityMeta(action.priority).chip}`} style={{ fontSize: 10 }}>
+                {priorityMeta(action.priority).label}
+              </span>
+            )}
             {owner && (
               <span
                 className="rsd-chip"
@@ -1599,7 +1625,7 @@ function ActionRow({
                     );
                   else if (i.id === "maintenance")
                     router.push(
-                      `/portal/maintenance/new?description=${encodeURIComponent(
+                      `/portal/maintenance/new?priority=${action.priority ?? "medium"}&description=${encodeURIComponent(
                         `${action.text}\n\nFrom Dave's Idea recording: "${recordingTitle ?? "Untitled recording"}"\n${davesIdeaUrl(action.recording_id, action.id)}`
                       )}`
                     );
