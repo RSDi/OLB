@@ -361,7 +361,7 @@ export function DavesIdea({
            action_items:daves_idea_action_items(
              id, recording_id, text, routed_to, done, sort_order, priority,
              owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
-             created_at, updated_at
+             suggested_supporter_names, created_at, updated_at
            )`
         )
         .is("deleted_at", null)
@@ -1354,6 +1354,13 @@ function ActionRow({
   const suggestedMember = matchMemberName(action.suggested_assignee_name, members);
   const showSuggestion = !action.owner_member_id && !!action.suggested_assignee_name;
   const showPriority = (action.priority ?? "medium") !== "medium";
+  // Supporters the transcript explicitly named, matched to members and minus
+  // anyone already owner/supporter (so accepting one drops it off the list).
+  const suggestedSupporters = (action.suggested_supporter_names ?? [])
+    .map(name => matchMemberName(name, members))
+    .filter((m): m is AssignableMember => !!m)
+    .filter(m => m.id !== action.owner_member_id && !supporterIds.includes(m.id))
+    .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
 
   function startEdit() {
     setOpen(false);
@@ -1485,7 +1492,7 @@ function ActionRow({
         >
           {action.text}
         </div>
-        {(showPriority || owner || supporters.length > 0 || showSuggestion) && (
+        {(showPriority || owner || supporters.length > 0 || showSuggestion || suggestedSupporters.length > 0) && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 5, alignItems: "center" }}>
             {showPriority && (
               <span className={`rsd-chip ${priorityMeta(action.priority).chip}`} style={{ fontSize: 10 }}>
@@ -1538,6 +1545,30 @@ function ActionRow({
                   Mentioned: {action.suggested_assignee_name}
                 </span>
               ))}
+            {suggestedSupporters.map(m => (
+              <button
+                key={m.id}
+                onClick={() => onToggleSupporter(m.id)}
+                className="gw-press"
+                title={`Add ${memberLabel(m)} as a supporter`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: 100,
+                  background: "transparent",
+                  color: "var(--gw-fg-muted)",
+                  border: "1px dashed var(--gw-border)",
+                  cursor: "pointer",
+                }}
+              >
+                <Icons.Plus width={9} height={9} />
+                {memberLabel(m)}
+              </button>
+            ))}
           </div>
         )}
       </div>

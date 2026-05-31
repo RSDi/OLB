@@ -52,6 +52,12 @@ const ExtractionSchema = z.object({
           .describe(
             'Urgency for THIS item based on how it was discussed. "emergency" for critical/ASAP/right-away language; "high" for urgent/important/"we should get on this"; "low" for no-rush/someday/eventually; otherwise "medium". Default "medium" if no urgency cues.'
           ),
+        suggested_supporters: z
+          .array(z.string())
+          .nullish()
+          .describe(
+            'Names (as spoken) of people the transcript EXPLICITLY says will help/assist/work-with the responsible person on THIS item (e.g. "Jeff bring the cigars, and Dave help him" → ["Dave"] on the cigars item). Empty unless help is explicitly stated — do NOT include the owner, and do NOT add everyone who was in the conversation.'
+          ),
       })
     )
     .max(15)
@@ -64,6 +70,7 @@ interface ExtractedAction {
   text: string;
   suggested_assignee: string | null;
   priority: ActionPriority;
+  suggested_supporters: string[];
 }
 
 function siteUrl(): string {
@@ -98,6 +105,7 @@ Given the transcript below, return:
 2. A list of concrete action items. Only include things that someone needs to DO — not observations or musings. If the speaker said "I should X" or "we need to Y" or "make sure to Z", that's an action. Skip anything vague. Phrase each action item as an imperative sentence (e.g. "Pay bus deposit by 6/15", not "the bus deposit needs to be paid").
 3. For each action item, if the transcript clearly names who is responsible for it (e.g. "Dave will pay the deposit", "ask Jeff to call the vendor"), set suggested_assignee to that person's name as spoken — a first name or nickname. If no one is clearly named for that item, leave it null. Do not guess.
 4. For each action item, set priority from how it was discussed: "emergency" for critical/ASAP/right-away language, "high" for urgent/important/"we should get on this", "low" for no-rush/someday, otherwise "medium". Don't inflate — only raise priority when the urgency is actually expressed.
+5. For each action item, set suggested_supporters ONLY when the transcript explicitly says someone will help/assist/work-with the responsible person on THAT item. Leave it empty otherwise — do NOT add everyone who was in the conversation, and do NOT include the responsible person themselves.
 
 If there are no clear action items, return an empty list. Do not pad.
 
@@ -112,6 +120,7 @@ ${transcript}
       text: a.text,
       suggested_assignee: a.suggested_assignee ?? null,
       priority: a.priority ?? "medium",
+      suggested_supporters: (a.suggested_supporters ?? []).map(s => s.trim()).filter(Boolean),
     })),
   };
 }
@@ -249,6 +258,7 @@ export async function processTranscriptionCompleted(
         sort_order: idx,
         suggested_assignee_name: a.suggested_assignee?.trim() || null,
         priority: a.priority,
+        suggested_supporter_names: a.suggested_supporters,
       }));
       const { error: insertErr } = await admin.from("daves_idea_action_items").insert(rows);
       if (insertErr) console.error("Action item insert failed", insertErr);

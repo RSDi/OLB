@@ -43,6 +43,8 @@ export interface DavesIdeaActionItem {
   // LLM-suggested owner + the member it matched (if any), for the confirm UI.
   suggested_assignee_name: string | null;
   suggested_member_id: string | null;
+  // LLM-suggested supporter names (explicit-only); matched to members in the UI.
+  suggested_supporter_names: string[];
   created_at: string;
   updated_at: string;
 }
@@ -90,7 +92,7 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
        action_items:daves_idea_action_items(
          id, recording_id, text, routed_to, done, sort_order, priority,
          owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
-         created_at, updated_at
+         suggested_supporter_names, created_at, updated_at
        )`
     )
     .is("deleted_at", null)
@@ -107,7 +109,11 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
       .slice()
       .sort((a, b) => a.sort_order - b.sort_order)
       // Defensive: a row with no array (older data) reads as [] for the UI.
-      .map(a => ({ ...a, supporter_member_ids: a.supporter_member_ids ?? [] })),
+      .map(a => ({
+        ...a,
+        supporter_member_ids: a.supporter_member_ids ?? [],
+        suggested_supporter_names: a.suggested_supporter_names ?? [],
+      })),
   }));
 }
 
