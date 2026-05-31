@@ -87,6 +87,58 @@ function memberLabel(m: AssignableMember | undefined): string {
   return m.full_name || m.nickname || "Member";
 }
 
+// Common English nicknames → formal first name(s). Lets a spoken first name in
+// the transcript ("Dave") connect to a member whose legal name is formal
+// ("David Orrick"). Not exhaustive — a member's `nickname` field always wins.
+const NICKNAMES: Record<string, string[]> = {
+  abby: ["abigail"], al: ["albert", "alan"], alex: ["alexander", "alexandra"],
+  andy: ["andrew"], drew: ["andrew"], ben: ["benjamin"], beth: ["elizabeth"],
+  bill: ["william"], billy: ["william"], will: ["william"], willie: ["william"],
+  bob: ["robert"], bobby: ["robert"], rob: ["robert"], robbie: ["robert"],
+  cathy: ["catherine", "katherine"], charlie: ["charles"], chuck: ["charles"],
+  chris: ["christopher", "christine", "christina"], dan: ["daniel"], danny: ["daniel"],
+  dave: ["david"], davey: ["david"], deb: ["deborah"], debbie: ["deborah"],
+  dick: ["richard"], rich: ["richard"], rick: ["richard"], ricky: ["richard"],
+  don: ["donald"], donnie: ["donald"], ed: ["edward", "edwin"], eddie: ["edward"],
+  fran: ["frances", "francis"], frank: ["francis", "franklin"], fred: ["frederick"],
+  gabe: ["gabriel"], greg: ["gregory"], hank: ["henry"], jack: ["john", "jackson"],
+  jake: ["jacob"], jeff: ["jeffrey", "jefferson"], jen: ["jennifer"], jenny: ["jennifer"],
+  jerry: ["gerald", "jerome"], jim: ["james"], jimmy: ["james"], joe: ["joseph"], joey: ["joseph"],
+  jon: ["jonathan"], kate: ["katherine", "kathryn"], katie: ["katherine"], kathy: ["katherine"],
+  ken: ["kenneth"], larry: ["lawrence"], liz: ["elizabeth"], lizzie: ["elizabeth"],
+  matt: ["matthew"], maggie: ["margaret"], meg: ["margaret"], peggy: ["margaret"],
+  mike: ["michael"], mick: ["michael"], nate: ["nathan", "nathaniel"], nick: ["nicholas"],
+  pat: ["patrick", "patricia"], pete: ["peter"], phil: ["philip", "phillip"], ray: ["raymond"],
+  ron: ["ronald"], ronnie: ["ronald"], sam: ["samuel", "samantha"], sammy: ["samuel"],
+  steve: ["steven", "stephen"], sue: ["susan"], susie: ["susan"], ted: ["theodore", "edward"],
+  teddy: ["theodore"], theo: ["theodore"], tim: ["timothy"], tom: ["thomas"], tommy: ["thomas"],
+  tony: ["anthony"], vic: ["victor"], zach: ["zachary"], zack: ["zachary"],
+};
+
+function firstToken(s: string | null): string {
+  return (s ?? "").trim().toLowerCase().split(/\s+/)[0] ?? "";
+}
+
+// Match a spoken first name / nickname to a single directory member. Returns a
+// member ONLY when the match is unambiguous (exactly one candidate) — ambiguity
+// (two "Davids") or no hit returns undefined, so we never auto-suggest the
+// wrong person. Checks: exact nickname, exact/diminutive-expanded first name,
+// then a prefix either direction (Jeff↔Jeffrey).
+function matchMemberName(name: string | null, members: AssignableMember[]): AssignableMember | undefined {
+  const n = firstToken(name).replace(/[^a-z]/g, "");
+  if (n.length < 2) return undefined;
+  const candidates = new Set<string>([n, ...(NICKNAMES[n] ?? [])]);
+  const hits = members.filter(m => {
+    const nick = (m.nickname ?? "").trim().toLowerCase();
+    if (nick && nick === n) return true;
+    const fn = firstToken(m.full_name);
+    if (!fn) return false;
+    if (candidates.has(fn)) return true;
+    return n.length >= 3 && (fn.startsWith(n) || n.startsWith(fn));
+  });
+  return hits.length === 1 ? hits[0] : undefined;
+}
+
 const STATUS_LABEL: Record<RecordingStatus, string> = {
   uploading: "Uploading…",
   transcribing: "Transcribing…",
@@ -368,11 +420,6 @@ export function DavesIdea({
     await supabase.from("daves_idea_action_items").update({ supporter_member_ids: next }).eq("id", actionId);
   }
 
-  function acceptSuggestedOwner(recordingId: string, actionId: string) {
-    const action = recordings.find(r => r.id === recordingId)?.action_items.find(a => a.id === actionId);
-    if (action?.suggested_member_id) setActionOwner(recordingId, actionId, action.suggested_member_id);
-  }
-
   async function deleteRecording(recordingId: string) {
     if (!confirm("Delete this recording? You can restore it from Settings → Deleted.")) return;
     // Optimistic remove. The server action below uses the admin client with
@@ -603,7 +650,6 @@ export function DavesIdea({
             onEditAction={(actionId, text) => editActionText(selected.id, actionId, text)}
             onSetOwner={(actionId, memberId) => setActionOwner(selected.id, actionId, memberId)}
             onToggleSupporter={(actionId, memberId) => toggleActionSupporter(selected.id, actionId, memberId)}
-            onAcceptSuggestion={actionId => acceptSuggestedOwner(selected.id, actionId)}
             onReextract={() => reextractRecording(selected.id)}
             onDelete={() => deleteRecording(selected.id)}
           />
@@ -793,7 +839,6 @@ function SelectedDetail({
   onEditAction,
   onSetOwner,
   onToggleSupporter,
-  onAcceptSuggestion,
   onReextract,
   onDelete,
 }: {
@@ -806,7 +851,6 @@ function SelectedDetail({
   onEditAction: (actionId: string, text: string) => void;
   onSetOwner: (actionId: string, memberId: string | null) => void;
   onToggleSupporter: (actionId: string, memberId: string) => void;
-  onAcceptSuggestion: (actionId: string) => void;
   onReextract: () => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
@@ -1142,7 +1186,6 @@ function SelectedDetail({
                 onEdit={text => onEditAction(a.id, text)}
                 onSetOwner={memberId => onSetOwner(a.id, memberId)}
                 onToggleSupporter={memberId => onToggleSupporter(a.id, memberId)}
-                onAcceptSuggestion={() => onAcceptSuggestion(a.id)}
               />
             ))}
           </div>
@@ -1161,7 +1204,6 @@ function ActionRow({
   onEdit,
   onSetOwner,
   onToggleSupporter,
-  onAcceptSuggestion,
 }: {
   action: DavesIdeaActionItem;
   recordingTitle: string | null;
@@ -1171,7 +1213,6 @@ function ActionRow({
   onEdit: (text: string) => void;
   onSetOwner: (memberId: string | null) => void;
   onToggleSupporter: (memberId: string) => void;
-  onAcceptSuggestion: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -1184,7 +1225,9 @@ function ActionRow({
   const supporters = supporterIds
     .map(id => findMember(members, id))
     .filter((m): m is AssignableMember => !!m);
-  const suggestedMember = findMember(members, action.suggested_member_id);
+  // Match the LLM's spoken name to a member live (against the current
+  // directory) so improvements + new members apply to existing recordings too.
+  const suggestedMember = matchMemberName(action.suggested_assignee_name, members);
   const showSuggestion = !action.owner_member_id && !!action.suggested_assignee_name;
 
   function startEdit() {
@@ -1336,7 +1379,7 @@ function ActionRow({
             {showSuggestion &&
               (suggestedMember ? (
                 <button
-                  onClick={onAcceptSuggestion}
+                  onClick={() => suggestedMember && onSetOwner(suggestedMember.id)}
                   className="gw-press"
                   title={`Assign ${memberLabel(suggestedMember)} as owner`}
                   style={{

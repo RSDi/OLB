@@ -57,47 +57,6 @@ interface ExtractedAction {
   suggested_assignee: string | null;
 }
 
-interface MemberLite {
-  id: string;
-  full_name: string | null;
-  nickname: string | null;
-}
-
-async function loadApprovedMembers(
-  admin: ReturnType<typeof createAdminClient>
-): Promise<MemberLite[]> {
-  const { data, error } = await admin
-    .from("members")
-    .select("id, full_name, nickname")
-    .eq("status", "approved")
-    .is("deleted_at", null);
-  if (error) {
-    console.error("loadApprovedMembers failed", error);
-    return [];
-  }
-  return (data ?? []) as MemberLite[];
-}
-
-// Map a spoken first-name/nickname to a directory member. Conservative: only a
-// single unambiguous match wins (nickname, then first name, then full name);
-// ambiguous or no match returns null so we never suggest the wrong person.
-function matchMember(name: string, members: MemberLite[]): string | null {
-  const n = name.trim().toLowerCase();
-  if (!n) return null;
-  const firstName = (m: MemberLite) => (m.full_name ?? "").trim().toLowerCase().split(/\s+/)[0];
-  const tiers: Array<(m: MemberLite) => boolean> = [
-    m => (m.nickname ?? "").trim().toLowerCase() === n,
-    m => firstName(m) === n,
-    m => (m.full_name ?? "").trim().toLowerCase() === n,
-  ];
-  for (const pred of tiers) {
-    const hits = members.filter(pred);
-    if (hits.length === 1) return hits[0].id;
-    if (hits.length > 1) return null; // ambiguous — don't guess
-  }
-  return null;
-}
-
 function siteUrl(): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
@@ -269,21 +228,16 @@ export async function processTranscriptionCompleted(
       }
     }
 
-    // 4. Insert action items. Match any LLM-suggested assignee name to a
-    // directory member so the UI can offer a one-tap "accept" — the user still
-    // confirms; we never auto-assign the owner.
+    // 4. Insert action items with the LLM's suggested assignee name. Matching
+    // that name to a member happens live in the UI, so it stays current with
+    // the directory and applies to older recordings too.
     if (actions.length > 0) {
-      const members = await loadApprovedMembers(admin);
-      const rows = actions.map((a, idx) => {
-        const name = a.suggested_assignee?.trim() || null;
-        return {
-          recording_id: recordingId,
-          text: a.text,
-          sort_order: idx,
-          suggested_assignee_name: name,
-          suggested_member_id: name ? matchMember(name, members) : null,
-        };
-      });
+      const rows = actions.map((a, idx) => ({
+        recording_id: recordingId,
+        text: a.text,
+        sort_order: idx,
+        suggested_assignee_name: a.suggested_assignee?.trim() || null,
+      }));
       const { error: insertErr } = await admin.from("daves_idea_action_items").insert(rows);
       if (insertErr) console.error("Action item insert failed", insertErr);
     }
