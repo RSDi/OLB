@@ -213,7 +213,9 @@ export function DavesIdea({
           `id, user_id, title, audio_blob_url, duration_sec, source, status,
            assemblyai_id, transcript, utterances, error, created_at, updated_at,
            action_items:daves_idea_action_items(
-             id, recording_id, text, routed_to, done, sort_order, created_at, updated_at
+             id, recording_id, text, routed_to, done, sort_order,
+             owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
+             created_at, updated_at
            )`
         )
         .is("deleted_at", null)
@@ -346,9 +348,10 @@ export function DavesIdea({
   async function toggleActionSupporter(recordingId: string, actionId: string, memberId: string) {
     const action = recordings.find(r => r.id === recordingId)?.action_items.find(a => a.id === actionId);
     if (!action) return;
-    const next = action.supporter_member_ids.includes(memberId)
-      ? action.supporter_member_ids.filter(id => id !== memberId)
-      : [...action.supporter_member_ids, memberId];
+    const current = action.supporter_member_ids ?? [];
+    const next = current.includes(memberId)
+      ? current.filter(id => id !== memberId)
+      : [...current, memberId];
     setRecordings(rs =>
       rs.map(r =>
         r.id === recordingId
@@ -1076,8 +1079,11 @@ function ActionRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(action.text);
 
+  // Guard against a row fetched without the column (older data / a select that
+  // predates assignments) so the row renders instead of throwing.
+  const supporterIds = action.supporter_member_ids ?? [];
   const owner = findMember(members, action.owner_member_id);
-  const supporters = action.supporter_member_ids
+  const supporters = supporterIds
     .map(id => findMember(members, id))
     .filter((m): m is AssignableMember => !!m);
   const suggestedMember = findMember(members, action.suggested_member_id);
@@ -1289,7 +1295,7 @@ function ActionRow({
       <AssigneePicker
         members={members}
         ownerId={action.owner_member_id}
-        supporterIds={action.supporter_member_ids}
+        supporterIds={supporterIds}
         onSetOwner={onSetOwner}
         onToggleSupporter={onToggleSupporter}
       />
