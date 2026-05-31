@@ -26,12 +26,14 @@ export function MaintenanceRequestForm({
   categories,
   initialDescription = "",
   initialPriorityKey = "",
+  project = null,
 }: {
   areas: Area[];
   priorities: Priority[];
   categories: Category[];
   initialDescription?: string;
   initialPriorityKey?: string;
+  project?: { id: string; title: string } | null;
 }) {
   const router = useRouter();
   const presetPriorityId = priorities.find((p) => p.key === initialPriorityKey)?.id ?? "";
@@ -115,6 +117,24 @@ export function MaintenanceRequestForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {project && (
+        <>
+          <input type="hidden" name="project_id" value={project.id} />
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--gw-fg-muted)",
+              background: "var(--gw-bg-elev)",
+              border: "1px solid var(--gw-border)",
+              borderRadius: 8,
+              padding: "10px 14px",
+            }}
+          >
+            Adding to project: <strong style={{ color: "var(--gw-fg)" }}>{project.title}</strong>
+          </div>
+        </>
+      )}
       <Select
         label="Category *"
         name="category_id"

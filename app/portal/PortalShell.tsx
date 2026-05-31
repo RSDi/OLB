@@ -18,6 +18,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
   "/portal/tasks": { title: "Tasks & Projects",  subtitle: "Portal" },
   "/portal/tasks/new": { title: "New task", subtitle: "Portal" },
+  "/portal/tasks/projects": { title: "Projects", subtitle: "Portal" },
   "/portal/events/new": { title: "New event", subtitle: "Calendar" },
   "/portal/pm":           { title: "Preventative", subtitle: "Facilities" },
   "/portal/pm/calendar":  { title: "PM Calendar", subtitle: "Facilities" },
@@ -72,7 +73,9 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
   // (`/portal/tasks/<id>`, but not /new) as "Request".
   const meta =
     PAGE_META[pathname] ??
-    (pathname.startsWith("/portal/tasks/") && pathname !== "/portal/tasks/new"
+    (pathname.startsWith("/portal/tasks/projects/")
+      ? { title: "Project", subtitle: "Portal" }
+      : pathname.startsWith("/portal/tasks/") && pathname !== "/portal/tasks/new"
       ? { title: "Task", subtitle: "Portal" }
       : pathname.startsWith("/portal/pm/templates/")
       ? { title: "Edit template", subtitle: "Facilities" }

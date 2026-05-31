@@ -7,9 +7,9 @@ import { MaintenanceRequestForm } from "./Form";
 export default async function NewMaintenanceRequestPage({
   searchParams,
 }: {
-  searchParams: Promise<{ description?: string; priority?: string }>;
+  searchParams: Promise<{ description?: string; priority?: string; project?: string }>;
 }) {
-  const { description, priority } = await searchParams;
+  const { description, priority, project } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -36,6 +36,10 @@ export default async function NewMaintenanceRequestPage({
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true }),
   ]);
+
+  const { data: projectRow } = project
+    ? await supabase.from("projects").select("id, title").eq("id", project).is("deleted_at", null).maybeSingle()
+    : { data: null as { id: string; title: string } | null };
 
   return (
     <>
@@ -77,6 +81,7 @@ export default async function NewMaintenanceRequestPage({
             categories={categories ?? []}
             initialDescription={description ?? ""}
             initialPriorityKey={priority ?? ""}
+            project={projectRow ?? null}
           />
         </div>
       </div>

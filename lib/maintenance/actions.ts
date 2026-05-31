@@ -15,6 +15,8 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
   const areaId = formData.get("area_id");
   const priorityId = formData.get("priority_id");
   const description = formData.get("description");
+  const projectId = formData.get("project_id");
+  const cleanProjectId = typeof projectId === "string" && projectId ? projectId : null;
 
   if (typeof categoryId !== "string" || !categoryId) return { error: "Category is required." };
   if (typeof priorityId !== "string" || !priorityId) return { error: "Priority is required." };
@@ -60,6 +62,7 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
       area_id: cleanAreaId,
       priority_id: priorityId,
       description: trimmedDescription,
+      project_id: cleanProjectId,
     })
     .select("id")
     .single();

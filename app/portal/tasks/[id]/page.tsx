@@ -29,6 +29,7 @@ interface Ticket {
   submitted_by: string | null;
   assigned_to: string | null;
   category: { name: string; chip_class: string } | null;
+  project: { id: string; title: string } | null;
   area: { id: string; name: string } | null;
   priority: { id: string; label: string; chip_class: string } | null;
   assignee: { id: string; full_name: string | null; email: string } | null;
@@ -69,6 +70,7 @@ export default async function TicketDetailPage({
     .select(
       `id, description, status, created_at, updated_at, submitted_by, assigned_to,
        category:task_categories(name, chip_class),
+       project:projects(id, title),
        area:areas(id, name),
        priority:priorities(id, label, chip_class),
        assignee:members!assigned_to(id, full_name, email)`
@@ -176,6 +178,27 @@ export default async function TicketDetailPage({
               )}
               {statusChip(ticket.status)}
               {ticket.area && <Pill>{ticket.area.name}</Pill>}
+              {ticket.project && (
+                <Link
+                  href={`/portal/tasks/projects/${ticket.project.id}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "3px 10px",
+                    borderRadius: 100,
+                    background: "var(--gw-bg-elev)",
+                    border: "1px solid var(--gw-border)",
+                    color: "var(--rsd-accent)",
+                    textDecoration: "none",
+                  }}
+                >
+                  <Icons.LayoutDashboard width={11} height={11} />
+                  {ticket.project.title}
+                </Link>
+              )}
             </div>
             <div style={{ fontSize: 14, color: "var(--gw-fg)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
               {ticket.description}

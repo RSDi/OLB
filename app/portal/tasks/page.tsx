@@ -170,6 +170,25 @@ export default async function PortalMaintenancePage({
         }}
       >
         <Link
+          href="/portal/tasks/projects"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 18px",
+            borderRadius: 100,
+            background: "var(--gw-bg-elev)",
+            color: "var(--gw-fg)",
+            border: "1px solid var(--gw-border)",
+            fontSize: 13,
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          <Icons.LayoutDashboard width={14} height={14} />
+          Projects
+        </Link>
+        <Link
           href="/portal/tasks/new"
           style={{
             display: "inline-flex",
@@ -185,7 +204,7 @@ export default async function PortalMaintenancePage({
           }}
         >
           <Icons.Plus width={14} height={14} />
-          New request
+          New task
         </Link>
       </div>
 
