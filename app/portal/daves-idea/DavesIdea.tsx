@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
 import { softDeleteDavesIdeaRecording } from "../../../lib/daves-idea/actions";
@@ -13,6 +14,7 @@ import type {
 
 const INTEGRATIONS = [
   { id: "things", label: "Things", icon: "CheckCircle" as const },
+  { id: "maintenance", label: "Maintenance request", icon: "Wrench" as const },
   { id: "email", label: "Email follow-up", icon: "Mail" as const },
   { id: "hubspot", label: "HubSpot Task", icon: "Briefcase" as const },
   { id: "reminders", label: "Apple Reminders", icon: "Clock" as const },
@@ -560,7 +562,7 @@ export function DavesIdea({
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 640 }}>
             Tap once to start recording mid-conversation. Audio uploads, AssemblyAI transcribes with speaker
             labels, Claude pulls candidate action items into the inbox below. From there, send each item to
-            Things, or route it to Reminders, Notion, Slack, HubSpot, or a follow-up email.
+            Things or a maintenance request, or route it to Reminders, Notion, Slack, HubSpot, or a follow-up email.
           </p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
             <button
@@ -829,7 +831,7 @@ export function DavesIdea({
           </h2>
           <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 2 }}>
             Where action items can be sent. Things opens the app via its URL scheme and creates the
-            to-do; the rest are mock labels for now.
+            to-do; Maintenance request opens a prefilled ticket; the rest are mock labels for now.
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
@@ -869,10 +871,17 @@ export function DavesIdea({
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
-                      color: i.id === "things" ? "var(--rsd-accent)" : "var(--gw-fg-muted)",
+                      color:
+                        i.id === "things" || i.id === "maintenance"
+                          ? "var(--rsd-accent)"
+                          : "var(--gw-fg-muted)",
                     }}
                   >
-                    {i.id === "things" ? "One-tap export" : "Label only"}
+                    {i.id === "things"
+                      ? "One-tap export"
+                      : i.id === "maintenance"
+                        ? "Creates a ticket"
+                        : "Label only"}
                   </div>
                 </div>
               </div>
@@ -1272,6 +1281,7 @@ function ActionRow({
   onToggleSupporter: (memberId: string) => void;
 }) {
   const { open, setOpen, ref: sendToRef } = useDismissable();
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(action.text);
 
@@ -1541,6 +1551,12 @@ function ActionRow({
                       owner: owner ? memberLabel(owner) : null,
                       supporters: supporters.map(memberLabel),
                     });
+                  else if (i.id === "maintenance")
+                    router.push(
+                      `/portal/maintenance/new?description=${encodeURIComponent(
+                        `${action.text}\n\nFrom Dave's Idea recording: "${recordingTitle ?? "Untitled recording"}"`
+                      )}`
+                    );
                   onRoute(i.label);
                   setOpen(false);
                 }}

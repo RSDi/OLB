@@ -4,7 +4,12 @@ import { createClient } from "../../../../lib/supabase/server";
 import { Icons } from "../../../components/icons";
 import { MaintenanceRequestForm } from "./Form";
 
-export default async function NewMaintenanceRequestPage() {
+export default async function NewMaintenanceRequestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ description?: string }>;
+}) {
+  const { description } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -60,7 +65,11 @@ export default async function NewMaintenanceRequestPage() {
 
       <div style={{ maxWidth: 680 }}>
         <div className="rsd-card">
-          <MaintenanceRequestForm areas={areas ?? []} priorities={priorities ?? []} />
+          <MaintenanceRequestForm
+            areas={areas ?? []}
+            priorities={priorities ?? []}
+            initialDescription={description ?? ""}
+          />
         </div>
       </div>
     </>

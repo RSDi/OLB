@@ -18,9 +18,11 @@ interface Priority {
 export function MaintenanceRequestForm({
   areas,
   priorities,
+  initialDescription = "",
 }: {
   areas: Area[];
   priorities: Priority[];
+  initialDescription?: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -123,6 +125,7 @@ export function MaintenanceRequestForm({
         placeholder="What is wrong, where exactly, and when you noticed it."
         rows={5}
         required
+        defaultValue={initialDescription}
       />
 
       {error && (
