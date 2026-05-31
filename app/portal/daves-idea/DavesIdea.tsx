@@ -119,16 +119,41 @@ function firstToken(s: string | null): string {
   return (s ?? "").trim().toLowerCase().split(/\s+/)[0] ?? "";
 }
 
-// Match a spoken first name / nickname to a single directory member. Returns a
-// member ONLY when the match is unambiguous (exactly one candidate) — ambiguity
-// (two "Davids") or no hit returns undefined, so we never auto-suggest the
-// wrong person. Checks: exact nickname, exact/diminutive-expanded first name,
-// then a prefix either direction (Jeff↔Jeffrey).
+// Soundex phonetic code, e.g. "Jared" and "Jerod" both → "J630". Used as a
+// last-resort fuzzy tier so close spellings of a name still connect.
+function soundex(s: string): string {
+  const a = s.toUpperCase().replace(/[^A-Z]/g, "");
+  if (!a) return "";
+  const map: Record<string, string> = {
+    B: "1", F: "1", P: "1", V: "1",
+    C: "2", G: "2", J: "2", K: "2", Q: "2", S: "2", X: "2", Z: "2",
+    D: "3", T: "3", L: "4", M: "5", N: "5", R: "6",
+  };
+  let prev = map[a[0]] ?? "0";
+  let out = "";
+  for (let i = 1; i < a.length && out.length < 3; i++) {
+    const c = map[a[i]];
+    if (c) {
+      if (c !== prev) out += c;
+      prev = c;
+    } else if (a[i] !== "H" && a[i] !== "W") {
+      prev = "0"; // a vowel resets, so a repeat code after it isn't collapsed
+    }
+  }
+  return (a[0] + out + "000").slice(0, 4);
+}
+
+// Match a spoken first name / nickname to a single directory member, ONLY when
+// unambiguous (exactly one hit) — ambiguity ("two Davids") or no hit returns
+// undefined so we never auto-suggest the wrong person. Two tiers:
+//   1. strong  — exact nickname, exact/diminutive first name, or prefix
+//   2. phonetic — same Soundex code (Jared ≈ Jerod), used only if tier 1 is empty
 function matchMemberName(name: string | null, members: AssignableMember[]): AssignableMember | undefined {
   const n = firstToken(name).replace(/[^a-z]/g, "");
   if (n.length < 2) return undefined;
   const candidates = new Set<string>([n, ...(NICKNAMES[n] ?? [])]);
-  const hits = members.filter(m => {
+
+  const strong = members.filter(m => {
     const nick = (m.nickname ?? "").trim().toLowerCase();
     if (nick && nick === n) return true;
     const fn = firstToken(m.full_name);
@@ -136,7 +161,39 @@ function matchMemberName(name: string | null, members: AssignableMember[]): Assi
     if (candidates.has(fn)) return true;
     return n.length >= 3 && (fn.startsWith(n) || n.startsWith(fn));
   });
-  return hits.length === 1 ? hits[0] : undefined;
+  if (strong.length === 1) return strong[0];
+  if (strong.length > 1) return undefined; // genuinely ambiguous — don't guess
+
+  const code = soundex(n);
+  if (!code) return undefined;
+  const phonetic = members.filter(m => {
+    const fn = firstToken(m.full_name);
+    return fn.length >= 3 && soundex(fn) === code;
+  });
+  return phonetic.length === 1 ? phonetic[0] : undefined;
+}
+
+// Open/close state for a popover that dismisses on outside-click or Escape.
+// Attach the returned ref to the popover's wrapper element.
+function useDismissable() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+  return { open, setOpen, ref };
 }
 
 const STATUS_LABEL: Record<RecordingStatus, string> = {
@@ -1214,7 +1271,7 @@ function ActionRow({
   onSetOwner: (memberId: string | null) => void;
   onToggleSupporter: (memberId: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, ref: sendToRef } = useDismissable();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(action.text);
 
@@ -1440,7 +1497,7 @@ function ActionRow({
         onSetOwner={onSetOwner}
         onToggleSupporter={onToggleSupporter}
       />
-      <div style={{ position: "relative" }}>
+      <div ref={sendToRef} style={{ position: "relative" }}>
         <button
           onClick={() => setOpen(o => !o)}
           className="gw-press"
@@ -1546,7 +1603,7 @@ function AssigneePicker({
   onSetOwner: (memberId: string | null) => void;
   onToggleSupporter: (memberId: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, ref } = useDismissable();
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
@@ -1560,7 +1617,7 @@ function AssigneePicker({
   }, [q, members]);
 
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen(o => !o)}
         aria-label="Assign people"
