@@ -7,9 +7,9 @@ import { MaintenanceRequestForm } from "./Form";
 export default async function NewMaintenanceRequestPage({
   searchParams,
 }: {
-  searchParams: Promise<{ description?: string; priority?: string; project?: string }>;
+  searchParams: Promise<{ description?: string; priority?: string; project?: string; category?: string }>;
 }) {
-  const { description, priority, project } = await searchParams;
+  const { description, priority, project, category } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -82,6 +82,7 @@ export default async function NewMaintenanceRequestPage({
             initialDescription={description ?? ""}
             initialPriorityKey={priority ?? ""}
             project={projectRow ?? null}
+            initialCategoryName={category ?? ""}
           />
         </div>
       </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
 import { softDeleteDavesIdeaRecording } from "../../../lib/daves-idea/actions";
+import { createProjectFromRecording } from "../../../lib/projects/actions";
 import type {
   AssignableMember,
   DavesIdeaActionItem,
@@ -14,7 +15,7 @@ import type {
 
 const INTEGRATIONS = [
   { id: "things", label: "Things", icon: "CheckCircle" as const },
-  { id: "maintenance", label: "Maintenance request", icon: "Wrench" as const },
+  { id: "maintenance", label: "Task", icon: "Wrench" as const },
   { id: "email", label: "Email follow-up", icon: "Mail" as const },
   { id: "hubspot", label: "HubSpot Task", icon: "Briefcase" as const },
   { id: "reminders", label: "Apple Reminders", icon: "Clock" as const },
@@ -872,7 +873,7 @@ export function DavesIdea({
           </h2>
           <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 2 }}>
             Where action items can be sent. Things opens the app via its URL scheme and creates the
-            to-do; Maintenance request opens a prefilled ticket; the rest are mock labels for now.
+            to-do; Task opens a prefilled task in the portal; the rest are mock labels for now.
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
@@ -921,7 +922,7 @@ export function DavesIdea({
                     {i.id === "things"
                       ? "One-tap export"
                       : i.id === "maintenance"
-                        ? "Creates a ticket"
+                        ? "Creates a task"
                         : "Label only"}
                   </div>
                 </div>
@@ -966,6 +967,8 @@ function SelectedDetail({
   const [reextracting, setReextracting] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(recording.title ?? "");
+  const router = useRouter();
+  const [sendingProject, setSendingProject] = useState(false);
 
   const transcriptText = useMemo(() => {
     if (recording.utterances && recording.utterances.length > 0) {
@@ -997,6 +1000,24 @@ function SelectedDetail({
     } finally {
       setReextracting(false);
     }
+  }
+
+  // Every open item becomes a Task under a new Project named after the recording.
+  const openTasks = recording.action_items.filter(a => !a.done);
+  async function handleSendToProject() {
+    if (openTasks.length === 0 || sendingProject) return;
+    setSendingProject(true);
+    const res = await createProjectFromRecording({
+      title: recording.title || "Untitled recording",
+      tasks: openTasks.map(a => ({
+        text: a.text,
+        priority: a.priority ?? "medium",
+        ownerMemberId: a.owner_member_id,
+      })),
+    });
+    setSendingProject(false);
+    if (res.projectId) router.push(`/portal/tasks/projects/${res.projectId}`);
+    else if (res.error) window.alert(res.error);
   }
 
   // Renaming is gated to finished recordings — a rename during processing would
@@ -1241,32 +1262,56 @@ function SelectedDetail({
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase" }}>
             Extracted action items
           </div>
-          {sendableToThings.length > 0 && (
-            <button
-              onClick={() => {
-                openAllInThings(sendableToThings.map(a => a.text), recording.title, davesIdeaUrl(recording.id));
-                sendableToThings.forEach(a => onRoute(a.id, "Things"));
-              }}
-              className="gw-press"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "5px 10px",
-                borderRadius: 100,
-                background: "var(--gw-bg-elev)",
-                color: "var(--gw-fg)",
-                border: "1px solid var(--gw-border)",
-                fontSize: 11,
-                fontWeight: 700,
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              <Icons.CheckCircle width={11} height={11} />
-              Send all to Things ({sendableToThings.length})
-            </button>
-          )}
+          <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
+            {openTasks.length > 0 && (
+              <button
+                onClick={handleSendToProject}
+                disabled={sendingProject}
+                className="gw-press"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "5px 10px",
+                  borderRadius: 100,
+                  background: "var(--rsd-accent)",
+                  color: "var(--rsd-accent-on)",
+                  border: "none",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: sendingProject ? "default" : "pointer",
+                }}
+              >
+                <Icons.LayoutDashboard width={11} height={11} />
+                {sendingProject ? "Creating…" : `Send to Project (${openTasks.length})`}
+              </button>
+            )}
+            {sendableToThings.length > 0 && (
+              <button
+                onClick={() => {
+                  openAllInThings(sendableToThings.map(a => a.text), recording.title, davesIdeaUrl(recording.id));
+                  sendableToThings.forEach(a => onRoute(a.id, "Things"));
+                }}
+                className="gw-press"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "5px 10px",
+                  borderRadius: 100,
+                  background: "var(--gw-bg-elev)",
+                  color: "var(--gw-fg)",
+                  border: "1px solid var(--gw-border)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                <Icons.CheckCircle width={11} height={11} />
+                Send all to Things ({sendableToThings.length})
+              </button>
+            )}
+          </div>
         </div>
         {recording.action_items.length === 0 ? (
           <div
@@ -1656,7 +1701,7 @@ function ActionRow({
                     );
                   else if (i.id === "maintenance")
                     router.push(
-                      `/portal/tasks/new?priority=${action.priority ?? "medium"}&description=${encodeURIComponent(
+                      `/portal/tasks/new?category=General&priority=${action.priority ?? "medium"}&description=${encodeURIComponent(
                         `${action.text}\n\nFrom Dave's Idea recording: "${recordingTitle ?? "Untitled recording"}"\n${davesIdeaUrl(action.recording_id, action.id)}`
                       )}`
                     );

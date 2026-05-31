@@ -27,6 +27,7 @@ export function MaintenanceRequestForm({
   initialDescription = "",
   initialPriorityKey = "",
   project = null,
+  initialCategoryName = "",
 }: {
   areas: Area[];
   priorities: Priority[];
@@ -34,11 +35,15 @@ export function MaintenanceRequestForm({
   initialDescription?: string;
   initialPriorityKey?: string;
   project?: { id: string; title: string } | null;
+  initialCategoryName?: string;
 }) {
   const router = useRouter();
   const presetPriorityId = priorities.find((p) => p.key === initialPriorityKey)?.id ?? "";
   const maintenanceId = categories.find((c) => c.name === "Maintenance")?.id ?? "";
-  const [categoryId, setCategoryId] = useState(maintenanceId || categories[0]?.id || "");
+  const presetCategoryId = initialCategoryName
+    ? categories.find((c) => c.name.toLowerCase() === initialCategoryName.toLowerCase())?.id
+    : undefined;
+  const [categoryId, setCategoryId] = useState(presetCategoryId || maintenanceId || categories[0]?.id || "");
   // Area only applies to maintenance tasks.
   const showArea = categoryId === maintenanceId;
   const [pending, setPending] = useState(false);
