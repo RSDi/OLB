@@ -35,8 +35,22 @@ export interface DavesIdeaActionItem {
   routed_to: string | null;
   done: boolean;
   sort_order: number;
+  // Assignment (label-only metadata on the recorder's own task).
+  owner_member_id: string | null;
+  supporter_member_ids: string[];
+  // LLM-suggested owner + the member it matched (if any), for the confirm UI.
+  suggested_assignee_name: string | null;
+  suggested_member_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// A directory member that can be named on an action item. Loaded for the
+// assignee picker; nickname is included for matching/display ("Dave").
+export interface AssignableMember {
+  id: string;
+  full_name: string | null;
+  nickname: string | null;
 }
 
 export interface DavesIdeaRecording {
@@ -72,7 +86,9 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
       `id, user_id, title, audio_blob_url, duration_sec, source, status,
        assemblyai_id, transcript, utterances, error, created_at, updated_at,
        action_items:daves_idea_action_items(
-         id, recording_id, text, routed_to, done, sort_order, created_at, updated_at
+         id, recording_id, text, routed_to, done, sort_order,
+         owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
+         created_at, updated_at
        )`
     )
     .is("deleted_at", null)
@@ -85,6 +101,29 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
   // Postgrest returns the nested rows; coerce + sort action items by sort_order.
   return ((data ?? []) as unknown as DavesIdeaRecording[]).map(r => ({
     ...r,
-    action_items: (r.action_items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
+    action_items: (r.action_items ?? [])
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order)
+      // Defensive: a row with no array (older data) reads as [] for the UI.
+      .map(a => ({ ...a, supporter_member_ids: a.supporter_member_ids ?? [] })),
   }));
+}
+
+// Approved, non-deleted directory members available to assign to an action
+// item. Not restricted to staff — committee members aren't necessarily admins.
+// Mirrors the loader in app/portal/settings/AssignmentsTab.tsx, plus nickname.
+export async function loadAssignableMembers(): Promise<AssignableMember[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("members")
+    .select("id, full_name, nickname")
+    .eq("status", "approved")
+    .is("deleted_at", null)
+    .order("full_name", { ascending: true });
+
+  if (error) {
+    console.error("loadAssignableMembers failed", error);
+    return [];
+  }
+  return (data ?? []) as AssignableMember[];
 }

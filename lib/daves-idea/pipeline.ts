@@ -40,11 +40,63 @@ const ExtractionSchema = z.object({
     .array(
       z.object({
         text: z.string().describe("Single concrete action item (an imperative phrase)."),
+        suggested_assignee: z
+          .string()
+          .nullish()
+          .describe(
+            'If the transcript makes someone responsible for THIS item (e.g. "Dave will pay the deposit", "ask Jeff to call the vendor"), their name as spoken — a first name or nickname. Null if no one is clearly named.'
+          ),
       })
     )
     .max(15)
     .describe("Action items extracted from the transcript. Empty if none."),
 });
+
+interface ExtractedAction {
+  text: string;
+  suggested_assignee: string | null;
+}
+
+interface MemberLite {
+  id: string;
+  full_name: string | null;
+  nickname: string | null;
+}
+
+async function loadApprovedMembers(
+  admin: ReturnType<typeof createAdminClient>
+): Promise<MemberLite[]> {
+  const { data, error } = await admin
+    .from("members")
+    .select("id, full_name, nickname")
+    .eq("status", "approved")
+    .is("deleted_at", null);
+  if (error) {
+    console.error("loadApprovedMembers failed", error);
+    return [];
+  }
+  return (data ?? []) as MemberLite[];
+}
+
+// Map a spoken first-name/nickname to a directory member. Conservative: only a
+// single unambiguous match wins (nickname, then first name, then full name);
+// ambiguous or no match returns null so we never suggest the wrong person.
+function matchMember(name: string, members: MemberLite[]): string | null {
+  const n = name.trim().toLowerCase();
+  if (!n) return null;
+  const firstName = (m: MemberLite) => (m.full_name ?? "").trim().toLowerCase().split(/\s+/)[0];
+  const tiers: Array<(m: MemberLite) => boolean> = [
+    m => (m.nickname ?? "").trim().toLowerCase() === n,
+    m => firstName(m) === n,
+    m => (m.full_name ?? "").trim().toLowerCase() === n,
+  ];
+  for (const pred of tiers) {
+    const hits = members.filter(pred);
+    if (hits.length === 1) return hits[0].id;
+    if (hits.length > 1) return null; // ambiguous — don't guess
+  }
+  return null;
+}
 
 function siteUrl(): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
@@ -65,7 +117,7 @@ async function fetchAssemblyAITranscript(transcriptId: string): Promise<Assembly
   return (await res.json()) as AssemblyAITranscript;
 }
 
-async function extractTitleAndActions(transcript: string): Promise<{ title: string; actions: string[] }> {
+async function extractTitleAndActions(transcript: string): Promise<{ title: string; actions: ExtractedAction[] }> {
   // Vercel AI Gateway: provider/model string, auto-routed. On Vercel the
   // gateway authenticates via OIDC; locally we need AI_GATEWAY_API_KEY.
   const { object } = await generateObject({
@@ -76,6 +128,7 @@ async function extractTitleAndActions(transcript: string): Promise<{ title: stri
 Given the transcript below, return:
 1. A short 3-8 word title that captures what was discussed.
 2. A list of concrete action items. Only include things that someone needs to DO — not observations or musings. If the speaker said "I should X" or "we need to Y" or "make sure to Z", that's an action. Skip anything vague. Phrase each action item as an imperative sentence (e.g. "Pay bus deposit by 6/15", not "the bus deposit needs to be paid").
+3. For each action item, if the transcript clearly names who is responsible for it (e.g. "Dave will pay the deposit", "ask Jeff to call the vendor"), set suggested_assignee to that person's name as spoken — a first name or nickname. If no one is clearly named for that item, leave it null. Do not guess.
 
 If there are no clear action items, return an empty list. Do not pad.
 
@@ -86,7 +139,10 @@ ${transcript}
   });
   return {
     title: object.title,
-    actions: object.action_items.map(a => a.text),
+    actions: object.action_items.map(a => ({
+      text: a.text,
+      suggested_assignee: a.suggested_assignee ?? null,
+    })),
   };
 }
 
@@ -196,7 +252,7 @@ export async function processTranscriptionCompleted(
 
     // 3. LLM extraction. If the transcript is empty (silent recording), skip.
     let title = "Untitled recording";
-    let actions: string[] = [];
+    let actions: ExtractedAction[] = [];
     let extractionError: string | null = null;
     if (transcriptText.length > 0) {
       try {
@@ -213,13 +269,21 @@ export async function processTranscriptionCompleted(
       }
     }
 
-    // 4. Insert action items.
+    // 4. Insert action items. Match any LLM-suggested assignee name to a
+    // directory member so the UI can offer a one-tap "accept" — the user still
+    // confirms; we never auto-assign the owner.
     if (actions.length > 0) {
-      const rows = actions.map((text, idx) => ({
-        recording_id: recordingId,
-        text,
-        sort_order: idx,
-      }));
+      const members = await loadApprovedMembers(admin);
+      const rows = actions.map((a, idx) => {
+        const name = a.suggested_assignee?.trim() || null;
+        return {
+          recording_id: recordingId,
+          text: a.text,
+          sort_order: idx,
+          suggested_assignee_name: name,
+          suggested_member_id: name ? matchMember(name, members) : null,
+        };
+      });
       const { error: insertErr } = await admin.from("daves_idea_action_items").insert(rows);
       if (insertErr) console.error("Action item insert failed", insertErr);
     }

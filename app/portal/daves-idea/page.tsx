@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { DavesIdea } from "./DavesIdea";
-import { loadDavesIdeaRecordings, loadDavesIdeaViewer } from "../../../lib/daves-idea/data";
+import {
+  loadAssignableMembers,
+  loadDavesIdeaRecordings,
+  loadDavesIdeaViewer,
+} from "../../../lib/daves-idea/data";
 
 export const metadata: Metadata = {
   title: "Dave's Idea",
@@ -22,6 +26,9 @@ export const viewport: Viewport = {
 
 export default async function DavesIdeaPage() {
   await loadDavesIdeaViewer();
-  const recordings = await loadDavesIdeaRecordings();
-  return <DavesIdea initialRecordings={recordings} />;
+  const [recordings, members] = await Promise.all([
+    loadDavesIdeaRecordings(),
+    loadAssignableMembers(),
+  ]);
+  return <DavesIdea initialRecordings={recordings} members={members} />;
 }

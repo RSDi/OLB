@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
 import { softDeleteDavesIdeaRecording } from "../../../lib/daves-idea/actions";
 import type {
+  AssignableMember,
   DavesIdeaActionItem,
   DavesIdeaRecording,
   RecordingStatus,
@@ -32,21 +33,32 @@ const INTEGRATIONS = [
 // Per the spec, values are percent-encoded (spaces → %20). We build the query
 // by hand rather than via URLSearchParams, which emits `+` for spaces — the
 // scheme parser expects %20, not `+`.
-function thingsNotes(recordingTitle: string | null): string {
-  const source = recordingTitle
-    ? `From "${recordingTitle}" · captured in Dave's Idea`
-    : "Captured in Dave's Idea";
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  return origin ? `${source}\n${origin}/portal/daves-idea` : source;
+interface ThingsAssignment {
+  owner?: string | null;
+  supporters?: string[];
 }
 
-// Single to-do.
-function openInThings(title: string, recordingTitle: string | null) {
+function thingsNotes(recordingTitle: string | null, assignment?: ThingsAssignment): string {
+  const lines: string[] = [
+    recordingTitle ? `From "${recordingTitle}" · captured in Dave's Idea` : "Captured in Dave's Idea",
+  ];
+  if (assignment?.owner) lines.push(`Owner: ${assignment.owner}`);
+  if (assignment?.supporters && assignment.supporters.length > 0) {
+    lines.push(`Support: ${assignment.supporters.join(", ")}`);
+  }
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  if (origin) lines.push(`${origin}/portal/daves-idea`);
+  return lines.join("\n");
+}
+
+// Single to-do. Carries the owner/supporters into the notes so responsibility
+// travels into Things.
+function openInThings(title: string, recordingTitle: string | null, assignment?: ThingsAssignment) {
   const url =
     "things:///add?title=" +
     encodeURIComponent(title) +
     "&notes=" +
-    encodeURIComponent(thingsNotes(recordingTitle));
+    encodeURIComponent(thingsNotes(recordingTitle, assignment));
   window.location.href = url;
 }
 
@@ -62,6 +74,17 @@ function openAllInThings(titles: string[], recordingTitle: string | null) {
     "&notes=" +
     encodeURIComponent(thingsNotes(recordingTitle));
   window.location.href = url;
+}
+
+function findMember(members: AssignableMember[], id: string | null): AssignableMember | undefined {
+  return id ? members.find(m => m.id === id) : undefined;
+}
+
+// Display name for a chip. Prefer full name ("David Orrick"); fall back to
+// nickname, then a generic label for a stale/unknown id.
+function memberLabel(m: AssignableMember | undefined): string {
+  if (!m) return "Unknown member";
+  return m.full_name || m.nickname || "Member";
 }
 
 const STATUS_LABEL: Record<RecordingStatus, string> = {
@@ -128,7 +151,13 @@ function audioDownloadHref(r: DavesIdeaRecording): string {
   return blobUrl.toString();
 }
 
-export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaRecording[] }) {
+export function DavesIdea({
+  initialRecordings,
+  members,
+}: {
+  initialRecordings: DavesIdeaRecording[];
+  members: AssignableMember[];
+}) {
   const supabase = useMemo(() => createClient(), []);
   const [recordings, setRecordings] = useState<DavesIdeaRecording[]>(initialRecordings);
   const [selectedId, setSelectedId] = useState<string | null>(initialRecordings[0]?.id ?? null);
@@ -301,6 +330,38 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
     );
     // RLS lets owners update their own action items (same path toggle/route use).
     await supabase.from("daves_idea_action_items").update({ text }).eq("id", actionId);
+  }
+
+  async function setActionOwner(recordingId: string, actionId: string, memberId: string | null) {
+    setRecordings(rs =>
+      rs.map(r =>
+        r.id === recordingId
+          ? { ...r, action_items: r.action_items.map(a => (a.id === actionId ? { ...a, owner_member_id: memberId } : a)) }
+          : r
+      )
+    );
+    await supabase.from("daves_idea_action_items").update({ owner_member_id: memberId }).eq("id", actionId);
+  }
+
+  async function toggleActionSupporter(recordingId: string, actionId: string, memberId: string) {
+    const action = recordings.find(r => r.id === recordingId)?.action_items.find(a => a.id === actionId);
+    if (!action) return;
+    const next = action.supporter_member_ids.includes(memberId)
+      ? action.supporter_member_ids.filter(id => id !== memberId)
+      : [...action.supporter_member_ids, memberId];
+    setRecordings(rs =>
+      rs.map(r =>
+        r.id === recordingId
+          ? { ...r, action_items: r.action_items.map(a => (a.id === actionId ? { ...a, supporter_member_ids: next } : a)) }
+          : r
+      )
+    );
+    await supabase.from("daves_idea_action_items").update({ supporter_member_ids: next }).eq("id", actionId);
+  }
+
+  function acceptSuggestedOwner(recordingId: string, actionId: string) {
+    const action = recordings.find(r => r.id === recordingId)?.action_items.find(a => a.id === actionId);
+    if (action?.suggested_member_id) setActionOwner(recordingId, actionId, action.suggested_member_id);
   }
 
   async function deleteRecording(recordingId: string) {
@@ -525,9 +586,13 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
           <SelectedDetail
             recording={selected}
             isMobile={isMobile}
+            members={members}
             onToggleDone={actionId => toggleDone(selected.id, actionId)}
             onRoute={(actionId, target) => routeAction(selected.id, actionId, target)}
             onEditAction={(actionId, text) => editActionText(selected.id, actionId, text)}
+            onSetOwner={(actionId, memberId) => setActionOwner(selected.id, actionId, memberId)}
+            onToggleSupporter={(actionId, memberId) => toggleActionSupporter(selected.id, actionId, memberId)}
+            onAcceptSuggestion={actionId => acceptSuggestedOwner(selected.id, actionId)}
             onReextract={() => reextractRecording(selected.id)}
             onDelete={() => deleteRecording(selected.id)}
           />
@@ -612,6 +677,22 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
                     </button>
                   </div>
                 </div>
+                {findMember(members, a.owner_member_id) && (
+                  <span
+                    className="rsd-chip"
+                    style={{
+                      fontSize: 10,
+                      background: "var(--rsd-accent)",
+                      color: "#fff",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 3,
+                    }}
+                  >
+                    <Icons.User width={9} height={9} />
+                    {memberLabel(findMember(members, a.owner_member_id))}
+                  </span>
+                )}
                 {a.routed_to ? (
                   <span className="rsd-chip rsd-chip-warn" style={{ fontSize: 10 }}>
                     → {a.routed_to}
@@ -694,17 +775,25 @@ export function DavesIdea({ initialRecordings }: { initialRecordings: DavesIdeaR
 function SelectedDetail({
   recording,
   isMobile,
+  members,
   onToggleDone,
   onRoute,
   onEditAction,
+  onSetOwner,
+  onToggleSupporter,
+  onAcceptSuggestion,
   onReextract,
   onDelete,
 }: {
   recording: DavesIdeaRecording;
   isMobile: boolean;
+  members: AssignableMember[];
   onToggleDone: (actionId: string) => void;
   onRoute: (actionId: string, target: string) => void;
   onEditAction: (actionId: string, text: string) => void;
+  onSetOwner: (actionId: string, memberId: string | null) => void;
+  onToggleSupporter: (actionId: string, memberId: string) => void;
+  onAcceptSuggestion: (actionId: string) => void;
   onReextract: () => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
@@ -946,9 +1035,13 @@ function SelectedDetail({
                 key={a.id}
                 action={a}
                 recordingTitle={recording.title}
+                members={members}
                 onToggle={() => onToggleDone(a.id)}
                 onRoute={target => onRoute(a.id, target)}
                 onEdit={text => onEditAction(a.id, text)}
+                onSetOwner={memberId => onSetOwner(a.id, memberId)}
+                onToggleSupporter={memberId => onToggleSupporter(a.id, memberId)}
+                onAcceptSuggestion={() => onAcceptSuggestion(a.id)}
               />
             ))}
           </div>
@@ -961,19 +1054,34 @@ function SelectedDetail({
 function ActionRow({
   action,
   recordingTitle,
+  members,
   onToggle,
   onRoute,
   onEdit,
+  onSetOwner,
+  onToggleSupporter,
+  onAcceptSuggestion,
 }: {
   action: DavesIdeaActionItem;
   recordingTitle: string | null;
+  members: AssignableMember[];
   onToggle: () => void;
   onRoute: (target: string) => void;
   onEdit: (text: string) => void;
+  onSetOwner: (memberId: string | null) => void;
+  onToggleSupporter: (memberId: string) => void;
+  onAcceptSuggestion: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(action.text);
+
+  const owner = findMember(members, action.owner_member_id);
+  const supporters = action.supporter_member_ids
+    .map(id => findMember(members, id))
+    .filter((m): m is AssignableMember => !!m);
+  const suggestedMember = findMember(members, action.suggested_member_id);
+  const showSuggestion = !action.owner_member_id && !!action.suggested_assignee_name;
 
   function startEdit() {
     setOpen(false);
@@ -1089,17 +1197,68 @@ function ActionRow({
       >
         {action.done && <Icons.CheckCircle width={12} height={12} />}
       </button>
-      <div
-        style={{
-          flex: 1,
-          minWidth: 0,
-          fontSize: 13,
-          color: "var(--gw-fg)",
-          fontWeight: 600,
-          textDecoration: action.done ? "line-through" : "none",
-        }}
-      >
-        {action.text}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 13,
+            color: "var(--gw-fg)",
+            fontWeight: 600,
+            textDecoration: action.done ? "line-through" : "none",
+            lineHeight: 1.35,
+          }}
+        >
+          {action.text}
+        </div>
+        {(owner || supporters.length > 0 || showSuggestion) && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 5, alignItems: "center" }}>
+            {owner && (
+              <span
+                className="rsd-chip"
+                style={{ fontSize: 10, background: "var(--rsd-accent)", color: "#fff", display: "inline-flex", alignItems: "center", gap: 3 }}
+              >
+                <Icons.User width={9} height={9} />
+                {memberLabel(owner)}
+              </span>
+            )}
+            {supporters.map(m => (
+              <span
+                key={m.id}
+                className="rsd-chip"
+                style={{ fontSize: 10, display: "inline-flex", alignItems: "center", gap: 3 }}
+              >
+                {memberLabel(m)}
+              </span>
+            ))}
+            {showSuggestion &&
+              (suggestedMember ? (
+                <button
+                  onClick={onAcceptSuggestion}
+                  className="gw-press"
+                  title={`Assign ${memberLabel(suggestedMember)} as owner`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 100,
+                    background: "transparent",
+                    color: "var(--rsd-accent)",
+                    border: "1px dashed var(--rsd-accent)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Suggested: {memberLabel(suggestedMember)}
+                  <Icons.CheckCircle width={10} height={10} />
+                </button>
+              ) : (
+                <span style={{ fontSize: 10, color: "var(--gw-fg-faint)", fontWeight: 600, fontStyle: "italic" }}>
+                  Mentioned: {action.suggested_assignee_name}
+                </span>
+              ))}
+          </div>
+        )}
       </div>
       {action.routed_to && (
         <span className="rsd-chip rsd-chip-warn" style={{ fontSize: 10 }}>
@@ -1127,6 +1286,13 @@ function ActionRow({
       >
         <Icons.Pencil width={12} height={12} />
       </button>
+      <AssigneePicker
+        members={members}
+        ownerId={action.owner_member_id}
+        supporterIds={action.supporter_member_ids}
+        onSetOwner={onSetOwner}
+        onToggleSupporter={onToggleSupporter}
+      />
       <div style={{ position: "relative" }}>
         <button
           onClick={() => setOpen(o => !o)}
@@ -1166,7 +1332,11 @@ function ActionRow({
               <button
                 key={i.id}
                 onClick={() => {
-                  if (i.id === "things") openInThings(action.text, recordingTitle);
+                  if (i.id === "things")
+                    openInThings(action.text, recordingTitle, {
+                      owner: owner ? memberLabel(owner) : null,
+                      supporters: supporters.map(memberLabel),
+                    });
                   onRoute(i.label);
                   setOpen(false);
                 }}
@@ -1194,6 +1364,150 @@ function ActionRow({
         )}
       </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function pickerToggleStyle(active: boolean): CSSProperties {
+  return {
+    flexShrink: 0,
+    fontSize: 10,
+    fontWeight: 700,
+    padding: "3px 8px",
+    borderRadius: 100,
+    cursor: "pointer",
+    background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+    color: active ? "#fff" : "var(--gw-fg-muted)",
+    border: active ? "1px solid var(--rsd-accent)" : "1px solid var(--gw-border)",
+  };
+}
+
+// People picker for an action item: a search box + a row per member with an
+// "Owner" (single) and "Support" (multi) toggle. Styled like the "Send to"
+// menu. Lists every approved directory member — no account required.
+function AssigneePicker({
+  members,
+  ownerId,
+  supporterIds,
+  onSetOwner,
+  onToggleSupporter,
+}: {
+  members: AssignableMember[];
+  ownerId: string | null;
+  supporterIds: string[];
+  onSetOwner: (memberId: string | null) => void;
+  onToggleSupporter: (memberId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+
+  const filtered = useMemo(() => {
+    const n = q.trim().toLowerCase();
+    if (!n) return members;
+    return members.filter(
+      m =>
+        (m.full_name ?? "").toLowerCase().includes(n) ||
+        (m.nickname ?? "").toLowerCase().includes(n)
+    );
+  }, [q, members]);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-label="Assign people"
+        title="Assign people"
+        className="gw-press"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 28,
+          height: 28,
+          borderRadius: 100,
+          background: ownerId ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+          color: ownerId ? "#fff" : "var(--gw-fg-muted)",
+          border: "1px solid var(--gw-border)",
+          cursor: "pointer",
+          flexShrink: 0,
+        }}
+      >
+        <Icons.Users width={12} height={12} />
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            right: 0,
+            width: 248,
+            background: "var(--gw-bg)",
+            border: "1px solid var(--gw-border)",
+            borderRadius: 10,
+            boxShadow: "var(--gw-shadow-3)",
+            zIndex: 10,
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ padding: 8, borderBottom: "1px solid var(--gw-border)" }}>
+            <input
+              autoFocus
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Search members…"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--gw-fg)",
+                background: "var(--gw-bg-elev)",
+                border: "1px solid var(--gw-border)",
+                borderRadius: 8,
+                padding: "6px 9px",
+                outline: "none",
+              }}
+            />
+          </div>
+          <div style={{ maxHeight: 240, overflow: "auto", padding: 4 }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+                No members
+              </div>
+            ) : (
+              filtered.map(m => {
+                const isOwner = m.id === ownerId;
+                const isSupporter = supporterIds.includes(m.id);
+                return (
+                  <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 6px" }}>
+                    <span
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "var(--gw-fg)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {m.full_name || m.nickname || "Member"}
+                      {m.full_name && m.nickname ? ` (${m.nickname})` : ""}
+                    </span>
+                    <button onClick={() => onSetOwner(isOwner ? null : m.id)} className="gw-press" style={pickerToggleStyle(isOwner)}>
+                      Owner
+                    </button>
+                    <button onClick={() => onToggleSupporter(m.id)} className="gw-press" style={pickerToggleStyle(isSupporter)}>
+                      Support
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
