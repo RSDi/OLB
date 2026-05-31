@@ -1570,17 +1570,25 @@ function AssigneePicker({
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 28,
+          gap: 5,
+          // Collapse to a compact icon once an owner is set (the owner chip
+          // already shows who); show a labelled "Assign" button otherwise so
+          // manual assignment is obvious even with no suggestion.
+          width: ownerId ? 28 : undefined,
           height: 28,
+          padding: ownerId ? 0 : "0 11px",
           borderRadius: 100,
           background: ownerId ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-          color: ownerId ? "#fff" : "var(--gw-fg-muted)",
+          color: ownerId ? "#fff" : "var(--gw-fg)",
           border: "1px solid var(--gw-border)",
+          fontSize: 11,
+          fontWeight: 700,
           cursor: "pointer",
           flexShrink: 0,
         }}
       >
         <Icons.Users width={12} height={12} />
+        {!ownerId && <span>Assign</span>}
       </button>
       {open && (
         <div
