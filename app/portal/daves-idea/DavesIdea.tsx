@@ -334,6 +334,12 @@ export function DavesIdea({
     await supabase.from("daves_idea_action_items").update({ text }).eq("id", actionId);
   }
 
+  async function editRecordingTitle(recordingId: string, title: string) {
+    setRecordings(rs => rs.map(r => (r.id === recordingId ? { ...r, title } : r)));
+    // RLS allows the owner to update their own recording.
+    await supabase.from("daves_idea_recordings").update({ title }).eq("id", recordingId);
+  }
+
   async function setActionOwner(recordingId: string, actionId: string, memberId: string | null) {
     setRecordings(rs =>
       rs.map(r =>
@@ -587,9 +593,11 @@ export function DavesIdea({
 
         {selected ? (
           <SelectedDetail
+            key={selected.id}
             recording={selected}
             isMobile={isMobile}
             members={members}
+            onRename={title => editRecordingTitle(selected.id, title)}
             onToggleDone={actionId => toggleDone(selected.id, actionId)}
             onRoute={(actionId, target) => routeAction(selected.id, actionId, target)}
             onEditAction={(actionId, text) => editActionText(selected.id, actionId, text)}
@@ -779,6 +787,7 @@ function SelectedDetail({
   recording,
   isMobile,
   members,
+  onRename,
   onToggleDone,
   onRoute,
   onEditAction,
@@ -791,6 +800,7 @@ function SelectedDetail({
   recording: DavesIdeaRecording;
   isMobile: boolean;
   members: AssignableMember[];
+  onRename: (title: string) => void;
   onToggleDone: (actionId: string) => void;
   onRoute: (actionId: string, target: string) => void;
   onEditAction: (actionId: string, text: string) => void;
@@ -801,6 +811,8 @@ function SelectedDetail({
   onDelete: () => Promise<void>;
 }) {
   const [reextracting, setReextracting] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(recording.title ?? "");
 
   const transcriptText = useMemo(() => {
     if (recording.utterances && recording.utterances.length > 0) {
@@ -834,6 +846,23 @@ function SelectedDetail({
     }
   }
 
+  // Renaming is gated to finished recordings — a rename during processing would
+  // be clobbered when extraction writes the LLM title.
+  const canRename = recording.status === "ready" || recording.status === "failed";
+  function startTitleEdit() {
+    setTitleDraft(recording.title ?? "");
+    setEditingTitle(true);
+  }
+  function commitTitle() {
+    const t = titleDraft.trim();
+    if (t && t !== recording.title) onRename(t);
+    setEditingTitle(false);
+  }
+  function cancelTitle() {
+    setTitleDraft(recording.title ?? "");
+    setEditingTitle(false);
+  }
+
   return (
     <div className="rsd-card" style={{ gap: 16 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -844,9 +873,78 @@ function SelectedDetail({
               {sourceLabel} · {formatDuration(recording.duration_sec)}
             </span>
           </div>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--gw-fg)", lineHeight: 1.3 }}>
-            {recordingTitle(recording)}
-          </h2>
+          {editingTitle ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <input
+                autoFocus
+                value={titleDraft}
+                onChange={e => setTitleDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitTitle();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelTitle();
+                  }
+                }}
+                style={{
+                  fontSize: 17,
+                  fontWeight: 800,
+                  color: "var(--gw-fg)",
+                  background: "var(--gw-bg-elev)",
+                  border: "1px solid var(--rsd-accent)",
+                  borderRadius: 8,
+                  padding: "4px 10px",
+                  outline: "none",
+                  minWidth: 0,
+                }}
+              />
+              <button
+                onClick={commitTitle}
+                className="gw-press"
+                style={{ padding: "5px 12px", borderRadius: 100, background: "var(--rsd-accent)", color: "#fff", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+              >
+                Save
+              </button>
+              <button
+                onClick={cancelTitle}
+                className="gw-press"
+                style={{ padding: "5px 10px", borderRadius: 100, background: "var(--gw-bg-elev)", color: "var(--gw-fg)", border: "1px solid var(--gw-border)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--gw-fg)", lineHeight: 1.3 }}>
+                {recordingTitle(recording)}
+              </h2>
+              {canRename && (
+                <button
+                  onClick={startTitleEdit}
+                  aria-label="Edit title"
+                  title="Edit title"
+                  className="gw-press"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 26,
+                    height: 26,
+                    borderRadius: 100,
+                    background: "var(--gw-bg-elev)",
+                    color: "var(--gw-fg-muted)",
+                    border: "1px solid var(--gw-border)",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icons.Pencil width={11} height={11} />
+                </button>
+              )}
+            </div>
+          )}
           <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
             {formatWhen(recording.created_at)}
           </div>
