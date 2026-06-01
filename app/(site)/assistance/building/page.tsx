@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Icons } from "../../../components/icons";
 import { Input, Textarea, Select } from "../../../components/ui";
-import { createClient } from "../../../../lib/supabase/client";
+import { createPublicBuildingRequest } from "../../../../lib/maintenance/actions";
 
 const EVENT_TYPES = [
   { value: "", label: "Select event type..." },
@@ -29,6 +29,7 @@ export default function BuildingRequestPage() {
     date: "", startTime: "", endTime: "",
     attendance: "",
     notes: "",
+    contactName: "", contactEmail: "",
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,26 +43,22 @@ export default function BuildingRequestPage() {
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const { error: insertError } = await supabase
-      .from("building_requests")
-      .insert({
-        event_type: form.eventType,
-        space: form.space,
-        event_date: form.date,
-        start_time: form.startTime,
-        end_time: form.endTime,
-        attendance: form.attendance ? parseInt(form.attendance) : null,
-        notes: form.notes || null,
-        submitted_by: user?.id ?? null,
-      });
+    const result = await createPublicBuildingRequest({
+      eventType: form.eventType,
+      space: form.space,
+      date: form.date,
+      startTime: form.startTime,
+      endTime: form.endTime,
+      attendance: form.attendance,
+      notes: form.notes,
+      contactName: form.contactName,
+      contactEmail: form.contactEmail,
+    });
 
     setLoading(false);
 
-    if (insertError) {
-      setError("Failed to submit request. Please try again.");
+    if (result.error) {
+      setError(result.error);
       return;
     }
 
@@ -95,7 +92,7 @@ export default function BuildingRequestPage() {
           <button
             onClick={() => {
               setSubmitted(false);
-              setForm({ eventType: "", space: "", date: "", startTime: "", endTime: "", attendance: "", notes: "" });
+              setForm({ eventType: "", space: "", date: "", startTime: "", endTime: "", attendance: "", notes: "", contactName: "", contactEmail: "" });
             }}
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
@@ -182,6 +179,15 @@ export default function BuildingRequestPage() {
                 placeholder="Any setup needs, equipment requests, or other details we should know..."
                 rows={4}
               />
+            </div>
+
+            {/* Contact */}
+            <div className="rsd-card">
+              <h3 style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700 }}>How can we reach you?</h3>
+              <div className="form-col-2">
+                <Input label="Your Name" value={form.contactName} onChange={set("contactName")} required />
+                <Input label="Email or Phone" value={form.contactEmail} onChange={set("contactEmail")} required />
+              </div>
             </div>
 
             {error && (

@@ -154,6 +154,44 @@ export default async function TicketDetailPage({
     staffList = staffRows ?? [];
   }
 
+  // Committee decision history (staff). Gracefully empty until migration 0048
+  // (task_review_log) is applied — a missing table just yields no rows.
+  let reviewLog: {
+    id: string;
+    changed_at: string;
+    new_status: string;
+    reason: string | null;
+    actor: string;
+  }[] = [];
+  if (staff) {
+    const { data: logRows } = await supabase
+      .from("task_review_log")
+      .select("id, changed_at, new_status, reason, changed_by")
+      .eq("ticket_id", id)
+      .order("changed_at", { ascending: false });
+    const rows =
+      (logRows as unknown as {
+        id: string;
+        changed_at: string;
+        new_status: string;
+        reason: string | null;
+        changed_by: string | null;
+      }[]) ?? [];
+    const actorIds = Array.from(new Set(rows.map((r) => r.changed_by).filter((v): v is string => Boolean(v))));
+    const nameMap: Record<string, string> = {};
+    if (actorIds.length > 0) {
+      const { data: actors } = await supabase.from("members").select("user_id, full_name, email").in("user_id", actorIds);
+      for (const a of actors ?? []) nameMap[a.user_id] = a.full_name ?? a.email;
+    }
+    reviewLog = rows.map((r) => ({
+      id: r.id,
+      changed_at: r.changed_at,
+      new_status: r.new_status,
+      reason: r.reason,
+      actor: r.changed_by ? nameMap[r.changed_by] ?? "Someone" : "Someone",
+    }));
+  }
+
   // Vendors / external contacts attached to this ticket. Staff-only —
   // RLS hides everything for non-staff, but skip the queries to save a
   // round-trip when we know they won't show.
@@ -359,6 +397,23 @@ export default async function TicketDetailPage({
             </div>
           )}
 
+          {staff && reviewLog.length > 0 && (
+            <div className="rsd-card" style={{ gap: 10 }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                Decision history
+              </h3>
+              {reviewLog.map((e) => (
+                <div key={e.id} style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 8, borderBottom: "1px solid var(--gw-border)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)" }}>
+                    {reviewLabel(e.new_status)} <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>by {e.actor}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--gw-fg-faint)" }}>{formatDateTime(e.changed_at)}</div>
+                  {e.reason && <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>{e.reason}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+
           {staff && (
             <LinkedContacts
               entityType="maintenance_ticket"
@@ -426,6 +481,13 @@ function formatDateTime(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function reviewLabel(s: string): string {
+  if (s === "pending_review") return "Sent for review";
+  if (s === "approved") return "Approved";
+  if (s === "declined") return "Declined";
+  return s;
 }
 
 function reviewChip(ticket: Ticket) {

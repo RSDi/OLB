@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
 import { sendNewTicketNotification } from "../notifications/new-ticket";
 import { sendNewTicketSlack } from "../notifications/slack";
 import { sendRequestDecisionNotification } from "../notifications/request-decision";
@@ -443,6 +444,149 @@ function buildRequestDescription(trackKey: string, d: Record<string, unknown>): 
   if (s(d.contact)) lines.push(`Contact: ${s(d.contact)}.`);
   if (s(d.notes).trim()) lines.push(`Notes: ${s(d.notes).trim()}`);
   return lines.join("\n");
+}
+
+// ─── Public building-use request (church website, no login) ──────
+// The public site form posts here. Visitors aren't signed in, so we use the
+// service-role admin client to resolve lookups + insert, and capture their
+// contact info in details. Lands in the same committee review queue as portal
+// requests (review_status='pending_review', details.kind set), unifying the
+// pipeline so the old standalone building_requests table is no longer needed.
+
+export interface PublicBuildingRequestInput {
+  eventType: string;
+  space: string;
+  date: string;
+  startTime?: string;
+  endTime?: string;
+  attendance?: string;
+  notes?: string;
+  contactName?: string;
+  contactEmail?: string;
+}
+
+const PUBLIC_EVENT_LABELS: Record<string, string> = {
+  wedding: "Wedding / reception",
+  party: "Party / celebration",
+  basketball: "Basketball",
+  volleyball: "Volleyball",
+  meeting: "Meeting / gathering",
+  other: "Other",
+};
+const PUBLIC_SPACE_LABELS: Record<string, string> = {
+  main_meeting_room: "Main Meeting Room",
+  gym: "Gymnasium",
+  youth_room: "Youth Room",
+  classrooms: "Classrooms",
+  full_building: "Full Building",
+};
+
+export async function createPublicBuildingRequest(
+  input: PublicBuildingRequestInput,
+): Promise<CreateTicketResult> {
+  if (!input.eventType || !input.space || !input.date) {
+    return { error: "Please choose an event type, a space, and a date." };
+  }
+  if (!input.contactName?.trim() || !input.contactEmail?.trim()) {
+    return { error: "Please tell us your name and how to reach you." };
+  }
+
+  const admin = (() => {
+    try {
+      return createAdminClient();
+    } catch {
+      return null;
+    }
+  })();
+  if (!admin) {
+    return { error: "Requests aren't set up yet. Please contact the church office." };
+  }
+
+  const [{ data: cats }, { data: prios }] = await Promise.all([
+    admin.from("task_categories").select("id, name").is("deleted_at", null),
+    admin.from("priorities").select("id, key").is("deleted_at", null),
+  ]);
+
+  const isEvent = ["wedding", "party"].includes(input.eventType);
+  const pref = isEvent ? ["Event", "Building Use", "General"] : ["Building Use", "Event", "General"];
+  const category =
+    pref.map((n) => (cats ?? []).find((c) => c.name.toLowerCase() === n.toLowerCase())).find(Boolean) ?? (cats ?? [])[0];
+  if (!category) return { error: "No task category is configured." };
+  const priority = (prios ?? []).find((p) => p.key === "medium") ?? (prios ?? [])[0];
+  if (!priority) return { error: "No priority is configured." };
+
+  // If the visitor happens to be signed in, attribute the request to them.
+  let submittedBy: string | null = null;
+  try {
+    const supa = await createClient();
+    const {
+      data: { user },
+    } = await supa.auth.getUser();
+    submittedBy = user?.id ?? null;
+  } catch {
+    submittedBy = null;
+  }
+
+  const eventLabel = PUBLIC_EVENT_LABELS[input.eventType] ?? input.eventType;
+  const spaceLabel = PUBLIC_SPACE_LABELS[input.space] ?? input.space;
+  const time = [input.startTime, input.endTime].filter(Boolean).join("–");
+  const lines = [
+    `Public building request — ${eventLabel}.`,
+    `Space: ${spaceLabel}.`,
+    `When: ${[input.date, time].filter(Boolean).join(" ")}.`,
+  ];
+  if (input.attendance) lines.push(`Expected attendance: ${input.attendance}.`);
+  lines.push(`Contact: ${input.contactName} (${input.contactEmail}).`);
+  if (input.notes?.trim()) lines.push(`Notes: ${input.notes.trim()}`);
+  const description = lines.join("\n");
+
+  const { data: inserted, error } = await admin
+    .from("maintenance_requests")
+    .insert({
+      submitted_by: submittedBy,
+      category_id: category.id,
+      area_id: null,
+      priority_id: priority.id,
+      description,
+      details: {
+        kind: isEvent ? "event" : "use-a-space",
+        public: true,
+        requesterKind: "outside",
+        eventTypeLabel: eventLabel,
+        spaces: [spaceLabel],
+        date: input.date,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        headcount: input.attendance,
+        contactName: input.contactName,
+        contact: input.contactEmail,
+        notes: input.notes,
+      },
+      review_status: "pending_review",
+    })
+    .select("id")
+    .single();
+
+  if (error || !inserted) {
+    return { error: error?.message ?? "Failed to submit your request." };
+  }
+
+  const notifyPayload = {
+    ticketId: inserted.id,
+    areaId: null,
+    submitterEmail: input.contactEmail ?? null,
+    submitterName: `${input.contactName} (public)`,
+    areaName: null,
+    categoryName: category.name,
+    priorityLabel: "Needs review",
+    description,
+  };
+  sendNewTicketNotification(notifyPayload).catch((err) => console.error("[notify] public request email failed:", err));
+  sendNewTicketSlack(notifyPayload).catch((err) => console.error("[notify] public request slack failed:", err));
+
+  revalidatePath("/portal/review");
+  revalidatePath("/portal/tasks");
+  return { success: true, ticketId: inserted.id };
 }
 
 // ─── Committee review decisions ──────────────────────────────────

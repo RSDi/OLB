@@ -154,7 +154,11 @@ export default async function ReviewQueuePage({
                 {firstLine(r.description)}
               </div>
               <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <span>{r.submitted_by ? submitterMap[r.submitted_by] ?? "Unknown" : "Unknown"}</span>
+                <span>
+                  {r.submitted_by
+                    ? submitterMap[r.submitted_by] ?? "Unknown"
+                    : (r.details?.contactName as string) || "Public request"}
+                </span>
                 <span>· {formatDate(r.created_at)}</span>
               </div>
             </Link>
