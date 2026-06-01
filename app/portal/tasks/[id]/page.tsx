@@ -12,6 +12,8 @@ import {
   AssignSelect,
   CommentForm,
   DeleteButton,
+  ReviewActions,
+  PromoteToProject,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
 import { LinkedContacts } from "../../contacts/_shared/LinkedContacts";
@@ -20,10 +22,37 @@ import {
   loadContactPickerOptions,
 } from "../../contacts/_shared/data";
 
+interface RequestDetails {
+  kind?: string;
+  subTypeLabel?: string;
+  requesterKind?: "member" | "outside";
+  outsideOrg?: string;
+  contact?: string;
+  spaces?: string[];
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  recurring?: boolean;
+  recurrenceNote?: string;
+  headcount?: string;
+  children?: string;
+  needs?: string[];
+  accessPerson?: string;
+  hasKey?: boolean;
+  selfCleanup?: boolean;
+  paidActivity?: boolean;
+  insuranceAck?: boolean;
+  notes?: string;
+}
+
 interface Ticket {
   id: string;
   description: string;
   status: "open" | "in_progress" | "done" | "cancelled";
+  review_status: "pending_review" | "approved" | "declined";
+  decline_reason: string | null;
+  reviewed_at: string | null;
+  details: RequestDetails | null;
   created_at: string;
   updated_at: string;
   submitted_by: string | null;
@@ -68,7 +97,7 @@ export default async function TicketDetailPage({
   const { data: ticketRaw } = await supabase
     .from("maintenance_requests")
     .select(
-      `id, description, status, created_at, updated_at, submitted_by, assigned_to,
+      `id, description, status, review_status, decline_reason, reviewed_at, details, created_at, updated_at, submitted_by, assigned_to,
        category:task_categories(name, chip_class),
        project:projects(id, title),
        area:areas(id, name),
@@ -124,6 +153,10 @@ export default async function TicketDetailPage({
 
   const canComment = staff || ticket.submitted_by === user.id;
 
+  const promoteTitle = ticket.details?.subTypeLabel
+    ? `${ticket.details.subTypeLabel}${ticket.details.outsideOrg ? ` — ${ticket.details.outsideOrg}` : ""}`
+    : truncate(ticket.description, 60);
+
   return (
     <>
       {/* Header */}
@@ -177,6 +210,7 @@ export default async function TicketDetailPage({
                 </span>
               )}
               {statusChip(ticket.status)}
+              {reviewChip(ticket)}
               {ticket.area && <Pill>{ticket.area.name}</Pill>}
               {ticket.project && (
                 <Link
@@ -213,6 +247,17 @@ export default async function TicketDetailPage({
               <span>· {formatDateTime(ticket.created_at)}</span>
             </div>
           </div>
+
+          {ticket.review_status === "declined" && ticket.decline_reason && (
+            <div className="rsd-card" style={{ gap: 6, borderColor: "var(--gw-error)" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-error)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                Declined
+              </span>
+              <div style={{ fontSize: 14, color: "var(--gw-fg)", lineHeight: 1.6 }}>{ticket.decline_reason}</div>
+            </div>
+          )}
+
+          {ticket.details?.kind === "building-use" && <RequestDetailsCard d={ticket.details} />}
 
           {/* Comments */}
           <div className="rsd-card" style={{ gap: 14, padding: 0, overflow: "hidden" }}>
@@ -271,6 +316,16 @@ export default async function TicketDetailPage({
             />
           </div>
 
+          {staff && ticket.review_status === "pending_review" && (
+            <div className="rsd-card" style={{ gap: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                Committee decision
+              </h3>
+              <DecisionChecklist />
+              <ReviewActions ticketId={ticket.id} />
+            </div>
+          )}
+
           {staff && (
             <div className="rsd-card" style={{ gap: 12 }}>
               <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
@@ -282,6 +337,9 @@ export default async function TicketDetailPage({
                 current={ticket.assigned_to}
                 staff={staffList}
               />
+              {ticket.review_status === "approved" && !ticket.project && (
+                <PromoteToProject ticketId={ticket.id} defaultTitle={promoteTitle} />
+              )}
               {superAdmin && <DeleteButton ticketId={ticket.id} />}
             </div>
           )}
@@ -353,4 +411,84 @@ function formatDateTime(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function reviewChip(ticket: Ticket) {
+  const s = ticket.review_status;
+  if (s === "pending_review") return <span className="rsd-chip rsd-chip-warn">Pending review</span>;
+  if (s === "declined") return <span className="rsd-chip rsd-chip-error">Declined</span>;
+  // Plain approved tasks (not submitted through the request wizard) show no chip.
+  if (ticket.details?.kind) return <span className="rsd-chip rsd-chip-success">Approved</span>;
+  return null;
+}
+
+function DecisionChecklist() {
+  const items = [
+    "Schedule conflict?",
+    "Member or outside group?",
+    "Fee or suggested donation?",
+    "Insurance / liability?",
+    "Supervision (especially kids)?",
+    "Cleanup / damage risk?",
+    "Who opens & locks up?",
+    "Fits our mission?",
+  ];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+        Things to weigh
+      </span>
+      <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 3 }}>
+        {items.map((i) => (
+          <li key={i} style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+            {i}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function RequestDetailsCard({ d }: { d: RequestDetails }) {
+  const time = [d.startTime, d.endTime].filter(Boolean).join("–");
+  const when = [d.date, time].filter(Boolean).join(" ");
+  const rows: [string, string][] = [];
+  if (d.subTypeLabel) rows.push(["Plan", d.subTypeLabel]);
+  rows.push([
+    "Requested by",
+    d.requesterKind === "outside" ? `Outside group${d.outsideOrg ? ` — ${d.outsideOrg}` : ""}` : "MCC",
+  ]);
+  if (d.spaces?.length) rows.push(["Space(s)", d.spaces.join(", ")]);
+  if (when) rows.push(["When", `${when}${d.recurring ? ` · recurring${d.recurrenceNote ? ` (${d.recurrenceNote})` : ""}` : ""}`]);
+  if (d.headcount) rows.push(["People", `${d.headcount}${d.children ? ` · ${d.children} children` : ""}`]);
+  if (d.needs?.length) rows.push(["Needs", d.needs.join(", ")]);
+  const access = [d.accessPerson, d.hasKey ? "has key/code" : "", d.selfCleanup ? "self setup & cleanup" : ""]
+    .filter(Boolean)
+    .join(" · ");
+  if (access) rows.push(["Access", access]);
+  if (d.paidActivity) rows.push(["Paid activity", d.insuranceAck ? "can provide insurance/waiver" : "yes"]);
+  if (d.contact) rows.push(["Contact", d.contact]);
+
+  return (
+    <div className="rsd-card" style={{ gap: 12 }}>
+      <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+        Request details
+      </h3>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {rows.map(([k, v]) => (
+          <div key={k} style={{ display: "flex", gap: 12, padding: "7px 0", borderBottom: "1px solid var(--gw-border)" }}>
+            <span style={{ flex: "0 0 120px", fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".03em" }}>
+              {k}
+            </span>
+            <span style={{ flex: 1, fontSize: 13.5, color: "var(--gw-fg)", fontWeight: 500 }}>{v}</span>
+          </div>
+        ))}
+      </div>
+      {d.notes && (
+        <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.6, fontStyle: "italic" }}>
+          &ldquo;{d.notes}&rdquo;
+        </div>
+      )}
+    </div>
+  );
 }

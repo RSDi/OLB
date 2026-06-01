@@ -10,6 +10,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createAdminClient } from "../supabase/admin";
 import { isAdminEmail } from "./admin-emails";
 import { sendAccessRequestNotification } from "../notifications/access-request";
+import { sendAccessRequestSlack } from "../notifications/slack";
 import type { MemberRole, MemberStatus } from "./permissions";
 
 export type { MemberRole, MemberStatus };
@@ -108,7 +109,10 @@ export async function resolveMembership({
       avatar_url: avatarUrl,
     });
     sendAccessRequestNotification({ email: user.email, fullName }).catch(
-      (err) => console.error("[notify] failed:", err)
+      (err) => console.error("[notify] access-request email failed:", err)
+    );
+    sendAccessRequestSlack({ email: user.email, fullName }).catch(
+      (err) => console.error("[notify] access-request slack failed:", err)
     );
     return { status: "pending", role: "member" };
   }

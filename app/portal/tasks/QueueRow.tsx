@@ -29,6 +29,7 @@ interface TicketRow {
   id: string;
   description: string;
   status: TicketStatus;
+  review_status: "pending_review" | "approved" | "declined";
   created_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
@@ -101,7 +102,9 @@ export function QueueRow({
         )}
       </td>
       <td onClick={stop}>
-        {staff ? (
+        {ticket.review_status === "pending_review" ? (
+          <span className="rsd-chip rsd-chip-warn">Pending review</span>
+        ) : staff ? (
           <InlineStatusSelect ticketId={ticket.id} current={ticket.status} />
         ) : (
           statusChip(ticket.status)

@@ -2,14 +2,17 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
-import { Pill, Select, Textarea } from "../../../components/ui";
+import { Pill, Select, Textarea, Input } from "../../../components/ui";
 import {
   changeTicketStatus,
   assignTicket,
   addTicketComment,
   softDeleteTicket,
+  approveRequest,
+  declineRequest,
   type TicketStatus,
 } from "../../../../lib/maintenance/actions";
+import { promoteTaskToProject } from "../../../../lib/projects/actions";
 
 export function StatusSelect({
   ticketId,
@@ -212,6 +215,164 @@ function ErrorLine({ message }: { message: string }) {
     <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--gw-error)", fontWeight: 600 }}>
       <Icons.AlertCircle width={12} height={12} />
       {message}
+    </div>
+  );
+}
+
+// Committee decision: approve, or decline with a required reason (emailed to
+// the requester). Shown only while review_status is 'pending_review'.
+export function ReviewActions({ ticketId }: { ticketId: string }) {
+  const router = useRouter();
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function approve() {
+    setError(null);
+    startTransition(async () => {
+      const r = await approveRequest(ticketId);
+      if (r.error) {
+        setError(r.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+  function decline() {
+    if (!reason.trim()) {
+      setError("Please add a reason for the requester.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const r = await declineRequest(ticketId, reason.trim());
+      if (r.error) {
+        setError(r.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {!declining ? (
+        <div style={{ display: "flex", gap: 8 }}>
+          <Pill variant="accent" size="md" onClick={approve} disabled={pending} style={{ flex: 1, justifyContent: "center" }}>
+            <Icons.CheckCircle width={15} height={15} /> Approve
+          </Pill>
+          <Pill
+            variant="ghost"
+            size="md"
+            onClick={() => {
+              setDeclining(true);
+              setError(null);
+            }}
+            disabled={pending}
+            style={{ flex: 1, justifyContent: "center" }}
+          >
+            <Icons.X width={15} height={15} /> Decline
+          </Pill>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <Textarea
+            label="Reason for declining"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            placeholder="Shared with the requester."
+            autoFocus
+          />
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <Pill
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDeclining(false);
+                setReason("");
+                setError(null);
+              }}
+              disabled={pending}
+            >
+              Cancel
+            </Pill>
+            <Pill
+              variant="accent"
+              size="sm"
+              onClick={decline}
+              disabled={pending || !reason.trim()}
+              style={{ background: "var(--gw-error)", borderColor: "var(--gw-error)", color: "#fff" }}
+            >
+              {pending ? "Declining…" : "Confirm decline"}
+            </Pill>
+          </div>
+        </div>
+      )}
+      {error && <ErrorLine message={error} />}
+    </div>
+  );
+}
+
+// "A task became 2+ things to get done" — turn this request into a Project and
+// seed the coordinated steps. The original request becomes the first task.
+export function PromoteToProject({ ticketId, defaultTitle }: { ticketId: string; defaultTitle: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(defaultTitle);
+  const [stepsText, setStepsText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function submit() {
+    if (!title.trim()) {
+      setError("Give the project a title.");
+      return;
+    }
+    const steps = stepsText.split("\n").map((s) => s.trim()).filter(Boolean);
+    setError(null);
+    startTransition(async () => {
+      const r = await promoteTaskToProject(ticketId, { title: title.trim(), steps });
+      if (r.error) {
+        setError(r.error);
+        return;
+      }
+      if (r.projectId) router.push(`/portal/tasks/projects/${r.projectId}`);
+      else router.refresh();
+    });
+  }
+
+  if (!open) {
+    return (
+      <Pill variant="ghost" size="sm" onClick={() => setOpen(true)} style={{ justifyContent: "center" }}>
+        <Icons.LayoutDashboard width={14} height={14} /> Bigger than one task? Make it a project
+      </Pill>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <Input label="Project title" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <Textarea
+        label="Steps (one per line)"
+        value={stepsText}
+        onChange={(e) => setStepsText(e.target.value)}
+        rows={5}
+        placeholder={"Confirm booking & details\nSet up tables & chairs\nKitchen access\nOpen & lock the building\nCustodial cleanup"}
+      />
+      <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+        This request becomes the first task; each line adds another.
+      </div>
+      {error && <ErrorLine message={error} />}
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <Pill variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={pending}>
+          Cancel
+        </Pill>
+        <Pill variant="accent" size="sm" onClick={submit} disabled={pending}>
+          {pending ? "Creating…" : "Create project"}
+        </Pill>
+      </div>
     </div>
   );
 }

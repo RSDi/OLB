@@ -121,3 +121,63 @@ export async function softDeleteProject(projectId: string): Promise<ProjectActio
   revalidatePath("/portal/tasks/projects");
   return { success: true };
 }
+
+// Promote a single task into a Project: create the project, move the original
+// task under it, and spawn one child task per added coordination step. This is
+// the "a task became 2+ things to get done" flow. Child tasks inherit the
+// original's category/priority and land approved (committee-created work).
+export async function promoteTaskToProject(
+  taskId: string,
+  input: { title: string; steps: string[] }
+): Promise<ProjectActionResult> {
+  const title = input.title.trim();
+  if (!title) return { error: "Give the project a title." };
+  const steps = (input.steps ?? []).map((s) => s.trim()).filter(Boolean);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const { data: task } = await supabase
+    .from("maintenance_requests")
+    .select("category_id, priority_id")
+    .eq("id", taskId)
+    .maybeSingle();
+  if (!task) return { error: "Task not found." };
+
+  const { data: proj, error: pErr } = await supabase
+    .from("projects")
+    .insert({ title, category_id: task.category_id, created_by: user.id })
+    .select("id")
+    .single();
+  if (pErr || !proj) return { error: pErr?.message ?? "Failed to create project." };
+
+  // Move the original request under the project (and mark it approved work).
+  const { error: uErr } = await supabase
+    .from("maintenance_requests")
+    .update({ project_id: proj.id, review_status: "approved" })
+    .eq("id", taskId);
+  if (uErr) return { error: uErr.message };
+
+  if (steps.length > 0) {
+    const rows = steps.map((text) => ({
+      submitted_by: user.id,
+      project_id: proj.id,
+      category_id: task.category_id,
+      priority_id: task.priority_id,
+      area_id: null,
+      description: text,
+      review_status: "approved",
+    }));
+    const { error: cErr } = await supabase.from("maintenance_requests").insert(rows);
+    if (cErr) return { error: cErr.message };
+  }
+
+  revalidatePath("/portal/tasks");
+  revalidatePath("/portal/tasks/projects");
+  revalidatePath(`/portal/tasks/${taskId}`);
+  revalidatePath(`/portal/tasks/projects/${proj.id}`);
+  return { success: true, projectId: proj.id };
+}

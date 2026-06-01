@@ -16,6 +16,9 @@ import type { TopbarSearchHandle } from "../components/TopbarSearch";
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
+  "/portal/requests": { title: "Make a Request", subtitle: "Portal" },
+  "/portal/requests/building-use": { title: "Building use request", subtitle: "Portal" },
+  "/portal/review": { title: "Review queue", subtitle: "Building committee" },
   "/portal/tasks": { title: "Tasks & Projects",  subtitle: "Portal" },
   "/portal/tasks/new": { title: "New task", subtitle: "Portal" },
   "/portal/tasks/projects": { title: "Projects", subtitle: "Portal" },

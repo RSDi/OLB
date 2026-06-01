@@ -19,6 +19,7 @@ interface TicketRow {
   id: string;
   description: string;
   status: "open" | "in_progress" | "done" | "cancelled";
+  review_status: "pending_review" | "approved" | "declined";
   created_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
@@ -67,13 +68,22 @@ export default async function PortalMaintenancePage({
   let query = supabase
     .from("maintenance_requests")
     .select(
-      `id, description, status, created_at, submitted_by, assigned_to,
+      `id, description, status, review_status, created_at, submitted_by, assigned_to,
        category:task_categories(name, chip_class),
        area:areas(name),
        priority:priorities(id, label, chip_class, severity)`
     )
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
+
+  // Keep requests still awaiting committee review out of the operational queue.
+  // Staff see approved work only; a member still sees their own pending requests
+  // (RLS limits them to their own rows) but never declined ones.
+  if (staff) {
+    query = query.eq("review_status", "approved");
+  } else {
+    query = query.neq("review_status", "declined");
+  }
 
   if (status !== "all") {
     query = query.eq("status", status);
@@ -105,7 +115,8 @@ export default async function PortalMaintenancePage({
   const { data: allForCounts } = await supabase
     .from("maintenance_requests")
     .select("status, priority:priorities(severity)")
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .eq("review_status", "approved");
   const counts = countByStatus(
     (allForCounts as unknown as { status: TicketRow["status"]; priority: { severity: number } | null }[]) ?? []
   );
