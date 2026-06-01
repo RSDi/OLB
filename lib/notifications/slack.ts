@@ -57,6 +57,7 @@ export async function sendNewTicketSlack({
   ticketId,
   submitterEmail,
   submitterName,
+  categoryName,
   areaName,
   priorityLabel,
   description,
@@ -64,37 +65,43 @@ export async function sendNewTicketSlack({
   ticketId: string;
   submitterEmail: string | null;
   submitterName: string | null;
+  categoryName: string | null;
   areaName: string | null;
   priorityLabel: string | null;
   description: string;
 }): Promise<void> {
   if (!process.env.SLACK_BOT_TOKEN) {
-    console.warn("[slack] SLACK_BOT_TOKEN not set — skipping new-ticket Slack message");
+    console.warn("[slack] SLACK_BOT_TOKEN not set — skipping new-task Slack message");
     return;
   }
   const channel = process.env.SLACK_NOTIFY_CHANNEL_ID;
   if (!channel) {
-    console.warn("[slack] SLACK_NOTIFY_CHANNEL_ID not set — skipping new-ticket Slack message");
+    console.warn("[slack] SLACK_NOTIFY_CHANNEL_ID not set — skipping new-task Slack message");
     return;
   }
 
   const submitterLine = submitterName ?? submitterEmail ?? "(anonymous)";
-  const area = areaName ?? "Unknown area";
+  const category = categoryName ?? "Task";
   const priority = priorityLabel ?? "no priority";
-  const fallback = `New maintenance request — ${area} (${priority})`;
+  const fallback = `New task — ${category}${areaName ? ` · ${areaName}` : ""} (${priority})`;
+
+  // Area is optional post-reframe (only Maintenance tasks carry one), so the
+  // Area field only appears when it's set.
+  const fields = [
+    { type: "mrkdwn", text: `*Category*\n${slackEscape(category)}` },
+    { type: "mrkdwn", text: `*Priority*\n${slackEscape(priority)}` },
+    ...(areaName ? [{ type: "mrkdwn", text: `*Area*\n${slackEscape(areaName)}` }] : []),
+    { type: "mrkdwn", text: `*Submitted by*\n${slackEscape(submitterLine)}` },
+  ];
 
   const blocks: SlackBlock[] = [
     {
       type: "header",
-      text: { type: "plain_text", text: "New maintenance request", emoji: false },
+      text: { type: "plain_text", text: "New task", emoji: false },
     },
     {
       type: "section",
-      fields: [
-        { type: "mrkdwn", text: `*Area*\n${slackEscape(area)}` },
-        { type: "mrkdwn", text: `*Priority*\n${slackEscape(priority)}` },
-        { type: "mrkdwn", text: `*Submitted by*\n${slackEscape(submitterLine)}` },
-      ],
+      fields,
     },
     {
       type: "section",

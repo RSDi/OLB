@@ -4,7 +4,7 @@ import { createClient } from "../../../../lib/supabase/server";
 import { Icons } from "../../../components/icons";
 import { TrackWizard } from "../_shared/TrackWizard";
 
-const VALID = ["use-a-space", "event", "class", "maintenance", "question"];
+const VALID = ["building-use", "maintenance", "question"];
 
 export default async function RequestTrackPage({
   params,

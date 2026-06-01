@@ -13,25 +13,11 @@ interface RequestCard {
 
 const CARDS: RequestCard[] = [
   {
-    href: "/portal/requests/use-a-space",
-    title: "Use a space",
-    blurb: "A room, the gym, or the kitchen — for a meeting, gathering, or some open gym time.",
+    href: "/portal/requests/building-use",
+    title: "Building use",
+    blurb: "A room, the gym, or the kitchen — for a gathering, party, wedding, class, or sports.",
     icon: <Icons.Home width={22} height={22} />,
     accent: { bg: "var(--rsd-accent-bg)", color: "var(--rsd-accent)" },
-  },
-  {
-    href: "/portal/requests/event",
-    title: "Host an event",
-    blurb: "A party, wedding or reception, or a guest speaker.",
-    icon: <Icons.Sparkles width={22} height={22} />,
-    accent: { bg: "rgb(243,232,255)", color: "#6d28d9" },
-  },
-  {
-    href: "/portal/requests/class",
-    title: "Run a class or program",
-    blurb: "A one-time or recurring class, group, or youth activity.",
-    icon: <Icons.BookOpen width={22} height={22} />,
-    accent: { bg: "rgb(239,246,255)", color: "#1d4ed8" },
   },
   {
     href: "/portal/requests/maintenance",

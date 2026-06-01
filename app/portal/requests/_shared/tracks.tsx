@@ -28,7 +28,39 @@ const whenStr = (f: RequestForm) => {
 const peopleStr = (f: RequestForm) =>
   str(f.headcount) ? `${str(f.headcount)}${str(f.children) ? `, incl. ${str(f.children)} children` : ""}` : "";
 
-// ─── shared steps ────────────────────────────────────────────────
+// ─── shared building-use steps ───────────────────────────────────
+const BUILDING_SUBTYPES = [
+  { key: "gathering", label: "Gathering or meeting", blurb: "Fellowship, a group meeting, a get-together", icon: <Icons.Users width={20} height={20} /> },
+  { key: "party", label: "Party or celebration", blurb: "Birthday, shower, anniversary, reception", icon: <Icons.Sparkles width={20} height={20} /> },
+  { key: "wedding", label: "Wedding", blurb: "A ceremony and/or reception", icon: <Icons.Heart width={20} height={20} /> },
+  { key: "class", label: "Class or program", blurb: "A class, group, or recurring activity", icon: <Icons.BookOpen width={20} height={20} /> },
+  { key: "sports", label: "Sports or gym time", blurb: "Volleyball, basketball, open gym, play dates", icon: <Icons.Play width={20} height={20} /> },
+  { key: "other", label: "Just need a room", blurb: "Something else — tell us about it", icon: <Icons.Home width={20} height={20} /> },
+];
+const subTypeStep: WizardStep = {
+  key: "subType",
+  title: "What are you planning?",
+  hint: "Pick the closest match — we'll tailor the questions.",
+  valid: (f) => !!f.subType,
+  body: ({ form, set }) => (
+    <Column>
+      {BUILDING_SUBTYPES.map((t) => (
+        <OptionCard
+          key={t.key}
+          selected={form.subType === t.key}
+          onClick={() => {
+            set("subType", t.key);
+            set("subTypeLabel", t.label);
+          }}
+          icon={t.icon}
+          label={t.label}
+          blurb={t.blurb}
+        />
+      ))}
+    </Column>
+  ),
+};
+
 const whoStep: WizardStep = {
   key: "who",
   title: "A little about you",
@@ -191,91 +223,7 @@ function reviewStep(rows: (f: RequestForm) => [string, string][]): WizardStep {
   };
 }
 
-// ─── track-specific steps ────────────────────────────────────────
-const spacePurposeStep: WizardStep = {
-  key: "purpose",
-  title: "What will you use it for?",
-  hint: "A quick description helps us plan.",
-  valid: (f) => !!str(f.purpose).trim(),
-  body: ({ form, set }) => (
-    <Input label="Purpose *" value={str(form.purpose)} onChange={(e) => set("purpose", e.target.value)} placeholder="e.g. moms' group play date, baking, a meeting" />
-  ),
-};
-
-const EVENT_TYPES = [
-  { key: "party", label: "Party or celebration", blurb: "Birthday, shower, anniversary", icon: <Icons.Sparkles width={20} height={20} /> },
-  { key: "wedding", label: "Wedding or reception", blurb: "A ceremony and/or reception", icon: <Icons.Heart width={20} height={20} /> },
-  { key: "speaker", label: "Guest speaker / program", blurb: "A talk, seminar, or presentation", icon: <Icons.Mic width={20} height={20} /> },
-  { key: "gathering", label: "Other gathering", blurb: "Something else", icon: <Icons.Users width={20} height={20} /> },
-];
-const eventTypeStep: WizardStep = {
-  key: "eventType",
-  title: "What kind of event?",
-  valid: (f) => !!f.eventType,
-  body: ({ form, set }) => (
-    <Column>
-      {EVENT_TYPES.map((t) => (
-        <OptionCard
-          key={t.key}
-          selected={form.eventType === t.key}
-          onClick={() => {
-            set("eventType", t.key);
-            set("eventTypeLabel", t.label);
-          }}
-          icon={t.icon}
-          label={t.label}
-          blurb={t.blurb}
-        />
-      ))}
-    </Column>
-  ),
-};
-const speakerStep: WizardStep = {
-  key: "speaker",
-  title: "About the speaker",
-  show: (f) => f.eventType === "speaker",
-  body: ({ form, set }) => (
-    <>
-      <Input label="Speaker name" value={str(form.speakerName)} onChange={(e) => set("speakerName", e.target.value)} placeholder="Who's presenting?" />
-      <Textarea label="Topic / purpose" rows={2} value={str(form.topic)} onChange={(e) => set("topic", e.target.value)} placeholder="What's the talk about?" />
-    </>
-  ),
-};
-const eventExtrasStep: WizardStep = {
-  key: "eventExtras",
-  title: "Anything special?",
-  hint: "Helps us protect the space and plan.",
-  body: ({ form, set }) => (
-    <>
-      <CheckRow checked={!!form.alcohol} onChange={(v) => set("alcohol", v)} label="Alcohol will be served" />
-      <Input label="Decorations? (tape, candles, helium, confetti)" value={str(form.decorations)} onChange={(e) => set("decorations", e.target.value)} placeholder="Optional — what are you planning?" />
-    </>
-  ),
-};
-
-const classDetailsStep: WizardStep = {
-  key: "classDetails",
-  title: "Tell us about the class or program",
-  valid: (f) => !!str(f.classTitle).trim(),
-  body: ({ form, set }) => (
-    <>
-      <Input label="What is it? *" value={str(form.classTitle)} onChange={(e) => set("classTitle", e.target.value)} placeholder="e.g. Beginner sewing class, youth game night" />
-      <Input label="Who is it open to?" value={str(form.audience)} onChange={(e) => set("audience", e.target.value)} placeholder="e.g. church families, anyone who signs up" />
-    </>
-  ),
-};
-const classLogisticsStep: WizardStep = {
-  key: "classLogistics",
-  title: "Cost & who's leading",
-  body: ({ form, set }) => (
-    <>
-      <CheckRow checked={!!form.hasFee} onChange={(v) => set("hasFee", v)} label="There's a cost to attend / it's a paid activity" />
-      <CheckRow checked={!!form.outsideInstructor} onChange={(v) => set("outsideInstructor", v)} label="Led by someone from outside the church" />
-      <CheckRow checked={!!form.insuranceAck} onChange={(v) => set("insuranceAck", v)} label="Can provide insurance / sign a waiver if needed" />
-    </>
-  ),
-};
-
+// ─── maintenance steps ───────────────────────────────────────────
 const MAINT_TYPES = [
   { key: "repair", label: "Something's broken", blurb: "A repair or fix is needed", icon: <Icons.Wrench width={20} height={20} /> },
   { key: "purchase", label: "We should buy something", blurb: "Request equipment or supplies", icon: <Icons.Plus width={20} height={20} /> },
@@ -332,6 +280,7 @@ const purchaseStep: WizardStep = {
   ),
 };
 
+// ─── question steps ──────────────────────────────────────────────
 const QUESTION_TOPICS = [
   "How something works",
   "A policy — 'why do we do this?'",
@@ -364,13 +313,13 @@ const questionStep: WizardStep = {
 
 // ─── tracks ──────────────────────────────────────────────────────
 export const TRACKS: Record<string, TrackConfig> = {
-  "use-a-space": {
-    key: "use-a-space",
-    title: "Use a space",
+  "building-use": {
+    key: "building-use",
+    title: "Building use",
     initial: { requesterKind: "member", spaces: [], needs: [] },
     successBody: "The building committee will review your request and follow up.",
     steps: [
-      spacePurposeStep,
+      subTypeStep,
       whoStep,
       spacesStep,
       whenStep,
@@ -379,63 +328,12 @@ export const TRACKS: Record<string, TrackConfig> = {
       accessStep,
       outsideExtrasStep,
       reviewStep((f) => [
-        ["Purpose", str(f.purpose)],
+        ["Plan", str(f.subTypeLabel)],
         ["Requested by", reqBy(f)],
         ["Space(s)", arr(f.spaces)],
         ["When", whenStr(f)],
         ["People", peopleStr(f)],
         ["Needs", arr(f.needs)],
-      ]),
-    ],
-  },
-  event: {
-    key: "event",
-    title: "Host an event",
-    initial: { requesterKind: "member", spaces: [], needs: [] },
-    successBody: "The building committee will review your request and follow up.",
-    steps: [
-      eventTypeStep,
-      whoStep,
-      spacesStep,
-      whenStep,
-      peopleStep,
-      speakerStep,
-      needsStep,
-      eventExtrasStep,
-      accessStep,
-      outsideExtrasStep,
-      reviewStep((f) => [
-        ["Event", str(f.eventTypeLabel)],
-        ["Requested by", reqBy(f)],
-        ["Space(s)", arr(f.spaces)],
-        ["When", whenStr(f)],
-        ["People", peopleStr(f)],
-        ["Speaker", str(f.speakerName)],
-        ["Needs", arr(f.needs)],
-      ]),
-    ],
-  },
-  class: {
-    key: "class",
-    title: "Run a class or program",
-    initial: { requesterKind: "member", spaces: [], needs: [] },
-    successBody: "The building committee will review your request and follow up.",
-    steps: [
-      classDetailsStep,
-      whoStep,
-      spacesStep,
-      whenStep,
-      peopleStep,
-      needsStep,
-      accessStep,
-      classLogisticsStep,
-      reviewStep((f) => [
-        ["Class", str(f.classTitle)],
-        ["Open to", str(f.audience)],
-        ["Requested by", reqBy(f)],
-        ["Space(s)", arr(f.spaces)],
-        ["When", whenStr(f)],
-        ["People", peopleStr(f)],
       ]),
     ],
   },
@@ -481,5 +379,3 @@ export const TRACKS: Record<string, TrackConfig> = {
     ],
   },
 };
-
-export const TRACK_KEYS = Object.keys(TRACKS);

@@ -253,9 +253,7 @@ export async function hardDeleteTicket(ticketId: string): Promise<ActionResult> 
 // Preferred category per track, with graceful fallbacks (so this works whether
 // or not the optional "Building Use" category from migration 0047 exists).
 const CATEGORY_PREFERENCE: Record<string, string[]> = {
-  "use-a-space": ["Building Use", "Event", "General"],
-  event: ["Event", "Building Use", "General"],
-  class: ["Building Use", "Event", "General"],
+  "building-use": ["Building Use", "Event", "General"],
   maintenance: ["Maintenance", "General"],
   question: ["General", "Maintenance"],
 };
@@ -270,18 +268,9 @@ export async function createRequest(
 
   // Per-track required-field checks (mirrors the wizard's client validation).
   switch (trackKey) {
-    case "use-a-space":
-      if (!s(d.purpose).trim()) return { error: "Please tell us what you'll use it for." };
+    case "building-use":
+      if (!d.subType) return { error: "Please tell us what you're planning." };
       if (!hasSpaces) return { error: "Please choose at least one space." };
-      if (!s(d.date).trim()) return { error: "Please choose a date." };
-      break;
-    case "event":
-      if (!d.eventType) return { error: "Please pick the kind of event." };
-      if (!hasSpaces) return { error: "Please choose at least one space." };
-      if (!s(d.date).trim()) return { error: "Please choose a date." };
-      break;
-    case "class":
-      if (!s(d.classTitle).trim()) return { error: "Please tell us about the class." };
       if (!s(d.date).trim()) return { error: "Please choose a date." };
       break;
     case "maintenance":
@@ -295,7 +284,7 @@ export async function createRequest(
     default:
       return { error: "Unknown request type." };
   }
-  if (["use-a-space", "event", "class"].includes(trackKey) && d.requesterKind === "outside" && !s(d.outsideOrg).trim()) {
+  if (trackKey === "building-use" && d.requesterKind === "outside" && !s(d.outsideOrg).trim()) {
     return { error: "Please tell us the name of the group or host." };
   }
 
@@ -403,28 +392,10 @@ function buildRequestDescription(trackKey: string, d: Record<string, unknown>): 
   };
 
   switch (trackKey) {
-    case "use-a-space":
-      lines.push(`Space use — ${s(d.purpose)}.`);
+    case "building-use":
+      lines.push(`Building use — ${s(d.subTypeLabel) || s(d.subType)}.`);
       who(); where(); when(); people(); needs(); access();
       if (d.paidActivity) lines.push(`Paid activity${d.insuranceAck ? " — can provide insurance/waiver" : ""}.`);
-      break;
-    case "event":
-      lines.push(`Event — ${s(d.eventTypeLabel) || s(d.eventType)}.`);
-      who(); where(); when(); people();
-      if (s(d.speakerName)) lines.push(`Speaker: ${s(d.speakerName)}${s(d.topic) ? ` — ${s(d.topic)}` : ""}.`);
-      needs();
-      if (d.alcohol) lines.push("Alcohol will be served.");
-      if (s(d.decorations)) lines.push(`Decorations: ${s(d.decorations)}.`);
-      access();
-      if (d.paidActivity) lines.push(`Paid activity${d.insuranceAck ? " — can provide insurance/waiver" : ""}.`);
-      break;
-    case "class":
-      lines.push(`Class / program — ${s(d.classTitle)}.`);
-      if (s(d.audience)) lines.push(`Open to: ${s(d.audience)}.`);
-      who(); where(); when(); people(); needs(); access();
-      if (d.hasFee) lines.push("There's a cost to attend.");
-      if (d.outsideInstructor) lines.push("Led by someone outside the church.");
-      if (d.insuranceAck) lines.push("Can provide insurance / sign a waiver.");
       break;
     case "maintenance":
       if (d.maintType === "purchase") {
