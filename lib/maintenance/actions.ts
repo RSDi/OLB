@@ -241,47 +241,60 @@ export async function hardDeleteTicket(ticketId: string): Promise<ActionResult> 
   return { success: true };
 }
 
-// ─── Building-use request (friendly intake wizard) ───────────────
-// The wizard collects structured answers and submits them here. We reuse the
-// task table: the request is inserted with review_status='pending_review' so it
-// lands in the committee Review queue (not the work queue) until a decision is
-// made. The structured answers are kept in the details jsonb; `description` is a
-// human-readable summary for the queue/detail views.
+// ─── Member requests (friendly intake wizards) ───────────────────
+// One action for every intake track. Reuses the task table: use-a-space,
+// event, class, question, and equipment *purchases* land as
+// review_status='pending_review' (committee review queue); simple repairs go
+// straight to the work queue as 'approved'. Structured answers live in the
+// details jsonb (details.kind = the track key); description is the readable
+// summary shown in queues.
 
-export interface BuildingUseRequestInput {
-  subType: string;
-  subTypeLabel: string;
-  requesterKind: "member" | "outside";
-  outsideOrg?: string;
-  contact?: string;
-  spaces: string[];
-  date: string;
-  startTime?: string;
-  endTime?: string;
-  recurring: boolean;
-  recurrenceNote?: string;
-  headcount?: string;
-  children?: string;
-  needs: string[];
-  accessPerson?: string;
-  hasKey?: boolean;
-  selfCleanup?: boolean;
-  paidActivity?: boolean;
-  insuranceAck?: boolean;
-  notes?: string;
-}
+// Preferred category per track, with graceful fallbacks (so this works whether
+// or not the optional "Building Use" category from migration 0047 exists).
+const CATEGORY_PREFERENCE: Record<string, string[]> = {
+  "use-a-space": ["Building Use", "Event", "General"],
+  event: ["Event", "Building Use", "General"],
+  class: ["Building Use", "Event", "General"],
+  maintenance: ["Maintenance", "General"],
+  question: ["General", "Maintenance"],
+};
 
-// Prefer a dedicated "Building Use" category, but fall back gracefully so this
-// works whether or not migration 0047 (the category seed) has been applied yet.
-const BUILDING_USE_CATEGORY_PREFERENCE = ["Building Use", "Event", "General"];
-
-export async function createBuildingUseRequest(
-  input: BuildingUseRequestInput,
+export async function createRequest(
+  trackKey: string,
+  details: Record<string, unknown>,
 ): Promise<CreateTicketResult> {
-  if (!input?.subType) return { error: "Please tell us what you're planning." };
-  if (!input.spaces?.length) return { error: "Please choose at least one space." };
-  if (!input.date?.trim()) return { error: "Please choose a date." };
-  if (input.requesterKind === "outside" && !input.outsideOrg?.trim()) {
+  const d = details ?? {};
+  const s = (v: unknown) => (typeof v === "string" ? v : "");
+  const hasSpaces = Array.isArray(d.spaces) && (d.spaces as string[]).length > 0;
+
+  // Per-track required-field checks (mirrors the wizard's client validation).
+  switch (trackKey) {
+    case "use-a-space":
+      if (!s(d.purpose).trim()) return { error: "Please tell us what you'll use it for." };
+      if (!hasSpaces) return { error: "Please choose at least one space." };
+      if (!s(d.date).trim()) return { error: "Please choose a date." };
+      break;
+    case "event":
+      if (!d.eventType) return { error: "Please pick the kind of event." };
+      if (!hasSpaces) return { error: "Please choose at least one space." };
+      if (!s(d.date).trim()) return { error: "Please choose a date." };
+      break;
+    case "class":
+      if (!s(d.classTitle).trim()) return { error: "Please tell us about the class." };
+      if (!s(d.date).trim()) return { error: "Please choose a date." };
+      break;
+    case "maintenance":
+      if (!d.maintType) return { error: "Please choose what you need." };
+      if (d.maintType === "repair" && !s(d.problem).trim()) return { error: "Please tell us what's wrong." };
+      if (d.maintType === "purchase" && !s(d.item).trim()) return { error: "Please tell us what to buy." };
+      break;
+    case "question":
+      if (!s(d.question).trim()) return { error: "Please write your question." };
+      break;
+    default:
+      return { error: "Unknown request type." };
+  }
+  if (["use-a-space", "event", "class"].includes(trackKey) && d.requesterKind === "outside" && !s(d.outsideOrg).trim()) {
     return { error: "Please tell us the name of the group or host." };
   }
 
@@ -291,24 +304,35 @@ export async function createBuildingUseRequest(
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in to make a request." };
 
-  // Resolve a category (prefer "Building Use") + a sensible default priority +
-  // the member's contact details for the committee notification.
   const [{ data: cats }, { data: prios }, { data: member }] = await Promise.all([
     supabase.from("task_categories").select("id, name").is("deleted_at", null),
-    supabase.from("priorities").select("id, key").is("deleted_at", null),
+    supabase.from("priorities").select("id, key, label").is("deleted_at", null),
     supabase.from("members").select("full_name, email").eq("user_id", user.id).maybeSingle(),
   ]);
 
+  const pref = CATEGORY_PREFERENCE[trackKey] ?? ["General"];
   const category =
-    BUILDING_USE_CATEGORY_PREFERENCE.map((name) =>
-      (cats ?? []).find((c) => c.name.toLowerCase() === name.toLowerCase()),
-    ).find(Boolean) ?? (cats ?? [])[0];
+    pref.map((n) => (cats ?? []).find((c) => c.name.toLowerCase() === n.toLowerCase())).find(Boolean) ?? (cats ?? [])[0];
   if (!category) return { error: "No task category is configured." };
 
-  const priority = (prios ?? []).find((p) => p.key === "medium") ?? (prios ?? [])[0];
+  // Simple repairs go straight to the work queue; everything else (bookings,
+  // events, classes, questions, purchases) needs committee review.
+  const isRepair = trackKey === "maintenance" && d.maintType === "repair";
+  const reviewStatus = isRepair ? "approved" : "pending_review";
+
+  // Infer priority from a repair's urgency; otherwise medium.
+  const prioKey = isRepair
+    ? s(d.urgency).startsWith("Urgent")
+      ? "high"
+      : s(d.urgency).startsWith("Soon")
+        ? "medium"
+        : "low"
+    : "medium";
+  const priority =
+    (prios ?? []).find((p) => p.key === prioKey) ?? (prios ?? []).find((p) => p.key === "medium") ?? (prios ?? [])[0];
   if (!priority) return { error: "No priority is configured." };
 
-  const description = buildBuildingUseDescription(input);
+  const description = buildRequestDescription(trackKey, d);
 
   const { data: inserted, error: insertError } = await supabase
     .from("maintenance_requests")
@@ -318,8 +342,8 @@ export async function createBuildingUseRequest(
       area_id: null,
       priority_id: priority.id,
       description,
-      details: { kind: "building-use", ...input },
-      review_status: "pending_review",
+      details: { kind: trackKey, ...d },
+      review_status: reviewStatus,
     })
     .select("id")
     .single();
@@ -328,8 +352,7 @@ export async function createBuildingUseRequest(
     return { error: insertError?.message ?? "Failed to submit your request." };
   }
 
-  // Fire-and-forget: alert the committee that a request needs review. Both
-  // sinks no-op gracefully if their env isn't configured.
+  // Fire-and-forget notifications (both no-op without their env).
   const notifyPayload = {
     ticketId: inserted.id,
     areaId: null,
@@ -337,47 +360,88 @@ export async function createBuildingUseRequest(
     submitterName: member?.full_name ?? null,
     areaName: null,
     categoryName: category.name,
-    priorityLabel: "Needs review",
+    priorityLabel: reviewStatus === "pending_review" ? "Needs review" : priority.label ?? priority.key,
     description,
   };
-  sendNewTicketNotification(notifyPayload).catch((err) =>
-    console.error("[notify] building-use request email failed:", err),
-  );
-  sendNewTicketSlack(notifyPayload).catch((err) =>
-    console.error("[notify] building-use request slack failed:", err),
-  );
+  sendNewTicketNotification(notifyPayload).catch((err) => console.error("[notify] request email failed:", err));
+  sendNewTicketSlack(notifyPayload).catch((err) => console.error("[notify] request slack failed:", err));
 
   revalidatePath("/portal/tasks");
+  revalidatePath("/portal/review");
   revalidatePath("/portal/requests");
   return { success: true, ticketId: inserted.id };
 }
 
-function buildBuildingUseDescription(i: BuildingUseRequestInput): string {
+function buildRequestDescription(trackKey: string, d: Record<string, unknown>): string {
+  const s = (v: unknown) => (typeof v === "string" ? v : "");
+  const list = (v: unknown) => (Array.isArray(v) ? (v as string[]).join(", ") : "");
   const lines: string[] = [];
-  lines.push(`Building use — ${i.subTypeLabel || i.subType}.`);
-  if (i.requesterKind === "outside") {
-    lines.push(`For an outside group${i.outsideOrg ? `: ${i.outsideOrg}` : ""}.`);
+  const who = () => {
+    if (d.requesterKind === "outside") lines.push(`For an outside group${s(d.outsideOrg) ? `: ${s(d.outsideOrg)}` : ""}.`);
+  };
+  const where = () => {
+    if (list(d.spaces)) lines.push(`Space(s): ${list(d.spaces)}.`);
+  };
+  const when = () => {
+    const time = [d.startTime, d.endTime].filter(Boolean).join("–");
+    const w = [d.date, time].filter(Boolean).join(" ");
+    if (w) lines.push(`When: ${w}${d.recurring ? ` (recurring${s(d.recurrenceNote) ? `: ${s(d.recurrenceNote)}` : ""})` : ""}.`);
+  };
+  const people = () => {
+    if (s(d.headcount)) lines.push(`About ${s(d.headcount)} people${s(d.children) ? `, incl. ${s(d.children)} children` : ""}.`);
+  };
+  const needs = () => {
+    if (list(d.needs)) lines.push(`Needs: ${list(d.needs)}.`);
+  };
+  const access = () => {
+    const a: string[] = [];
+    if (s(d.accessPerson)) a.push(`${s(d.accessPerson)} will open/lock up`);
+    if (d.hasKey) a.push("has a key/code");
+    if (d.selfCleanup) a.push("will set up & clean up");
+    if (a.length) lines.push(`Access: ${a.join("; ")}.`);
+  };
+
+  switch (trackKey) {
+    case "use-a-space":
+      lines.push(`Space use — ${s(d.purpose)}.`);
+      who(); where(); when(); people(); needs(); access();
+      if (d.paidActivity) lines.push(`Paid activity${d.insuranceAck ? " — can provide insurance/waiver" : ""}.`);
+      break;
+    case "event":
+      lines.push(`Event — ${s(d.eventTypeLabel) || s(d.eventType)}.`);
+      who(); where(); when(); people();
+      if (s(d.speakerName)) lines.push(`Speaker: ${s(d.speakerName)}${s(d.topic) ? ` — ${s(d.topic)}` : ""}.`);
+      needs();
+      if (d.alcohol) lines.push("Alcohol will be served.");
+      if (s(d.decorations)) lines.push(`Decorations: ${s(d.decorations)}.`);
+      access();
+      if (d.paidActivity) lines.push(`Paid activity${d.insuranceAck ? " — can provide insurance/waiver" : ""}.`);
+      break;
+    case "class":
+      lines.push(`Class / program — ${s(d.classTitle)}.`);
+      if (s(d.audience)) lines.push(`Open to: ${s(d.audience)}.`);
+      who(); where(); when(); people(); needs(); access();
+      if (d.hasFee) lines.push("There's a cost to attend.");
+      if (d.outsideInstructor) lines.push("Led by someone outside the church.");
+      if (d.insuranceAck) lines.push("Can provide insurance / sign a waiver.");
+      break;
+    case "maintenance":
+      if (d.maintType === "purchase") {
+        lines.push(`Purchase request: ${s(d.item)}${s(d.cost) ? ` (~${s(d.cost)} each)` : ""}.`);
+        if (s(d.reason)) lines.push(`Why: ${s(d.reason)}.`);
+        if (s(d.link)) lines.push(`Link: ${s(d.link)}.`);
+      } else {
+        lines.push(`${s(d.problem)}${s(d.location) ? ` — ${s(d.location)}` : ""}.`);
+        if (s(d.problemDetail)) lines.push(s(d.problemDetail));
+        if (s(d.urgency)) lines.push(`Urgency: ${s(d.urgency)}.`);
+      }
+      break;
+    case "question":
+      lines.push(`Question${s(d.topic) ? ` (${s(d.topic)})` : ""}: ${s(d.question)}`);
+      break;
   }
-  lines.push(`Space(s): ${i.spaces.join(", ")}.`);
-  const time = [i.startTime, i.endTime].filter(Boolean).join("–");
-  const when = [i.date, time].filter(Boolean).join(" ");
-  lines.push(
-    `When: ${when}${i.recurring ? ` (recurring${i.recurrenceNote ? `: ${i.recurrenceNote}` : ""})` : ""}.`,
-  );
-  if (i.headcount) {
-    lines.push(`About ${i.headcount} people${i.children ? `, incl. ${i.children} children` : ""}.`);
-  }
-  if (i.needs?.length) lines.push(`Needs: ${i.needs.join(", ")}.`);
-  const access: string[] = [];
-  if (i.accessPerson) access.push(`${i.accessPerson} will open/lock up`);
-  if (i.hasKey) access.push("has a key/code");
-  if (i.selfCleanup) access.push("will set up & clean up");
-  if (access.length) lines.push(`Access: ${access.join("; ")}.`);
-  if (i.paidActivity) {
-    lines.push(`Paid activity${i.insuranceAck ? " — can provide insurance/waiver" : ""}.`);
-  }
-  if (i.contact) lines.push(`Contact: ${i.contact}.`);
-  if (i.notes?.trim()) lines.push(`Notes: ${i.notes.trim()}`);
+  if (s(d.contact)) lines.push(`Contact: ${s(d.contact)}.`);
+  if (s(d.notes).trim()) lines.push(`Notes: ${s(d.notes).trim()}`);
   return lines.join("\n");
 }
 

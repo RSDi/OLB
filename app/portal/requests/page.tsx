@@ -13,25 +13,39 @@ interface RequestCard {
 
 const CARDS: RequestCard[] = [
   {
-    href: "/portal/requests/building-use",
-    title: "Building use",
-    blurb: "Use a room, the gym, or the kitchen — for a gathering, party, wedding, class, or sports.",
+    href: "/portal/requests/use-a-space",
+    title: "Use a space",
+    blurb: "A room, the gym, or the kitchen — for a meeting, gathering, or some open gym time.",
     icon: <Icons.Home width={22} height={22} />,
     accent: { bg: "var(--rsd-accent-bg)", color: "var(--rsd-accent)" },
   },
   {
-    href: "/portal/tasks/new?category=Maintenance",
+    href: "/portal/requests/event",
+    title: "Host an event",
+    blurb: "A party, wedding or reception, or a guest speaker.",
+    icon: <Icons.Sparkles width={22} height={22} />,
+    accent: { bg: "rgb(243,232,255)", color: "#6d28d9" },
+  },
+  {
+    href: "/portal/requests/class",
+    title: "Run a class or program",
+    blurb: "A one-time or recurring class, group, or youth activity.",
+    icon: <Icons.BookOpen width={22} height={22} />,
+    accent: { bg: "rgb(239,246,255)", color: "#1d4ed8" },
+  },
+  {
+    href: "/portal/requests/maintenance",
     title: "Report a problem",
     blurb: "Something's broken or needs fixing — or we should buy a piece of equipment.",
     icon: <Icons.Wrench width={22} height={22} />,
     accent: { bg: "rgb(254,243,199)", color: "#92400e" },
   },
   {
-    href: "/portal/tasks/new?category=General",
+    href: "/portal/requests/question",
     title: "Ask the committee",
     blurb: "A question or a suggestion for the building committee.",
     icon: <Icons.Info width={22} height={22} />,
-    accent: { bg: "rgb(239,246,255)", color: "#1d4ed8" },
+    accent: { bg: "var(--gw-success-bg)", color: "#16a34a" },
   },
 ];
 

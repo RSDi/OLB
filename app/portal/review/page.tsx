@@ -17,6 +17,7 @@ interface ReviewRow {
   created_at: string;
   submitted_by: string | null;
   review_status: ReviewFilter;
+  reviewed_at: string | null;
   details: Record<string, unknown> | null;
   category: { name: string; chip_class: string } | null;
 }
@@ -47,14 +48,17 @@ export default async function ReviewQueuePage({
   const { data: rowsRaw } = await supabase
     .from("maintenance_requests")
     .select(
-      `id, description, created_at, submitted_by, review_status, details,
+      `id, description, created_at, submitted_by, review_status, reviewed_at, details,
        category:task_categories(name, chip_class)`
     )
     .is("deleted_at", null)
     .not("details", "is", null)
     .eq("review_status", status)
     .order("created_at", { ascending: false });
-  const rows = (rowsRaw as unknown as ReviewRow[]) ?? [];
+  let rows = (rowsRaw as unknown as ReviewRow[]) ?? [];
+  // Auto-approved repairs (no reviewed_at) aren't committee decisions — keep
+  // them out of the Approved tab so it only shows what was actually reviewed.
+  if (status === "approved") rows = rows.filter((r) => r.reviewed_at);
 
   const { count: pendingCount } = await supabase
     .from("maintenance_requests")

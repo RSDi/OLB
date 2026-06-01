@@ -25,6 +25,17 @@ import {
 interface RequestDetails {
   kind?: string;
   subTypeLabel?: string;
+  purpose?: string;
+  eventType?: string;
+  eventTypeLabel?: string;
+  classTitle?: string;
+  audience?: string;
+  speakerName?: string;
+  topic?: string;
+  alcohol?: boolean;
+  decorations?: string;
+  hasFee?: boolean;
+  outsideInstructor?: boolean;
   requesterKind?: "member" | "outside";
   outsideOrg?: string;
   contact?: string;
@@ -153,8 +164,10 @@ export default async function TicketDetailPage({
 
   const canComment = staff || ticket.submitted_by === user.id;
 
-  const promoteTitle = ticket.details?.subTypeLabel
-    ? `${ticket.details.subTypeLabel}${ticket.details.outsideOrg ? ` — ${ticket.details.outsideOrg}` : ""}`
+  const reqWhat =
+    ticket.details?.eventTypeLabel || ticket.details?.classTitle || ticket.details?.purpose || ticket.details?.subTypeLabel;
+  const promoteTitle = reqWhat
+    ? `${reqWhat}${ticket.details?.outsideOrg ? ` — ${ticket.details.outsideOrg}` : ""}`
     : truncate(ticket.description, 60);
 
   return (
@@ -257,7 +270,9 @@ export default async function TicketDetailPage({
             </div>
           )}
 
-          {ticket.details?.kind === "building-use" && <RequestDetailsCard d={ticket.details} />}
+          {["use-a-space", "event", "class"].includes(ticket.details?.kind ?? "") && (
+            <RequestDetailsCard d={ticket.details!} />
+          )}
 
           {/* Comments */}
           <div className="rsd-card" style={{ gap: 14, padding: 0, overflow: "hidden" }}>
@@ -417,8 +432,9 @@ function reviewChip(ticket: Ticket) {
   const s = ticket.review_status;
   if (s === "pending_review") return <span className="rsd-chip rsd-chip-warn">Pending review</span>;
   if (s === "declined") return <span className="rsd-chip rsd-chip-error">Declined</span>;
-  // Plain approved tasks (not submitted through the request wizard) show no chip.
-  if (ticket.details?.kind) return <span className="rsd-chip rsd-chip-success">Approved</span>;
+  // Only show "Approved" when the committee actually reviewed it (reviewed_at
+  // set) — auto-approved repairs and plain tasks show no review chip.
+  if (s === "approved" && ticket.reviewed_at) return <span className="rsd-chip rsd-chip-success">Approved</span>;
   return null;
 }
 
@@ -453,7 +469,9 @@ function RequestDetailsCard({ d }: { d: RequestDetails }) {
   const time = [d.startTime, d.endTime].filter(Boolean).join("–");
   const when = [d.date, time].filter(Boolean).join(" ");
   const rows: [string, string][] = [];
-  if (d.subTypeLabel) rows.push(["Plan", d.subTypeLabel]);
+  const what = d.eventTypeLabel || d.classTitle || d.purpose || d.subTypeLabel;
+  if (what) rows.push(["What", what]);
+  if (d.audience) rows.push(["Open to", d.audience]);
   rows.push([
     "Requested by",
     d.requesterKind === "outside" ? `Outside group${d.outsideOrg ? ` — ${d.outsideOrg}` : ""}` : "MCC",
@@ -461,11 +479,14 @@ function RequestDetailsCard({ d }: { d: RequestDetails }) {
   if (d.spaces?.length) rows.push(["Space(s)", d.spaces.join(", ")]);
   if (when) rows.push(["When", `${when}${d.recurring ? ` · recurring${d.recurrenceNote ? ` (${d.recurrenceNote})` : ""}` : ""}`]);
   if (d.headcount) rows.push(["People", `${d.headcount}${d.children ? ` · ${d.children} children` : ""}`]);
+  if (d.speakerName) rows.push(["Speaker", `${d.speakerName}${d.topic ? ` — ${d.topic}` : ""}`]);
   if (d.needs?.length) rows.push(["Needs", d.needs.join(", ")]);
   const access = [d.accessPerson, d.hasKey ? "has key/code" : "", d.selfCleanup ? "self setup & cleanup" : ""]
     .filter(Boolean)
     .join(" · ");
   if (access) rows.push(["Access", access]);
+  if (d.alcohol) rows.push(["Alcohol", "Will be served"]);
+  if (d.hasFee) rows.push(["Cost", "There's a cost to attend"]);
   if (d.paidActivity) rows.push(["Paid activity", d.insuranceAck ? "can provide insurance/waiver" : "yes"]);
   if (d.contact) rows.push(["Contact", d.contact]);
 

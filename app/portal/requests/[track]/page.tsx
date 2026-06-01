@@ -1,10 +1,19 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import { Icons } from "../../../components/icons";
-import { BuildingUseWizard } from "./Wizard";
+import { TrackWizard } from "../_shared/TrackWizard";
 
-export default async function BuildingUseRequestPage() {
+const VALID = ["use-a-space", "event", "class", "maintenance", "question"];
+
+export default async function RequestTrackPage({
+  params,
+}: {
+  params: Promise<{ track: string }>;
+}) {
+  const { track } = await params;
+  if (!VALID.includes(track)) notFound();
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -42,7 +51,7 @@ export default async function BuildingUseRequestPage() {
       </div>
 
       <div style={{ maxWidth: 640 }}>
-        <BuildingUseWizard requesterName={member?.full_name ?? null} />
+        <TrackWizard trackKey={track} requesterName={member?.full_name ?? null} />
       </div>
     </>
   );

@@ -1,0 +1,337 @@
+"use client";
+import { useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { Icons } from "../../../components/icons";
+import { Pill } from "../../../components/ui";
+import { createRequest } from "../../../../lib/maintenance/actions";
+
+// ─── Wizard engine ───────────────────────────────────────────────
+// A config-driven multi-step form. Each track supplies a list of steps; the
+// shell owns progress, back/next, validation, conditional steps, submit, and
+// the success screen. Step `body` functions render the fields using the shared
+// primitives below and the ctx helpers (set / toggle).
+
+export type RequestForm = Record<string, unknown>;
+
+export interface WizardCtx {
+  form: RequestForm;
+  set: (key: string, value: unknown) => void;
+  toggle: (key: string, value: string) => void;
+}
+
+export interface WizardStep {
+  key: string;
+  title: string;
+  hint?: string;
+  show?: (form: RequestForm) => boolean;
+  valid?: (form: RequestForm) => boolean;
+  body: (ctx: WizardCtx) => ReactNode;
+}
+
+export interface TrackConfig {
+  key: string;
+  title: string;
+  initial: RequestForm;
+  steps: WizardStep[];
+  successBody?: string;
+}
+
+export function RequestWizard({
+  trackKey,
+  title,
+  steps,
+  initial,
+  requesterName,
+  successBody,
+}: Omit<TrackConfig, "key"> & { trackKey: string; requesterName: string | null }) {
+  const router = useRouter();
+  const [form, setForm] = useState<RequestForm>(initial);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const set = (key: string, value: unknown) => setForm((f) => ({ ...f, [key]: value }));
+  const toggle = (key: string, value: string) =>
+    setForm((f) => {
+      const arr = Array.isArray(f[key]) ? (f[key] as string[]) : [];
+      return { ...f, [key]: arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value] };
+    });
+  const ctx: WizardCtx = { form, set, toggle };
+
+  const visible = useMemo(() => steps.filter((s) => !s.show || s.show(form)), [steps, form]);
+  const idx = Math.min(stepIndex, visible.length - 1);
+  const step = visible[idx];
+  const isLast = idx === visible.length - 1;
+  const canAdvance = !step.valid || step.valid(form);
+
+  function back() {
+    setError(null);
+    if (idx === 0) {
+      router.push("/portal/requests");
+      return;
+    }
+    setStepIndex(idx - 1);
+  }
+  async function next() {
+    if (!canAdvance) return;
+    setError(null);
+    if (!isLast) {
+      setStepIndex(idx + 1);
+      return;
+    }
+    setPending(true);
+    const result = await createRequest(trackKey, form);
+    setPending(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setSubmitted(true);
+  }
+
+  if (submitted) {
+    return (
+      <div
+        className="rsd-card"
+        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "40px 24px", textAlign: "center" }}
+      >
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: "var(--gw-success-bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--gw-success)",
+          }}
+        >
+          <Icons.CheckCircle width={26} height={26} />
+        </div>
+        <h3 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>Sent</h3>
+        <p style={{ margin: 0, fontSize: 14, color: "var(--gw-fg-muted)", maxWidth: 380, lineHeight: 1.6 }}>
+          Thanks{requesterName ? `, ${requesterName.split(" ")[0]}` : ""}! {successBody ?? "We'll be in touch."}
+        </p>
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          <Pill variant="ghost" size="sm" onClick={() => router.push("/portal/requests")}>
+            Make another
+          </Pill>
+          <Pill variant="accent" size="sm" onClick={() => router.push("/portal/tasks")}>
+            View my requests
+          </Pill>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rsd-card" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      {/* Progress */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
+          <span>{title}</span>
+          <span>
+            Step {idx + 1} of {visible.length}
+          </span>
+        </div>
+        <div style={{ height: 6, borderRadius: 100, background: "var(--gw-bg-elev)", overflow: "hidden" }}>
+          <div
+            style={{
+              height: "100%",
+              width: `${((idx + 1) / visible.length) * 100}%`,
+              background: "var(--rsd-accent)",
+              borderRadius: 100,
+              transition: "width 220ms var(--gw-ease, ease)",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Step */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--gw-fg)" }}>{step.title}</h3>
+          {step.hint && <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.6 }}>{step.hint}</p>}
+        </div>
+        {step.body(ctx)}
+      </div>
+
+      {error && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "var(--gw-error-bg)",
+            border: "1px solid rgba(229,62,62,.25)",
+            borderRadius: 10,
+            padding: "12px 16px",
+            fontSize: 13,
+            color: "var(--gw-error)",
+            fontWeight: 600,
+          }}
+        >
+          <Icons.AlertCircle width={16} height={16} />
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
+        <Pill variant="ghost" size="md" onClick={back} disabled={pending}>
+          {idx === 0 ? "Cancel" : "Back"}
+        </Pill>
+        <Pill variant="accent" size="md" onClick={next} disabled={pending || !canAdvance}>
+          {isLast ? (pending ? "Sending…" : "Send request") : "Next"}
+        </Pill>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared primitives ───────────────────────────────────────────
+
+export function Column({ children }: { children: ReactNode }) {
+  return <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{children}</div>;
+}
+
+export function Wrap({ children }: { children: ReactNode }) {
+  return <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{children}</div>;
+}
+
+export function OptionCard({
+  selected,
+  onClick,
+  icon,
+  label,
+  blurb,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  icon?: ReactNode;
+  label: string;
+  blurb?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="gw-press"
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 12,
+        textAlign: "left",
+        padding: 14,
+        borderRadius: 12,
+        cursor: "pointer",
+        width: "100%",
+        background: selected ? "var(--rsd-accent-bg)" : "var(--gw-bg)",
+        border: `1.5px solid ${selected ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+        color: "var(--gw-fg)",
+      }}
+    >
+      {icon && (
+        <div
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: selected ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+            color: selected ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+          }}
+        >
+          {icon}
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>{label}</div>
+        {blurb && <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", marginTop: 2, lineHeight: 1.5 }}>{blurb}</div>}
+      </div>
+      {selected && (
+        <span style={{ color: "var(--rsd-accent)", flexShrink: 0 }}>
+          <Icons.CheckCircle width={18} height={18} />
+        </span>
+      )}
+    </button>
+  );
+}
+
+export function Chip({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="gw-press"
+      style={{
+        padding: "9px 14px",
+        borderRadius: 100,
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: "pointer",
+        background: selected ? "var(--rsd-accent)" : "var(--gw-bg)",
+        color: selected ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+        border: `1px solid ${selected ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function CheckRow({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="gw-press"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "11px 12px",
+        borderRadius: 10,
+        background: "var(--gw-bg)",
+        border: `1px solid ${checked ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+        cursor: "pointer",
+        width: "100%",
+        textAlign: "left",
+      }}
+    >
+      <span
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 6,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: checked ? "var(--rsd-accent)" : "transparent",
+          border: `1.5px solid ${checked ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+          color: "var(--rsd-accent-on)",
+        }}
+      >
+        {checked && <Icons.CheckCircle width={14} height={14} />}
+      </span>
+      <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gw-fg)" }}>{label}</span>
+    </button>
+  );
+}
+
+export function SummaryRow({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+  return (
+    <div style={{ display: "flex", gap: 12, padding: "8px 0", borderBottom: "1px solid var(--gw-border)" }}>
+      <span style={{ flex: "0 0 110px", fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".03em" }}>
+        {label}
+      </span>
+      <span style={{ flex: 1, fontSize: 14, color: "var(--gw-fg)", fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+}
