@@ -174,7 +174,7 @@ export function DeleteButton({ ticketId }: { ticketId: string }) {
         setError(result.error);
         return;
       }
-      router.push("/portal/maintenance");
+      router.push("/portal/tasks");
     });
   }
 

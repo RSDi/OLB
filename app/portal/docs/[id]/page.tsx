@@ -2,6 +2,10 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../../lib/auth/permissions";
 import { PlaybookDetail, type PlaybookDetailData } from "./PlaybookDetail";
+import {
+  loadLinkedContactsForEntity,
+  loadContactPickerOptions,
+} from "../../contacts/_shared/data";
 
 interface PlaybookRow {
   id: string;
@@ -104,12 +108,21 @@ export default async function PlaybookDetailPage({
     version_count: versionCount,
   };
 
+  // Vendors attached to this playbook — staff-only via RLS. Skip both
+  // queries for non-staff so we don't pay the round-trip.
+  const contactLinks = staff
+    ? await loadLinkedContactsForEntity("playbook", playbook.id)
+    : undefined;
+  const contactPickerOptions = staff ? await loadContactPickerOptions() : undefined;
+
   return (
     <PlaybookDetail
       data={data}
       canEdit={staff}
       canDelete={isSuperAdmin(me)}
       categories={categories}
+      contactLinks={contactLinks}
+      contactPickerOptions={contactPickerOptions}
     />
   );
 }

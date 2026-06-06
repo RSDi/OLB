@@ -4,7 +4,12 @@ import { createClient } from "../../../../lib/supabase/server";
 import { Icons } from "../../../components/icons";
 import { MaintenanceRequestForm } from "./Form";
 
-export default async function NewMaintenanceRequestPage() {
+export default async function NewMaintenanceRequestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ description?: string; priority?: string; project?: string; category?: string }>;
+}) {
+  const { description, priority, project, category } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -12,7 +17,7 @@ export default async function NewMaintenanceRequestPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data: areas }, { data: priorities }] = await Promise.all([
+  const [{ data: areas }, { data: priorities }, { data: categories }] = await Promise.all([
     supabase
       .from("areas")
       .select("id, name")
@@ -21,10 +26,20 @@ export default async function NewMaintenanceRequestPage() {
       .order("name", { ascending: true }),
     supabase
       .from("priorities")
-      .select("id, label, chip_class")
+      .select("id, key, label, chip_class")
       .is("deleted_at", null)
       .order("severity", { ascending: true }),
+    supabase
+      .from("task_categories")
+      .select("id, name")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true }),
   ]);
+
+  const { data: projectRow } = project
+    ? await supabase.from("projects").select("id, title").eq("id", project).is("deleted_at", null).maybeSingle()
+    : { data: null as { id: string; title: string } | null };
 
   return (
     <>
@@ -38,7 +53,7 @@ export default async function NewMaintenanceRequestPage() {
         }}
       >
         <Link
-          href="/portal/maintenance"
+          href="/portal/tasks"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -60,7 +75,15 @@ export default async function NewMaintenanceRequestPage() {
 
       <div style={{ maxWidth: 680 }}>
         <div className="rsd-card">
-          <MaintenanceRequestForm areas={areas ?? []} priorities={priorities ?? []} />
+          <MaintenanceRequestForm
+            areas={areas ?? []}
+            priorities={priorities ?? []}
+            categories={categories ?? []}
+            initialDescription={description ?? ""}
+            initialPriorityKey={priority ?? ""}
+            project={projectRow ?? null}
+            initialCategoryName={category ?? ""}
+          />
         </div>
       </div>
     </>

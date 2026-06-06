@@ -14,6 +14,11 @@ import {
   DeleteButton,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
+import { LinkedContacts } from "../../contacts/_shared/LinkedContacts";
+import {
+  loadLinkedContactsForEntity,
+  loadContactPickerOptions,
+} from "../../contacts/_shared/data";
 
 interface Ticket {
   id: string;
@@ -23,6 +28,8 @@ interface Ticket {
   updated_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
+  category: { name: string; chip_class: string } | null;
+  project: { id: string; title: string } | null;
   area: { id: string; name: string } | null;
   priority: { id: string; label: string; chip_class: string } | null;
   assignee: { id: string; full_name: string | null; email: string } | null;
@@ -62,6 +69,8 @@ export default async function TicketDetailPage({
     .from("maintenance_requests")
     .select(
       `id, description, status, created_at, updated_at, submitted_by, assigned_to,
+       category:task_categories(name, chip_class),
+       project:projects(id, title),
        area:areas(id, name),
        priority:priorities(id, label, chip_class),
        assignee:members!assigned_to(id, full_name, email)`
@@ -105,6 +114,14 @@ export default async function TicketDetailPage({
     staffList = staffRows ?? [];
   }
 
+  // Vendors / external contacts attached to this ticket. Staff-only —
+  // RLS hides everything for non-staff, but skip the queries to save a
+  // round-trip when we know they won't show.
+  const linkedContacts = staff
+    ? await loadLinkedContactsForEntity("maintenance_ticket", ticket.id)
+    : [];
+  const contactPickerOptions = staff ? await loadContactPickerOptions() : [];
+
   const canComment = staff || ticket.submitted_by === user.id;
 
   return (
@@ -123,7 +140,7 @@ export default async function TicketDetailPage({
           {truncate(ticket.description, 80)}
         </h2>
         <Link
-          href="/portal/maintenance"
+          href="/portal/tasks"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -149,6 +166,11 @@ export default async function TicketDetailPage({
           {/* Description */}
           <div className="rsd-card" style={{ gap: 14 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {ticket.category && (
+                <span className={`rsd-chip ${ticket.category.chip_class}`}>
+                  {ticket.category.name}
+                </span>
+              )}
               {ticket.priority && (
                 <span className={`rsd-chip ${ticket.priority.chip_class}`}>
                   {ticket.priority.label}
@@ -156,6 +178,27 @@ export default async function TicketDetailPage({
               )}
               {statusChip(ticket.status)}
               {ticket.area && <Pill>{ticket.area.name}</Pill>}
+              {ticket.project && (
+                <Link
+                  href={`/portal/tasks/projects/${ticket.project.id}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "3px 10px",
+                    borderRadius: 100,
+                    background: "var(--gw-bg-elev)",
+                    border: "1px solid var(--gw-border)",
+                    color: "var(--rsd-accent)",
+                    textDecoration: "none",
+                  }}
+                >
+                  <Icons.LayoutDashboard width={11} height={11} />
+                  {ticket.project.title}
+                </Link>
+              )}
             </div>
             <div style={{ fontSize: 14, color: "var(--gw-fg)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
               {ticket.description}
@@ -241,6 +284,16 @@ export default async function TicketDetailPage({
               />
               {superAdmin && <DeleteButton ticketId={ticket.id} />}
             </div>
+          )}
+
+          {staff && (
+            <LinkedContacts
+              entityType="maintenance_ticket"
+              entityId={ticket.id}
+              links={linkedContacts}
+              allContacts={contactPickerOptions}
+              canEdit={staff}
+            />
           )}
         </div>
       </div>

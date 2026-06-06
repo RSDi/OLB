@@ -7,6 +7,11 @@ import { Icons } from "../../../components/icons";
 import { MarkdownEditor } from "../../../components/MarkdownEditor";
 import { MarkdownView } from "../../../components/MarkdownView";
 import { softDeletePlaybook, updatePlaybook } from "../../../../lib/playbooks/actions";
+import {
+  LinkedContacts,
+  type LinkedContactRow,
+  type PickerOption,
+} from "../../contacts/_shared/LinkedContacts";
 
 export interface PlaybookDetailData {
   id: string;
@@ -26,6 +31,10 @@ interface Props {
   canEdit: boolean;
   canDelete: boolean;
   categories: { id: string; name: string; chip_class: string }[];
+  // Contact linkage — staff-only. Server omits these for non-staff viewers
+  // so the widget never renders.
+  contactLinks?: LinkedContactRow[];
+  contactPickerOptions?: PickerOption[];
 }
 
 type Mode = "view" | "edit";
@@ -47,7 +56,14 @@ function authorLabel(name: string | null | undefined): string {
   return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
-export function PlaybookDetail({ data, canEdit, canDelete, categories }: Props) {
+export function PlaybookDetail({
+  data,
+  canEdit,
+  canDelete,
+  categories,
+  contactLinks,
+  contactPickerOptions,
+}: Props) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("view");
   const [title, setTitle] = useState(data.title);
@@ -386,6 +402,18 @@ export function PlaybookDetail({ data, canEdit, canDelete, categories }: Props) 
             </p>
           )}
         </article>
+      )}
+
+      {mode === "view" && contactLinks && contactPickerOptions && (
+        <div style={{ marginTop: 20 }}>
+          <LinkedContacts
+            entityType="playbook"
+            entityId={data.id}
+            links={contactLinks}
+            allContacts={contactPickerOptions}
+            canEdit={canEdit}
+          />
+        </div>
       )}
 
       {error && (

@@ -32,6 +32,7 @@ interface TicketRow {
   created_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
+  category: { name: string; chip_class: string } | null;
   area: { name: string } | null;
   priority: { id: string; label: string; chip_class: string } | null;
 }
@@ -53,7 +54,7 @@ export function QueueRow({
   const [hover, setHover] = useState(false);
 
   function handleRowClick() {
-    router.push(`/portal/maintenance/${ticket.id}`);
+    router.push(`/portal/tasks/${ticket.id}`);
   }
 
   function stop(e: MouseEvent) {
@@ -75,6 +76,15 @@ export function QueueRow({
         <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gw-fg)", lineHeight: 1.3 }}>
           {truncate(ticket.description, 80)}
         </div>
+      </td>
+      <td>
+        {ticket.category ? (
+          <span className={`rsd-chip ${ticket.category.chip_class}`} style={{ fontSize: 11 }}>
+            {ticket.category.name}
+          </span>
+        ) : (
+          "—"
+        )}
       </td>
       <td>{ticket.area?.name ?? "—"}</td>
       <td onClick={stop}>

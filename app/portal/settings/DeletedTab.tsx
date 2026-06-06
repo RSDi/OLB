@@ -10,14 +10,19 @@ import {
   restoreMember,
   hardDeleteMember,
 } from "../../../lib/auth/member-actions";
+import {
+  restoreDavesIdeaRecording,
+  hardDeleteDavesIdeaRecording,
+} from "../../../lib/daves-idea/actions";
 
-type Kind = "areas" | "priorities" | "pm_templates" | "members";
+type Kind = "areas" | "priorities" | "pm_templates" | "members" | "daves_idea_recordings";
 
 const SUBTABS: { key: Kind; label: string }[] = [
   { key: "members", label: "Members" },
   { key: "areas", label: "Areas" },
   { key: "priorities", label: "Priorities" },
   { key: "pm_templates", label: "PM Templates" },
+  { key: "daves_idea_recordings", label: "Dave's Idea" },
 ];
 
 interface DeletedArea {
@@ -49,6 +54,14 @@ interface DeletedMember {
   directory_category: "regular" | "extended" | "memorial";
   deleted_at: string;
 }
+interface DeletedDavesIdeaRecording {
+  id: string;
+  title: string | null;
+  status: string;
+  duration_sec: number;
+  created_at: string;
+  deleted_at: string;
+}
 
 export function DeletedTab() {
   const [kind, setKind] = useState<Kind>("members");
@@ -56,6 +69,7 @@ export function DeletedTab() {
   const [priorities, setPriorities] = useState<DeletedPriority[]>([]);
   const [templates, setTemplates] = useState<DeletedPmTemplate[]>([]);
   const [members, setMembers] = useState<DeletedMember[]>([]);
+  const [recordings, setRecordings] = useState<DeletedDavesIdeaRecording[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +82,7 @@ export function DeletedTab() {
       { data: p, error: pe },
       { data: t, error: te },
       { data: m, error: me },
+      { data: di, error: die },
     ] = await Promise.all([
       supabase
         .from("areas")
@@ -92,9 +107,14 @@ export function DeletedTab() {
         .select("id, full_name, email, directory_category, deleted_at")
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false }),
+      supabase
+        .from("daves_idea_recordings")
+        .select("id, title, status, duration_sec, created_at, deleted_at")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false }),
     ]);
-    if (ae || pe || te || me) {
-      setError(ae?.message ?? pe?.message ?? te?.message ?? me?.message ?? "Failed to load");
+    if (ae || pe || te || me || die) {
+      setError(ae?.message ?? pe?.message ?? te?.message ?? me?.message ?? die?.message ?? "Failed to load");
     } else {
       setAreas((a as DeletedArea[]) ?? []);
       setPriorities((p as DeletedPriority[]) ?? []);
@@ -118,6 +138,7 @@ export function DeletedTab() {
         }))
       );
       setMembers((m as DeletedMember[]) ?? []);
+      setRecordings((di as DeletedDavesIdeaRecording[]) ?? []);
     }
     setLoading(false);
   }, []);
@@ -138,6 +159,13 @@ export function DeletedTab() {
     }
     if (table === "members") {
       const result = await restoreMember(id);
+      if (result.error) setError(result.error);
+      else await load();
+      setActing(null);
+      return;
+    }
+    if (table === "daves_idea_recordings") {
+      const result = await restoreDavesIdeaRecording(id);
       if (result.error) setError(result.error);
       else await load();
       setActing(null);
@@ -169,6 +197,13 @@ export function DeletedTab() {
       setActing(null);
       return;
     }
+    if (table === "daves_idea_recordings") {
+      const result = await hardDeleteDavesIdeaRecording(id);
+      if (result.error) setError(result.error);
+      else await load();
+      setActing(null);
+      return;
+    }
     const supabase = createClient();
     const { error: e } = await supabase.from(table).delete().eq("id", id);
     if (e) setError(e.message);
@@ -181,6 +216,7 @@ export function DeletedTab() {
     priorities: priorities.length,
     pm_templates: templates.length,
     members: members.length,
+    daves_idea_recordings: recordings.length,
   };
 
   return (
@@ -319,23 +355,53 @@ export function DeletedTab() {
             ))}
           </div>
         )
-      ) : templates.length === 0 ? (
-        <EmptyDeleted label="No deleted PM templates." />
+      ) : kind === "pm_templates" ? (
+        templates.length === 0 ? (
+          <EmptyDeleted label="No deleted PM templates." />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {templates.map((t) => {
+              const cascadeWarning =
+                t.instance_count > 0
+                  ? `Delete-forever will also remove ${t.instance_count} PM instance${t.instance_count === 1 ? "" : "s"} generated from this template (and any per-asset sub-records).`
+                  : undefined;
+              return (
+                <DeletedRow
+                  key={t.id}
+                  title={t.title}
+                  subtitle={`${describeSchedule(t.schedule_kind, t.schedule_value)} · ${t.instance_count} instance${t.instance_count === 1 ? "" : "s"} · deleted ${formatDate(t.deleted_at)}`}
+                  acting={acting === t.id}
+                  onRestore={() => restore("pm_templates", t.id)}
+                  onHardDelete={() => hardDelete("pm_templates", t.id, t.title, cascadeWarning)}
+                />
+              );
+            })}
+          </div>
+        )
+      ) : recordings.length === 0 ? (
+        <EmptyDeleted label="No deleted recordings." />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {templates.map((t) => {
-            const cascadeWarning =
-              t.instance_count > 0
-                ? `Delete-forever will also remove ${t.instance_count} PM instance${t.instance_count === 1 ? "" : "s"} generated from this template (and any per-asset sub-records).`
-                : undefined;
+          {recordings.map((r) => {
+            const label = r.title || "Untitled recording";
+            const m = Math.floor(r.duration_sec / 60);
+            const s = r.duration_sec % 60;
+            const dur = m === 0 ? `${s}s` : `${m}:${s.toString().padStart(2, "0")}`;
             return (
               <DeletedRow
-                key={t.id}
-                title={t.title}
-                subtitle={`${describeSchedule(t.schedule_kind, t.schedule_value)} · ${t.instance_count} instance${t.instance_count === 1 ? "" : "s"} · deleted ${formatDate(t.deleted_at)}`}
-                acting={acting === t.id}
-                onRestore={() => restore("pm_templates", t.id)}
-                onHardDelete={() => hardDelete("pm_templates", t.id, t.title, cascadeWarning)}
+                key={r.id}
+                title={label}
+                subtitle={`${dur} · captured ${formatDate(r.created_at)} · deleted ${formatDate(r.deleted_at)}`}
+                acting={acting === r.id}
+                onRestore={() => restore("daves_idea_recordings", r.id)}
+                onHardDelete={() =>
+                  hardDelete(
+                    "daves_idea_recordings",
+                    r.id,
+                    label,
+                    "The audio file in storage and any extracted action items will also be removed."
+                  )
+                }
               />
             );
           })}

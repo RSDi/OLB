@@ -22,6 +22,7 @@ interface TicketRow {
   created_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
+  category: { name: string; chip_class: string } | null;
   area: { name: string } | null;
   priority: { id: string; label: string; chip_class: string; severity: number } | null;
 }
@@ -41,10 +42,11 @@ interface StaffMember {
 export default async function PortalMaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; category?: string }>;
 }) {
   const params = await searchParams;
   const status: StatusFilter = isValidStatus(params.status) ? params.status : "all";
+  const categoryFilter = params.category ?? null;
 
   const supabase = await createClient();
   const {
@@ -66,6 +68,7 @@ export default async function PortalMaintenancePage({
     .from("maintenance_requests")
     .select(
       `id, description, status, created_at, submitted_by, assigned_to,
+       category:task_categories(name, chip_class),
        area:areas(name),
        priority:priorities(id, label, chip_class, severity)`
     )
@@ -74,6 +77,9 @@ export default async function PortalMaintenancePage({
 
   if (status !== "all") {
     query = query.eq("status", status);
+  }
+  if (categoryFilter) {
+    query = query.eq("category_id", categoryFilter);
   }
 
   const { data: ticketsRaw } = await query;
@@ -113,6 +119,33 @@ export default async function PortalMaintenancePage({
     .order("severity", { ascending: true });
   const priorities = (prioritiesRaw as PriorityOption[]) ?? [];
 
+  const { data: categoriesRaw } = await supabase
+    .from("task_categories")
+    .select("id, name, chip_class")
+    .is("deleted_at", null)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  const categories = (categoriesRaw as { id: string; name: string; chip_class: string }[]) ?? [];
+
+  // Build a queue URL preserving both the status and category filters.
+  const tasksHref = (s: string, c: string | null) => {
+    const p = new URLSearchParams();
+    if (s && s !== "all") p.set("status", s);
+    if (c) p.set("category", c);
+    const q = p.toString();
+    return q ? `/portal/tasks?${q}` : "/portal/tasks";
+  };
+  const filterChipStyle = (active: boolean) => ({
+    padding: "5px 12px",
+    borderRadius: 100,
+    fontSize: 12,
+    fontWeight: 700,
+    textDecoration: "none",
+    border: "1px solid var(--gw-border)",
+    background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+    color: active ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+  });
+
   let staffList: StaffMember[] = [];
   if (staff) {
     const { data: staffRows } = await supabase
@@ -137,7 +170,26 @@ export default async function PortalMaintenancePage({
         }}
       >
         <Link
-          href="/portal/maintenance/new"
+          href="/portal/tasks/projects"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 18px",
+            borderRadius: 100,
+            background: "var(--gw-bg-elev)",
+            color: "var(--gw-fg)",
+            border: "1px solid var(--gw-border)",
+            fontSize: 13,
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          <Icons.LayoutDashboard width={14} height={14} />
+          Projects
+        </Link>
+        <Link
+          href="/portal/tasks/new"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -152,7 +204,7 @@ export default async function PortalMaintenancePage({
           }}
         >
           <Icons.Plus width={14} height={14} />
-          New request
+          New task
         </Link>
       </div>
 
@@ -167,7 +219,7 @@ export default async function PortalMaintenancePage({
       {/* Status tabs */}
       <div style={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
         {STATUS_TABS.map((t) => {
-          const href = t.key === "all" ? "/portal/maintenance" : `/portal/maintenance?status=${t.key}`;
+          const href = tasksHref(t.key, categoryFilter);
           const active = status === t.key;
           return (
             <Link
@@ -193,7 +245,7 @@ export default async function PortalMaintenancePage({
           <>
             <span style={{ width: 1, height: 18, background: "var(--gw-border)", margin: "0 6px" }} />
             <Link
-              href="/portal/maintenance/deleted"
+              href="/portal/tasks/deleted"
               style={{
                 padding: "8px 16px",
                 borderRadius: 8,
@@ -214,6 +266,23 @@ export default async function PortalMaintenancePage({
           </>
         )}
       </div>
+
+      {/* Category filter */}
+      {categories.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginRight: 2 }}>
+            Category
+          </span>
+          <Link href={tasksHref(status, null)} style={filterChipStyle(!categoryFilter)}>
+            All
+          </Link>
+          {categories.map((c) => (
+            <Link key={c.id} href={tasksHref(status, c.id)} style={filterChipStyle(categoryFilter === c.id)}>
+              {c.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Table */}
       <div className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
@@ -236,6 +305,7 @@ export default async function PortalMaintenancePage({
             <thead>
               <tr>
                 <th>Description</th>
+                <th>Category</th>
                 <th>Area</th>
                 <th>Priority</th>
                 <th>Status</th>

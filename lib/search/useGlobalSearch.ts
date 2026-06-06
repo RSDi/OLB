@@ -13,6 +13,7 @@ import { createClient } from "../supabase/client";
 
 export type EntityType =
   | "member"
+  | "contact"
   | "maintenance"
   | "pm_task"
   | "pm_template"
@@ -30,9 +31,12 @@ export interface SearchHit {
 }
 
 // Canonical group order. Members/Maintenance/Events/Playbooks sit on top
-// because they're the most common targets; PM internals trail.
+// because they're the most common targets; PM internals trail. Contacts
+// sit right after members since they're the other "directory of people"
+// the global search surfaces.
 export const GROUP_ORDER: EntityType[] = [
   "member",
+  "contact",
   "maintenance",
   "event",
   "playbook",
