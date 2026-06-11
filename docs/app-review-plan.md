@@ -6,6 +6,23 @@
 
 ---
 
+## Executive summary — review complete (2026-06-11)
+
+All four tracks ran and closed in one day. The app is **substantially closer to the vision than assumed going in**: the request wizard, committee review queue, holding-pattern signup, areas, PM system, and the ReelNotes backbone (transcription → action items with suggested assignee/helpers) are built and good. Detailed findings: [app-review-findings.md](app-review-findings.md).
+
+**Shipped during the review (live on prod, verified):** branch consolidation to `main`; security hardening — approved-member RLS gates, soft-delete-aware role helpers, webhook authentication, security headers (migration 0049 + commit `cbc2c35`); WAF rate-limit rule staged.
+
+**The three things to do next:** A9 custom SMTP (members *will* hit the Supabase mailer limit), A8 mobile layout fixes (the volunteer-on-a-phone screen is broken), then A1 committee voting with member-visible decisions — the biggest remaining vision gap.
+
+**Decisions Jeff still owes:**
+| # | Decision | Context |
+|---|---|---|
+| D1 | Who can approve new members — super_admins only (current) or any committee admin (what the transcript says)? | U12; if widened, it's part of A1's scope |
+| D2 | Turn off Supabase email confirmation at signup? Committee approval is already the gate; confirmation adds drop-off for non-technical members | U10; one toggle in Supabase Auth settings |
+| D3 | Publish the staged firewall rule: `vercel firewall publish --yes` | A6; staged and reviewed, one command |
+
+---
+
 ## Decisions locked in the interview
 
 | Topic | Decision |
@@ -69,25 +86,27 @@ Full results in **[app-review-findings.md](app-review-findings.md)** (15 finding
 ### Track 3 — UX walkthrough — ✅ DONE 2026-06-11
 Full friction log (U1–U14) in **[app-review-findings.md](app-review-findings.md)**. Headline: the member journey (signup → holding pattern → wizard → committee review) is the vision delivered, with warm plain-language copy throughout. Two P1s: the PM task detail layout is broken at phone width (the volunteer-on-a-phone screen), and Supabase's built-in mailer rate limit will block real signups/resets until custom SMTP is configured. P2 cluster: members can't see/hear that their request was approved (status shows "Open", no email to account address), tasks queue is a desktop table on phones, birthdays opens at January. Areas list concern was stale — Gym/201 Room/HVAC exist in live data. New backlog: A8 (mobile layouts), A9 (custom SMTP + friendly auth errors); U3/U12 fold into A1's notification work.
 
-### Track 4 — Vision-gap audit → final roadmap
-Merge Tracks 1–3 findings with the gap table above into one prioritized backlog (below), adjusting scope for anything the review reveals.
+### Track 4 — Vision-gap audit → final roadmap — ✅ DONE 2026-06-11
+Tracks 1–3 findings merged into the sequenced backlog below (Phase A reordered by value/dependency, A10 added for tests, open decisions surfaced in the executive summary). The G-table above stands as the point-in-time vision map; the backlog carries status from here.
 
 ---
 
 ## Backlog (prioritized)
 
-### Phase A — next up
-| ID | Item | Scope sketch |
-|---|---|---|
-| A1 | **Committee voting** (G1) | `request_votes` table (request, member, vote, note, timestamps; note required when vote = no). Decision logic: first to 4 wins, instant. Auto-notify requester (email + Slack) on decision. Review queue UI shows vote tally + who hasn't voted; my-requests shows status. Audit trail already exists — extend it. |
-| A2 | **Email-code login** (G2) | Supabase email OTP for sign-in and reset; guided, large-type walkthrough UI written for non-technical members; "text me a code instead" stub slot for later SMS. |
-| A3 | **Vendors, budgets, reorder alerts** (G3) | `vendors` table; link vendors to supplies (reorder source) and tasks (assigned vendor); budget field per area or per project; threshold-cross notification (email + Slack) when `on_hand` dips below reorder level — the dashboard panel already computes this. |
-| A4 | **Approved building use → calendar event** (G4) | On approval, create an `events` row from the request's date/time/space details; link back to the request. |
-| A5 | ~~**Webhook auth fix**~~ ✅ done in Track 2 | Shared-secret header on submit + verification in the route. Shipped 2026-06-11; needs `ASSEMBLYAI_WEBHOOK_SECRET` set in Vercel. |
-| A6 | **Rate-limit public intake** (S10) | Vercel WAF rate-limit rule on `/assistance/*` — staged 2026-06-11, awaiting `vercel firewall publish`. |
-| A7 | **`requireStaff()` guards in server actions** (S11) | Defense-in-depth: TypeScript role check at the top of every staff/super-admin mutation (~50 functions); daves-idea actions model the pattern. |
-| A8 | **Mobile layout fixes** (U1, U4) | PM task detail two-column collapse at phone width (P1 — broken today); tasks queue table → cards at narrow widths (Review queue is the model). |
-| A9 | **Auth email deliverability** (U2, U10) | Configure custom SMTP (Resend) in Supabase Auth; friendly copy for auth errors ("email rate limit exceeded" → plain English). Decide on disabling email confirmation (committee approval is already the gate). |
+### Phase A — next up, in execution order
+
+| Seq | ID | Item | Size | Status / scope |
+|---|---|---|---|---|
+| 1 | A6 | **Publish the firewall rule** (S10) | one command | Staged 2026-06-11. Jeff: `vercel firewall publish --yes` (D3). |
+| 2 | A9 | **Auth email deliverability** (U2, U10) | small | Configure custom SMTP (Resend) in Supabase Auth — Jeff-side config; code side: friendly copy for raw auth errors. Decide D2 (drop email confirmation). **Gates real member onboarding.** |
+| 3 | A8 | **Mobile & quick-win UI fixes** (U1, U4, U5) | small | PM task detail two-column collapse at phone width (broken today); tasks queue table → cards at narrow widths (the Review queue is the model); birthdays defaults to the current month. Quick wins for volunteers on phones. |
+| 4 | A1 | **Committee voting + member-visible decisions** (G1, U3, U12) | large | `request_votes` table (request, member, vote, note; note required when vote = no). First to 4 wins, instant. Notify the requester via their **account email** (not the free-text contact field) + Slack. Review queue shows tally + who hasn't voted; member's list shows Approved/Declined (today it shows "Open"). Includes D1 (who approves members) and notify-member-on-membership-approval. Audit trail exists — extend it. |
+| 5 | A4 | **Approved building use → calendar event** (G4) | small | On approval, create an `events` row from the request's date/space/time; link back. Same code area as A1 — do together. |
+| 6 | A2 | **Email-code login** (G2) | medium | Supabase email OTP for sign-in and reset; guided, large-type walkthrough UI; "text me a code instead" stub slot for later SMS. |
+| 7 | A3 | **Vendors, budgets, reorder alerts** (G3) | medium-large | `vendors` table; link vendors to supplies (reorder source) and tasks (assigned vendor); budgets; threshold-cross notification (email + Slack) — the dashboard already computes low stock. |
+| 8 | A7 | **`requireStaff()` guards in server actions** (S11) | medium, mechanical | Defense-in-depth role checks across ~50 mutations; daves-idea actions model the pattern. Interleave anytime. |
+| 9 | A10 | **Smoke tests for auth + intake** (S14) | small | The pre-review public form was silently broken for weeks — a submit-path test catches that class. Cover: public building submit, member request submit, role gates on review/approve. |
+| — | A5 | ~~**Webhook auth fix**~~ | — | ✅ Shipped & verified on prod 2026-06-11. |
 
 ### Phase B — ReelNotes evolution (G7, G8)
 | ID | Item |
@@ -107,13 +126,15 @@ Merge Tracks 1–3 findings with the gap table above into one prioritized backlo
 | C3 | Birthday slideshow for TVs (G9) — weekly auto-generated, fed by the directory |
 | C4 | Real podcast/messages feed on the public site (G11) |
 | C5 | Building access integration (G10) — parked |
+| C6 | Playbook attachments: wire the upload UI to the existing schema |
+| C7 | Copy/polish batch from the walkthrough: wizard review wording & dates (U8), birthdays "turns 0" (U9), KPI counts vs pending-review (U6), vocabulary unification (U7), nav jargon (U13), a11y nits (U14), trim Dave's Idea overpromise copy (U11) |
 
 ---
 
-## Already-known findings (seed list, to be confirmed/expanded by the review)
-- Transcription webhook: no signature verification (v0) — Phase A5
-- ~~Prod drift~~ — resolved: DB fully migrated, deploy current (see Track 1)
-- **Historical bug, fixed by current code, worth a regression test:** the pre-Jun-11 public building form inserted into a `building_requests` table that never existed — every public submission failed with "Failed to submit request." Current code routes through `createPublicBuildingRequest` → `maintenance_requests` (verified live end-to-end on 2026-05-31). Track 3 should re-verify; Track 2 should consider a test so an intake path can't silently regress again.
-- Playbook attachments: schema exists, UI upload not fully wired
-- Seeded areas lack Gym / Room 201 (data fix in Settings, confirm in walkthrough)
-- Public messages page uses hardcoded sample episodes
+## Pre-review seed list — final disposition
+- ~~Transcription webhook unverified~~ → fixed and live (A5)
+- ~~Prod drift~~ → none; DB fully migrated, deploy current (Track 1)
+- ~~Historical building-form bug~~ → already fixed in current code; regression test queued as A10
+- ~~Seeded areas lack Gym / Room 201~~ → stale; live data has Gym, 201 Room, and HVAC (Track 3)
+- Playbook attachments: schema exists, UI upload not fully wired → C6
+- Public messages page uses hardcoded sample episodes → C4
