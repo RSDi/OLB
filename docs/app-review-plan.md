@@ -18,7 +18,7 @@ All four tracks ran and closed in one day. The app is **substantially closer to 
 | # | Decision | Outcome |
 |---|---|---|
 | D1 | Who can approve new members | **Any committee admin** — built into the A1 changes (migration 0050 + Members tab for all staff; roles/edit/remove stay super-admin) |
-| D2 | Email confirmation at signup | **Drop it** — Jeff toggles "Confirm email" OFF: Supabase dashboard → Authentication → **Sign In / Up** → Email row → Confirm email off. ⏳ Not yet flipped as of last check (`mailer_autoconfirm: false`); the register page already handles both modes, no code change |
+| D2 | Email confirmation at signup | **Dropped** ✅ — verified 2026-06-11 (`mailer_autoconfirm: true`). New signups get an instant session and land straight on the committee-review holding screen; one less hurdle for non-technical members. (First attempt landed on the wrong Supabase project — RSDi Operations — caught and corrected.) |
 | D3 | Staged firewall rule | **Published** — rate limit live on `/assistance/*` |
 
 ---
