@@ -8,6 +8,10 @@ const PATTERNS: [RegExp, string][] = [
     "We've sent a few emails recently and hit a temporary limit. Please wait a few minutes and try again.",
   ],
   [
+    /you can only request this after/i,
+    "One moment — a code was just sent. Wait a few seconds and try again.",
+  ],
+  [
     /invalid login credentials/i,
     "That email and password don't match. Check both and try again, or tap “Forgot password?”",
   ],
@@ -20,7 +24,9 @@ const PATTERNS: [RegExp, string][] = [
     "There's already an account with this email. Try signing in instead.",
   ],
   [
-    /is invalid/i,
+    // Keep this AFTER any token/code patterns would match — it's for the
+    // signup email-validation error ('Email address "x" is invalid').
+    /email.+is invalid/i,
     "That email address doesn't look right — double-check it for typos.",
   ],
   [
@@ -30,6 +36,14 @@ const PATTERNS: [RegExp, string][] = [
   [
     /same password|different from the old/i,
     "Your new password needs to be different from the old one.",
+  ],
+  [
+    /signups not allowed for otp|otp_disabled/i,
+    "We couldn't find an account with that email. Double-check the spelling, or tap “Request access” below to join.",
+  ],
+  [
+    /token has expired or is invalid/i,
+    "That code didn't match or has expired. Double-check the digits, or request a new code.",
   ],
   [/expired|token.*invalid|invalid.*token/i, "That link has expired. Request a fresh one and try again."],
 ];

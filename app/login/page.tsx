@@ -6,6 +6,14 @@ import { Icons } from "../components/icons";
 import { createClient } from "../../lib/supabase/client";
 import { friendlyAuthError } from "../../lib/auth/friendly-error";
 
+// Sign-in paths (A2): email+password, or an emailed one-time code for folks
+// who don't do passwords. "Forgot password?" rides the same code flow — verify a
+// code, you're signed in, then we take you straight to set a new password.
+// Google/Apple OAuth buttons were removed 2026-06-11: neither provider is
+// enabled in Supabase, so the buttons only produced errors. Restore them once
+// the providers are actually configured. An SMS "text me a code" option can
+// slot in next to the email-code button later.
+
 export default function LoginPage() {
   return (
     <Suspense>
@@ -14,18 +22,25 @@ export default function LoginPage() {
   );
 }
 
+type Mode = "login" | "code";
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const status = searchParams.get("status");
   const urlError = searchParams.get("error");
 
-  const [pending, setPending] = useState<"email" | "google" | "apple" | "reset" | null>(null);
+  const [pending, setPending] = useState<"email" | "code-send" | "code-verify" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"login" | "reset">("login");
-  const [resetSent, setResetSent] = useState(false);
+  const [mode, setMode] = useState<Mode>("login");
+  // Code flow state. forReset = arrived via "Forgot password?" — after the
+  // code checks out we go set a new password instead of the dashboard.
+  const [forReset, setForReset] = useState(false);
+  const [codeEmail, setCodeEmail] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [canResend, setCanResend] = useState(false);
 
-  async function checkMembersAndRedirect() {
+  async function checkMembersAndRedirect(next?: string) {
     // Delegate to the server route: it bootstraps the admin from ADMIN_EMAILS
     // (if applicable), inserts a pending row for brand-new users, and returns
     // the resolved member status.
@@ -47,7 +62,7 @@ function LoginContent() {
       return;
     }
 
-    router.push("/portal");
+    router.push(next ?? "/portal");
     router.refresh();
   }
 
@@ -72,32 +87,62 @@ function LoginContent() {
     setPending(null);
   }
 
-  async function handleReset(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending("reset");
+  function enterCodeMode(reset: boolean) {
+    setMode("code");
+    setForReset(reset);
+    setCodeSent(false);
+    setCanResend(false);
     setError(null);
-    const email = (new FormData(e.currentTarget)).get("email") as string;
-    const supabase = createClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-    });
-    setPending(null);
-    if (resetError) { setError(friendlyAuthError(resetError.message)); return; }
-    setResetSent(true);
   }
 
-  async function signInWith(provider: "google" | "apple") {
-    setPending(provider);
+  async function sendCode(e?: React.FormEvent<HTMLFormElement>) {
+    e?.preventDefault();
+    const email = codeEmail.trim();
+    if (!email) return;
+    setPending("code-send");
     setError(null);
+
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    // shouldCreateUser:false — codes sign in existing accounts only; new
+    // folks go through Request access so the committee approval flow holds.
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
     });
-    if (authError) {
-      setError(friendlyAuthError(authError.message));
-      setPending(null);
+    setPending(null);
+    if (otpError) {
+      setError(friendlyAuthError(otpError.message));
+      return;
     }
+    setCodeSent(true);
+    setCanResend(false);
+    setTimeout(() => setCanResend(true), 30_000);
+  }
+
+  async function verifyCode(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const token = (new FormData(e.currentTarget).get("token") as string).replace(/\D/g, "");
+    if (token.length < 6) {
+      setError("Type the whole code from the email.");
+      return;
+    }
+    setPending("code-verify");
+    setError(null);
+
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      email: codeEmail.trim(),
+      token,
+      type: "email",
+    });
+    if (verifyError) {
+      setError(friendlyAuthError(verifyError.message));
+      setPending(null);
+      return;
+    }
+
+    await checkMembersAndRedirect(forReset ? "/reset-password" : undefined);
+    setPending(null);
   }
 
   const inputStyle: React.CSSProperties = {
@@ -108,6 +153,15 @@ function LoginContent() {
     outline: "none", transition: "border-color 120ms",
     width: "100%", boxSizing: "border-box",
   };
+
+  const primaryBtn = (isPending: boolean): React.CSSProperties => ({
+    height: 44,
+    background: isPending ? "rgba(108,140,89,.6)" : "var(--rsd-accent)",
+    color: "var(--rsd-accent-on)", border: "none", borderRadius: 8,
+    fontSize: 14, fontWeight: 700,
+    cursor: pending !== null ? "not-allowed" : "pointer",
+    transition: "background 120ms",
+  });
 
   return (
     <div style={{
@@ -149,48 +203,87 @@ function LoginContent() {
             body="Your request for access was not approved. Contact the church directly if you believe this is an error."
             action={{ label: "Try a different account", onClick: () => window.location.href = "/login" }}
           />
-        ) : mode === "reset" ? (
+        ) : mode === "code" ? (
           <>
-            {resetSent ? (
-              <StatusCard
-                icon={<Icons.CheckCircle width={26} height={26}/>}
-                iconBg="var(--rsd-accent-bg)"
-                iconColor="var(--rsd-accent)"
-                title="Check your email"
-                body="A password reset link has been sent. Click it to set a new password."
-                action={{ label: "Back to sign in", onClick: () => { setMode("login"); setResetSent(false); } }}
-              />
-            ) : (
+            {!codeSent ? (
               <>
                 <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", marginBottom: 16, lineHeight: 1.6 }}>
-                  Enter your email and we'll send a reset link.
+                  {forReset
+                    ? "No problem — we'll email you a sign-in code. Type it in and you can set a new password."
+                    : "We'll email you a sign-in code. Type it in and you're signed in — no password needed."}
                 </div>
-                <form onSubmit={handleReset} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <form onSubmit={sendCode} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase" }}>Email</span>
                     <input
                       name="email" type="email" autoComplete="email" required
                       placeholder="you@example.com" style={inputStyle}
+                      value={codeEmail}
+                      onChange={e => setCodeEmail(e.target.value)}
                       onFocus={e => (e.target.style.borderColor = "var(--rsd-accent)")}
                       onBlur={e => (e.target.style.borderColor = "var(--gw-stroke)")}
                     />
                   </label>
                   {error && <ErrorMsg>{error}</ErrorMsg>}
-                  <button type="submit" disabled={pending !== null} style={{
-                    height: 44, background: pending === "reset" ? "rgba(108,140,89,.6)" : "var(--rsd-accent)",
-                    color: "var(--rsd-accent-on)", border: "none", borderRadius: 8,
-                    fontSize: 14, fontWeight: 700,
-                    cursor: pending !== null ? "not-allowed" : "pointer",
-                  }}>
-                    {pending === "reset" ? "Sending…" : "Send reset link"}
+                  <button type="submit" disabled={pending !== null} style={primaryBtn(pending === "code-send")}>
+                    {pending === "code-send" ? "Sending…" : "Email me a code"}
                   </button>
                 </form>
-                <button onClick={() => { setMode("login"); setError(null); }}
-                  style={{ marginTop: 14, fontSize: 13, color: "var(--gw-fg-muted)", background: "none", border: "none", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                  <Icons.ChevronLeft width={12} height={12}/> Back to sign in
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", marginBottom: 16, lineHeight: 1.6 }}>
+                  Check your email — we sent a sign-in code to <strong>{codeEmail.trim()}</strong>.
+                  It can take a minute to arrive. If the email shows a sign-in button instead of a
+                  code, tapping the button works too.
+                </div>
+                <form onSubmit={verifyCode} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase" }}>Code from the email</span>
+                    <input
+                      name="token"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={10}
+                      required
+                      placeholder="••••••"
+                      autoFocus
+                      style={{
+                        ...inputStyle,
+                        height: 54,
+                        fontSize: 24,
+                        letterSpacing: ".4em",
+                        textAlign: "center",
+                        fontWeight: 700,
+                      }}
+                      onFocus={e => (e.target.style.borderColor = "var(--rsd-accent)")}
+                      onBlur={e => (e.target.style.borderColor = "var(--gw-stroke)")}
+                    />
+                  </label>
+                  {error && <ErrorMsg>{error}</ErrorMsg>}
+                  <button type="submit" disabled={pending !== null} style={primaryBtn(pending === "code-verify")}>
+                    {pending === "code-verify" ? "Checking…" : forReset ? "Continue" : "Sign in"}
+                  </button>
+                </form>
+                <button
+                  onClick={() => sendCode()}
+                  disabled={!canResend || pending !== null}
+                  style={{
+                    marginTop: 12, fontSize: 13,
+                    color: canResend ? "var(--rsd-accent)" : "var(--gw-fg-muted)",
+                    background: "none", border: "none",
+                    cursor: canResend ? "pointer" : "default", fontWeight: 600,
+                  }}
+                >
+                  {canResend ? "Send a new code" : "You can request another code in a moment…"}
                 </button>
               </>
             )}
+            <button onClick={() => { setMode("login"); setError(null); }}
+              style={{ marginTop: 14, fontSize: 13, color: "var(--gw-fg-muted)", background: "none", border: "none", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+              <Icons.ChevronLeft width={12} height={12}/> Back to sign in
+            </button>
           </>
         ) : (
           <>
@@ -208,7 +301,7 @@ function LoginContent() {
               <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase" }}>Password</span>
-                  <button type="button" onClick={() => { setMode("reset"); setError(null); }}
+                  <button type="button" onClick={() => enterCodeMode(true)}
                     style={{ fontSize: 12, color: "var(--rsd-accent)", background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: 0 }}>
                     Forgot password?
                   </button>
@@ -223,14 +316,7 @@ function LoginContent() {
 
               {(error || urlError) && <ErrorMsg>{error ?? "Something went wrong. Please try again."}</ErrorMsg>}
 
-              <button type="submit" disabled={pending !== null} style={{
-                marginTop: 2, height: 44,
-                background: pending === "email" ? "rgba(108,140,89,.6)" : "var(--rsd-accent)",
-                color: "var(--rsd-accent-on)", border: "none", borderRadius: 8,
-                fontSize: 14, fontWeight: 700,
-                cursor: pending !== null ? "not-allowed" : "pointer",
-                transition: "background 120ms",
-              }}>
+              <button type="submit" disabled={pending !== null} style={{ ...primaryBtn(pending === "email"), marginTop: 2 }}>
                 {pending === "email" ? "Signing in…" : "Sign in"}
               </button>
             </form>
@@ -242,17 +328,22 @@ function LoginContent() {
               <div style={{ flex: 1, height: 1, background: "var(--gw-stroke)" }}/>
             </div>
 
-            {/* OAuth */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <OAuthButton onClick={() => signInWith("google")} disabled={pending !== null} loading={pending === "google"} faded={pending !== null && pending !== "google"}>
-                <GoogleIcon />
-                {pending === "google" ? "Redirecting…" : "Continue with Google"}
-              </OAuthButton>
-              <OAuthButton onClick={() => signInWith("apple")} disabled={pending !== null} loading={pending === "apple"} faded={pending !== null && pending !== "apple"}>
-                <AppleIcon />
-                {pending === "apple" ? "Redirecting…" : "Continue with Apple"}
-              </OAuthButton>
-            </div>
+            {/* Passwordless */}
+            <button
+              onClick={() => enterCodeMode(false)}
+              disabled={pending !== null}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                height: 44, borderRadius: 8, border: "1px solid var(--gw-stroke)",
+                background: "var(--gw-surface)",
+                color: "var(--gw-ink)", fontSize: 13, fontWeight: 600,
+                cursor: pending !== null ? "not-allowed" : "pointer",
+                width: "100%",
+              }}
+            >
+              <Icons.Mail width={16} height={16} />
+              Email me a sign-in code
+            </button>
           </>
         )}
 
@@ -312,43 +403,5 @@ function StatusCard({ icon, iconBg, iconColor, title, body, action }: {
         {action.label}
       </button>
     </div>
-  );
-}
-
-function OAuthButton({ children, onClick, disabled, loading, faded }: {
-  children: React.ReactNode; onClick: () => void;
-  disabled: boolean; loading: boolean; faded: boolean;
-}) {
-  return (
-    <button onClick={onClick} disabled={disabled} style={{
-      display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-      height: 44, borderRadius: 8, border: "1px solid var(--gw-stroke)",
-      background: loading ? "var(--gw-surface-2)" : "var(--gw-surface)",
-      color: "var(--gw-ink)", fontSize: 13, fontWeight: 600,
-      cursor: disabled ? "not-allowed" : "pointer",
-      transition: "background 120ms",
-      opacity: faded ? 0.45 : 1, width: "100%",
-    }}>
-      {children}
-    </button>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
-      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
-      <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
-      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
-    </svg>
-  );
-}
-
-function AppleIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 814 1000" fill="currentColor">
-      <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-37.5-155.5-127.4C46.7 790.7 0 663 0 541.8c0-207.5 135.4-317.3 269-317.3 70.1 0 128.4 46.3 172.5 46.3 43.1 0 110.8-49 191.6-49 30.8 0 108.2 2.6 168.1 71.9zm-134.5-199.5c32.4-38.2 55.5-91.2 55.5-144.2 0-7.7-.6-15.4-1.9-21.7-52.6 2-115 35-152.2 78.3-29.5 33.8-57.6 86.8-57.6 140.5 0 8.3 1.3 16.6 1.9 19.2 3.2.6 8.3 1.3 13.4 1.3 47.4 0 107.3-32 140.9-73.4z"/>
-    </svg>
   );
 }
