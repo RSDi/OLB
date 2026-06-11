@@ -12,7 +12,7 @@ import {
   AssignSelect,
   CommentForm,
   DeleteButton,
-  ReviewActions,
+  VotePanel,
   PromoteToProject,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
@@ -79,6 +79,7 @@ interface Comment extends ThreadComment {}
 
 interface StaffMember {
   id: string;
+  user_id: string | null;
   full_name: string | null;
   email: string;
 }
@@ -147,12 +148,39 @@ export default async function TicketDetailPage({
   if (staff) {
     const { data: staffRows } = await supabase
       .from("members")
-      .select("id, full_name, email")
+      .select("id, user_id, full_name, email")
       .in("role", ["admin", "super_admin"])
       .eq("status", "approved")
       .order("full_name", { ascending: true });
     staffList = staffRows ?? [];
   }
+
+  // Committee votes (staff, while pending). Gracefully empty until migration
+  // 0050 (request_votes) is applied — a missing table just yields no rows.
+  let voteRows: { voter_id: string; vote: "yes" | "no"; note: string | null }[] = [];
+  if (staff && ticket.review_status === "pending_review") {
+    const { data: vr } = await supabase
+      .from("request_votes")
+      .select("voter_id, vote, note")
+      .eq("ticket_id", id)
+      .order("created_at", { ascending: true });
+    voteRows = (vr as typeof voteRows) ?? [];
+  }
+  const eligibleVoters = staffList.filter((s) => s.user_id);
+  const voteThreshold = Math.max(1, Math.floor(eligibleVoters.length / 2) + 1);
+  const staffNameByUserId: Record<string, string> = {};
+  for (const s of eligibleVoters) staffNameByUserId[s.user_id as string] = s.full_name ?? s.email;
+  const votesForPanel = voteRows.map((v) => ({
+    voterName: staffNameByUserId[v.voter_id] ?? "Committee member",
+    vote: v.vote,
+    note: v.note,
+    isMe: v.voter_id === user.id,
+  }));
+  const votedIds = new Set(voteRows.map((v) => v.voter_id));
+  const waitingOn = eligibleVoters
+    .filter((s) => !votedIds.has(s.user_id as string))
+    .map((s) => (s.full_name ?? s.email).split(" ")[0]);
+  const myVote = voteRows.find((v) => v.voter_id === user.id)?.vote ?? null;
 
   // Committee decision history (staff). Gracefully empty until migration 0048
   // (task_review_log) is applied — a missing table just yields no rows.
@@ -375,7 +403,15 @@ export default async function TicketDetailPage({
                 Committee decision
               </h3>
               <DecisionChecklist />
-              <ReviewActions ticketId={ticket.id} />
+              <VotePanel
+                ticketId={ticket.id}
+                votes={votesForPanel}
+                yesCount={votesForPanel.filter((v) => v.vote === "yes").length}
+                noCount={votesForPanel.filter((v) => v.vote === "no").length}
+                threshold={voteThreshold}
+                waitingOn={waitingOn}
+                myVote={myVote}
+              />
             </div>
           )}
 

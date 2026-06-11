@@ -57,8 +57,8 @@ export function PortalSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
-  // Staff (admin + super_admin) see Settings; the pending-count badge stays
-  // super-admin-only since admins can't action the member queue.
+  // Staff (admin + super_admin) see Settings; since 0050 any committee member
+  // can action the member queue, so the pending badge shows for all staff.
   const canSeeSettings = viewer?.isStaff ?? false;
   const pendingCount = pendingMembersCount;
 

@@ -8,9 +8,9 @@ import {
   assignTicket,
   addTicketComment,
   softDeleteTicket,
-  approveRequest,
-  declineRequest,
+  castRequestVote,
   type TicketStatus,
+  type VoteValue,
 } from "../../../../lib/maintenance/actions";
 import { promoteTaskToProject } from "../../../../lib/projects/actions";
 
@@ -219,70 +219,125 @@ function ErrorLine({ message }: { message: string }) {
   );
 }
 
-// Committee decision: approve, or decline with a required reason (emailed to
-// the requester). Shown only while review_status is 'pending_review'.
-export function ReviewActions({ ticketId }: { ticketId: string }) {
+// Committee voting (migration 0050): every committee member votes yes/no; a
+// simple majority decides instantly. "No" requires a note. Votes can be
+// changed until the decision lands. Shown only while pending_review.
+export interface VoteRow {
+  voterName: string;
+  vote: VoteValue;
+  note: string | null;
+  isMe: boolean;
+}
+
+export function VotePanel({
+  ticketId,
+  votes,
+  yesCount,
+  noCount,
+  threshold,
+  waitingOn,
+  myVote,
+}: {
+  ticketId: string;
+  votes: VoteRow[];
+  yesCount: number;
+  noCount: number;
+  threshold: number;
+  waitingOn: string[];
+  myVote: VoteValue | null;
+}) {
   const router = useRouter();
-  const [declining, setDeclining] = useState(false);
-  const [reason, setReason] = useState("");
+  const [decliningNote, setDecliningNote] = useState(false);
+  const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [decidedMsg, setDecidedMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function approve() {
+  function cast(vote: VoteValue, voteNote?: string) {
     setError(null);
     startTransition(async () => {
-      const r = await approveRequest(ticketId);
+      const r = await castRequestVote(ticketId, vote, voteNote);
       if (r.error) {
         setError(r.error);
         return;
       }
-      router.refresh();
-    });
-  }
-  function decline() {
-    if (!reason.trim()) {
-      setError("Please add a reason for the requester.");
-      return;
-    }
-    setError(null);
-    startTransition(async () => {
-      const r = await declineRequest(ticketId, reason.trim());
-      if (r.error) {
-        setError(r.error);
-        return;
-      }
+      if (r.decided === "approved") setDecidedMsg("That was the deciding vote — request approved. The requester has been notified.");
+      if (r.decided === "declined") setDecidedMsg("That was the deciding vote — request declined. The requester has been notified.");
+      setDecliningNote(false);
+      setNote("");
       router.refresh();
     });
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {!declining ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Tally */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
+        <span className="rsd-chip rsd-chip-accent">{yesCount} yes</span>
+        <span className="rsd-chip rsd-chip-warn">{noCount} no</span>
+        <span style={{ color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+          {threshold} {threshold === 1 ? "vote" : "votes"} decide{threshold === 1 ? "s" : ""} it
+        </span>
+      </div>
+
+      {/* Votes cast so far */}
+      {votes.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {votes.map((v, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, alignItems: "baseline" }}>
+              {v.vote === "yes" ? (
+                <Icons.CheckCircle width={13} height={13} style={{ color: "var(--rsd-accent)", flexShrink: 0, alignSelf: "center" }} />
+              ) : (
+                <Icons.X width={13} height={13} style={{ color: "var(--gw-error)", flexShrink: 0, alignSelf: "center" }} />
+              )}
+              <span style={{ fontWeight: 600 }}>
+                {v.voterName}
+                {v.isMe ? " (you)" : ""}
+              </span>
+              {v.note && <span style={{ color: "var(--gw-fg-muted)" }}>— {v.note}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {waitingOn.length > 0 && (
+        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+          Waiting on: {waitingOn.join(", ")}
+        </div>
+      )}
+
+      {/* My vote */}
+      {!decliningNote ? (
         <div style={{ display: "flex", gap: 8 }}>
-          <Pill variant="accent" size="md" onClick={approve} disabled={pending} style={{ flex: 1, justifyContent: "center" }}>
-            <Icons.CheckCircle width={15} height={15} /> Approve
+          <Pill
+            variant="accent"
+            size="md"
+            onClick={() => cast("yes")}
+            disabled={pending || myVote === "yes"}
+            style={{ flex: 1, justifyContent: "center" }}
+          >
+            <Icons.CheckCircle width={15} height={15} /> {myVote === "yes" ? "You voted yes" : myVote ? "Change to yes" : "Vote yes"}
           </Pill>
           <Pill
             variant="ghost"
             size="md"
             onClick={() => {
-              setDeclining(true);
+              setDecliningNote(true);
               setError(null);
             }}
-            disabled={pending}
+            disabled={pending || myVote === "no"}
             style={{ flex: 1, justifyContent: "center" }}
           >
-            <Icons.X width={15} height={15} /> Decline
+            <Icons.X width={15} height={15} /> {myVote === "no" ? "You voted no" : myVote ? "Change to no" : "Vote no"}
           </Pill>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <Textarea
-            label="Reason for declining"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            label="Reason for voting no"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
             rows={3}
-            placeholder="Shared with the requester."
+            placeholder="Required — shared with the requester if the request is declined."
             autoFocus
           />
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -290,8 +345,8 @@ export function ReviewActions({ ticketId }: { ticketId: string }) {
               variant="ghost"
               size="sm"
               onClick={() => {
-                setDeclining(false);
-                setReason("");
+                setDecliningNote(false);
+                setNote("");
                 setError(null);
               }}
               disabled={pending}
@@ -301,14 +356,17 @@ export function ReviewActions({ ticketId }: { ticketId: string }) {
             <Pill
               variant="accent"
               size="sm"
-              onClick={decline}
-              disabled={pending || !reason.trim()}
+              onClick={() => cast("no", note)}
+              disabled={pending || !note.trim()}
               style={{ background: "var(--gw-error)", borderColor: "var(--gw-error)", color: "#fff" }}
             >
-              {pending ? "Declining…" : "Confirm decline"}
+              {pending ? "Voting…" : "Confirm no vote"}
             </Pill>
           </div>
         </div>
+      )}
+      {decidedMsg && (
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--rsd-accent)" }}>{decidedMsg}</div>
       )}
       {error && <ErrorLine message={error} />}
     </div>

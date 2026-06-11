@@ -20,6 +20,7 @@ interface TicketRow {
   description: string;
   status: "open" | "in_progress" | "done" | "cancelled";
   review_status: "pending_review" | "approved" | "declined";
+  reviewed_at: string | null;
   created_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
@@ -68,7 +69,7 @@ export default async function PortalMaintenancePage({
   let query = supabase
     .from("maintenance_requests")
     .select(
-      `id, description, status, review_status, created_at, submitted_by, assigned_to,
+      `id, description, status, review_status, reviewed_at, created_at, submitted_by, assigned_to,
        category:task_categories(name, chip_class),
        area:areas(name),
        priority:priorities(id, label, chip_class, severity)`
@@ -77,12 +78,11 @@ export default async function PortalMaintenancePage({
     .order("created_at", { ascending: false });
 
   // Keep requests still awaiting committee review out of the operational queue.
-  // Staff see approved work only; a member still sees their own pending requests
-  // (RLS limits them to their own rows) but never declined ones.
+  // Staff see approved work only. A member sees all their own rows (RLS limits
+  // them to their own) — including declined ones, so the committee's decision
+  // shows in their list instead of the request silently vanishing.
   if (staff) {
     query = query.eq("review_status", "approved");
-  } else {
-    query = query.neq("review_status", "declined");
   }
 
   if (status !== "all") {

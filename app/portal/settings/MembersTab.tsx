@@ -9,6 +9,7 @@ import {
   addMemberRelationship,
   removeMemberRelationship,
   softDeleteMember,
+  setMemberStatus,
   type RelationshipKind,
 } from "../../../lib/auth/member-actions";
 import { MemberEditForm } from "./MemberEditForm";
@@ -45,7 +46,15 @@ function timeAgo(date: string) {
   return `${days}d ago`;
 }
 
-export function MembersTab({ currentUserId }: { currentUserId: string }) {
+export function MembersTab({
+  currentUserId,
+  canManage,
+}: {
+  currentUserId: string;
+  // Super-admins manage roles, edit details, and remove members; committee
+  // admins (canManage=false) work the approve/deny queue only.
+  canManage: boolean;
+}) {
   const [members, setMembers] = useState<Member[]>([]);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,16 +97,10 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
   async function setStatus(id: string, status: MemberStatus) {
     setActing(id);
     setError(null);
-    const supabase = createClient();
-    const { error: updateError } = await supabase
-      .from("members")
-      .update({
-        status,
-        reviewed_by: currentUserId,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", id);
-    if (updateError) setError(updateError.message);
+    // Server action: enforces the staff check server-side and emails the
+    // member on approval.
+    const result = await setMemberStatus(id, status);
+    if (result.error) setError(result.error);
     else await load();
     setActing(null);
   }
@@ -240,11 +243,11 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
         }}
       >
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 480 }}>
-          Pre-create a member to seed a sign-in (they&apos;ll set their password via{" "}
-          <code style={{ fontFamily: "inherit" }}>/register</code> using the email you enter), or
-          add them with no email as a directory entry for family relationships.
+          {canManage
+            ? "Pre-create a member to seed a sign-in (they'll set their password via /register using the email you enter), or add them with no email as a directory entry for family relationships."
+            : "Approve or deny access requests. New members are emailed when you approve them."}
         </div>
-        {!adding && (
+        {canManage && !adding && (
           <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
             <Icons.Plus width={14} height={14} /> Add member
           </Pill>
@@ -418,6 +421,7 @@ export function MembersTab({ currentUserId }: { currentUserId: string }) {
                 isSelf={member.user_id === currentUserId}
                 tab={tab}
                 acting={acting === member.id}
+                canManage={canManage}
                 onApprove={() => setStatus(member.id, "approved")}
                 onDeny={() => setStatus(member.id, "denied")}
                 onRestore={() => setStatus(member.id, "pending")}
@@ -439,6 +443,7 @@ function MemberRow({
   isSelf,
   tab,
   acting,
+  canManage,
   onApprove,
   onDeny,
   onRestore,
@@ -451,6 +456,7 @@ function MemberRow({
   isSelf: boolean;
   tab: MemberStatus;
   acting: boolean;
+  canManage: boolean;
   onApprove: () => void;
   onDeny: () => void;
   onRestore: () => void;
@@ -540,9 +546,11 @@ function MemberRow({
 
       {/* Actions */}
       <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <ActionBtn onClick={onEdit} disabled={acting} color="var(--gw-fg)" bgColor="var(--gw-bg-elev)">
-          Edit
-        </ActionBtn>
+        {canManage && (
+          <ActionBtn onClick={onEdit} disabled={acting} color="var(--gw-fg)" bgColor="var(--gw-bg-elev)">
+            Edit
+          </ActionBtn>
+        )}
         {tab === "pending" && (
           <>
             <ActionBtn onClick={onApprove} disabled={acting} color="var(--rsd-accent)" bgColor="var(--rsd-accent-bg)">
@@ -553,7 +561,7 @@ function MemberRow({
             </ActionBtn>
           </>
         )}
-        {tab === "approved" && (
+        {tab === "approved" && canManage && (
           <>
             {!isSelf && member.role === "member" && (
               <ActionBtn
@@ -595,9 +603,11 @@ function MemberRow({
             <ActionBtn onClick={onRestore} disabled={acting} color="var(--gw-fg-muted)" bgColor="var(--gw-bg-elev)">
               Restore to pending
             </ActionBtn>
+            {canManage && (
             <ActionBtn onClick={onRemove} disabled={acting} color="var(--gw-error)" bgColor="var(--gw-error-bg)">
               Remove
             </ActionBtn>
+            )}
           </>
         )}
       </div>

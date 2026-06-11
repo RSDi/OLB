@@ -77,11 +77,33 @@ export default async function ReviewQueuePage({
     for (const s of subs ?? []) submitterMap[s.user_id] = s.full_name ?? s.email;
   }
 
+  // Vote tallies for the pending list (gracefully empty until migration 0050).
+  const tally: Record<string, { yes: number; no: number }> = {};
+  let voteThreshold = 0;
+  if (status === "pending_review" && rows.length > 0) {
+    const { data: votes } = await supabase
+      .from("request_votes")
+      .select("ticket_id, vote")
+      .in("ticket_id", rows.map((r) => r.id));
+    for (const v of (votes as { ticket_id: string; vote: "yes" | "no" }[] | null) ?? []) {
+      const t = (tally[v.ticket_id] ??= { yes: 0, no: 0 });
+      if (v.vote === "yes") t.yes += 1;
+      else t.no += 1;
+    }
+    const { count: staffCount } = await supabase
+      .from("members")
+      .select("id", { count: "exact", head: true })
+      .in("role", ["admin", "super_admin"])
+      .eq("status", "approved")
+      .not("user_id", "is", null);
+    voteThreshold = Math.max(1, Math.floor((staffCount ?? 0) / 2) + 1);
+  }
+
   return (
     <>
       <p style={{ margin: "0 0 4px", fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.6, maxWidth: 620 }}>
         Requests from members waiting on the building committee. Open one to see the details, discuss in
-        the thread, and approve or decline with a reason.
+        the thread, and cast your vote — a simple majority decides it, and a no vote needs a reason.
       </p>
 
       {/* Tabs */}
@@ -149,6 +171,11 @@ export default async function ReviewQueuePage({
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 {r.category && <span className={`rsd-chip ${r.category.chip_class}`}>{r.category.name}</span>}
                 {flagChips(r.details)}
+                {status === "pending_review" && voteThreshold > 0 && (
+                  <span className="rsd-chip rsd-chip-mute" style={{ marginLeft: "auto" }}>
+                    {tally[r.id]?.yes ?? 0}✓ {tally[r.id]?.no ?? 0}✗ · {voteThreshold} to decide
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gw-fg)", lineHeight: 1.5 }}>
                 {firstLine(r.description)}

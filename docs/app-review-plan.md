@@ -14,12 +14,12 @@ All four tracks ran and closed in one day. The app is **substantially closer to 
 
 **The three things to do next:** A9 custom SMTP (members *will* hit the Supabase mailer limit), A8 mobile layout fixes (the volunteer-on-a-phone screen is broken), then A1 committee voting with member-visible decisions — the biggest remaining vision gap.
 
-**Decisions Jeff still owes:**
-| # | Decision | Context |
+**Decisions — answered 2026-06-11:**
+| # | Decision | Outcome |
 |---|---|---|
-| D1 | Who can approve new members — super_admins only (current) or any committee admin (what the transcript says)? | U12; if widened, it's part of A1's scope |
-| D2 | Turn off Supabase email confirmation at signup? Committee approval is already the gate; confirmation adds drop-off for non-technical members | U10; one toggle in Supabase Auth settings |
-| D3 | Publish the staged firewall rule: `vercel firewall publish --yes` | A6; staged and reviewed, one command |
+| D1 | Who can approve new members | **Any committee admin** — built into the A1 changes (migration 0050 + Members tab for all staff; roles/edit/remove stay super-admin) |
+| D2 | Email confirmation at signup | **Drop it** — Jeff toggles "Confirm email" OFF in Supabase Auth settings; the register page already handles the instant-session flow, no code change |
+| D3 | Staged firewall rule | **Published** — rate limit live on `/assistance/*` |
 
 ---
 
@@ -97,11 +97,11 @@ Tracks 1–3 findings merged into the sequenced backlog below (Phase A reordered
 
 | Seq | ID | Item | Size | Status / scope |
 |---|---|---|---|---|
-| 1 | A6 | **Publish the firewall rule** (S10) | one command | Staged 2026-06-11. Jeff: `vercel firewall publish --yes` (D3). |
+| 1 | A6 | ~~**Publish the firewall rule**~~ (S10) | — | ✅ Published 2026-06-11 (D3). |
 | 2 | A9 | **Auth email deliverability** (U2, U10) | small | Configure custom SMTP (Resend) in Supabase Auth — Jeff-side config; code side: friendly copy for raw auth errors. Decide D2 (drop email confirmation). **Gates real member onboarding.** |
 | 3 | A8 | **Mobile & quick-win UI fixes** (U1, U4, U5) | small | PM task detail two-column collapse at phone width (broken today); tasks queue table → cards at narrow widths (the Review queue is the model); birthdays defaults to the current month. Quick wins for volunteers on phones. |
-| 4 | A1 | **Committee voting + member-visible decisions** (G1, U3, U12) | large | `request_votes` table (request, member, vote, note; note required when vote = no). First to 4 wins, instant. Notify the requester via their **account email** (not the free-text contact field) + Slack. Review queue shows tally + who hasn't voted; member's list shows Approved/Declined (today it shows "Open"). Includes D1 (who approves members) and notify-member-on-membership-approval. Audit trail exists — extend it. |
-| 5 | A4 | **Approved building use → calendar event** (G4) | small | On approval, create an `events` row from the request's date/space/time; link back. Same code area as A1 — do together. |
+| 4 | A1 | **Committee voting + member-visible decisions** (G1, U3, U12) | large | ✅ **BUILT 2026-06-11 — awaiting migration 0050 + deploy.** `request_votes` + atomic `cast_request_vote()` RPC (majority computed live from committee size; no requires a note; collected no-notes become the decline reason); VotePanel on the request detail (tally, votes cast, waiting-on, change-your-vote); tally chips on the review queue; member's list shows Approved/Declined chips (declined no longer vanishes); decision email falls back to the wizard contact for public submissions; D1: any committee admin works the member approval queue (roles/edit stay super-admin) and approved members get a "you're in" email. |
+| 5 | A4 | **Approved building use → calendar event** (G4) | small | ✅ **BUILT 2026-06-11** with A1 — the deciding yes-vote creates the `events` row from the request's date/space/time (`events.source_ticket_id` links back); requests without a single date are skipped for manual scheduling. |
 | 6 | A2 | **Email-code login** (G2) | medium | Supabase email OTP for sign-in and reset; guided, large-type walkthrough UI; "text me a code instead" stub slot for later SMS. |
 | 7 | A3 | **Vendors, budgets, reorder alerts** (G3) | medium-large | `vendors` table; link vendors to supplies (reorder source) and tasks (assigned vendor); budgets; threshold-cross notification (email + Slack) — the dashboard already computes low stock. |
 | 8 | A7 | **`requireStaff()` guards in server actions** (S11) | medium, mechanical | Defense-in-depth role checks across ~50 mutations; daves-idea actions model the pattern. Interleave anytime. |

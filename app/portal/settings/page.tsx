@@ -63,9 +63,9 @@ export default function SettingsPage() {
       }
       setMe(memberLike);
       setUserId(user.id);
-      // Super-admins land on Members (they have an approval queue to clear);
-      // admins land on Areas (their main job here).
-      setTab(isSuperAdmin(memberLike) ? "members" : "areas");
+      // All committee staff land on Members — any of them can work the
+      // approval queue (D1).
+      setTab("members");
       setAuthChecked(true);
     })();
   }, [router]);
@@ -85,7 +85,9 @@ export default function SettingsPage() {
     );
   }
 
-  const showMembers = isSuperAdmin(me);
+  // Any committee member works the approval queue; role/edit/remove inside
+  // the tab stay super-admin-only via canManage.
+  const showMembers = isStaff(me);
   const showDeleted = isSuperAdmin(me);
 
   const tabs: { key: Tab; label: string; visible: boolean }[] = [
@@ -133,7 +135,9 @@ export default function SettingsPage() {
           ))}
       </div>
 
-      {tab === "members" && showMembers && <MembersTab currentUserId={userId} />}
+      {tab === "members" && showMembers && (
+        <MembersTab currentUserId={userId} canManage={isSuperAdmin(me)} />
+      )}
       {tab === "areas" && <AreasTab me={me} />}
       {tab === "priorities" && <PrioritiesTab me={me} />}
       {tab === "assets" && <AssetsTab me={me} />}

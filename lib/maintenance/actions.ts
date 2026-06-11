@@ -561,60 +561,112 @@ export async function createPublicBuildingRequest(
 }
 
 // ─── Committee review decisions ──────────────────────────────────
-// review_status moves pending_review → approved | declined. Reviewer + time
-// are stamped; declines carry a required reason. Gated by RLS (staff update).
+// Decisions are made by committee vote (cast_request_vote RPC, migration
+// 0050): simple majority of the current committee, instant. A "no" requires
+// a note. The RPC flips review_status atomically; this layer fires the
+// requester notification when a vote lands the decision.
 
 export type ReviewStatus = "pending_review" | "approved" | "declined";
+export type VoteValue = "yes" | "no";
+
+export interface CastVoteResult {
+  error?: string;
+  decided?: "approved" | "declined" | null;
+  yes?: number;
+  no?: number;
+  threshold?: number;
+}
 
 async function notifyDecision(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  row: { id: string; submitted_by: string | null; description: string },
+  row: {
+    id: string;
+    submitted_by: string | null;
+    description: string;
+    details: Record<string, unknown> | null;
+  },
   decision: "approved" | "declined",
   reason?: string,
 ) {
-  if (!row.submitted_by) return;
-  const { data: sub } = await supabase
-    .from("members")
-    .select("email, full_name")
-    .eq("user_id", row.submitted_by)
-    .maybeSingle();
+  // Prefer the requester's account email; public (no-login) submissions fall
+  // back to the contact email collected by the wizard.
+  let to: string | null = null;
+  let name: string | null = null;
+  if (row.submitted_by) {
+    const { data: sub } = await supabase
+      .from("members")
+      .select("email, full_name")
+      .eq("user_id", row.submitted_by)
+      .maybeSingle();
+    to = sub?.email ?? null;
+    name = sub?.full_name ?? null;
+  }
+  if (!to && row.details) {
+    const contact = row.details["contactEmail"];
+    if (typeof contact === "string" && contact.includes("@")) to = contact;
+    const contactName = row.details["contactName"];
+    if (!name && typeof contactName === "string") name = contactName;
+  }
   sendRequestDecisionNotification({
     ticketId: row.id,
-    to: sub?.email ?? null,
-    recipientName: sub?.full_name ?? null,
+    to,
+    recipientName: name,
     decision,
     reason,
     summary: row.description,
   }).catch((err) => console.error("[notify] decision email failed:", err));
 }
 
-export async function approveRequest(ticketId: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "You must be signed in." };
+// A4: an approved building-use request becomes a calendar event so the
+// booking is visible to everyone. Best-effort — a request without a usable
+// date (e.g. multi-day/recurring plans) is skipped and the committee adds the
+// event by hand. Same datetime-local string format the events form submits.
+async function createEventFromApprovedRequest(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  row: { id: string; description: string; details: Record<string, unknown> | null },
+) {
+  const d = row.details;
+  if (!d) return;
+  const date = typeof d.date === "string" ? d.date : null;
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    console.warn("[events] approved request has no single date — skipping auto-event", row.id);
+    return;
+  }
+  const startTime = typeof d.startTime === "string" && d.startTime ? d.startTime : "09:00";
+  let endTime = typeof d.endTime === "string" && d.endTime ? d.endTime : "";
+  if (!endTime) {
+    const endHour = (Number(startTime.slice(0, 2)) + 2) % 24;
+    endTime = `${String(endHour).padStart(2, "0")}${startTime.slice(2)}`;
+  }
+  const spaces = Array.isArray(d.spaces) ? (d.spaces as string[]).join(", ") : null;
+  const title =
+    (typeof d.eventTypeLabel === "string" && d.eventTypeLabel) ||
+    row.description.split("\n")[0].slice(0, 120);
 
-  const { data: updated, error } = await supabase
-    .from("maintenance_requests")
-    .update({ review_status: "approved", reviewed_by: user.id, reviewed_at: new Date().toISOString() })
-    .eq("id", ticketId)
-    .select("id, submitted_by, description")
-    .maybeSingle();
-  if (error) return { error: error.message };
-  if (!updated) return { error: "Request not found." };
-
-  await notifyDecision(supabase, updated, "approved");
-
-  revalidatePath("/portal/review");
-  revalidatePath("/portal/tasks");
-  revalidatePath(`/portal/tasks/${ticketId}`);
-  return { success: true };
+  const { error } = await supabase.from("events").insert({
+    title,
+    description: "Booked via an approved building-use request.",
+    start_at: `${date}T${startTime}:00`,
+    end_at: `${date}T${endTime}:00`,
+    location: spaces,
+    source_ticket_id: row.id,
+  });
+  if (error) {
+    // Pre-0050 schema (no source_ticket_id) or RLS hiccup — log, don't block
+    // the decision.
+    console.error("[events] auto-create insert failed:", error.message);
+  }
 }
 
-export async function declineRequest(ticketId: string, reason: string): Promise<ActionResult> {
-  const trimmed = reason.trim();
-  if (!trimmed) return { error: "Please give a reason so the requester understands." };
+export async function castRequestVote(
+  ticketId: string,
+  vote: VoteValue,
+  note?: string,
+): Promise<CastVoteResult> {
+  const trimmedNote = note?.trim() ?? "";
+  if (vote === "no" && !trimmedNote) {
+    return { error: "Please add a reason so the requester understands." };
+  }
 
   const supabase = await createClient();
   const {
@@ -622,24 +674,51 @@ export async function declineRequest(ticketId: string, reason: string): Promise<
   } = await supabase.auth.getUser();
   if (!user) return { error: "You must be signed in." };
 
-  const { data: updated, error } = await supabase
-    .from("maintenance_requests")
-    .update({
-      review_status: "declined",
-      decline_reason: trimmed,
-      reviewed_by: user.id,
-      reviewed_at: new Date().toISOString(),
-    })
-    .eq("id", ticketId)
-    .select("id, submitted_by, description")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("cast_request_vote", {
+    p_ticket_id: ticketId,
+    p_vote: vote,
+    p_note: trimmedNote || null,
+  });
   if (error) return { error: error.message };
-  if (!updated) return { error: "Request not found." };
 
-  await notifyDecision(supabase, updated, "declined", trimmed);
+  const result = (data ?? {}) as {
+    decided: "approved" | "declined" | null;
+    yes: number;
+    no: number;
+    threshold: number;
+  };
+
+  // The vote that crosses the majority fires the requester notification and,
+  // for approvals, puts the booking on the events calendar (A4).
+  if (result.decided) {
+    const { data: row } = await supabase
+      .from("maintenance_requests")
+      .select("id, submitted_by, description, details, decline_reason")
+      .eq("id", ticketId)
+      .maybeSingle();
+    if (row) {
+      const ticketRow = row as {
+        id: string;
+        submitted_by: string | null;
+        description: string;
+        details: Record<string, unknown> | null;
+      };
+      await notifyDecision(
+        supabase,
+        ticketRow,
+        result.decided,
+        (row as { decline_reason?: string | null }).decline_reason ?? undefined,
+      );
+      if (result.decided === "approved") {
+        await createEventFromApprovedRequest(supabase, ticketRow).catch((err) =>
+          console.error("[events] auto-create from approved request failed:", err),
+        );
+      }
+    }
+  }
 
   revalidatePath("/portal/review");
   revalidatePath("/portal/tasks");
   revalidatePath(`/portal/tasks/${ticketId}`);
-  return { success: true };
+  return { decided: result.decided, yes: result.yes, no: result.no, threshold: result.threshold };
 }

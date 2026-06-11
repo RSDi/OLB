@@ -30,6 +30,7 @@ interface TicketRow {
   description: string;
   status: TicketStatus;
   review_status: "pending_review" | "approved" | "declined";
+  reviewed_at: string | null;
   created_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
@@ -104,10 +105,17 @@ export function QueueRow({
       <td onClick={stop}>
         {ticket.review_status === "pending_review" ? (
           <span className="rsd-chip rsd-chip-warn">Pending review</span>
+        ) : ticket.review_status === "declined" ? (
+          <span className="rsd-chip rsd-chip-warn">Declined</span>
         ) : staff ? (
           <InlineStatusSelect ticketId={ticket.id} current={ticket.status} />
         ) : (
-          statusChip(ticket.status)
+          // For a member, lead with the committee's decision when one was
+          // actually made (reviewed_at set), then the work status.
+          <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
+            {ticket.reviewed_at && <span className="rsd-chip rsd-chip-accent">Approved</span>}
+            {statusChip(ticket.status)}
+          </span>
         )}
       </td>
       <td style={{ whiteSpace: "nowrap" }}>{formatDate(ticket.created_at)}</td>
