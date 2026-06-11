@@ -47,13 +47,12 @@ Companion to [app-review-plan.md](app-review-plan.md). One section per review tr
 - "48+ CRITICAL missing auth checks" — overstated; RLS enforces these. Reframed as the S11 defense-in-depth item
 - "BLOB_READ_WRITE_TOKEN already documented in .env.example" — it wasn't; whole section was missing (S15)
 
-### What Jeff needs to do (in order)
+### Rollout status (all verified against production, 2026-06-11)
 
-1. **Apply migration `0049_security_hardening.sql`** in the Supabase SQL editor (idempotent; safe to run before or after deploying code). Effect: pending/denied signups lose direct-API reads they never should have had; soft-deleted members lose all powers; approved members notice nothing.
-2. **Set the webhook secret in Vercel** (value already generated in `.env.local`):
-   `vercel env add ASSEMBLYAI_WEBHOOK_SECRET production` — paste the value from `.env.local`.
-3. **Deploy** (`vercel --prod` from main) when ready. Note: a transcription job in flight *across* the deploy+env change would get 401 on its webhook; recover with the recording's re-extract button.
-4. Optional, recommended: add a Vercel WAF rate-limit rule for `/assistance/*` (S10) in the dashboard — no code needed.
+1. ✅ **Migration 0049 applied** (Jeff, SQL editor) — verified: anon INSERT into maintenance_requests now rejected with RLS error 42501.
+2. ✅ **`ASSEMBLYAI_WEBHOOK_SECRET` set** in Vercel Production (same value as `.env.local`).
+3. ✅ **Deployed** — commits `cbc2c35` (fixes) + `3ec150a` (docs) pushed and live. Verified on prod: security headers present, webhook returns 401 without the secret header, cron returns 401, public building form still serves 200.
+4. ⏳ **WAF rate limit (S10/A6) staged, not published** — rule "Rate limit public assistance form": POST `/assistance/*`, max 10 per 10 min per IP, excess → 429. Jeff publishes with `vercel firewall publish --yes` (or discards).
 
 ### Code changed in this pass
 
