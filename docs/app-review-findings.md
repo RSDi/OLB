@@ -4,6 +4,42 @@ Companion to [app-review-plan.md](app-review-plan.md). One section per review tr
 
 ---
 
+## Track 3 — UX Walkthrough (2026-06-11)
+
+**How it was done:** played two personas against the local dev server at phone width (375px) — "Pat", a brand-new non-technical member (register → pending → first login → Building Use wizard → track my request), and a committee admin (approve the member, work the review queue, approve the request, PM screens). Slack env vars were disabled locally during the walkthrough; all test data (2 auth users, 2 member rows, 1 request + review log) was deleted afterward and verified gone. Real congregation data was untouched.
+
+**Verdict:** the core member journey is *genuinely good* — the signup holding pattern, the request wizard, and the committee review queue all deliver the "walk them through it" vision with warm, plain-language copy. The friction is concentrated in three places: one broken mobile layout (PM detail), one operational time bomb (Supabase's built-in email rate limit), and a cluster of "what happened to my request?" feedback gaps.
+
+### Friction log (ranked by how badly it confuses a non-technical member)
+
+| ID | Rank | Finding |
+|----|------|---------|
+| U1 | **P1** | **PM task detail page is broken at phone width** — the content column collapses to ~50px (one word per line) with the details card overlapping it. This is exactly the screen the vision wants volunteers using at the furnace with a filter in one hand. Two-column layout doesn't collapse on mobile. |
+| U2 | **P1** | **Supabase's built-in mailer rate limit will hit real members.** During the walkthrough, the password-reset email was refused with "email rate limit exceeded" (the default mailer allows only a handful per hour) — and that raw string is shown to the member verbatim. Before real usage: configure custom SMTP (Resend) in Supabase Auth settings, and translate auth errors into friendly copy. |
+| U3 | **P2** | **A member can't tell their request was approved.** After committee approval, the member's list still shows status "Open" (the Approved chip exists only on the detail page), and no notification reaches them — the decision email uses the wizard's free-text contact field (Pat entered a phone number), even though the system knows the member's account email. Fold into A1: notify via account email + show the decision on the list. |
+| U4 | **P2** | **Tasks queue is a desktop table on phones** — description wraps one word per line and the STATUS column is invisible unless the member discovers horizontal scroll. Needs a card layout at narrow widths (the Review queue already does this well — copy it). |
+| U5 | **P2** | **Birthdays opens at January — in June.** "Who has birthdays this month" (the stated use case) requires scrolling through five months. Default to the current month. |
+| U6 | **P2** | Member dashboard/queue KPIs say "0 Open" directly above the request the member just submitted (pending-review isn't counted). Mixed signal — count it or label it. |
+| U7 | **P3** | Vocabulary drift: nav says "Make a Request" and "Tasks & Projects", the dashboard button says "New maintenance request", and "View my requests" lands on a page titled "Tasks & Projects". Pick one word for the member-facing concept. |
+| U8 | **P3** | Wizard review step shows "REQUESTED BY: MCC" (the affiliation choice, not the person) and raw ISO dates ("2026-07-18"). Show "Pat Walkthrough (member) · 402-555-0142" and "July 18, 2026". |
+| U9 | **P3** | Birthdays: "turns 0" for infants; imported name casing ("McQUINN"). |
+| U10 | **P3** | Email confirmation is a third hurdle before committee review (confirm email → wait for approval → sign in). Committee approval is already the gate — consider disabling Supabase email confirmation to cut signup drop-off. |
+| U11 | **P3** | Dave's Idea page copy promises routing to "Things, Reminders, Notion, Slack, HubSpot" — well ahead of what's wired. Trim to what works today. |
+| U12 | **P3** | Member approval is **super_admin-only** (Members tab invisible to `admin` role), but the transcript says any building-committee member should approve members. Confirm intent; likely widen to staff. Also: approving gives the new member no notification (relates U3). |
+| U13 | **P3** | Jargon in member-facing nav: "PM" (means nothing to a volunteer — "Upkeep"/"Recurring maintenance"), "Playbooks" (consider "How-tos" or "Documents"). |
+| U14 | **P3** | A11y nits: the "Forgot password?" control reads oddly in the accessibility tree (labeled "PASSWORD ••••••••"); the Settings nav item reads "1 Settings 1" when the pending badge shows. |
+
+### What's genuinely good (verified, keep it this way)
+
+- **Signup → holding pattern → approval** — "Request submitted… A building committee member will review it and follow up." Calm, jargon-free, exactly the transcript's intent. Mismatched-password error is plain English.
+- **The Building Use wizard is the vision, delivered** — 8 one-tap steps: "What are you planning?" → tailored tracks (Party, Wedding, Sports, Class, "Just need a room") → multi-select spaces with the real room names (Gym, Room 201, Dining area) → native date/time pickers → "About how many people? A rough number is perfectly fine." → needs checklist → access & cleanup planning → review → "Thanks, Pat! The building committee will review your request and follow up."
+- **The committee Review queue** — mobile-friendly cards with smart derived chips ("Children" because 12 kids are coming, "Outside group", "Recurring"), a "Things to weigh" checklist (insurance, supervision of kids, who locks up, fits our mission), approve/decline with required reason on decline, decision audit trail.
+- **Role scoping is right everywhere**: members see 6 nav items (no Review/PM/Settings/Contacts leakage); pending members are held at the door; the column-guard trigger even stopped my service-role attempt to escalate a role (defense-in-depth, working).
+- **Areas are current** — Gym, 201 Room, HVAC all present in live data (the plan-doc concern was stale).
+- Good empty states throughout ("You haven't submitted any requests yet.").
+
+---
+
 ## Track 2 — Code & Security Review (2026-06-11)
 
 **How it was done:** three parallel audits (RLS policies across all 49 migrations; authorization on every exported server action; API routes/secrets/middleware/notifications), followed by manual verification of every load-bearing claim against the actual code, plus read-only probes against the live database with the public anon key. Findings below are verified, not just reported — several agent claims were rejected on inspection (noted at the end).

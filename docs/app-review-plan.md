@@ -66,17 +66,8 @@ Still open from this track (folded into Track 2): migration-set audit — naming
 ### Track 2 — Code & security review — ✅ DONE 2026-06-11
 Full results in **[app-review-findings.md](app-review-findings.md)** (15 findings, S1–S15). Headline: posture fundamentally sound; fixed in this pass — pending-member read exposure (S1), soft-deleted staff retaining powers (S2), open ticket INSERT (S3), unauthenticated transcription webhook (S4/A5), plus four small hardenings. Jeff's to-do: apply migration 0049, set `ASSEMBLYAI_WEBHOOK_SECRET` in Vercel, deploy. New backlog from the review: WAF rate limit on public intake (→ A6), `requireStaff()` guards across server actions (→ A7), private blobs for meeting audio (→ B6), tests for auth/intake paths.
 
-### Track 3 — UX walkthrough (local dev, desktop + ~390px mobile)
-Flows, played as a non-technical member:
-1. Sign up → pending holding screen → (as admin) approve → first login
-2. Forgot password / reset
-3. Building Use wizard end-to-end → committee review → decision → what the requester sees
-4. Report a problem (maintenance track) from a phone
-5. Work a PM task on a phone: steps, per-asset checks, supply decrement
-6. Directory: find a person, birthdays this month
-7. ReelNotes: record/upload → transcript → action items → convert to tasks
-8. Sanity-check the area list against the real building (transcript mentions Gym and Room 201 — neither is in the seeded areas; fixable in Settings, but the walkthrough should confirm what's missing)
-- **Output:** friction log with screenshots, ranked by how much it would confuse a non-technical member.
+### Track 3 — UX walkthrough — ✅ DONE 2026-06-11
+Full friction log (U1–U14) in **[app-review-findings.md](app-review-findings.md)**. Headline: the member journey (signup → holding pattern → wizard → committee review) is the vision delivered, with warm plain-language copy throughout. Two P1s: the PM task detail layout is broken at phone width (the volunteer-on-a-phone screen), and Supabase's built-in mailer rate limit will block real signups/resets until custom SMTP is configured. P2 cluster: members can't see/hear that their request was approved (status shows "Open", no email to account address), tasks queue is a desktop table on phones, birthdays opens at January. Areas list concern was stale — Gym/201 Room/HVAC exist in live data. New backlog: A8 (mobile layouts), A9 (custom SMTP + friendly auth errors); U3/U12 fold into A1's notification work.
 
 ### Track 4 — Vision-gap audit → final roadmap
 Merge Tracks 1–3 findings with the gap table above into one prioritized backlog (below), adjusting scope for anything the review reveals.
@@ -93,8 +84,10 @@ Merge Tracks 1–3 findings with the gap table above into one prioritized backlo
 | A3 | **Vendors, budgets, reorder alerts** (G3) | `vendors` table; link vendors to supplies (reorder source) and tasks (assigned vendor); budget field per area or per project; threshold-cross notification (email + Slack) when `on_hand` dips below reorder level — the dashboard panel already computes this. |
 | A4 | **Approved building use → calendar event** (G4) | On approval, create an `events` row from the request's date/time/space details; link back to the request. |
 | A5 | ~~**Webhook auth fix**~~ ✅ done in Track 2 | Shared-secret header on submit + verification in the route. Shipped 2026-06-11; needs `ASSEMBLYAI_WEBHOOK_SECRET` set in Vercel. |
-| A6 | **Rate-limit public intake** (S10) | Vercel WAF rate-limit rule on `/assistance/*` — dashboard config, no code. |
+| A6 | **Rate-limit public intake** (S10) | Vercel WAF rate-limit rule on `/assistance/*` — staged 2026-06-11, awaiting `vercel firewall publish`. |
 | A7 | **`requireStaff()` guards in server actions** (S11) | Defense-in-depth: TypeScript role check at the top of every staff/super-admin mutation (~50 functions); daves-idea actions model the pattern. |
+| A8 | **Mobile layout fixes** (U1, U4) | PM task detail two-column collapse at phone width (P1 — broken today); tasks queue table → cards at narrow widths (Review queue is the model). |
+| A9 | **Auth email deliverability** (U2, U10) | Configure custom SMTP (Resend) in Supabase Auth; friendly copy for auth errors ("email rate limit exceeded" → plain English). Decide on disabling email confirmation (committee approval is already the gate). |
 
 ### Phase B — ReelNotes evolution (G7, G8)
 | ID | Item |
