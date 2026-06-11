@@ -57,6 +57,11 @@ export async function POST(req: NextRequest) {
   if (!(audio instanceof Blob) || audio.size === 0) {
     return NextResponse.json({ error: "Missing audio file" }, { status: 400 });
   }
+  // Vercel already caps function bodies at 4.5 MB; this explicit guard keeps
+  // the limit enforced if uploads ever move to client-uploads/streaming.
+  if (audio.size > 30 * 1024 * 1024) {
+    return NextResponse.json({ error: "Audio file too large" }, { status: 413 });
+  }
 
   const durationRaw = form.get("duration_sec");
   const duration = Number.isFinite(Number(durationRaw)) ? Math.max(0, Math.floor(Number(durationRaw))) : 0;
@@ -138,6 +143,14 @@ export async function POST(req: NextRequest) {
         speech_models: ["universal-3-pro"],
         speaker_labels: true,
         webhook_url: `${baseUrl()}/api/daves-idea/transcription-webhook`,
+        // AssemblyAI echoes this header back on the webhook call; the route
+        // rejects calls without it once the env var is set.
+        ...(process.env.ASSEMBLYAI_WEBHOOK_SECRET
+          ? {
+              webhook_auth_header_name: "x-mcc-webhook-secret",
+              webhook_auth_header_value: process.env.ASSEMBLYAI_WEBHOOK_SECRET,
+            }
+          : {}),
       }),
     });
     const aaiBody = (await aaiRes.json()) as { id?: string; error?: string };

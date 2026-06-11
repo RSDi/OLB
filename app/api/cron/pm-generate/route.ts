@@ -26,15 +26,12 @@ interface TemplateRow {
 }
 
 export async function GET(request: Request) {
+  // When CRON_SECRET is unset, fail closed with the same 401 as a bad secret —
+  // a different status would tell probers the deployment is misconfigured.
   const expectedSecret = process.env.CRON_SECRET;
-  if (!expectedSecret) {
-    return NextResponse.json(
-      { error: "CRON_SECRET not configured on this deployment." },
-      { status: 500 }
-    );
-  }
   const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${expectedSecret}`) {
+  if (!expectedSecret || auth !== `Bearer ${expectedSecret}`) {
+    if (!expectedSecret) console.error("pm-generate: CRON_SECRET not configured");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {

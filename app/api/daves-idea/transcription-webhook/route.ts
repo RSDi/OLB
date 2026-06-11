@@ -7,10 +7,11 @@
 // pipeline module which fetches the full transcript, runs LLM extraction,
 // inserts action items, and emails the user.
 //
-// Auth: the URL itself is non-public knowledge and transcript_ids are
-// unguessable per-job, so we don't bother with signature verification at v0.
-// If we ever start treating the data as sensitive, AssemblyAI supports a
-// shared-secret header via webhook_auth_header_name/value on job submit.
+// Auth: the upload route sets webhook_auth_header_name/value on job submit
+// (when ASSEMBLYAI_WEBHOOK_SECRET is configured) and AssemblyAI echoes the
+// header back here. With the env var set, calls without the matching header
+// are rejected. Without it we accept-and-warn so jobs submitted before the
+// secret existed still complete; set the env var to enforce.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "../../../../lib/supabase/admin";
@@ -27,6 +28,17 @@ interface AAIWebhookBody {
 }
 
 export async function POST(req: NextRequest) {
+  const expectedSecret = process.env.ASSEMBLYAI_WEBHOOK_SECRET;
+  if (expectedSecret) {
+    if (req.headers.get("x-mcc-webhook-secret") !== expectedSecret) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+  } else {
+    console.warn(
+      "transcription-webhook: ASSEMBLYAI_WEBHOOK_SECRET not set — accepting unverified webhook"
+    );
+  }
+
   let body: AAIWebhookBody;
   try {
     body = (await req.json()) as AAIWebhookBody;

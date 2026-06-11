@@ -203,7 +203,13 @@ export async function hardDeleteMember(id: string): Promise<MemberActionResult> 
     return { error: "Soft-delete the member first." };
   }
 
-  const { error } = await supabase.from("members").delete().eq("id", id);
+  // Re-assert the soft-deleted state in the DELETE itself so a concurrent
+  // restore between the read above and this statement can't be overridden.
+  const { error } = await supabase
+    .from("members")
+    .delete()
+    .eq("id", id)
+    .not("deleted_at", "is", null);
   if (error) return { error: error.message };
 
   revalidatePath("/portal/settings");
