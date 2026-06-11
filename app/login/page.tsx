@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icons } from "../components/icons";
 import { createClient } from "../../lib/supabase/client";
+import { friendlyAuthError } from "../../lib/auth/friendly-error";
 
 export default function LoginPage() {
   return (
@@ -81,7 +82,7 @@ function LoginContent() {
       redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
     setPending(null);
-    if (resetError) { setError(resetError.message); return; }
+    if (resetError) { setError(friendlyAuthError(resetError.message)); return; }
     setResetSent(true);
   }
 
@@ -94,7 +95,7 @@ function LoginContent() {
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (authError) {
-      setError(authError.message);
+      setError(friendlyAuthError(authError.message));
       setPending(null);
     }
   }

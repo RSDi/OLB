@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../components/icons";
 import { createClient } from "../../lib/supabase/client";
+import { friendlyAuthError } from "../../lib/auth/friendly-error";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function RegisterPage() {
     });
 
     if (signUpError) {
-      setError(signUpError.message);
+      setError(friendlyAuthError(signUpError.message));
       setPending(false);
       return;
     }

@@ -45,9 +45,13 @@ export default async function BirthdaysPage() {
       <PageHeader />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+        {/* Start at the current month ("who's coming up?") and wrap around the
+            year; wrapped months belong to next year for ages/milestones. */}
+        {Array.from({ length: 12 }, (_, i) => ((new Date().getMonth() + i) % 12) + 1).map((m, i) => {
           const list = byMonth.get(m) ?? [];
           if (list.length === 0) return null;
+          const wrapped = m < new Date().getMonth() + 1;
+          const year = wrapped ? CURRENT_YEAR + 1 : CURRENT_YEAR;
           return (
             <section key={m}>
               <h3
@@ -61,12 +65,14 @@ export default async function BirthdaysPage() {
                 }}
               >
                 {monthName(m)}
+                {wrapped ? ` ${year}` : i === 0 ? " — this month" : ""}
               </h3>
               <div className="rsd-card" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
                 {list.map((member, idx) => (
                   <BirthdayRow
                     key={member.id}
                     member={member}
+                    year={year}
                     border={idx < list.length - 1}
                   />
                 ))}
@@ -79,11 +85,19 @@ export default async function BirthdaysPage() {
   );
 }
 
-function BirthdayRow({ member, border }: { member: DirectoryMember; border: boolean }) {
+function BirthdayRow({
+  member,
+  year,
+  border,
+}: {
+  member: DirectoryMember;
+  year: number;
+  border: boolean;
+}) {
   const day = dayOf(member.birthday);
-  const milestone = birthdayMilestone(member.birthday, CURRENT_YEAR);
-  const age = ageInYear(member.birthday, CURRENT_YEAR);
-  const wiffle = wiffleballFlag(member.birthday, CURRENT_YEAR);
+  const milestone = birthdayMilestone(member.birthday, year);
+  const age = ageInYear(member.birthday, year);
+  const wiffle = wiffleballFlag(member.birthday, year);
 
   return (
     <Link
@@ -115,7 +129,7 @@ function BirthdayRow({ member, border }: { member: DirectoryMember; border: bool
         <span className="rsd-chip rsd-chip-accent" style={{ flexShrink: 0 }}>
           {milestone}
         </span>
-      ) : age != null ? (
+      ) : age != null && age > 0 ? (
         <span
           style={{
             flexShrink: 0,

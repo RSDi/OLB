@@ -565,3 +565,22 @@ main::-webkit-scrollbar-track { background: transparent; }
   height: 100%;
   border: none;
 }
+
+/* ── Responsive detail + list layouts (A8) ───────────────────────── */
+/* Two-column detail pages (content + 280px sidebar) stack on phones. */
+.gw-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
+  align-items: flex-start;
+}
+@media (max-width: 860px) {
+  .gw-detail-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Wide tables hide on phones in favor of a card list. */
+.gw-mobile-cards { display: none; }
+@media (max-width: 720px) {
+  .gw-desktop-table { display: none !important; }
+  .gw-mobile-cards { display: flex; flex-direction: column; }
+}

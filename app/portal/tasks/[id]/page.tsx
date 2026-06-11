@@ -272,7 +272,7 @@ export default async function TicketDetailPage({
         </Link>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 280px", gap: 20, alignItems: "flex-start" }}>
+      <div className="gw-detail-grid">
         {/* Main column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Description */}

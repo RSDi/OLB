@@ -143,12 +143,7 @@ export default async function AssetDetailPage({
       </div>
 
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) 280px",
-          gap: 20,
-          alignItems: "flex-start",
-        }}
+        className="gw-detail-grid"
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div className="rsd-card" style={{ gap: 14 }}>

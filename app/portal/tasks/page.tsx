@@ -312,32 +312,72 @@ export default async function PortalMaintenancePage({
             </div>
           </div>
         ) : (
-          <table className="rsd-tbl">
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Area</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Submitted</th>
-                {staff && <th>By</th>}
-                {staff && <th>Assigned</th>}
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Phones get cards (the table needs sideways scrolling there). */}
+            <div className="gw-mobile-cards" style={{ gap: 0 }}>
               {tickets.map((t) => (
-                <QueueRow
+                <Link
                   key={t.id}
-                  ticket={t}
-                  submitter={t.submitted_by ? submitterMap[t.submitted_by] ?? null : null}
-                  staff={staff}
-                  priorities={priorities}
-                  staffList={staffList}
-                />
+                  href={`/portal/tasks/${t.id}`}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    padding: "14px 20px",
+                    borderBottom: "1px solid var(--gw-border)",
+                    textDecoration: "none",
+                    color: "var(--gw-fg)",
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.45 }}>
+                    {t.description.split("\n")[0]}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                    {t.category && (
+                      <span className={`rsd-chip ${t.category.chip_class}`}>{t.category.name}</span>
+                    )}
+                    {decisionChip(t)}
+                    {t.priority && (
+                      <span className={`rsd-chip ${t.priority.chip_class}`}>{t.priority.label}</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+                    {t.area?.name ?? "No area"} · {formatDate(t.created_at)}
+                    {staff && t.submitted_by && submitterMap[t.submitted_by]
+                      ? ` · ${submitterMap[t.submitted_by].full_name ?? submitterMap[t.submitted_by].email}`
+                      : ""}
+                  </div>
+                </Link>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            <table className="rsd-tbl gw-desktop-table">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Area</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  {staff && <th>By</th>}
+                  {staff && <th>Assigned</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {tickets.map((t) => (
+                  <QueueRow
+                    key={t.id}
+                    ticket={t}
+                    submitter={t.submitted_by ? submitterMap[t.submitted_by] ?? null : null}
+                    staff={staff}
+                    priorities={priorities}
+                    staffList={staffList}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </>
@@ -377,4 +417,30 @@ function countByStatus(
     }
   }
   return out;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+const STATUS_LABELS: Record<TicketRow["status"], string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  done: "Done",
+  cancelled: "Cancelled",
+};
+
+// Mobile-card status: same logic as QueueRow — decision first while it's the
+// headline (pending/declined), then the work status.
+function decisionChip(t: TicketRow) {
+  if (t.review_status === "pending_review")
+    return <span className="rsd-chip rsd-chip-warn">Pending review</span>;
+  if (t.review_status === "declined")
+    return <span className="rsd-chip rsd-chip-warn">Declined</span>;
+  return (
+    <>
+      {t.reviewed_at && <span className="rsd-chip rsd-chip-accent">Approved</span>}
+      <span className="rsd-chip rsd-chip-mute">{STATUS_LABELS[t.status]}</span>
+    </>
+  );
 }
