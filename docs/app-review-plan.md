@@ -18,7 +18,7 @@ All four tracks ran and closed in one day. The app is **substantially closer to 
 | # | Decision | Outcome |
 |---|---|---|
 | D1 | Who can approve new members | **Any committee admin** — built into the A1 changes (migration 0050 + Members tab for all staff; roles/edit/remove stay super-admin) |
-| D2 | Email confirmation at signup | **Drop it** — Jeff toggles "Confirm email" OFF in Supabase Auth settings; the register page already handles the instant-session flow, no code change |
+| D2 | Email confirmation at signup | **Drop it** — Jeff toggles "Confirm email" OFF: Supabase dashboard → Authentication → **Sign In / Up** → Email row → Confirm email off. ⏳ Not yet flipped as of last check (`mailer_autoconfirm: false`); the register page already handles both modes, no code change |
 | D3 | Staged firewall rule | **Published** — rate limit live on `/assistance/*` |
 
 ---
@@ -100,8 +100,8 @@ Tracks 1–3 findings merged into the sequenced backlog below (Phase A reordered
 | 1 | A6 | ~~**Publish the firewall rule**~~ (S10) | — | ✅ Published 2026-06-11 (D3). |
 | 2 | A9 | **Auth email deliverability** (U2, U10) | small | Configure custom SMTP (Resend) in Supabase Auth — Jeff-side config; code side: friendly copy for raw auth errors. Decide D2 (drop email confirmation). **Gates real member onboarding.** |
 | 3 | A8 | **Mobile & quick-win UI fixes** (U1, U4, U5) | small | PM task detail two-column collapse at phone width (broken today); tasks queue table → cards at narrow widths (the Review queue is the model); birthdays defaults to the current month. Quick wins for volunteers on phones. |
-| 4 | A1 | **Committee voting + member-visible decisions** (G1, U3, U12) | large | ✅ **BUILT 2026-06-11 — awaiting migration 0050 + deploy.** `request_votes` + atomic `cast_request_vote()` RPC (majority computed live from committee size; no requires a note; collected no-notes become the decline reason); VotePanel on the request detail (tally, votes cast, waiting-on, change-your-vote); tally chips on the review queue; member's list shows Approved/Declined chips (declined no longer vanishes); decision email falls back to the wizard contact for public submissions; D1: any committee admin works the member approval queue (roles/edit stay super-admin) and approved members get a "you're in" email. |
-| 5 | A4 | **Approved building use → calendar event** (G4) | small | ✅ **BUILT 2026-06-11** with A1 — the deciding yes-vote creates the `events` row from the request's date/space/time (`events.source_ticket_id` links back); requests without a single date are skipped for manual scheduling. |
+| 4 | A1 | **Committee voting + member-visible decisions** (G1, U3, U12) | large | ✅ **SHIPPED & VERIFIED LIVE 2026-06-11.** Migration 0050 applied; deployed to prod. End-to-end test (throwaway committee): no-vote with required note → change-to-yes → second yes hit the live-computed majority → instant Approved chip, votes + audit logged, member's list shows the decision. D1 verified: a plain `admin` worked the Members queue and approved a pending member. |
+| 5 | A4 | **Approved building use → calendar event** (G4) | small | ✅ **SHIPPED & VERIFIED LIVE 2026-06-11** — deciding vote auto-created the calendar event (date/time/space, `source_ticket_id` link) in the e2e test. |
 | 6 | A2 | **Email-code login** (G2) | medium | Supabase email OTP for sign-in and reset; guided, large-type walkthrough UI; "text me a code instead" stub slot for later SMS. |
 | 7 | A3 | **Vendors, budgets, reorder alerts** (G3) | medium-large | `vendors` table; link vendors to supplies (reorder source) and tasks (assigned vendor); budgets; threshold-cross notification (email + Slack) — the dashboard already computes low stock. |
 | 8 | A7 | **`requireStaff()` guards in server actions** (S11) | medium, mechanical | Defense-in-depth role checks across ~50 mutations; daves-idea actions model the pattern. Interleave anytime. |
