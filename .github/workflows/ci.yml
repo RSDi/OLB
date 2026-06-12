@@ -15,7 +15,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 24 matches local dev and Vercel's runtime, and lets node:test run
+          # the TypeScript test files natively (type stripping).
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -23,6 +25,12 @@ jobs:
 
       - name: Type-check
         run: npm run type-check
+
+      # Unit tests always run here. The schema-contract probes self-skip in
+      # CI (no Supabase secrets) — run `npm test` locally before deploying
+      # after a migration to get the full code-vs-database check.
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build

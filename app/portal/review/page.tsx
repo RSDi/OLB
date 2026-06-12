@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
+import { majorityThreshold } from "../../../lib/votes/threshold";
 
 type ReviewFilter = "pending_review" | "approved" | "declined";
 
@@ -96,7 +97,7 @@ export default async function ReviewQueuePage({
       .in("role", ["admin", "super_admin"])
       .eq("status", "approved")
       .not("user_id", "is", null);
-    voteThreshold = Math.max(1, Math.floor((staffCount ?? 0) / 2) + 1);
+    voteThreshold = majorityThreshold(staffCount ?? 0);
   }
 
   return (

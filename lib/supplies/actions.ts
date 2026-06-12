@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import { sendLowStockNotification } from "../notifications/low-stock";
+import { crossedThreshold } from "./threshold";
 import { sendLowStockSlack } from "../notifications/slack";
 
 export interface SupplyActionResult {
@@ -47,7 +48,7 @@ async function notifyIfCrossedThreshold(
     vendor: { name: string; phone: string | null; email: string | null } | null;
   };
   const threshold = row.reorder_threshold;
-  if (!(prevOnHand > threshold && newOnHand <= threshold)) return;
+  if (!crossedThreshold(prevOnHand, newOnHand, threshold)) return;
 
   const info = {
     supplyName: row.name,

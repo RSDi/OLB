@@ -17,6 +17,7 @@ import {
   PromoteToProject,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
+import { majorityThreshold } from "../../../../lib/votes/threshold";
 import { LinkedContacts } from "../../contacts/_shared/LinkedContacts";
 import {
   loadLinkedContactsForEntity,
@@ -169,7 +170,7 @@ export default async function TicketDetailPage({
     voteRows = (vr as typeof voteRows) ?? [];
   }
   const eligibleVoters = staffList.filter((s) => s.user_id);
-  const voteThreshold = Math.max(1, Math.floor(eligibleVoters.length / 2) + 1);
+  const voteThreshold = majorityThreshold(eligibleVoters.length);
   const staffNameByUserId: Record<string, string> = {};
   for (const s of eligibleVoters) staffNameByUserId[s.user_id as string] = s.full_name ?? s.email;
   const votesForPanel = voteRows.map((v) => ({
