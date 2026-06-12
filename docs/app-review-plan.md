@@ -116,7 +116,7 @@ Tracks 1–3 findings merged into the sequenced backlog below (Phase A reordered
 | B3 | Record from any task context; notes auto-attach to that task |
 | B4 | Video capture + timestamp-linked action items ("complete video linking") |
 | B5 | ✅ Already built (found during B1 audit): one-tap + batch Things export via URL scheme, with owner/helpers in the notes and a deep link back to the recording. |
-| B6 | Private Vercel blobs for meeting audio (S9) — likely route: upload bytes directly to AssemblyAI instead of handing them a public URL, then an auth-gated streaming route for in-app playback |
+| B6 | ✅ **SHIPPED & VERIFIED 2026-06-12.** New recordings: private `reel-notes-audio` Supabase bucket + direct byte upload to AssemblyAI — no public URL ever exists. Signed 1-hour URLs for playback (loader + upload response); polling preserves them; pre-B6 blobs pass through. Verified: marker in DB, signed fetch 200, unsigned 400, storage removal works. **Found: migration 0040 was never applied to prod** (the one Track 1 couldn't probe) — recordings restore/delete-forever in Settings → Deleted has been silently empty. ⏳ Jeff: apply 0040. |
 
 ### Phase C — later
 | ID | Item |
