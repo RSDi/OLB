@@ -9,7 +9,9 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
 import { getViewer } from "../auth/viewer";
+import { isStorageAudio, signAudioUrl } from "./audio-storage";
 
 export type RecordingStatus =
   | "uploading"
@@ -103,7 +105,7 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
     return [];
   }
   // Postgrest returns the nested rows; coerce + sort action items by sort_order.
-  return ((data ?? []) as unknown as DavesIdeaRecording[]).map(r => ({
+  const rows = ((data ?? []) as unknown as DavesIdeaRecording[]).map(r => ({
     ...r,
     action_items: (r.action_items ?? [])
       .slice()
@@ -115,6 +117,18 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
         suggested_supporter_names: a.suggested_supporter_names ?? [],
       })),
   }));
+
+  // Swap private-storage markers for short-lived signed URLs (B6). Pre-B6
+  // rows hold plain https blob URLs and pass through unchanged.
+  if (rows.some(r => isStorageAudio(r.audio_blob_url))) {
+    const admin = createAdminClient();
+    await Promise.all(
+      rows.map(async r => {
+        r.audio_blob_url = await signAudioUrl(admin, r.audio_blob_url);
+      }),
+    );
+  }
+  return rows;
 }
 
 // Approved, non-deleted directory members available to assign to an action

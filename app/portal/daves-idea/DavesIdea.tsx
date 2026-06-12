@@ -372,7 +372,17 @@ export function DavesIdea({
         ...r,
         action_items: (r.action_items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
       }));
-      setRecordings(fresh);
+      // B6: the DB stores a `storage:` marker for private audio; only server
+      // code can sign it. Keep the playable signed URL we already have rather
+      // than letting a raw poll overwrite it.
+      setRecordings(prev => {
+        const prevById = new Map(prev.map(p => [p.id, p]));
+        return fresh.map(r =>
+          r.audio_blob_url?.startsWith("http")
+            ? r
+            : { ...r, audio_blob_url: prevById.get(r.id)?.audio_blob_url ?? r.audio_blob_url }
+        );
+      });
     }, 3000);
     return () => clearInterval(t);
   }, [recordings, supabase]);

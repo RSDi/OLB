@@ -12,6 +12,7 @@
 // ownership checks in TypeScript.
 
 import { del } from "@vercel/blob";
+import { AUDIO_BUCKET, isStorageAudio, storageAudioPath } from "./audio-storage";
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
@@ -85,14 +86,23 @@ export async function hardDeleteDavesIdeaRecording(id: string): Promise<Result> 
   if ("error" in owned) return { error: owned.error };
   if (!owned.row.deleted_at) return { error: "Soft-delete the recording first." };
 
-  // Best-effort blob cleanup. If this fails (already gone, etc.) we still
+  // Best-effort audio cleanup. If this fails (already gone, etc.) we still
   // proceed with DB delete — orphaning the row is worse than orphaning a
   // blob, and the latter is recoverable from billing data if needed.
+  // B6: new recordings live in the private bucket (storage: marker); pre-B6
+  // ones are public Vercel blobs and still go through del().
   if (owned.row.audio_blob_url) {
     try {
-      await del(owned.row.audio_blob_url);
+      if (isStorageAudio(owned.row.audio_blob_url)) {
+        const admin = createAdminClient();
+        await admin.storage
+          .from(AUDIO_BUCKET)
+          .remove([storageAudioPath(owned.row.audio_blob_url)]);
+      } else {
+        await del(owned.row.audio_blob_url);
+      }
     } catch (err) {
-      console.warn("Blob delete failed, continuing with DB delete", err);
+      console.warn("Audio delete failed, continuing with DB delete", err);
     }
   }
 
