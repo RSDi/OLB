@@ -598,7 +598,7 @@ export function DavesIdea({
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 640 }}>
             Tap once to start recording mid-conversation. Audio uploads, AssemblyAI transcribes with speaker
             labels, Claude pulls candidate action items into the inbox below. From there, send each item to
-            Things or a maintenance request, or route it to Reminders, Notion, Slack, HubSpot, or a follow-up email.
+            Things or a task — owners and helpers ride along. (Other destinations shown below are labels for now.)
           </p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
             <button
@@ -1009,11 +1009,20 @@ function SelectedDetail({
     setSendingProject(true);
     const res = await createProjectFromRecording({
       title: recording.title || "Untitled recording",
-      tasks: openTasks.map(a => ({
-        text: a.text,
-        priority: a.priority ?? "medium",
-        ownerMemberId: a.owner_member_id,
-      })),
+      tasks: openTasks.map(a => {
+        const owner = findMember(members, a.owner_member_id);
+        const supporterNames = (a.supporter_member_ids ?? [])
+          .map(id => findMember(members, id))
+          .filter((m): m is AssignableMember => !!m)
+          .map(memberLabel);
+        return {
+          text: a.text,
+          priority: a.priority ?? "medium",
+          ownerMemberId: a.owner_member_id,
+          ownerName: owner ? memberLabel(owner) : null,
+          supporterNames,
+        };
+      }),
     });
     setSendingProject(false);
     if (res.projectId) router.push(`/portal/tasks/projects/${res.projectId}`);

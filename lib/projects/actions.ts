@@ -66,10 +66,19 @@ export async function assignTaskToProject(
 
 // Turn a Dave's Idea recording into a Project + one Task per action item,
 // carrying each item's priority and (when the owner is staff) its assignee.
+// Owners who can't hold the assignee slot (assignment is staff-only) and all
+// supporters are written into the task description so "Matt takes it, Corey
+// helps" survives the conversion instead of silently dropping (B1).
 // Tasks land in the General category with no area.
 export async function createProjectFromRecording(input: {
   title: string;
-  tasks: { text: string; priority: string; ownerMemberId: string | null }[];
+  tasks: {
+    text: string;
+    priority: string;
+    ownerMemberId: string | null;
+    ownerName?: string | null;
+    supporterNames?: string[];
+  }[];
 }): Promise<ProjectActionResult> {
   const gate = await requireStaff();
   if ("error" in gate) return { error: gate.error };
@@ -98,15 +107,23 @@ export async function createProjectFromRecording(input: {
   const staffIds = new Set((staff ?? []).map((s) => s.id));
   const categoryId = (genCat as { id: string } | null)?.id ?? null;
 
-  const rows = input.tasks.map((t) => ({
-    submitted_by: user.id,
-    project_id: proj.id,
-    category_id: categoryId,
-    area_id: null,
-    priority_id: priorityByKey.get(t.priority) ?? priorityByKey.get("medium") ?? null,
-    description: t.text,
-    assigned_to: t.ownerMemberId && staffIds.has(t.ownerMemberId) ? t.ownerMemberId : null,
-  }));
+  const rows = input.tasks.map((t) => {
+    const staffAssignable = Boolean(t.ownerMemberId && staffIds.has(t.ownerMemberId));
+    const peopleLines: string[] = [];
+    if (!staffAssignable && t.ownerName) peopleLines.push(`Owner: ${t.ownerName}`);
+    if (t.supporterNames && t.supporterNames.length > 0) {
+      peopleLines.push(`Helping: ${t.supporterNames.join(", ")}`);
+    }
+    return {
+      submitted_by: user.id,
+      project_id: proj.id,
+      category_id: categoryId,
+      area_id: null,
+      priority_id: priorityByKey.get(t.priority) ?? priorityByKey.get("medium") ?? null,
+      description: peopleLines.length > 0 ? `${t.text}\n\n${peopleLines.join("\n")}` : t.text,
+      assigned_to: staffAssignable ? t.ownerMemberId : null,
+    };
+  });
   const { error: tErr } = await supabase.from("maintenance_requests").insert(rows);
   if (tErr) return { error: tErr.message };
 
