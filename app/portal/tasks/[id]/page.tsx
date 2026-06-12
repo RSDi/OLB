@@ -13,6 +13,7 @@ import {
   CommentForm,
   DeleteButton,
   VotePanel,
+  CostInput,
   PromoteToProject,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
@@ -61,6 +62,7 @@ interface Ticket {
   description: string;
   status: "open" | "in_progress" | "done" | "cancelled";
   review_status: "pending_review" | "approved" | "declined";
+  cost: number | null;
   decline_reason: string | null;
   reviewed_at: string | null;
   details: RequestDetails | null;
@@ -109,7 +111,7 @@ export default async function TicketDetailPage({
   const { data: ticketRaw } = await supabase
     .from("maintenance_requests")
     .select(
-      `id, description, status, review_status, decline_reason, reviewed_at, details, created_at, updated_at, submitted_by, assigned_to,
+      `id, description, status, review_status, decline_reason, reviewed_at, details, cost, created_at, updated_at, submitted_by, assigned_to,
        category:task_categories(name, chip_class),
        project:projects(id, title),
        area:areas(id, name),
@@ -426,6 +428,7 @@ export default async function TicketDetailPage({
                 current={ticket.assigned_to}
                 staff={staffList}
               />
+              <CostInput ticketId={ticket.id} current={ticket.cost} />
               {ticket.review_status === "approved" && !ticket.project && (
                 <PromoteToProject ticketId={ticket.id} defaultTitle={promoteTitle} />
               )}

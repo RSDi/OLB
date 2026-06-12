@@ -169,6 +169,62 @@ export async function sendAccessRequestSlack({
   await postSlackMessage(channel, fallback, blocks, `access-request ${email}`);
 }
 
+export async function sendLowStockSlack({
+  supplyName,
+  unit,
+  onHand,
+  threshold,
+  vendorName,
+  reorderNote,
+}: {
+  supplyName: string;
+  unit: string;
+  onHand: number;
+  threshold: number;
+  vendorName?: string | null;
+  reorderNote?: string | null;
+}): Promise<void> {
+  if (!process.env.SLACK_BOT_TOKEN) {
+    console.warn("[slack] SLACK_BOT_TOKEN not set — skipping low-stock Slack message");
+    return;
+  }
+  const channel = process.env.SLACK_NOTIFY_CHANNEL_ID;
+  if (!channel) {
+    console.warn("[slack] SLACK_NOTIFY_CHANNEL_ID not set — skipping low-stock Slack message");
+    return;
+  }
+
+  const fallback = `Low stock — ${supplyName}: ${onHand} ${unit} left (reorder at ${threshold})`;
+  const lines = [
+    `*${slackEscape(supplyName)}* is down to *${onHand} ${slackEscape(unit)}* (reorder at ${threshold}).`,
+    vendorName ? `*Reorder from:* ${slackEscape(vendorName)}` : "_No reorder vendor set for this supply._",
+    reorderNote ? `*Note:* ${slackEscape(reorderNote)}` : null,
+  ].filter(Boolean);
+
+  const blocks: SlackBlock[] = [
+    {
+      type: "header",
+      text: { type: "plain_text", text: "Low stock", emoji: false },
+    },
+    {
+      type: "section",
+      text: { type: "mrkdwn", text: lines.join("\n") },
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: { type: "plain_text", text: "Manage supplies" },
+          url: `${siteUrl()}/portal/settings`,
+        },
+      ],
+    },
+  ];
+
+  await postSlackMessage(channel, fallback, blocks, `low-stock ${supplyName}`);
+}
+
 function siteUrl(): string {
   return (
     process.env.NEXT_PUBLIC_SITE_URL ??

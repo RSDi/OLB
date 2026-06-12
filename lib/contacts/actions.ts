@@ -6,6 +6,7 @@
 // write.
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export interface ContactActionResult {
@@ -78,6 +79,8 @@ function toRow(input: ContactInput) {
 export async function createContact(
   input: ContactInput
 ): Promise<ContactActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -105,6 +108,8 @@ export async function updateContact(
   contactId: string,
   input: ContactInput
 ): Promise<ContactActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -124,6 +129,8 @@ export async function updateContact(
 export async function softDeleteContact(
   contactId: string
 ): Promise<ContactActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("contacts")
@@ -138,6 +145,8 @@ export async function softDeleteContact(
 export async function restoreContact(
   contactId: string
 ): Promise<ContactActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("contacts")
@@ -187,6 +196,8 @@ export async function linkContactToEntity(input: {
   entityId: string;
   role?: string | null;
 }): Promise<ContactLinkResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   if (!VALID_ENTITY_TYPES.includes(input.entityType)) {
     return { error: "Unsupported entity type." };
   }
@@ -226,6 +237,8 @@ export async function linkContactToEntity(input: {
 export async function unlinkContactFromEntity(input: {
   linkId: string;
 }): Promise<ContactLinkResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   if (!input.linkId) return { error: "Missing link id." };
 
   const supabase = await createClient();

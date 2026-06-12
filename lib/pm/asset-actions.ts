@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export interface AssetActionResult {
@@ -23,6 +24,8 @@ function validate(input: AssetInput): string | null {
 }
 
 export async function createAsset(input: AssetInput): Promise<AssetActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -49,6 +52,8 @@ export async function updateAsset(
   assetId: string,
   input: AssetInput
 ): Promise<AssetActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -71,6 +76,8 @@ export async function updateAsset(
 }
 
 export async function softDeleteAsset(assetId: string): Promise<AssetActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("assets")
@@ -100,6 +107,8 @@ export async function renameAssetType(
   oldType: string,
   newTypeRaw: string
 ): Promise<RenameTypeResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const newType = normalizeType(newTypeRaw);
   if (!newType) return { error: "New type cannot be empty." };
   if (newType === oldType) return { error: "New type is the same as the old one." };
@@ -139,6 +148,8 @@ export interface ClearTypeResult extends AssetActionResult {
 }
 
 export async function clearAssetType(oldType: string): Promise<ClearTypeResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { count: affectedCount } = await supabase
     .from("assets")

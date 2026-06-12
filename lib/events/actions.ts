@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export interface EventActionResult {
@@ -33,6 +34,8 @@ function validate(input: EventInput): string | null {
 }
 
 export async function createEvent(input: EventInput): Promise<EventActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -61,6 +64,8 @@ export async function updateEvent(
   eventId: string,
   input: EventInput
 ): Promise<EventActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -86,6 +91,8 @@ export async function updateEvent(
 }
 
 export async function softDeleteEvent(eventId: string): Promise<EventActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("events")

@@ -4,6 +4,7 @@
 // `projects`; tasks point at one via maintenance_requests.project_id.
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export interface ProjectActionResult {
@@ -16,6 +17,7 @@ export async function createProject(input: {
   title: string;
   description?: string;
   categoryId?: string | null;
+  budget?: number | null;
 }): Promise<ProjectActionResult> {
   const title = input.title.trim();
   if (!title) return { error: "Title is required." };
@@ -32,6 +34,7 @@ export async function createProject(input: {
       title,
       description: input.description?.trim() || null,
       category_id: input.categoryId || null,
+      budget: Number.isFinite(input.budget ?? NaN) ? input.budget : null,
       created_by: user.id,
     })
     .select("id")
@@ -46,6 +49,8 @@ export async function assignTaskToProject(
   taskId: string,
   projectId: string | null
 ): Promise<ProjectActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("maintenance_requests")
@@ -66,6 +71,8 @@ export async function createProjectFromRecording(input: {
   title: string;
   tasks: { text: string; priority: string; ownerMemberId: string | null }[];
 }): Promise<ProjectActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const title = input.title.trim() || "Untitled recording";
   if (input.tasks.length === 0) return { error: "No open tasks to send." };
 
@@ -109,6 +116,8 @@ export async function createProjectFromRecording(input: {
 }
 
 export async function softDeleteProject(projectId: string): Promise<ProjectActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   // Detach tasks first so they don't dangle on a hidden project.
   await supabase.from("maintenance_requests").update({ project_id: null }).eq("project_id", projectId);
@@ -130,6 +139,8 @@ export async function promoteTaskToProject(
   taskId: string,
   input: { title: string; steps: string[] }
 ): Promise<ProjectActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const title = input.title.trim();
   if (!title) return { error: "Give the project a title." };
   const steps = (input.steps ?? []).map((s) => s.trim()).filter(Boolean);

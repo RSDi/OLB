@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireStaff, requireSuperAdmin } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { sendNewTicketNotification } from "../notifications/new-ticket";
@@ -109,6 +110,8 @@ export async function changeTicketStatus(
   ticketId: string,
   status: TicketStatus
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const valid: TicketStatus[] = ["open", "in_progress", "done", "cancelled"];
   if (!valid.includes(status)) return { error: "Invalid status." };
 
@@ -128,6 +131,8 @@ export async function changeTicketPriority(
   ticketId: string,
   priorityId: string
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   if (!priorityId) return { error: "Priority is required." };
 
   const supabase = await createClient();
@@ -146,6 +151,8 @@ export async function assignTicket(
   ticketId: string,
   memberId: string | null
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("maintenance_requests")
@@ -205,6 +212,8 @@ export async function addTicketComment(
 }
 
 export async function softDeleteTicket(ticketId: string): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("maintenance_requests")
@@ -218,6 +227,8 @@ export async function softDeleteTicket(ticketId: string): Promise<ActionResult> 
 }
 
 export async function restoreTicket(ticketId: string): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("maintenance_requests")
@@ -231,6 +242,8 @@ export async function restoreTicket(ticketId: string): Promise<ActionResult> {
 }
 
 export async function hardDeleteTicket(ticketId: string): Promise<ActionResult> {
+  const gate = await requireSuperAdmin();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("maintenance_requests")
@@ -558,6 +571,30 @@ export async function createPublicBuildingRequest(
   revalidatePath("/portal/review");
   revalidatePath("/portal/tasks");
   return { success: true, ticketId: inserted.id };
+}
+
+// A3: actual dollars a task ended up costing. Staff-edited on the task
+// detail; the project page sums these against the project budget. RLS
+// (staff update) enforces who can set it.
+export async function setTaskCost(
+  ticketId: string,
+  cost: number | null,
+): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
+  if (cost != null && (!Number.isFinite(cost) || cost < 0)) {
+    return { error: "Cost must be 0 or more." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("maintenance_requests")
+    .update({ cost })
+    .eq("id", ticketId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/tasks/${ticketId}`);
+  revalidatePath("/portal/tasks/projects");
+  return { success: true };
 }
 
 // ─── Committee review decisions ──────────────────────────────────

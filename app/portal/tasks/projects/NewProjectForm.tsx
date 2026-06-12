@@ -16,6 +16,7 @@ export function NewProjectForm({ categories }: { categories: Category[] }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [budget, setBudget] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +25,12 @@ export function NewProjectForm({ categories }: { categories: Category[] }) {
     if (!title.trim()) return;
     setPending(true);
     setError(null);
-    const res = await createProject({ title, description, categoryId: categoryId || null });
+    const res = await createProject({
+      title,
+      description,
+      categoryId: categoryId || null,
+      budget: budget.trim() ? Number(budget) : null,
+    });
     setPending(false);
     if (res.error) {
       setError(res.error);
@@ -68,6 +74,15 @@ export function NewProjectForm({ categories }: { categories: Category[] }) {
           </option>
         ))}
       </Select>
+      <Input
+        label="Budget ($, optional)"
+        type="number"
+        min={0}
+        step="0.01"
+        value={budget}
+        onChange={(e) => setBudget(e.target.value)}
+        placeholder="e.g. 500"
+      />
       {error && (
         <div
           style={{

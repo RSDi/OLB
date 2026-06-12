@@ -3,8 +3,13 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../../lib/supabase/server";
 import { Icons } from "../../../../components/icons";
 
+function money(n: number): string {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: n % 1 ? 2 : 0 });
+}
+
 interface ProjectTask {
   id: string;
+  cost: number | null;
   description: string;
   status: string;
   category: { name: string; chip_class: string } | null;
@@ -15,6 +20,7 @@ interface Project {
   title: string;
   description: string | null;
   status: string;
+  budget: number | null;
   category: { name: string; chip_class: string } | null;
 }
 
@@ -39,7 +45,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const { data: projectRaw } = await supabase
     .from("projects")
-    .select("id, title, description, status, category:task_categories(name, chip_class)")
+    .select("id, title, description, status, budget, category:task_categories(name, chip_class)")
     .is("deleted_at", null)
     .eq("id", id)
     .maybeSingle();
@@ -49,12 +55,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const { data: tasksRaw } = await supabase
     .from("maintenance_requests")
     .select(
-      "id, description, status, category:task_categories(name, chip_class), priority:priorities(label, chip_class)"
+      "id, description, status, cost, category:task_categories(name, chip_class), priority:priorities(label, chip_class)"
     )
     .eq("project_id", id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
   const tasks = (tasksRaw as unknown as ProjectTask[]) ?? [];
+  // Budget tracking (A3): spent = sum of task costs entered by staff.
+  const spent = tasks.reduce((sum, t) => sum + (Number(t.cost) || 0), 0);
 
   return (
     <>
@@ -114,6 +122,23 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <p style={{ margin: 0, fontSize: 14, color: "var(--gw-fg)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
             {project.description}
           </p>
+        )}
+        {(project.budget != null || spent > 0) && (
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
+            {project.budget != null && (
+              <span>
+                Budget: <strong style={{ color: "var(--gw-fg)" }}>{money(Number(project.budget))}</strong>
+              </span>
+            )}
+            <span>
+              Spent: <strong style={{ color: "var(--gw-fg)" }}>{money(spent)}</strong>
+            </span>
+            {project.budget != null && (
+              <span style={{ color: Number(project.budget) - spent < 0 ? "var(--gw-error)" : undefined }}>
+                Remaining: <strong style={{ color: Number(project.budget) - spent < 0 ? "var(--gw-error)" : "var(--gw-fg)" }}>{money(Number(project.budget) - spent)}</strong>
+              </span>
+            )}
+          </div>
         )}
       </div>
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export interface PlaybookCategoryActionResult {
@@ -24,6 +25,8 @@ function validate(input: PlaybookCategoryInput): string | null {
 export async function createPlaybookCategory(
   input: PlaybookCategoryInput
 ): Promise<PlaybookCategoryActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -48,6 +51,8 @@ export async function updatePlaybookCategory(
   categoryId: string,
   input: PlaybookCategoryInput
 ): Promise<PlaybookCategoryActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -70,6 +75,8 @@ export async function updatePlaybookCategory(
 export async function softDeletePlaybookCategory(
   categoryId: string
 ): Promise<PlaybookCategoryActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("playbook_categories")

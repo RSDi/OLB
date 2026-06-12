@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export interface PlaybookActionResult {
@@ -25,6 +26,8 @@ function validate(input: PlaybookInput): string | null {
 export async function createPlaybook(
   input: PlaybookInput
 ): Promise<PlaybookActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -49,6 +52,8 @@ export async function updatePlaybook(
   playbookId: string,
   input: PlaybookInput
 ): Promise<PlaybookActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -73,6 +78,8 @@ export async function updatePlaybook(
 export async function softDeletePlaybook(
   playbookId: string
 ): Promise<PlaybookActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("playbooks")

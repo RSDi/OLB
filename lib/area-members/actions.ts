@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export type AreaMemberRole = "owner" | "helper";
@@ -15,6 +16,8 @@ export async function assignMemberToArea(
   areaId: string,
   role: AreaMemberRole
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   if (role !== "owner" && role !== "helper") return { error: "Invalid role." };
 
   const supabase = await createClient();
@@ -37,6 +40,8 @@ export async function removeMemberFromArea(
   memberId: string,
   areaId: string
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("area_members")

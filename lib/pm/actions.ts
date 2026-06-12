@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { requireStaff, requireSuperAdmin } from "../auth/guards";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
@@ -67,6 +68,8 @@ function validateInput(input: TemplateInput): string | null {
 export async function createTemplate(
   input: TemplateInput
 ): Promise<ActionResult & { templateId?: string }> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validateInput(input);
   if (err) return { error: err };
 
@@ -97,6 +100,8 @@ export async function updateTemplate(
   templateId: string,
   input: TemplateInput
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validateInput(input);
   if (err) return { error: err };
 
@@ -124,6 +129,8 @@ export async function updateTemplate(
 }
 
 export async function softDeleteTemplate(templateId: string): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("pm_templates")
@@ -137,6 +144,8 @@ export async function softDeleteTemplate(templateId: string): Promise<ActionResu
 }
 
 export async function restorePmTemplate(templateId: string): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("pm_templates")
@@ -150,6 +159,8 @@ export async function restorePmTemplate(templateId: string): Promise<ActionResul
 }
 
 export async function hardDeletePmTemplate(templateId: string): Promise<ActionResult> {
+  const gate = await requireSuperAdmin();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   // ON DELETE CASCADE in migration 0008 will also remove every pm_instance
   // that referenced this template (and their pm_instance_assets sub-rows).
@@ -172,6 +183,8 @@ export async function createNextInstance({
   templateId,
   overrideScheduledFor,
 }: CreateNextInstanceArgs): Promise<ActionResult & { instanceId?: string }> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const result = await generatePmInstance(supabase, templateId, { overrideScheduledFor });
   if (result.error) return { error: result.error };
@@ -186,6 +199,8 @@ export async function toggleStep(
   stepId: string,
   checked: boolean
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
 
   const {
@@ -242,6 +257,8 @@ export async function completeInstance(
   instanceId: string,
   notes: string | null
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const {
     data: { user },
@@ -275,6 +292,8 @@ export async function skipInstance(
   instanceId: string,
   reason: string | null
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const {
     data: { user },
@@ -305,6 +324,8 @@ export async function skipInstance(
 }
 
 export async function reopenInstance(instanceId: string): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("pm_instances")
@@ -369,6 +390,8 @@ export async function toggleAssetStep(
   stepId: string,
   checked: boolean
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const {
     data: { user },
@@ -424,6 +447,8 @@ export async function completeAssetInstance(
   instanceAssetId: string,
   notes: string | null
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const {
     data: { user },
@@ -461,6 +486,8 @@ export async function skipAssetInstance(
   instanceAssetId: string,
   reason: string | null
 ): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const {
     data: { user },
@@ -495,6 +522,8 @@ export async function skipAssetInstance(
 }
 
 export async function reopenAssetInstance(instanceAssetId: string): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("pm_instance_assets")

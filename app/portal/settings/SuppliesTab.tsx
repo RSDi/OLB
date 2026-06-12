@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
-import { Input, Pill, Textarea } from "../../components/ui";
+import { Input, Pill, Select, Textarea } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createSupply,
@@ -18,6 +18,14 @@ interface Supply {
   on_hand: number;
   reorder_threshold: number;
   notes: string | null;
+  reorder_contact_id: string | null;
+  reorder_note: string | null;
+  vendor: { name: string } | null;
+}
+
+interface VendorOption {
+  id: string;
+  name: string;
 }
 
 export function SuppliesTab({ me }: { me: MemberLike }) {
@@ -27,18 +35,29 @@ export function SuppliesTab({ me }: { me: MemberLike }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
 
   const canDelete = isSuperAdmin(me);
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const { data, error: loadError } = await supabase
-      .from("supplies")
-      .select("id, name, unit, on_hand, reorder_threshold, notes")
-      .is("deleted_at", null)
-      .order("name", { ascending: true });
+    const [{ data, error: loadError }, { data: contactRows }] = await Promise.all([
+      supabase
+        .from("supplies")
+        .select(
+          "id, name, unit, on_hand, reorder_threshold, notes, reorder_contact_id, reorder_note, vendor:contacts!reorder_contact_id(name)"
+        )
+        .is("deleted_at", null)
+        .order("name", { ascending: true }),
+      supabase
+        .from("contacts")
+        .select("id, name")
+        .is("deleted_at", null)
+        .order("name", { ascending: true }),
+    ]);
     if (loadError) setError(loadError.message);
     else setSupplies(((data as unknown as Supply[]) ?? []).map(numerify));
+    setVendors((contactRows as VendorOption[]) ?? []);
     setLoading(false);
   }, []);
 
@@ -54,6 +73,8 @@ export function SuppliesTab({ me }: { me: MemberLike }) {
       onHand: values.onHand,
       reorderThreshold: values.reorderThreshold,
       notes: values.notes || null,
+      reorderContactId: values.reorderContactId || null,
+      reorderNote: values.reorderNote || null,
     });
     if (result.error) {
       setError(result.error);
@@ -72,6 +93,8 @@ export function SuppliesTab({ me }: { me: MemberLike }) {
       onHand: values.onHand,
       reorderThreshold: values.reorderThreshold,
       notes: values.notes || null,
+      reorderContactId: values.reorderContactId || null,
+      reorderNote: values.reorderNote || null,
     });
     if (result.error) {
       setError(result.error);
@@ -143,6 +166,7 @@ export function SuppliesTab({ me }: { me: MemberLike }) {
       {adding && (
         <SupplyForm
           submitLabel="Add supply"
+          vendors={vendors}
           onCancel={() => {
             setAdding(false);
             setError(null);
@@ -176,7 +200,10 @@ export function SuppliesTab({ me }: { me: MemberLike }) {
                   onHand: s.on_hand,
                   reorderThreshold: s.reorder_threshold,
                   notes: s.notes ?? "",
+                  reorderContactId: s.reorder_contact_id ?? "",
+                  reorderNote: s.reorder_note ?? "",
                 }}
+                vendors={vendors}
                 submitLabel="Save"
                 onCancel={() => {
                   setEditingId(null);
@@ -252,6 +279,12 @@ function SupplyRow({
           </span>
           <span>·</span>
           <span>reorder at {formatQty(supply.reorder_threshold)}</span>
+          {supply.vendor && (
+            <>
+              <span>·</span>
+              <span>reorder from {supply.vendor.name}</span>
+            </>
+          )}
           {supply.notes && (
             <>
               <span>·</span>
@@ -282,26 +315,35 @@ interface SupplyFormValues {
   onHand: number;
   reorderThreshold: number;
   notes: string;
+  reorderContactId: string;
+  reorderNote: string;
 }
 
 function SupplyForm({
   initial,
   submitLabel,
+  vendors,
   onSubmit,
   onCancel,
 }: {
   initial?: SupplyFormValues;
   submitLabel: string;
+  vendors: VendorOption[];
   onSubmit: (values: SupplyFormValues) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const start: SupplyFormValues =
-    initial ?? { name: "", unit: "each", onHand: 0, reorderThreshold: 1, notes: "" };
+    initial ?? {
+      name: "", unit: "each", onHand: 0, reorderThreshold: 1, notes: "",
+      reorderContactId: "", reorderNote: "",
+    };
   const [name, setName] = useState(start.name);
   const [unit, setUnit] = useState(start.unit);
   const [onHand, setOnHand] = useState(String(start.onHand));
   const [reorderThreshold, setReorderThreshold] = useState(String(start.reorderThreshold));
   const [notes, setNotes] = useState(start.notes);
+  const [reorderContactId, setReorderContactId] = useState(start.reorderContactId);
+  const [reorderNote, setReorderNote] = useState(start.reorderNote);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -314,6 +356,8 @@ function SupplyForm({
       onHand: Number(onHand) || 0,
       reorderThreshold: Number(reorderThreshold) || 0,
       notes: notes.trim(),
+      reorderContactId,
+      reorderNote: reorderNote.trim(),
     });
     setPending(false);
   }
@@ -354,11 +398,31 @@ function SupplyForm({
           onChange={(e) => setReorderThreshold(e.target.value)}
         />
       </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <Select
+          label="Reorder from (vendor)"
+          value={reorderContactId}
+          onChange={(e) => setReorderContactId(e.target.value)}
+        >
+          <option value="">No vendor set</option>
+          {vendors.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+        </Select>
+        <Input
+          label="Reorder note"
+          value={reorderNote}
+          onChange={(e) => setReorderNote(e.target.value)}
+          placeholder="Part number, link, how many to order"
+        />
+      </div>
       <Textarea
         label="Notes"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Where you buy it, vendor part number, anything to remember."
+        placeholder="Anything else to remember about this supply."
         rows={2}
       />
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>

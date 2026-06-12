@@ -5,6 +5,7 @@
 // super-admin-delete; soft-delete via deleted_at.
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export interface CategoryActionResult {
@@ -28,6 +29,8 @@ function validate(input: TaskCategoryInput): string | null {
 export async function createTaskCategory(
   input: TaskCategoryInput
 ): Promise<CategoryActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -52,6 +55,8 @@ export async function updateTaskCategory(
   categoryId: string,
   input: TaskCategoryInput
 ): Promise<CategoryActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -74,6 +79,8 @@ export async function updateTaskCategory(
 export async function softDeleteTaskCategory(
   categoryId: string
 ): Promise<CategoryActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("task_categories")

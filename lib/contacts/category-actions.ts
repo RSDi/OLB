@@ -5,6 +5,7 @@
 // Staff can create / rename; super-admin can soft-delete.
 
 import { revalidatePath } from "next/cache";
+import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export interface CategoryActionResult {
@@ -35,6 +36,8 @@ function validate(input: ContactCategoryInput): string | null {
 export async function createContactCategory(
   input: ContactCategoryInput
 ): Promise<CategoryActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -62,6 +65,8 @@ export async function updateContactCategory(
   categoryId: string,
   input: ContactCategoryInput
 ): Promise<CategoryActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
@@ -84,6 +89,8 @@ export async function updateContactCategory(
 export async function softDeleteContactCategory(
   categoryId: string
 ): Promise<CategoryActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("contact_categories")

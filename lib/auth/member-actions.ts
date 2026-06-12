@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireStaff, requireSuperAdmin } from "./guards";
 import { createClient } from "../supabase/server";
 import { isStaff, type MemberLike, type MemberRole, type MemberStatus } from "./permissions";
 import { sendMembershipApprovedNotification } from "../notifications/membership-decision";
@@ -63,6 +64,8 @@ export interface CreateMemberInput {
 }
 
 export async function createMember(input: CreateMemberInput): Promise<MemberActionResult> {
+  const gate = await requireSuperAdmin();
+  if ("error" in gate) return { error: gate.error };
   if (!input.fullName.trim()) return { error: "Name is required." };
 
   const supabase = await createClient();
@@ -100,6 +103,8 @@ export async function addMemberRelationship(
   relatedMemberId: string,
   kind: RelationshipKind
 ): Promise<MemberActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   if (memberId === relatedMemberId) {
     return { error: "Can't relate a member to themselves." };
   }
@@ -163,6 +168,8 @@ export async function removeMemberRelationship(
   relatedMemberId: string,
   kind: RelationshipKind
 ): Promise<MemberActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const inverse = inverseOf(kind);
 
@@ -192,6 +199,8 @@ export async function removeMemberRelationship(
 // SELECTs; the column-restriction trigger blocks anyone but a super-admin
 // from setting it.
 export async function softDeleteMember(id: string): Promise<MemberActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const {
     data: { user },
@@ -219,6 +228,8 @@ export async function softDeleteMember(id: string): Promise<MemberActionResult> 
 }
 
 export async function restoreMember(id: string): Promise<MemberActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase
     .from("members")
@@ -235,6 +246,8 @@ export async function restoreMember(id: string): Promise<MemberActionResult> {
 // guard happens server-side so a stale client can't escalate a soft-delete
 // into a permanent one in a single click.
 export async function hardDeleteMember(id: string): Promise<MemberActionResult> {
+  const gate = await requireSuperAdmin();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { data: target } = await supabase
     .from("members")
@@ -265,6 +278,8 @@ export async function updateMemberNotes(
   memberId: string,
   notes: string
 ): Promise<MemberActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const {
     data: { user },
