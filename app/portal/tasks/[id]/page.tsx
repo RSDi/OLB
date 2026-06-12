@@ -17,6 +17,7 @@ import {
   PromoteToProject,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
+import { ReelNotesCard, type LinkedRecording } from "./ReelNotesCard";
 import { majorityThreshold } from "../../../../lib/votes/threshold";
 import { LinkedContacts } from "../../contacts/_shared/LinkedContacts";
 import {
@@ -221,6 +222,19 @@ export default async function TicketDetailPage({
       reason: r.reason,
       actor: r.changed_by ? nameMap[r.changed_by] ?? "Someone" : "Someone",
     }));
+  }
+
+  // ReelNotes recordings captured on this task (B3). Tolerant pre-0052: a
+  // missing linked_ticket_id column errors into an empty list.
+  let linkedRecordings: LinkedRecording[] = [];
+  if (staff) {
+    const { data: recRows } = await supabase
+      .from("daves_idea_recordings")
+      .select("id, title, status, created_at")
+      .eq("linked_ticket_id", id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+    linkedRecordings = (recRows as LinkedRecording[] | null) ?? [];
   }
 
   // Vendors / external contacts attached to this ticket. Staff-only —
@@ -434,6 +448,15 @@ export default async function TicketDetailPage({
                 <PromoteToProject ticketId={ticket.id} defaultTitle={promoteTitle} />
               )}
               {superAdmin && <DeleteButton ticketId={ticket.id} />}
+            </div>
+          )}
+
+          {staff && (
+            <div className="rsd-card" style={{ gap: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                ReelNotes
+              </h3>
+              <ReelNotesCard ticketId={ticket.id} recordings={linkedRecordings} />
             </div>
           )}
 

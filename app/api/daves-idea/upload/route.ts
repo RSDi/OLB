@@ -80,6 +80,13 @@ export async function POST(req: NextRequest) {
     ? (sourceRaw as "pwa" | "native" | "watch")
     : "pwa";
   const mimeType = String(form.get("mime_type") || audio.type || "audio/webm");
+  // B3: optional task link — the recording attaches to a ticket and the
+  // pipeline posts its summary there. Validated as a UUID; bogus values are
+  // simply dropped rather than failing the upload.
+  const linkedRaw = String(form.get("linked_ticket_id") || "");
+  const linkedTicketId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(linkedRaw)
+    ? linkedRaw
+    : null;
 
   // One read of the bytes serves both the private bucket and AssemblyAI.
   const bytes = Buffer.from(await audio.arrayBuffer());
@@ -96,17 +103,31 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await createClient();
-  const { data: row, error: insertError } = await supabase
+  const baseRow: Record<string, unknown> = {
+    user_id: viewer.userId,
+    audio_blob_url: storageAudioMarker(path),
+    duration_sec: duration,
+    source,
+    status: "transcribing",
+  };
+  const insertRow: Record<string, unknown> = { ...baseRow };
+  if (linkedTicketId) insertRow.linked_ticket_id = linkedTicketId;
+  let { data: row, error: insertError } = await supabase
     .from("daves_idea_recordings")
-    .insert({
-      user_id: viewer.userId,
-      audio_blob_url: storageAudioMarker(path),
-      duration_sec: duration,
-      source,
-      status: "transcribing",
-    })
+    .insert(insertRow)
     .select(RECORDING_SELECT)
     .single();
+
+  // Pre-0052 grace: if the link column doesn't exist yet, save the recording
+  // unlinked rather than losing the audio.
+  if (insertError && linkedTicketId && /linked_ticket_id/.test(insertError.message)) {
+    console.warn("linked_ticket_id column missing (migration 0052) — saving unlinked");
+    ({ data: row, error: insertError } = await supabase
+      .from("daves_idea_recordings")
+      .insert(baseRow)
+      .select(RECORDING_SELECT)
+      .single());
+  }
 
   if (insertError || !row) {
     console.error("Recording insert failed", insertError);

@@ -181,6 +181,19 @@ export async function processTranscriptionCompleted(
     return;
   }
   const recording = rec as { id: string; user_id: string; assemblyai_id: string | null; status: string };
+
+  // B3: linked task, fetched separately + tolerantly so a pre-0052 schema
+  // (no linked_ticket_id column) errors into "not linked" instead of
+  // breaking the whole pipeline.
+  let linkedTicketId: string | null = null;
+  {
+    const { data: linkRow } = await admin
+      .from("daves_idea_recordings")
+      .select("linked_ticket_id")
+      .eq("id", recordingId)
+      .maybeSingle();
+    linkedTicketId = (linkRow as { linked_ticket_id?: string | null } | null)?.linked_ticket_id ?? null;
+  }
   if (!recording.assemblyai_id) {
     console.error("Pipeline: recording has no assemblyai_id", recordingId);
     return;
@@ -270,6 +283,40 @@ export async function processTranscriptionCompleted(
       .from("daves_idea_recordings")
       .update({ title, status: "ready", error: extractionError })
       .eq("id", recordingId);
+
+    // 5.5 (B3): recorded on a task — drop the summary into its comment
+    // thread so the notes land where the work is.
+    if (linkedTicketId) {
+      try {
+        const { data: authorRow } = await admin
+          .from("members")
+          .select("id")
+          .eq("user_id", recording.user_id)
+          .maybeSingle();
+        const authorId = (authorRow as { id: string } | null)?.id;
+        if (authorId) {
+          const summary =
+            actions.length > 0
+              ? `Action items:\n${actions.map(a => `• ${a.text}`).join("\n")}`
+              : transcriptText
+                ? `Transcript (start):\n${transcriptText.slice(0, 280)}${transcriptText.length > 280 ? "…" : ""}`
+                : "No speech detected in the recording.";
+          const body = [
+            `🎙️ ReelNotes — "${title}"`,
+            "",
+            summary,
+            "",
+            `Listen & route items: ${siteUrl()}/portal/daves-idea?r=${recordingId}`,
+          ].join("\n");
+          const { error: commentErr } = await admin
+            .from("ticket_comments")
+            .insert({ ticket_id: linkedTicketId, author_id: authorId, body });
+          if (commentErr) console.error("ReelNotes comment insert failed", commentErr);
+        }
+      } catch (err) {
+        console.error("ReelNotes comment post failed", err);
+      }
+    }
 
     // 6. Email the user.
     const userEmail = await lookupUserEmail(recording.user_id);
