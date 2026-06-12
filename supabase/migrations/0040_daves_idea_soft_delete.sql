@@ -27,6 +27,7 @@ create policy "daves_idea_recordings_update_own" on public.daves_idea_recordings
 -- Hard delete is permitted only on already-soft-deleted rows the user owns.
 -- The two-step guard prevents a stale client from escalating a single click
 -- into permanent loss.
+drop policy if exists "daves_idea_recordings_delete_own" on public.daves_idea_recordings;
 create policy "daves_idea_recordings_delete_own" on public.daves_idea_recordings
   for delete to authenticated
   using (user_id = auth.uid() and deleted_at is not null);
