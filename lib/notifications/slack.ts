@@ -15,6 +15,8 @@ interface SlackBlock {
 }
 
 interface SlackResponse {
+  ts?: string;
+  channel?: string;
   ok?: boolean;
   error?: string;
 }
@@ -24,9 +26,9 @@ async function postSlackMessage(
   text: string,
   blocks: SlackBlock[],
   context: string,
-): Promise<void> {
+): Promise<{ ts: string; channel: string } | null> {
   const token = process.env.SLACK_BOT_TOKEN;
-  if (!token) return; // caller already guarded; defensive
+  if (!token) return null; // caller already guarded; defensive
 
   const res = await fetch(SLACK_ENDPOINT, {
     method: "POST",
@@ -50,7 +52,11 @@ async function postSlackMessage(
     console.error(
       `[slack] postMessage failed (${context}) status=${res.status} ok=${body.ok}: ${body.error ?? "unknown"}`,
     );
+    return null;
   }
+  // ts identifies the message — thread replies carry it as thread_ts, which
+  // is how /api/slack/events routes them back to the task (B2).
+  return body.ts && body.channel ? { ts: body.ts, channel: body.channel } : null;
 }
 
 export async function sendNewTicketSlack({
@@ -119,7 +125,24 @@ export async function sendNewTicketSlack({
     },
   ];
 
-  await postSlackMessage(channel, fallback, blocks, `ticket ${ticketId}`);
+  const posted = await postSlackMessage(channel, fallback, blocks, `ticket ${ticketId}`);
+
+  // B2: remember where the message landed so Slack thread replies can be
+  // routed back into this task's comments. Tolerant pre-0053: a missing
+  // column just logs and moves on.
+  if (posted) {
+    try {
+      const { createAdminClient } = await import("../supabase/admin");
+      const admin = createAdminClient();
+      const { error } = await admin
+        .from("maintenance_requests")
+        .update({ slack_channel_id: posted.channel, slack_message_ts: posted.ts })
+        .eq("id", ticketId);
+      if (error) console.warn("[slack] couldn't store thread anchor (apply 0053?):", error.message);
+    } catch (err) {
+      console.warn("[slack] thread anchor store failed:", err);
+    }
+  }
 }
 
 export async function sendAccessRequestSlack({

@@ -146,7 +146,32 @@ export default async function TicketDetailPage({
     .eq("ticket_id", id)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
-  const comments = (commentsRaw as unknown as Comment[]) ?? [];
+  let comments = (commentsRaw as unknown as Comment[]) ?? [];
+
+  // B2: Slack thread replies arrive with no member author; external_author
+  // carries the Slack display name (post-0053). Fetched separately + merged
+  // as a synthetic author so the thread renders them like any other comment.
+  // Pre-0053 the select errors into an empty map.
+  {
+    const { data: extRows } = await supabase
+      .from("ticket_comments")
+      .select("id, external_author")
+      .eq("ticket_id", id)
+      .not("external_author", "is", null);
+    const extById = new Map(
+      ((extRows as { id: string; external_author: string }[] | null) ?? []).map(r => [
+        r.id,
+        r.external_author,
+      ])
+    );
+    if (extById.size > 0) {
+      comments = comments.map(c =>
+        !c.author && extById.has(c.id)
+          ? { ...c, author: { full_name: extById.get(c.id)!, email: "", avatar_url: null } }
+          : c
+      );
+    }
+  }
 
   let staffList: StaffMember[] = [];
   if (staff) {
