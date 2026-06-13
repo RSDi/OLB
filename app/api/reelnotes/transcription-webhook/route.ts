@@ -1,4 +1,4 @@
-// POST /api/daves-idea/transcription-webhook
+// POST /api/reelnotes/transcription-webhook
 //
 // Called by AssemblyAI when a transcription job finishes. Payload shape:
 //   { transcript_id: string, status: "completed" | "error" }
@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "../../../../lib/supabase/admin";
-import { processTranscriptionCompleted } from "../../../../lib/daves-idea/pipeline";
+import { processTranscriptionCompleted } from "../../../../lib/reelnotes/pipeline";
 
 export const runtime = "nodejs";
 // Pipeline runs transcript fetch + Claude call + Resend email inline. Bump

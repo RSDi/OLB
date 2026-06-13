@@ -1,16 +1,16 @@
 {
-  "name": "Dave's Idea",
-  "short_name": "Dave's Idea",
+  "name": "ReelNotes",
+  "short_name": "ReelNotes",
   "description": "One-tap audio capture with transcription and action items.",
-  "start_url": "/portal/daves-idea",
-  "scope": "/portal/daves-idea",
+  "start_url": "/portal/reelnotes",
+  "scope": "/portal/reelnotes",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1a1a1a",
   "theme_color": "#6C8C59",
   "icons": [
     {
-      "src": "/daves-idea-icon.svg",
+      "src": "/reelnotes-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

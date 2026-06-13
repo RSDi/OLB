@@ -1,10 +1,10 @@
-// POST /api/daves-idea/upload
+// POST /api/reelnotes/upload
 //
 // Accepts an audio file from the client (browser MediaRecorder), stores it
 // in the PRIVATE reel-notes-audio bucket (Supabase Storage), inserts a
 // daves_idea_recordings row in 'transcribing' status, and pushes the same
 // bytes to AssemblyAI's upload endpoint for transcription. The AssemblyAI
-// webhook (/api/daves-idea/transcription-webhook) takes it from there.
+// webhook (/api/reelnotes/transcription-webhook) takes it from there.
 //
 // Privacy (B6): no public URL ever exists for new recordings. The DB holds a
 // `storage:` marker; this response and the page loaders swap it for a
@@ -29,7 +29,7 @@ import {
   AUDIO_BUCKET,
   signAudioUrl,
   storageAudioMarker,
-} from "../../../../lib/daves-idea/audio-storage";
+} from "../../../../lib/reelnotes/audio-storage";
 
 export const runtime = "nodejs";
 // AssemblyAI byte upload + job submit are two sequential POSTs; 60s is ample.
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
           audio_url: uploadBody.upload_url,
           speech_models: ["universal-3-pro"],
           speaker_labels: true,
-          webhook_url: `${baseUrl()}/api/daves-idea/transcription-webhook`,
+          webhook_url: `${baseUrl()}/api/reelnotes/transcription-webhook`,
           // AssemblyAI echoes this header back on the webhook call; the route
           // rejects calls without it once the env var is set.
           ...(process.env.ASSEMBLYAI_WEBHOOK_SECRET

@@ -1,10 +1,10 @@
-// Shared types + server-side loaders for /portal/daves-idea.
+// Shared types + server-side loaders for /portal/reelnotes.
 //
 // Visibility: every loader here is owner-only. RLS on the underlying tables
-// filters to user_id = auth.uid(); loadDavesIdeaViewer() additionally redirects
+// filters to user_id = auth.uid(); loadReelNotesViewer() additionally redirects
 // non-staff to /portal before any row is fetched.
 //
-// The webhook + pipeline functions in /api/daves-idea/* bypass RLS via the
+// The webhook + pipeline functions in /api/reelnotes/* bypass RLS via the
 // service-role Supabase client, since they run without an authenticated user.
 
 import { redirect } from "next/navigation";
@@ -30,7 +30,7 @@ export interface Utterance {
   end: number;
 }
 
-export interface DavesIdeaActionItem {
+export interface ReelNotesActionItem {
   id: string;
   recording_id: string;
   text: string;
@@ -66,17 +66,17 @@ export interface AssignableMember {
 // with short bullets. Generated alongside action items at extraction time.
 // Each bullet carries an optional `detail`: a grounding note that quotes the
 // transcript, surfaced in a "Transcript Summary" popover (the + affordance).
-export interface DavesIdeaSummaryBullet {
+export interface ReelNotesSummaryBullet {
   text: string;
   detail: string | null;
 }
 
-export interface DavesIdeaSummarySection {
+export interface ReelNotesSummarySection {
   heading: string;
-  bullets: DavesIdeaSummaryBullet[];
+  bullets: ReelNotesSummaryBullet[];
 }
 
-export interface DavesIdeaRecording {
+export interface ReelNotesRecording {
   id: string;
   user_id: string;
   title: string | null;
@@ -87,22 +87,22 @@ export interface DavesIdeaRecording {
   assemblyai_id: string | null;
   transcript: string | null;
   utterances: Utterance[] | null;
-  summary: DavesIdeaSummarySection[] | null;
+  summary: ReelNotesSummarySection[] | null;
   error: string | null;
   created_at: string;
   updated_at: string;
-  action_items: DavesIdeaActionItem[];
+  action_items: ReelNotesActionItem[];
 }
 
 // Access guard. Redirects non-staff to /portal. Returns the viewer so callers
 // have role/id available without a second fetch.
-export async function loadDavesIdeaViewer() {
+export async function loadReelNotesViewer() {
   const viewer = await getViewer();
   if (!viewer?.isStaff) redirect("/portal");
   return viewer;
 }
 
-export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
+export async function loadReelNotesRecordings(): Promise<ReelNotesRecording[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("daves_idea_recordings")
@@ -119,11 +119,11 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("loadDavesIdeaRecordings failed", error);
+    console.error("loadReelNotesRecordings failed", error);
     return [];
   }
   // Postgrest returns the nested rows; coerce + sort action items by sort_order.
-  const rows = ((data ?? []) as unknown as DavesIdeaRecording[]).map(r => ({
+  const rows = ((data ?? []) as unknown as ReelNotesRecording[]).map(r => ({
     ...r,
     action_items: (r.action_items ?? [])
       .slice()

@@ -1,6 +1,6 @@
 "use server";
 
-// Server actions for soft-deleting, restoring, and hard-deleting Dave's Idea
+// Server actions for soft-deleting, restoring, and hard-deleting ReelNotes
 // recordings.
 //
 // All three actions share the same shape: verify the caller via getUser()
@@ -48,7 +48,7 @@ async function loadOwnedRecording(id: string): Promise<
   return { row };
 }
 
-export async function softDeleteDavesIdeaRecording(id: string): Promise<Result> {
+export async function softDeleteReelNotesRecording(id: string): Promise<Result> {
   const owned = await loadOwnedRecording(id);
   if ("error" in owned) return { error: owned.error };
   if (owned.row.deleted_at) return { success: true }; // Already deleted; idempotent.
@@ -60,12 +60,12 @@ export async function softDeleteDavesIdeaRecording(id: string): Promise<Result> 
     .eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath("/portal/daves-idea");
+  revalidatePath("/portal/reelnotes");
   revalidatePath("/portal/settings");
   return { success: true };
 }
 
-export async function restoreDavesIdeaRecording(id: string): Promise<Result> {
+export async function restoreReelNotesRecording(id: string): Promise<Result> {
   const owned = await loadOwnedRecording(id);
   if ("error" in owned) return { error: owned.error };
 
@@ -76,12 +76,12 @@ export async function restoreDavesIdeaRecording(id: string): Promise<Result> {
     .eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath("/portal/daves-idea");
+  revalidatePath("/portal/reelnotes");
   revalidatePath("/portal/settings");
   return { success: true };
 }
 
-export async function hardDeleteDavesIdeaRecording(id: string): Promise<Result> {
+export async function hardDeleteReelNotesRecording(id: string): Promise<Result> {
   const owned = await loadOwnedRecording(id);
   if ("error" in owned) return { error: owned.error };
   if (!owned.row.deleted_at) return { error: "Soft-delete the recording first." };

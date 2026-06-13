@@ -1,6 +1,6 @@
 "use client";
 // B3: record ReelNotes audio without leaving the task. Same MediaRecorder →
-// /api/daves-idea/upload flow as the Dave's Idea page, plus linked_ticket_id
+// /api/reelnotes/upload flow as the ReelNotes page, plus linked_ticket_id
 // so the recording attaches here: the pipeline posts its summary into this
 // task's comment thread when transcription finishes, and the list below shows
 // every recording captured on this task.
@@ -95,7 +95,7 @@ export function ReelNotesCard({
       form.append("source", "pwa");
       form.append("mime_type", mimeType);
       form.append("linked_ticket_id", ticketId);
-      const res = await fetch("/api/daves-idea/upload", { method: "POST", body: form });
+      const res = await fetch("/api/reelnotes/upload", { method: "POST", body: form });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || `Upload failed (${res.status})`);
@@ -116,7 +116,7 @@ export function ReelNotesCard({
       {recordings.map(r => (
         <a
           key={r.id}
-          href={`/portal/daves-idea?r=${r.id}`}
+          href={`/portal/reelnotes?r=${r.id}`}
           style={{
             display: "flex",
             alignItems: "center",

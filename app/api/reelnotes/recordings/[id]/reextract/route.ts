@@ -1,4 +1,4 @@
-// POST /api/daves-idea/recordings/[id]/reextract
+// POST /api/reelnotes/recordings/[id]/reextract
 //
 // Re-runs the post-transcription pipeline for an existing recording. The
 // transcript is re-fetched from AssemblyAI (still cached on their side, so
@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../../../../lib/supabase/server";
 import { createAdminClient } from "../../../../../../lib/supabase/admin";
 import { getViewer } from "../../../../../../lib/auth/viewer";
-import { processTranscriptionCompleted } from "../../../../../../lib/daves-idea/pipeline";
+import { processTranscriptionCompleted } from "../../../../../../lib/reelnotes/pipeline";
 
 export const runtime = "nodejs";
 // LLM call + email is typically <10s; cap generously.

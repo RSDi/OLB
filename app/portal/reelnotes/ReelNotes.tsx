@@ -4,15 +4,15 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
-import { softDeleteDavesIdeaRecording } from "../../../lib/daves-idea/actions";
+import { softDeleteReelNotesRecording } from "../../../lib/reelnotes/actions";
 import { createProjectFromRecording } from "../../../lib/projects/actions";
 import type {
   AssignableMember,
-  DavesIdeaActionItem,
-  DavesIdeaRecording,
-  DavesIdeaSummaryBullet,
+  ReelNotesActionItem,
+  ReelNotesRecording,
+  ReelNotesSummaryBullet,
   RecordingStatus,
-} from "../../../lib/daves-idea/data";
+} from "../../../lib/reelnotes/data";
 
 const INTEGRATIONS = [
   { id: "things", label: "Things", icon: "CheckCircle" as const },
@@ -43,16 +43,16 @@ interface ThingsAssignment {
 }
 
 // Deep link back to a specific recording (and optionally a specific task) in
-// Dave's Idea, e.g. https://…/portal/daves-idea?r=<recId>&t=<actionId>.
-function davesIdeaUrl(recordingId: string, actionId?: string): string {
+// ReelNotes, e.g. https://…/portal/reelnotes?r=<recId>&t=<actionId>.
+function reelNotesUrl(recordingId: string, actionId?: string): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const base = `${origin}/portal/daves-idea?r=${recordingId}`;
+  const base = `${origin}/portal/reelnotes?r=${recordingId}`;
   return actionId ? `${base}&t=${actionId}` : base;
 }
 
 function thingsNotes(recordingTitle: string | null, assignment?: ThingsAssignment, link?: string): string {
   const lines: string[] = [
-    recordingTitle ? `From "${recordingTitle}" · captured in Dave's Idea` : "Captured in Dave's Idea",
+    recordingTitle ? `From "${recordingTitle}" · captured in ReelNotes` : "Captured in ReelNotes",
   ];
   if (assignment?.owner) lines.push(`Owner: ${assignment.owner}`);
   if (assignment?.supporters && assignment.supporters.length > 0) {
@@ -125,7 +125,7 @@ function formatMs(ms: number): string {
 
 // Tolerate the legacy summary shape (bullets were plain strings before the
 // per-bullet "detail" grounding was added) so older recordings still render.
-function normalizeSummaryBullet(b: DavesIdeaSummaryBullet | string): DavesIdeaSummaryBullet {
+function normalizeSummaryBullet(b: ReelNotesSummaryBullet | string): ReelNotesSummaryBullet {
   if (typeof b === "string") return { text: b, detail: null };
   return { text: b.text, detail: b.detail ?? null };
 }
@@ -135,7 +135,7 @@ function normalizeSummaryBullet(b: DavesIdeaSummaryBullet | string): DavesIdeaSu
 // the point in the transcript. Reveals inline (not a floating popover) so it
 // never clips inside the mobile card's scroll context. The + only exists when
 // the bullet carries a detail.
-function SummaryBullet({ bullet }: { bullet: DavesIdeaSummaryBullet }) {
+function SummaryBullet({ bullet }: { bullet: ReelNotesSummaryBullet }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="gw-sum-bullet">
@@ -359,7 +359,7 @@ function formatWhen(iso: string): string {
   return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-function recordingTitle(r: DavesIdeaRecording): string {
+function recordingTitle(r: ReelNotesRecording): string {
   if (r.title) return r.title;
   if (r.status === "failed") return "Failed recording";
   if (r.status === "ready") return "Untitled recording";
@@ -370,7 +370,7 @@ function recordingTitle(r: DavesIdeaRecording): string {
 // Vercel Blob honors a `download=<filename>` query parameter by setting
 // Content-Disposition: attachment server-side. The audio's actual format
 // (m4a from Safari, webm from Chrome) comes from the stored blob's pathname.
-function audioDownloadHref(r: DavesIdeaRecording): string {
+function audioDownloadHref(r: ReelNotesRecording): string {
   let blobUrl: URL;
   try {
     blobUrl = new URL(r.audio_blob_url);
@@ -385,23 +385,23 @@ function audioDownloadHref(r: DavesIdeaRecording): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "recording";
-  blobUrl.searchParams.set("download", `daves-idea-${slug}.${ext}`);
+  blobUrl.searchParams.set("download", `reelnotes-${slug}.${ext}`);
   return blobUrl.toString();
 }
 
-export function DavesIdea({
+export function ReelNotes({
   initialRecordings,
   members,
   initialSelectedId = null,
   focusActionId = null,
 }: {
-  initialRecordings: DavesIdeaRecording[];
+  initialRecordings: ReelNotesRecording[];
   members: AssignableMember[];
   initialSelectedId?: string | null;
   focusActionId?: string | null;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [recordings, setRecordings] = useState<DavesIdeaRecording[]>(initialRecordings);
+  const [recordings, setRecordings] = useState<ReelNotesRecording[]>(initialRecordings);
   const [selectedId, setSelectedId] = useState<string | null>(
     (initialSelectedId && initialRecordings.some(r => r.id === initialSelectedId)
       ? initialSelectedId
@@ -470,7 +470,7 @@ export function DavesIdea({
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error || !data) return;
-      const fresh = (data as unknown as DavesIdeaRecording[]).map(r => ({
+      const fresh = (data as unknown as ReelNotesRecording[]).map(r => ({
         ...r,
         action_items: (r.action_items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
       }));
@@ -540,12 +540,12 @@ export function DavesIdea({
       form.append("duration_sec", String(durationSec));
       form.append("source", "pwa");
       form.append("mime_type", mimeType);
-      const res = await fetch("/api/daves-idea/upload", { method: "POST", body: form });
+      const res = await fetch("/api/reelnotes/upload", { method: "POST", body: form });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || `Upload failed (${res.status})`);
       }
-      const { recording } = (await res.json()) as { recording: DavesIdeaRecording };
+      const { recording } = (await res.json()) as { recording: ReelNotesRecording };
       setRecordings(rs => [{ ...recording, action_items: recording.action_items ?? [] }, ...rs]);
       setSelectedId(recording.id);
     } catch (err) {
@@ -638,7 +638,7 @@ export function DavesIdea({
       const remaining = previous.filter(r => r.id !== recordingId);
       setSelectedId(remaining[0]?.id ?? null);
     }
-    const result = await softDeleteDavesIdeaRecording(recordingId);
+    const result = await softDeleteReelNotesRecording(recordingId);
     if (result.error) {
       setRecordings(previous);
       setSelectedId(recordingId);
@@ -652,12 +652,12 @@ export function DavesIdea({
       rs.map(r => (r.id === recordingId ? { ...r, status: "extracting", error: null } : r))
     );
     try {
-      const res = await fetch(`/api/daves-idea/recordings/${recordingId}/reextract`, { method: "POST" });
+      const res = await fetch(`/api/reelnotes/recordings/${recordingId}/reextract`, { method: "POST" });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || `Re-extract failed (${res.status})`);
       }
-      const { recording } = (await res.json()) as { recording: DavesIdeaRecording };
+      const { recording } = (await res.json()) as { recording: ReelNotesRecording };
       setRecordings(rs =>
         rs.map(r =>
           r.id === recordingId
@@ -1063,7 +1063,7 @@ function SelectedDetail({
   onReextract,
   onDelete,
 }: {
-  recording: DavesIdeaRecording;
+  recording: ReelNotesRecording;
   isMobile: boolean;
   members: AssignableMember[];
   focusActionId?: string | null;
@@ -1490,7 +1490,7 @@ function SelectedDetail({
             {sendableToThings.length > 0 && (
               <button
                 onClick={() => {
-                  openAllInThings(sendableToThings.map(a => a.text), recording.title, davesIdeaUrl(recording.id));
+                  openAllInThings(sendableToThings.map(a => a.text), recording.title, reelNotesUrl(recording.id));
                   sendableToThings.forEach(a => onRoute(a.id, "Things"));
                 }}
                 className="gw-press"
@@ -1564,7 +1564,7 @@ function ActionRow({
   onSeekToMs,
   focused,
 }: {
-  action: DavesIdeaActionItem;
+  action: ReelNotesActionItem;
   recordingTitle: string | null;
   members: AssignableMember[];
   onToggle: () => void;
@@ -1926,12 +1926,12 @@ function ActionRow({
                         owner: owner ? memberLabel(owner) : null,
                         supporters: supporters.map(memberLabel),
                       },
-                      davesIdeaUrl(action.recording_id, action.id)
+                      reelNotesUrl(action.recording_id, action.id)
                     );
                   else if (i.id === "maintenance")
                     router.push(
                       `/portal/tasks/new?category=General&priority=${action.priority ?? "medium"}&description=${encodeURIComponent(
-                        `${action.text}\n\nFrom Dave's Idea recording: "${recordingTitle ?? "Untitled recording"}"\n${davesIdeaUrl(action.recording_id, action.id)}`
+                        `${action.text}\n\nFrom ReelNotes recording: "${recordingTitle ?? "Untitled recording"}"\n${reelNotesUrl(action.recording_id, action.id)}`
                       )}`
                     );
                   onRoute(i.label);

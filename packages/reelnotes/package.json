@@ -1,0 +1,21 @@
+{
+  "name": "reelnotes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ReelNotes — record a voice note, get an AI summary, transcript, and action items. A portable capture-and-extract product: drop it into any app by implementing one adapter.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ui": "./src/ui/index.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.4",
+    "@vercel/blob": "^2.4.0",
+    "ai": "^6.0.192",
+    "resend": "^6.12.4",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  }
+}

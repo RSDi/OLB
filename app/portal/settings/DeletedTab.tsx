@@ -11,9 +11,9 @@ import {
   hardDeleteMember,
 } from "../../../lib/auth/member-actions";
 import {
-  restoreDavesIdeaRecording,
-  hardDeleteDavesIdeaRecording,
-} from "../../../lib/daves-idea/actions";
+  restoreReelNotesRecording,
+  hardDeleteReelNotesRecording,
+} from "../../../lib/reelnotes/actions";
 
 type Kind = "areas" | "priorities" | "pm_templates" | "members" | "daves_idea_recordings";
 
@@ -22,7 +22,7 @@ const SUBTABS: { key: Kind; label: string }[] = [
   { key: "areas", label: "Areas" },
   { key: "priorities", label: "Priorities" },
   { key: "pm_templates", label: "PM Templates" },
-  { key: "daves_idea_recordings", label: "Dave's Idea" },
+  { key: "daves_idea_recordings", label: "ReelNotes" },
 ];
 
 interface DeletedArea {
@@ -54,7 +54,7 @@ interface DeletedMember {
   directory_category: "regular" | "extended" | "memorial";
   deleted_at: string;
 }
-interface DeletedDavesIdeaRecording {
+interface DeletedReelNotesRecording {
   id: string;
   title: string | null;
   status: string;
@@ -69,7 +69,7 @@ export function DeletedTab() {
   const [priorities, setPriorities] = useState<DeletedPriority[]>([]);
   const [templates, setTemplates] = useState<DeletedPmTemplate[]>([]);
   const [members, setMembers] = useState<DeletedMember[]>([]);
-  const [recordings, setRecordings] = useState<DeletedDavesIdeaRecording[]>([]);
+  const [recordings, setRecordings] = useState<DeletedReelNotesRecording[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +138,7 @@ export function DeletedTab() {
         }))
       );
       setMembers((m as DeletedMember[]) ?? []);
-      setRecordings((di as DeletedDavesIdeaRecording[]) ?? []);
+      setRecordings((di as DeletedReelNotesRecording[]) ?? []);
     }
     setLoading(false);
   }, []);
@@ -165,7 +165,7 @@ export function DeletedTab() {
       return;
     }
     if (table === "daves_idea_recordings") {
-      const result = await restoreDavesIdeaRecording(id);
+      const result = await restoreReelNotesRecording(id);
       if (result.error) setError(result.error);
       else await load();
       setActing(null);
@@ -198,7 +198,7 @@ export function DeletedTab() {
       return;
     }
     if (table === "daves_idea_recordings") {
-      const result = await hardDeleteDavesIdeaRecording(id);
+      const result = await hardDeleteReelNotesRecording(id);
       if (result.error) setError(result.error);
       else await load();
       setActing(null);

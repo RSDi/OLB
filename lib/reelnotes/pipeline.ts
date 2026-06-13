@@ -203,9 +203,9 @@ async function sendCompletionEmail(opts: {
     return;
   }
   const resend = new Resend(key);
-  const link = `${siteUrl()}/portal/daves-idea`;
+  const link = `${siteUrl()}/portal/reelnotes`;
   await resend.emails.send({
-    from: "Dave's Idea <onboarding@resend.dev>",
+    from: "ReelNotes <onboarding@resend.dev>",
     to: opts.toEmail,
     subject: `Recording ready: ${opts.title}`,
     text: [
@@ -389,7 +389,7 @@ export async function processTranscriptionCompleted(
             "",
             summary,
             "",
-            `Listen & route items: ${siteUrl()}/portal/daves-idea?r=${recordingId}`,
+            `Listen & route items: ${siteUrl()}/portal/reelnotes?r=${recordingId}`,
           ].join("\n");
           const { error: commentErr } = await admin
             .from("ticket_comments")

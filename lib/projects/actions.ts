@@ -64,7 +64,7 @@ export async function assignTaskToProject(
   return { success: true };
 }
 
-// Turn a Dave's Idea recording into a Project + one Task per action item,
+// Turn a ReelNotes recording into a Project + one Task per action item,
 // carrying each item's priority and (when the owner is staff) its assignee.
 // Owners who can't hold the assignee slot (assignment is staff-only) and all
 // supporters are written into the task description so "Matt takes it, Corey

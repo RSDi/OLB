@@ -1,20 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { DavesIdea } from "./DavesIdea";
+import { ReelNotes } from "./ReelNotes";
 import {
   loadAssignableMembers,
-  loadDavesIdeaRecordings,
-  loadDavesIdeaViewer,
-} from "../../../lib/daves-idea/data";
+  loadReelNotesRecordings,
+  loadReelNotesViewer,
+} from "../../../lib/reelnotes/data";
 
 export const metadata: Metadata = {
-  title: "Dave's Idea",
-  manifest: "/daves-idea-manifest.webmanifest",
+  title: "ReelNotes",
+  manifest: "/reelnotes-manifest.webmanifest",
   icons: {
-    icon: "/daves-idea-icon.svg",
-    apple: "/daves-idea-icon.svg",
+    icon: "/reelnotes-icon.svg",
+    apple: "/reelnotes-icon.svg",
   },
   appleWebApp: {
-    title: "Dave's Idea",
+    title: "ReelNotes",
     statusBarStyle: "black-translucent",
     capable: true,
   },
@@ -24,19 +24,19 @@ export const viewport: Viewport = {
   themeColor: "#6C8C59",
 };
 
-export default async function DavesIdeaPage({
+export default async function ReelNotesPage({
   searchParams,
 }: {
   searchParams: Promise<{ r?: string; t?: string }>;
 }) {
-  await loadDavesIdeaViewer();
+  await loadReelNotesViewer();
   const [{ r, t }, recordings, members] = await Promise.all([
     searchParams,
-    loadDavesIdeaRecordings(),
+    loadReelNotesRecordings(),
     loadAssignableMembers(),
   ]);
   return (
-    <DavesIdea
+    <ReelNotes
       initialRecordings={recordings}
       members={members}
       initialSelectedId={r ?? null}
