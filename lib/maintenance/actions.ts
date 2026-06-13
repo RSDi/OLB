@@ -433,10 +433,16 @@ function buildRequestDescription(trackKey: string, d: Record<string, unknown>): 
   };
 
   switch (trackKey) {
-    case "gym":
-      lines.push(`Gym reservation — ${s(d.subTypeLabel) || "general use"}.`);
-      where(); when(); people(); access();
+    case "gym": {
+      lines.push(`Gym — ${s(d.subTypeLabel) || "open gym"}.`);
+      when();
+      const r: string[] = [];
+      if (d.subType === "volleyball") r.push(d.netKnown ? "knows net setup" : "may need help with the volleyball net");
+      if (d.subType === "basketball") r.push(d.scoreboardKnown ? "knows the scoreboard" : "may need help with the scoreboard");
+      r.push(d.shutdownKnown ? "can close up the building" : "may need help closing up");
+      lines.push(`Readiness: ${r.join("; ")}.`);
       break;
+    }
     case "building-use":
       lines.push(`Building use — ${s(d.subTypeLabel) || s(d.subType)}.`);
       who(); where(); when(); people(); needs(); access();

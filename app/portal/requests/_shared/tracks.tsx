@@ -341,23 +341,23 @@ function reviewStep(
   };
 }
 
-// ─── Gym-specific steps (lean: identity + space are already known) ───────
-const GYM_USES = [
-  { key: "basketball", label: "Basketball" },
+// ─── Gym template (lean: identity + space are already known) ─────────────
+// A focused "just reserving the gym" flow for the three things it's used for.
+// Parties, classes, etc. live in their own building-use templates. The activity
+// drives which equipment readiness checks + setup playbooks we show.
+const GYM_ACTIVITIES = [
   { key: "volleyball", label: "Volleyball" },
-  { key: "open-gym", label: "Open gym / free play" },
-  { key: "practice", label: "Practice or class" },
-  { key: "party", label: "Party or celebration" },
-  { key: "other", label: "Something else" },
+  { key: "basketball", label: "Basketball" },
+  { key: "open-gym", label: "Open gym" },
 ];
-const gymUseStep: WizardStep = {
-  key: "gymUse",
-  title: "What are you using the gym for?",
-  hint: "A quick tap — it helps the committee plan.",
+const gymActivityStep: WizardStep = {
+  key: "gymActivity",
+  title: "Which activity?",
+  hint: "So we can point you to the right setup steps.",
   valid: (f) => !!f.subType,
   body: ({ form, set }) => (
     <Column>
-      {GYM_USES.map((g) => (
+      {GYM_ACTIVITIES.map((g) => (
         <OptionCard
           key={g.key}
           selected={form.subType === g.key}
@@ -368,6 +368,76 @@ const gymUseStep: WizardStep = {
           label={g.label}
         />
       ))}
+    </Column>
+  ),
+};
+
+// Setup / shutdown guides (Playbooks at /portal/docs/<id>). Hard-coded ids —
+// if a playbook is ever re-created, update the id here.
+const PLAYBOOKS = {
+  volleyball: "098d3f77-46ae-4b25-a1b3-3e79937cb270",
+  basketball: "ce04e87f-6ca5-465e-b178-cd47627903cb",
+  shutdown: "641b66de-9755-412b-9c1d-0a1397d23a56",
+  hvac: "07b0f975-8f87-415c-b647-d9779d17be39",
+};
+function PlaybookLink({ id, label }: { id: string; label: string }) {
+  return (
+    <a
+      href={`/portal/docs/${id}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--rsd-accent)", textDecoration: "none", paddingLeft: 2 }}
+    >
+      <Icons.BookOpen width={13} height={13} /> {label}
+    </a>
+  );
+}
+function ReadinessRow(props: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  playbook: string;
+  playbookLabel: string;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <CheckRow checked={props.checked} onChange={props.onChange} label={props.label} />
+      <PlaybookLink id={props.playbook} label={`How-to: ${props.playbookLabel}`} />
+    </div>
+  );
+}
+const gymReadinessStep: WizardStep = {
+  key: "gymReadiness",
+  title: "Setup & closing up",
+  hint: "A quick check so you're set — open a guide if you need it. It's fine to say no; we'll make sure someone shows you.",
+  body: ({ form, set }) => (
+    <Column>
+      {form.subType === "volleyball" && (
+        <ReadinessRow
+          checked={!!form.netKnown}
+          onChange={(v) => set("netKnown", v)}
+          label="I know how to set up and take down the net"
+          playbook={PLAYBOOKS.volleyball}
+          playbookLabel="Volleyball net setup"
+        />
+      )}
+      {form.subType === "basketball" && (
+        <ReadinessRow
+          checked={!!form.scoreboardKnown}
+          onChange={(v) => set("scoreboardKnown", v)}
+          label="I know how to set up and run the scoreboard"
+          playbook={PLAYBOOKS.basketball}
+          playbookLabel="Basketball scoreboard setup"
+        />
+      )}
+      <ReadinessRow
+        checked={!!form.shutdownKnown}
+        onChange={(v) => set("shutdownKnown", v)}
+        label="I've closed up the building before and know the shutdown steps"
+        playbook={PLAYBOOKS.shutdown}
+        playbookLabel="Building shutdown"
+      />
+      <PlaybookLink id={PLAYBOOKS.hvac} label="How-to: Gym heating & cooling (HVAC)" />
     </Column>
   ),
 };
@@ -472,16 +542,14 @@ export const TRACKS: Record<string, TrackConfig> = {
     initial: { requesterKind: "member", spaces: ["Gym"], needs: [] },
     successBody: "The building committee will review your gym request and follow up.",
     steps: [
-      gymUseStep,
+      gymActivityStep,
       whenStep,
-      peopleStep,
-      accessStep,
+      gymReadinessStep,
       reviewStep(
         (f) => [
-          ["Using it for", str(f.subTypeLabel)],
+          ["Activity", str(f.subTypeLabel)],
           ["Space", "Gym"],
           ["When", whenStr(f)],
-          ["People", peopleStr(f)],
         ],
         { notes: false },
       ),
