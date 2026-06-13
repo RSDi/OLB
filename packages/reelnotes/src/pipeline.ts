@@ -30,6 +30,9 @@ interface AssemblyAITranscript {
   status: "queued" | "processing" | "completed" | "error";
   text: string | null;
   utterances: AssemblyAIUtterance[] | null;
+  // Per-word timings (returned by default) — used to anchor an action item to
+  // the exact moment it was discussed, not just the (possibly long) utterance.
+  words: { text: string; start: number; end: number }[] | null;
   error: string | null;
 }
 
@@ -273,6 +276,9 @@ export async function processTranscriptionCompleted(
       start: u.start,
       end: u.end,
     }));
+    // Word-level segments for precise anchoring (a whole recording can come back
+    // as one utterance, which would collapse every item to the same moment).
+    const words = (t.words || []).map(w => ({ text: w.text, start: w.start }));
 
     await admin
       .from("reel_notes_recordings")
@@ -309,11 +315,14 @@ export async function processTranscriptionCompleted(
     // the directory and applies to older recordings too.
     if (actions.length > 0) {
       const rows = actions.map((a, idx) => {
-        // Resolve the LLM's verbatim anchor quote to a real utterance ms
-        // offset (B4). Wrapped so a matcher bug can never fail the recording.
+        // Resolve the LLM's verbatim anchor quote to a real ms offset (B4).
+        // Ground to the WORD where the quote starts so the jump lands on the
+        // moment the item was discussed; fall back to utterance-level (then
+        // null). Wrapped so a matcher bug can never fail the recording.
         let transcriptMs: number | null = null;
         try {
-          transcriptMs = resolveAnchorMs(a.anchor_quote, utterances);
+          transcriptMs =
+            resolveAnchorMs(a.anchor_quote, words) ?? resolveAnchorMs(a.anchor_quote, utterances);
         } catch (err) {
           console.error("anchor resolution failed (non-fatal)", err);
         }

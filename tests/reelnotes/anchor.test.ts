@@ -24,6 +24,22 @@ test("tier 1: second utterance matches to its own start", () => {
   assert.equal(resolveAnchorMs("bring the cigars to the men's retreat", utts), 21500);
 });
 
+test("word-level segments anchor distinct quotes to distinct moments", () => {
+  // A whole recording can come back as ONE utterance, collapsing every item to
+  // the same start. Feeding the resolver word-level timings keeps each anchor
+  // on the moment it was actually said.
+  const words = [
+    { text: "Max", start: 5000 }, { text: "will", start: 5300 }, { text: "clean", start: 5600 },
+    { text: "the", start: 5900 }, { text: "glass", start: 6200 },
+    { text: "Jeff", start: 12000 }, { text: "buys", start: 12400 }, { text: "a", start: 12700 },
+    { text: "window", start: 13000 },
+    { text: "Brett", start: 20000 }, { text: "installs", start: 20500 }, { text: "it", start: 21000 },
+  ];
+  assert.equal(resolveAnchorMs("clean the glass", words), 5600);
+  assert.equal(resolveAnchorMs("Jeff buys a window", words), 12000);
+  assert.equal(resolveAnchorMs("Brett installs", words), 20000);
+});
+
 test("tier 3: paraphrase-ish token overlap clears the bar", () => {
   assert.equal(resolveAnchorMs("dave bring cigars men's retreat", utts), 21500);
 });
