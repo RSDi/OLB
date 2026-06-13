@@ -53,7 +53,7 @@ export default function SettingsPage() {
       }
       const { data: meRow } = await supabase
         .from("members")
-        .select("role, status")
+        .select("role, status, can_edit_settings, can_delete_settings, can_undelete_settings")
         .eq("user_id", user.id)
         .maybeSingle();
       const memberLike = (meRow as MemberLike | null) ?? null;
@@ -88,6 +88,8 @@ export default function SettingsPage() {
   // Any committee member works the approval queue; role/edit/remove inside
   // the tab stay super-admin-only via canManage.
   const showMembers = isStaff(me);
+  // Deleted tab stays super-admin-only until the RLS follow-up lets committee
+  // members with the undelete grant see + restore soft-deleted rows.
   const showDeleted = isSuperAdmin(me);
 
   const tabs: { key: Tab; label: string; visible: boolean }[] = [
@@ -141,10 +143,10 @@ export default function SettingsPage() {
       {tab === "areas" && <AreasTab me={me} />}
       {tab === "priorities" && <PrioritiesTab me={me} />}
       {tab === "assets" && <AssetsTab me={me} />}
-      {tab === "types" && <TypesTab />}
+      {tab === "types" && <TypesTab me={me} />}
       {tab === "supplies" && <SuppliesTab me={me} />}
-      {tab === "assignments" && <AssignmentsTab />}
-      {tab === "volunteer_teams" && <VolunteerTeamsTab />}
+      {tab === "assignments" && <AssignmentsTab me={me} />}
+      {tab === "volunteer_teams" && <VolunteerTeamsTab me={me} />}
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}

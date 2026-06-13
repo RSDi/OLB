@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireStaff } from "../auth/guards";
+import { requireSettingsEdit } from "../auth/guards";
 import { createClient } from "../supabase/server";
 
 export type VolunteerTeamRole = "lead" | "member";
@@ -19,7 +19,7 @@ function revalidate() {
 }
 
 export async function createTeam(name: string, description?: string): Promise<ActionResult> {
-  const gate = await requireStaff();
+  const gate = await requireSettingsEdit();
   if ("error" in gate) return { error: gate.error };
   const trimmed = name.trim();
   if (!trimmed) return { error: "Name is required." };
@@ -39,7 +39,7 @@ export async function updateTeam(
   name: string,
   description?: string
 ): Promise<ActionResult> {
-  const gate = await requireStaff();
+  const gate = await requireSettingsEdit();
   if ("error" in gate) return { error: gate.error };
   const trimmed = name.trim();
   if (!trimmed) return { error: "Name is required." };
@@ -56,7 +56,7 @@ export async function updateTeam(
 }
 
 export async function deleteTeam(teamId: string): Promise<ActionResult> {
-  const gate = await requireStaff();
+  const gate = await requireSettingsEdit();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase.from("volunteer_teams").delete().eq("id", teamId);
@@ -71,7 +71,7 @@ export async function assignMemberToTeam(
   teamId: string,
   role: VolunteerTeamRole
 ): Promise<ActionResult> {
-  const gate = await requireStaff();
+  const gate = await requireSettingsEdit();
   if ("error" in gate) return { error: gate.error };
   if (role !== "lead" && role !== "member") return { error: "Invalid role." };
 
@@ -95,7 +95,7 @@ export async function removeMemberFromTeam(
   memberId: string,
   teamId: string
 ): Promise<ActionResult> {
-  const gate = await requireStaff();
+  const gate = await requireSettingsEdit();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase

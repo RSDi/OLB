@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useTransition } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
+import { canEditSettings, type MemberLike } from "../../../lib/auth/permissions";
 import {
   createTeam,
   updateTeam,
@@ -30,7 +31,8 @@ interface Membership {
   role: VolunteerTeamRole;
 }
 
-export function VolunteerTeamsTab() {
+export function VolunteerTeamsTab({ me }: { me: MemberLike }) {
+  const canEdit = canEditSettings(me);
   const [teams, setTeams] = useState<Team[]>([]);
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [memberships, setMemberships] = useState<Membership[]>([]);
@@ -193,7 +195,7 @@ export function VolunteerTeamsTab() {
           members as <strong>leads</strong> or <strong>members</strong>. Teams are filterable in the
           member directory.
         </div>
-        {!addingTeam && (
+        {canEdit && !addingTeam && (
           <Pill variant="accent" size="sm" onClick={() => setAddingTeam(true)}>
             <Icons.Plus width={14} height={14} /> Add team
           </Pill>
@@ -274,7 +276,7 @@ export function VolunteerTeamsTab() {
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                    {!adding && (
+                    {canEdit && !adding && (
                       <Pill
                         variant="ghost"
                         size="sm"
@@ -285,9 +287,12 @@ export function VolunteerTeamsTab() {
                         {available.length === 0 ? "All members assigned" : "Assign member"}
                       </Pill>
                     )}
+                    {canEdit && (
                     <IconBtn onClick={() => setEditingTeamId(team.id)} disabled={teamActing} title="Edit team">
                       <Icons.Pencil width={14} height={14} />
                     </IconBtn>
+                    )}
+                    {canEdit && (
                     <IconBtn
                       onClick={() => handleDeleteTeam(team.id, team.name)}
                       disabled={teamActing}
@@ -296,6 +301,7 @@ export function VolunteerTeamsTab() {
                     >
                       <Icons.Trash width={14} height={14} />
                     </IconBtn>
+                    )}
                   </div>
                 </div>
 

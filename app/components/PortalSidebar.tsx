@@ -25,7 +25,8 @@ const NAV: NavItem[] = [
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
   { href: "/portal/reelnotes", label: "ReelNotes", icon: <Icons.Mic width={16} height={16}/>, superAdminOnly: true },
-  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, superAdminOnly: true },
+  // Building Committee can view Settings; editing is gated per grant inside.
+  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
 ];
 
 // Trimmed viewer shape — sidebar only needs role/status to decide which nav

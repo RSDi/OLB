@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useTransition } from "react";
 import { Icons } from "../../components/icons";
 import { Pill } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
+import { canEditSettings, type MemberLike } from "../../../lib/auth/permissions";
 import {
   renameAssetType,
   clearAssetType,
@@ -13,7 +14,8 @@ interface TypeRow {
   count: number;
 }
 
-export function TypesTab() {
+export function TypesTab({ me }: { me: MemberLike }) {
+  const canEdit = canEditSettings(me);
   const [rows, setRows] = useState<TypeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingType, setEditingType] = useState<string | null>(null);
@@ -238,6 +240,7 @@ export function TypesTab() {
                       </span>
                     </div>
                   </div>
+                  {canEdit && (
                   <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                     <button
                       type="button"
@@ -280,6 +283,7 @@ export function TypesTab() {
                       <Icons.Trash width={12} height={12} /> Clear
                     </button>
                   </div>
+                  )}
                 </>
               )}
             </div>

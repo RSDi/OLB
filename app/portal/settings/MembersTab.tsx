@@ -24,9 +24,14 @@ interface Member {
   birthday: string | null;
   status: MemberStatus;
   role: MemberRole;
+  can_edit_settings: boolean;
+  can_delete_settings: boolean;
+  can_undelete_settings: boolean;
   requested_at: string;
   reviewed_at: string | null;
 }
+
+type GrantKey = "can_edit_settings" | "can_delete_settings" | "can_undelete_settings";
 
 interface Relationship {
   id: string;
@@ -74,7 +79,7 @@ export function MembersTab({
       supabase
         .from("members")
         .select(
-          "id, user_id, email, full_name, avatar_url, phone, birthday, status, role, requested_at, reviewed_at"
+          "id, user_id, email, full_name, avatar_url, phone, birthday, status, role, can_edit_settings, can_delete_settings, can_undelete_settings, requested_at, reviewed_at"
         )
         .is("deleted_at", null)
         .order("requested_at", { ascending: false }),
@@ -117,6 +122,18 @@ export function MembersTab({
         reviewed_at: new Date().toISOString(),
       })
       .eq("id", id);
+    if (updateError) setError(updateError.message);
+    else await load();
+    setActing(null);
+  }
+
+  // Toggle a settings grant on a committee member. RLS allows only super-admins
+  // to update member rows (same path as setRole), so this is super-admin only.
+  async function setGrant(id: string, key: GrantKey, value: boolean) {
+    setActing(id);
+    setError(null);
+    const supabase = createClient();
+    const { error: updateError } = await supabase.from("members").update({ [key]: value }).eq("id", id);
     if (updateError) setError(updateError.message);
     else await load();
     setActing(null);
@@ -428,6 +445,7 @@ export function MembersTab({
                 onRemove={() => removeMember(member.id)}
                 onPromote={() => setRole(member.id, "admin")}
                 onDemote={() => setRole(member.id, "member")}
+                onSetGrant={(key, value) => setGrant(member.id, key, value)}
                 onEdit={() => setEditingId(member.id)}
               />
             )
@@ -450,6 +468,7 @@ function MemberRow({
   onRemove,
   onPromote,
   onDemote,
+  onSetGrant,
   onEdit,
 }: {
   member: Member;
@@ -463,6 +482,7 @@ function MemberRow({
   onRemove: () => void;
   onPromote: () => void;
   onDemote: () => void;
+  onSetGrant: (key: GrantKey, value: boolean) => void;
   onEdit: () => void;
 }) {
   return (
@@ -509,7 +529,7 @@ function MemberRow({
           {member.role === "super_admin" && (
             <span className="rsd-chip rsd-chip-accent">Super-admin</span>
           )}
-          {member.role === "admin" && <span className="rsd-chip rsd-chip-mute">Admin</span>}
+          {member.role === "admin" && <span className="rsd-chip rsd-chip-mute">Building Committee</span>}
           {isSelf && <span className="rsd-chip rsd-chip-mute">You</span>}
           {!member.email && <span className="rsd-chip rsd-chip-mute">Directory only</span>}
           {member.email && !member.user_id && (
@@ -595,6 +615,17 @@ function MemberRow({
             )}
           </>
         )}
+        {/* Settings grants — what this committee member may change in Settings. */}
+        {tab === "approved" && canManage && member.role === "admin" && (
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "flex-end", marginTop: 2 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+              Settings:
+            </span>
+            <GrantChip label="Edit" on={member.can_edit_settings} disabled={acting} onClick={() => onSetGrant("can_edit_settings", !member.can_edit_settings)} />
+            <GrantChip label="Delete" on={member.can_delete_settings} disabled={acting} onClick={() => onSetGrant("can_delete_settings", !member.can_delete_settings)} />
+            <GrantChip label="Undelete" on={member.can_undelete_settings} disabled={acting} onClick={() => onSetGrant("can_undelete_settings", !member.can_undelete_settings)} />
+          </div>
+        )}
         {tab === "denied" && (
           <>
             <ActionBtn onClick={onApprove} disabled={acting} color="var(--rsd-accent)" bgColor="var(--rsd-accent-bg)">
@@ -646,6 +677,40 @@ function ActionBtn({
       }}
     >
       {children}
+    </button>
+  );
+}
+
+// A grant toggle for a committee member — green when held, outline when not.
+function GrantChip({
+  label,
+  on,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  on: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={on ? `Can ${label.toLowerCase()} — tap to revoke` : `Tap to allow ${label.toLowerCase()}`}
+      style={{
+        padding: "5px 11px",
+        borderRadius: 100,
+        fontSize: 11.5,
+        fontWeight: 700,
+        cursor: disabled ? "not-allowed" : "pointer",
+        background: on ? "var(--rsd-accent)" : "var(--gw-bg)",
+        color: on ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+        border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {on ? "✓ " : ""}{label}
     </button>
   );
 }
@@ -741,7 +806,7 @@ function AddMemberForm({
           disabled={pending}
         >
           <option value="member">Member</option>
-          <option value="admin">Admin</option>
+          <option value="admin">Building Committee</option>
           <option value="super_admin">Super-admin</option>
         </Select>
         <Select

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useTransition } from "react";
 import { Icons } from "../../components/icons";
 import { Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
+import { canEditSettings, type MemberLike } from "../../../lib/auth/permissions";
 import {
   assignMemberToArea,
   removeMemberFromArea,
@@ -28,7 +29,8 @@ interface Assignment {
   role: AreaMemberRole;
 }
 
-export function AssignmentsTab() {
+export function AssignmentsTab({ me }: { me: MemberLike }) {
+  const canEdit = canEditSettings(me);
   const [areas, setAreas] = useState<Area[]>([]);
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -198,7 +200,7 @@ export function AssignmentsTab() {
                   <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--gw-fg)" }}>
                     {area.name}
                   </h3>
-                  {!adding && (
+                  {canEdit && !adding && (
                     <Pill
                       variant="ghost"
                       size="sm"
@@ -230,9 +232,9 @@ export function AssignmentsTab() {
                         label={label}
                         accent
                         disabled={isActing}
-                        onChangeRole={() => handleChangeRole(area.id, o.member_id, "helper")}
+                        onChangeRole={canEdit ? () => handleChangeRole(area.id, o.member_id, "helper") : undefined}
                         changeRoleLabel="→ Helper"
-                        onRemove={() => handleRemove(area.id, o.member_id, label, area.name)}
+                        onRemove={canEdit ? () => handleRemove(area.id, o.member_id, label, area.name) : undefined}
                       />
                     );
                   })}
@@ -253,9 +255,9 @@ export function AssignmentsTab() {
                         label={label}
                         accent={false}
                         disabled={isActing}
-                        onChangeRole={() => handleChangeRole(area.id, h.member_id, "owner")}
+                        onChangeRole={canEdit ? () => handleChangeRole(area.id, h.member_id, "owner") : undefined}
                         changeRoleLabel="→ Owner"
-                        onRemove={() => handleRemove(area.id, h.member_id, label, area.name)}
+                        onRemove={canEdit ? () => handleRemove(area.id, h.member_id, label, area.name) : undefined}
                       />
                     );
                   })}
@@ -360,9 +362,9 @@ function Chip({
   label: string;
   accent: boolean;
   disabled: boolean;
-  onChangeRole: () => void;
+  onChangeRole?: () => void;
   changeRoleLabel: string;
-  onRemove: () => void;
+  onRemove?: () => void;
 }) {
   const bg = accent ? "var(--rsd-accent-bg)" : "var(--gw-bg-elev)";
   const color = accent ? "var(--rsd-accent)" : "var(--gw-fg)";
@@ -384,6 +386,7 @@ function Chip({
       }}
     >
       {label}
+      {onChangeRole && (
       <button
         type="button"
         onClick={onChangeRole}
@@ -403,6 +406,8 @@ function Chip({
       >
         {changeRoleLabel}
       </button>
+      )}
+      {onRemove && (
       <button
         type="button"
         onClick={onRemove}
@@ -425,6 +430,7 @@ function Chip({
       >
         <Icons.X width={10} height={10} />
       </button>
+      )}
     </span>
   );
 }

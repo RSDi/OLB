@@ -65,10 +65,11 @@ export const canManageMembers = isSuperAdmin;
 export const canPromoteToAdmin = isSuperAdmin;
 
 // --- Soft delete -------------------------------------------------------------
-// Committee members can SEE the Deleted tab; restoring needs the undelete
-// grant; soft-delete needs the delete grant; permanent purge stays super-only.
+// Soft-delete needs the delete grant; restore needs the undelete grant;
+// permanent purge stays super-only. The Deleted tab itself is super-admin-only
+// until an RLS follow-up lets committee members see soft-deleted rows.
 
-export const canSeeDeleted = isStaff;
+export const canSeeDeleted = isSuperAdmin;
 export const canSoftDelete = canDeleteSettings;
 export const canHardDelete = isSuperAdmin;
 export const canRestore = canUndeleteSettings;
