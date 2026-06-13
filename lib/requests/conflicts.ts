@@ -25,12 +25,13 @@ export interface Conflict {
   title: string;
   source: "event" | "request";
   spaces: string[];
+  date: string; // YYYY-MM-DD the clash falls on (matters for multi-date requests)
   when: string; // human-readable, e.g. "6:00–8:00 PM" or "all day"
 }
 
 export interface ConflictTarget {
   spaces: string[];
-  date: string | null;
+  dates: string[]; // one or many YYYY-MM-DD (single-date requests pass [date])
   start: string | null;
   end: string | null;
 }
@@ -76,17 +77,33 @@ function whenLabel(c: ConflictCandidate): string {
   return "all day";
 }
 
-// Returns the candidates that conflict with the target, earliest first.
+// Returns the candidates that conflict with the target, earliest first. A
+// multi-date (recurring) target clashes with any candidate that lands on one of
+// its dates; the same candidate booking can clash on several dates, so each
+// (candidate, date) pair is reported once, sorted by date then start time.
 export function findConflicts(target: ConflictTarget, candidates: ConflictCandidate[]): Conflict[] {
-  if (!target.date || target.spaces.length === 0) return [];
+  if (target.dates.length === 0 || target.spaces.length === 0) return [];
   const tStart = toMinutes(target.start);
   const tEnd = toMinutes(target.end);
-  return candidates
-    .filter(c => c.date === target.date)
-    .filter(c => c.spaces.some(s => target.spaces.includes(s)))
-    .filter(c => windowsOverlap(tStart, tEnd, toMinutes(c.start), toMinutes(c.end)))
-    .sort((a, b) => (toMinutes(a.start) ?? -1) - (toMinutes(b.start) ?? -1))
-    .map(c => ({ id: c.id, title: c.title, source: c.source, spaces: c.spaces, when: whenLabel(c) }));
+  const dateSet = new Set(target.dates);
+  const matches = candidates.filter(
+    c =>
+      dateSet.has(c.date) &&
+      c.spaces.some(s => target.spaces.includes(s)) &&
+      windowsOverlap(tStart, tEnd, toMinutes(c.start), toMinutes(c.end)),
+  );
+  matches.sort((a, b) =>
+    a.date !== b.date ? (a.date < b.date ? -1 : 1) : (toMinutes(a.start) ?? -1) - (toMinutes(b.start) ?? -1),
+  );
+  const seen = new Set<string>();
+  const out: Conflict[] = [];
+  for (const c of matches) {
+    const key = `${c.id}|${c.date}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ id: c.id, title: c.title, source: c.source, spaces: c.spaces, date: c.date, when: whenLabel(c) });
+  }
+  return out;
 }
 
 // Derive the space list a calendar event occupies from its free-text location

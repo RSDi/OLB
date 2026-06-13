@@ -16,24 +16,26 @@ import {
   type Conflict,
   type ConflictCandidate,
 } from "./conflicts";
+import { resolveRequestDates } from "./recurrence";
 
 interface TicketLike {
   id: string;
   details: Record<string, unknown> | null;
 }
 
-// Narrower than ConflictTarget: date is guaranteed non-null (the loader always
-// needs a concrete date to query), and it's still assignable to ConflictTarget.
-type LoadedTarget = { spaces: string[]; date: string; start: string | null; end: string | null };
+// Narrower than ConflictTarget: dates is guaranteed non-empty (the loader always
+// needs at least one concrete date to query), and it's still assignable to
+// ConflictTarget. For a recurring request `dates` is the full resolved series.
+type LoadedTarget = { spaces: string[]; dates: string[]; start: string | null; end: string | null };
 
 function targetFromDetails(d: Record<string, unknown> | null): LoadedTarget | null {
   if (!d) return null;
-  const date = typeof d.date === "string" ? d.date : null;
   const spaces = Array.isArray(d.spaces) ? (d.spaces as string[]) : [];
-  if (!date || spaces.length === 0) return null;
+  const dates = resolveRequestDates(d); // sorted + unique; [date] when non-recurring
+  if (dates.length === 0 || spaces.length === 0) return null;
   return {
     spaces,
-    date,
+    dates,
     start: typeof d.startTime === "string" ? d.startTime : null,
     end: typeof d.endTime === "string" ? d.endTime : null,
   };
@@ -64,20 +66,17 @@ function eventCandidate(e: EventRow, fallbackDate: string): ConflictCandidate {
     end: timeFromTimestamp(e.end_at),
   };
 }
-function reqCandidate(r: ReqRow): ConflictCandidate | null {
+// A request can be recurring, so it becomes one candidate per resolved date
+// (same id/space/time, different date) — letting it clash on any shared day.
+function reqCandidates(r: ReqRow): ConflictCandidate[] {
   const d = r.details ?? {};
-  const date = typeof d.date === "string" ? d.date : null;
   const spaces = Array.isArray(d.spaces) ? (d.spaces as string[]) : [];
-  if (!date || spaces.length === 0) return null;
-  return {
-    id: r.id,
-    title: (r.description ?? "").split("\n")[0].slice(0, 80) || "Another request",
-    source: "request",
-    spaces,
-    date,
-    start: typeof d.startTime === "string" ? d.startTime : null,
-    end: typeof d.endTime === "string" ? d.endTime : null,
-  };
+  const dates = resolveRequestDates(d);
+  if (dates.length === 0 || spaces.length === 0) return [];
+  const title = (r.description ?? "").split("\n")[0].slice(0, 80) || "Another request";
+  const start = typeof d.startTime === "string" ? d.startTime : null;
+  const end = typeof d.endTime === "string" ? d.endTime : null;
+  return dates.map(date => ({ id: r.id, title, source: "request" as const, spaces, date, start, end }));
 }
 
 // Full conflict list for one request (the detail page). Best-effort: any query
@@ -88,31 +87,34 @@ export async function loadConflictsForTicket(
 ): Promise<Conflict[]> {
   const target = targetFromDetails(ticket.details);
   if (!target) return [];
+  const minDate = target.dates[0];
+  const maxDate = target.dates[target.dates.length - 1];
   try {
+    // Events are filtered to the date span; pending requests are loaded wholesale
+    // (a recurring one can clash on a date its details.date column doesn't name),
+    // then expanded + matched in memory. The pending pool is committee-sized.
     const [{ data: events }, { data: reqs }] = await Promise.all([
       supabase
         .from("events")
         .select("id, title, location, start_at, end_at, source_ticket_id")
         .is("deleted_at", null)
-        .gte("start_at", `${target.date}T00:00:00`)
-        .lte("start_at", `${target.date}T23:59:59`),
+        .gte("start_at", `${minDate}T00:00:00`)
+        .lte("start_at", `${maxDate}T23:59:59`),
       supabase
         .from("maintenance_requests")
         .select("id, description, details")
         .is("deleted_at", null)
         .not("details", "is", null)
         .eq("review_status", "pending_review")
-        .eq("details->>date", target.date)
         .neq("id", ticket.id),
     ]);
     const candidates: ConflictCandidate[] = [];
     for (const e of (events as EventRow[] | null) ?? []) {
       if (e.source_ticket_id === ticket.id) continue; // not its own booking
-      candidates.push(eventCandidate(e, target.date));
+      candidates.push(eventCandidate(e, minDate));
     }
     for (const r of (reqs as ReqRow[] | null) ?? []) {
-      const c = reqCandidate(r);
-      if (c) candidates.push(c);
+      candidates.push(...reqCandidates(r));
     }
     return findConflicts(target, candidates);
   } catch (err) {
@@ -132,7 +134,7 @@ export async function loadConflictCounts(
     .filter((x): x is { id: string; target: LoadedTarget } => x.target !== null);
   if (targets.length === 0) return {};
 
-  const dates = targets.map(t => t.target.date).sort();
+  const dates = targets.flatMap(t => t.target.dates).sort();
   const minDate = dates[0];
   const maxDate = dates[dates.length - 1];
 
@@ -149,15 +151,14 @@ export async function loadConflictCounts(
     console.error("[conflicts] queue events load failed (non-fatal):", err);
   }
 
-  // All the queue rows themselves are pending request-candidates.
-  const rowCandidates = rows
-    .map(r => reqCandidate({ id: r.id, description: null, details: r.details }))
-    .filter((c): c is ConflictCandidate => c !== null);
+  // All the queue rows themselves are pending request-candidates (each expanded
+  // across its own recurrence series).
+  const rowCandidates = rows.flatMap(r => reqCandidates({ id: r.id, description: null, details: r.details }));
 
   const counts: Record<string, number> = {};
   for (const { id, target } of targets) {
     const candidates: ConflictCandidate[] = [
-      ...events.filter(e => e.source_ticket_id !== id).map(e => eventCandidate(e, target.date)),
+      ...events.filter(e => e.source_ticket_id !== id).map(e => eventCandidate(e, minDate)),
       ...rowCandidates.filter(c => c.id !== id),
     ];
     const n = findConflicts(target, candidates).length;

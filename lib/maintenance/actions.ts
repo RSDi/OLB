@@ -7,6 +7,7 @@ import { createAdminClient } from "../supabase/admin";
 import { sendNewTicketNotification } from "../notifications/new-ticket";
 import { sendNewTicketSlack } from "../notifications/slack";
 import { sendRequestDecisionNotification } from "../notifications/request-decision";
+import { resolveRequestDates, summarizeDates } from "../requests/recurrence";
 
 export interface CreateTicketResult {
   success?: boolean;
@@ -313,6 +314,12 @@ export async function createRequest(
     const st = s(d.startTime);
     const et = s(d.endTime);
     if (st && et && et <= st) return { error: "End time must be after the start time." };
+    // Canonical date list (anchor + recurrence − exclusions). Stored for
+    // traceability; the conflict checker and calendar-booker resolve the same
+    // way, so they agree. resolveRequestDates returns [date] when not recurring.
+    const resolvedDates = resolveRequestDates(d);
+    if (resolvedDates.length === 0) return { error: "Please keep at least one date for your request." };
+    d.dates = resolvedDates;
   }
 
   const supabase = await createClient();
@@ -401,8 +408,15 @@ function buildRequestDescription(trackKey: string, d: Record<string, unknown>): 
   };
   const when = () => {
     const time = [d.startTime, d.endTime].filter(Boolean).join("–");
+    if (d.recurring) {
+      const dates = resolveRequestDates(d);
+      const datePart = dates.length > 1 ? summarizeDates(dates) : s(d.date);
+      const w = [datePart, time].filter(Boolean).join(" ");
+      if (w) lines.push(`When: ${w}${dates.length > 1 ? " (recurring)" : ""}.`);
+      return;
+    }
     const w = [d.date, time].filter(Boolean).join(" ");
-    if (w) lines.push(`When: ${w}${d.recurring ? ` (recurring${s(d.recurrenceNote) ? `: ${s(d.recurrenceNote)}` : ""})` : ""}.`);
+    if (w) lines.push(`When: ${w}.`);
   };
   const people = () => {
     if (s(d.headcount)) lines.push(`About ${s(d.headcount)} people${s(d.children) ? `, incl. ${s(d.children)} children` : ""}.`);
@@ -682,16 +696,21 @@ async function createEventFromApprovedRequest(
 ) {
   const d = row.details;
   if (!d) return;
-  const date = typeof d.date === "string" ? d.date : null;
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    console.warn("[events] approved request has no single date — skipping auto-event", row.id);
+  // One event per resolved occurrence: a recurring request books its whole
+  // series. resolveRequestDates returns [date] for a single-date request.
+  const dates = resolveRequestDates(d);
+  if (dates.length === 0) {
+    console.warn("[events] approved request has no resolvable date — skipping auto-event", row.id);
     return;
   }
   const startTime = typeof d.startTime === "string" && d.startTime ? d.startTime : "09:00";
   let endTime = typeof d.endTime === "string" && d.endTime ? d.endTime : "";
   if (!endTime) {
-    const endHour = (Number(startTime.slice(0, 2)) + 2) % 24;
-    endTime = `${String(endHour).padStart(2, "0")}${startTime.slice(2)}`;
+    // Default to two hours after start, but never wrap past midnight: an
+    // end-before-start row violates the events end>=start CHECK and would
+    // reject the whole batch insert. Clamp to 23:59 the same day.
+    const endHour = Number(startTime.slice(0, 2)) + 2;
+    endTime = endHour >= 24 ? "23:59" : `${String(endHour).padStart(2, "0")}${startTime.slice(2)}`;
   }
   const spaces = Array.isArray(d.spaces) ? (d.spaces as string[]).join(", ") : null;
   // Prefer the explicit label (eventTypeLabel for building-use/event/class,
@@ -701,14 +720,15 @@ async function createEventFromApprovedRequest(
     (typeof d.subTypeLabel === "string" && d.subTypeLabel) ||
     row.description.split("\n")[0].slice(0, 120);
 
-  const { error } = await supabase.from("events").insert({
+  const eventRows = dates.map((date) => ({
     title,
     description: "Booked via an approved request.",
     start_at: `${date}T${startTime}:00`,
     end_at: `${date}T${endTime}:00`,
     location: spaces,
     source_ticket_id: row.id,
-  });
+  }));
+  const { error } = await supabase.from("events").insert(eventRows);
   if (error) {
     // Pre-0050 schema (no source_ticket_id) or RLS hiccup — log, don't block
     // the decision.

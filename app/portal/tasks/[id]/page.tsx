@@ -20,6 +20,7 @@ import { CommentThread, type ThreadComment } from "./CommentThread";
 import { ReelNotesCard, type LinkedRecording } from "./ReelNotesCard";
 import { majorityThreshold } from "../../../../lib/votes/threshold";
 import { loadConflictsForTicket } from "../../../../lib/requests/conflict-loader";
+import { formatDateLabel } from "../../../../lib/requests/recurrence";
 import { LinkedContacts } from "../../contacts/_shared/LinkedContacts";
 import {
   loadLinkedContactsForEntity,
@@ -450,13 +451,6 @@ export default async function TicketDetailPage({
             />
           </div>
 
-          {staff && ticket.review_status === "pending_review" && ticket.details?.recurring && (
-            <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.5, padding: "2px 2px" }}>
-              ↻ This request repeats — only its first date was checked for conflicts. Double-check the
-              other dates against the calendar.
-            </div>
-          )}
-
           {conflicts.length > 0 && (
             <div
               className="rsd-card"
@@ -475,8 +469,8 @@ export default async function TicketDetailPage({
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {conflicts.map((c) => (
-                  <div key={`${c.source}-${c.id}`} style={{ fontSize: 13, color: "var(--gw-fg)" }}>
-                    <span style={{ fontWeight: 700 }}>{c.spaces.join(", ")}</span> · {c.when} —{" "}
+                  <div key={`${c.source}-${c.id}-${c.date}`} style={{ fontSize: 13, color: "var(--gw-fg)" }}>
+                    <span style={{ fontWeight: 700 }}>{formatDateLabel(c.date)}</span> · {c.spaces.join(", ")} · {c.when} —{" "}
                     {c.source === "event" ? (
                       <>
                         <span>{c.title}</span>{" "}

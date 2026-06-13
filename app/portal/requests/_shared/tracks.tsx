@@ -1,5 +1,6 @@
 import { Icons } from "../../../components/icons";
 import { Input, Textarea } from "../../../components/ui";
+import { resolveRequestDates, summarizeDates, formatDateLabel } from "../../../../lib/requests/recurrence";
 import {
   type RequestForm,
   type TrackConfig,
@@ -14,16 +15,27 @@ import {
 
 const SPACES = ["Gym", "Kitchen", "Dining area", "Main Meeting Room", "Room 201", "Nursery", "Office(s)", "Outdoors / grounds"];
 const NEEDS = ["Tables & chairs", "Kitchen", "Microphone / sound", "Projector / screen", "Childcare space", "Lots of outlets"];
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // ─── value helpers ───────────────────────────────────────────────
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const arr = (v: unknown) => (Array.isArray(v) ? (v as string[]).join(", ") : "");
+const numArr = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6) : []);
+const strArr = (v: unknown) => (Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === "string") : []);
+const weekdayOf = (s: string): number | null => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getDay() : null;
+};
 const reqBy = (f: RequestForm) =>
   f.requesterKind === "outside" ? `Outside group${str(f.outsideOrg) ? ` — ${str(f.outsideOrg)}` : ""}` : "MCC";
 const whenStr = (f: RequestForm) => {
   const time = [f.startTime, f.endTime].filter(Boolean).join("–");
-  const base = [f.date, time].filter(Boolean).join(" ");
-  return `${base}${f.recurring ? ` (recurring${str(f.recurrenceNote) ? `: ${str(f.recurrenceNote)}` : ""})` : ""}`;
+  if (f.recurring) {
+    const dates = resolveRequestDates(f);
+    const datePart = dates.length > 1 ? summarizeDates(dates) : str(f.date);
+    return [datePart, time].filter(Boolean).join(" ") + (dates.length > 1 ? " (recurring)" : "");
+  }
+  return [f.date, time].filter(Boolean).join(" ");
 };
 const peopleStr = (f: RequestForm) =>
   str(f.headcount) ? `${str(f.headcount)}${str(f.children) ? `, incl. ${str(f.children)} children` : ""}` : "";
@@ -123,6 +135,87 @@ const timesReversed = (f: RequestForm) => {
   const et = str(f.endTime);
   return !!st && !!et && et <= st;
 };
+
+// Structured recurrence capture: weekday toggles + an end date generate a
+// concrete date list (resolveRequestDates), which the member can fine-tune by
+// removing generated dates or adding one-offs. The resolved list is what the
+// conflict checker and the approval calendar-booker act on. A plain function
+// (no hooks) so it composes into the step body without a component boundary.
+function recurringPlanner(form: RequestForm, set: (key: string, value: unknown) => void) {
+  const weekdays = numArr(form.recurWeekdays);
+  const dates = resolveRequestDates(form);
+  const excludes = strArr(form.recurExcludes);
+  const addDate = str(form.recurAddDate);
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        padding: "12px 14px",
+        borderRadius: 12,
+        border: "1px solid var(--gw-border)",
+        background: "var(--gw-bg)",
+      }}
+    >
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Which days does it repeat?</div>
+      <Wrap>
+        {WEEKDAYS.map((d, i) => (
+          <Chip
+            key={d}
+            selected={weekdays.includes(i)}
+            onClick={() => set("recurWeekdays", weekdays.includes(i) ? weekdays.filter((x) => x !== i) : [...weekdays, i].sort())}
+          >
+            {d}
+          </Chip>
+        ))}
+      </Wrap>
+      <Input label="Repeat until" type="date" value={str(form.recurUntil)} onChange={(e) => set("recurUntil", e.target.value)} />
+      {dates.length > 1 ? (
+        <>
+          <div style={{ fontSize: 12.5, fontWeight: 700 }}>
+            {dates.length} dates <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>· tap one to remove it</span>
+          </div>
+          <Wrap>
+            {dates.map((dt) => {
+              // The anchor date always stays (it's the request's primary date);
+              // removing it could collapse the series to nothing.
+              const isAnchor = dt === str(form.date);
+              return (
+                <Chip key={dt} selected onClick={isAnchor ? () => {} : () => set("recurExcludes", [...excludes, dt])}>
+                  {formatDateLabel(dt)}{isAnchor ? "" : " ✕"}
+                </Chip>
+              );
+            })}
+          </Wrap>
+        </>
+      ) : (
+        <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+          Pick the weekdays and an end date and we&apos;ll list every date — or add them one at a time below.
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 150 }}>
+          <Input label="Add a specific date" type="date" value={addDate} onChange={(e) => set("recurAddDate", e.target.value)} />
+        </div>
+        <div style={{ paddingBottom: 2 }}>
+          <Chip
+            selected={false}
+            onClick={() => {
+              if (!addDate) return;
+              set("recurExtras", [...strArr(form.recurExtras).filter((x) => x !== addDate), addDate]);
+              set("recurExcludes", strArr(form.recurExcludes).filter((x) => x !== addDate));
+              set("recurAddDate", "");
+            }}
+          >
+            + Add
+          </Chip>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const whenStep: WizardStep = {
   key: "when",
   title: "When do you need it?",
@@ -144,15 +237,20 @@ const whenStep: WizardStep = {
           End time needs to be after the start time.
         </div>
       )}
-      <CheckRow checked={!!form.recurring} onChange={(v) => set("recurring", v)} label="This happens on more than one day" />
-      {!!form.recurring && (
-        <Input
-          label="Which days / how often?"
-          value={str(form.recurrenceNote)}
-          onChange={(e) => set("recurrenceNote", e.target.value)}
-          placeholder="e.g. every Tuesday in March, or Jan 27 / Feb 12"
-        />
-      )}
+      <CheckRow
+        checked={!!form.recurring}
+        onChange={(v) => {
+          set("recurring", v);
+          // Seed the weekday toggle with the anchor date's own weekday so the
+          // common "every Tuesday" case is one tap away.
+          if (v && numArr(form.recurWeekdays).length === 0) {
+            const wd = weekdayOf(str(form.date));
+            if (wd !== null) set("recurWeekdays", [wd]);
+          }
+        }}
+        label="This happens on more than one day"
+      />
+      {!!form.recurring && recurringPlanner(form, set)}
     </>
   ),
 };
