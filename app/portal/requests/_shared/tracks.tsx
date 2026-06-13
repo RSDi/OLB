@@ -1,6 +1,7 @@
 import { Icons } from "../../../components/icons";
 import { Input, Textarea } from "../../../components/ui";
 import { resolveRequestDates, summarizeDates, formatDateLabel } from "../../../../lib/requests/recurrence";
+import { BookingCalendar } from "./BookingCalendar";
 import {
   type RequestForm,
   type TrackConfig,
@@ -226,20 +227,11 @@ const whenStep: WizardStep = {
   valid: (f) => !!str(f.date) && !timesReversed(f),
   body: ({ form, set }) => (
     <>
-      <Input label="Date *" type="date" value={str(form.date)} onChange={(e) => set("date", e.target.value)} />
-      <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <Input label="Start time" type="time" value={str(form.startTime)} onChange={(e) => set("startTime", e.target.value)} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <Input label="End time" type="time" value={str(form.endTime)} onChange={(e) => set("endTime", e.target.value)} />
-        </div>
-      </div>
-      {timesReversed(form) && (
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--gw-error)" }}>
-          End time needs to be after the start time.
-        </div>
-      )}
+      <BookingCalendar
+        form={form}
+        set={set}
+        spaces={Array.isArray(form.spaces) ? (form.spaces as string[]) : []}
+      />
       <CheckRow
         checked={!!form.recurring}
         onChange={(v) => {
