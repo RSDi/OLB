@@ -15,7 +15,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "../../../../lib/supabase/admin";
-import { processTranscriptionCompleted } from "../../../../lib/reelnotes/pipeline";
+import { processTranscriptionCompleted } from "reelnotes/server";
+import { mccReelNotesAdapter } from "../../../../lib/reelnotes/adapter";
 
 export const runtime = "nodejs";
 // Pipeline runs transcript fetch + Claude call + Resend email inline. Bump
@@ -75,6 +76,6 @@ export async function POST(req: NextRequest) {
   }
 
   // status=completed (or unspecified — be lenient). Hand off to the pipeline.
-  await processTranscriptionCompleted(recording.id);
+  await processTranscriptionCompleted(recording.id, mccReelNotesAdapter());
   return NextResponse.json({ ok: true });
 }

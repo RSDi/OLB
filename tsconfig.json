@@ -22,6 +22,7 @@
     "paths": {
       "@/*": ["./*"],
       "reelnotes": ["./packages/reelnotes/src/index.ts"],
+      "reelnotes/server": ["./packages/reelnotes/src/server.ts"],
       "reelnotes/ui": ["./packages/reelnotes/src/ui/index.ts"]
     }
   },

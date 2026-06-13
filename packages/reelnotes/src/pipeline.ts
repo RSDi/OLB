@@ -2,19 +2,21 @@
 //
 //   1. Fetch full transcript + speaker utterances from AssemblyAI.
 //   2. Persist transcript / utterances on the recording row.
-//   3. Ask Claude (via Vercel AI Gateway) for a short title + action items.
-//   4. Insert action_items rows.
-//   5. Send a completion email via Resend.
-//   6. Mark the recording as ready (or failed if any step blew up).
+//   3. Ask an AI model (via the configured gateway) for a title + action items
+//      + a readable summary.
+//   4. Insert action_items rows (with resolved transcript anchors).
+//   5. Mark the recording ready, hand the result to the host (onRecordingReady),
+//      and email the owner.
 //
-// All Supabase access here uses the service-role client because the webhook
-// runs without an authenticated session.
+// All Supabase access here uses the service-role (admin) client, because the
+// webhook runs without an authenticated session. Everything host-specific —
+// clients, keys, model, the optional task mirror — arrives via the adapter.
 
 import { generateObject } from "ai";
 import { Resend } from "resend";
 import { z } from "zod";
-import { createAdminClient } from "../supabase/admin";
-import { resolveAnchorMs } from "reelnotes";
+import { resolveAnchorMs } from "./anchor";
+import type { ReelNotesAdapter } from "./adapter";
 
 interface AssemblyAIUtterance {
   speaker: string;
@@ -105,25 +107,6 @@ interface ExtractedAction {
   anchor_quote: string | null;
 }
 
-function siteUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
-
-async function fetchAssemblyAITranscript(transcriptId: string): Promise<AssemblyAITranscript> {
-  const key = process.env.ASSEMBLYAI_API_KEY;
-  if (!key) throw new Error("ASSEMBLYAI_API_KEY not set");
-  const res = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
-    headers: { authorization: key },
-  });
-  if (!res.ok) {
-    throw new Error(`AssemblyAI fetch failed: HTTP ${res.status}`);
-  }
-  return (await res.json()) as AssemblyAITranscript;
-}
-
 interface ExtractedSummaryBullet {
   text: string;
   detail: string | null;
@@ -134,13 +117,24 @@ interface ExtractedSummarySection {
   bullets: ExtractedSummaryBullet[];
 }
 
+async function fetchAssemblyAITranscript(transcriptId: string, key: string): Promise<AssemblyAITranscript> {
+  const res = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+    headers: { authorization: key },
+  });
+  if (!res.ok) {
+    throw new Error(`AssemblyAI fetch failed: HTTP ${res.status}`);
+  }
+  return (await res.json()) as AssemblyAITranscript;
+}
+
 async function extractTitleAndActions(
-  transcript: string
+  transcript: string,
+  model: string,
 ): Promise<{ title: string; actions: ExtractedAction[]; summary: ExtractedSummarySection[] | null }> {
-  // Vercel AI Gateway: provider/model string, auto-routed. On Vercel the
-  // gateway authenticates via OIDC; locally we need AI_GATEWAY_API_KEY.
+  // AI Gateway: provider/model string, auto-routed. On Vercel the gateway
+  // authenticates via OIDC; locally it needs AI_GATEWAY_API_KEY.
   const { object } = await generateObject({
-    model: "anthropic/claude-haiku-4-5",
+    model,
     schema: ExtractionSchema,
     prompt: `You are an assistant that processes meeting/conversation transcripts.
 
@@ -183,29 +177,23 @@ ${transcript}
   };
 }
 
-async function lookupUserEmail(userId: string): Promise<string | null> {
-  const admin = createAdminClient();
+async function lookupUserEmail(adapter: ReelNotesAdapter, userId: string): Promise<string | null> {
+  const admin = adapter.getAdminClient();
   const { data, error } = await admin.auth.admin.getUserById(userId);
   if (error || !data?.user?.email) return null;
   return data.user.email;
 }
 
-async function sendCompletionEmail(opts: {
-  toEmail: string;
-  recordingId: string;
-  title: string;
-  transcriptPreview: string;
-  actionCount: number;
-}) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    console.warn("RESEND_API_KEY not set; skipping email");
-    return;
-  }
-  const resend = new Resend(key);
-  const link = `${siteUrl()}/portal/reelnotes`;
+async function sendCompletionEmail(
+  adapter: ReelNotesAdapter,
+  opts: { toEmail: string; title: string; transcriptPreview: string; actionCount: number },
+) {
+  const email = adapter.config.email;
+  if (!email) return; // host opted out of completion emails
+  const resend = new Resend(email.resendKey);
+  const link = `${adapter.config.baseUrl}/portal/reelnotes`;
   await resend.emails.send({
-    from: "ReelNotes <onboarding@resend.dev>",
+    from: email.from,
     to: opts.toEmail,
     subject: `Recording ready: ${opts.title}`,
     text: [
@@ -224,9 +212,10 @@ async function sendCompletionEmail(opts: {
 
 export async function processTranscriptionCompleted(
   recordingId: string,
+  adapter: ReelNotesAdapter,
   opts?: { force?: boolean }
 ): Promise<void> {
-  const admin = createAdminClient();
+  const admin = adapter.getAdminClient();
 
   // 1. Load the row.
   const { data: rec, error: loadErr } = await admin
@@ -240,18 +229,6 @@ export async function processTranscriptionCompleted(
   }
   const recording = rec as { id: string; user_id: string; assemblyai_id: string | null; status: string };
 
-  // B3: linked task, fetched separately + tolerantly so a pre-0052 schema
-  // (no linked_ticket_id column) errors into "not linked" instead of
-  // breaking the whole pipeline.
-  let linkedTicketId: string | null = null;
-  {
-    const { data: linkRow } = await admin
-      .from("daves_idea_recordings")
-      .select("linked_ticket_id")
-      .eq("id", recordingId)
-      .maybeSingle();
-    linkedTicketId = (linkRow as { linked_ticket_id?: string | null } | null)?.linked_ticket_id ?? null;
-  }
   if (!recording.assemblyai_id) {
     console.error("Pipeline: recording has no assemblyai_id", recordingId);
     return;
@@ -266,9 +243,15 @@ export async function processTranscriptionCompleted(
     await admin.from("daves_idea_action_items").delete().eq("recording_id", recordingId);
   }
 
+  const aaiKey = adapter.config.assemblyAiKey;
+  if (!aaiKey) {
+    console.error("Pipeline: assemblyAiKey not configured");
+    return;
+  }
+
   try {
     // 2. Pull the transcript.
-    const t = await fetchAssemblyAITranscript(recording.assemblyai_id);
+    const t = await fetchAssemblyAITranscript(recording.assemblyai_id, aaiKey);
     if (t.status === "error") {
       await admin
         .from("daves_idea_recordings")
@@ -307,7 +290,7 @@ export async function processTranscriptionCompleted(
     let extractionError: string | null = null;
     if (transcriptText.length > 0) {
       try {
-        const out = await extractTitleAndActions(transcriptText);
+        const out = await extractTitleAndActions(transcriptText, adapter.config.aiModel);
         title = out.title;
         actions = out.actions;
         summary = out.summary;
@@ -357,8 +340,7 @@ export async function processTranscriptionCompleted(
       .eq("id", recordingId);
 
     // The readable summary is a nice-to-have — write it separately so a
-    // summary-write failure (e.g. a pre-0055 schema) can never knock the
-    // recording out of "ready". Best-effort: log and move on.
+    // summary-write failure can never knock the recording out of "ready".
     {
       const { error: summaryErr } = await admin
         .from("daves_idea_recordings")
@@ -367,53 +349,35 @@ export async function processTranscriptionCompleted(
       if (summaryErr) console.error("Summary write failed (non-fatal)", summaryErr.message);
     }
 
-    // 5.5 (B3): recorded on a task — drop the summary into its comment
-    // thread so the notes land where the work is.
-    if (linkedTicketId) {
+    // 5.5 Hand the finished recording to the host (optional). MCC uses this to
+    // mirror the summary onto a linked task's comment thread. Best-effort.
+    if (adapter.onRecordingReady) {
       try {
-        const { data: authorRow } = await admin
-          .from("members")
-          .select("id")
-          .eq("user_id", recording.user_id)
-          .maybeSingle();
-        const authorId = (authorRow as { id: string } | null)?.id;
-        if (authorId) {
-          const summary =
-            actions.length > 0
-              ? `Action items:\n${actions.map(a => `• ${a.text}`).join("\n")}`
-              : transcriptText
-                ? `Transcript (start):\n${transcriptText.slice(0, 280)}${transcriptText.length > 280 ? "…" : ""}`
-                : "No speech detected in the recording.";
-          const body = [
-            `🎙️ ReelNotes — "${title}"`,
-            "",
-            summary,
-            "",
-            `Listen & route items: ${siteUrl()}/portal/reelnotes?r=${recordingId}`,
-          ].join("\n");
-          const { error: commentErr } = await admin
-            .from("ticket_comments")
-            .insert({ ticket_id: linkedTicketId, author_id: authorId, body });
-          if (commentErr) console.error("ReelNotes comment insert failed", commentErr);
-        }
+        await adapter.onRecordingReady({
+          recordingId,
+          userId: recording.user_id,
+          title,
+          transcript: transcriptText,
+          actions: actions.map(a => ({ text: a.text, priority: a.priority })),
+          summary,
+        });
       } catch (err) {
-        console.error("ReelNotes comment post failed", err);
+        console.error("onRecordingReady hook failed (non-fatal)", err);
       }
     }
 
     // 6. Email the user.
-    const userEmail = await lookupUserEmail(recording.user_id);
+    const userEmail = await lookupUserEmail(adapter, recording.user_id);
     if (userEmail) {
       try {
-        await sendCompletionEmail({
+        await sendCompletionEmail(adapter, {
           toEmail: userEmail,
-          recordingId,
           title,
           transcriptPreview: transcriptText.slice(0, 480) + (transcriptText.length > 480 ? "…" : ""),
           actionCount: actions.length,
         });
       } catch (err) {
-        console.error("Resend email failed", err);
+        console.error("Completion email failed", err);
       }
     }
   } catch (err) {
