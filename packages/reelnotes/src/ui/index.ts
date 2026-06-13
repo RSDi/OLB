@@ -1,3 +1,10 @@
-// ReelNotes UI entry (the <ReelNotes /> client component). Populated during the
-// extraction phase. Stub for now so the "reelnotes/ui" subpath resolves.
-export {};
+// ReelNotes UI entry — the <ReelNotes /> client component (recorder, transcript,
+// summary, action items). Mount it with initial data + host wiring (a browser
+// Supabase URL/key, a soft-delete handler, and an optional create-project hook).
+
+export { ReelNotes } from "./ReelNotes";
+export type {
+  CreateProjectInput,
+  CreateProjectHandler,
+  SoftDeleteHandler,
+} from "./ReelNotes";

@@ -9,6 +9,7 @@
     "./ui": "./src/ui/index.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "@vercel/blob": "^2.4.0",
     "ai": "^6.0.192",
@@ -16,6 +17,7 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
+    "next": ">=15",
     "react": ">=19",
     "react-dom": ">=19"
   }

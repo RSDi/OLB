@@ -2,17 +2,33 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { Icons } from "../../components/icons";
-import { createClient } from "../../../lib/supabase/client";
-import { softDeleteReelNotesRecording } from "../../../lib/reelnotes/actions";
-import { createProjectFromRecording } from "../../../lib/projects/actions";
+import { createBrowserClient } from "@supabase/ssr";
+import { Icons } from "./icons";
 import type {
   AssignableMember,
   ReelNotesActionItem,
   ReelNotesRecording,
   ReelNotesSummaryBullet,
   RecordingStatus,
-} from "../../../lib/reelnotes/data";
+} from "../types";
+
+// Host-supplied "turn these action items into a project/tasks" hook. Optional:
+// a standalone site with no task system omits it and the button hides. Returns
+// where to navigate on success (a host-specific route).
+export interface CreateProjectInput {
+  title: string;
+  tasks: {
+    text: string;
+    priority: string;
+    ownerMemberId: string | null;
+    ownerName?: string | null;
+    supporterNames?: string[];
+  }[];
+}
+export type CreateProjectHandler = (
+  input: CreateProjectInput,
+) => Promise<{ redirectTo?: string; error?: string }>;
+export type SoftDeleteHandler = (id: string) => Promise<{ success?: true; error?: string }>;
 
 const INTEGRATIONS = [
   { id: "things", label: "Things", icon: "CheckCircle" as const },
@@ -394,13 +410,22 @@ export function ReelNotes({
   members,
   initialSelectedId = null,
   focusActionId = null,
+  supabaseUrl,
+  supabaseAnonKey,
+  onSoftDelete,
+  onCreateProject,
 }: {
   initialRecordings: ReelNotesRecording[];
   members: AssignableMember[];
   initialSelectedId?: string | null;
   focusActionId?: string | null;
+  // Host wiring (serializable / server-action props):
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  onSoftDelete: SoftDeleteHandler;
+  onCreateProject?: CreateProjectHandler;
 }) {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => createBrowserClient(supabaseUrl, supabaseAnonKey), [supabaseUrl, supabaseAnonKey]);
   const [recordings, setRecordings] = useState<ReelNotesRecording[]>(initialRecordings);
   const [selectedId, setSelectedId] = useState<string | null>(
     (initialSelectedId && initialRecordings.some(r => r.id === initialSelectedId)
@@ -638,7 +663,7 @@ export function ReelNotes({
       const remaining = previous.filter(r => r.id !== recordingId);
       setSelectedId(remaining[0]?.id ?? null);
     }
-    const result = await softDeleteReelNotesRecording(recordingId);
+    const result = await onSoftDelete(recordingId);
     if (result.error) {
       setRecordings(previous);
       setSelectedId(recordingId);
@@ -860,6 +885,7 @@ export function ReelNotes({
             onToggleSupporter={(actionId, memberId) => toggleActionSupporter(selected.id, actionId, memberId)}
             onReextract={() => reextractRecording(selected.id)}
             onDelete={() => deleteRecording(selected.id)}
+            onCreateProject={onCreateProject}
           />
         ) : (
           <div
@@ -1062,6 +1088,7 @@ function SelectedDetail({
   onToggleSupporter,
   onReextract,
   onDelete,
+  onCreateProject,
 }: {
   recording: ReelNotesRecording;
   isMobile: boolean;
@@ -1075,6 +1102,7 @@ function SelectedDetail({
   onToggleSupporter: (actionId: string, memberId: string) => void;
   onReextract: () => Promise<void>;
   onDelete: () => Promise<void>;
+  onCreateProject?: CreateProjectHandler;
 }) {
   const [reextracting, setReextracting] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -1147,9 +1175,9 @@ function SelectedDetail({
   // Every open item becomes a Task under a new Project named after the recording.
   const openTasks = recording.action_items.filter(a => !a.done);
   async function handleSendToProject() {
-    if (openTasks.length === 0 || sendingProject) return;
+    if (openTasks.length === 0 || sendingProject || !onCreateProject) return;
     setSendingProject(true);
-    const res = await createProjectFromRecording({
+    const res = await onCreateProject({
       title: recording.title || "Untitled recording",
       tasks: openTasks.map(a => {
         const owner = findMember(members, a.owner_member_id);
@@ -1167,7 +1195,7 @@ function SelectedDetail({
       }),
     });
     setSendingProject(false);
-    if (res.projectId) router.push(`/portal/tasks/projects/${res.projectId}`);
+    if (res.redirectTo) router.push(res.redirectTo);
     else if (res.error) window.alert(res.error);
   }
 
@@ -1464,7 +1492,7 @@ function SelectedDetail({
             Extracted action items
           </div>
           <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
-            {openTasks.length > 0 && (
+            {openTasks.length > 0 && onCreateProject && (
               <button
                 onClick={handleSendToProject}
                 disabled={sendingProject}

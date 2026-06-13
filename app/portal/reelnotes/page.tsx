@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { ReelNotes } from "./ReelNotes";
+import { ReelNotes } from "reelnotes/ui";
 import {
   loadAssignableMembers,
   loadReelNotesRecordings,
   loadReelNotesViewer,
 } from "../../../lib/reelnotes/data";
+import { softDeleteReelNotesRecording, createProjectFromReelNotes } from "../../../lib/reelnotes/actions";
 
 export const metadata: Metadata = {
   title: "ReelNotes",
@@ -41,6 +42,10 @@ export default async function ReelNotesPage({
       members={members}
       initialSelectedId={r ?? null}
       focusActionId={t ?? null}
+      supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!}
+      supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}
+      onSoftDelete={softDeleteReelNotesRecording}
+      onCreateProject={createProjectFromReelNotes}
     />
   );
 }
