@@ -14,6 +14,10 @@ import { createClient } from "../supabase/server";
 import {
   isStaff,
   isSuperAdmin,
+  canEditSettings,
+  canDeleteSettings,
+  canUndeleteSettings,
+  type MemberLike,
   type MemberRole,
   type MemberStatus,
 } from "./permissions";
@@ -25,6 +29,9 @@ export interface Viewer {
   status: MemberStatus;
   isStaff: boolean;
   isSuperAdmin: boolean;
+  canEditSettings: boolean;
+  canDeleteSettings: boolean;
+  canUndeleteSettings: boolean;
 }
 
 export const getViewer = cache(async (): Promise<Viewer | null> => {
@@ -34,6 +41,8 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Core auth row never selects the grant columns, so a pre-0057 deploy can't
+  // log everyone out. Grants load in a separate best-effort query below.
   const { data } = await supabase
     .from("members")
     .select("id, role, status")
@@ -42,13 +51,33 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   if (!data) return null;
 
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
+
+  // Settings grants (migration 0057). If the columns aren't there yet the query
+  // errors → grants default false (view-only), which is the safe default.
+  const { data: g } = await supabase
+    .from("members")
+    .select("can_edit_settings, can_delete_settings, can_undelete_settings")
+    .eq("id", row.id)
+    .maybeSingle();
+  const grants = (g as Partial<MemberLike> | null) ?? {};
+  const member: MemberLike = {
+    role: row.role,
+    status: row.status,
+    can_edit_settings: !!grants.can_edit_settings,
+    can_delete_settings: !!grants.can_delete_settings,
+    can_undelete_settings: !!grants.can_undelete_settings,
+  };
+
   return {
     userId: user.id,
     memberId: row.id,
     role: row.role,
     status: row.status,
-    isStaff: isStaff(row),
-    isSuperAdmin: isSuperAdmin(row),
+    isStaff: isStaff(member),
+    isSuperAdmin: isSuperAdmin(member),
+    canEditSettings: canEditSettings(member),
+    canDeleteSettings: canDeleteSettings(member),
+    canUndeleteSettings: canUndeleteSettings(member),
   };
 });
 

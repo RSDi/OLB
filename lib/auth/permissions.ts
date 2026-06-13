@@ -11,6 +11,11 @@ export type MemberStatus = "pending" | "approved" | "denied";
 export interface MemberLike {
   role: MemberRole;
   status: MemberStatus;
+  // Settings grants (migration 0057). Absent/false = no grant. Super-admins
+  // implicitly hold all three regardless of these.
+  can_edit_settings?: boolean;
+  can_delete_settings?: boolean;
+  can_undelete_settings?: boolean;
 }
 
 interface TicketLike {
@@ -29,27 +34,44 @@ export function isSuperAdmin(m: MemberLike | null | undefined): boolean {
   return m.role === "super_admin";
 }
 
-// --- Settings (areas + priorities) -------------------------------------------
+// --- Settings grants ---------------------------------------------------------
+// Building Committee members (role = admin) can VIEW Settings, but editing,
+// deleting, and restoring each require a standing grant a super-admin gives
+// them. Super-admins implicitly hold every grant.
 
-// Staff can add and rename areas/priorities. Soft-delete is super-admin only.
-export const canManageAreas = isStaff;
-export const canManagePriorities = isStaff;
-export const canDeleteAreas = isSuperAdmin;
-export const canDeletePriorities = isSuperAdmin;
+export function canEditSettings(m: MemberLike | null | undefined): boolean {
+  if (isSuperAdmin(m)) return true;
+  return isStaff(m) && !!m?.can_edit_settings;
+}
+export function canDeleteSettings(m: MemberLike | null | undefined): boolean {
+  if (isSuperAdmin(m)) return true;
+  return isStaff(m) && !!m?.can_delete_settings;
+}
+export function canUndeleteSettings(m: MemberLike | null | undefined): boolean {
+  if (isSuperAdmin(m)) return true;
+  return isStaff(m) && !!m?.can_undelete_settings;
+}
+
+// Add/rename settings items needs the edit grant; (was: any staff).
+export const canManageAreas = canEditSettings;
+export const canManagePriorities = canEditSettings;
+export const canDeleteAreas = canDeleteSettings;
+export const canDeletePriorities = canDeleteSettings;
 
 // --- Member administration ---------------------------------------------------
 
-// Approving/denying/promoting members is super-admin only — admins manage
-// facility work, not the membership list.
+// Approving/denying/promoting members + issuing grants is super-admin only.
 export const canManageMembers = isSuperAdmin;
 export const canPromoteToAdmin = isSuperAdmin;
 
 // --- Soft delete -------------------------------------------------------------
+// Committee members can SEE the Deleted tab; restoring needs the undelete
+// grant; soft-delete needs the delete grant; permanent purge stays super-only.
 
-export const canSeeDeleted = isSuperAdmin;
-export const canSoftDelete = isSuperAdmin;
+export const canSeeDeleted = isStaff;
+export const canSoftDelete = canDeleteSettings;
 export const canHardDelete = isSuperAdmin;
-export const canRestore = isSuperAdmin;
+export const canRestore = canUndeleteSettings;
 
 // --- Tickets -----------------------------------------------------------------
 
