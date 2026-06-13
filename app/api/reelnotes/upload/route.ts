@@ -29,7 +29,7 @@ import {
   AUDIO_BUCKET,
   signAudioUrl,
   storageAudioMarker,
-} from "../../../../lib/reelnotes/audio-storage";
+} from "reelnotes";
 
 export const runtime = "nodejs";
 // AssemblyAI byte upload + job submit are two sequential POSTs; 60s is ample.

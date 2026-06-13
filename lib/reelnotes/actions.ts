@@ -12,7 +12,7 @@
 // ownership checks in TypeScript.
 
 import { del } from "@vercel/blob";
-import { AUDIO_BUCKET, isStorageAudio, storageAudioPath } from "./audio-storage";
+import { AUDIO_BUCKET, isStorageAudio, storageAudioPath } from "reelnotes";
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";

@@ -14,7 +14,7 @@ import { generateObject } from "ai";
 import { Resend } from "resend";
 import { z } from "zod";
 import { createAdminClient } from "../supabase/admin";
-import { resolveAnchorMs } from "./anchor";
+import { resolveAnchorMs } from "reelnotes";
 
 interface AssemblyAIUtterance {
   speaker: string;

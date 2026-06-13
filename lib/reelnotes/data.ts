@@ -1,98 +1,28 @@
-// Shared types + server-side loaders for /portal/reelnotes.
+// Server-side loaders for /portal/reelnotes — MCC host glue over the reelnotes
+// package. The shared types live in the package; they're re-exported here so
+// existing call sites can keep importing from one place during the extraction.
 //
 // Visibility: every loader here is owner-only. RLS on the underlying tables
 // filters to user_id = auth.uid(); loadReelNotesViewer() additionally redirects
 // non-staff to /portal before any row is fetched.
-//
-// The webhook + pipeline functions in /api/reelnotes/* bypass RLS via the
-// service-role Supabase client, since they run without an authenticated user.
 
 import { redirect } from "next/navigation";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { getViewer } from "../auth/viewer";
-import { isStorageAudio, signAudioUrl } from "./audio-storage";
+import { isStorageAudio, signAudioUrl } from "reelnotes";
+import type { ReelNotesRecording, AssignableMember } from "reelnotes";
 
-export type RecordingStatus =
-  | "uploading"
-  | "transcribing"
-  | "extracting"
-  | "ready"
-  | "failed";
-
-export type RecordingSource = "pwa" | "native" | "watch";
-
-// AssemblyAI utterance shape — what we persist into recordings.utterances.
-export interface Utterance {
-  speaker: string;
-  text: string;
-  start: number;
-  end: number;
-}
-
-export interface ReelNotesActionItem {
-  id: string;
-  recording_id: string;
-  text: string;
-  routed_to: string | null;
-  done: boolean;
-  sort_order: number;
-  // LLM-inferred urgency from transcript cues; mirrors maintenance priority keys.
-  priority: "low" | "medium" | "high" | "emergency";
-  // Assignment (label-only metadata on the recorder's own task).
-  owner_member_id: string | null;
-  supporter_member_ids: string[];
-  // LLM-suggested owner + the member it matched (if any), for the confirm UI.
-  suggested_assignee_name: string | null;
-  suggested_member_id: string | null;
-  // LLM-suggested supporter names (explicit-only); matched to members in the UI.
-  suggested_supporter_names: string[];
-  // B4: resolved start offset (ms) of the utterance where this item was
-  // raised, or null when no confident transcript anchor exists.
-  transcript_ms: number | null;
-  created_at: string;
-  updated_at: string;
-}
-
-// A directory member that can be named on an action item. Loaded for the
-// assignee picker; nickname is included for matching/display ("Dave").
-export interface AssignableMember {
-  id: string;
-  full_name: string | null;
-  nickname: string | null;
-}
-
-// B-phase: Granola-style readable summary — content-driven sections, each
-// with short bullets. Generated alongside action items at extraction time.
-// Each bullet carries an optional `detail`: a grounding note that quotes the
-// transcript, surfaced in a "Transcript Summary" popover (the + affordance).
-export interface ReelNotesSummaryBullet {
-  text: string;
-  detail: string | null;
-}
-
-export interface ReelNotesSummarySection {
-  heading: string;
-  bullets: ReelNotesSummaryBullet[];
-}
-
-export interface ReelNotesRecording {
-  id: string;
-  user_id: string;
-  title: string | null;
-  audio_blob_url: string;
-  duration_sec: number;
-  source: RecordingSource;
-  status: RecordingStatus;
-  assemblyai_id: string | null;
-  transcript: string | null;
-  utterances: Utterance[] | null;
-  summary: ReelNotesSummarySection[] | null;
-  error: string | null;
-  created_at: string;
-  updated_at: string;
-  action_items: ReelNotesActionItem[];
-}
+export type {
+  RecordingStatus,
+  RecordingSource,
+  Utterance,
+  ReelNotesActionItem,
+  AssignableMember,
+  ReelNotesSummaryBullet,
+  ReelNotesSummarySection,
+  ReelNotesRecording,
+} from "reelnotes";
 
 // Access guard. Redirects non-staff to /portal. Returns the viewer so callers
 // have role/id available without a second fetch.

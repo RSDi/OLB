@@ -3,7 +3,7 @@
 // quote; this code turns it into a real utterance offset or null).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveAnchorMs } from "../../lib/reelnotes/anchor.ts";
+import { resolveAnchorMs } from "../../packages/reelnotes/src/anchor.ts";
 
 const utts = [
   { text: "Okay so the bus deposit, somebody's gotta get that in by the 15th.", start: 12000 },
