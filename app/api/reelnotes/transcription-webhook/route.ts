@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "../../../../lib/supabase/admin";
-import { processTranscriptionCompleted } from "reelnotes/server";
+import { processTranscriptionCompleted, WEBHOOK_SECRET_HEADER } from "reelnotes/server";
 import { mccReelNotesAdapter } from "../../../../lib/reelnotes/adapter";
 
 export const runtime = "nodejs";
@@ -31,7 +31,7 @@ interface AAIWebhookBody {
 export async function POST(req: NextRequest) {
   const expectedSecret = process.env.ASSEMBLYAI_WEBHOOK_SECRET;
   if (expectedSecret) {
-    if (req.headers.get("x-mcc-webhook-secret") !== expectedSecret) {
+    if (req.headers.get(WEBHOOK_SECRET_HEADER) !== expectedSecret) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
   } else {
