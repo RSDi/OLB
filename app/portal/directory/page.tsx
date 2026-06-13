@@ -10,6 +10,7 @@ interface ViewCard {
   icon: React.ReactNode;
   accent: { bg: string; color: string };
   superAdminOnly?: boolean;
+  staffOnly?: boolean;
 }
 
 const VIEWS: ViewCard[] = [
@@ -62,6 +63,14 @@ const VIEWS: ViewCard[] = [
     icon: <Icons.Shield width={20} height={20} />,
     accent: { bg: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" },
   },
+  {
+    href: "/portal/contacts",
+    title: "Contacts",
+    blurb: "Vendors and external contacts — plumbers, electricians, suppliers, and the like.",
+    icon: <Icons.Briefcase width={20} height={20} />,
+    accent: { bg: "rgb(254,243,199)", color: "#92400e" },
+    staffOnly: true,
+  },
 ];
 
 export default async function DirectoryLandingPage() {
@@ -77,7 +86,7 @@ export default async function DirectoryLandingPage() {
           gap: 16,
         }}
       >
-        {VIEWS.filter((v) => !v.superAdminOnly || viewer.isSuperAdmin).map((v) => (
+        {VIEWS.filter((v) => (!v.superAdminOnly || viewer.isSuperAdmin) && (!v.staffOnly || viewer.isStaff)).map((v) => (
           <Link
             key={v.href}
             href={v.href}

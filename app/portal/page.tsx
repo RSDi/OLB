@@ -31,11 +31,22 @@ export default async function PortalDashboard() {
 
   const { data: meRow } = await supabase
     .from("members")
-    .select("role, status, full_name")
+    .select("id, role, status, full_name")
     .eq("user_id", user.id)
     .maybeSingle();
-  const me = (meRow as (MemberLike & { full_name: string | null }) | null) ?? null;
+  const me = (meRow as (MemberLike & { id: string; full_name: string | null }) | null) ?? null;
   const staff = isStaff(me);
+
+  // KPIs are for people "actively helping" — staff, area owners/helpers, or
+  // volunteer-team members. Plain members get the lean request-focused view.
+  let involved = staff;
+  if (!involved && me?.id) {
+    const [{ count: areaCount }, { count: teamCount }] = await Promise.all([
+      supabase.from("area_members").select("member_id", { count: "exact", head: true }).eq("member_id", me.id),
+      supabase.from("member_volunteer_teams").select("member_id", { count: "exact", head: true }).eq("member_id", me.id),
+    ]);
+    involved = (areaCount ?? 0) > 0 || (teamCount ?? 0) > 0;
+  }
 
   // Counts are RLS-bound — staff sees totals, members see their own.
   const { data: countRows } = await supabase
@@ -144,31 +155,33 @@ export default async function PortalDashboard() {
 
   return (
     <>
-      {/* KPIs */}
-      <div className="rsd-kpi-grid">
-        <KpiCard
-          label={staff ? "Open Requests" : "My Open"}
-          value={counts.open}
-          sub={counts.high_priority > 0 ? `${counts.high_priority} high priority` : undefined}
-          accent={counts.open > 0}
-        />
-        <KpiCard
-          label="In Progress"
-          value={counts.in_progress}
-          sub={counts.in_progress > 0 ? "Being worked on" : undefined}
-        />
-        <KpiCard label="Done" value={counts.done} sub="All time" />
-        <KpiCard
-          label="Upcoming Events"
-          value={upcomingEvents.length}
-          sub={upcomingEvents.length > 0 ? `next: ${formatShortDate(upcomingEvents[0].start_at)}` : "none scheduled"}
-        />
-      </div>
+      {/* KPIs — only for people actively helping (staff / area leads / volunteers) */}
+      {involved && (
+        <div className="rsd-kpi-grid">
+          <KpiCard
+            label={staff ? "Open Requests" : "My Open"}
+            value={counts.open}
+            sub={counts.high_priority > 0 ? `${counts.high_priority} high priority` : undefined}
+            accent={counts.open > 0}
+          />
+          <KpiCard
+            label="In Progress"
+            value={counts.in_progress}
+            sub={counts.in_progress > 0 ? "Being worked on" : undefined}
+          />
+          <KpiCard label="Done" value={counts.done} sub="All time" />
+          <KpiCard
+            label="Upcoming Events"
+            value={upcomingEvents.length}
+            sub={upcomingEvents.length > 0 ? `next: ${formatShortDate(upcomingEvents[0].start_at)}` : "none scheduled"}
+          />
+        </div>
+      )}
 
       {/* Quick actions */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <Link
-          href="/portal/tasks/new"
+          href="/portal/requests"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -183,7 +196,7 @@ export default async function PortalDashboard() {
           }}
         >
           <Icons.Plus width={14} height={14} />
-          New maintenance request
+          Make a request
         </Link>
         <Link
           href="/portal/tasks"
@@ -205,7 +218,7 @@ export default async function PortalDashboard() {
           View all requests
         </Link>
         <Link
-          href="/assistance/building"
+          href="/portal/requests/building-use"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -221,7 +234,7 @@ export default async function PortalDashboard() {
           }}
         >
           <Icons.Calendar width={14} height={14} />
-          Reserve the building
+          Reserve a room or space
         </Link>
       </div>
 

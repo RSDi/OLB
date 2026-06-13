@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Icons } from "../../components/icons";
+import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
 import { QueueRow } from "./QueueRow";
@@ -170,6 +171,7 @@ export default async function PortalMaintenancePage({
 
   return (
     <>
+      <TasksSectionNav active="tasks" isStaff={staff} />
       {/* Header */}
       <div
         style={{

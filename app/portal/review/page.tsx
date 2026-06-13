@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
+import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
 import { majorityThreshold } from "../../../lib/votes/threshold";
 import { loadConflictCounts } from "../../../lib/requests/conflict-loader";
@@ -109,6 +110,7 @@ export default async function ReviewQueuePage({
 
   return (
     <>
+      <TasksSectionNav active="review" isStaff={true} />
       <p style={{ margin: "0 0 4px", fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.6, maxWidth: 620 }}>
         Requests from members waiting on the building committee. Open one to see the details, discuss in
         the thread, and cast your vote — a simple majority decides it, and a no vote needs a reason.

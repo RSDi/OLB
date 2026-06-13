@@ -12,20 +12,20 @@ interface NavItem {
   icon: React.ReactNode;
   exact?: boolean;
   staffOnly?: boolean;
+  superAdminOnly?: boolean;
 }
 
+// Slimmed nav (2026-06): "Make a Request" lives on the Dashboard; Review + PM
+// are tabs on Tasks & Projects; Contacts is a card on Directory. ReelNotes +
+// Settings are super-admin only for now.
 const NAV: NavItem[] = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true },
-  { href: "/portal/requests", label: "Make a Request", icon: <Icons.Sparkles width={16} height={16}/> },
   { href: "/portal/tasks", label: "Tasks & Projects", icon: <Icons.CheckCircle width={16} height={16}/> },
-  { href: "/portal/review", label: "Review", icon: <Icons.Shield width={16} height={16}/>, staffOnly: true },
-  { href: "/portal/pm", label: "PM", icon: <Icons.Clock width={16} height={16}/>, staffOnly: true },
   { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/> },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },
-  { href: "/portal/contacts", label: "Contacts", icon: <Icons.Briefcase width={16} height={16}/>, staffOnly: true },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
-  { href: "/portal/reelnotes", label: "ReelNotes", icon: <Icons.Mic width={16} height={16}/>, staffOnly: true },
-  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
+  { href: "/portal/reelnotes", label: "ReelNotes", icon: <Icons.Mic width={16} height={16}/>, superAdminOnly: true },
+  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, superAdminOnly: true },
 ];
 
 // Trimmed viewer shape — sidebar only needs role/status to decide which nav
@@ -57,9 +57,10 @@ export function PortalSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
-  // Staff (admin + super_admin) see Settings; since 0050 any committee member
-  // can action the member queue, so the pending badge shows for all staff.
-  const canSeeSettings = viewer?.isStaff ?? false;
+  const isStaff = viewer?.isStaff ?? false;
+  // Settings (incl. the member-approval queue) is super-admin only for now, so
+  // the pending badge rides Settings visibility.
+  const isSuperAdmin = viewer?.role === "super_admin";
   const pendingCount = pendingMembersCount;
 
   useEffect(() => {
@@ -110,7 +111,7 @@ export function PortalSidebar({
 
       {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
-        {NAV.filter(item => !item.staffOnly || canSeeSettings).map(item => {
+        {NAV.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin)).map(item => {
           const active = isActive(item.href, item.exact);
           const isSettings = item.href === "/portal/settings";
           return (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Icons } from "../../components/icons";
+import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
 
@@ -68,6 +69,7 @@ export default async function PmInstancesPage({
 
   return (
     <>
+      <TasksSectionNav active="pm" isStaff={true} />
       <div
         style={{
           display: "flex",
