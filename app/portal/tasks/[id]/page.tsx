@@ -19,6 +19,7 @@ import {
 import { CommentThread, type ThreadComment } from "./CommentThread";
 import { ReelNotesCard, type LinkedRecording } from "./ReelNotesCard";
 import { majorityThreshold } from "../../../../lib/votes/threshold";
+import { loadConflictsForTicket } from "../../../../lib/requests/conflict-loader";
 import { LinkedContacts } from "../../contacts/_shared/LinkedContacts";
 import {
   loadLinkedContactsForEntity,
@@ -195,6 +196,16 @@ export default async function TicketDetailPage({
       .order("created_at", { ascending: true });
     voteRows = (vr as typeof voteRows) ?? [];
   }
+
+  // Schedule conflicts (staff, while pending): does this request's space/date/
+  // time overlap a confirmed reservation or another open request?
+  const conflicts =
+    staff && ticket.review_status === "pending_review"
+      ? await loadConflictsForTicket(supabase, {
+          id: ticket.id,
+          details: ticket.details as unknown as Record<string, unknown> | null,
+        })
+      : [];
   const eligibleVoters = staffList.filter((s) => s.user_id);
   const voteThreshold = majorityThreshold(eligibleVoters.length);
   const staffNameByUserId: Record<string, string> = {};
@@ -438,6 +449,55 @@ export default async function TicketDetailPage({
               }
             />
           </div>
+
+          {staff && ticket.review_status === "pending_review" && ticket.details?.recurring && (
+            <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.5, padding: "2px 2px" }}>
+              ↻ This request repeats — only its first date was checked for conflicts. Double-check the
+              other dates against the calendar.
+            </div>
+          )}
+
+          {conflicts.length > 0 && (
+            <div
+              className="rsd-card"
+              style={{
+                gap: 8,
+                background: "var(--gw-error-bg)",
+                border: "1px solid rgba(229,62,62,.3)",
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-error)", textTransform: "uppercase", letterSpacing: ".04em", display: "flex", alignItems: "center", gap: 6 }}>
+                <Icons.AlertTriangle width={14} height={14} />
+                Possible schedule conflict
+              </h3>
+              <div style={{ fontSize: 13, color: "var(--gw-fg)", lineHeight: 1.55 }}>
+                The requested space is already spoken for at this time:
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {conflicts.map((c) => (
+                  <div key={`${c.source}-${c.id}`} style={{ fontSize: 13, color: "var(--gw-fg)" }}>
+                    <span style={{ fontWeight: 700 }}>{c.spaces.join(", ")}</span> · {c.when} —{" "}
+                    {c.source === "event" ? (
+                      <>
+                        <span>{c.title}</span>{" "}
+                        <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>on the calendar</span>
+                      </>
+                    ) : (
+                      <>
+                        <a href={`/portal/tasks/${c.id}`} style={{ color: "var(--rsd-accent)", fontWeight: 600 }}>
+                          {c.title}
+                        </a>{" "}
+                        <span className="rsd-chip rsd-chip-warn" style={{ fontSize: 10 }}>also pending</span>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+                Not a hard block — just a heads-up for the committee.
+              </div>
+            </div>
+          )}
 
           {staff && ticket.review_status === "pending_review" && (
             <div className="rsd-card" style={{ gap: 12 }}>

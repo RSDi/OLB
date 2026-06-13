@@ -307,6 +307,13 @@ export async function createRequest(
   if (trackKey === "building-use" && d.requesterKind === "outside" && !s(d.outsideOrg).trim()) {
     return { error: "Please tell us the name of the group or host." };
   }
+  // Same-day events only: a reversed time window would also write an invalid
+  // calendar event (end before start) on approval. HH:MM compares lexically.
+  if (trackKey === "gym" || trackKey === "building-use") {
+    const st = s(d.startTime);
+    const et = s(d.endTime);
+    if (st && et && et <= st) return { error: "End time must be after the start time." };
+  }
 
   const supabase = await createClient();
   const {

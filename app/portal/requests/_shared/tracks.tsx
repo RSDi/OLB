@@ -117,11 +117,17 @@ const spacesStep: WizardStep = {
   ),
 };
 
+// HH:MM strings are zero-padded, so a lexical compare is also chronological.
+const timesReversed = (f: RequestForm) => {
+  const st = str(f.startTime);
+  const et = str(f.endTime);
+  return !!st && !!et && et <= st;
+};
 const whenStep: WizardStep = {
   key: "when",
   title: "When do you need it?",
   hint: "Include setup and cleanup time if you can.",
-  valid: (f) => !!str(f.date),
+  valid: (f) => !!str(f.date) && !timesReversed(f),
   body: ({ form, set }) => (
     <>
       <Input label="Date *" type="date" value={str(form.date)} onChange={(e) => set("date", e.target.value)} />
@@ -133,6 +139,11 @@ const whenStep: WizardStep = {
           <Input label="End time" type="time" value={str(form.endTime)} onChange={(e) => set("endTime", e.target.value)} />
         </div>
       </div>
+      {timesReversed(form) && (
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--gw-error)" }}>
+          End time needs to be after the start time.
+        </div>
+      )}
       <CheckRow checked={!!form.recurring} onChange={(v) => set("recurring", v)} label="This happens on more than one day" />
       {!!form.recurring && (
         <Input

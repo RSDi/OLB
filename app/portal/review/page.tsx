@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
 import { majorityThreshold } from "../../../lib/votes/threshold";
+import { loadConflictCounts } from "../../../lib/requests/conflict-loader";
 
 type ReviewFilter = "pending_review" | "approved" | "declined";
 
@@ -100,6 +101,12 @@ export default async function ReviewQueuePage({
     voteThreshold = majorityThreshold(staffCount ?? 0);
   }
 
+  // Schedule-conflict counts for the pending list → a "⚠ Conflict" chip.
+  const conflictCounts =
+    status === "pending_review" && rows.length > 0
+      ? await loadConflictCounts(supabase, rows.map((r) => ({ id: r.id, details: r.details })))
+      : {};
+
   return (
     <>
       <p style={{ margin: "0 0 4px", fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.6, maxWidth: 620 }}>
@@ -172,6 +179,11 @@ export default async function ReviewQueuePage({
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 {r.category && <span className={`rsd-chip ${r.category.chip_class}`}>{r.category.name}</span>}
                 {flagChips(r.details)}
+                {conflictCounts[r.id] ? (
+                  <span className="rsd-chip rsd-chip-error" title="Overlaps an existing reservation or another pending request">
+                    ⚠ Conflict
+                  </span>
+                ) : null}
                 {status === "pending_review" && voteThreshold > 0 && (
                   <span className="rsd-chip rsd-chip-mute" style={{ marginLeft: "auto" }}>
                     {tally[r.id]?.yes ?? 0}✓ {tally[r.id]?.no ?? 0}✗ · {voteThreshold} to decide
