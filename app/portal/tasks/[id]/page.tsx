@@ -266,7 +266,7 @@ export default async function TicketDetailPage({
   let linkedRecordings: LinkedRecording[] = [];
   if (staff) {
     const { data: recRows } = await supabase
-      .from("daves_idea_recordings")
+      .from("reel_notes_recordings")
       .select("id, title, status, created_at")
       .eq("linked_ticket_id", id)
       .is("deleted_at", null)

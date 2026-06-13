@@ -71,7 +71,7 @@ export function mccReelNotesAdapter(): ReelNotesAdapter {
     async onRecordingReady(ctx: ReadyRecordingContext) {
       const admin = createAdminClient();
       const { data: linkRow } = await admin
-        .from("daves_idea_recordings")
+        .from("reel_notes_recordings")
         .select("linked_ticket_id")
         .eq("id", ctx.recordingId)
         .maybeSingle();

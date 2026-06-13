@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
   const { data: row, error: lookupErr } = await admin
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .select("id, status")
     .eq("assemblyai_id", transcriptId)
     .maybeSingle();
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
   if (body.status === "error") {
     await admin
-      .from("daves_idea_recordings")
+      .from("reel_notes_recordings")
       .update({ status: "failed", error: "AssemblyAI reported error" })
       .eq("id", recording.id);
     return NextResponse.json({ ok: true });

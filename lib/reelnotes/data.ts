@@ -35,11 +35,11 @@ export async function loadReelNotesViewer() {
 export async function loadReelNotesRecordings(): Promise<ReelNotesRecording[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .select(
       `id, user_id, title, audio_blob_url, duration_sec, source, status,
        assemblyai_id, transcript, utterances, summary, error, created_at, updated_at,
-       action_items:daves_idea_action_items(
+       action_items:reel_notes_action_items(
          id, recording_id, text, routed_to, done, sort_order, priority,
          owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
          suggested_supporter_names, transcript_ms, created_at, updated_at

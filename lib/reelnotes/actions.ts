@@ -51,7 +51,7 @@ async function loadOwnedRecording(id: string): Promise<
   // restoring it). Ownership is enforced just below.
   const admin = createAdminClient();
   const { data, error } = await admin
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .select("id, user_id, deleted_at, audio_blob_url")
     .eq("id", id)
     .maybeSingle();
@@ -70,7 +70,7 @@ export async function softDeleteReelNotesRecording(id: string): Promise<Result> 
 
   const admin = createAdminClient();
   const { error } = await admin
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: error.message };
@@ -86,7 +86,7 @@ export async function restoreReelNotesRecording(id: string): Promise<Result> {
 
   const admin = createAdminClient();
   const { error } = await admin
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .update({ deleted_at: null })
     .eq("id", id);
   if (error) return { error: error.message };
@@ -121,11 +121,11 @@ export async function hardDeleteReelNotesRecording(id: string): Promise<Result> 
     }
   }
 
-  // FK on daves_idea_action_items has ON DELETE CASCADE, so action items
+  // FK on reel_notes_action_items has ON DELETE CASCADE, so action items
   // disappear automatically.
   const admin = createAdminClient();
   const { error } = await admin
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .delete()
     .eq("id", id);
   if (error) return { error: error.message };

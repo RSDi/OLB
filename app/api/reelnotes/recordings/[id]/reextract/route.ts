@@ -21,7 +21,7 @@ export const maxDuration = 60;
 
 const RECORDING_SELECT = `id, user_id, title, audio_blob_url, duration_sec, source, status,
   assemblyai_id, transcript, utterances, summary, error, created_at, updated_at,
-  action_items:daves_idea_action_items(
+  action_items:reel_notes_action_items(
     id, recording_id, text, routed_to, done, sort_order, priority,
     owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
     suggested_supporter_names, transcript_ms, created_at, updated_at
@@ -46,7 +46,7 @@ export async function POST(
   // RLS would also enforce this, but doing the check up front returns a
   // cleaner 404/403 than letting the admin client run on a missing row.
   const { data: rec } = await supabase
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .select("id, user_id, assemblyai_id")
     .eq("id", id)
     .is("deleted_at", null)
@@ -65,7 +65,7 @@ export async function POST(
   const admin = createAdminClient();
   // Optimistic state flip so polling clients see the work in progress.
   await admin
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .update({ status: "extracting", error: null })
     .eq("id", id);
 
@@ -74,7 +74,7 @@ export async function POST(
   await processTranscriptionCompleted(id, mccReelNotesAdapter(), { force: true });
 
   const { data: refreshed } = await admin
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .select(RECORDING_SELECT)
     .eq("id", id)
     .maybeSingle();

@@ -482,11 +482,11 @@ export function ReelNotes({
     if (!inFlight) return;
     const t = setInterval(async () => {
       const { data, error } = await supabase
-        .from("daves_idea_recordings")
+        .from("reel_notes_recordings")
         .select(
           `id, user_id, title, audio_blob_url, duration_sec, source, status,
            assemblyai_id, transcript, utterances, summary, error, created_at, updated_at,
-           action_items:daves_idea_action_items(
+           action_items:reel_notes_action_items(
              id, recording_id, text, routed_to, done, sort_order, priority,
              owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
              suggested_supporter_names, transcript_ms, created_at, updated_at
@@ -592,7 +592,7 @@ export function ReelNotes({
           : r
       )
     );
-    await supabase.from("daves_idea_action_items").update({ done: next }).eq("id", actionId);
+    await supabase.from("reel_notes_action_items").update({ done: next }).eq("id", actionId);
   }
 
   async function routeAction(recordingId: string, actionId: string, target: string) {
@@ -603,7 +603,7 @@ export function ReelNotes({
           : r
       )
     );
-    await supabase.from("daves_idea_action_items").update({ routed_to: target }).eq("id", actionId);
+    await supabase.from("reel_notes_action_items").update({ routed_to: target }).eq("id", actionId);
   }
 
   async function editActionText(recordingId: string, actionId: string, text: string) {
@@ -615,13 +615,13 @@ export function ReelNotes({
       )
     );
     // RLS lets owners update their own action items (same path toggle/route use).
-    await supabase.from("daves_idea_action_items").update({ text }).eq("id", actionId);
+    await supabase.from("reel_notes_action_items").update({ text }).eq("id", actionId);
   }
 
   async function editRecordingTitle(recordingId: string, title: string) {
     setRecordings(rs => rs.map(r => (r.id === recordingId ? { ...r, title } : r)));
     // RLS allows the owner to update their own recording.
-    await supabase.from("daves_idea_recordings").update({ title }).eq("id", recordingId);
+    await supabase.from("reel_notes_recordings").update({ title }).eq("id", recordingId);
   }
 
   async function setActionOwner(recordingId: string, actionId: string, memberId: string | null) {
@@ -632,7 +632,7 @@ export function ReelNotes({
           : r
       )
     );
-    await supabase.from("daves_idea_action_items").update({ owner_member_id: memberId }).eq("id", actionId);
+    await supabase.from("reel_notes_action_items").update({ owner_member_id: memberId }).eq("id", actionId);
   }
 
   async function toggleActionSupporter(recordingId: string, actionId: string, memberId: string) {
@@ -649,7 +649,7 @@ export function ReelNotes({
           : r
       )
     );
-    await supabase.from("daves_idea_action_items").update({ supporter_member_ids: next }).eq("id", actionId);
+    await supabase.from("reel_notes_action_items").update({ supporter_member_ids: next }).eq("id", actionId);
   }
 
   async function deleteRecording(recordingId: string) {

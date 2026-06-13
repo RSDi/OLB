@@ -2,7 +2,7 @@
 //
 // Accepts an audio file from the client (browser MediaRecorder), stores it
 // in the PRIVATE reel-notes-audio bucket (Supabase Storage), inserts a
-// daves_idea_recordings row in 'transcribing' status, and pushes the same
+// reel_notes_recordings row in 'transcribing' status, and pushes the same
 // bytes to AssemblyAI's upload endpoint for transcription. The AssemblyAI
 // webhook (/api/reelnotes/transcription-webhook) takes it from there.
 //
@@ -37,7 +37,7 @@ export const maxDuration = 60;
 
 const RECORDING_SELECT = `id, user_id, title, audio_blob_url, duration_sec, source, status,
   assemblyai_id, transcript, utterances, summary, error, created_at, updated_at,
-  action_items:daves_idea_action_items(
+  action_items:reel_notes_action_items(
     id, recording_id, text, routed_to, done, sort_order, priority,
     owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
     suggested_supporter_names, transcript_ms, created_at, updated_at
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
   const insertRow: Record<string, unknown> = { ...baseRow };
   if (linkedTicketId) insertRow.linked_ticket_id = linkedTicketId;
   let { data: row, error: insertError } = await supabase
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .insert(insertRow)
     .select(RECORDING_SELECT)
     .single();
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
   if (insertError && linkedTicketId && /linked_ticket_id/.test(insertError.message)) {
     console.warn("linked_ticket_id column missing (migration 0052) — saving unlinked");
     ({ data: row, error: insertError } = await supabase
-      .from("daves_idea_recordings")
+      .from("reel_notes_recordings")
       .insert(baseRow)
       .select(RECORDING_SELECT)
       .single());
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
   const aaiKey = process.env.ASSEMBLYAI_API_KEY;
   if (!aaiKey) {
     await supabase
-      .from("daves_idea_recordings")
+      .from("reel_notes_recordings")
       .update({ error: "ASSEMBLYAI_API_KEY not set" })
       .eq("id", recordingId);
   } else {
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
       const aaiBody = (await aaiRes.json()) as { id?: string; error?: string };
       if (aaiRes.ok && aaiBody.id) {
         await supabase
-          .from("daves_idea_recordings")
+          .from("reel_notes_recordings")
           .update({ assemblyai_id: aaiBody.id })
           .eq("id", recordingId);
       } else {
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("AssemblyAI submission failed", err);
       await supabase
-        .from("daves_idea_recordings")
+        .from("reel_notes_recordings")
         .update({
           status: "failed",
           error: err instanceof Error ? err.message : "AssemblyAI error",

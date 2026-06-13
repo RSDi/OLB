@@ -219,7 +219,7 @@ export async function processTranscriptionCompleted(
 
   // 1. Load the row.
   const { data: rec, error: loadErr } = await admin
-    .from("daves_idea_recordings")
+    .from("reel_notes_recordings")
     .select("id, user_id, assemblyai_id, status")
     .eq("id", recordingId)
     .maybeSingle();
@@ -240,7 +240,7 @@ export async function processTranscriptionCompleted(
   if (opts?.force) {
     // Re-extracting from scratch: nuke prior action items so the fresh run
     // produces a clean list rather than appending to old ones.
-    await admin.from("daves_idea_action_items").delete().eq("recording_id", recordingId);
+    await admin.from("reel_notes_action_items").delete().eq("recording_id", recordingId);
   }
 
   const aaiKey = adapter.config.assemblyAiKey;
@@ -254,7 +254,7 @@ export async function processTranscriptionCompleted(
     const t = await fetchAssemblyAITranscript(recording.assemblyai_id, aaiKey);
     if (t.status === "error") {
       await admin
-        .from("daves_idea_recordings")
+        .from("reel_notes_recordings")
         .update({ status: "failed", error: t.error || "AssemblyAI returned error" })
         .eq("id", recordingId);
       return;
@@ -275,7 +275,7 @@ export async function processTranscriptionCompleted(
     }));
 
     await admin
-      .from("daves_idea_recordings")
+      .from("reel_notes_recordings")
       .update({
         transcript: transcriptText,
         utterances: utterances.length > 0 ? utterances : null,
@@ -328,14 +328,14 @@ export async function processTranscriptionCompleted(
           transcript_ms: transcriptMs,
         };
       });
-      const { error: insertErr } = await admin.from("daves_idea_action_items").insert(rows);
+      const { error: insertErr } = await admin.from("reel_notes_action_items").insert(rows);
       if (insertErr) console.error("Action item insert failed", insertErr);
     }
 
     // 5. Mark ready with the LLM title. `error` is cleared on success,
     // populated when extraction failed — the UI already surfaces it in red.
     await admin
-      .from("daves_idea_recordings")
+      .from("reel_notes_recordings")
       .update({ title, status: "ready", error: extractionError })
       .eq("id", recordingId);
 
@@ -343,7 +343,7 @@ export async function processTranscriptionCompleted(
     // summary-write failure can never knock the recording out of "ready".
     {
       const { error: summaryErr } = await admin
-        .from("daves_idea_recordings")
+        .from("reel_notes_recordings")
         .update({ summary })
         .eq("id", recordingId);
       if (summaryErr) console.error("Summary write failed (non-fatal)", summaryErr.message);
@@ -383,7 +383,7 @@ export async function processTranscriptionCompleted(
   } catch (err) {
     console.error("Pipeline failed", err);
     await admin
-      .from("daves_idea_recordings")
+      .from("reel_notes_recordings")
       .update({
         status: "failed",
         error: err instanceof Error ? err.message : "Pipeline error",

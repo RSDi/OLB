@@ -15,14 +15,14 @@ import {
   hardDeleteReelNotesRecording,
 } from "../../../lib/reelnotes/actions";
 
-type Kind = "areas" | "priorities" | "pm_templates" | "members" | "daves_idea_recordings";
+type Kind = "areas" | "priorities" | "pm_templates" | "members" | "reel_notes_recordings";
 
 const SUBTABS: { key: Kind; label: string }[] = [
   { key: "members", label: "Members" },
   { key: "areas", label: "Areas" },
   { key: "priorities", label: "Priorities" },
   { key: "pm_templates", label: "PM Templates" },
-  { key: "daves_idea_recordings", label: "ReelNotes" },
+  { key: "reel_notes_recordings", label: "ReelNotes" },
 ];
 
 interface DeletedArea {
@@ -108,7 +108,7 @@ export function DeletedTab() {
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false }),
       supabase
-        .from("daves_idea_recordings")
+        .from("reel_notes_recordings")
         .select("id, title, status, duration_sec, created_at, deleted_at")
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false }),
@@ -164,7 +164,7 @@ export function DeletedTab() {
       setActing(null);
       return;
     }
-    if (table === "daves_idea_recordings") {
+    if (table === "reel_notes_recordings") {
       const result = await restoreReelNotesRecording(id);
       if (result.error) setError(result.error);
       else await load();
@@ -197,7 +197,7 @@ export function DeletedTab() {
       setActing(null);
       return;
     }
-    if (table === "daves_idea_recordings") {
+    if (table === "reel_notes_recordings") {
       const result = await hardDeleteReelNotesRecording(id);
       if (result.error) setError(result.error);
       else await load();
@@ -216,7 +216,7 @@ export function DeletedTab() {
     priorities: priorities.length,
     pm_templates: templates.length,
     members: members.length,
-    daves_idea_recordings: recordings.length,
+    reel_notes_recordings: recordings.length,
   };
 
   return (
@@ -393,10 +393,10 @@ export function DeletedTab() {
                 title={label}
                 subtitle={`${dur} · captured ${formatDate(r.created_at)} · deleted ${formatDate(r.deleted_at)}`}
                 acting={acting === r.id}
-                onRestore={() => restore("daves_idea_recordings", r.id)}
+                onRestore={() => restore("reel_notes_recordings", r.id)}
                 onHardDelete={() =>
                   hardDelete(
-                    "daves_idea_recordings",
+                    "reel_notes_recordings",
                     r.id,
                     label,
                     "The audio file in storage and any extracted action items will also be removed."
