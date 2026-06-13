@@ -610,7 +610,7 @@ function MemberRow({
                 color="var(--gw-error)"
                 bgColor="var(--gw-error-bg)"
               >
-                Revoke
+                Remove
               </ActionBtn>
             )}
           </>
