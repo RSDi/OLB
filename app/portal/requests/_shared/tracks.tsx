@@ -42,11 +42,11 @@ const peopleStr = (f: RequestForm) =>
 
 // ─── shared building-use steps ───────────────────────────────────
 const BUILDING_SUBTYPES = [
+  { key: "sports", label: "Sports or gym time", blurb: "Volleyball, basketball, open gym, play dates", icon: <Icons.Play width={20} height={20} /> },
   { key: "gathering", label: "Gathering or meeting", blurb: "Fellowship, a group meeting, a get-together", icon: <Icons.Users width={20} height={20} /> },
   { key: "party", label: "Party or celebration", blurb: "Birthday, shower, anniversary, reception", icon: <Icons.Sparkles width={20} height={20} /> },
   { key: "wedding", label: "Wedding", blurb: "A ceremony and/or reception", icon: <Icons.Heart width={20} height={20} /> },
   { key: "class", label: "Class or program", blurb: "A class, group, or recurring activity", icon: <Icons.BookOpen width={20} height={20} /> },
-  { key: "sports", label: "Sports or gym time", blurb: "Volleyball, basketball, open gym, play dates", icon: <Icons.Play width={20} height={20} /> },
   { key: "other", label: "Just need a room", blurb: "Something else — tell us about it", icon: <Icons.Home width={20} height={20} /> },
 ];
 const subTypeStep: WizardStep = {
