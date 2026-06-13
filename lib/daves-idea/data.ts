@@ -64,9 +64,16 @@ export interface AssignableMember {
 
 // B-phase: Granola-style readable summary — content-driven sections, each
 // with short bullets. Generated alongside action items at extraction time.
+// Each bullet carries an optional `detail`: a grounding note that quotes the
+// transcript, surfaced in a "Transcript Summary" popover (the + affordance).
+export interface DavesIdeaSummaryBullet {
+  text: string;
+  detail: string | null;
+}
+
 export interface DavesIdeaSummarySection {
   heading: string;
-  bullets: string[];
+  bullets: DavesIdeaSummaryBullet[];
 }
 
 export interface DavesIdeaRecording {

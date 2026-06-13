@@ -584,3 +584,26 @@ main::-webkit-scrollbar-track { background: transparent; }
   .gw-desktop-table { display: none !important; }
   .gw-mobile-cards { display: flex; flex-direction: column; }
 }
+
+/* ── ReelNotes summary bullets: hover-reveal "Transcript Summary" (+) ─────── */
+.gw-sum-bullet {
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.gw-sum-bullet:hover {
+  background: rgba(0, 0, 0, 0.04); /* "darker gray" on hover, theme-agnostic */
+}
+.gw-sum-expand {
+  opacity: 0;
+  transition: opacity 120ms var(--gw-ease, ease);
+}
+.gw-sum-bullet:hover .gw-sum-expand,
+.gw-sum-expand[data-open="true"] {
+  opacity: 1;
+}
+/* Touch devices have no hover — keep the affordance discoverable. */
+@media (hover: none) {
+  .gw-sum-expand {
+    opacity: 1;
+  }
+}

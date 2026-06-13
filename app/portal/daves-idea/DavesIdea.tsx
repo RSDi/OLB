@@ -10,6 +10,7 @@ import type {
   AssignableMember,
   DavesIdeaActionItem,
   DavesIdeaRecording,
+  DavesIdeaSummaryBullet,
   RecordingStatus,
 } from "../../../lib/daves-idea/data";
 
@@ -120,6 +121,82 @@ function formatMs(ms: number): string {
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// Tolerate the legacy summary shape (bullets were plain strings before the
+// per-bullet "detail" grounding was added) so older recordings still render.
+function normalizeSummaryBullet(b: DavesIdeaSummaryBullet | string): DavesIdeaSummaryBullet {
+  if (typeof b === "string") return { text: b, detail: null };
+  return { text: b.text, detail: b.detail ?? null };
+}
+
+// One summary bullet. On hover the row highlights and a + appears at the right
+// (Granola-style); clicking it reveals a "Transcript Summary" card grounding
+// the point in the transcript. Reveals inline (not a floating popover) so it
+// never clips inside the mobile card's scroll context. The + only exists when
+// the bullet carries a detail.
+function SummaryBullet({ bullet }: { bullet: DavesIdeaSummaryBullet }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="gw-sum-bullet">
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <span style={{ color: "var(--gw-fg-muted)", lineHeight: 1.65, flexShrink: 0 }}>•</span>
+        <span style={{ flex: 1, minWidth: 0, lineHeight: 1.65 }}>{bullet.text}</span>
+        {bullet.detail && (
+          <button
+            type="button"
+            className="gw-sum-expand"
+            data-open={open ? "true" : "false"}
+            onClick={() => setOpen(o => !o)}
+            title="Where this came from"
+            aria-label={open ? "Hide transcript summary" : "Show transcript summary"}
+            aria-expanded={open}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 22,
+              height: 22,
+              flexShrink: 0,
+              borderRadius: 6,
+              border: "1px solid var(--gw-border)",
+              background: open ? "var(--rsd-accent)" : "var(--gw-surface)",
+              color: open ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+              cursor: "pointer",
+            }}
+          >
+            {open ? <Icons.X width={12} height={12} /> : <Icons.Plus width={12} height={12} />}
+          </button>
+        )}
+      </div>
+      {bullet.detail && open && (
+        <div
+          style={{
+            marginTop: 6,
+            marginLeft: 16,
+            padding: 12,
+            background: "var(--gw-surface)",
+            border: "1px solid var(--gw-border)",
+            borderRadius: 8,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: "var(--gw-fg-muted)",
+              letterSpacing: ".06em",
+              textTransform: "uppercase",
+              marginBottom: 6,
+            }}
+          >
+            Transcript Summary
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--gw-fg)" }}>{bullet.detail}</div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Summary | Transcript tab pill.
@@ -1033,6 +1110,7 @@ function SelectedDetail({
   const [readView, setReadView] = useState<"summary" | "transcript">(
     hasSummary ? "summary" : "transcript"
   );
+  const showingSummary = hasSummary && readView === "summary";
 
   const transcriptText = useMemo(() => {
     if (recording.utterances && recording.utterances.length > 0) {
@@ -1323,14 +1401,17 @@ function SelectedDetail({
             fontSize: 13,
             lineHeight: 1.65,
             color: "var(--gw-fg)",
-            maxHeight: 320,
-            overflow: "auto",
+            // Summary view: let it grow + overflow visible so a bullet's
+            // "Transcript Summary" popover isn't clipped. Transcript view:
+            // cap height and scroll.
+            maxHeight: showingSummary ? undefined : 320,
+            overflow: showingSummary ? "visible" : "auto",
           }}
         >
-          {hasSummary && readView === "summary" ? (
+          {showingSummary ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {recording.summary!.map((sec, i) => (
-                <div key={i}>
+                <div key={`${i}-${sec.heading}`}>
                   <div
                     style={{
                       fontSize: 11,
@@ -1343,11 +1424,15 @@ function SelectedDetail({
                   >
                     {sec.heading}
                   </div>
-                  <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 3 }}>
-                    {sec.bullets.map((b, j) => (
-                      <li key={j}>{b}</li>
-                    ))}
-                  </ul>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {sec.bullets.map((b, j) => {
+                      const nb = normalizeSummaryBullet(b);
+                      // Content-stable key so each bullet's expand state stays
+                      // bound to its own bullet (index appended only as a
+                      // tiebreaker for any duplicate text).
+                      return <SummaryBullet key={`${nb.text}-${j}`} bullet={nb} />;
+                    })}
+                  </div>
                 </div>
               ))}
             </div>

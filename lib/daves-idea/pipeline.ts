@@ -74,8 +74,18 @@ const ExtractionSchema = z.object({
       z.object({
         heading: z.string().describe("A short section heading (1-4 words)."),
         bullets: z
-          .array(z.string())
-          .describe("2-6 short, skimmable bullet points under this heading."),
+          .array(
+            z.object({
+              text: z.string().describe("A short, skimmable bullet point."),
+              detail: z
+                .string()
+                .nullish()
+                .describe(
+                  'A 1-3 sentence "transcript summary" that grounds THIS bullet in the conversation — explain what was said and weave in SHORT verbatim quotes from the transcript (in double quotes) showing where it came from, like a footnote. Null if you cannot tie it to specific spoken words.'
+                ),
+            })
+          )
+          .describe("2-6 bullet points under this heading."),
       })
     )
     .max(6)
@@ -114,9 +124,14 @@ async function fetchAssemblyAITranscript(transcriptId: string): Promise<Assembly
   return (await res.json()) as AssemblyAITranscript;
 }
 
+interface ExtractedSummaryBullet {
+  text: string;
+  detail: string | null;
+}
+
 interface ExtractedSummarySection {
   heading: string;
-  bullets: string[];
+  bullets: ExtractedSummaryBullet[];
 }
 
 async function extractTitleAndActions(
@@ -136,7 +151,7 @@ Given the transcript below, return:
 4. For each action item, set priority from how it was discussed: "emergency" for critical/ASAP/right-away language, "high" for urgent/important/"we should get on this", "low" for no-rush/someday, otherwise "medium". Don't inflate — only raise priority when the urgency is actually expressed.
 5. For each action item, set suggested_supporters ONLY when the transcript explicitly says someone will help/assist/work-with the responsible person on THAT item. Leave it empty otherwise — do NOT add everyone who was in the conversation, and do NOT include the responsible person themselves.
 6. For each action item, set anchor_quote to a short verbatim span copied EXACTLY from the transcript where this item was raised — the literal spoken words, not your rephrasing. This is used to jump the audio to that moment, so it must appear verbatim in the transcript below. If you cannot point to one clear span, set it null. Never invent or normalize the quote.
-7. Produce a readable "summary" — a few sections that recap the recording for someone who wasn't there. Choose 2-5 section headings that fit the content (for a work/maintenance discussion that might be "Situation", "Plan", "Timeline", "Next Steps"; for other content, pick what fits). Each section has 2-6 short, skimmable bullets. This is the human-readable recap and is separate from the action items above — it's fine for it to restate things. If the transcript is too thin to summarize, return an empty list.
+7. Produce a readable "summary" — a few sections that recap the recording for someone who wasn't there. Choose 2-5 section headings that fit the content (for a work/maintenance discussion that might be "Situation", "Plan", "Timeline", "Next Steps"; for other content, pick what fits). Each section has 2-6 short, skimmable bullets. This is the human-readable recap and is separate from the action items above — it's fine for it to restate things. If the transcript is too thin to summarize, return an empty list. For each bullet, also set "detail" to a 1-3 sentence note that grounds the bullet in the conversation, weaving in short verbatim quotes from the transcript (in double quotes) to show where it came from — set it null if you cannot point to specific spoken words.
 
 If there are no clear action items, return an empty list. Do not pad.
 
@@ -150,7 +165,9 @@ ${transcript}
   const summary = (object.summary ?? [])
     .map(sec => ({
       heading: (sec.heading ?? "").trim(),
-      bullets: (sec.bullets ?? []).map(b => b.trim()).filter(Boolean),
+      bullets: (sec.bullets ?? [])
+        .map(b => ({ text: (b.text ?? "").trim(), detail: b.detail?.trim() || null }))
+        .filter(b => b.text),
     }))
     .filter(sec => sec.heading && sec.bullets.length > 0);
   return {
