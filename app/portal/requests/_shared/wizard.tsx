@@ -26,6 +26,10 @@ export interface WizardStep {
   show?: (form: RequestForm) => boolean;
   valid?: (form: RequestForm) => boolean;
   body: (ctx: WizardCtx) => ReactNode;
+  // Template routing: if this returns a path, advancing from the step navigates
+  // there instead of going to the next step. Lets a "what are you planning?"
+  // choice hand off to a dedicated template flow (e.g. sports → the gym track).
+  nextHref?: (form: RequestForm) => string | null;
 }
 
 export interface TrackConfig {
@@ -76,6 +80,13 @@ export function RequestWizard({
   async function next() {
     if (!canAdvance) return;
     setError(null);
+    // Template hand-off: a step can redirect to a dedicated flow instead of
+    // advancing (e.g. picking "Sports or gym time" launches the gym template).
+    const href = step.nextHref?.(form);
+    if (href) {
+      router.push(href);
+      return;
+    }
     if (!isLast) {
       setStepIndex(idx + 1);
       return;
