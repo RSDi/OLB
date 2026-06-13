@@ -122,6 +122,23 @@ function formatMs(ms: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// Summary | Transcript tab pill.
+function readTabStyle(active: boolean): CSSProperties {
+  return {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: ".04em",
+    textTransform: "uppercase",
+    padding: "4px 12px",
+    borderRadius: 100,
+    cursor: "pointer",
+    border: "1px solid",
+    borderColor: active ? "var(--rsd-accent)" : "var(--gw-border)",
+    background: active ? "var(--rsd-accent)" : "transparent",
+    color: active ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+  };
+}
+
 // Common English nicknames → formal first name(s). Lets a spoken first name in
 // the transcript ("Dave") connect to a member whose legal name is formal
 // ("David Orrick"). Not exhaustive — a member's `nickname` field always wins.
@@ -366,7 +383,7 @@ export function DavesIdea({
         .from("daves_idea_recordings")
         .select(
           `id, user_id, title, audio_blob_url, duration_sec, source, status,
-           assemblyai_id, transcript, utterances, error, created_at, updated_at,
+           assemblyai_id, transcript, utterances, summary, error, created_at, updated_at,
            action_items:daves_idea_action_items(
              id, recording_id, text, routed_to, done, sort_order, priority,
              owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
@@ -999,6 +1016,14 @@ function SelectedDetail({
     void el.play().catch(() => {}); // best-effort; ignore autoplay rejection
   }
 
+  // Summary | Transcript toggle. Default to the readable summary when one
+  // exists (the Granola-style view), else the transcript. SelectedDetail
+  // remounts per recording (keyed on id), so this initial value stays correct.
+  const hasSummary = Array.isArray(recording.summary) && recording.summary.length > 0;
+  const [readView, setReadView] = useState<"summary" | "transcript">(
+    hasSummary ? "summary" : "transcript"
+  );
+
   const transcriptText = useMemo(() => {
     if (recording.utterances && recording.utterances.length > 0) {
       return recording.utterances.map(u => `${u.speaker}: ${u.text}`).join("\n\n");
@@ -1261,8 +1286,23 @@ function SelectedDetail({
       </div>
 
       <div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: ".04em", textTransform: "uppercase", marginBottom: 8 }}>
-          Transcript
+        {/* Summary | Transcript tabs. The Summary tab only appears once a
+            summary has been generated; otherwise this is just the transcript. */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
+          {hasSummary && (
+            <button
+              onClick={() => setReadView("summary")}
+              style={readTabStyle(readView === "summary")}
+            >
+              Summary
+            </button>
+          )}
+          <button
+            onClick={() => setReadView("transcript")}
+            style={readTabStyle(readView === "transcript" || !hasSummary)}
+          >
+            Transcript
+          </button>
         </div>
         <div
           style={{
@@ -1273,17 +1313,44 @@ function SelectedDetail({
             fontSize: 13,
             lineHeight: 1.65,
             color: "var(--gw-fg)",
-            whiteSpace: "pre-wrap",
             maxHeight: 320,
             overflow: "auto",
           }}
         >
-          {transcriptText ? (
-            transcriptText
+          {hasSummary && readView === "summary" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {recording.summary!.map((sec, i) => (
+                <div key={i}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "var(--gw-fg-muted)",
+                      letterSpacing: ".04em",
+                      textTransform: "uppercase",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {sec.heading}
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 3 }}>
+                    {sec.bullets.map((b, j) => (
+                      <li key={j}>{b}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           ) : (
-            <span style={{ color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
-              {recording.status === "failed" ? "Transcription failed." : "Transcription in progress…"}
-            </span>
+            <div style={{ whiteSpace: "pre-wrap" }}>
+              {transcriptText ? (
+                transcriptText
+              ) : (
+                <span style={{ color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
+                  {recording.status === "failed" ? "Transcription failed." : "Transcription in progress…"}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -62,6 +62,13 @@ export interface AssignableMember {
   nickname: string | null;
 }
 
+// B-phase: Granola-style readable summary — content-driven sections, each
+// with short bullets. Generated alongside action items at extraction time.
+export interface DavesIdeaSummarySection {
+  heading: string;
+  bullets: string[];
+}
+
 export interface DavesIdeaRecording {
   id: string;
   user_id: string;
@@ -73,6 +80,7 @@ export interface DavesIdeaRecording {
   assemblyai_id: string | null;
   transcript: string | null;
   utterances: Utterance[] | null;
+  summary: DavesIdeaSummarySection[] | null;
   error: string | null;
   created_at: string;
   updated_at: string;
@@ -93,7 +101,7 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
     .from("daves_idea_recordings")
     .select(
       `id, user_id, title, audio_blob_url, duration_sec, source, status,
-       assemblyai_id, transcript, utterances, error, created_at, updated_at,
+       assemblyai_id, transcript, utterances, summary, error, created_at, updated_at,
        action_items:daves_idea_action_items(
          id, recording_id, text, routed_to, done, sort_order, priority,
          owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,

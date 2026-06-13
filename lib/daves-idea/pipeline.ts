@@ -69,6 +69,20 @@ const ExtractionSchema = z.object({
     )
     .max(15)
     .describe("Action items extracted from the transcript. Empty if none."),
+  summary: z
+    .array(
+      z.object({
+        heading: z.string().describe("A short section heading (1-4 words)."),
+        bullets: z
+          .array(z.string())
+          .describe("2-6 short, skimmable bullet points under this heading."),
+      })
+    )
+    .max(6)
+    .nullish()
+    .describe(
+      'A readable summary of the recording as a few sections — choose headings that fit the content (e.g. "Situation", "Plan", "Timeline", "Next Steps"). Each section has short bullets. This is the human-readable recap, distinct from the action items. Empty/null if the recording is too thin to summarize.'
+    ),
 });
 
 type ActionPriority = "low" | "medium" | "high" | "emergency";
@@ -100,7 +114,14 @@ async function fetchAssemblyAITranscript(transcriptId: string): Promise<Assembly
   return (await res.json()) as AssemblyAITranscript;
 }
 
-async function extractTitleAndActions(transcript: string): Promise<{ title: string; actions: ExtractedAction[] }> {
+interface ExtractedSummarySection {
+  heading: string;
+  bullets: string[];
+}
+
+async function extractTitleAndActions(
+  transcript: string
+): Promise<{ title: string; actions: ExtractedAction[]; summary: ExtractedSummarySection[] | null }> {
   // Vercel AI Gateway: provider/model string, auto-routed. On Vercel the
   // gateway authenticates via OIDC; locally we need AI_GATEWAY_API_KEY.
   const { object } = await generateObject({
@@ -115,6 +136,7 @@ Given the transcript below, return:
 4. For each action item, set priority from how it was discussed: "emergency" for critical/ASAP/right-away language, "high" for urgent/important/"we should get on this", "low" for no-rush/someday, otherwise "medium". Don't inflate — only raise priority when the urgency is actually expressed.
 5. For each action item, set suggested_supporters ONLY when the transcript explicitly says someone will help/assist/work-with the responsible person on THAT item. Leave it empty otherwise — do NOT add everyone who was in the conversation, and do NOT include the responsible person themselves.
 6. For each action item, set anchor_quote to a short verbatim span copied EXACTLY from the transcript where this item was raised — the literal spoken words, not your rephrasing. This is used to jump the audio to that moment, so it must appear verbatim in the transcript below. If you cannot point to one clear span, set it null. Never invent or normalize the quote.
+7. Produce a readable "summary" — a few sections that recap the recording for someone who wasn't there. Choose 2-5 section headings that fit the content (for a work/maintenance discussion that might be "Situation", "Plan", "Timeline", "Next Steps"; for other content, pick what fits). Each section has 2-6 short, skimmable bullets. This is the human-readable recap and is separate from the action items above — it's fine for it to restate things. If the transcript is too thin to summarize, return an empty list.
 
 If there are no clear action items, return an empty list. Do not pad.
 
@@ -123,6 +145,14 @@ Transcript:
 ${transcript}
 """`,
   });
+  // Keep only well-formed summary sections (a heading + at least one bullet);
+  // collapse to null when nothing usable remains so the UI hides the tab.
+  const summary = (object.summary ?? [])
+    .map(sec => ({
+      heading: (sec.heading ?? "").trim(),
+      bullets: (sec.bullets ?? []).map(b => b.trim()).filter(Boolean),
+    }))
+    .filter(sec => sec.heading && sec.bullets.length > 0);
   return {
     title: object.title,
     actions: object.action_items.map(a => ({
@@ -132,6 +162,7 @@ ${transcript}
       suggested_supporters: (a.suggested_supporters ?? []).map(s => s.trim()).filter(Boolean),
       anchor_quote: a.anchor_quote?.trim() || null,
     })),
+    summary: summary.length > 0 ? summary : null,
   };
 }
 
@@ -255,12 +286,14 @@ export async function processTranscriptionCompleted(
     // 3. LLM extraction. If the transcript is empty (silent recording), skip.
     let title = "Untitled recording";
     let actions: ExtractedAction[] = [];
+    let summary: ExtractedSummarySection[] | null = null;
     let extractionError: string | null = null;
     if (transcriptText.length > 0) {
       try {
         const out = await extractTitleAndActions(transcriptText);
         title = out.title;
         actions = out.actions;
+        summary = out.summary;
       } catch (err) {
         console.error("LLM extraction failed", err);
         // Surface the failure on the row instead of silently producing an
@@ -305,6 +338,17 @@ export async function processTranscriptionCompleted(
       .from("daves_idea_recordings")
       .update({ title, status: "ready", error: extractionError })
       .eq("id", recordingId);
+
+    // The readable summary is a nice-to-have — write it separately so a
+    // summary-write failure (e.g. a pre-0055 schema) can never knock the
+    // recording out of "ready". Best-effort: log and move on.
+    {
+      const { error: summaryErr } = await admin
+        .from("daves_idea_recordings")
+        .update({ summary })
+        .eq("id", recordingId);
+      if (summaryErr) console.error("Summary write failed (non-fatal)", summaryErr.message);
+    }
 
     // 5.5 (B3): recorded on a task — drop the summary into its comment
     // thread so the notes land where the work is.
