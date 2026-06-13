@@ -114,6 +114,14 @@ function priorityMeta(p: string | null | undefined) {
   return PRIORITY_META[p ?? "medium"] ?? PRIORITY_META.medium;
 }
 
+// B4: milliseconds → M:SS for the "jump to moment" button label.
+function formatMs(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 // Common English nicknames → formal first name(s). Lets a spoken first name in
 // the transcript ("Dave") connect to a member whose legal name is formal
 // ("David Orrick"). Not exhaustive — a member's `nickname` field always wins.
@@ -362,7 +370,7 @@ export function DavesIdea({
            action_items:daves_idea_action_items(
              id, recording_id, text, routed_to, done, sort_order, priority,
              owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
-             suggested_supporter_names, created_at, updated_at
+             suggested_supporter_names, transcript_ms, created_at, updated_at
            )`
         )
         .is("deleted_at", null)
@@ -980,6 +988,17 @@ function SelectedDetail({
   const router = useRouter();
   const [sendingProject, setSendingProject] = useState(false);
 
+  // B4: a ref to the audio player so an action item's "Jump to M:SS" button
+  // can seek it. Local to SelectedDetail — seeking touches only the DOM
+  // element, never Supabase, so it doesn't route through the write handlers.
+  const audioRef = useRef<HTMLAudioElement>(null);
+  function seekTo(ms: number) {
+    const el = audioRef.current;
+    if (!el) return;
+    el.currentTime = ms / 1000; // <audio> currentTime is in seconds
+    void el.play().catch(() => {}); // best-effort; ignore autoplay rejection
+  }
+
   const transcriptText = useMemo(() => {
     if (recording.utterances && recording.utterances.length > 0) {
       return recording.utterances.map(u => `${u.speaker}: ${u.text}`).join("\n\n");
@@ -1159,6 +1178,7 @@ function SelectedDetail({
         >
           {recording.audio_blob_url && (
             <audio
+              ref={audioRef}
               controls
               src={recording.audio_blob_url}
               style={{
@@ -1360,6 +1380,7 @@ function SelectedDetail({
                 onEdit={text => onEditAction(a.id, text)}
                 onSetOwner={memberId => onSetOwner(a.id, memberId)}
                 onToggleSupporter={memberId => onToggleSupporter(a.id, memberId)}
+                onSeekToMs={ms => seekTo(ms)}
               />
             ))}
           </div>
@@ -1378,6 +1399,7 @@ function ActionRow({
   onEdit,
   onSetOwner,
   onToggleSupporter,
+  onSeekToMs,
   focused,
 }: {
   action: DavesIdeaActionItem;
@@ -1388,6 +1410,7 @@ function ActionRow({
   onEdit: (text: string) => void;
   onSetOwner: (memberId: string | null) => void;
   onToggleSupporter: (memberId: string) => void;
+  onSeekToMs: (ms: number) => void;
   focused?: boolean;
 }) {
   const { open, setOpen, ref: sendToRef } = useDismissable();
@@ -1636,6 +1659,31 @@ function ActionRow({
           </div>
         )}
       </div>
+      {action.transcript_ms != null && (
+        <button
+          onClick={() => onSeekToMs(action.transcript_ms!)}
+          className="gw-press"
+          title="Jump to this moment in the recording"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 10,
+            fontWeight: 700,
+            padding: "2px 8px",
+            borderRadius: 100,
+            background: "transparent",
+            color: "var(--rsd-accent)",
+            border: "1px solid var(--rsd-accent)",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}
+        >
+          <Icons.Play width={9} height={9} />
+          {formatMs(action.transcript_ms)}
+        </button>
+      )}
       {action.routed_to && (
         <span className="rsd-chip rsd-chip-warn" style={{ fontSize: 10 }}>
           → {action.routed_to}

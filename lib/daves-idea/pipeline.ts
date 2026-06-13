@@ -14,6 +14,7 @@ import { generateObject } from "ai";
 import { Resend } from "resend";
 import { z } from "zod";
 import { createAdminClient } from "../supabase/admin";
+import { resolveAnchorMs } from "./anchor";
 
 interface AssemblyAIUtterance {
   speaker: string;
@@ -58,6 +59,12 @@ const ExtractionSchema = z.object({
           .describe(
             'Names (as spoken) of people the transcript EXPLICITLY says will help/assist/work-with the responsible person on THIS item (e.g. "Jeff bring the cigars, and Dave help him" → ["Dave"] on the cigars item). Empty unless help is explicitly stated — do NOT include the owner, and do NOT add everyone who was in the conversation.'
           ),
+        anchor_quote: z
+          .string()
+          .nullish()
+          .describe(
+            'A SHORT verbatim span (4-15 words) COPIED WORD-FOR-WORD from the transcript — the exact words spoken when THIS item came up. Copy it character-for-character: do not paraphrase, fix grammar, add punctuation, or merge sentences. Used to jump the audio to that moment, so it MUST appear verbatim in the transcript. Set null if the item is synthesized from several places or no single spoken span clearly corresponds to it.'
+          ),
       })
     )
     .max(15)
@@ -71,6 +78,7 @@ interface ExtractedAction {
   suggested_assignee: string | null;
   priority: ActionPriority;
   suggested_supporters: string[];
+  anchor_quote: string | null;
 }
 
 function siteUrl(): string {
@@ -106,6 +114,7 @@ Given the transcript below, return:
 3. For each action item, if the transcript clearly names who is responsible for it (e.g. "Dave will pay the deposit", "ask Jeff to call the vendor"), set suggested_assignee to that person's name as spoken — a first name or nickname. If no one is clearly named for that item, leave it null. Do not guess.
 4. For each action item, set priority from how it was discussed: "emergency" for critical/ASAP/right-away language, "high" for urgent/important/"we should get on this", "low" for no-rush/someday, otherwise "medium". Don't inflate — only raise priority when the urgency is actually expressed.
 5. For each action item, set suggested_supporters ONLY when the transcript explicitly says someone will help/assist/work-with the responsible person on THAT item. Leave it empty otherwise — do NOT add everyone who was in the conversation, and do NOT include the responsible person themselves.
+6. For each action item, set anchor_quote to a short verbatim span copied EXACTLY from the transcript where this item was raised — the literal spoken words, not your rephrasing. This is used to jump the audio to that moment, so it must appear verbatim in the transcript below. If you cannot point to one clear span, set it null. Never invent or normalize the quote.
 
 If there are no clear action items, return an empty list. Do not pad.
 
@@ -121,6 +130,7 @@ ${transcript}
       suggested_assignee: a.suggested_assignee ?? null,
       priority: a.priority ?? "medium",
       suggested_supporters: (a.suggested_supporters ?? []).map(s => s.trim()).filter(Boolean),
+      anchor_quote: a.anchor_quote?.trim() || null,
     })),
   };
 }
@@ -265,14 +275,26 @@ export async function processTranscriptionCompleted(
     // that name to a member happens live in the UI, so it stays current with
     // the directory and applies to older recordings too.
     if (actions.length > 0) {
-      const rows = actions.map((a, idx) => ({
-        recording_id: recordingId,
-        text: a.text,
-        sort_order: idx,
-        suggested_assignee_name: a.suggested_assignee?.trim() || null,
-        priority: a.priority,
-        suggested_supporter_names: a.suggested_supporters,
-      }));
+      const rows = actions.map((a, idx) => {
+        // Resolve the LLM's verbatim anchor quote to a real utterance ms
+        // offset (B4). Wrapped so a matcher bug can never fail the recording.
+        let transcriptMs: number | null = null;
+        try {
+          transcriptMs = resolveAnchorMs(a.anchor_quote, utterances);
+        } catch (err) {
+          console.error("anchor resolution failed (non-fatal)", err);
+        }
+        return {
+          recording_id: recordingId,
+          text: a.text,
+          sort_order: idx,
+          suggested_assignee_name: a.suggested_assignee?.trim() || null,
+          priority: a.priority,
+          suggested_supporter_names: a.suggested_supporters,
+          anchor_quote: a.anchor_quote,
+          transcript_ms: transcriptMs,
+        };
+      });
       const { error: insertErr } = await admin.from("daves_idea_action_items").insert(rows);
       if (insertErr) console.error("Action item insert failed", insertErr);
     }

@@ -47,6 +47,9 @@ export interface DavesIdeaActionItem {
   suggested_member_id: string | null;
   // LLM-suggested supporter names (explicit-only); matched to members in the UI.
   suggested_supporter_names: string[];
+  // B4: resolved start offset (ms) of the utterance where this item was
+  // raised, or null when no confident transcript anchor exists.
+  transcript_ms: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,7 +97,7 @@ export async function loadDavesIdeaRecordings(): Promise<DavesIdeaRecording[]> {
        action_items:daves_idea_action_items(
          id, recording_id, text, routed_to, done, sort_order, priority,
          owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
-         suggested_supporter_names, created_at, updated_at
+         suggested_supporter_names, transcript_ms, created_at, updated_at
        )`
     )
     .is("deleted_at", null)

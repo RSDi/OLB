@@ -23,7 +23,7 @@ const RECORDING_SELECT = `id, user_id, title, audio_blob_url, duration_sec, sour
   action_items:daves_idea_action_items(
     id, recording_id, text, routed_to, done, sort_order, priority,
     owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
-    suggested_supporter_names, created_at, updated_at
+    suggested_supporter_names, transcript_ms, created_at, updated_at
   )`;
 
 export async function POST(
