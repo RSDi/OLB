@@ -1012,8 +1012,18 @@ function SelectedDetail({
   function seekTo(ms: number) {
     const el = audioRef.current;
     if (!el) return;
-    el.currentTime = ms / 1000; // <audio> currentTime is in seconds
-    void el.play().catch(() => {}); // best-effort; ignore autoplay rejection
+    const doSeek = () => {
+      el.currentTime = ms / 1000; // <audio> currentTime is in seconds
+      void el.play().catch(() => {}); // best-effort; ignore autoplay rejection
+    };
+    // If the user clicks "jump" before metadata has loaded (readyState 0),
+    // setting currentTime no-ops — wait for metadata, then seek.
+    if (el.readyState >= 1 /* HAVE_METADATA */) {
+      doSeek();
+    } else {
+      el.addEventListener("loadedmetadata", doSeek, { once: true });
+      el.load();
+    }
   }
 
   // Summary | Transcript toggle. Default to the readable summary when one
