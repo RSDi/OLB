@@ -7,7 +7,7 @@ import { createAdminClient } from "../supabase/admin";
 import { sendNewTicketNotification } from "../notifications/new-ticket";
 import { sendNewTicketSlack } from "../notifications/slack";
 import { sendRequestDecisionNotification } from "../notifications/request-decision";
-import { resolveRequestDates, summarizeDates } from "../requests/recurrence";
+import { resolveRequestDates, resolveOccurrences, summarizeDates, formatDateLabel } from "../requests/recurrence";
 
 export interface CreateTicketResult {
   success?: boolean;
@@ -408,11 +408,17 @@ function buildRequestDescription(trackKey: string, d: Record<string, unknown>): 
   };
   const when = () => {
     const time = [d.startTime, d.endTime].filter(Boolean).join("–");
-    if (d.recurring) {
+    if (d.recurring && resolveRequestDates(d).length > 1) {
       const dates = resolveRequestDates(d);
-      const datePart = dates.length > 1 ? summarizeDates(dates) : s(d.date);
-      const w = [datePart, time].filter(Boolean).join(" ");
-      if (w) lines.push(`When: ${w}${dates.length > 1 ? " (recurring)" : ""}.`);
+      // Per-day hours → list each day's window so the committee can see them.
+      if (d.sameHours === false) {
+        const parts = resolveOccurrences(d).map(
+          (o) => `${formatDateLabel(o.date)} ${o.start && o.end ? `${o.start}–${o.end}` : "time TBD"}`,
+        );
+        lines.push(`When (recurring · hours vary): ${parts.join("; ")}.`);
+        return;
+      }
+      lines.push(`When: ${summarizeDates(dates)}${time ? ` ${time}` : ""} (recurring).`);
       return;
     }
     const w = [d.date, time].filter(Boolean).join(" ");
@@ -703,20 +709,12 @@ async function createEventFromApprovedRequest(
   const d = row.details;
   if (!d) return;
   // One event per resolved occurrence: a recurring request books its whole
-  // series. resolveRequestDates returns [date] for a single-date request.
-  const dates = resolveRequestDates(d);
-  if (dates.length === 0) {
+  // series, each day with its own window (per-day hours). resolveOccurrences
+  // returns one entry for a single-date request.
+  const occurrences = resolveOccurrences(d);
+  if (occurrences.length === 0) {
     console.warn("[events] approved request has no resolvable date — skipping auto-event", row.id);
     return;
-  }
-  const startTime = typeof d.startTime === "string" && d.startTime ? d.startTime : "09:00";
-  let endTime = typeof d.endTime === "string" && d.endTime ? d.endTime : "";
-  if (!endTime) {
-    // Default to two hours after start, but never wrap past midnight: an
-    // end-before-start row violates the events end>=start CHECK and would
-    // reject the whole batch insert. Clamp to 23:59 the same day.
-    const endHour = Number(startTime.slice(0, 2)) + 2;
-    endTime = endHour >= 24 ? "23:59" : `${String(endHour).padStart(2, "0")}${startTime.slice(2)}`;
   }
   const spaces = Array.isArray(d.spaces) ? (d.spaces as string[]).join(", ") : null;
   // Prefer the explicit label (eventTypeLabel for building-use/event/class,
@@ -726,14 +724,25 @@ async function createEventFromApprovedRequest(
     (typeof d.subTypeLabel === "string" && d.subTypeLabel) ||
     row.description.split("\n")[0].slice(0, 120);
 
-  const eventRows = dates.map((date) => ({
-    title,
-    description: "Booked via an approved request.",
-    start_at: `${date}T${startTime}:00`,
-    end_at: `${date}T${endTime}:00`,
-    location: spaces,
-    source_ticket_id: row.id,
-  }));
+  const eventRows = occurrences.map((o) => {
+    const startTime = o.start || "09:00";
+    let endTime = o.end || "";
+    if (!endTime) {
+      // Default to two hours after start, but never wrap past midnight: an
+      // end-before-start row violates the events end>=start CHECK and would
+      // reject the whole batch insert. Clamp to 23:59 the same day.
+      const endHour = Number(startTime.slice(0, 2)) + 2;
+      endTime = endHour >= 24 ? "23:59" : `${String(endHour).padStart(2, "0")}${startTime.slice(2)}`;
+    }
+    return {
+      title,
+      description: "Booked via an approved request.",
+      start_at: `${o.date}T${startTime}:00`,
+      end_at: `${o.date}T${endTime}:00`,
+      location: spaces,
+      source_ticket_id: row.id,
+    };
+  });
   const { error } = await supabase.from("events").insert(eventRows);
   if (error) {
     // Pre-0050 schema (no source_ticket_id) or RLS hiccup — log, don't block

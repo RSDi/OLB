@@ -92,3 +92,44 @@ export function summarizeDates(dates: string[]): string {
   const sorted = [...dates].sort();
   return `${formatDateLabel(sorted[0])} – ${formatDateLabel(sorted[sorted.length - 1])} · ${sorted.length} dates`;
 }
+
+// A single booked day with its time window. The authoritative unit the conflict
+// checker and the calendar booker both act on, so they agree about per-day
+// hours.
+export interface Occurrence {
+  date: string; // YYYY-MM-DD
+  start: string | null; // HH:MM
+  end: string | null; // HH:MM
+}
+
+function timeStr(v: unknown): string | null {
+  return typeof v === "string" && v ? v : null;
+}
+
+// Each occurrence of a request with its time window. Same hours for every date
+// unless the member chose per-day hours (sameHours === false), in which case
+// dayHours[date] overrides — falling back to the default window for any day not
+// given its own. resolveRequestDates is the date source of truth.
+export function resolveOccurrences(d: (RecurrenceDetails & {
+  startTime?: unknown;
+  endTime?: unknown;
+  sameHours?: unknown;
+  dayHours?: unknown;
+}) | null | undefined): Occurrence[] {
+  if (!d) return [];
+  const dates = resolveRequestDates(d);
+  const defStart = timeStr(d.startTime);
+  const defEnd = timeStr(d.endTime);
+  const perDay =
+    d.sameHours === false && d.dayHours && typeof d.dayHours === "object"
+      ? (d.dayHours as Record<string, { start?: unknown; end?: unknown }>)
+      : null;
+  return dates.map((date) => {
+    const o = perDay ? perDay[date] : undefined;
+    return {
+      date,
+      start: o ? timeStr(o.start) ?? defStart : defStart,
+      end: o ? timeStr(o.end) ?? defEnd : defEnd,
+    };
+  });
+}

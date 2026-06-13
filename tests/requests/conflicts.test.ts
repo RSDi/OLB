@@ -1,6 +1,7 @@
 // Unit tests for schedule-conflict detection — the time-overlap logic is the
 // risky part (off-by-one at touching edges, all-day handling, space matching),
-// plus multi-date (recurring) targets that can clash on any of their dates.
+// plus multi-date (recurring) targets that can clash on any of their dates,
+// each with its own per-day window.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -22,8 +23,11 @@ const gymEvent: ConflictCandidate = {
   end: "20:00",
 };
 
+const at = (date: string, start: string | null, end: string | null) => ({ date, start, end });
+const target = (spaces: string[], occurrences: ReturnType<typeof at>[]) => ({ spaces, occurrences });
+
 test("overlapping window on the same space/date is a conflict", () => {
-  const c = findConflicts({ spaces: ["Gym"], dates: ["2026-08-20"], start: "19:00", end: "21:00" }, [gymEvent]);
+  const c = findConflicts(target(["Gym"], [at("2026-08-20", "19:00", "21:00")]), [gymEvent]);
   assert.equal(c.length, 1);
   assert.equal(c[0].id, "e1");
   assert.equal(c[0].date, "2026-08-20");
@@ -31,28 +35,28 @@ test("overlapping window on the same space/date is a conflict", () => {
 });
 
 test("touching edges do NOT conflict (one ends when the other starts)", () => {
-  const c = findConflicts({ spaces: ["Gym"], dates: ["2026-08-20"], start: "20:00", end: "22:00" }, [gymEvent]);
+  const c = findConflicts(target(["Gym"], [at("2026-08-20", "20:00", "22:00")]), [gymEvent]);
   assert.equal(c.length, 0);
 });
 
 test("different space does not conflict", () => {
-  const c = findConflicts({ spaces: ["Kitchen"], dates: ["2026-08-20"], start: "18:30", end: "19:30" }, [gymEvent]);
+  const c = findConflicts(target(["Kitchen"], [at("2026-08-20", "18:30", "19:30")]), [gymEvent]);
   assert.equal(c.length, 0);
 });
 
 test("different date does not conflict", () => {
-  const c = findConflicts({ spaces: ["Gym"], dates: ["2026-08-21"], start: "18:30", end: "19:30" }, [gymEvent]);
+  const c = findConflicts(target(["Gym"], [at("2026-08-21", "18:30", "19:30")]), [gymEvent]);
   assert.equal(c.length, 0);
 });
 
 test("a missing time window is treated as all-day → conflicts that day", () => {
-  const c = findConflicts({ spaces: ["Gym"], dates: ["2026-08-20"], start: null, end: null }, [gymEvent]);
+  const c = findConflicts(target(["Gym"], [at("2026-08-20", null, null)]), [gymEvent]);
   assert.equal(c.length, 1);
 });
 
-test("no dates or no spaces → never conflicts", () => {
-  assert.equal(findConflicts({ spaces: ["Gym"], dates: [], start: "18:00", end: "20:00" }, [gymEvent]).length, 0);
-  assert.equal(findConflicts({ spaces: [], dates: ["2026-08-20"], start: "18:00", end: "20:00" }, [gymEvent]).length, 0);
+test("no occurrences or no spaces → never conflicts", () => {
+  assert.equal(findConflicts(target(["Gym"], []), [gymEvent]).length, 0);
+  assert.equal(findConflicts(target([], [at("2026-08-20", "18:00", "20:00")]), [gymEvent]).length, 0);
 });
 
 test("multiple candidates, only overlapping ones returned, earliest first", () => {
@@ -61,7 +65,7 @@ test("multiple candidates, only overlapping ones returned, earliest first", () =
     { ...gymEvent, id: "early", start: "17:00", end: "19:15", title: "Early" },
     { ...gymEvent, id: "miss", start: "08:00", end: "09:00", title: "Morning" },
   ];
-  const c = findConflicts({ spaces: ["Gym"], dates: ["2026-08-20"], start: "19:00", end: "19:45" }, cands);
+  const c = findConflicts(target(["Gym"], [at("2026-08-20", "19:00", "19:45")]), cands);
   assert.deepEqual(c.map(x => x.id), ["early", "late"]);
 });
 
@@ -70,8 +74,8 @@ test("recurring target clashes on a non-first date and tags each by its date", (
     { ...gymEvent, id: "wk2", date: "2026-08-27", start: "18:00", end: "20:00", title: "Week 2" },
     { ...gymEvent, id: "wk4", date: "2026-09-10", start: "18:00", end: "20:00", title: "Week 4" },
   ];
-  const target = { spaces: ["Gym"], dates: ["2026-08-20", "2026-08-27", "2026-09-03", "2026-09-10"], start: "18:30", end: "19:30" };
-  const c = findConflicts(target, cands);
+  const t = target(["Gym"], ["2026-08-20", "2026-08-27", "2026-09-03", "2026-09-10"].map(d => at(d, "18:30", "19:30")));
+  const c = findConflicts(t, cands);
   assert.deepEqual(c.map(x => `${x.id}@${x.date}`), ["wk2@2026-08-27", "wk4@2026-09-10"]);
 });
 
@@ -80,8 +84,20 @@ test("same candidate booking on two of the target's dates reports once per date"
     { ...gymEvent, id: "same", date: "2026-08-20" },
     { ...gymEvent, id: "same", date: "2026-08-27" },
   ];
-  const c = findConflicts({ spaces: ["Gym"], dates: ["2026-08-20", "2026-08-27"], start: "19:00", end: "21:00" }, cands);
+  const t = target(["Gym"], [at("2026-08-20", "19:00", "21:00"), at("2026-08-27", "19:00", "21:00")]);
+  const c = findConflicts(t, cands);
   assert.deepEqual(c.map(x => x.date), ["2026-08-20", "2026-08-27"]);
+});
+
+test("per-day hours: each date is checked against ITS OWN window", () => {
+  const cands: ConflictCandidate[] = [
+    { ...gymEvent, id: "tue", date: "2026-08-25", start: "18:00", end: "20:00", title: "Tue eve" },
+    { ...gymEvent, id: "thu", date: "2026-08-27", start: "18:00", end: "20:00", title: "Thu eve" },
+  ];
+  // Tue requested 6:30–7:30pm (overlaps the booking); Thu requested 9–10am (clear).
+  const t = target(["Gym"], [at("2026-08-25", "18:30", "19:30"), at("2026-08-27", "09:00", "10:00")]);
+  const c = findConflicts(t, cands);
+  assert.deepEqual(c.map(x => x.id), ["tue"]); // only Tuesday's window clashes
 });
 
 test("windowsOverlap edge cases", () => {

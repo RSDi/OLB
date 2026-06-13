@@ -31,9 +31,11 @@ export interface Conflict {
 
 export interface ConflictTarget {
   spaces: string[];
-  dates: string[]; // one or many YYYY-MM-DD (single-date requests pass [date])
-  start: string | null;
-  end: string | null;
+  // One entry per booked day, each with its own time window — so a recurring
+  // request with different hours per day is checked accurately. Single-date and
+  // same-hours requests just pass one window per date. (Matches Occurrence from
+  // ./recurrence structurally.)
+  occurrences: { date: string; start: string | null; end: string | null }[];
 }
 
 function toMinutes(t: string | null): number | null {
@@ -79,19 +81,21 @@ function whenLabel(c: ConflictCandidate): string {
 
 // Returns the candidates that conflict with the target, earliest first. A
 // multi-date (recurring) target clashes with any candidate that lands on one of
-// its dates; the same candidate booking can clash on several dates, so each
-// (candidate, date) pair is reported once, sorted by date then start time.
+// its dates — using THAT date's own window — so per-day hours are honored. The
+// same candidate booking can clash on several dates, so each (candidate, date)
+// pair is reported once, sorted by date then start time.
 export function findConflicts(target: ConflictTarget, candidates: ConflictCandidate[]): Conflict[] {
-  if (target.dates.length === 0 || target.spaces.length === 0) return [];
-  const tStart = toMinutes(target.start);
-  const tEnd = toMinutes(target.end);
-  const dateSet = new Set(target.dates);
-  const matches = candidates.filter(
-    c =>
-      dateSet.has(c.date) &&
+  if (target.occurrences.length === 0 || target.spaces.length === 0) return [];
+  const byDate = new Map<string, { start: number | null; end: number | null }>();
+  for (const o of target.occurrences) byDate.set(o.date, { start: toMinutes(o.start), end: toMinutes(o.end) });
+  const matches = candidates.filter((c) => {
+    const occ = byDate.get(c.date);
+    return (
+      occ !== undefined &&
       c.spaces.some(s => target.spaces.includes(s)) &&
-      windowsOverlap(tStart, tEnd, toMinutes(c.start), toMinutes(c.end)),
-  );
+      windowsOverlap(occ.start, occ.end, toMinutes(c.start), toMinutes(c.end))
+    );
+  });
   matches.sort((a, b) =>
     a.date !== b.date ? (a.date < b.date ? -1 : 1) : (toMinutes(a.start) ?? -1) - (toMinutes(b.start) ?? -1),
   );

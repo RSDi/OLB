@@ -1,7 +1,7 @@
 import { Icons } from "../../../components/icons";
 import { Input, Textarea } from "../../../components/ui";
 import { resolveRequestDates, summarizeDates, formatDateLabel } from "../../../../lib/requests/recurrence";
-import { BookingCalendar } from "./BookingCalendar";
+import { BookingCalendar, PerDayHours } from "./BookingCalendar";
 import {
   type RequestForm,
   type TrackConfig,
@@ -33,8 +33,11 @@ const whenStr = (f: RequestForm) => {
   const time = [f.startTime, f.endTime].filter(Boolean).join("–");
   if (f.recurring) {
     const dates = resolveRequestDates(f);
-    const datePart = dates.length > 1 ? summarizeDates(dates) : str(f.date);
-    return [datePart, time].filter(Boolean).join(" ") + (dates.length > 1 ? " (recurring)" : "");
+    if (dates.length > 1) {
+      const perDay = f.sameHours === false;
+      return `${summarizeDates(dates)}${perDay ? " · hours vary" : time ? ` ${time}` : ""} (recurring)`;
+    }
+    return [str(f.date), time].filter(Boolean).join(" ");
   }
   return [f.date, time].filter(Boolean).join(" ");
 };
@@ -246,6 +249,22 @@ const whenStep: WizardStep = {
         label="This happens on more than one day"
       />
       {!!form.recurring && recurringPlanner(form, set)}
+      {!!form.recurring && resolveRequestDates(form).length > 1 && (
+        <>
+          <CheckRow
+            checked={form.sameHours === false}
+            onChange={(v) => set("sameHours", !v)}
+            label="Some days need different hours"
+          />
+          {form.sameHours === false && (
+            <PerDayHours
+              form={form}
+              set={set}
+              spaces={Array.isArray(form.spaces) ? (form.spaces as string[]) : []}
+            />
+          )}
+        </>
+      )}
     </>
   ),
 };

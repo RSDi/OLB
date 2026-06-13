@@ -15,6 +15,7 @@ import {
   SLOT_MIN,
   type BusyWindow,
 } from "../../../../lib/requests/availability";
+import { resolveRequestDates, formatDateLabel } from "../../../../lib/requests/recurrence";
 
 // Availability-aware date+time picker. Shows the months calendar, then the
 // free start times for the chosen day (existing reservations for the space are
@@ -275,3 +276,90 @@ const chip = (selected: boolean): React.CSSProperties => ({
   color: selected ? "var(--rsd-accent-on)" : "var(--gw-fg)",
   border: `1px solid ${selected ? "var(--rsd-accent)" : "var(--gw-border)"}`,
 });
+const selectStyle: React.CSSProperties = {
+  padding: "7px 8px", borderRadius: 8, border: "1px solid var(--gw-border)",
+  background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13, fontWeight: 600,
+};
+
+// Per-day hours editor for a recurring request where the member wants different
+// times on different days. Each resolved date gets its own start + end picked
+// from THAT day's availability. Untouched days fall back to the default window
+// (resolveOccurrences), so the member only adjusts the days that differ.
+export function PerDayHours({
+  form,
+  set,
+  spaces,
+}: {
+  form: Record<string, unknown>;
+  set: (key: string, value: unknown) => void;
+  spaces: string[];
+}) {
+  const dates = resolveRequestDates(form);
+  const dayHours =
+    form.dayHours && typeof form.dayHours === "object"
+      ? (form.dayHours as Record<string, { start?: string; end?: string }>)
+      : {};
+  const defStart = str(form.startTime);
+  const defEnd = str(form.endTime);
+  const [busy, setBusy] = useState<Record<string, BusyWindow[]>>({});
+  const [loading, setLoading] = useState(false);
+
+  const datesKey = dates.join(",");
+  const spacesKey = spaces.join(",");
+  useEffect(() => {
+    if (dates.length === 0 || spaces.length === 0) return;
+    let live = true;
+    setLoading(true);
+    loadBusyWindows(spaces, dates[0], dates[dates.length - 1])
+      .then((b) => { if (live) setBusy(b); })
+      .catch(() => { if (live) setBusy({}); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [datesKey, spacesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function setDay(date: string, start: string, end: string) {
+    set("dayHours", { ...dayHours, [date]: { start, end } });
+  }
+
+  if (dates.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", borderRadius: 12, border: "1px solid var(--gw-border)", background: "var(--gw-bg)" }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
+        Hours for each day{loading ? " · checking availability…" : ""}
+      </div>
+      {dates.map((date) => {
+        const dBusy = busy[date] ?? [];
+        const starts = freeStartMinutes(dBusy, OPEN_MIN, CLOSE_MIN, SLOT_MIN);
+        const cur = dayHours[date] ?? { start: defStart, end: defEnd };
+        const curStartMin = hhmmToMinutes(str(cur.start));
+        const startValid = curStartMin != null && starts.includes(curStartMin);
+        const maxDur = startValid ? maxDurationMinutes(curStartMin as number, dBusy, CLOSE_MIN) : 0;
+        const endOpts: number[] = [];
+        if (startValid) for (let e = (curStartMin as number) + SLOT_MIN; e <= (curStartMin as number) + maxDur; e += SLOT_MIN) endOpts.push(e);
+        return (
+          <div key={date} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ flex: "0 0 60px", fontSize: 13, fontWeight: 700 }}>{formatDateLabel(date)}</span>
+            <select value={startValid ? str(cur.start) : ""} onChange={(e) => setDay(date, e.target.value, "")} style={selectStyle}>
+              <option value="">Start…</option>
+              {starts.map((m) => (
+                <option key={m} value={minutesToHHMM(m)}>{minutesTo12h(m)}</option>
+              ))}
+            </select>
+            <span style={{ fontSize: 12.5, color: "var(--gw-fg-muted)" }}>to</span>
+            <select
+              value={endOpts.includes(hhmmToMinutes(str(cur.end)) ?? -1) ? str(cur.end) : ""}
+              disabled={!startValid}
+              onChange={(e) => setDay(date, str(cur.start), e.target.value)}
+              style={{ ...selectStyle, opacity: startValid ? 1 : 0.5 }}
+            >
+              <option value="">End…</option>
+              {endOpts.map((m) => (
+                <option key={m} value={minutesToHHMM(m)}>{minutesTo12h(m)}</option>
+              ))}
+            </select>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

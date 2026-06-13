@@ -6,6 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   resolveRequestDates,
+  resolveOccurrences,
   generateWeeklyDates,
   summarizeDates,
   formatDateLabel,
@@ -83,4 +84,46 @@ test("summarizeDates + formatDateLabel render human labels", () => {
     summarizeDates(["2026-08-20", "2026-08-27", "2026-09-03", "2026-09-10"]),
     "Aug 20 – Sep 10 · 4 dates",
   );
+});
+
+test("resolveOccurrences: single date carries its window", () => {
+  assert.deepEqual(resolveOccurrences({ date: "2026-08-20", startTime: "18:00", endTime: "20:00" }), [
+    { date: "2026-08-20", start: "18:00", end: "20:00" },
+  ]);
+});
+
+test("resolveOccurrences: recurring same-hours applies one window to every date", () => {
+  const occ = resolveOccurrences({
+    date: "2026-08-20",
+    startTime: "18:00",
+    endTime: "20:00",
+    recurring: true,
+    recurWeekdays: [4],
+    recurUntil: "2026-09-03",
+  });
+  assert.deepEqual(occ, [
+    { date: "2026-08-20", start: "18:00", end: "20:00" },
+    { date: "2026-08-27", start: "18:00", end: "20:00" },
+    { date: "2026-09-03", start: "18:00", end: "20:00" },
+  ]);
+});
+
+test("resolveOccurrences: per-day hours override per date; unlisted days fall back to default", () => {
+  const occ = resolveOccurrences({
+    date: "2026-08-20",
+    startTime: "18:00",
+    endTime: "20:00",
+    recurring: true,
+    recurWeekdays: [4],
+    recurUntil: "2026-09-03",
+    sameHours: false,
+    dayHours: {
+      "2026-08-27": { start: "09:00", end: "11:00" }, // this Thursday is a morning slot
+    },
+  });
+  assert.deepEqual(occ, [
+    { date: "2026-08-20", start: "18:00", end: "20:00" }, // default
+    { date: "2026-08-27", start: "09:00", end: "11:00" }, // overridden
+    { date: "2026-09-03", start: "18:00", end: "20:00" }, // default
+  ]);
 });

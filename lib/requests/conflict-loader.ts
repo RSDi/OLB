@@ -16,29 +16,24 @@ import {
   type Conflict,
   type ConflictCandidate,
 } from "./conflicts";
-import { resolveRequestDates } from "./recurrence";
+import { resolveOccurrences, type Occurrence } from "./recurrence";
 
 interface TicketLike {
   id: string;
   details: Record<string, unknown> | null;
 }
 
-// Narrower than ConflictTarget: dates is guaranteed non-empty (the loader always
-// needs at least one concrete date to query), and it's still assignable to
-// ConflictTarget. For a recurring request `dates` is the full resolved series.
-type LoadedTarget = { spaces: string[]; dates: string[]; start: string | null; end: string | null };
+// Narrower than ConflictTarget: occurrences is guaranteed non-empty (the loader
+// always needs at least one concrete date to query). Carries the resolved
+// per-day windows (same for every day unless the member chose per-day hours).
+type LoadedTarget = { spaces: string[]; occurrences: Occurrence[] };
 
 function targetFromDetails(d: Record<string, unknown> | null): LoadedTarget | null {
   if (!d) return null;
   const spaces = Array.isArray(d.spaces) ? (d.spaces as string[]) : [];
-  const dates = resolveRequestDates(d); // sorted + unique; [date] when non-recurring
-  if (dates.length === 0 || spaces.length === 0) return null;
-  return {
-    spaces,
-    dates,
-    start: typeof d.startTime === "string" ? d.startTime : null,
-    end: typeof d.endTime === "string" ? d.endTime : null,
-  };
+  const occurrences = resolveOccurrences(d); // sorted + unique dates, each with its window
+  if (occurrences.length === 0 || spaces.length === 0) return null;
+  return { spaces, occurrences };
 }
 
 interface EventRow {
@@ -66,17 +61,16 @@ function eventCandidate(e: EventRow, fallbackDate: string): ConflictCandidate {
     end: timeFromTimestamp(e.end_at),
   };
 }
-// A request can be recurring, so it becomes one candidate per resolved date
-// (same id/space/time, different date) — letting it clash on any shared day.
+// A request can be recurring (and carry per-day hours), so it becomes one
+// candidate per occurrence — each with that day's own window — letting it clash
+// on any shared day at the right time.
 function reqCandidates(r: ReqRow): ConflictCandidate[] {
   const d = r.details ?? {};
   const spaces = Array.isArray(d.spaces) ? (d.spaces as string[]) : [];
-  const dates = resolveRequestDates(d);
-  if (dates.length === 0 || spaces.length === 0) return [];
+  const occurrences = resolveOccurrences(d);
+  if (occurrences.length === 0 || spaces.length === 0) return [];
   const title = (r.description ?? "").split("\n")[0].slice(0, 80) || "Another request";
-  const start = typeof d.startTime === "string" ? d.startTime : null;
-  const end = typeof d.endTime === "string" ? d.endTime : null;
-  return dates.map(date => ({ id: r.id, title, source: "request" as const, spaces, date, start, end }));
+  return occurrences.map(o => ({ id: r.id, title, source: "request" as const, spaces, date: o.date, start: o.start, end: o.end }));
 }
 
 // Full conflict list for one request (the detail page). Best-effort: any query
@@ -87,8 +81,9 @@ export async function loadConflictsForTicket(
 ): Promise<Conflict[]> {
   const target = targetFromDetails(ticket.details);
   if (!target) return [];
-  const minDate = target.dates[0];
-  const maxDate = target.dates[target.dates.length - 1];
+  const dates = target.occurrences.map(o => o.date);
+  const minDate = dates[0];
+  const maxDate = dates[dates.length - 1];
   try {
     // Events are filtered to the date span; pending requests are loaded wholesale
     // (a recurring one can clash on a date its details.date column doesn't name),
@@ -134,7 +129,7 @@ export async function loadConflictCounts(
     .filter((x): x is { id: string; target: LoadedTarget } => x.target !== null);
   if (targets.length === 0) return {};
 
-  const dates = targets.flatMap(t => t.target.dates).sort();
+  const dates = targets.flatMap(t => t.target.occurrences.map(o => o.date)).sort();
   const minDate = dates[0];
   const maxDate = dates[dates.length - 1];
 
