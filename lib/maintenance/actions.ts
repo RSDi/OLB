@@ -266,6 +266,7 @@ export async function hardDeleteTicket(ticketId: string): Promise<ActionResult> 
 // Preferred category per track, with graceful fallbacks (so this works whether
 // or not the optional "Building Use" category from migration 0047 exists).
 const CATEGORY_PREFERENCE: Record<string, string[]> = {
+  gym: ["Building Use", "Event", "General"],
   "building-use": ["Building Use", "Event", "General"],
   maintenance: ["Maintenance", "General"],
   question: ["General", "Maintenance"],
@@ -281,6 +282,12 @@ export async function createRequest(
 
   // Per-track required-field checks (mirrors the wizard's client validation).
   switch (trackKey) {
+    case "gym":
+      // Space is implied (Gym) and identity comes from the account, so only
+      // the purpose + date are required here (matches the client wizard).
+      if (!d.subType) return { error: "Please choose how you'll use the gym." };
+      if (!s(d.date).trim()) return { error: "Please choose a date." };
+      break;
     case "building-use":
       if (!d.subType) return { error: "Please tell us what you're planning." };
       if (!hasSpaces) return { error: "Please choose at least one space." };
@@ -405,6 +412,10 @@ function buildRequestDescription(trackKey: string, d: Record<string, unknown>): 
   };
 
   switch (trackKey) {
+    case "gym":
+      lines.push(`Gym reservation — ${s(d.subTypeLabel) || "general use"}.`);
+      where(); when(); people(); access();
+      break;
     case "building-use":
       lines.push(`Building use — ${s(d.subTypeLabel) || s(d.subType)}.`);
       who(); where(); when(); people(); needs(); access();
@@ -676,13 +687,16 @@ async function createEventFromApprovedRequest(
     endTime = `${String(endHour).padStart(2, "0")}${startTime.slice(2)}`;
   }
   const spaces = Array.isArray(d.spaces) ? (d.spaces as string[]).join(", ") : null;
+  // Prefer the explicit label (eventTypeLabel for building-use/event/class,
+  // subTypeLabel for gym) over parsing the description's first line.
   const title =
     (typeof d.eventTypeLabel === "string" && d.eventTypeLabel) ||
+    (typeof d.subTypeLabel === "string" && d.subTypeLabel) ||
     row.description.split("\n")[0].slice(0, 120);
 
   const { error } = await supabase.from("events").insert({
     title,
-    description: "Booked via an approved building-use request.",
+    description: "Booked via an approved request.",
     start_at: `${date}T${startTime}:00`,
     end_at: `${date}T${endTime}:00`,
     location: spaces,

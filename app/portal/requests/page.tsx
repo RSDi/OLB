@@ -13,9 +13,16 @@ interface RequestCard {
 
 const CARDS: RequestCard[] = [
   {
+    href: "/portal/requests/gym",
+    title: "Reserve the Gym",
+    blurb: "Basketball, volleyball, open gym, a practice, or a party — just the day, time, and a couple details.",
+    icon: <Icons.Play width={22} height={22} />,
+    accent: { bg: "var(--rsd-accent-bg)", color: "var(--rsd-accent)" },
+  },
+  {
     href: "/portal/requests/building-use",
-    title: "Building use",
-    blurb: "A room, the gym, or the kitchen — for a gathering, party, wedding, class, or sports.",
+    title: "Reserve a room or space",
+    blurb: "A room, the kitchen, or the whole building — for a gathering, party, wedding, or class.",
     icon: <Icons.Home width={22} height={22} />,
     accent: { bg: "var(--rsd-accent-bg)", color: "var(--rsd-accent)" },
   },

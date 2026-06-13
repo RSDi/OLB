@@ -199,7 +199,11 @@ const outsideExtrasStep: WizardStep = {
   ),
 };
 
-function reviewStep(rows: (f: RequestForm) => [string, string][]): WizardStep {
+function reviewStep(
+  rows: (f: RequestForm) => [string, string][],
+  opts?: { notes?: boolean },
+): WizardStep {
+  const showNotes = opts?.notes !== false;
   return {
     key: "review",
     title: "Review & send",
@@ -211,17 +215,50 @@ function reviewStep(rows: (f: RequestForm) => [string, string][]): WizardStep {
             <SummaryRow key={l} label={l} value={v} />
           ))}
         </div>
-        <Textarea
-          label="Anything else we should know?"
-          rows={3}
-          value={str(form.notes)}
-          onChange={(e) => set("notes", e.target.value)}
-          placeholder="Optional"
-        />
+        {showNotes && (
+          <Textarea
+            label="Anything else we should know?"
+            rows={3}
+            value={str(form.notes)}
+            onChange={(e) => set("notes", e.target.value)}
+            placeholder="Optional"
+          />
+        )}
       </>
     ),
   };
 }
+
+// ─── Gym-specific steps (lean: identity + space are already known) ───────
+const GYM_USES = [
+  { key: "basketball", label: "Basketball" },
+  { key: "volleyball", label: "Volleyball" },
+  { key: "open-gym", label: "Open gym / free play" },
+  { key: "practice", label: "Practice or class" },
+  { key: "party", label: "Party or celebration" },
+  { key: "other", label: "Something else" },
+];
+const gymUseStep: WizardStep = {
+  key: "gymUse",
+  title: "What are you using the gym for?",
+  hint: "A quick tap — it helps the committee plan.",
+  valid: (f) => !!f.subType,
+  body: ({ form, set }) => (
+    <Column>
+      {GYM_USES.map((g) => (
+        <OptionCard
+          key={g.key}
+          selected={form.subType === g.key}
+          onClick={() => {
+            set("subType", g.key);
+            set("subTypeLabel", g.label);
+          }}
+          label={g.label}
+        />
+      ))}
+    </Column>
+  ),
+};
 
 // ─── maintenance steps ───────────────────────────────────────────
 const MAINT_TYPES = [
@@ -313,6 +350,31 @@ const questionStep: WizardStep = {
 
 // ─── tracks ──────────────────────────────────────────────────────
 export const TRACKS: Record<string, TrackConfig> = {
+  // Lean, space-implied flow. The member is logged in (identity + contact come
+  // from their account) and chose the Gym, so neither is asked. Reuses the
+  // building-use field keys (spaces/date/times/headcount/access) so the review
+  // queue, committee vote, and calendar auto-booking all work unchanged.
+  gym: {
+    key: "gym",
+    title: "Reserve the Gym",
+    initial: { requesterKind: "member", spaces: ["Gym"], needs: [] },
+    successBody: "The building committee will review your gym request and follow up.",
+    steps: [
+      gymUseStep,
+      whenStep,
+      peopleStep,
+      accessStep,
+      reviewStep(
+        (f) => [
+          ["Using it for", str(f.subTypeLabel)],
+          ["Space", "Gym"],
+          ["When", whenStr(f)],
+          ["People", peopleStr(f)],
+        ],
+        { notes: false },
+      ),
+    ],
+  },
   "building-use": {
     key: "building-use",
     title: "Building use",

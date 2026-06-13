@@ -378,7 +378,7 @@ export default async function TicketDetailPage({
             </div>
           )}
 
-          {["building-use", "use-a-space", "event", "class"].includes(ticket.details?.kind ?? "") && (
+          {["gym", "building-use", "use-a-space", "event", "class"].includes(ticket.details?.kind ?? "") && (
             <RequestDetailsCard d={ticket.details!} />
           )}
 
