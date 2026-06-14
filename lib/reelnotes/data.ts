@@ -11,7 +11,12 @@ import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { getViewer } from "../auth/viewer";
 import { isStorageAudio, signAudioUrl } from "reelnotes";
-import type { ReelNotesRecording, AssignableMember, ReelNotesSummarySection } from "reelnotes";
+import type {
+  ReelNotesRecording,
+  ReelNotesActionItem,
+  AssignableMember,
+  ReelNotesSummarySection,
+} from "reelnotes";
 
 export type {
   RecordingStatus,
@@ -111,15 +116,6 @@ export async function loadAssignableMembers(): Promise<AssignableMember[]> {
 // to staff, so non-staff simply get an empty map and see the plain comment text.
 // ---------------------------------------------------------------------------
 
-export interface CommentRecordingActionItem {
-  id: string;
-  text: string;
-  done: boolean;
-  routed_to: string | null;
-  priority: "low" | "medium" | "high" | "emergency";
-  sort_order: number;
-}
-
 export interface CommentRecording {
   id: string;
   title: string | null;
@@ -130,7 +126,9 @@ export interface CommentRecording {
   audio_url: string | null;
   transcript: string | null;
   summary: ReelNotesSummarySection[] | null;
-  action_items: CommentRecordingActionItem[];
+  // Full action items so the task thread can reuse the package's ActionRow
+  // (owner/supporters, suggested contacts, jump-to-moment).
+  action_items: ReelNotesActionItem[];
 }
 
 export async function loadRecordingsForComments(
@@ -144,7 +142,11 @@ export async function loadRecordingsForComments(
     .from("reel_notes_recordings")
     .select(
       `id, title, status, duration_sec, audio_blob_url, transcript, summary,
-       action_items:reel_notes_action_items(id, text, done, routed_to, priority, sort_order)`
+       action_items:reel_notes_action_items(
+         id, recording_id, text, routed_to, done, sort_order, priority,
+         owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
+         suggested_supporter_names, transcript_ms, created_at, updated_at
+       )`
     )
     .in("id", ids)
     .is("deleted_at", null);
@@ -176,7 +178,14 @@ export async function loadRecordingsForComments(
         audio_url,
         transcript: r.transcript ?? null,
         summary: r.summary ?? null,
-        action_items: (r.action_items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
+        action_items: (r.action_items ?? [])
+          .slice()
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map(a => ({
+            ...a,
+            supporter_member_ids: a.supporter_member_ids ?? [],
+            suggested_supporter_names: a.suggested_supporter_names ?? [],
+          })),
       });
     }),
   );

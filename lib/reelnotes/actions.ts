@@ -66,6 +66,88 @@ export async function toggleActionItemDone(
   return { success: true };
 }
 
+// Set (or clear, with null) the action item's owner member. Label-only
+// assignment metadata, mirroring the ReelNotes inbox; rides along on a Things
+// push. Staff-update RLS on linked recordings' action items (0064) permits it.
+export async function setActionItemOwner(
+  actionId: string,
+  ticketId: string,
+  memberId: string | null,
+): Promise<Result> {
+  const viewer = await getViewer();
+  if (!viewer?.isStaff) return { error: "Not authorized." };
+  if (!UUID_RE.test(actionId)) return { error: "Invalid item." };
+  if (memberId !== null && !UUID_RE.test(memberId)) return { error: "Invalid member." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("reel_notes_action_items")
+    .update({ owner_member_id: memberId })
+    .eq("id", actionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/tasks/${ticketId}`);
+  return { success: true };
+}
+
+// Add/remove a supporter member on an action item (read-modify-write of the
+// supporter_member_ids array).
+export async function toggleActionItemSupporter(
+  actionId: string,
+  ticketId: string,
+  memberId: string,
+): Promise<Result> {
+  const viewer = await getViewer();
+  if (!viewer?.isStaff) return { error: "Not authorized." };
+  if (!UUID_RE.test(actionId) || !UUID_RE.test(memberId)) return { error: "Invalid input." };
+
+  const supabase = await createClient();
+  const { data: row, error: readErr } = await supabase
+    .from("reel_notes_action_items")
+    .select("supporter_member_ids")
+    .eq("id", actionId)
+    .maybeSingle();
+  if (readErr) return { error: readErr.message };
+  if (!row) return { error: "Item not found." };
+
+  const current: string[] = (row as { supporter_member_ids: string[] | null }).supporter_member_ids ?? [];
+  const next = current.includes(memberId)
+    ? current.filter(id => id !== memberId)
+    : [...current, memberId];
+
+  const { error } = await supabase
+    .from("reel_notes_action_items")
+    .update({ supporter_member_ids: next })
+    .eq("id", actionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/tasks/${ticketId}`);
+  return { success: true };
+}
+
+// Edit an action item's text.
+export async function editActionItemText(
+  actionId: string,
+  ticketId: string,
+  text: string,
+): Promise<Result> {
+  const viewer = await getViewer();
+  if (!viewer?.isStaff) return { error: "Not authorized." };
+  if (!UUID_RE.test(actionId)) return { error: "Invalid item." };
+  const trimmed = text.trim();
+  if (!trimmed) return { error: "Text can't be empty." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("reel_notes_action_items")
+    .update({ text: trimmed })
+    .eq("id", actionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/tasks/${ticketId}`);
+  return { success: true };
+}
+
 // Per-user opt-in for the device-only Things push. Written with the admin
 // client against the caller's own member row (members RLS doesn't grant
 // self-update of arbitrary columns), so the ownership check is explicit.

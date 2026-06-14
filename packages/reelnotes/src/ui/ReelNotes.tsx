@@ -1625,7 +1625,7 @@ function SelectedDetail({
   );
 }
 
-function ActionRow({
+export function ActionRow({
   action,
   recordingTitle,
   members,
@@ -1637,6 +1637,7 @@ function ActionRow({
   onSeekToMs,
   focused,
   thingsEnabled = true,
+  destinationIds,
 }: {
   action: ReelNotesActionItem;
   recordingTitle: string | null;
@@ -1649,6 +1650,9 @@ function ActionRow({
   onSeekToMs: (ms: number) => void;
   focused?: boolean;
   thingsEnabled?: boolean;
+  // Limit the "Send to" menu to these integration ids (e.g. ["things"]).
+  // Omit for all destinations. The menu hides entirely when none remain.
+  destinationIds?: string[];
 }) {
   const { open, setOpen, ref: sendToRef } = useDismissable();
   const router = useRouter();
@@ -1685,6 +1689,12 @@ function ActionRow({
     .filter((m): m is AssignableMember => !!m)
     .filter(m => m.id !== action.owner_member_id && !supporterIds.includes(m.id))
     .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
+
+  // "Send to" destinations, scoped by destinationIds (if given) and gated so
+  // Things only appears when the viewer has opted in.
+  const visibleDestinations = INTEGRATIONS.filter(
+    i => (!destinationIds || destinationIds.includes(i.id)) && (thingsEnabled || i.id !== "things"),
+  );
 
   function startEdit() {
     setOpen(false);
@@ -1954,6 +1964,7 @@ function ActionRow({
         onSetOwner={onSetOwner}
         onToggleSupporter={onToggleSupporter}
       />
+      {visibleDestinations.length > 0 && (
       <div ref={sendToRef} style={{ position: "relative" }}>
         <button
           onClick={() => setOpen(o => !o)}
@@ -1989,7 +2000,7 @@ function ActionRow({
               overflow: "hidden",
             }}
           >
-            {INTEGRATIONS.filter(i => thingsEnabled || i.id !== "things").map(i => (
+            {visibleDestinations.map(i => (
               <button
                 key={i.id}
                 onClick={() => {
@@ -2035,6 +2046,7 @@ function ActionRow({
           </div>
         )}
       </div>
+      )}
         </>
       )}
     </div>

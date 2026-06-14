@@ -2,7 +2,7 @@
 // summary, action items). Mount it with initial data + host wiring (a browser
 // Supabase URL/key, a soft-delete handler, and an optional create-project hook).
 
-export { ReelNotes } from "./ReelNotes";
+export { ReelNotes, ActionRow } from "./ReelNotes";
 export type {
   CreateProjectInput,
   CreateProjectHandler,

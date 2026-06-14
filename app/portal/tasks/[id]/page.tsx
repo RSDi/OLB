@@ -17,7 +17,12 @@ import {
   PromoteToProject,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
-import { loadRecordingsForComments, loadThingsEnabled } from "../../../../lib/reelnotes/data";
+import {
+  loadRecordingsForComments,
+  loadThingsEnabled,
+  loadAssignableMembers,
+  type AssignableMember,
+} from "../../../../lib/reelnotes/data";
 import { ProcedureRunner } from "../../../components/ProcedureRunner";
 import { ShutdownOptOutButton } from "./ShutdownOptOutButton";
 import { ShutdownTaskAssign } from "./ShutdownTaskAssign";
@@ -361,9 +366,16 @@ export default async function TicketDetailPage({
   }
 
   // Whether the viewer has opted into the device-only Things push (0064);
-  // gates the per-action-item Things button on recorded comments. Staff only.
+  // gates the per-action-item Things button on recorded comments. Plus the
+  // directory members an action item can be assigned to. Staff only.
   let thingsEnabled = false;
-  if (staff) thingsEnabled = await loadThingsEnabled();
+  let assignableMembers: AssignableMember[] = [];
+  if (staff) {
+    [thingsEnabled, assignableMembers] = await Promise.all([
+      loadThingsEnabled(),
+      loadAssignableMembers(),
+    ]);
+  }
 
   // Vendors / external contacts attached to this ticket. Staff-only —
   // RLS hides everything for non-staff, but skip the queries to save a
@@ -533,6 +545,7 @@ export default async function TicketDetailPage({
               comments={comments}
               canComment={canComment}
               thingsEnabled={thingsEnabled}
+              members={assignableMembers}
               viewerMemberId={viewerMemberId}
               isSuperAdmin={superAdmin}
             />

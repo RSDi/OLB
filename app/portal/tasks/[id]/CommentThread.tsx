@@ -1,12 +1,16 @@
 "use client";
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { CommentForm } from "./Actions";
-import type { CommentRecording, CommentRecordingActionItem } from "../../../../lib/reelnotes/data";
+import { ActionRow } from "reelnotes/ui";
+import type { CommentRecording, AssignableMember } from "../../../../lib/reelnotes/data";
 import {
   setActionItemRouted,
   toggleActionItemDone,
+  setActionItemOwner,
+  toggleActionItemSupporter,
+  editActionItemText,
   setMyThingsEnabled,
 } from "../../../../lib/reelnotes/actions";
 import { deleteTicketComment } from "../../../../lib/maintenance/actions";
@@ -31,13 +35,6 @@ export interface ThreadComment {
 const MAX_VISIBLE_DEPTH = 5;
 const INDENT_PX = 28;
 
-const PRIORITY_CHIP: Record<string, { label: string; cls: string }> = {
-  low: { label: "Low", cls: "rsd-chip-success" },
-  medium: { label: "Medium", cls: "rsd-chip-mute" },
-  high: { label: "High", cls: "rsd-chip-warn" },
-  emergency: { label: "Emergency", cls: "rsd-chip-error" },
-};
-
 const collapseToggleStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -58,6 +55,7 @@ export function CommentThread({
   comments,
   canComment,
   thingsEnabled = false,
+  members = [],
   viewerMemberId = null,
   isSuperAdmin = false,
 }: {
@@ -65,6 +63,8 @@ export function CommentThread({
   comments: ThreadComment[];
   canComment: boolean;
   thingsEnabled?: boolean;
+  // Directory members a recorded comment's action items can be assigned to.
+  members?: AssignableMember[];
   // For comment deletion: authors may delete their own reply-free comments;
   // super-admins may delete a whole thread.
   viewerMemberId?: string | null;
@@ -104,6 +104,7 @@ export function CommentThread({
           ticketId={ticketId}
           canComment={canComment}
           thingsEnabled={thingsEnabled}
+          members={members}
           viewerMemberId={viewerMemberId}
           isSuperAdmin={isSuperAdmin}
           depth={0}
@@ -120,6 +121,7 @@ function CommentNode({
   ticketId,
   canComment,
   thingsEnabled,
+  members,
   viewerMemberId,
   isSuperAdmin,
   depth,
@@ -130,6 +132,7 @@ function CommentNode({
   ticketId: string;
   canComment: boolean;
   thingsEnabled: boolean;
+  members: AssignableMember[];
   viewerMemberId: string | null;
   isSuperAdmin: boolean;
   depth: number;
@@ -232,7 +235,7 @@ function CommentNode({
           {/* A recorded comment renders its action items inline; a typed
               comment renders its text. */}
           {comment.recording ? (
-            <RecordedNote ticketId={ticketId} recording={comment.recording} thingsEnabled={thingsEnabled} />
+            <RecordedNote ticketId={ticketId} recording={comment.recording} thingsEnabled={thingsEnabled} members={members} />
           ) : (
             <div
               style={{
@@ -323,6 +326,7 @@ function CommentNode({
               ticketId={ticketId}
               canComment={canComment}
               thingsEnabled={thingsEnabled}
+              members={members}
               viewerMemberId={viewerMemberId}
               isSuperAdmin={isSuperAdmin}
               depth={depth + 1}
@@ -335,19 +339,23 @@ function CommentNode({
   );
 }
 
-// The inline body of a recorded comment: its extracted action items (each with
-// a done toggle + device-only Things push) and a link to the full transcript.
+// The inline body of a recorded comment: playable audio, the extracted action
+// items (the ReelNotes ActionRow — assign/owner, supporters, suggested
+// contacts, jump-to-moment, device-only Things push), and a collapsible summary
+// + transcript. Everything lives on the task — no trip to ReelNotes.
 function RecordedNote({
   ticketId,
   recording,
   thingsEnabled,
+  members,
 }: {
   ticketId: string;
   recording: CommentRecording;
   thingsEnabled: boolean;
+  members: AssignableMember[];
 }) {
   const router = useRouter();
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const items = recording.action_items;
@@ -355,27 +363,12 @@ function RecordedNote({
   const hasSummary = !!recording.summary && recording.summary.length > 0;
   const hasTranscript = !!recording.transcript;
 
-  async function pushThings(a: CommentRecordingActionItem) {
-    if (busyId) return;
-    const link = `${window.location.origin}/portal/reelnotes?r=${recording.id}&t=${a.id}`;
-    const url =
-      "things:///add?title=" +
-      encodeURIComponent(a.text) +
-      "&notes=" +
-      encodeURIComponent(`From a recorded note on this task\n${link}`);
-    window.location.href = url;
-    setBusyId(a.id);
-    await setActionItemRouted(a.id, ticketId, "Things");
-    setBusyId(null);
-    router.refresh();
-  }
-
-  async function toggle(a: CommentRecordingActionItem) {
-    if (busyId) return;
-    setBusyId(a.id);
-    await toggleActionItemDone(a.id, ticketId, !a.done);
-    setBusyId(null);
-    router.refresh();
+  // "Jump to this moment" seeks the inline player instead of opening ReelNotes.
+  function seekTo(ms: number) {
+    const el = audioRef.current;
+    if (!el) return;
+    el.currentTime = ms / 1000;
+    void el.play().catch(() => {});
   }
 
   async function enableThings() {
@@ -387,7 +380,7 @@ function RecordedNote({
     <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 10 }}>
       {/* Audio — play the recording without leaving the task. */}
       {recording.audio_url && (
-        <audio controls preload="none" src={recording.audio_url} style={{ width: "100%", height: 34 }} />
+        <audio ref={audioRef} controls preload="none" src={recording.audio_url} style={{ width: "100%", height: 34 }} />
       )}
 
       {items.length === 0 ? (
@@ -396,77 +389,22 @@ function RecordedNote({
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {items.map((a) => {
-            const pri = PRIORITY_CHIP[a.priority] ?? PRIORITY_CHIP.medium;
-            const busy = busyId === a.id;
-            return (
-              <div key={a.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                <button
-                  onClick={() => toggle(a)}
-                  disabled={busy}
-                  title={a.done ? "Mark not done" : "Mark done"}
-                  className="gw-press"
-                  style={{
-                    flexShrink: 0,
-                    marginTop: 1,
-                    display: "inline-flex",
-                    background: "transparent",
-                    border: "none",
-                    cursor: busy ? "default" : "pointer",
-                    color: a.done ? "var(--rsd-accent)" : "var(--gw-fg-muted)",
-                  }}
-                >
-                  <Icons.CheckCircle width={15} height={15} />
-                </button>
-                <span
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    fontSize: 14,
-                    lineHeight: 1.45,
-                    color: a.done ? "var(--gw-fg-muted)" : "var(--gw-fg)",
-                    textDecoration: a.done ? "line-through" : "none",
-                  }}
-                >
-                  {a.text}
-                </span>
-                <span className={`rsd-chip ${pri.cls}`} style={{ fontSize: 10, flexShrink: 0 }}>
-                  {pri.label}
-                </span>
-                {a.routed_to ? (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--gw-fg-muted)", flexShrink: 0, whiteSpace: "nowrap" }}>
-                    → {a.routed_to}
-                  </span>
-                ) : (
-                  thingsEnabled && (
-                    <button
-                      onClick={() => pushThings(a)}
-                      disabled={busy}
-                      className="gw-press"
-                      title="Push to Things"
-                      style={{
-                        flexShrink: 0,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        padding: "3px 8px",
-                        borderRadius: 100,
-                        background: "var(--gw-bg-elev)",
-                        color: "var(--gw-fg)",
-                        border: "1px solid var(--gw-border)",
-                        fontSize: 10,
-                        fontWeight: 700,
-                        cursor: busy ? "default" : "pointer",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      <Icons.CheckCircle width={10} height={10} /> Things
-                    </button>
-                  )
-                )}
-              </div>
-            );
-          })}
+          {items.map(a => (
+            <ActionRow
+              key={a.id}
+              action={a}
+              recordingTitle={recording.title}
+              members={members}
+              thingsEnabled={thingsEnabled}
+              destinationIds={["things"]}
+              onToggle={() => void toggleActionItemDone(a.id, ticketId, !a.done).then(() => router.refresh())}
+              onRoute={target => void setActionItemRouted(a.id, ticketId, target).then(() => router.refresh())}
+              onEdit={text => void editActionItemText(a.id, ticketId, text).then(() => router.refresh())}
+              onSetOwner={memberId => void setActionItemOwner(a.id, ticketId, memberId).then(() => router.refresh())}
+              onToggleSupporter={memberId => void toggleActionItemSupporter(a.id, ticketId, memberId).then(() => router.refresh())}
+              onSeekToMs={seekTo}
+            />
+          ))}
         </div>
       )}
 
