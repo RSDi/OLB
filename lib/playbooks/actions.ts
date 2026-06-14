@@ -5,12 +5,14 @@ import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import { sendProcedureCompletionSlack } from "../notifications/slack";
 
-// Run-completion for a playbook procedure (Phase 1 of the shutdown wizard).
+// Run-completion for a playbook procedure (shutdown wizard).
 // Posts the playbook's completion message (FYI, no @-mention) to its configured
-// Slack channel. {person} is filled with the runner's name. Staff-gated for now
-// — Phase 2 narrows this to the assigned/Shutdown-team member via the event.
+// Slack channel. {person} is filled with the runner's name. When started from
+// an event (Phase 2a), the FYI also links back to that event. Staff-gated for
+// now — Phase 2b narrows this to the assigned/Shutdown-team member.
 export async function completeProcedure(
   playbookId: string,
+  opts?: { eventId?: string },
 ): Promise<{ ok: true; posted: boolean } | { error: string }> {
   const gate = await requireStaff();
   if ("error" in gate) return { error: gate.error };
@@ -31,12 +33,26 @@ export async function completeProcedure(
     .maybeSingle();
   const person = (me as { full_name: string | null } | null)?.full_name || "A team member";
 
+  // If the run was started from an event, look up its title so the Slack FYI
+  // can link back to it.
+  let event: { id: string; title: string } | undefined;
+  if (opts?.eventId) {
+    const { data: ev } = await supabase
+      .from("events")
+      .select("title")
+      .eq("id", opts.eventId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (ev) event = { id: opts.eventId, title: (ev as { title: string }).title };
+  }
+
   let posted = false;
   if (p.wizard_slack_channel) {
     const template = p.wizard_completion_message || `✅ ${p.title} complete — by {person}.`;
     posted = await sendProcedureCompletionSlack({
       channel: p.wizard_slack_channel,
       message: template.replace(/\{person\}/g, person),
+      event,
     });
   }
   return { ok: true, posted };

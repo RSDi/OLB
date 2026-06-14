@@ -18,6 +18,10 @@ export interface EventInput {
   location: string | null;
   areaId: string | null;
   categoryId: string | null;
+  // Building-shutdown wizard (0060): a runnable "shutdown" playbook this event
+  // needs. Optional so other callers (e.g. auto-create-from-request) needn't
+  // set it; the event form always sends it.
+  shutdownPlaybookId?: string | null;
 }
 
 function validate(input: EventInput): string | null {
@@ -50,6 +54,9 @@ export async function createEvent(input: EventInput): Promise<EventActionResult>
       location: input.location?.trim() || null,
       area_id: input.areaId,
       category_id: input.categoryId,
+      ...(input.shutdownPlaybookId !== undefined
+        ? { shutdown_playbook_id: input.shutdownPlaybookId }
+        : {}),
     })
     .select("id")
     .single();
@@ -80,6 +87,9 @@ export async function updateEvent(
       location: input.location?.trim() || null,
       area_id: input.areaId,
       category_id: input.categoryId,
+      ...(input.shutdownPlaybookId !== undefined
+        ? { shutdown_playbook_id: input.shutdownPlaybookId }
+        : {}),
     })
     .eq("id", eventId);
   if (error) return { error: error.message };

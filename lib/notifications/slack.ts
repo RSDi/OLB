@@ -248,24 +248,46 @@ export async function sendLowStockSlack({
   await postSlackMessage(channel, fallback, blocks, `low-stock ${supplyName}`);
 }
 
-// Procedure-wizard completion (Phase 1): an FYI posted to the playbook's
-// configured channel when someone finishes running it. No @-mention — just a
-// heads-up to the channel. Returns whether the post went through.
+// Procedure-wizard completion: an FYI posted to the playbook's configured
+// channel when someone finishes running it. No @-mention — just a heads-up to
+// the channel. When the run was started from an event (Phase 2a), a line + an
+// "Open event" button link back to it. Returns whether the post went through.
 export async function sendProcedureCompletionSlack({
   channel,
   message,
+  event,
 }: {
   channel: string;
   message: string;
+  event?: { id: string; title: string };
 }): Promise<boolean> {
   if (!process.env.SLACK_BOT_TOKEN) {
     console.warn("[slack] SLACK_BOT_TOKEN not set — skipping procedure-completion message");
     return false;
   }
   if (!channel) return false;
+
   const blocks: SlackBlock[] = [
     { type: "section", text: { type: "mrkdwn", text: slackEscape(message) } },
   ];
+  if (event) {
+    const url = `${siteUrl()}/portal/events/${event.id}/edit`;
+    blocks.push({
+      type: "context",
+      elements: [{ type: "mrkdwn", text: `For event: *${slackEscape(event.title)}*` }],
+    });
+    blocks.push({
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: { type: "plain_text", text: "Open event" },
+          url,
+        },
+      ],
+    });
+  }
+
   const posted = await postSlackMessage(channel, message, blocks, "procedure completion");
   return posted != null;
 }

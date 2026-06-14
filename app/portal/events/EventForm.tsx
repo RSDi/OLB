@@ -20,6 +20,11 @@ export interface CategoryOption {
   chip_class: string;
 }
 
+export interface RunnablePlaybook {
+  id: string;
+  title: string;
+}
+
 export interface EventInitialValues {
   id?: string;
   title: string;
@@ -29,6 +34,7 @@ export interface EventInitialValues {
   location: string;
   areaId: string;
   categoryId: string;
+  shutdownPlaybookId: string;
 }
 
 const DEFAULTS: EventInitialValues = {
@@ -39,17 +45,20 @@ const DEFAULTS: EventInitialValues = {
   location: "",
   areaId: "",
   categoryId: "",
+  shutdownPlaybookId: "",
 };
 
 export function EventForm({
   initial,
   areas,
   categories,
+  shutdownPlaybooks,
   canDelete,
 }: {
   initial?: EventInitialValues;
   areas: Area[];
   categories: CategoryOption[];
+  shutdownPlaybooks: RunnablePlaybook[];
   canDelete?: boolean;
 }) {
   const router = useRouter();
@@ -63,6 +72,7 @@ export function EventForm({
   const [location, setLocation] = useState(start.location);
   const [areaId, setAreaId] = useState(start.areaId);
   const [categoryId, setCategoryId] = useState(start.categoryId);
+  const [shutdownPlaybookId, setShutdownPlaybookId] = useState(start.shutdownPlaybookId);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -82,6 +92,7 @@ export function EventForm({
         location: location.trim() || null,
         areaId: areaId || null,
         categoryId: categoryId || null,
+        shutdownPlaybookId: shutdownPlaybookId || null,
       };
       const result = isEdit && initial?.id
         ? await updateEvent(initial.id, input)
@@ -181,6 +192,27 @@ export function EventForm({
           {categories.length === 0
             ? "No categories yet — add some in Settings → Event Categories."
             : "Manage available categories in Settings → Event Categories."}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <Select
+          label="Building shutdown"
+          value={shutdownPlaybookId}
+          onChange={(e) => setShutdownPlaybookId(e.target.value)}
+          disabled={shutdownPlaybooks.length === 0}
+        >
+          <option value="">— No shutdown needed —</option>
+          {shutdownPlaybooks.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
+            </option>
+          ))}
+        </Select>
+        <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+          {shutdownPlaybooks.length === 0
+            ? "No runnable procedures yet — add steps to a playbook to make it selectable."
+            : "Link a procedure and a “Start shutdown” checklist appears on this event."}
         </span>
       </div>
 

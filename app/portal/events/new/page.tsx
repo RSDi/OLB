@@ -19,7 +19,7 @@ export default async function NewEventPage() {
     .maybeSingle();
   if (!isStaff((meRow as MemberLike | null) ?? null)) redirect("/portal/events");
 
-  const [{ data: areas }, { data: categories }] = await Promise.all([
+  const [{ data: areas }, { data: categories }, { data: shutdownPlaybooks }] = await Promise.all([
     supabase
       .from("areas")
       .select("id, name")
@@ -32,6 +32,13 @@ export default async function NewEventPage() {
       .is("deleted_at", null)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true }),
+    // Runnable procedures (0060): playbooks with steps, for the shutdown link.
+    supabase
+      .from("playbooks")
+      .select("id, title")
+      .not("steps", "is", null)
+      .is("deleted_at", null)
+      .order("title", { ascending: true }),
   ]);
 
   return (
@@ -66,7 +73,11 @@ export default async function NewEventPage() {
         </Link>
       </div>
 
-      <EventForm areas={areas ?? []} categories={categories ?? []} />
+      <EventForm
+        areas={areas ?? []}
+        categories={categories ?? []}
+        shutdownPlaybooks={shutdownPlaybooks ?? []}
+      />
     </>
   );
 }
