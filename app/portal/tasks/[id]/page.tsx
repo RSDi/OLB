@@ -18,6 +18,8 @@ import {
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
 import { ReelNotesCard, type LinkedRecording } from "./ReelNotesCard";
+import { ProcedureRunner } from "../../../components/ProcedureRunner";
+import { ShutdownOptOutButton } from "./ShutdownOptOutButton";
 import { majorityThreshold } from "../../../../lib/votes/threshold";
 import { loadConflictsForTicket } from "../../../../lib/requests/conflict-loader";
 import { formatDateLabel } from "../../../../lib/requests/recurrence";
@@ -74,6 +76,7 @@ interface Ticket {
   updated_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
+  event_id: string | null;
   category: { name: string; chip_class: string } | null;
   project: { id: string; title: string } | null;
   area: { id: string; name: string } | null;
@@ -115,7 +118,7 @@ export default async function TicketDetailPage({
   const { data: ticketRaw } = await supabase
     .from("maintenance_requests")
     .select(
-      `id, description, status, review_status, decline_reason, reviewed_at, details, cost, created_at, updated_at, submitted_by, assigned_to,
+      `id, description, status, review_status, decline_reason, reviewed_at, details, cost, created_at, updated_at, submitted_by, assigned_to, event_id,
        category:task_categories(name, chip_class),
        project:projects(id, title),
        area:areas(id, name),
@@ -128,6 +131,42 @@ export default async function TicketDetailPage({
 
   if (!ticketRaw) notFound();
   const ticket = ticketRaw as unknown as Ticket;
+
+  // Building-shutdown task (Phase 2b): if this task is linked to an event with
+  // a shutdown procedure, surface the run-wizard + opt-out so the assignee (not
+  // just staff) can work it. Events + playbooks are readable by any approved
+  // member, so the non-staff assignee can load this.
+  let shutdownProc:
+    | { playbookId: string; title: string; steps: string[]; hasSlackChannel: boolean; eventTitle: string; whenLabel: string | null }
+    | null = null;
+  if (ticket.event_id) {
+    const { data: evRow } = await supabase
+      .from("events")
+      .select("title, start_at, shutdown_playbook_id")
+      .eq("id", ticket.event_id)
+      .maybeSingle();
+    const evp = evRow as { title: string; start_at: string | null; shutdown_playbook_id: string | null } | null;
+    if (evp?.shutdown_playbook_id) {
+      const { data: pb } = await supabase
+        .from("playbooks")
+        .select("id, title, steps, wizard_slack_channel")
+        .eq("id", evp.shutdown_playbook_id)
+        .is("deleted_at", null)
+        .maybeSingle();
+      const p = pb as { id: string; title: string; steps: { label: string }[] | null; wizard_slack_channel: string | null } | null;
+      const steps = (p?.steps ?? []).map((s) => s.label).filter(Boolean);
+      if (p && steps.length > 0) {
+        shutdownProc = {
+          playbookId: p.id,
+          title: p.title,
+          steps,
+          hasSlackChannel: !!p.wizard_slack_channel,
+          eventTitle: evp.title,
+          whenLabel: evp.start_at ? formatDateTime(evp.start_at) : null,
+        };
+      }
+    }
+  }
 
   let submitter: { full_name: string | null; email: string } | null = null;
   if (ticket.submitted_by) {
@@ -380,6 +419,34 @@ export default async function TicketDetailPage({
               <span>· {formatDateTime(ticket.created_at)}</span>
             </div>
           </div>
+
+          {/* Building shutdown (Phase 2b): run-wizard + opt-out for the assignee. */}
+          {shutdownProc && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                Building shutdown · {shutdownProc.eventTitle}
+                {shutdownProc.whenLabel ? ` · ${shutdownProc.whenLabel}` : ""}
+              </div>
+              {ticket.status === "done" ? (
+                <div className="rsd-card" style={{ border: "1px solid var(--rsd-accent)", background: "var(--rsd-accent-bg)", fontSize: 13.5, fontWeight: 700, color: "var(--gw-fg)" }}>
+                  ✓ Building shutdown complete.
+                </div>
+              ) : (
+                <>
+                  <ProcedureRunner
+                    playbookId={shutdownProc.playbookId}
+                    title={shutdownProc.title}
+                    steps={shutdownProc.steps}
+                    hasSlackChannel={shutdownProc.hasSlackChannel}
+                    eventId={ticket.event_id ?? undefined}
+                    taskId={ticket.id}
+                    startLabel="Start shutdown"
+                  />
+                  {ticket.assigned_to && <ShutdownOptOutButton taskId={ticket.id} />}
+                </>
+              )}
+            </div>
+          )}
 
           {ticket.review_status === "declined" && ticket.decline_reason && (
             <div className="rsd-card" style={{ gap: 6, borderColor: "var(--gw-error)" }}>

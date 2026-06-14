@@ -3,17 +3,21 @@
 import { useState, useTransition } from "react";
 import { Icons } from "./icons";
 import { completeProcedure } from "../../lib/playbooks/actions";
+import { completeShutdownTask } from "../../lib/shutdown/actions";
 
 // The runnable side of a procedure playbook (0059). Tick each step, then post
 // the completion FYI to the playbook's Slack channel. Shared between the
-// playbook page and the event page — when `eventId` is set (started from an
-// event), the Slack notice links back to that event.
+// playbook page, the event page, and the task page:
+//   - `eventId` set (event page): the Slack notice links back to that event.
+//   - `taskId` set (task page, Phase 2b): completing also marks the shutdown
+//     task done, and the assignee (not just staff) can run it.
 export function ProcedureRunner({
   playbookId,
   title,
   steps,
   hasSlackChannel,
   eventId,
+  taskId,
   startLabel,
 }: {
   playbookId: string;
@@ -21,6 +25,7 @@ export function ProcedureRunner({
   steps: string[];
   hasSlackChannel: boolean;
   eventId?: string;
+  taskId?: string;
   startLabel?: string;
 }) {
   const [running, setRunning] = useState(false);
@@ -50,7 +55,9 @@ export function ProcedureRunner({
   function finishRun() {
     setError(null);
     startTransition(async () => {
-      const res = await completeProcedure(playbookId, eventId ? { eventId } : undefined);
+      const res = taskId
+        ? await completeShutdownTask(taskId)
+        : await completeProcedure(playbookId, eventId ? { eventId } : undefined);
       if ("error" in res) {
         setError(res.error);
         return;

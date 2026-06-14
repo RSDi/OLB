@@ -248,21 +248,24 @@ export async function sendLowStockSlack({
   await postSlackMessage(channel, fallback, blocks, `low-stock ${supplyName}`);
 }
 
-// Procedure-wizard completion: an FYI posted to the playbook's configured
-// channel when someone finishes running it. No @-mention — just a heads-up to
-// the channel. When the run was started from an event (Phase 2a), a line + an
-// "Open event" button link back to it. Returns whether the post went through.
-export async function sendProcedureCompletionSlack({
-  channel,
-  message,
-  event,
-}: {
-  channel: string;
-  message: string;
-  event?: { id: string; title: string };
-}): Promise<boolean> {
+export interface SlackEventRef {
+  id: string;
+  title: string;
+  whenLabel?: string;
+}
+
+// Post a plain message to a channel, optionally followed by a "For event …"
+// context line + an "Open event" button. Shared by the shutdown-wizard FYIs
+// (completion, assignment, cover-request). No @-mention. Returns whether it
+// went through.
+async function postEventLinkedMessage(
+  channel: string,
+  message: string,
+  event: SlackEventRef | undefined,
+  context: string,
+): Promise<boolean> {
   if (!process.env.SLACK_BOT_TOKEN) {
-    console.warn("[slack] SLACK_BOT_TOKEN not set — skipping procedure-completion message");
+    console.warn(`[slack] SLACK_BOT_TOKEN not set — skipping ${context} message`);
     return false;
   }
   if (!channel) return false;
@@ -271,10 +274,10 @@ export async function sendProcedureCompletionSlack({
     { type: "section", text: { type: "mrkdwn", text: slackEscape(message) } },
   ];
   if (event) {
-    const url = `${siteUrl()}/portal/events/${event.id}/edit`;
+    const when = event.whenLabel ? ` · ${slackEscape(event.whenLabel)}` : "";
     blocks.push({
       type: "context",
-      elements: [{ type: "mrkdwn", text: `For event: *${slackEscape(event.title)}*` }],
+      elements: [{ type: "mrkdwn", text: `For event: *${slackEscape(event.title)}*${when}` }],
     });
     blocks.push({
       type: "actions",
@@ -282,14 +285,64 @@ export async function sendProcedureCompletionSlack({
         {
           type: "button",
           text: { type: "plain_text", text: "Open event" },
-          url,
+          url: `${siteUrl()}/portal/events/${event.id}/edit`,
         },
       ],
     });
   }
 
-  const posted = await postSlackMessage(channel, message, blocks, "procedure completion");
+  const posted = await postSlackMessage(channel, message, blocks, context);
   return posted != null;
+}
+
+// Procedure-wizard completion: an FYI posted when someone finishes a run.
+export async function sendProcedureCompletionSlack({
+  channel,
+  message,
+  event,
+}: {
+  channel: string;
+  message: string;
+  event?: SlackEventRef;
+}): Promise<boolean> {
+  return postEventLinkedMessage(channel, message, event, "procedure completion");
+}
+
+// Shutdown assignment heads-up (Phase 2b): who's on shutdown for an event.
+export async function sendShutdownAssignedSlack({
+  channel,
+  assigneeName,
+  event,
+}: {
+  channel: string;
+  assigneeName: string;
+  event?: SlackEventRef;
+}): Promise<boolean> {
+  return postEventLinkedMessage(
+    channel,
+    `🔒 *${assigneeName}* is on building shutdown.`,
+    event,
+    "shutdown assigned",
+  );
+}
+
+// Shutdown cover-request (Phase 2b): the assignee opted out — ask the team.
+export async function sendShutdownCoverRequestSlack({
+  channel,
+  formerAssigneeName,
+  event,
+}: {
+  channel: string;
+  formerAssigneeName: string | null;
+  event?: SlackEventRef;
+}): Promise<boolean> {
+  const who = formerAssigneeName ? `*${formerAssigneeName}*` : "The assignee";
+  return postEventLinkedMessage(
+    channel,
+    `⚠️ ${who} can't cover this building shutdown — can someone take it?`,
+    event,
+    "shutdown cover request",
+  );
 }
 
 function siteUrl(): string {

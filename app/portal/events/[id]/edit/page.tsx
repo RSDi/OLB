@@ -4,6 +4,7 @@ import { Icons } from "../../../../components/icons";
 import { createClient } from "../../../../../lib/supabase/server";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../../../lib/auth/permissions";
 import { EventForm, type EventInitialValues } from "../../EventForm";
+import { ShutdownAssignment } from "../../ShutdownAssignment";
 import { ProcedureRunner } from "../../../../components/ProcedureRunner";
 
 interface EventRow {
@@ -101,6 +102,52 @@ export default async function EditEventPage({
     }
   }
 
+  // Phase 2b: the Building Shutdown team roster + this event's current shutdown
+  // task (assignee + status), so staff can assign and the runner marks it done.
+  let teamMembers: { id: string; fullName: string }[] = [];
+  let shutdownTask:
+    | { id: string; assigneeId: string | null; assigneeName: string | null; status: string }
+    | null = null;
+  if (shutdownProc) {
+    const { data: team } = await supabase
+      .from("volunteer_teams")
+      .select("id")
+      .eq("name", "Building Shutdown")
+      .maybeSingle();
+    const teamId = (team as { id: string } | null)?.id ?? null;
+    if (teamId) {
+      const { data: rows } = await supabase
+        .from("member_volunteer_teams")
+        .select("member:members(id, full_name)")
+        .eq("team_id", teamId);
+      teamMembers = ((rows as unknown as { member: { id: string; full_name: string | null } | null }[]) ?? [])
+        .map((r) => r.member)
+        .filter((m): m is { id: string; full_name: string | null } => !!m)
+        .map((m) => ({ id: m.id, fullName: m.full_name ?? "(no name)" }))
+        .sort((a, b) => a.fullName.localeCompare(b.fullName));
+    }
+    const { data: taskRow } = await supabase
+      .from("maintenance_requests")
+      .select("id, assigned_to, status, assignee:members!assigned_to(full_name)")
+      .eq("event_id", ev.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (taskRow) {
+      const tr = taskRow as unknown as {
+        id: string;
+        assigned_to: string | null;
+        status: string;
+        assignee: { full_name: string | null } | null;
+      };
+      shutdownTask = {
+        id: tr.id,
+        assigneeId: tr.assigned_to,
+        assigneeName: tr.assignee?.full_name ?? null,
+        status: tr.status,
+      };
+    }
+  }
+
   const initial: EventInitialValues = {
     id: ev.id,
     title: ev.title,
@@ -149,13 +196,21 @@ export default async function EditEventPage({
       </div>
 
       {shutdownProc && (
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          <ShutdownAssignment
+            eventId={ev.id}
+            teamMembers={teamMembers}
+            assigneeId={shutdownTask?.assigneeId ?? null}
+            assigneeName={shutdownTask?.assigneeName ?? null}
+            taskStatus={shutdownTask?.status ?? null}
+          />
           <ProcedureRunner
             playbookId={shutdownProc.id}
             title={shutdownProc.title}
             steps={shutdownProc.steps}
             hasSlackChannel={shutdownProc.hasSlackChannel}
             eventId={ev.id}
+            taskId={shutdownTask?.id}
             startLabel="Start shutdown"
           />
         </div>
