@@ -18,10 +18,10 @@ export interface EventInput {
   location: string | null;
   areaId: string | null;
   categoryId: string | null;
-  // Building-shutdown wizard (0060): a runnable "shutdown" playbook this event
-  // needs. Optional so other callers (e.g. auto-create-from-request) needn't
-  // set it; the event form always sends it.
-  shutdownPlaybookId?: string | null;
+  // Building-shutdown wizard (0066): the specific procedure this event's
+  // shutdown runs. Optional so other callers (e.g. auto-create-from-request)
+  // needn't set it; the event form always sends it.
+  shutdownProcedureId?: string | null;
   // Recurrence (0062/0063). Weekly uses recurWeekdays (0=Sun…6=Sat); monthly
   // uses recurMonthlyWeek (1-4 or -1=last) + recurMonthlyWeekday (0-6).
   // recurExcept lists YYYY-MM-DD dates to skip. The shutdown cron expands
@@ -91,8 +91,8 @@ export async function createEvent(input: EventInput): Promise<EventActionResult>
       location: input.location?.trim() || null,
       area_id: input.areaId,
       category_id: input.categoryId,
-      ...(input.shutdownPlaybookId !== undefined
-        ? { shutdown_playbook_id: input.shutdownPlaybookId }
+      ...(input.shutdownProcedureId !== undefined
+        ? { shutdown_procedure_id: input.shutdownProcedureId }
         : {}),
       ...recurrenceColumns(input),
     })
@@ -125,8 +125,8 @@ export async function updateEvent(
       location: input.location?.trim() || null,
       area_id: input.areaId,
       category_id: input.categoryId,
-      ...(input.shutdownPlaybookId !== undefined
-        ? { shutdown_playbook_id: input.shutdownPlaybookId }
+      ...(input.shutdownProcedureId !== undefined
+        ? { shutdown_procedure_id: input.shutdownProcedureId }
         : {}),
       ...recurrenceColumns(input),
     })

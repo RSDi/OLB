@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { createClient } from "../../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../../lib/auth/permissions";
+import { loadRunnableProcedures } from "../../../../lib/playbooks/procedures-data";
 import { EventForm } from "../EventForm";
 
 export default async function NewEventPage() {
@@ -19,7 +20,7 @@ export default async function NewEventPage() {
     .maybeSingle();
   if (!isStaff((meRow as MemberLike | null) ?? null)) redirect("/portal/events");
 
-  const [{ data: areas }, { data: categories }, { data: shutdownPlaybooks }] = await Promise.all([
+  const [{ data: areas }, { data: categories }, shutdownProcedures] = await Promise.all([
     supabase
       .from("areas")
       .select("id, name")
@@ -32,13 +33,8 @@ export default async function NewEventPage() {
       .is("deleted_at", null)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true }),
-    // Runnable procedures (0060): playbooks with steps, for the shutdown link.
-    supabase
-      .from("playbooks")
-      .select("id, title")
-      .not("steps", "is", null)
-      .is("deleted_at", null)
-      .order("title", { ascending: true }),
+    // Runnable procedures (0066) for the shutdown link, labeled "Playbook — Procedure".
+    loadRunnableProcedures(),
   ]);
 
   return (
@@ -76,7 +72,7 @@ export default async function NewEventPage() {
       <EventForm
         areas={areas ?? []}
         categories={categories ?? []}
-        shutdownPlaybooks={shutdownPlaybooks ?? []}
+        shutdownProcedures={shutdownProcedures}
       />
     </>
   );

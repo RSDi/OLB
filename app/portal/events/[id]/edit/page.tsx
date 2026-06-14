@@ -6,6 +6,7 @@ import { isStaff, isSuperAdmin, type MemberLike } from "../../../../../lib/auth/
 import { EventForm, type EventInitialValues } from "../../EventForm";
 import { ShutdownAssignment } from "../../ShutdownAssignment";
 import { ProcedureRunner } from "../../../../components/ProcedureRunner";
+import { loadRunnableProcedures } from "../../../../../lib/playbooks/procedures-data";
 
 interface EventRow {
   id: string;
@@ -16,7 +17,7 @@ interface EventRow {
   location: string | null;
   area_id: string | null;
   category_id: string | null;
-  shutdown_playbook_id: string | null;
+  shutdown_procedure_id: string | null;
   recurring: boolean;
   recur_freq: string | null;
   recur_weekdays: number[] | null;
@@ -49,14 +50,14 @@ export default async function EditEventPage({
 
   const { data: eventRaw } = await supabase
     .from("events")
-    .select("id, title, description, start_at, end_at, location, area_id, category_id, shutdown_playbook_id, recurring, recur_freq, recur_weekdays, recur_monthly_week, recur_monthly_weekday, recur_until, recur_except")
+    .select("id, title, description, start_at, end_at, location, area_id, category_id, shutdown_procedure_id, recurring, recur_freq, recur_weekdays, recur_monthly_week, recur_monthly_weekday, recur_until, recur_except")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
   if (!eventRaw) notFound();
   const ev = eventRaw as EventRow;
 
-  const [{ data: areas }, { data: categories }, { data: shutdownPlaybooks }] = await Promise.all([
+  const [{ data: areas }, { data: categories }, shutdownProcedures] = await Promise.all([
     supabase
       .from("areas")
       .select("id, name")
@@ -69,42 +70,32 @@ export default async function EditEventPage({
       .is("deleted_at", null)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true }),
-    // Runnable procedures (0060), for the shutdown-link picker.
-    supabase
-      .from("playbooks")
-      .select("id, title")
-      .not("steps", "is", null)
-      .is("deleted_at", null)
-      .order("title", { ascending: true }),
+    // Runnable procedures (0066), labeled "Playbook — Procedure".
+    loadRunnableProcedures(),
   ]);
 
   // If a shutdown procedure is linked, load it so we can render the run-wizard
   // (Start shutdown) right on this event's page.
   let shutdownProc:
-    | { id: string; title: string; steps: string[]; hasSlackChannel: boolean }
+    | { id: string; title: string; steps: string[]; notify: boolean }
     | null = null;
-  if (ev.shutdown_playbook_id) {
-    const { data: pb } = await supabase
-      .from("playbooks")
-      .select("id, title, steps, wizard_slack_channel")
-      .eq("id", ev.shutdown_playbook_id)
+  if (ev.shutdown_procedure_id) {
+    const { data: pp } = await supabase
+      .from("playbook_procedures")
+      .select("id, title, steps, notify")
+      .eq("id", ev.shutdown_procedure_id)
       .is("deleted_at", null)
       .maybeSingle();
-    if (pb) {
-      const p = pb as {
+    if (pp) {
+      const p = pp as {
         id: string;
         title: string;
         steps: { label: string }[] | null;
-        wizard_slack_channel: string | null;
+        notify: boolean;
       };
       const steps = (p.steps ?? []).map((s) => s.label).filter(Boolean);
       if (steps.length > 0) {
-        shutdownProc = {
-          id: p.id,
-          title: p.title,
-          steps,
-          hasSlackChannel: !!p.wizard_slack_channel,
-        };
+        shutdownProc = { id: p.id, title: p.title, steps, notify: !!p.notify };
       }
     }
   }
@@ -166,7 +157,7 @@ export default async function EditEventPage({
     location: ev.location ?? "",
     areaId: ev.area_id ?? "",
     categoryId: ev.category_id ?? "",
-    shutdownPlaybookId: ev.shutdown_playbook_id ?? "",
+    shutdownProcedureId: ev.shutdown_procedure_id ?? "",
     recurring: ev.recurring ?? false,
     recurFreq: ev.recur_freq === "monthly" ? "monthly" : "weekly",
     recurWeekdays: ev.recur_weekdays ?? [],
@@ -231,10 +222,10 @@ export default async function EditEventPage({
             taskStatus={shutdownTask?.status ?? null}
           />
           <ProcedureRunner
-            playbookId={shutdownProc.id}
+            procedureId={shutdownProc.id}
             title={shutdownProc.title}
             steps={shutdownProc.steps}
-            hasSlackChannel={shutdownProc.hasSlackChannel}
+            notify={shutdownProc.notify}
             eventId={ev.id}
             taskId={shutdownTask?.id}
             startLabel="Start shutdown"
@@ -247,7 +238,7 @@ export default async function EditEventPage({
           initial={initial}
           areas={areas ?? []}
           categories={categories ?? []}
-          shutdownPlaybooks={shutdownPlaybooks ?? []}
+          shutdownProcedures={shutdownProcedures}
           canDelete={isSuperAdmin(me)}
         />
       </div>

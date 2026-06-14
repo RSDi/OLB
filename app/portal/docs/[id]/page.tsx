@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../../lib/auth/permissions";
 import { PlaybookDetail, type PlaybookDetailData } from "./PlaybookDetail";
+import { loadProcedures, loadProcedureRuns, type ProcedureRun } from "../../../../lib/playbooks/procedures-data";
 import {
   loadLinkedContactsForEntity,
   loadContactPickerOptions,
@@ -17,9 +18,6 @@ interface PlaybookRow {
   created_at: string;
   created_by: string | null;
   category_id: string | null;
-  steps: { label: string }[] | null;
-  wizard_slack_channel: string | null;
-  wizard_completion_message: string | null;
   category: { id: string; name: string; chip_class: string } | null;
 }
 
@@ -48,7 +46,6 @@ export default async function PlaybookDetailPage({
     .from("playbooks")
     .select(
       `id, title, excerpt, body_md, updated_at, updated_by, created_at, created_by, category_id,
-       steps, wizard_slack_channel, wizard_completion_message,
        category:playbook_categories(id, name, chip_class)`
     )
     .eq("id", id)
@@ -99,6 +96,15 @@ export default async function PlaybookDetailPage({
     categories = ((cats as unknown) as typeof categories) ?? [];
   }
 
+  // Procedures (0066) + their run history. Run history is staff-only (RLS),
+  // so only fetch it for staff viewers.
+  const procedures = await loadProcedures(playbook.id);
+  let runsByProcedure: Record<string, ProcedureRun[]> = {};
+  if (staff && procedures.length > 0) {
+    const map = await loadProcedureRuns(procedures.map((p) => p.id));
+    runsByProcedure = Object.fromEntries(map);
+  }
+
   const data: PlaybookDetailData = {
     id: playbook.id,
     title: playbook.title,
@@ -110,9 +116,8 @@ export default async function PlaybookDetailPage({
     updated_by_name: playbook.updated_by ? nameByUid.get(playbook.updated_by) ?? null : null,
     created_by_name: playbook.created_by ? nameByUid.get(playbook.created_by) ?? null : null,
     version_count: versionCount,
-    steps: (playbook.steps ?? []).map((s) => s.label).filter(Boolean),
-    wizard_slack_channel: playbook.wizard_slack_channel,
-    wizard_completion_message: playbook.wizard_completion_message,
+    procedures,
+    runsByProcedure,
   };
 
   // Vendors attached to this playbook — staff-only via RLS. Skip both

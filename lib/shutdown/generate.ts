@@ -54,7 +54,7 @@ export async function generateUpcomingShutdownTasks(opts?: {
     .from("events")
     .select("id, title, start_at, recurring, recur_freq, recur_weekdays, recur_until, recur_monthly_week, recur_monthly_weekday, recur_except")
     .eq("recurring", true)
-    .not("shutdown_playbook_id", "is", null)
+    .not("shutdown_procedure_id", "is", null)
     .is("deleted_at", null);
   if (evErr) {
     summary.errors.push({ eventId: "(query)", error: evErr.message });

@@ -2,28 +2,30 @@
 
 import { useState, useTransition } from "react";
 import { Icons } from "./icons";
-import { completeProcedure } from "../../lib/playbooks/actions";
+import { completeProcedure } from "../../lib/playbooks/procedures-actions";
 import { completeShutdownTask } from "../../lib/shutdown/actions";
 
-// The runnable side of a procedure playbook (0059). Tick each step, then post
-// the completion FYI to the playbook's Slack channel. Shared between the
-// playbook page, the event page, and the task page:
+// The runnable side of a procedure (0066). Tick each step, then log the run —
+// and post a Slack FYI when the procedure has notifications on. Shared between
+// the playbook page, the event page, and the task page:
 //   - `eventId` set (event page): the Slack notice links back to that event.
-//   - `taskId` set (task page, Phase 2b): completing also marks the shutdown
-//     task done, and the assignee (not just staff) can run it.
+//   - `taskId` set (task page): completing also marks the shutdown task done,
+//     and the assignee (not just staff) can run it.
 export function ProcedureRunner({
-  playbookId,
+  procedureId,
   title,
   steps,
-  hasSlackChannel,
+  notify,
   eventId,
   taskId,
   startLabel,
 }: {
-  playbookId: string;
+  procedureId: string;
   title: string;
   steps: string[];
-  hasSlackChannel: boolean;
+  // Whether this procedure notifies a Slack channel on completion (vs just
+  // logging it as done).
+  notify: boolean;
   eventId?: string;
   taskId?: string;
   startLabel?: string;
@@ -57,7 +59,7 @@ export function ProcedureRunner({
     startTransition(async () => {
       const res = taskId
         ? await completeShutdownTask(taskId)
-        : await completeProcedure(playbookId, eventId ? { eventId } : undefined);
+        : await completeProcedure(procedureId, eventId ? { eventId } : undefined);
       if ("error" in res) {
         setError(res.error);
         return;
@@ -66,10 +68,10 @@ export function ProcedureRunner({
       setChecked(new Set());
       setRunResult(
         res.posted
-          ? "Done — posted to the team's Slack channel."
-          : hasSlackChannel
-            ? "Done — marked complete, but the Slack notice didn't post (make sure the bot has been invited to the channel)."
-            : "Done — marked complete. (No Slack channel is set on this procedure.)"
+          ? "Done — logged, and posted to the team's Slack channel."
+          : notify
+            ? "Done — logged, but the Slack notice didn't post (make sure the bot has been invited to the channel)."
+            : "Done — logged as complete."
       );
     });
   }

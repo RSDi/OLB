@@ -7,6 +7,13 @@ import { Icons } from "../../../components/icons";
 import { MarkdownEditor } from "../../../components/MarkdownEditor";
 import { MarkdownView } from "../../../components/MarkdownView";
 import { softDeletePlaybook, updatePlaybook } from "../../../../lib/playbooks/actions";
+import {
+  createProcedure,
+  updateProcedure,
+  deleteProcedure,
+  type ProcedureInput,
+} from "../../../../lib/playbooks/procedures-actions";
+import type { PlaybookProcedure, ProcedureRun } from "../../../../lib/playbooks/procedures-data";
 import { ProcedureRunner } from "../../../components/ProcedureRunner";
 import {
   LinkedContacts,
@@ -25,11 +32,10 @@ export interface PlaybookDetailData {
   updated_by_name: string | null;
   created_by_name: string | null;
   version_count: number;
-  // Procedure wizard (0059): ordered step labels + the Slack channel notified
-  // on completion. Empty steps → not a runnable procedure.
-  steps: string[];
-  wizard_slack_channel: string | null;
-  wizard_completion_message: string | null;
+  // Procedures (0066): a playbook owns many runnable checklists, each with its
+  // own notify config + run history (runsByProcedure keyed by procedure id).
+  procedures: PlaybookProcedure[];
+  runsByProcedure: Record<string, ProcedureRun[]>;
 }
 
 interface Props {
@@ -76,28 +82,16 @@ export function PlaybookDetail({
   const [categoryId, setCategoryId] = useState<string | null>(data.category?.id ?? null);
   const [excerpt, setExcerpt] = useState(data.excerpt ?? "");
   const [bodyMd, setBodyMd] = useState(data.body_md);
-  // Procedure-wizard editor fields (0059): one step per line + an optional
-  // Slack channel + completion message. Seeded from the playbook in enterEdit.
-  const [stepsText, setStepsText] = useState(data.steps.join("\n"));
-  const [slackChannel, setSlackChannel] = useState(data.wizard_slack_channel ?? "");
-  const [completionMessage, setCompletionMessage] = useState(data.wizard_completion_message ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const chip = data.category?.chip_class ?? "rsd-chip-mute";
-
-  // A playbook with steps is a runnable procedure (0059); the run-wizard UI
-  // lives in <ProcedureRunner/>, shared with the event page.
-  const isProcedure = data.steps.length > 0;
 
   function enterEdit() {
     setTitle(data.title);
     setCategoryId(data.category?.id ?? null);
     setExcerpt(data.excerpt ?? "");
     setBodyMd(data.body_md);
-    setStepsText(data.steps.join("\n"));
-    setSlackChannel(data.wizard_slack_channel ?? "");
-    setCompletionMessage(data.wizard_completion_message ?? "");
     setError(null);
     setMode("edit");
   }
@@ -115,11 +109,6 @@ export function PlaybookDetail({
         categoryId,
         excerpt: excerpt.trim() || null,
         bodyMd,
-        // Procedure wizard: split the textarea into step labels. Sending these
-        // (even empty) is intentional — clearing the steps turns the wizard off.
-        steps: stepsText.split("\n").map((s) => s.trim()).filter(Boolean),
-        wizardSlackChannel: slackChannel.trim() || null,
-        wizardCompletionMessage: completionMessage.trim() || null,
       });
       if (res.error) {
         setError(res.error);
@@ -372,16 +361,15 @@ export function PlaybookDetail({
         </p>
       )}
 
-      {/* Procedure wizard (0059): run the steps, then notify the channel. */}
-      {mode === "view" && isProcedure && (
-        <div style={{ marginTop: 20 }}>
-          <ProcedureRunner
-            playbookId={data.id}
-            title={data.title}
-            steps={data.steps}
-            hasSlackChannel={!!data.wizard_slack_channel}
-          />
-        </div>
+      {/* Procedures (0066): each runnable checklist, with its own notify
+          setting and run history. Managed independently of the doc edit mode. */}
+      {mode === "view" && (
+        <ProceduresSection
+          playbookId={data.id}
+          procedures={data.procedures}
+          runsByProcedure={data.runsByProcedure}
+          canEdit={canEdit}
+        />
       )}
 
       {mode === "edit" && (
@@ -414,59 +402,8 @@ export function PlaybookDetail({
             onChange={setBodyMd}
             placeholder="Write the playbook in Markdown — headings (#), lists (-), links, code blocks, tables. Use the toolbar for inline formatting."
           />
-
-          {/* Procedure wizard editor (0059) — turn this playbook into a runnable checklist. */}
-          <div
-            style={{
-              marginTop: 20,
-              padding: "16px 18px",
-              border: "1px solid var(--gw-border)",
-              borderRadius: 12,
-              background: "var(--gw-bg-elev)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--gw-fg)" }}>Procedure wizard (optional)</div>
-              <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", marginTop: 2, lineHeight: 1.5 }}>
-                Add steps to turn this playbook into a guided checklist people can run. Leave blank for a normal doc.
-              </div>
-            </div>
-            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Steps — one per line</span>
-              <textarea
-                value={stepsText}
-                onChange={(e) => setStepsText(e.target.value)}
-                rows={6}
-                placeholder={"Turn off the lobby HVAC units\nTurn off the coffee maker\nShut off all the lights\nLock & check the front door"}
-                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5, lineHeight: 1.6, resize: "vertical", fontFamily: "inherit" }}
-              />
-            </label>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <label style={{ flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Notify Slack channel on completion</span>
-                <input
-                  value={slackChannel}
-                  onChange={(e) => setSlackChannel(e.target.value)}
-                  placeholder="Channel ID, e.g. C04D7F1G6JX"
-                  style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
-                />
-              </label>
-              <label style={{ flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Completion message</span>
-                <input
-                  value={completionMessage}
-                  onChange={(e) => setCompletionMessage(e.target.value)}
-                  placeholder="✅ Done by {person}."
-                  style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
-                />
-              </label>
-            </div>
-            <div style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
-              Use <code>{"{person}"}</code> for the runner&apos;s name. The bot must be invited to the channel for the post to land.
-            </div>
+          <div style={{ marginTop: 12, fontSize: 12, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+            Runnable procedures (e.g. Startup, Shutdown) are managed below the doc — save this, then add or edit procedures.
           </div>
         </div>
       ) : (
@@ -557,5 +494,273 @@ export function PlaybookDetail({
         </div>
       )}
     </>
+  );
+}
+
+// ─── Procedures (0066) ───────────────────────────────────────────────
+// A playbook's runnable checklists. Each can notify a Slack channel on
+// completion or just be logged, and keeps a run history.
+
+function ProceduresSection({
+  playbookId,
+  procedures,
+  runsByProcedure,
+  canEdit,
+}: {
+  playbookId: string;
+  procedures: PlaybookProcedure[];
+  runsByProcedure: Record<string, ProcedureRun[]>;
+  canEdit: boolean;
+}) {
+  const [adding, setAdding] = useState(false);
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--gw-fg)" }}>
+          Procedures{procedures.length > 0 ? ` (${procedures.length})` : ""}
+        </h3>
+        {canEdit && !adding && (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="gw-press"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 100, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+          >
+            <Icons.Plus width={12} height={12} /> Add procedure
+          </button>
+        )}
+      </div>
+
+      {procedures.length === 0 && !adding && (
+        <div style={{ padding: 16, borderRadius: 12, border: "1px dashed var(--gw-border)", fontSize: 13, color: "var(--gw-fg-muted)", textAlign: "center" }}>
+          {canEdit
+            ? "No procedures yet. Add one to turn this playbook into a runnable checklist (e.g. Startup, Shutdown)."
+            : "No runnable procedures on this playbook."}
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {procedures.map((p) => (
+          <ProcedureCard
+            key={p.id}
+            playbookId={playbookId}
+            procedure={p}
+            runs={runsByProcedure[p.id] ?? []}
+            canEdit={canEdit}
+          />
+        ))}
+      </div>
+
+      {canEdit && adding && (
+        <div style={{ marginTop: 12 }}>
+          <ProcedureEditor playbookId={playbookId} onDone={() => setAdding(false)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProcedureCard({
+  playbookId,
+  procedure,
+  runs,
+  canEdit,
+}: {
+  playbookId: string;
+  procedure: PlaybookProcedure;
+  runs: ProcedureRun[];
+  canEdit: boolean;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState<"run" | "history">("run");
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const stepLabels = procedure.steps.map((s) => s.label).filter(Boolean);
+
+  function confirmDelete() {
+    if (!window.confirm(`Delete the "${procedure.title}" procedure? Its run history goes with it.`)) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await deleteProcedure(procedure.id, playbookId);
+      if (res.error) { setError(res.error); return; }
+      router.refresh();
+    });
+  }
+
+  if (editing) {
+    return (
+      <ProcedureEditor
+        playbookId={playbookId}
+        procedure={procedure}
+        onDone={() => setEditing(false)}
+      />
+    );
+  }
+
+  return (
+    <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--gw-border)", background: "var(--gw-bg-elev)", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--gw-fg)" }}>{procedure.title}</span>
+          <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>{stepLabels.length} steps</span>
+          {procedure.notify && procedure.slack_channel ? (
+            <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>Notifies Slack</span>
+          ) : (
+            <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>Log only</span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {/* Run / History tabs */}
+          <div style={{ display: "inline-flex", gap: 2, background: "var(--gw-bg)", borderRadius: 8, padding: 3 }}>
+            {(["run", "history"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className="gw-press"
+                style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: tab === t ? "var(--gw-bg-elev)" : "transparent", color: tab === t ? "var(--gw-fg)" : "var(--gw-fg-muted)", fontSize: 11, fontWeight: 700, cursor: "pointer", boxShadow: tab === t ? "var(--gw-shadow-1)" : "none" }}
+              >
+                {t === "run" ? "Run" : `History${runs.length ? ` (${runs.length})` : ""}`}
+              </button>
+            ))}
+          </div>
+          {canEdit && (
+            <>
+              <button type="button" onClick={() => setEditing(true)} title="Edit procedure" className="gw-press" style={{ display: "inline-flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 100, background: "var(--gw-bg)", color: "var(--gw-fg-muted)", border: "1px solid var(--gw-border)", cursor: "pointer" }}>
+                <Icons.Pencil width={12} height={12} />
+              </button>
+              <button type="button" onClick={confirmDelete} disabled={pending} title="Delete procedure" className="gw-press" style={{ display: "inline-flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 100, background: "transparent", color: "var(--gw-error)", border: "1px solid var(--gw-error)", cursor: pending ? "not-allowed" : "pointer" }}>
+                <Icons.Trash width={12} height={12} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {error && <div style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600 }}>{error}</div>}
+
+      {tab === "run" ? (
+        stepLabels.length > 0 ? (
+          <ProcedureRunner
+            procedureId={procedure.id}
+            title={procedure.title}
+            steps={stepLabels}
+            notify={procedure.notify}
+          />
+        ) : (
+          <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>No steps yet — edit this procedure to add them.</div>
+        )
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {runs.length === 0 ? (
+            <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>Not run yet.</div>
+          ) : (
+            runs.map((r) => (
+              <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 13, padding: "6px 0", borderBottom: "1px solid var(--gw-border)" }}>
+                <span style={{ fontWeight: 600, color: "var(--gw-fg)" }}>{r.ran_by_name ?? "A team member"}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--gw-fg-muted)", fontWeight: 500, whiteSpace: "nowrap" }}>
+                  {r.notified && <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>notified</span>}
+                  {formatDateTime(r.ran_at)}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProcedureEditor({
+  playbookId,
+  procedure,
+  onDone,
+}: {
+  playbookId: string;
+  procedure?: PlaybookProcedure;
+  onDone: () => void;
+}) {
+  const router = useRouter();
+  const [title, setTitle] = useState(procedure?.title ?? "");
+  const [stepsText, setStepsText] = useState((procedure?.steps ?? []).map((s) => s.label).join("\n"));
+  const [notify, setNotify] = useState(procedure?.notify ?? false);
+  const [slackChannel, setSlackChannel] = useState(procedure?.slack_channel ?? "");
+  const [completionMessage, setCompletionMessage] = useState(procedure?.completion_message ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    setError(null);
+    const input: ProcedureInput = {
+      title: title.trim() || "Procedure",
+      steps: stepsText.split("\n").map((s) => s.trim()).filter(Boolean),
+      notify,
+      slackChannel: slackChannel.trim() || null,
+      completionMessage: completionMessage.trim() || null,
+    };
+    startTransition(async () => {
+      const res = procedure
+        ? await updateProcedure(procedure.id, playbookId, input)
+        : await createProcedure(playbookId, input);
+      if (res.error) { setError(res.error); return; }
+      onDone();
+      router.refresh();
+    });
+  }
+
+  const fieldStyle = { padding: "9px 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 } as const;
+  const labelStyle = { fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" } as const;
+
+  return (
+    <div style={{ padding: 16, borderRadius: 12, border: "1px solid var(--rsd-accent)", background: "var(--gw-bg-elev)", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--gw-fg)" }}>
+        {procedure ? "Edit procedure" : "New procedure"}
+      </div>
+      <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span style={labelStyle}>Name</span>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Shutdown (End of service)" autoFocus style={fieldStyle} />
+      </label>
+      <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <span style={labelStyle}>Steps — one per line</span>
+        <textarea
+          value={stepsText}
+          onChange={(e) => setStepsText(e.target.value)}
+          rows={6}
+          placeholder={"Turn off the lobby HVAC units\nTurn off the coffee maker\nShut off all the lights\nLock & check the front door"}
+          style={{ ...fieldStyle, lineHeight: 1.6, resize: "vertical", fontFamily: "inherit" }}
+        />
+      </label>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>
+        <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} style={{ width: 16, height: 16 }} />
+        Notify a Slack channel when this is completed
+      </label>
+      {notify && (
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <label style={{ flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={labelStyle}>Slack channel</span>
+            <input value={slackChannel} onChange={(e) => setSlackChannel(e.target.value)} placeholder="Channel ID, e.g. C04D7F1G6JX" style={fieldStyle} />
+          </label>
+          <label style={{ flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={labelStyle}>Completion message</span>
+            <input value={completionMessage} onChange={(e) => setCompletionMessage(e.target.value)} placeholder="✅ Done by {person}." style={fieldStyle} />
+          </label>
+        </div>
+      )}
+      <div style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+        Completion is always logged to this procedure&apos;s history. With notify off it&apos;s just logged — no Slack. Use <code>{"{person}"}</code> for the runner&apos;s name; the bot must be invited to the channel.
+      </div>
+      {error && <div style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600 }}>{error}</div>}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button type="button" onClick={onDone} disabled={pending} className="gw-press" style={{ padding: "8px 14px", borderRadius: 100, background: "var(--gw-bg)", color: "var(--gw-fg)", border: "1px solid var(--gw-border)", fontSize: 12, fontWeight: 700, cursor: pending ? "not-allowed" : "pointer" }}>
+          Cancel
+        </button>
+        <button type="button" onClick={save} disabled={pending} className="gw-press" style={{ padding: "8px 14px", borderRadius: 100, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", border: "none", fontSize: 12, fontWeight: 700, cursor: pending ? "not-allowed" : "pointer" }}>
+          {pending ? "Saving…" : procedure ? "Save procedure" : "Add procedure"}
+        </button>
+      </div>
+    </div>
   );
 }

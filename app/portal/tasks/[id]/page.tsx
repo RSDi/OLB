@@ -143,30 +143,30 @@ export default async function TicketDetailPage({
   // just staff) can work it. Events + playbooks are readable by any approved
   // member, so the non-staff assignee can load this.
   let shutdownProc:
-    | { playbookId: string; title: string; steps: string[]; hasSlackChannel: boolean; eventTitle: string; whenLabel: string | null }
+    | { procedureId: string; title: string; steps: string[]; notify: boolean; eventTitle: string; whenLabel: string | null }
     | null = null;
   if (ticket.event_id) {
     const { data: evRow } = await supabase
       .from("events")
-      .select("title, start_at, shutdown_playbook_id")
+      .select("title, start_at, shutdown_procedure_id")
       .eq("id", ticket.event_id)
       .maybeSingle();
-    const evp = evRow as { title: string; start_at: string | null; shutdown_playbook_id: string | null } | null;
-    if (evp?.shutdown_playbook_id) {
-      const { data: pb } = await supabase
-        .from("playbooks")
-        .select("id, title, steps, wizard_slack_channel")
-        .eq("id", evp.shutdown_playbook_id)
+    const evp = evRow as { title: string; start_at: string | null; shutdown_procedure_id: string | null } | null;
+    if (evp?.shutdown_procedure_id) {
+      const { data: pp } = await supabase
+        .from("playbook_procedures")
+        .select("id, title, steps, notify")
+        .eq("id", evp.shutdown_procedure_id)
         .is("deleted_at", null)
         .maybeSingle();
-      const p = pb as { id: string; title: string; steps: { label: string }[] | null; wizard_slack_channel: string | null } | null;
+      const p = pp as { id: string; title: string; steps: { label: string }[] | null; notify: boolean } | null;
       const steps = (p?.steps ?? []).map((s) => s.label).filter(Boolean);
       if (p && steps.length > 0) {
         shutdownProc = {
-          playbookId: p.id,
+          procedureId: p.id,
           title: p.title,
           steps,
-          hasSlackChannel: !!p.wizard_slack_channel,
+          notify: !!p.notify,
           eventTitle: evp.title,
           whenLabel: evp.start_at ? formatDateTime(evp.start_at) : null,
         };
@@ -505,10 +505,10 @@ export default async function TicketDetailPage({
                     />
                   )}
                   <ProcedureRunner
-                    playbookId={shutdownProc.playbookId}
+                    procedureId={shutdownProc.procedureId}
                     title={shutdownProc.title}
                     steps={shutdownProc.steps}
-                    hasSlackChannel={shutdownProc.hasSlackChannel}
+                    notify={shutdownProc.notify}
                     eventId={ticket.event_id ?? undefined}
                     taskId={ticket.id}
                     startLabel="Start shutdown"

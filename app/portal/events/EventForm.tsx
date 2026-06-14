@@ -21,9 +21,10 @@ export interface CategoryOption {
   chip_class: string;
 }
 
-export interface RunnablePlaybook {
+export interface RunnableProcedure {
   id: string;
-  title: string;
+  // "Playbook — Procedure"
+  label: string;
 }
 
 export interface EventInitialValues {
@@ -35,7 +36,7 @@ export interface EventInitialValues {
   location: string;
   areaId: string;
   categoryId: string;
-  shutdownPlaybookId: string;
+  shutdownProcedureId: string;
   recurring: boolean;
   recurFreq: "weekly" | "monthly";
   recurWeekdays: number[];
@@ -53,7 +54,7 @@ const DEFAULTS: EventInitialValues = {
   location: "",
   areaId: "",
   categoryId: "",
-  shutdownPlaybookId: "",
+  shutdownProcedureId: "",
   recurring: false,
   recurFreq: "weekly",
   recurWeekdays: [],
@@ -82,13 +83,13 @@ export function EventForm({
   initial,
   areas,
   categories,
-  shutdownPlaybooks,
+  shutdownProcedures,
   canDelete,
 }: {
   initial?: EventInitialValues;
   areas: Area[];
   categories: CategoryOption[];
-  shutdownPlaybooks: RunnablePlaybook[];
+  shutdownProcedures: RunnableProcedure[];
   canDelete?: boolean;
 }) {
   const router = useRouter();
@@ -102,7 +103,7 @@ export function EventForm({
   const [location, setLocation] = useState(start.location);
   const [areaId, setAreaId] = useState(start.areaId);
   const [categoryId, setCategoryId] = useState(start.categoryId);
-  const [shutdownPlaybookId, setShutdownPlaybookId] = useState(start.shutdownPlaybookId);
+  const [shutdownProcedureId, setShutdownProcedureId] = useState(start.shutdownProcedureId);
   const [recurring, setRecurring] = useState(start.recurring);
   const [recurFreq, setRecurFreq] = useState<"weekly" | "monthly">(start.recurFreq);
   const [recurWeekdays, setRecurWeekdays] = useState<number[]>(start.recurWeekdays);
@@ -150,7 +151,7 @@ export function EventForm({
         location: location.trim() || null,
         areaId: areaId || null,
         categoryId: categoryId || null,
-        shutdownPlaybookId: shutdownPlaybookId || null,
+        shutdownProcedureId: shutdownProcedureId || null,
         recurring,
         recurFreq,
         recurWeekdays,
@@ -252,19 +253,19 @@ export function EventForm({
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <Select
           label="Building shutdown"
-          value={shutdownPlaybookId}
-          onChange={(e) => setShutdownPlaybookId(e.target.value)}
-          disabled={shutdownPlaybooks.length === 0}
+          value={shutdownProcedureId}
+          onChange={(e) => setShutdownProcedureId(e.target.value)}
+          disabled={shutdownProcedures.length === 0}
         >
           <option value="">— No shutdown needed —</option>
-          {shutdownPlaybooks.map((p) => (
+          {shutdownProcedures.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.title}
+              {p.label}
             </option>
           ))}
         </Select>
         <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          {shutdownPlaybooks.length === 0
+          {shutdownProcedures.length === 0
             ? "No runnable procedures yet — add steps to a playbook to make it selectable."
             : "Link a procedure and a “Start shutdown” checklist appears on this event."}
         </span>
@@ -422,7 +423,7 @@ export function EventForm({
             </div>
 
             <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
-              {shutdownPlaybookId
+              {shutdownProcedureId
                 ? "A shutdown task will be generated for each occurrence and appear in the Tasks queue to assign."
                 : "Link a shutdown procedure above to auto-generate a shutdown task per occurrence."}
             </span>

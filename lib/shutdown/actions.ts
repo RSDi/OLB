@@ -67,48 +67,53 @@ interface EventWithProc {
   id: string;
   title: string;
   start_at: string | null;
-  playbookId: string | null;
+  procedureId: string | null;
+  notify: boolean;
   channel: string | null;
   completionMessage: string | null;
-  playbookTitle: string | null;
+  procedureTitle: string | null;
 }
 
-// Load an event plus its linked shutdown playbook's Slack config.
+// Load an event plus its linked shutdown procedure's notify config (0066).
 async function loadEventProc(
   admin: ReturnType<typeof createAdminClient>,
   eventId: string,
 ): Promise<EventWithProc | null> {
   const { data: ev } = await admin
     .from("events")
-    .select("id, title, start_at, shutdown_playbook_id")
+    .select("id, title, start_at, shutdown_procedure_id")
     .eq("id", eventId)
     .is("deleted_at", null)
     .maybeSingle();
   if (!ev) return null;
-  const e = ev as { id: string; title: string; start_at: string | null; shutdown_playbook_id: string | null };
+  const e = ev as { id: string; title: string; start_at: string | null; shutdown_procedure_id: string | null };
 
+  let notify = false;
   let channel: string | null = null;
   let completionMessage: string | null = null;
-  let playbookTitle: string | null = null;
-  if (e.shutdown_playbook_id) {
-    const { data: pb } = await admin
-      .from("playbooks")
-      .select("title, wizard_slack_channel, wizard_completion_message")
-      .eq("id", e.shutdown_playbook_id)
+  let procedureTitle: string | null = null;
+  if (e.shutdown_procedure_id) {
+    const { data: pp } = await admin
+      .from("playbook_procedures")
+      .select("title, notify, slack_channel, completion_message")
+      .eq("id", e.shutdown_procedure_id)
+      .is("deleted_at", null)
       .maybeSingle();
-    const p = pb as { title: string; wizard_slack_channel: string | null; wizard_completion_message: string | null } | null;
-    channel = p?.wizard_slack_channel ?? null;
-    completionMessage = p?.wizard_completion_message ?? null;
-    playbookTitle = p?.title ?? null;
+    const p = pp as { title: string; notify: boolean; slack_channel: string | null; completion_message: string | null } | null;
+    notify = !!p?.notify;
+    channel = p?.slack_channel ?? null;
+    completionMessage = p?.completion_message ?? null;
+    procedureTitle = p?.title ?? null;
   }
   return {
     id: e.id,
     title: e.title,
     start_at: e.start_at,
-    playbookId: e.shutdown_playbook_id,
+    procedureId: e.shutdown_procedure_id,
+    notify,
     channel,
     completionMessage,
-    playbookTitle,
+    procedureTitle,
   };
 }
 
@@ -125,7 +130,7 @@ export async function assignShutdown(eventId: string, memberId: string): Promise
 
   const ev = await loadEventProc(admin, eventId);
   if (!ev) return { error: "Event not found." };
-  if (!ev.playbookId) return { error: "This event has no shutdown procedure linked." };
+  if (!ev.procedureId) return { error: "This event has no shutdown procedure linked." };
 
   // Confirm the assignee exists and is on the Building Shutdown team.
   const { data: assignee } = await admin
@@ -181,7 +186,7 @@ export async function assignShutdown(eventId: string, memberId: string): Promise
     taskId = (created as { id: string }).id;
   }
 
-  if (ev.channel) {
+  if (ev.notify && ev.channel) {
     await sendShutdownAssignedSlack({ channel: ev.channel, assigneeName, event: eventRef(ev) });
   }
 
@@ -225,7 +230,7 @@ export async function assignShutdownTask(taskId: string, memberId: string): Prom
 
   if (t.event_id) {
     const ev = await loadEventProc(admin, t.event_id);
-    if (ev?.channel) {
+    if (ev?.notify && ev.channel) {
       await sendShutdownAssignedSlack({ channel: ev.channel, assigneeName, event: eventRef(ev) });
     }
   }
@@ -269,7 +274,7 @@ export async function optOutShutdown(taskId: string): Promise<ActionResult> {
 
   if (t.event_id) {
     const ev = await loadEventProc(admin, t.event_id);
-    if (ev?.channel) {
+    if (ev?.notify && ev.channel) {
       await sendShutdownCoverRequestSlack({ channel: ev.channel, formerAssigneeName: formerName, event: eventRef(ev) });
     }
     revalidatePath(`/portal/events/${t.event_id}/edit`);
@@ -314,13 +319,25 @@ export async function completeShutdownTask(
 
   const person = caller.fullName || "A team member";
   let posted = false;
-  if (ev.channel) {
-    const template = ev.completionMessage || `✅ ${ev.playbookTitle ?? "Building shutdown"} complete — by {person}.`;
+  if (ev.notify && ev.channel) {
+    const template = ev.completionMessage || `✅ ${ev.procedureTitle ?? "Building shutdown"} complete — by {person}.`;
     posted = await sendProcedureCompletionSlack({
       channel: ev.channel,
       message: template.replace(/\{person\}/g, person),
       event: eventRef(ev),
     });
+  }
+
+  // Log the run against the procedure (the history), like a standalone run.
+  if (ev.procedureId) {
+    const { error: runErr } = await admin.from("procedure_runs").insert({
+      procedure_id: ev.procedureId,
+      ran_by: caller.memberId,
+      ran_by_name: person,
+      notified: posted,
+      source: "task",
+    });
+    if (runErr) console.error("procedure_runs insert failed", runErr);
   }
 
   revalidatePath(`/portal/events/${t.event_id}/edit`);
