@@ -75,6 +75,11 @@ export function PlaybookDetail({
   const [categoryId, setCategoryId] = useState<string | null>(data.category?.id ?? null);
   const [excerpt, setExcerpt] = useState(data.excerpt ?? "");
   const [bodyMd, setBodyMd] = useState(data.body_md);
+  // Procedure-wizard editor fields (0059): one step per line + an optional
+  // Slack channel + completion message. Seeded from the playbook in enterEdit.
+  const [stepsText, setStepsText] = useState(data.steps.join("\n"));
+  const [slackChannel, setSlackChannel] = useState(data.wizard_slack_channel ?? "");
+  const [completionMessage, setCompletionMessage] = useState(data.wizard_completion_message ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -125,6 +130,9 @@ export function PlaybookDetail({
     setCategoryId(data.category?.id ?? null);
     setExcerpt(data.excerpt ?? "");
     setBodyMd(data.body_md);
+    setStepsText(data.steps.join("\n"));
+    setSlackChannel(data.wizard_slack_channel ?? "");
+    setCompletionMessage(data.wizard_completion_message ?? "");
     setError(null);
     setMode("edit");
   }
@@ -142,6 +150,11 @@ export function PlaybookDetail({
         categoryId,
         excerpt: excerpt.trim() || null,
         bodyMd,
+        // Procedure wizard: split the textarea into step labels. Sending these
+        // (even empty) is intentional — clearing the steps turns the wizard off.
+        steps: stepsText.split("\n").map((s) => s.trim()).filter(Boolean),
+        wizardSlackChannel: slackChannel.trim() || null,
+        wizardCompletionMessage: completionMessage.trim() || null,
       });
       if (res.error) {
         setError(res.error);
@@ -485,6 +498,60 @@ export function PlaybookDetail({
             onChange={setBodyMd}
             placeholder="Write the playbook in Markdown — headings (#), lists (-), links, code blocks, tables. Use the toolbar for inline formatting."
           />
+
+          {/* Procedure wizard editor (0059) — turn this playbook into a runnable checklist. */}
+          <div
+            style={{
+              marginTop: 20,
+              padding: "16px 18px",
+              border: "1px solid var(--gw-border)",
+              borderRadius: 12,
+              background: "var(--gw-bg-elev)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--gw-fg)" }}>Procedure wizard (optional)</div>
+              <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", marginTop: 2, lineHeight: 1.5 }}>
+                Add steps to turn this playbook into a guided checklist people can run. Leave blank for a normal doc.
+              </div>
+            </div>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Steps — one per line</span>
+              <textarea
+                value={stepsText}
+                onChange={(e) => setStepsText(e.target.value)}
+                rows={6}
+                placeholder={"Turn off the lobby HVAC units\nTurn off the coffee maker\nShut off all the lights\nLock & check the front door"}
+                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5, lineHeight: 1.6, resize: "vertical", fontFamily: "inherit" }}
+              />
+            </label>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <label style={{ flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Notify Slack channel on completion</span>
+                <input
+                  value={slackChannel}
+                  onChange={(e) => setSlackChannel(e.target.value)}
+                  placeholder="Channel ID, e.g. C04D7F1G6JX"
+                  style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
+                />
+              </label>
+              <label style={{ flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Completion message</span>
+                <input
+                  value={completionMessage}
+                  onChange={(e) => setCompletionMessage(e.target.value)}
+                  placeholder="✅ Done by {person}."
+                  style={{ padding: "9px 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
+                />
+              </label>
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+              Use <code>{"{person}"}</code> for the runner&apos;s name. The bot must be invited to the channel for the post to land.
+            </div>
+          </div>
         </div>
       ) : (
         <article
