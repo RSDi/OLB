@@ -105,10 +105,6 @@ export function EventForm({
       setError("Pick at least one weekday for the repeat, or turn off 'Repeats weekly'.");
       return;
     }
-    if (recurring && !recurUntil) {
-      setError("Pick an end date for the weekly repeat.");
-      return;
-    }
     startTransition(async () => {
       const input = {
         title: title.trim(),
@@ -276,13 +272,14 @@ export function EventForm({
               </div>
             </div>
             <label style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 240 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Repeat until</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Repeat until (optional)</span>
               <input
                 type="date"
                 value={recurUntil}
                 onChange={(e) => setRecurUntil(e.target.value)}
                 style={{ height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
               />
+              <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)" }}>Leave blank to repeat indefinitely.</span>
             </label>
             <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
               {shutdownPlaybookId
