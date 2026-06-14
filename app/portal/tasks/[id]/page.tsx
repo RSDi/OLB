@@ -109,10 +109,11 @@ export default async function TicketDetailPage({
 
   const { data: meRow } = await supabase
     .from("members")
-    .select("role, status")
+    .select("id, role, status")
     .eq("user_id", user.id)
     .maybeSingle();
   const me = (meRow as MemberLike | null) ?? null;
+  const viewerMemberId = (meRow as { id?: string } | null)?.id ?? null;
   const staff = isStaff(me);
   const superAdmin = isSuperAdmin(me);
 
@@ -532,6 +533,8 @@ export default async function TicketDetailPage({
               comments={comments}
               canComment={canComment}
               thingsEnabled={thingsEnabled}
+              viewerMemberId={viewerMemberId}
+              isSuperAdmin={superAdmin}
             />
             {canComment && (
               <div

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireStaff, requireSuperAdmin } from "../auth/guards";
+import { getViewer } from "../auth/viewer";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { sendNewTicketNotification } from "../notifications/new-ticket";
@@ -210,6 +211,84 @@ export async function addTicketComment(
 
   revalidatePath(`/portal/tasks/${ticketId}`);
   return { success: true };
+}
+
+// Soft-delete a task comment. Two policies, both soft (deleted_at):
+//   • the author may delete their OWN comment, but only if it has no live
+//     replies (deleting a comment mid-thread would orphan the replies);
+//   • a super-admin may delete ANY comment together with its whole reply
+//     subtree.
+// Authorization is enforced here in TypeScript via the admin client (the
+// house pattern), so we don't depend on an RLS update policy for this.
+export async function deleteTicketComment(commentId: string): Promise<ActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return { error: "You must be signed in." };
+
+  const admin = createAdminClient();
+  const { data: target } = await admin
+    .from("ticket_comments")
+    .select("id, ticket_id, author_id, deleted_at")
+    .eq("id", commentId)
+    .maybeSingle();
+  const comment = target as
+    | { id: string; ticket_id: string; author_id: string | null; deleted_at: string | null }
+    | null;
+  if (!comment) return { error: "Comment not found." };
+  if (comment.deleted_at) return { success: true }; // already gone; idempotent
+
+  // The ticket's full comment tree (id + parent) to evaluate replies and, for a
+  // super-admin, the descendant subtree.
+  const { data: allRows } = await admin
+    .from("ticket_comments")
+    .select("id, parent_id, deleted_at")
+    .eq("ticket_id", comment.ticket_id);
+  const rows = (allRows as { id: string; parent_id: string | null; deleted_at: string | null }[] | null) ?? [];
+  const hasLiveReplies = rows.some(r => r.parent_id === commentId && !r.deleted_at);
+  const isAuthor = comment.author_id !== null && comment.author_id === viewer.memberId;
+
+  let idsToDelete: string[];
+  if (viewer.isSuperAdmin) {
+    idsToDelete = collectCommentSubtree(rows, commentId);
+  } else if (isAuthor) {
+    if (hasLiveReplies) {
+      return { error: "This comment has replies — a super-admin can remove the whole thread." };
+    }
+    idsToDelete = [commentId];
+  } else {
+    return { error: "You can only delete your own comments." };
+  }
+
+  const { error } = await admin
+    .from("ticket_comments")
+    .update({ deleted_at: new Date().toISOString() })
+    .in("id", idsToDelete)
+    .is("deleted_at", null);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/tasks/${comment.ticket_id}`);
+  return { success: true };
+}
+
+// A comment id plus every descendant, from a flat (id, parent_id) list.
+function collectCommentSubtree(
+  rows: { id: string; parent_id: string | null }[],
+  rootId: string,
+): string[] {
+  const childrenByParent = new Map<string, string[]>();
+  for (const r of rows) {
+    if (!r.parent_id) continue;
+    const list = childrenByParent.get(r.parent_id) ?? [];
+    list.push(r.id);
+    childrenByParent.set(r.parent_id, list);
+  }
+  const out: string[] = [];
+  const stack = [rootId];
+  while (stack.length) {
+    const id = stack.pop()!;
+    out.push(id);
+    for (const child of childrenByParent.get(id) ?? []) stack.push(child);
+  }
+  return out;
 }
 
 export async function softDeleteTicket(ticketId: string): Promise<ActionResult> {

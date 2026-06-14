@@ -9,6 +9,7 @@ import {
   toggleActionItemDone,
   setMyThingsEnabled,
 } from "../../../../lib/reelnotes/actions";
+import { deleteTicketComment } from "../../../../lib/maintenance/actions";
 
 export interface ThreadComment {
   id: string;
@@ -57,11 +58,17 @@ export function CommentThread({
   comments,
   canComment,
   thingsEnabled = false,
+  viewerMemberId = null,
+  isSuperAdmin = false,
 }: {
   ticketId: string;
   comments: ThreadComment[];
   canComment: boolean;
   thingsEnabled?: boolean;
+  // For comment deletion: authors may delete their own reply-free comments;
+  // super-admins may delete a whole thread.
+  viewerMemberId?: string | null;
+  isSuperAdmin?: boolean;
 }) {
   const childrenByParent = new Map<string | null, ThreadComment[]>();
   for (const c of comments) {
@@ -97,6 +104,8 @@ export function CommentThread({
           ticketId={ticketId}
           canComment={canComment}
           thingsEnabled={thingsEnabled}
+          viewerMemberId={viewerMemberId}
+          isSuperAdmin={isSuperAdmin}
           depth={0}
           border={i < roots.length - 1}
         />
@@ -111,6 +120,8 @@ function CommentNode({
   ticketId,
   canComment,
   thingsEnabled,
+  viewerMemberId,
+  isSuperAdmin,
   depth,
   border,
 }: {
@@ -119,12 +130,45 @@ function CommentNode({
   ticketId: string;
   canComment: boolean;
   thingsEnabled: boolean;
+  viewerMemberId: string | null;
+  isSuperAdmin: boolean;
   depth: number;
   border: boolean;
 }) {
+  const router = useRouter();
   const [replying, setReplying] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const children = childrenByParent.get(comment.id) ?? [];
   const indent = Math.min(depth, MAX_VISIBLE_DEPTH) * INDENT_PX;
+
+  // Author may delete their own reply-free comment; a super-admin may delete
+  // any comment along with its whole reply subtree. (`children` only holds
+  // live replies — the loader filters out soft-deleted ones.)
+  const isAuthor = !!comment.author_id && comment.author_id === viewerMemberId;
+  const canDelete = isSuperAdmin || (isAuthor && children.length === 0);
+
+  function countDescendants(c: ThreadComment): number {
+    const kids = childrenByParent.get(c.id) ?? [];
+    return kids.reduce((n, k) => n + 1 + countDescendants(k), 0);
+  }
+
+  async function handleDelete() {
+    if (deleting) return;
+    const descendants = isSuperAdmin ? countDescendants(comment) : 0;
+    const msg =
+      descendants > 0
+        ? `Delete this comment and its ${descendants} ${descendants === 1 ? "reply" : "replies"}?`
+        : "Delete this comment?";
+    if (!confirm(msg)) return;
+    setDeleting(true);
+    const res = await deleteTicketComment(comment.id);
+    setDeleting(false);
+    if (res.error) {
+      alert(res.error);
+      return;
+    }
+    router.refresh();
+  }
 
   return (
     <div
@@ -229,6 +273,30 @@ function CommentNode({
               Reply
             </button>
           )}
+          {canDelete && !replying && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{
+                marginTop: 6,
+                marginLeft: canComment ? 14 : 0,
+                padding: 0,
+                background: "transparent",
+                border: "none",
+                color: "var(--gw-error)",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: deleting ? "default" : "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <Icons.Trash width={11} height={11} />
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+          )}
           {replying && (
             <div style={{ marginTop: 10 }}>
               <CommentForm
@@ -255,6 +323,8 @@ function CommentNode({
               ticketId={ticketId}
               canComment={canComment}
               thingsEnabled={thingsEnabled}
+              viewerMemberId={viewerMemberId}
+              isSuperAdmin={isSuperAdmin}
               depth={depth + 1}
               border={i < children.length - 1}
             />
