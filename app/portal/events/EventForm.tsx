@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../components/ui";
+import { DateTimePicker } from "../../components/DateTimePicker";
 import {
   createEvent,
   updateEvent,
@@ -171,19 +172,8 @@ export function EventForm({
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Input
-          label="Start *"
-          type="datetime-local"
-          value={startAt}
-          onChange={(e) => setStartAt(e.target.value)}
-          required
-        />
-        <Input
-          label="End (optional)"
-          type="datetime-local"
-          value={endAt}
-          onChange={(e) => setEndAt(e.target.value)}
-        />
+        <DateTimePicker label="Start *" value={startAt} onChange={setStartAt} required />
+        <DateTimePicker label="End (optional)" value={endAt} onChange={setEndAt} placeholder="No end time" />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
