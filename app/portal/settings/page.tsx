@@ -17,6 +17,7 @@ import { PlaybooksTab } from "./PlaybooksTab";
 import { ContactCategoriesTab } from "./ContactCategoriesTab";
 import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
+import { IntegrationsTab } from "./IntegrationsTab";
 
 type Tab =
   | "members"
@@ -31,6 +32,7 @@ type Tab =
   | "task_categories"
   | "playbooks"
   | "contact_categories"
+  | "integrations"
   | "audit_log"
   | "deleted";
 
@@ -105,6 +107,7 @@ export default function SettingsPage() {
     { key: "task_categories", label: "Task Categories", visible: true },
     { key: "playbooks", label: "Playbooks", visible: true },
     { key: "contact_categories", label: "Contact Categories", visible: true },
+    { key: "integrations", label: "Integrations", visible: true },
     { key: "audit_log", label: "Audit Log", visible: true },
     { key: "deleted", label: "Deleted", visible: showDeleted },
   ];
@@ -151,6 +154,7 @@ export default function SettingsPage() {
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}
       {tab === "contact_categories" && <ContactCategoriesTab me={me} />}
+      {tab === "integrations" && <IntegrationsTab />}
       {tab === "audit_log" && <AuditLogTab />}
       {tab === "deleted" && showDeleted && <DeletedTab />}
     </>
