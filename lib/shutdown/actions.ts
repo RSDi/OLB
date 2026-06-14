@@ -159,6 +159,9 @@ export async function assignShutdown(eventId: string, memberId: string): Promise
       admin.from("task_categories").select("id").ilike("name", "Building Shutdown").is("deleted_at", null).maybeSingle(),
       admin.from("priorities").select("id").eq("label", "Low").maybeSingle(),
     ]);
+    // occurrence_date keeps a one-off shutdown task consistent with the
+    // generator's per-occurrence rows (and the unique index).
+    const occurrenceDate = ev.start_at ? new Date(ev.start_at).toISOString().slice(0, 10) : null;
     const { data: created, error } = await admin
       .from("maintenance_requests")
       .insert({
@@ -168,6 +171,7 @@ export async function assignShutdown(eventId: string, memberId: string): Promise
         submitted_by: gate.userId,
         assigned_to: memberId,
         event_id: eventId,
+        occurrence_date: occurrenceDate,
         category_id: (cat as { id: string } | null)?.id ?? null,
         priority_id: (prio as { id: string } | null)?.id ?? null,
       })
@@ -182,6 +186,49 @@ export async function assignShutdown(eventId: string, memberId: string): Promise
   }
 
   revalidatePath(`/portal/events/${eventId}/edit`);
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${taskId}`);
+  return { success: true, taskId };
+}
+
+// Assign a specific shutdown task (e.g. a cron-generated occurrence) to a team
+// member. Staff-gated. Mirrors assignShutdown but targets the task directly,
+// since a recurring event has many per-occurrence tasks.
+export async function assignShutdownTask(taskId: string, memberId: string): Promise<ActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
+  const admin = createAdminClient();
+
+  const { data: task } = await admin
+    .from("maintenance_requests")
+    .select("id, event_id")
+    .eq("id", taskId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!task) return { error: "Shutdown task not found." };
+  const t = task as { id: string; event_id: string | null };
+
+  const { data: assignee } = await admin
+    .from("members")
+    .select("full_name")
+    .eq("id", memberId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!assignee) return { error: "That member no longer exists." };
+  const assigneeName = (assignee as { full_name: string | null }).full_name || "A team member";
+
+  const { error } = await admin
+    .from("maintenance_requests")
+    .update({ assigned_to: memberId, status: "open" })
+    .eq("id", taskId);
+  if (error) return { error: error.message };
+
+  if (t.event_id) {
+    const ev = await loadEventProc(admin, t.event_id);
+    if (ev?.channel) {
+      await sendShutdownAssignedSlack({ channel: ev.channel, assigneeName, event: eventRef(ev) });
+    }
+  }
   revalidatePath("/portal/tasks");
   revalidatePath(`/portal/tasks/${taskId}`);
   return { success: true, taskId };

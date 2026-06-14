@@ -47,7 +47,7 @@ const CONTRACT: Record<string, string> = {
   members:
     "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings",
   maintenance_requests:
-    "id,description,status,review_status,decline_reason,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,deleted_at",
+    "id,description,status,review_status,decline_reason,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at",
   request_votes: "id,ticket_id,voter_id,vote,note,created_at,updated_at",
   task_review_log: "id,ticket_id,changed_by,old_status,new_status,reason,changed_at",
   ticket_comments: "id,ticket_id,author_id,body,parent_id,external_author,slack_ts,created_at,deleted_at",
@@ -55,7 +55,7 @@ const CONTRACT: Record<string, string> = {
   areas: "id,name,sort_order,deleted_at",
   priorities: "id,label,severity,chip_class,deleted_at",
   area_members: "id,area_id,member_id,role",
-  events: "id,title,description,start_at,end_at,location,area_id,category_id,source_ticket_id,shutdown_playbook_id,deleted_at",
+  events: "id,title,description,start_at,end_at,location,area_id,category_id,source_ticket_id,shutdown_playbook_id,recurring,recur_weekdays,recur_until,deleted_at",
   projects: "id,title,description,status,budget,category_id,created_by,deleted_at",
   supplies: "id,name,unit,on_hand,reorder_threshold,notes,reorder_contact_id,reorder_note,deleted_at",
   supply_usage: "id,supply_id,qty_used,used_by,pm_instance_asset_id,pm_instance_id,maintenance_request_id,notes",

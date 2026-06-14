@@ -35,6 +35,9 @@ export interface EventInitialValues {
   areaId: string;
   categoryId: string;
   shutdownPlaybookId: string;
+  recurring: boolean;
+  recurWeekdays: number[];
+  recurUntil: string; // YYYY-MM-DD
 }
 
 const DEFAULTS: EventInitialValues = {
@@ -46,7 +49,12 @@ const DEFAULTS: EventInitialValues = {
   areaId: "",
   categoryId: "",
   shutdownPlaybookId: "",
+  recurring: false,
+  recurWeekdays: [],
+  recurUntil: "",
 };
+
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function EventForm({
   initial,
@@ -73,7 +81,16 @@ export function EventForm({
   const [areaId, setAreaId] = useState(start.areaId);
   const [categoryId, setCategoryId] = useState(start.categoryId);
   const [shutdownPlaybookId, setShutdownPlaybookId] = useState(start.shutdownPlaybookId);
+  const [recurring, setRecurring] = useState(start.recurring);
+  const [recurWeekdays, setRecurWeekdays] = useState<number[]>(start.recurWeekdays);
+  const [recurUntil, setRecurUntil] = useState(start.recurUntil);
   const [error, setError] = useState<string | null>(null);
+
+  function toggleWeekday(d: number) {
+    setRecurWeekdays((prev) =>
+      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)
+    );
+  }
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -81,6 +98,14 @@ export function EventForm({
     setError(null);
     if (!startAt) {
       setError("Pick a start date/time.");
+      return;
+    }
+    if (recurring && recurWeekdays.length === 0) {
+      setError("Pick at least one weekday for the repeat, or turn off 'Repeats weekly'.");
+      return;
+    }
+    if (recurring && !recurUntil) {
+      setError("Pick an end date for the weekly repeat.");
       return;
     }
     startTransition(async () => {
@@ -93,6 +118,9 @@ export function EventForm({
         areaId: areaId || null,
         categoryId: categoryId || null,
         shutdownPlaybookId: shutdownPlaybookId || null,
+        recurring,
+        recurWeekdays,
+        recurUntil: recurUntil || null,
       };
       const result = isEdit && initial?.id
         ? await updateEvent(initial.id, input)
@@ -214,6 +242,65 @@ export function EventForm({
             ? "No runnable procedures yet — add steps to a playbook to make it selectable."
             : "Link a procedure and a “Start shutdown” checklist appears on this event."}
         </span>
+      </div>
+
+      {/* Weekly recurrence (0062). When the event also has a shutdown procedure,
+          each occurrence auto-spawns a shutdown task via the daily cron. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px", border: "1px solid var(--gw-border)", borderRadius: 10, background: "var(--gw-bg-elev)" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={recurring}
+            onChange={(e) => setRecurring(e.target.checked)}
+            style={{ width: 16, height: 16 }}
+          />
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--gw-fg)" }}>Repeats weekly</span>
+        </label>
+        {recurring && (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>On these days</span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {WEEKDAY_LABELS.map((label, d) => {
+                  const on = recurWeekdays.includes(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => toggleWeekday(d)}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: 100,
+                        border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+                        background: on ? "var(--rsd-accent)" : "var(--gw-bg)",
+                        color: on ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 240 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Repeat until</span>
+              <input
+                type="date"
+                value={recurUntil}
+                onChange={(e) => setRecurUntil(e.target.value)}
+                style={{ height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
+              />
+            </label>
+            <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+              {shutdownPlaybookId
+                ? "A shutdown task will be generated for each occurrence and appear in the Tasks queue to assign."
+                : "Link a shutdown procedure above to auto-generate a shutdown task per occurrence."}
+            </span>
+          </>
+        )}
       </div>
 
       {error && (

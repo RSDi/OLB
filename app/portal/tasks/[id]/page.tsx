@@ -20,6 +20,7 @@ import { CommentThread, type ThreadComment } from "./CommentThread";
 import { ReelNotesCard, type LinkedRecording } from "./ReelNotesCard";
 import { ProcedureRunner } from "../../../components/ProcedureRunner";
 import { ShutdownOptOutButton } from "./ShutdownOptOutButton";
+import { ShutdownTaskAssign } from "./ShutdownTaskAssign";
 import { majorityThreshold } from "../../../../lib/votes/threshold";
 import { loadConflictsForTicket } from "../../../../lib/requests/conflict-loader";
 import { formatDateLabel } from "../../../../lib/requests/recurrence";
@@ -165,6 +166,29 @@ export default async function TicketDetailPage({
           whenLabel: evp.start_at ? formatDateTime(evp.start_at) : null,
         };
       }
+    }
+  }
+
+  // The Building Shutdown team roster, for the staff assign control on a
+  // shutdown task (Phase 2c). Non-staff assignees don't get this.
+  let shutdownTeam: { id: string; fullName: string }[] = [];
+  if (shutdownProc && staff) {
+    const { data: team } = await supabase
+      .from("volunteer_teams")
+      .select("id")
+      .eq("name", "Building Shutdown")
+      .maybeSingle();
+    const teamId = (team as { id: string } | null)?.id ?? null;
+    if (teamId) {
+      const { data: rows } = await supabase
+        .from("member_volunteer_teams")
+        .select("member:members(id, full_name)")
+        .eq("team_id", teamId);
+      shutdownTeam = ((rows as unknown as { member: { id: string; full_name: string | null } | null }[]) ?? [])
+        .map((r) => r.member)
+        .filter((m): m is { id: string; full_name: string | null } => !!m)
+        .map((m) => ({ id: m.id, fullName: m.full_name ?? "(no name)" }))
+        .sort((a, b) => a.fullName.localeCompare(b.fullName));
     }
   }
 
@@ -433,6 +457,14 @@ export default async function TicketDetailPage({
                 </div>
               ) : (
                 <>
+                  {staff && (
+                    <ShutdownTaskAssign
+                      taskId={ticket.id}
+                      teamMembers={shutdownTeam}
+                      assigneeId={ticket.assigned_to}
+                      assigneeName={ticket.assignee?.full_name ?? null}
+                    />
+                  )}
                   <ProcedureRunner
                     playbookId={shutdownProc.playbookId}
                     title={shutdownProc.title}

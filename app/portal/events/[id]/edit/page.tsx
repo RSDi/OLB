@@ -17,6 +17,9 @@ interface EventRow {
   area_id: string | null;
   category_id: string | null;
   shutdown_playbook_id: string | null;
+  recurring: boolean;
+  recur_weekdays: number[] | null;
+  recur_until: string | null;
 }
 
 export default async function EditEventPage({
@@ -42,7 +45,7 @@ export default async function EditEventPage({
 
   const { data: eventRaw } = await supabase
     .from("events")
-    .select("id, title, description, start_at, end_at, location, area_id, category_id, shutdown_playbook_id")
+    .select("id, title, description, start_at, end_at, location, area_id, category_id, shutdown_playbook_id, recurring, recur_weekdays, recur_until")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -108,7 +111,9 @@ export default async function EditEventPage({
   let shutdownTask:
     | { id: string; assigneeId: string | null; assigneeName: string | null; status: string }
     | null = null;
-  if (shutdownProc) {
+  // A recurring event has many per-occurrence tasks (managed in the queue), so
+  // the single assign control only applies to one-off events.
+  if (shutdownProc && !ev.recurring) {
     const { data: team } = await supabase
       .from("volunteer_teams")
       .select("id")
@@ -158,6 +163,9 @@ export default async function EditEventPage({
     areaId: ev.area_id ?? "",
     categoryId: ev.category_id ?? "",
     shutdownPlaybookId: ev.shutdown_playbook_id ?? "",
+    recurring: ev.recurring ?? false,
+    recurWeekdays: ev.recur_weekdays ?? [],
+    recurUntil: ev.recur_until ?? "",
   };
 
   return (
@@ -195,7 +203,17 @@ export default async function EditEventPage({
         </Link>
       </div>
 
-      {shutdownProc && (
+      {shutdownProc && ev.recurring && (
+        <div style={{ marginTop: 16 }}>
+          <div className="rsd-card" style={{ border: "1px solid var(--rsd-accent)", background: "var(--rsd-accent-bg)", fontSize: 13, lineHeight: 1.6, color: "var(--gw-fg)" }}>
+            <strong>Repeats weekly.</strong> A shutdown task is generated for each occurrence and lands in the{" "}
+            <Link href="/portal/tasks" style={{ color: "var(--rsd-accent)", fontWeight: 700 }}>Tasks queue</Link>
+            {" "}to assign to a team member.
+          </div>
+        </div>
+      )}
+
+      {shutdownProc && !ev.recurring && (
         <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
           <ShutdownAssignment
             eventId={ev.id}

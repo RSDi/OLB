@@ -22,6 +22,21 @@ export interface EventInput {
   // needs. Optional so other callers (e.g. auto-create-from-request) needn't
   // set it; the event form always sends it.
   shutdownPlaybookId?: string | null;
+  // Weekly recurrence (0062). recurWeekdays uses 0=Sun…6=Sat. The shutdown cron
+  // expands recurring + shutdown-linked events into per-occurrence tasks.
+  recurring?: boolean;
+  recurWeekdays?: number[] | null;
+  recurUntil?: string | null;
+}
+
+// Map the recurrence inputs to columns, clearing the rule when not recurring.
+function recurrenceColumns(input: EventInput) {
+  if (input.recurring === undefined) return {};
+  return {
+    recurring: !!input.recurring,
+    recur_weekdays: input.recurring ? input.recurWeekdays ?? null : null,
+    recur_until: input.recurring ? input.recurUntil || null : null,
+  };
 }
 
 function validate(input: EventInput): string | null {
@@ -57,6 +72,7 @@ export async function createEvent(input: EventInput): Promise<EventActionResult>
       ...(input.shutdownPlaybookId !== undefined
         ? { shutdown_playbook_id: input.shutdownPlaybookId }
         : {}),
+      ...recurrenceColumns(input),
     })
     .select("id")
     .single();
@@ -90,6 +106,7 @@ export async function updateEvent(
       ...(input.shutdownPlaybookId !== undefined
         ? { shutdown_playbook_id: input.shutdownPlaybookId }
         : {}),
+      ...recurrenceColumns(input),
     })
     .eq("id", eventId);
   if (error) return { error: error.message };
