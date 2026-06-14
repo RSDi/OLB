@@ -3,7 +3,7 @@ import { useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { CommentForm } from "./Actions";
-import { ActionRow } from "reelnotes/ui";
+import { ActionRow, SummaryBullet, normalizeSummaryBullet } from "reelnotes/ui";
 import type { CommentRecording, AssignableMember } from "../../../../lib/reelnotes/data";
 import {
   setActionItemRouted,
@@ -422,13 +422,25 @@ function RecordedNote({
           {showSummary && (
             <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
               {recording.summary!.map((sec, i) => (
-                <div key={i}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg)", marginBottom: 2 }}>{sec.heading}</div>
-                  <ul style={{ margin: 0, paddingLeft: 16 }}>
-                    {sec.bullets.map((b, j) => (
-                      <li key={j} style={{ fontSize: 12, lineHeight: 1.55, color: "var(--gw-fg-muted)" }}>{b.text}</li>
-                    ))}
-                  </ul>
+                <div key={`${i}-${sec.heading}`}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "var(--gw-fg-muted)",
+                      letterSpacing: ".04em",
+                      textTransform: "uppercase",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {sec.heading}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {sec.bullets.map((b, j) => {
+                      const nb = normalizeSummaryBullet(b);
+                      return <SummaryBullet key={`${nb.text}-${j}`} bullet={nb} />;
+                    })}
+                  </div>
                 </div>
               ))}
             </div>

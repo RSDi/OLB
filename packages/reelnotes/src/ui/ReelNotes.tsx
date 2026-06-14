@@ -149,7 +149,7 @@ function formatMs(ms: number): string {
 
 // Tolerate the legacy summary shape (bullets were plain strings before the
 // per-bullet "detail" grounding was added) so older recordings still render.
-function normalizeSummaryBullet(b: ReelNotesSummaryBullet | string): ReelNotesSummaryBullet {
+export function normalizeSummaryBullet(b: ReelNotesSummaryBullet | string): ReelNotesSummaryBullet {
   if (typeof b === "string") return { text: b, detail: null };
   return { text: b.text, detail: b.detail ?? null };
 }
@@ -159,7 +159,7 @@ function normalizeSummaryBullet(b: ReelNotesSummaryBullet | string): ReelNotesSu
 // the point in the transcript. Reveals inline (not a floating popover) so it
 // never clips inside the mobile card's scroll context. The + only exists when
 // the bullet carries a detail.
-function SummaryBullet({ bullet }: { bullet: ReelNotesSummaryBullet }) {
+export function SummaryBullet({ bullet }: { bullet: ReelNotesSummaryBullet }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="gw-sum-bullet">
