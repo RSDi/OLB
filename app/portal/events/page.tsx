@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
+import { expandEventOccurrences, type EventOccurrence } from "../../../lib/events/occurrences";
 
 type ViewFilter = "upcoming" | "past" | "all";
 
@@ -19,9 +20,14 @@ interface EventRow {
   start_at: string;
   end_at: string | null;
   location: string | null;
+  recurring: boolean | null;
+  recur_weekdays: number[] | null;
+  recur_until: string | null;
   area: { name: string } | null;
   category: { name: string; chip_class: string } | null;
 }
+
+const DAY_MS = 86400000;
 
 export default async function PortalEventsPage({
   searchParams,
@@ -45,27 +51,43 @@ export default async function PortalEventsPage({
   const me = (meRow as MemberLike | null) ?? null;
   const staff = isStaff(me);
 
-  const nowIso = new Date().toISOString();
+  const now = new Date();
+  const nowMs = now.getTime();
 
-  let query = supabase
+  // Recurring events are single rows + a weekly rule (0062); expand them into
+  // occurrences at read-time so each instance shows on its own date.
+  const { data: rows } = await supabase
     .from("events")
     .select(
       `id, title, description, start_at, end_at, location,
+       recurring, recur_weekdays, recur_until,
        area:areas(name),
        category:event_categories(name, chip_class)`
     )
     .is("deleted_at", null);
+  const baseEvents = (rows as unknown as EventRow[]) ?? [];
 
+  // Window the recurring expansion: ±90 days around now per view. One-off
+  // events pass through regardless and are split by the now boundary below.
+  const window =
+    view === "upcoming"
+      ? { from: now, to: new Date(nowMs + 90 * DAY_MS) }
+      : view === "past"
+        ? { from: new Date(nowMs - 90 * DAY_MS), to: now }
+        : { from: new Date(nowMs - 90 * DAY_MS), to: new Date(nowMs + 90 * DAY_MS) };
+
+  let occurrences = expandEventOccurrences(baseEvents, window);
   if (view === "upcoming") {
-    query = query.gte("start_at", nowIso).order("start_at", { ascending: true });
+    occurrences = occurrences
+      .filter((o) => new Date(o.startAt).getTime() >= nowMs)
+      .sort((a, b) => a.startAt.localeCompare(b.startAt));
   } else if (view === "past") {
-    query = query.lt("start_at", nowIso).order("start_at", { ascending: false });
+    occurrences = occurrences
+      .filter((o) => new Date(o.startAt).getTime() < nowMs)
+      .sort((a, b) => b.startAt.localeCompare(a.startAt));
   } else {
-    query = query.order("start_at", { ascending: false });
+    occurrences = occurrences.sort((a, b) => b.startAt.localeCompare(a.startAt));
   }
-
-  const { data: rows } = await query;
-  const events = (rows as unknown as EventRow[]) ?? [];
 
   return (
     <>
@@ -129,10 +151,10 @@ export default async function PortalEventsPage({
       <div className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--gw-border)" }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
-            {events.length} {events.length === 1 ? "event" : "events"}
+            {occurrences.length} {occurrences.length === 1 ? "event" : "events"}
           </h3>
         </div>
-        {events.length === 0 ? (
+        {occurrences.length === 0 ? (
           <div style={{ padding: "48px 24px", textAlign: "center" }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gw-fg)", marginBottom: 6 }}>
               {view === "upcoming"
@@ -149,12 +171,12 @@ export default async function PortalEventsPage({
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column" }}>
-            {events.map((e, i) => (
+            {occurrences.map((o, i) => (
               <EventRow
-                key={e.id}
-                event={e}
+                key={`${o.event.id}-${o.startAt}`}
+                occ={o}
                 staff={staff}
-                border={i < events.length - 1}
+                border={i < occurrences.length - 1}
               />
             ))}
           </div>
@@ -165,14 +187,15 @@ export default async function PortalEventsPage({
 }
 
 function EventRow({
-  event,
+  occ,
   staff,
   border,
 }: {
-  event: EventRow;
+  occ: EventOccurrence<EventRow>;
   staff: boolean;
   border: boolean;
 }) {
+  const event = occ.event;
   const chipClass = event.category?.chip_class ?? "rsd-chip-mute";
   const where = event.area?.name ?? event.location ?? null;
 
@@ -199,10 +222,10 @@ function EventRow({
         }}
       >
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em" }}>
-          {monthShort(event.start_at)}
+          {monthShort(occ.startAt)}
         </div>
         <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
-          {dayNum(event.start_at)}
+          {dayNum(occ.startAt)}
         </div>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -210,6 +233,11 @@ function EventRow({
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gw-fg)" }}>{event.title}</span>
           {event.category && (
             <span className={`rsd-chip ${chipClass}`}>{event.category.name}</span>
+          )}
+          {occ.recurringInstance && (
+            <span className="rsd-chip rsd-chip-mute" title="Part of a weekly series">
+              ↻ Weekly
+            </span>
           )}
         </div>
         <div
@@ -223,7 +251,7 @@ function EventRow({
             flexWrap: "wrap",
           }}
         >
-          <span>{formatTimeRange(event.start_at, event.end_at)}</span>
+          <span>{formatTimeRange(occ.startAt, occ.endAt)}</span>
           {where && (
             <>
               <span>·</span>

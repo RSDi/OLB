@@ -4,6 +4,7 @@ import { Icons } from "../components/icons";
 import { KpiCard } from "../components/ui";
 import { createClient } from "../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../lib/auth/permissions";
+import { expandEventOccurrences } from "../../lib/events/occurrences";
 
 interface RecentTicket {
   id: string;
@@ -117,16 +118,28 @@ export default async function PortalDashboard() {
   }
 
   // Upcoming events for the dashboard card + KPI count. RLS lets every
-  // approved member read events, so no role gating needed here.
-  const nowIso = new Date().toISOString();
+  // approved member read events, so no role gating needed here. Recurring
+  // events (0062) are expanded into occurrences so the next few instances show.
+  const now = new Date();
+  const nowMs = now.getTime();
   const { data: eventsRaw } = await supabase
     .from("events")
-    .select("id, title, start_at, end_at")
-    .is("deleted_at", null)
-    .gte("start_at", nowIso)
-    .order("start_at", { ascending: true })
-    .limit(5);
-  const upcomingEvents = (eventsRaw as UpcomingEvent[]) ?? [];
+    .select("id, title, start_at, end_at, recurring, recur_weekdays, recur_until")
+    .is("deleted_at", null);
+  const baseEvents =
+    (eventsRaw as (UpcomingEvent & {
+      recurring: boolean | null;
+      recur_weekdays: number[] | null;
+      recur_until: string | null;
+    })[]) ?? [];
+  const upcomingEvents: UpcomingEvent[] = expandEventOccurrences(baseEvents, {
+    from: now,
+    to: new Date(nowMs + 90 * 86400000),
+  })
+    .filter((o) => new Date(o.startAt).getTime() >= nowMs)
+    .sort((a, b) => a.startAt.localeCompare(b.startAt))
+    .slice(0, 5)
+    .map((o) => ({ id: o.event.id, title: o.event.title, start_at: o.startAt, end_at: o.endAt }));
 
   // Low-stock alert: surface supplies where on_hand <= reorder_threshold.
   // Only staff sees it (members never see supplies).
@@ -460,7 +473,7 @@ export default async function PortalDashboard() {
           <div style={{ display: "flex", flexDirection: "column" }}>
             {upcomingEvents.map((e, i) => (
               <Link
-                key={e.id}
+                key={`${e.id}-${e.start_at}`}
                 href={`/portal/events`}
                 className="rsd-dash-row"
                 style={{
