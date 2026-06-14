@@ -18,8 +18,12 @@ interface EventRow {
   category_id: string | null;
   shutdown_playbook_id: string | null;
   recurring: boolean;
+  recur_freq: string | null;
   recur_weekdays: number[] | null;
+  recur_monthly_week: number | null;
+  recur_monthly_weekday: number | null;
   recur_until: string | null;
+  recur_except: string[] | null;
 }
 
 export default async function EditEventPage({
@@ -45,7 +49,7 @@ export default async function EditEventPage({
 
   const { data: eventRaw } = await supabase
     .from("events")
-    .select("id, title, description, start_at, end_at, location, area_id, category_id, shutdown_playbook_id, recurring, recur_weekdays, recur_until")
+    .select("id, title, description, start_at, end_at, location, area_id, category_id, shutdown_playbook_id, recurring, recur_freq, recur_weekdays, recur_monthly_week, recur_monthly_weekday, recur_until, recur_except")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -164,8 +168,12 @@ export default async function EditEventPage({
     categoryId: ev.category_id ?? "",
     shutdownPlaybookId: ev.shutdown_playbook_id ?? "",
     recurring: ev.recurring ?? false,
+    recurFreq: ev.recur_freq === "monthly" ? "monthly" : "weekly",
     recurWeekdays: ev.recur_weekdays ?? [],
+    recurMonthlyWeek: ev.recur_monthly_week ?? null,
+    recurMonthlyWeekday: ev.recur_monthly_weekday ?? null,
     recurUntil: ev.recur_until ?? "",
+    recurExcept: ev.recur_except ?? [],
   };
 
   return (

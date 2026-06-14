@@ -124,13 +124,17 @@ export default async function PortalDashboard() {
   const nowMs = now.getTime();
   const { data: eventsRaw } = await supabase
     .from("events")
-    .select("id, title, start_at, end_at, recurring, recur_weekdays, recur_until")
+    .select("id, title, start_at, end_at, recurring, recur_freq, recur_weekdays, recur_monthly_week, recur_monthly_weekday, recur_until, recur_except")
     .is("deleted_at", null);
   const baseEvents =
     (eventsRaw as (UpcomingEvent & {
       recurring: boolean | null;
+      recur_freq: string | null;
       recur_weekdays: number[] | null;
+      recur_monthly_week: number | null;
+      recur_monthly_weekday: number | null;
       recur_until: string | null;
+      recur_except: string[] | null;
     })[]) ?? [];
   const upcomingEvents: UpcomingEvent[] = expandEventOccurrences(baseEvents, {
     from: now,

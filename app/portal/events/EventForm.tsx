@@ -37,8 +37,12 @@ export interface EventInitialValues {
   categoryId: string;
   shutdownPlaybookId: string;
   recurring: boolean;
+  recurFreq: "weekly" | "monthly";
   recurWeekdays: number[];
+  recurMonthlyWeek: number | null; // 1-4 or -1 (last)
+  recurMonthlyWeekday: number | null; // 0-6
   recurUntil: string; // YYYY-MM-DD
+  recurExcept: string[]; // YYYY-MM-DD[]
 }
 
 const DEFAULTS: EventInitialValues = {
@@ -51,11 +55,28 @@ const DEFAULTS: EventInitialValues = {
   categoryId: "",
   shutdownPlaybookId: "",
   recurring: false,
+  recurFreq: "weekly",
   recurWeekdays: [],
+  recurMonthlyWeek: null,
+  recurMonthlyWeekday: null,
   recurUntil: "",
+  recurExcept: [],
 };
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEK_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: "First" },
+  { value: 2, label: "Second" },
+  { value: 3, label: "Third" },
+  { value: 4, label: "Fourth" },
+  { value: -1, label: "Last" },
+];
+
+function fmtSkip(d: string): string {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
 
 export function EventForm({
   initial,
@@ -83,14 +104,25 @@ export function EventForm({
   const [categoryId, setCategoryId] = useState(start.categoryId);
   const [shutdownPlaybookId, setShutdownPlaybookId] = useState(start.shutdownPlaybookId);
   const [recurring, setRecurring] = useState(start.recurring);
+  const [recurFreq, setRecurFreq] = useState<"weekly" | "monthly">(start.recurFreq);
   const [recurWeekdays, setRecurWeekdays] = useState<number[]>(start.recurWeekdays);
+  const [recurMonthlyWeek, setRecurMonthlyWeek] = useState<number | null>(start.recurMonthlyWeek);
+  const [recurMonthlyWeekday, setRecurMonthlyWeekday] = useState<number | null>(start.recurMonthlyWeekday);
   const [recurUntil, setRecurUntil] = useState(start.recurUntil);
+  const [recurExcept, setRecurExcept] = useState<string[]>(start.recurExcept);
+  const [skipDraft, setSkipDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function toggleWeekday(d: number) {
     setRecurWeekdays((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)
     );
+  }
+  function addSkip() {
+    if (skipDraft && !recurExcept.includes(skipDraft)) {
+      setRecurExcept((prev) => [...prev, skipDraft].sort());
+    }
+    setSkipDraft("");
   }
   const [pending, startTransition] = useTransition();
 
@@ -101,8 +133,12 @@ export function EventForm({
       setError("Pick a start date/time.");
       return;
     }
-    if (recurring && recurWeekdays.length === 0) {
-      setError("Pick at least one weekday for the repeat, or turn off 'Repeats weekly'.");
+    if (recurring && recurFreq === "weekly" && recurWeekdays.length === 0) {
+      setError("Pick at least one weekday for the repeat, or turn off 'Repeats'.");
+      return;
+    }
+    if (recurring && recurFreq === "monthly" && (recurMonthlyWeek == null || recurMonthlyWeekday == null)) {
+      setError("Pick which weekday of the month it repeats on (e.g. Last Sunday).");
       return;
     }
     startTransition(async () => {
@@ -116,8 +152,12 @@ export function EventForm({
         categoryId: categoryId || null,
         shutdownPlaybookId: shutdownPlaybookId || null,
         recurring,
+        recurFreq,
         recurWeekdays,
+        recurMonthlyWeek,
+        recurMonthlyWeekday,
         recurUntil: recurUntil || null,
+        recurExcept,
       };
       const result = isEdit && initial?.id
         ? await updateEvent(initial.id, input)
@@ -230,9 +270,10 @@ export function EventForm({
         </span>
       </div>
 
-      {/* Weekly recurrence (0062). When the event also has a shutdown procedure,
-          each occurrence auto-spawns a shutdown task via the daily cron. */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 16px", border: "1px solid var(--gw-border)", borderRadius: 10, background: "var(--gw-bg-elev)" }}>
+      {/* Recurrence (0062/0063): weekly or monthly, with skip dates. When the
+          event also has a shutdown procedure, each occurrence auto-spawns a
+          shutdown task via the daily cron. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "14px 16px", border: "1px solid var(--gw-border)", borderRadius: 10, background: "var(--gw-bg-elev)" }}>
         <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
           <input
             type="checkbox"
@@ -240,37 +281,94 @@ export function EventForm({
             onChange={(e) => setRecurring(e.target.checked)}
             style={{ width: 16, height: 16 }}
           />
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--gw-fg)" }}>Repeats weekly</span>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--gw-fg)" }}>Repeats</span>
         </label>
         {recurring && (
           <>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>On these days</span>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {WEEKDAY_LABELS.map((label, d) => {
-                  const on = recurWeekdays.includes(d);
-                  return (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => toggleWeekday(d)}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: 100,
-                        border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-                        background: on ? "var(--rsd-accent)" : "var(--gw-bg)",
-                        color: on ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
+            {/* Frequency toggle */}
+            <div style={{ display: "flex", gap: 6 }}>
+              {(["weekly", "monthly"] as const).map((f) => {
+                const on = recurFreq === f;
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setRecurFreq(f)}
+                    style={{
+                      padding: "6px 16px",
+                      borderRadius: 100,
+                      border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+                      background: on ? "var(--rsd-accent)" : "var(--gw-bg)",
+                      color: on ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {f}
+                  </button>
+                );
+              })}
             </div>
+
+            {recurFreq === "weekly" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>On these days</span>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {WEEKDAY_LABELS.map((label, d) => {
+                    const on = recurWeekdays.includes(d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => toggleWeekday(d)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 100,
+                          border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+                          background: on ? "var(--rsd-accent)" : "var(--gw-bg)",
+                          color: on ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>On the</span>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <select
+                    value={recurMonthlyWeek ?? ""}
+                    onChange={(e) => setRecurMonthlyWeek(e.target.value === "" ? null : Number(e.target.value))}
+                    style={{ height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
+                  >
+                    <option value="">—</option>
+                    {WEEK_OPTIONS.map((w) => (
+                      <option key={w.value} value={w.value}>{w.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={recurMonthlyWeekday ?? ""}
+                    onChange={(e) => setRecurMonthlyWeekday(e.target.value === "" ? null : Number(e.target.value))}
+                    style={{ height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
+                  >
+                    <option value="">—</option>
+                    {WEEKDAY_FULL.map((label, d) => (
+                      <option key={d} value={d}>{label}</option>
+                    ))}
+                  </select>
+                  <span style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>of the month</span>
+                </div>
+              </div>
+            )}
+
             <label style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 240 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Repeat until (optional)</span>
               <input
@@ -281,6 +379,48 @@ export function EventForm({
               />
               <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)" }}>Leave blank to repeat indefinitely.</span>
             </label>
+
+            {/* Skip dates */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Skip specific dates</span>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  type="date"
+                  value={skipDraft}
+                  onChange={(e) => setSkipDraft(e.target.value)}
+                  style={{ height: 38, padding: "0 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
+                />
+                <button
+                  type="button"
+                  onClick={addSkip}
+                  disabled={!skipDraft}
+                  style={{ padding: "8px 14px", borderRadius: 100, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 12.5, fontWeight: 700, cursor: skipDraft ? "pointer" : "not-allowed", opacity: skipDraft ? 1 : 0.5 }}
+                >
+                  Add skip
+                </button>
+              </div>
+              {recurExcept.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+                  {recurExcept.map((d) => (
+                    <span key={d} className="rsd-chip rsd-chip-mute" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      {fmtSkip(d)}
+                      <button
+                        type="button"
+                        onClick={() => setRecurExcept((prev) => prev.filter((x) => x !== d))}
+                        style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontWeight: 800, padding: 0, lineHeight: 1 }}
+                        aria-label={`Remove skip ${d}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)" }}>
+                e.g. the Sunday you meet at the lake — skip it here and add a separate event for that day.
+              </span>
+            </div>
+
             <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
               {shutdownPlaybookId
                 ? "A shutdown task will be generated for each occurrence and appear in the Tasks queue to assign."

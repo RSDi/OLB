@@ -21,8 +21,12 @@ interface EventRow {
   end_at: string | null;
   location: string | null;
   recurring: boolean | null;
+  recur_freq: string | null;
   recur_weekdays: number[] | null;
+  recur_monthly_week: number | null;
+  recur_monthly_weekday: number | null;
   recur_until: string | null;
+  recur_except: string[] | null;
   area: { name: string } | null;
   category: { name: string; chip_class: string } | null;
 }
@@ -60,7 +64,7 @@ export default async function PortalEventsPage({
     .from("events")
     .select(
       `id, title, description, start_at, end_at, location,
-       recurring, recur_weekdays, recur_until,
+       recurring, recur_freq, recur_weekdays, recur_monthly_week, recur_monthly_weekday, recur_until, recur_except,
        area:areas(name),
        category:event_categories(name, chip_class)`
     )

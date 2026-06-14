@@ -55,7 +55,7 @@ const CONTRACT: Record<string, string> = {
   areas: "id,name,sort_order,deleted_at",
   priorities: "id,label,severity,chip_class,deleted_at",
   area_members: "id,area_id,member_id,role",
-  events: "id,title,description,start_at,end_at,location,area_id,category_id,source_ticket_id,shutdown_playbook_id,recurring,recur_weekdays,recur_until,deleted_at",
+  events: "id,title,description,start_at,end_at,location,area_id,category_id,source_ticket_id,shutdown_playbook_id,recurring,recur_weekdays,recur_until,recur_freq,recur_monthly_week,recur_monthly_weekday,recur_except,deleted_at",
   projects: "id,title,description,status,budget,category_id,created_by,deleted_at",
   supplies: "id,name,unit,on_hand,reorder_threshold,notes,reorder_contact_id,reorder_note,deleted_at",
   supply_usage: "id,supply_id,qty_used,used_by,pm_instance_asset_id,pm_instance_id,maintenance_request_id,notes",

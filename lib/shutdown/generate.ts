@@ -7,19 +7,17 @@
 // like the PM generator it mirrors. Assignment is left to staff (Phase 2b).
 
 import { createAdminClient } from "../supabase/admin";
-import { generateWeeklyDates, formatDateLabel } from "../requests/recurrence";
+import { formatDateLabel } from "../requests/recurrence";
+import { eventOccurrenceDates, type EventRecurrence } from "../events/recurrence";
 
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-interface RecurringEvent {
+type RecurringEvent = EventRecurrence & {
   id: string;
   title: string;
-  start_at: string;
-  recur_weekdays: number[] | null;
-  recur_until: string | null;
-}
+};
 
 export interface GenerateSummary {
   timestamp: string;
@@ -54,7 +52,7 @@ export async function generateUpcomingShutdownTasks(opts?: {
 
   const { data: evRaw, error: evErr } = await admin
     .from("events")
-    .select("id, title, start_at, recur_weekdays, recur_until")
+    .select("id, title, start_at, recurring, recur_freq, recur_weekdays, recur_until, recur_monthly_week, recur_monthly_weekday, recur_except")
     .eq("recurring", true)
     .not("shutdown_playbook_id", "is", null)
     .is("deleted_at", null);
@@ -75,17 +73,13 @@ export async function generateUpcomingShutdownTasks(opts?: {
   const categoryId = (cat as { id: string } | null)?.id ?? null;
 
   for (const ev of events) {
-    const weekdays = Array.isArray(ev.recur_weekdays) ? ev.recur_weekdays : [];
-    if (weekdays.length === 0) {
+    // Resolve this event's occurrence dates in the rolling window (weekly or
+    // monthly, minus any skipped dates) via the shared recurrence engine.
+    const dates = eventOccurrenceDates(ev, todayStr, windowEndStr);
+    if (dates.length === 0) {
       summary.skipped += 1;
       continue;
     }
-    const eventStart = ymd(new Date(ev.start_at));
-    // Window start = later of today / the event's own start; end capped by
-    // recur_until if it's sooner than the rolling window.
-    const start = eventStart > todayStr ? eventStart : todayStr;
-    const until = ev.recur_until && ev.recur_until < windowEndStr ? ev.recur_until : windowEndStr;
-    const dates = generateWeeklyDates({ start, weekdays, until });
 
     for (const date of dates) {
       // Idempotency: skip if a live task already covers this occurrence.

@@ -1,20 +1,13 @@
-// Expands recurring events (0062) into concrete dated occurrences for the
-// calendar/list views. Events stay single rows in the DB (anchor + weekly
-// rule); this computes the instances at read-time, reusing the same weekly
-// resolver the request side uses so they agree.
-//
-// Occurrence instants are derived by whole-day shifting the anchor's start/end
-// — preserving wall-clock time and duration without re-deriving timezone.
+// Expands recurring events into concrete dated occurrences for the calendar/
+// list views. Date resolution lives in lib/events/recurrence.ts (shared with
+// the shutdown generator); here we just turn each date into a start/end instant
+// by whole-day-shifting the anchor — preserving wall-clock time and duration.
 
-import { generateWeeklyDates } from "../requests/recurrence";
+import { eventOccurrenceDates, type EventRecurrence } from "./recurrence";
 
-export interface EventRecurrenceFields {
-  start_at: string;
+export type EventRecurrenceFields = EventRecurrence & {
   end_at: string | null;
-  recurring?: boolean | null;
-  recur_weekdays?: number[] | null;
-  recur_until?: string | null;
-}
+};
 
 export interface EventOccurrence<T> {
   event: T;
@@ -35,32 +28,27 @@ function parseLocalMs(s: string): number {
 }
 
 // Expand events into occurrences. Non-recurring events pass through as a single
-// occurrence (their anchor) regardless of window — the caller applies the
-// upcoming/past split. Recurring events are bounded to [window.from, window.to].
+// occurrence (their anchor); the caller applies the upcoming/past split.
+// Recurring events are bounded to [window.from, window.to].
 export function expandEventOccurrences<T extends EventRecurrenceFields>(
   events: T[],
   window: { from: Date; to: Date }
 ): EventOccurrence<T>[] {
   const out: EventOccurrence<T>[] = [];
-  const toDateStr = ymdLocal(window.to);
-  const fromDateStr = ymdLocal(window.from);
+  const fromStr = ymdLocal(window.from);
+  const toStr = ymdLocal(window.to);
 
   for (const ev of events) {
-    const weekdays = Array.isArray(ev.recur_weekdays) ? ev.recur_weekdays : [];
-    if (!ev.recurring || weekdays.length === 0) {
+    if (!ev.recurring) {
       out.push({ event: ev, startAt: ev.start_at, endAt: ev.end_at, recurringInstance: false });
       continue;
     }
 
+    const dates = eventOccurrenceDates(ev, fromStr, toStr);
     const anchor = new Date(ev.start_at);
-    const anchorDateStr = ymdLocal(anchor);
-    const start = fromDateStr > anchorDateStr ? fromDateStr : anchorDateStr;
-    const until = ev.recur_until && ev.recur_until < toDateStr ? ev.recur_until : toDateStr;
-    const dates = generateWeeklyDates({ start, weekdays, until });
-
     const anchorMs = anchor.getTime();
+    const anchorDayMs = parseLocalMs(ymdLocal(anchor));
     const endMs = ev.end_at ? new Date(ev.end_at).getTime() : null;
-    const anchorDayMs = parseLocalMs(anchorDateStr);
 
     for (const ds of dates) {
       const diffDays = Math.round((parseLocalMs(ds) - anchorDayMs) / DAY_MS);

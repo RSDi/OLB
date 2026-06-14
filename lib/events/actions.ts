@@ -22,20 +22,42 @@ export interface EventInput {
   // needs. Optional so other callers (e.g. auto-create-from-request) needn't
   // set it; the event form always sends it.
   shutdownPlaybookId?: string | null;
-  // Weekly recurrence (0062). recurWeekdays uses 0=Sun…6=Sat. The shutdown cron
-  // expands recurring + shutdown-linked events into per-occurrence tasks.
+  // Recurrence (0062/0063). Weekly uses recurWeekdays (0=Sun…6=Sat); monthly
+  // uses recurMonthlyWeek (1-4 or -1=last) + recurMonthlyWeekday (0-6).
+  // recurExcept lists YYYY-MM-DD dates to skip. The shutdown cron expands
+  // recurring + shutdown-linked events into per-occurrence tasks.
   recurring?: boolean;
+  recurFreq?: "weekly" | "monthly";
   recurWeekdays?: number[] | null;
+  recurMonthlyWeek?: number | null;
+  recurMonthlyWeekday?: number | null;
   recurUntil?: string | null;
+  recurExcept?: string[] | null;
 }
 
 // Map the recurrence inputs to columns, clearing the rule when not recurring.
 function recurrenceColumns(input: EventInput) {
   if (input.recurring === undefined) return {};
+  if (!input.recurring) {
+    return {
+      recurring: false,
+      recur_freq: "weekly",
+      recur_weekdays: null,
+      recur_monthly_week: null,
+      recur_monthly_weekday: null,
+      recur_until: null,
+      recur_except: null,
+    };
+  }
+  const freq = input.recurFreq === "monthly" ? "monthly" : "weekly";
   return {
-    recurring: !!input.recurring,
-    recur_weekdays: input.recurring ? input.recurWeekdays ?? null : null,
-    recur_until: input.recurring ? input.recurUntil || null : null,
+    recurring: true,
+    recur_freq: freq,
+    recur_weekdays: freq === "weekly" ? input.recurWeekdays ?? null : null,
+    recur_monthly_week: freq === "monthly" ? input.recurMonthlyWeek ?? null : null,
+    recur_monthly_weekday: freq === "monthly" ? input.recurMonthlyWeekday ?? null : null,
+    recur_until: input.recurUntil || null,
+    recur_except: input.recurExcept && input.recurExcept.length > 0 ? input.recurExcept : null,
   };
 }
 
