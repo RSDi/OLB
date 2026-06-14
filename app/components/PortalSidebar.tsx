@@ -17,14 +17,14 @@ interface NavItem {
 
 // Slimmed nav (2026-06): "Make a Request" lives on the Dashboard; Review + PM
 // are tabs on Tasks & Projects; Contacts is a card on Directory. ReelNotes +
-// Settings are super-admin only for now.
+// Settings are staff-only (Building Committee + Super Admin).
 const NAV: NavItem[] = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true },
   { href: "/portal/tasks", label: "Tasks & Projects", icon: <Icons.CheckCircle width={16} height={16}/> },
   { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/> },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
-  { href: "/portal/reelnotes", label: "ReelNotes", icon: <Icons.Mic width={16} height={16}/>, superAdminOnly: true },
+  { href: "/portal/reelnotes", label: "ReelNotes", icon: <Icons.Mic width={16} height={16}/>, staffOnly: true },
   // Building Committee can view Settings; editing is gated per grant inside.
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
 ];
