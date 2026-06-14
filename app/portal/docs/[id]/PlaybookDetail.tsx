@@ -113,7 +113,9 @@ export function PlaybookDetail({
       setRunResult(
         res.posted
           ? "Done — posted to the team's Slack channel."
-          : "Done — marked complete. (No Slack channel is set on this procedure.)"
+          : data.wizard_slack_channel
+            ? "Done — marked complete, but the Slack notice didn't post (make sure the bot has been invited to the channel)."
+            : "Done — marked complete. (No Slack channel is set on this procedure.)"
       );
     });
   }
