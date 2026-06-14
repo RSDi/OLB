@@ -9,7 +9,6 @@ import {
   addTicketComment,
   softDeleteTicket,
   castRequestVote,
-  setTaskCost,
   type TicketStatus,
   type VoteValue,
 } from "../../../../lib/maintenance/actions";
@@ -340,57 +339,6 @@ export function DeleteButton({ ticketId }: { ticketId: string }) {
 }
 
 // A3: record what a task actually cost. Saved on blur / Enter.
-export function CostInput({ ticketId, current }: { ticketId: string; current: number | null }) {
-  const [value, setValue] = useState(current != null ? String(current) : "");
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const [pending, startTransition] = useTransition();
-
-  function save() {
-    const trimmed = value.trim();
-    const cost = trimmed === "" ? null : Number(trimmed);
-    if (cost != null && (!Number.isFinite(cost) || cost < 0)) {
-      setError("Cost must be 0 or more.");
-      return;
-    }
-    if ((cost ?? null) === (current ?? null)) return;
-    setError(null);
-    startTransition(async () => {
-      const r = await setTaskCost(ticketId, cost);
-      if (r.error) {
-        setError(r.error);
-        return;
-      }
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
-    });
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <Input
-        label="Cost ($)"
-        type="number"
-        min={0}
-        step="0.01"
-        value={value}
-        placeholder="What it ended up costing"
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={save}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            (e.target as HTMLInputElement).blur();
-          }
-        }}
-        disabled={pending}
-      />
-      {saved && <div style={{ fontSize: 12, color: "var(--rsd-accent)", fontWeight: 600 }}>Saved</div>}
-      {error && <ErrorLine message={error} />}
-    </div>
-  );
-}
-
 function ErrorLine({ message }: { message: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--gw-error)", fontWeight: 600 }}>

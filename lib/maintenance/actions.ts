@@ -696,30 +696,6 @@ export async function createPublicBuildingRequest(
   return { success: true, ticketId: inserted.id };
 }
 
-// A3: actual dollars a task ended up costing. Staff-edited on the task
-// detail; the project page sums these against the project budget. RLS
-// (staff update) enforces who can set it.
-export async function setTaskCost(
-  ticketId: string,
-  cost: number | null,
-): Promise<ActionResult> {
-  const gate = await requireStaff();
-  if ("error" in gate) return { error: gate.error };
-  if (cost != null && (!Number.isFinite(cost) || cost < 0)) {
-    return { error: "Cost must be 0 or more." };
-  }
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("maintenance_requests")
-    .update({ cost })
-    .eq("id", ticketId);
-  if (error) return { error: error.message };
-
-  revalidatePath(`/portal/tasks/${ticketId}`);
-  revalidatePath("/portal/tasks/projects");
-  return { success: true };
-}
-
 // ─── Committee review decisions ──────────────────────────────────
 // Decisions are made by committee vote (cast_request_vote RPC, migration
 // 0050): simple majority of the current committee, instant. A "no" requires

@@ -13,7 +13,6 @@ import {
   CommentForm,
   DeleteButton,
   VotePanel,
-  CostInput,
   PromoteToProject,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
@@ -665,7 +664,6 @@ export default async function TicketDetailPage({
                 current={ticket.assigned_to}
                 staff={staffList}
               />
-              <CostInput ticketId={ticket.id} current={ticket.cost} />
               {ticket.review_status === "approved" && !ticket.project && (
                 <PromoteToProject ticketId={ticket.id} defaultTitle={promoteTitle} />
               )}
