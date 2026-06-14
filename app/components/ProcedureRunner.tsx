@@ -15,7 +15,7 @@ export function ProcedureRunner({
   procedureId,
   title,
   steps,
-  notify,
+  willNotify,
   eventId,
   taskId,
   startLabel,
@@ -23,9 +23,10 @@ export function ProcedureRunner({
   procedureId: string;
   title: string;
   steps: string[];
-  // Whether this procedure notifies a Slack channel on completion (vs just
-  // logging it as done).
-  notify: boolean;
+  // Whether completing this will actually post to Slack (notify on AND a
+  // channel configured). Drives the finish-button label + result message;
+  // false → it's just logged as done.
+  willNotify: boolean;
   eventId?: string;
   taskId?: string;
   startLabel?: string;
@@ -69,7 +70,7 @@ export function ProcedureRunner({
       setRunResult(
         res.posted
           ? "Done — logged, and posted to the team's Slack channel."
-          : notify
+          : willNotify
             ? "Done — logged, but the Slack notice didn't post (make sure the bot has been invited to the channel)."
             : "Done — logged as complete."
       );
@@ -128,7 +129,7 @@ export function ProcedureRunner({
               Cancel
             </button>
             <button onClick={finishRun} disabled={!allChecked || pending} className="gw-press" style={{ padding: "9px 18px", borderRadius: 100, background: allChecked ? "var(--rsd-accent)" : "var(--gw-bg-elev)", color: allChecked ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)", border: allChecked ? "none" : "1px solid var(--gw-border)", fontSize: 13, fontWeight: 700, cursor: allChecked && !pending ? "pointer" : "not-allowed" }}>
-              {pending ? "Finishing…" : "Done — notify the team"}
+              {pending ? "Finishing…" : willNotify ? "Done — notify the team" : "Done"}
             </button>
           </div>
         </>

@@ -648,7 +648,7 @@ function ProcedureCard({
             procedureId={procedure.id}
             title={procedure.title}
             steps={stepLabels}
-            notify={procedure.notify}
+            willNotify={procedure.notify && !!procedure.slack_channel}
           />
         ) : (
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>No steps yet — edit this procedure to add them.</div>

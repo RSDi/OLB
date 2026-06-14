@@ -143,7 +143,7 @@ export default async function TicketDetailPage({
   // just staff) can work it. Events + playbooks are readable by any approved
   // member, so the non-staff assignee can load this.
   let shutdownProc:
-    | { procedureId: string; title: string; steps: string[]; notify: boolean; eventTitle: string; whenLabel: string | null }
+    | { procedureId: string; title: string; steps: string[]; willNotify: boolean; eventTitle: string; whenLabel: string | null }
     | null = null;
   if (ticket.event_id) {
     const { data: evRow } = await supabase
@@ -155,18 +155,18 @@ export default async function TicketDetailPage({
     if (evp?.shutdown_procedure_id) {
       const { data: pp } = await supabase
         .from("playbook_procedures")
-        .select("id, title, steps, notify")
+        .select("id, title, steps, notify, slack_channel")
         .eq("id", evp.shutdown_procedure_id)
         .is("deleted_at", null)
         .maybeSingle();
-      const p = pp as { id: string; title: string; steps: { label: string }[] | null; notify: boolean } | null;
+      const p = pp as { id: string; title: string; steps: { label: string }[] | null; notify: boolean; slack_channel: string | null } | null;
       const steps = (p?.steps ?? []).map((s) => s.label).filter(Boolean);
       if (p && steps.length > 0) {
         shutdownProc = {
           procedureId: p.id,
           title: p.title,
           steps,
-          notify: !!p.notify,
+          willNotify: !!p.notify && !!p.slack_channel,
           eventTitle: evp.title,
           whenLabel: evp.start_at ? formatDateTime(evp.start_at) : null,
         };
@@ -508,7 +508,7 @@ export default async function TicketDetailPage({
                     procedureId={shutdownProc.procedureId}
                     title={shutdownProc.title}
                     steps={shutdownProc.steps}
-                    notify={shutdownProc.notify}
+                    willNotify={shutdownProc.willNotify}
                     eventId={ticket.event_id ?? undefined}
                     taskId={ticket.id}
                     startLabel="Start shutdown"

@@ -77,12 +77,12 @@ export default async function EditEventPage({
   // If a shutdown procedure is linked, load it so we can render the run-wizard
   // (Start shutdown) right on this event's page.
   let shutdownProc:
-    | { id: string; title: string; steps: string[]; notify: boolean }
+    | { id: string; title: string; steps: string[]; willNotify: boolean }
     | null = null;
   if (ev.shutdown_procedure_id) {
     const { data: pp } = await supabase
       .from("playbook_procedures")
-      .select("id, title, steps, notify")
+      .select("id, title, steps, notify, slack_channel")
       .eq("id", ev.shutdown_procedure_id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -92,10 +92,11 @@ export default async function EditEventPage({
         title: string;
         steps: { label: string }[] | null;
         notify: boolean;
+        slack_channel: string | null;
       };
       const steps = (p.steps ?? []).map((s) => s.label).filter(Boolean);
       if (steps.length > 0) {
-        shutdownProc = { id: p.id, title: p.title, steps, notify: !!p.notify };
+        shutdownProc = { id: p.id, title: p.title, steps, willNotify: !!p.notify && !!p.slack_channel };
       }
     }
   }
@@ -225,7 +226,7 @@ export default async function EditEventPage({
             procedureId={shutdownProc.id}
             title={shutdownProc.title}
             steps={shutdownProc.steps}
-            notify={shutdownProc.notify}
+            willNotify={shutdownProc.willNotify}
             eventId={ev.id}
             taskId={shutdownTask?.id}
             startLabel="Start shutdown"
