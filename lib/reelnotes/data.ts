@@ -38,7 +38,8 @@ export async function loadReelNotesRecordings(): Promise<ReelNotesRecording[]> {
     .from("reel_notes_recordings")
     .select(
       `id, user_id, title, audio_blob_url, duration_sec, source, status,
-       assemblyai_id, transcript, utterances, summary, error, created_at, updated_at,
+       assemblyai_id, transcript, utterances, summary, error,
+       linked_entity_type, linked_entity_id, created_at, updated_at,
        action_items:reel_notes_action_items(
          id, recording_id, text, routed_to, done, sort_order, priority,
          owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
@@ -67,12 +68,15 @@ export async function loadReelNotesRecordings(): Promise<ReelNotesRecording[]> {
   }));
 
   // Swap private-storage markers for short-lived signed URLs (B6). Pre-B6
-  // rows hold plain https blob URLs and pass through unchanged.
-  if (rows.some(r => isStorageAudio(r.audio_blob_url))) {
+  // rows hold plain https blob URLs and pass through unchanged. Typed notes
+  // have no audio (null) and are skipped.
+  if (rows.some(r => r.audio_blob_url && isStorageAudio(r.audio_blob_url))) {
     const admin = createAdminClient();
     await Promise.all(
       rows.map(async r => {
-        r.audio_blob_url = await signAudioUrl(admin, r.audio_blob_url);
+        if (r.audio_blob_url && isStorageAudio(r.audio_blob_url)) {
+          r.audio_blob_url = await signAudioUrl(admin, r.audio_blob_url);
+        }
       }),
     );
   }
@@ -96,4 +100,79 @@ export async function loadAssignableMembers(): Promise<AssignableMember[]> {
     return [];
   }
   return (data ?? []) as AssignableMember[];
+}
+
+// ---------------------------------------------------------------------------
+// ReelNotes-on-Tasks (take 2): a recorded note is a ticket comment. When a
+// recording linked to a task finishes, its summary is posted as a comment
+// tagged with recording_id (0065). To render that comment's action items
+// inline in the thread, load the recordings behind a set of comments. Action
+// items are staff-readable for linked recordings via RLS (0064); callers gate
+// to staff, so non-staff simply get an empty map and see the plain comment text.
+// ---------------------------------------------------------------------------
+
+export interface CommentRecordingActionItem {
+  id: string;
+  text: string;
+  done: boolean;
+  routed_to: string | null;
+  priority: "low" | "medium" | "high" | "emergency";
+  sort_order: number;
+}
+
+export interface CommentRecording {
+  id: string;
+  title: string | null;
+  status: string;
+  action_items: CommentRecordingActionItem[];
+}
+
+export async function loadRecordingsForComments(
+  recordingIds: string[],
+): Promise<Map<string, CommentRecording>> {
+  const ids = Array.from(new Set(recordingIds.filter(Boolean)));
+  if (ids.length === 0) return new Map();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reel_notes_recordings")
+    .select(
+      `id, title, status,
+       action_items:reel_notes_action_items(id, text, done, routed_to, priority, sort_order)`
+    )
+    .in("id", ids)
+    .is("deleted_at", null);
+
+  if (error) {
+    // Tolerant pre-0064/0065: a missing column/RLS errors into an empty map
+    // rather than throwing the whole task page.
+    console.error("loadRecordingsForComments failed", error);
+    return new Map();
+  }
+
+  const map = new Map<string, CommentRecording>();
+  for (const r of (data ?? []) as unknown as CommentRecording[]) {
+    map.set(r.id, {
+      ...r,
+      action_items: (r.action_items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
+    });
+  }
+  return map;
+}
+
+// Whether the current viewer has opted into the device-only "push to Things"
+// affordance. Defaults false (and tolerates a pre-0064 schema).
+export async function loadThingsEnabled(): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data, error } = await supabase
+    .from("members")
+    .select("things_enabled")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (error) return false;
+  return !!(data as { things_enabled?: boolean } | null)?.things_enabled;
 }

@@ -9,7 +9,9 @@ export type RecordingStatus =
   | "ready"
   | "failed";
 
-export type RecordingSource = "pwa" | "native" | "watch";
+// "typed" is a note written by hand rather than captured: no audio, no
+// transcription, no AI extraction — the text the user typed IS the content.
+export type RecordingSource = "pwa" | "native" | "watch" | "typed";
 
 // AssemblyAI utterance shape — what we persist into recordings.utterances.
 export interface Utterance {
@@ -71,7 +73,8 @@ export interface ReelNotesRecording {
   id: string;
   user_id: string;
   title: string | null;
-  audio_blob_url: string;
+  // Null for typed notes (no audio) and until a recording's audio is stored.
+  audio_blob_url: string | null;
   duration_sec: number;
   source: RecordingSource;
   status: RecordingStatus;
@@ -80,6 +83,11 @@ export interface ReelNotesRecording {
   utterances: Utterance[] | null;
   summary: ReelNotesSummarySection[] | null;
   error: string | null;
+  // Generic, portable parent link. The package stores and returns these but
+  // never interprets them — the host decides what an entity "type" means
+  // (MCC uses 'task'). Both null for an unattached note.
+  linked_entity_type: string | null;
+  linked_entity_id: string | null;
   created_at: string;
   updated_at: string;
   action_items: ReelNotesActionItem[];

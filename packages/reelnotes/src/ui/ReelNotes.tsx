@@ -387,6 +387,7 @@ function recordingTitle(r: ReelNotesRecording): string {
 // Content-Disposition: attachment server-side. The audio's actual format
 // (m4a from Safari, webm from Chrome) comes from the stored blob's pathname.
 function audioDownloadHref(r: ReelNotesRecording): string {
+  if (!r.audio_blob_url) return ""; // typed notes have no audio
   let blobUrl: URL;
   try {
     blobUrl = new URL(r.audio_blob_url);
@@ -414,6 +415,7 @@ export function ReelNotes({
   supabaseAnonKey,
   onSoftDelete,
   onCreateProject,
+  thingsEnabled = true,
 }: {
   initialRecordings: ReelNotesRecording[];
   members: AssignableMember[];
@@ -424,6 +426,10 @@ export function ReelNotes({
   supabaseAnonKey: string;
   onSoftDelete: SoftDeleteHandler;
   onCreateProject?: CreateProjectHandler;
+  // Whether to surface the "push to Things" affordances. Device-only and not
+  // everyone uses Things, so the host opts the viewer in. Defaults true so
+  // hosts that don't pass it keep the prior behavior.
+  thingsEnabled?: boolean;
 }) {
   const supabase = useMemo(() => createBrowserClient(supabaseUrl, supabaseAnonKey), [supabaseUrl, supabaseAnonKey]);
   const [recordings, setRecordings] = useState<ReelNotesRecording[]>(initialRecordings);
@@ -886,6 +892,7 @@ export function ReelNotes({
             onReextract={() => reextractRecording(selected.id)}
             onDelete={() => deleteRecording(selected.id)}
             onCreateProject={onCreateProject}
+            thingsEnabled={thingsEnabled}
           />
         ) : (
           <div
@@ -1089,6 +1096,7 @@ function SelectedDetail({
   onReextract,
   onDelete,
   onCreateProject,
+  thingsEnabled = true,
 }: {
   recording: ReelNotesRecording;
   isMobile: boolean;
@@ -1103,6 +1111,7 @@ function SelectedDetail({
   onReextract: () => Promise<void>;
   onDelete: () => Promise<void>;
   onCreateProject?: CreateProjectHandler;
+  thingsEnabled?: boolean;
 }) {
   const [reextracting, setReextracting] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -1515,7 +1524,7 @@ function SelectedDetail({
                 {sendingProject ? "Creating…" : `Send to Project (${openTasks.length})`}
               </button>
             )}
-            {sendableToThings.length > 0 && (
+            {thingsEnabled && sendableToThings.length > 0 && (
               <button
                 onClick={() => {
                   openAllInThings(sendableToThings.map(a => a.text), recording.title, reelNotesUrl(recording.id));
@@ -1571,6 +1580,7 @@ function SelectedDetail({
                 onSetOwner={memberId => onSetOwner(a.id, memberId)}
                 onToggleSupporter={memberId => onToggleSupporter(a.id, memberId)}
                 onSeekToMs={ms => seekTo(ms)}
+                thingsEnabled={thingsEnabled}
               />
             ))}
           </div>
@@ -1591,6 +1601,7 @@ function ActionRow({
   onToggleSupporter,
   onSeekToMs,
   focused,
+  thingsEnabled = true,
 }: {
   action: ReelNotesActionItem;
   recordingTitle: string | null;
@@ -1602,6 +1613,7 @@ function ActionRow({
   onToggleSupporter: (memberId: string) => void;
   onSeekToMs: (ms: number) => void;
   focused?: boolean;
+  thingsEnabled?: boolean;
 }) {
   const { open, setOpen, ref: sendToRef } = useDismissable();
   const router = useRouter();
@@ -1942,7 +1954,7 @@ function ActionRow({
               overflow: "hidden",
             }}
           >
-            {INTEGRATIONS.map(i => (
+            {INTEGRATIONS.filter(i => thingsEnabled || i.id !== "things").map(i => (
               <button
                 key={i.id}
                 onClick={() => {

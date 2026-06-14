@@ -37,6 +37,11 @@ export interface ReadyRecordingContext {
   transcript: string;
   actions: { text: string; priority: string }[];
   summary: ReelNotesSummarySection[] | null;
+  // Generic parent link copied from the recording row, so the host can mirror
+  // the result onto its work-item without a second query. Both null if the
+  // note isn't attached to anything.
+  linkedEntityType: string | null;
+  linkedEntityId: string | null;
 }
 
 export interface ReelNotesAdapter {

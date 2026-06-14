@@ -67,16 +67,12 @@ export function mccReelNotesAdapter(): ReelNotesAdapter {
     },
 
     // B3: mirror the finished recording's summary onto its linked task's
-    // comment thread, so the notes land where the work is. No link → no-op.
+    // comment thread, so the notes land where the work is. The generic link
+    // arrives on the context; MCC only mirrors notes attached to a task.
     async onRecordingReady(ctx: ReadyRecordingContext) {
+      if (ctx.linkedEntityType !== "task" || !ctx.linkedEntityId) return;
+      const linkedTicketId = ctx.linkedEntityId;
       const admin = createAdminClient();
-      const { data: linkRow } = await admin
-        .from("reel_notes_recordings")
-        .select("linked_ticket_id")
-        .eq("id", ctx.recordingId)
-        .maybeSingle();
-      const linkedTicketId = (linkRow as { linked_ticket_id?: string | null } | null)?.linked_ticket_id ?? null;
-      if (!linkedTicketId) return;
 
       const { data: authorRow } = await admin
         .from("members")
@@ -86,6 +82,9 @@ export function mccReelNotesAdapter(): ReelNotesAdapter {
       const authorId = (authorRow as { id: string } | null)?.id;
       if (!authorId) return;
 
+      // Readable fallback body — what Slack and non-staff viewers see. In-app,
+      // the thread renders interactive action items from the linked recording
+      // (via recording_id) instead of this text.
       const summaryText =
         ctx.actions.length > 0
           ? `Action items:\n${ctx.actions.map(a => `• ${a.text}`).join("\n")}`
@@ -101,7 +100,7 @@ export function mccReelNotesAdapter(): ReelNotesAdapter {
       ].join("\n");
       const { error: commentErr } = await admin
         .from("ticket_comments")
-        .insert({ ticket_id: linkedTicketId, author_id: authorId, body });
+        .insert({ ticket_id: linkedTicketId, author_id: authorId, body, recording_id: ctx.recordingId });
       if (commentErr) console.error("ReelNotes comment insert failed", commentErr);
     },
   };

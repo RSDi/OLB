@@ -17,9 +17,72 @@ import type { CreateProjectInput } from "reelnotes/ui";
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
+import { getViewer } from "../auth/viewer";
 import { createProjectFromRecording } from "../projects/actions";
 
 type Result = { success?: true; error?: string };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Mark a recorded comment's action item as routed to a destination (e.g.
+// "Things"). The push itself is the client's device-only URL scheme; this
+// records where it went. Staff-update RLS on linked recordings' action items
+// (0064) permits it. ticketId is for revalidation only.
+export async function setActionItemRouted(
+  actionId: string,
+  ticketId: string,
+  target: string,
+): Promise<Result> {
+  const viewer = await getViewer();
+  if (!viewer?.isStaff) return { error: "Not authorized." };
+  if (!UUID_RE.test(actionId)) return { error: "Invalid item." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("reel_notes_action_items")
+    .update({ routed_to: target })
+    .eq("id", actionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/tasks/${ticketId}`);
+  return { success: true };
+}
+
+export async function toggleActionItemDone(
+  actionId: string,
+  ticketId: string,
+  done: boolean,
+): Promise<Result> {
+  const viewer = await getViewer();
+  if (!viewer?.isStaff) return { error: "Not authorized." };
+  if (!UUID_RE.test(actionId)) return { error: "Invalid item." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("reel_notes_action_items")
+    .update({ done })
+    .eq("id", actionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/tasks/${ticketId}`);
+  return { success: true };
+}
+
+// Per-user opt-in for the device-only Things push. Written with the admin
+// client against the caller's own member row (members RLS doesn't grant
+// self-update of arbitrary columns), so the ownership check is explicit.
+export async function setMyThingsEnabled(enabled: boolean): Promise<Result> {
+  const viewer = await getViewer();
+  if (!viewer) return { error: "Not signed in." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("members")
+    .update({ things_enabled: enabled })
+    .eq("id", viewer.memberId);
+  if (error) return { error: error.message };
+  return { success: true };
+}
 
 // Adapts the package UI's onCreateProject hook to MCC: turn a recording's open
 // action items into a Project + Tasks, then hand back the host route to land on.

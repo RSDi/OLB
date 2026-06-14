@@ -4,6 +4,7 @@ import {
   loadAssignableMembers,
   loadReelNotesRecordings,
   loadReelNotesViewer,
+  loadThingsEnabled,
 } from "../../../lib/reelnotes/data";
 import { softDeleteReelNotesRecording, createProjectFromReelNotes } from "../../../lib/reelnotes/actions";
 
@@ -31,10 +32,11 @@ export default async function ReelNotesPage({
   searchParams: Promise<{ r?: string; t?: string }>;
 }) {
   await loadReelNotesViewer();
-  const [{ r, t }, recordings, members] = await Promise.all([
+  const [{ r, t }, recordings, members, thingsEnabled] = await Promise.all([
     searchParams,
     loadReelNotesRecordings(),
     loadAssignableMembers(),
+    loadThingsEnabled(),
   ]);
   return (
     <ReelNotes
@@ -46,6 +48,7 @@ export default async function ReelNotesPage({
       supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}
       onSoftDelete={softDeleteReelNotesRecording}
       onCreateProject={createProjectFromReelNotes}
+      thingsEnabled={thingsEnabled}
     />
   );
 }

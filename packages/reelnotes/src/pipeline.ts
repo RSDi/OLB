@@ -223,14 +223,21 @@ export async function processTranscriptionCompleted(
   // 1. Load the row.
   const { data: rec, error: loadErr } = await admin
     .from("reel_notes_recordings")
-    .select("id, user_id, assemblyai_id, status")
+    .select("id, user_id, assemblyai_id, status, linked_entity_type, linked_entity_id")
     .eq("id", recordingId)
     .maybeSingle();
   if (loadErr || !rec) {
     console.error("Pipeline: recording not found", recordingId, loadErr);
     return;
   }
-  const recording = rec as { id: string; user_id: string; assemblyai_id: string | null; status: string };
+  const recording = rec as {
+    id: string;
+    user_id: string;
+    assemblyai_id: string | null;
+    status: string;
+    linked_entity_type: string | null;
+    linked_entity_id: string | null;
+  };
 
   if (!recording.assemblyai_id) {
     console.error("Pipeline: recording has no assemblyai_id", recordingId);
@@ -369,6 +376,8 @@ export async function processTranscriptionCompleted(
           transcript: transcriptText,
           actions: actions.map(a => ({ text: a.text, priority: a.priority })),
           summary,
+          linkedEntityType: recording.linked_entity_type,
+          linkedEntityId: recording.linked_entity_id,
         });
       } catch (err) {
         console.error("onRecordingReady hook failed (non-fatal)", err);

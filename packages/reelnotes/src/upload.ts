@@ -18,7 +18,8 @@ import { signAudioUrl, storageAudioMarker } from "./audio-storage";
 // The column set the loaders + UI expect on a recording (joins its action
 // items). Lives here so the host's upload route and the package agree.
 export const RECORDING_SELECT = `id, user_id, title, audio_blob_url, duration_sec, source, status,
-  assemblyai_id, transcript, utterances, summary, error, created_at, updated_at,
+  assemblyai_id, transcript, utterances, summary, error,
+  linked_entity_type, linked_entity_id, created_at, updated_at,
   action_items:reel_notes_action_items(
     id, recording_id, text, routed_to, done, sort_order, priority,
     owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,

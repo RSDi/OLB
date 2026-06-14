@@ -17,7 +17,7 @@ import {
   PromoteToProject,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
-import { ReelNotesCard, type LinkedRecording } from "./ReelNotesCard";
+import { loadRecordingsForComments, loadThingsEnabled } from "../../../../lib/reelnotes/data";
 import { ProcedureRunner } from "../../../components/ProcedureRunner";
 import { ShutdownOptOutButton } from "./ShutdownOptOutButton";
 import { ShutdownTaskAssign } from "./ShutdownTaskAssign";
@@ -85,7 +85,7 @@ interface Ticket {
   assignee: { id: string; full_name: string | null; email: string } | null;
 }
 
-interface Comment extends ThreadComment {}
+type Comment = ThreadComment;
 
 interface StaffMember {
   id: string;
@@ -211,7 +211,9 @@ export default async function TicketDetailPage({
     .eq("ticket_id", id)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
-  let comments = (commentsRaw as unknown as Comment[]) ?? [];
+  // recording_id defaults null; a separate tolerant query fills it (below) so a
+  // pre-0065 schema can't error the whole comments load.
+  let comments = ((commentsRaw as unknown as Comment[]) ?? []).map(c => ({ ...c, recording_id: c.recording_id ?? null }));
 
   // B2: Slack thread replies arrive with no member author; external_author
   // carries the Slack display name (post-0053). Fetched separately + merged
@@ -233,6 +235,39 @@ export default async function TicketDetailPage({
       comments = comments.map(c =>
         !c.author && extById.has(c.id)
           ? { ...c, author: { full_name: extById.get(c.id)!, email: "", avatar_url: null } }
+          : c
+      );
+    }
+  }
+
+  // Recorded comments carry a recording_id (0065). Fetched separately + merged
+  // so a pre-0065 schema errors into an empty map instead of breaking the
+  // comments load (mirrors the external_author pattern above).
+  {
+    const { data: recRows } = await supabase
+      .from("ticket_comments")
+      .select("id, recording_id")
+      .eq("ticket_id", id)
+      .not("recording_id", "is", null);
+    const recIdByComment = new Map(
+      ((recRows as { id: string; recording_id: string }[] | null) ?? []).map(r => [r.id, r.recording_id])
+    );
+    if (recIdByComment.size > 0) {
+      comments = comments.map(c =>
+        recIdByComment.has(c.id) ? { ...c, recording_id: recIdByComment.get(c.id)! } : c
+      );
+    }
+  }
+
+  // Attach the recording (+ its action items) behind any recorded comments so
+  // the thread renders them inline. Staff-only via RLS.
+  if (staff) {
+    const recIds = comments.map((c) => c.recording_id).filter((v): v is string => Boolean(v));
+    if (recIds.length > 0) {
+      const recMap = await loadRecordingsForComments(recIds);
+      comments = comments.map((c) =>
+        c.recording_id && recMap.has(c.recording_id)
+          ? { ...c, recording: recMap.get(c.recording_id)! }
           : c
       );
     }
@@ -324,18 +359,10 @@ export default async function TicketDetailPage({
     }));
   }
 
-  // ReelNotes recordings captured on this task (B3). Tolerant pre-0052: a
-  // missing linked_ticket_id column errors into an empty list.
-  let linkedRecordings: LinkedRecording[] = [];
-  if (staff) {
-    const { data: recRows } = await supabase
-      .from("reel_notes_recordings")
-      .select("id, title, status, created_at")
-      .eq("linked_ticket_id", id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false });
-    linkedRecordings = (recRows as LinkedRecording[] | null) ?? [];
-  }
+  // Whether the viewer has opted into the device-only Things push (0064);
+  // gates the per-action-item Things button on recorded comments. Staff only.
+  let thingsEnabled = false;
+  if (staff) thingsEnabled = await loadThingsEnabled();
 
   // Vendors / external contacts attached to this ticket. Staff-only —
   // RLS hides everything for non-staff, but skip the queries to save a
@@ -504,6 +531,7 @@ export default async function TicketDetailPage({
               ticketId={ticket.id}
               comments={comments}
               canComment={canComment}
+              thingsEnabled={thingsEnabled}
             />
             {canComment && (
               <div
@@ -512,7 +540,7 @@ export default async function TicketDetailPage({
                   borderTop: comments.length > 0 ? "1px solid var(--gw-border)" : "none",
                 }}
               >
-                <CommentForm ticketId={ticket.id} />
+                <CommentForm ticketId={ticket.id} enableRecording={staff} />
               </div>
             )}
           </div>
@@ -626,15 +654,6 @@ export default async function TicketDetailPage({
                 <PromoteToProject ticketId={ticket.id} defaultTitle={promoteTitle} />
               )}
               {superAdmin && <DeleteButton ticketId={ticket.id} />}
-            </div>
-          )}
-
-          {staff && (
-            <div className="rsd-card" style={{ gap: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
-                ReelNotes
-              </h3>
-              <ReelNotesCard ticketId={ticket.id} recordings={linkedRecordings} />
             </div>
           )}
 

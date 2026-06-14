@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { Pill, Select, Textarea, Input } from "../../../components/ui";
@@ -109,6 +109,7 @@ export function CommentForm({
   placeholder,
   submitLabel,
   compact,
+  enableRecording,
 }: {
   ticketId: string;
   parentId?: string;
@@ -117,10 +118,25 @@ export function CommentForm({
   placeholder?: string;
   submitLabel?: string;
   compact?: boolean;
+  // Top-level composer only: offer recording the comment instead of typing it.
+  // The audio is transcribed by ReelNotes and posted back as a comment.
+  enableRecording?: boolean;
 }) {
+  const router = useRouter();
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Recording state (only used when enableRecording).
+  const [isRecording, setIsRecording] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const elapsedRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -138,6 +154,94 @@ export function CommentForm({
     });
   }
 
+  async function startRecording() {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (ev) => {
+        if (ev.data.size > 0) chunksRef.current.push(ev.data);
+      };
+      mr.onstop = () => {
+        const mimeType = mr.mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        void uploadRecording(blob, mimeType, elapsedRef.current);
+      };
+      elapsedRef.current = 0;
+      setElapsed(0);
+      timerRef.current = setInterval(() => {
+        elapsedRef.current += 1;
+        setElapsed(elapsedRef.current);
+      }, 1000);
+      mr.start();
+      mediaRecorderRef.current = mr;
+      setIsRecording(true);
+    } catch (err) {
+      setError(
+        err instanceof Error && err.name === "NotAllowedError"
+          ? "Microphone access denied. Allow mic permission in your browser settings."
+          : "Couldn't access the microphone."
+      );
+    }
+  }
+
+  function stopRecording() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== "inactive") mr.stop();
+    setIsRecording(false);
+  }
+
+  async function uploadRecording(blob: Blob, mimeType: string, durationSec: number) {
+    setUploading(true);
+    setError(null);
+    try {
+      const ext = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+      const form = new FormData();
+      form.append("audio", blob, `recording.${ext}`);
+      form.append("duration_sec", String(durationSec));
+      form.append("source", "pwa");
+      form.append("mime_type", mimeType);
+      form.append("linked_entity_type", "task");
+      form.append("linked_entity_id", ticketId);
+      const res = await fetch("/api/reelnotes/upload", { method: "POST", body: form });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Upload failed (${res.status})`);
+      }
+      // Transcription is async — the comment posts when the webhook completes.
+      setTranscribing(true);
+      onPosted?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const mins = Math.floor(elapsed / 60);
+  const secs = String(elapsed % 60).padStart(2, "0");
+
+  // Mid-recording: a focused control replaces the compose form.
+  if (isRecording) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Pill variant="ghost" size="sm" onClick={stopRecording}>
+          <span
+            style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--gw-error)", display: "inline-block", marginRight: 6, animation: "pulse 1.2s infinite" }}
+          />
+          Stop · {mins}:{secs}
+        </Pill>
+        <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>Recording…</span>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <Textarea
@@ -150,7 +254,31 @@ export function CommentForm({
         autoFocus={Boolean(parentId)}
       />
       {error && <ErrorLine message={error} />}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+      {transcribing && (
+        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+          Transcribing your recording — it’ll post as a comment here in a moment.{" "}
+          <button
+            type="button"
+            onClick={() => { setTranscribing(false); router.refresh(); }}
+            style={{ background: "none", border: "none", padding: 0, color: "var(--rsd-accent)", fontWeight: 700, cursor: "pointer" }}
+          >
+            Refresh
+          </button>
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, alignItems: "center" }}>
+        {enableRecording && !parentId && (
+          <Pill
+            variant="ghost"
+            size="sm"
+            onClick={startRecording}
+            disabled={uploading || pending}
+            style={{ marginRight: "auto" }}
+          >
+            <Icons.Mic width={13} height={13} style={{ color: "var(--gw-error)", marginRight: 6 }} />
+            {uploading ? "Uploading…" : "Record"}
+          </Pill>
+        )}
         {onCancel && (
           <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
             Cancel

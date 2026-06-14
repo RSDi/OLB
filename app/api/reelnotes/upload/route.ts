@@ -8,9 +8,10 @@
 // Body: multipart/form-data
 //   audio             — File (required)
 //   duration_sec      — string (number)
-//   source            — 'pwa' | 'native' | 'watch'
-//   mime_type         — string
-//   linked_ticket_id  — string (uuid, optional; host-specific task link, B3)
+//   source             — 'pwa' | 'native' | 'watch'
+//   mime_type          — string
+//   linked_entity_type — string (optional; host parent-entity kind, e.g. 'task')
+//   linked_entity_id   — string (uuid, optional; the parent entity's id)
 //
 // Note: Vercel function request bodies cap at 4.5 MB. WebM/Opus from
 // MediaRecorder is ~120 KB/min, so we're good up to ~30 min per upload.
@@ -53,10 +54,15 @@ export async function POST(req: NextRequest) {
     : "pwa";
   const mimeType = String(form.get("mime_type") || audio.type || "audio/webm");
 
-  // Host-specific: optional task link (B3) — the recording attaches to a ticket
-  // and onRecordingReady posts its summary there. Bogus values are dropped.
-  const linkedRaw = String(form.get("linked_ticket_id") || "");
-  const extraColumns = UUID_RE.test(linkedRaw) ? { linked_ticket_id: linkedRaw } : undefined;
+  // Host-specific: optional generic parent link — the note attaches to an
+  // entity (MCC uses 'task') and onRecordingReady mirrors its summary there.
+  // Only known entity types and a valid uuid are accepted; bogus values drop.
+  const entityType = String(form.get("linked_entity_type") || "");
+  const entityIdRaw = String(form.get("linked_entity_id") || "");
+  const extraColumns =
+    entityType === "task" && UUID_RE.test(entityIdRaw)
+      ? { linked_entity_type: "task", linked_entity_id: entityIdRaw }
+      : undefined;
 
   const result: UploadResult = await handleUpload(mccReelNotesAdapter(), {
     audio,
