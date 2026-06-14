@@ -248,6 +248,28 @@ export async function sendLowStockSlack({
   await postSlackMessage(channel, fallback, blocks, `low-stock ${supplyName}`);
 }
 
+// Procedure-wizard completion (Phase 1): an FYI posted to the playbook's
+// configured channel when someone finishes running it. No @-mention — just a
+// heads-up to the channel. Returns whether the post went through.
+export async function sendProcedureCompletionSlack({
+  channel,
+  message,
+}: {
+  channel: string;
+  message: string;
+}): Promise<boolean> {
+  if (!process.env.SLACK_BOT_TOKEN) {
+    console.warn("[slack] SLACK_BOT_TOKEN not set — skipping procedure-completion message");
+    return false;
+  }
+  if (!channel) return false;
+  const blocks: SlackBlock[] = [
+    { type: "section", text: { type: "mrkdwn", text: slackEscape(message) } },
+  ];
+  const posted = await postSlackMessage(channel, message, blocks, "procedure completion");
+  return posted != null;
+}
+
 function siteUrl(): string {
   return (
     process.env.NEXT_PUBLIC_SITE_URL ??

@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { Icons } from "../../../components/icons";
 import { MarkdownEditor } from "../../../components/MarkdownEditor";
 import { MarkdownView } from "../../../components/MarkdownView";
-import { softDeletePlaybook, updatePlaybook } from "../../../../lib/playbooks/actions";
+import { softDeletePlaybook, updatePlaybook, completeProcedure } from "../../../../lib/playbooks/actions";
 import {
   LinkedContacts,
   type LinkedContactRow,
@@ -24,6 +24,11 @@ export interface PlaybookDetailData {
   updated_by_name: string | null;
   created_by_name: string | null;
   version_count: number;
+  // Procedure wizard (0059): ordered step labels + the Slack channel notified
+  // on completion. Empty steps → not a runnable procedure.
+  steps: string[];
+  wizard_slack_channel: string | null;
+  wizard_completion_message: string | null;
 }
 
 interface Props {
@@ -74,6 +79,44 @@ export function PlaybookDetail({
   const [pending, startTransition] = useTransition();
 
   const chip = data.category?.chip_class ?? "rsd-chip-mute";
+
+  // Procedure wizard run-state (0059). A playbook with steps can be "run" —
+  // tick each step, then post the completion FYI to its Slack channel.
+  const isProcedure = data.steps.length > 0;
+  const [running, setRunning] = useState(false);
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [runResult, setRunResult] = useState<string | null>(null);
+  const allChecked = isProcedure && data.steps.every((_, i) => checked.has(i));
+  function toggleStep(i: number) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+  function startRun() {
+    setRunResult(null);
+    setChecked(new Set());
+    setRunning(true);
+  }
+  function finishRun() {
+    setError(null);
+    startTransition(async () => {
+      const res = await completeProcedure(data.id);
+      if ("error" in res) {
+        setError(res.error);
+        return;
+      }
+      setRunning(false);
+      setChecked(new Set());
+      setRunResult(
+        res.posted
+          ? "Done — posted to the team's Slack channel."
+          : "Done — marked complete. (No Slack channel is set on this procedure.)"
+      );
+    });
+  }
 
   function enterEdit() {
     setTitle(data.title);
@@ -347,6 +390,67 @@ export function PlaybookDetail({
         >
           {data.excerpt}
         </p>
+      )}
+
+      {/* Procedure wizard (0059): run the steps, then notify the channel. */}
+      {mode === "view" && isProcedure && (
+        <div
+          className="rsd-card"
+          style={{ marginTop: 20, gap: 12, border: "1px solid var(--rsd-accent)", background: "var(--rsd-accent-bg)" }}
+        >
+          {!running ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "var(--gw-fg)" }}>
+                  {data.steps.length}-step procedure
+                </div>
+                <button
+                  onClick={startRun}
+                  className="gw-press"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 100, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}
+                >
+                  <Icons.Play width={13} height={13} /> Start {data.title}
+                </button>
+              </div>
+              {runResult && (
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-success, #16a34a)" }}>{runResult}</div>
+              )}
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--gw-fg)" }}>Walk through each step</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {data.steps.map((label, i) => {
+                  const on = checked.has(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => toggleStep(i)}
+                      className="gw-press"
+                      style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: "10px 12px", borderRadius: 10, background: "var(--gw-bg)", border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`, cursor: "pointer", width: "100%" }}
+                    >
+                      <span style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: on ? "var(--rsd-accent)" : "transparent", border: `1.5px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`, color: "var(--rsd-accent-on)" }}>
+                        {on && <Icons.CheckCircle width={13} height={13} />}
+                      </span>
+                      <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gw-fg)", textDecoration: on ? "line-through" : "none", opacity: on ? 0.7 : 1 }}>
+                        {label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button onClick={() => { setRunning(false); setChecked(new Set()); }} disabled={pending} style={{ padding: "9px 16px", borderRadius: 100, background: "var(--gw-bg-elev)", border: "1px solid var(--gw-border)", fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={finishRun} disabled={!allChecked || pending} className="gw-press" style={{ padding: "9px 18px", borderRadius: 100, background: allChecked ? "var(--rsd-accent)" : "var(--gw-bg-elev)", color: allChecked ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)", border: allChecked ? "none" : "1px solid var(--gw-border)", fontSize: 13, fontWeight: 700, cursor: allChecked && !pending ? "pointer" : "not-allowed" }}>
+                  {pending ? "Finishing…" : "Done — notify the team"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {mode === "edit" && (

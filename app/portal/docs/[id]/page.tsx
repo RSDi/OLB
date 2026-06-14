@@ -17,6 +17,9 @@ interface PlaybookRow {
   created_at: string;
   created_by: string | null;
   category_id: string | null;
+  steps: { label: string }[] | null;
+  wizard_slack_channel: string | null;
+  wizard_completion_message: string | null;
   category: { id: string; name: string; chip_class: string } | null;
 }
 
@@ -45,6 +48,7 @@ export default async function PlaybookDetailPage({
     .from("playbooks")
     .select(
       `id, title, excerpt, body_md, updated_at, updated_by, created_at, created_by, category_id,
+       steps, wizard_slack_channel, wizard_completion_message,
        category:playbook_categories(id, name, chip_class)`
     )
     .eq("id", id)
@@ -106,6 +110,9 @@ export default async function PlaybookDetailPage({
     updated_by_name: playbook.updated_by ? nameByUid.get(playbook.updated_by) ?? null : null,
     created_by_name: playbook.created_by ? nameByUid.get(playbook.created_by) ?? null : null,
     version_count: versionCount,
+    steps: (playbook.steps ?? []).map((s) => s.label).filter(Boolean),
+    wizard_slack_channel: playbook.wizard_slack_channel,
+    wizard_completion_message: playbook.wizard_completion_message,
   };
 
   // Vendors attached to this playbook — staff-only via RLS. Skip both
