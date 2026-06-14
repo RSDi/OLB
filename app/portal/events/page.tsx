@@ -4,6 +4,7 @@ import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
 import { expandEventOccurrences, type EventOccurrence } from "../../../lib/events/occurrences";
+import { recurrenceSummary } from "../../../lib/events/recurrence";
 
 type ViewFilter = "upcoming" | "past" | "all";
 
@@ -239,8 +240,8 @@ function EventRow({
             <span className={`rsd-chip ${chipClass}`}>{event.category.name}</span>
           )}
           {occ.recurringInstance && (
-            <span className="rsd-chip rsd-chip-mute" title="Part of a weekly series">
-              ↻ Weekly
+            <span className="rsd-chip rsd-chip-mute" title={recurrenceSummary(event) ?? "Part of a repeating series"}>
+              ↻ Repeats
             </span>
           )}
         </div>
