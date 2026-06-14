@@ -7,4 +7,5 @@ export type {
   CreateProjectInput,
   CreateProjectHandler,
   SoftDeleteHandler,
+  ReelNoteSourceLink,
 } from "./ReelNotes";

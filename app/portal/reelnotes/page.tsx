@@ -4,9 +4,10 @@ import {
   loadAssignableMembers,
   loadReelNotesRecordings,
   loadReelNotesViewer,
+  loadReelNotesSourceLinks,
   loadThingsEnabled,
 } from "../../../lib/reelnotes/data";
-import { softDeleteReelNotesRecording, createProjectFromReelNotes } from "../../../lib/reelnotes/actions";
+import { softDeleteReelNotesRecording } from "../../../lib/reelnotes/actions";
 
 export const metadata: Metadata = {
   title: "ReelNotes",
@@ -31,13 +32,15 @@ export default async function ReelNotesPage({
 }: {
   searchParams: Promise<{ r?: string; t?: string }>;
 }) {
-  await loadReelNotesViewer();
+  const viewer = await loadReelNotesViewer();
   const [{ r, t }, recordings, members, thingsEnabled] = await Promise.all([
     searchParams,
     loadReelNotesRecordings(),
     loadAssignableMembers(),
     loadThingsEnabled(),
   ]);
+  // "Source" backlinks: a task-recorded note links back to its task.
+  const sourceLinks = await loadReelNotesSourceLinks(recordings);
   return (
     <ReelNotes
       initialRecordings={recordings}
@@ -47,8 +50,9 @@ export default async function ReelNotesPage({
       supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL!}
       supabaseAnonKey={process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}
       onSoftDelete={softDeleteReelNotesRecording}
-      onCreateProject={createProjectFromReelNotes}
       thingsEnabled={thingsEnabled}
+      canDelete={viewer.isSuperAdmin}
+      sourceLinks={sourceLinks}
     />
   );
 }

@@ -11,7 +11,7 @@ import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { getViewer } from "../auth/viewer";
 import { isStorageAudio, signAudioUrl } from "reelnotes";
-import type { ReelNotesRecording, AssignableMember } from "reelnotes";
+import type { ReelNotesRecording, AssignableMember, ReelNotesSummarySection } from "reelnotes";
 
 export type {
   RecordingStatus,
@@ -124,6 +124,12 @@ export interface CommentRecording {
   id: string;
   title: string | null;
   status: string;
+  duration_sec: number;
+  // Short-lived signed URL for playback, or null (typed/audioless or signing
+  // skipped). The recorded comment plays this inline — no trip to ReelNotes.
+  audio_url: string | null;
+  transcript: string | null;
+  summary: ReelNotesSummarySection[] | null;
   action_items: CommentRecordingActionItem[];
 }
 
@@ -137,7 +143,7 @@ export async function loadRecordingsForComments(
   const { data, error } = await supabase
     .from("reel_notes_recordings")
     .select(
-      `id, title, status,
+      `id, title, status, duration_sec, audio_blob_url, transcript, summary,
        action_items:reel_notes_action_items(id, text, done, routed_to, priority, sort_order)`
     )
     .in("id", ids)
@@ -150,14 +156,66 @@ export async function loadRecordingsForComments(
     return new Map();
   }
 
+  type Row = CommentRecording & { audio_blob_url: string | null };
+  const rows = (data ?? []) as unknown as Row[];
+
+  // Swap private-storage markers for short-lived signed URLs so the comment can
+  // play audio inline (B6). Plain https URLs / typed notes pass through.
+  const admin = createAdminClient();
   const map = new Map<string, CommentRecording>();
-  for (const r of (data ?? []) as unknown as CommentRecording[]) {
-    map.set(r.id, {
-      ...r,
-      action_items: (r.action_items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
-    });
-  }
+  await Promise.all(
+    rows.map(async r => {
+      const marker = r.audio_blob_url;
+      const audio_url =
+        marker && isStorageAudio(marker) ? await signAudioUrl(admin, marker) : marker ?? null;
+      map.set(r.id, {
+        id: r.id,
+        title: r.title,
+        status: r.status,
+        duration_sec: r.duration_sec ?? 0,
+        audio_url,
+        transcript: r.transcript ?? null,
+        summary: r.summary ?? null,
+        action_items: (r.action_items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order),
+      });
+    }),
+  );
   return map;
+}
+
+// Resolve each recording's generic parent link to a "source" backlink for the
+// ReelNotes page (so a task-recorded note links back to its task). Only handles
+// linked_entity_type='task' today; other types are skipped. Tolerant of a
+// pre-0064 schema (returns an empty map).
+export async function loadReelNotesSourceLinks(
+  recordings: ReelNotesRecording[],
+): Promise<Record<string, { label: string; href: string }>> {
+  const taskByRecording = recordings
+    .filter(r => r.linked_entity_type === "task" && r.linked_entity_id)
+    .map(r => ({ recordingId: r.id, taskId: r.linked_entity_id as string }));
+  if (taskByRecording.length === 0) return {};
+
+  const supabase = await createClient();
+  const taskIds = Array.from(new Set(taskByRecording.map(t => t.taskId)));
+  const { data, error } = await supabase
+    .from("maintenance_requests")
+    .select("id, description")
+    .in("id", taskIds);
+  if (error) {
+    console.error("loadReelNotesSourceLinks failed", error);
+    return {};
+  }
+
+  const descById = new Map(
+    ((data ?? []) as { id: string; description: string | null }[]).map(t => [t.id, t.description]),
+  );
+  const links: Record<string, { label: string; href: string }> = {};
+  for (const { recordingId, taskId } of taskByRecording) {
+    const desc = (descById.get(taskId) ?? "").trim();
+    const short = desc.length > 48 ? `${desc.slice(0, 48)}…` : desc || "task";
+    links[recordingId] = { label: `Task: ${short}`, href: `/portal/tasks/${taskId}` };
+  }
+  return links;
 }
 
 // Whether the current viewer has opted into the device-only "push to Things"

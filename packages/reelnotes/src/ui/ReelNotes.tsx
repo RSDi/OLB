@@ -30,6 +30,14 @@ export type CreateProjectHandler = (
 ) => Promise<{ redirectTo?: string; error?: string }>;
 export type SoftDeleteHandler = (id: string) => Promise<{ success?: true; error?: string }>;
 
+// "This recording came from X" backlink. The host resolves a recording's
+// generic parent link (linked_entity_type/linked_entity_id) to a display label
+// and an href; the package stays ignorant of what the entity actually is.
+export interface ReelNoteSourceLink {
+  label: string;
+  href: string;
+}
+
 const INTEGRATIONS = [
   { id: "things", label: "Things", icon: "CheckCircle" as const },
   { id: "maintenance", label: "Task", icon: "Wrench" as const },
@@ -416,6 +424,8 @@ export function ReelNotes({
   onSoftDelete,
   onCreateProject,
   thingsEnabled = true,
+  canDelete = true,
+  sourceLinks,
 }: {
   initialRecordings: ReelNotesRecording[];
   members: AssignableMember[];
@@ -430,6 +440,13 @@ export function ReelNotes({
   // everyone uses Things, so the host opts the viewer in. Defaults true so
   // hosts that don't pass it keep the prior behavior.
   thingsEnabled?: boolean;
+  // Whether to show the destructive Delete affordance. Defaults true; hosts can
+  // restrict it (MCC: super-admins only).
+  canDelete?: boolean;
+  // Optional "this recording came from X" backlinks, keyed by recording id.
+  // The host resolves a recording's generic parent link to a label + href
+  // (MCC: the task it was recorded on). The package just renders them.
+  sourceLinks?: Record<string, ReelNoteSourceLink>;
 }) {
   const supabase = useMemo(() => createBrowserClient(supabaseUrl, supabaseAnonKey), [supabaseUrl, supabaseAnonKey]);
   const [recordings, setRecordings] = useState<ReelNotesRecording[]>(initialRecordings);
@@ -893,6 +910,8 @@ export function ReelNotes({
             onDelete={() => deleteRecording(selected.id)}
             onCreateProject={onCreateProject}
             thingsEnabled={thingsEnabled}
+            canDelete={canDelete}
+            sourceLink={sourceLinks?.[selected.id]}
           />
         ) : (
           <div
@@ -1097,6 +1116,8 @@ function SelectedDetail({
   onDelete,
   onCreateProject,
   thingsEnabled = true,
+  canDelete = true,
+  sourceLink,
 }: {
   recording: ReelNotesRecording;
   isMobile: boolean;
@@ -1112,6 +1133,8 @@ function SelectedDetail({
   onDelete: () => Promise<void>;
   onCreateProject?: CreateProjectHandler;
   thingsEnabled?: boolean;
+  canDelete?: boolean;
+  sourceLink?: ReelNoteSourceLink;
 }) {
   const [reextracting, setReextracting] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -1229,11 +1252,21 @@ function SelectedDetail({
     <div className="rsd-card" style={{ gap: 16 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
             <span className={`rsd-chip ${statusChipClass(recording.status)}`}>{STATUS_LABEL[recording.status]}</span>
             <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
               {sourceLabel} · {formatDuration(recording.duration_sec)}
             </span>
+            {sourceLink && (
+              <a
+                href={sourceLink.href}
+                className="rsd-chip rsd-chip-mute"
+                style={{ fontSize: 11, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}
+              >
+                <Icons.ArrowRight width={10} height={10} style={{ transform: "scaleX(-1)" }} />
+                {sourceLink.label}
+              </a>
+            )}
           </div>
           {editingTitle ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -1387,26 +1420,28 @@ function SelectedDetail({
               Re-extracting…
             </span>
           )}
-          <button
-            onClick={onDelete}
-            className="gw-press"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 100,
-              background: "var(--gw-error-bg)",
-              color: "var(--gw-error)",
-              border: "1px solid rgba(229,62,62,.25)",
-              fontSize: 11,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            <Icons.Trash width={11} height={11} />
-            Delete
-          </button>
+          {canDelete && (
+            <button
+              onClick={onDelete}
+              className="gw-press"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 100,
+                background: "var(--gw-error-bg)",
+                color: "var(--gw-error)",
+                border: "1px solid rgba(229,62,62,.25)",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <Icons.Trash width={11} height={11} />
+              Delete
+            </button>
+          )}
         </div>
       </div>
 

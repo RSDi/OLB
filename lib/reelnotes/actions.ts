@@ -13,12 +13,10 @@
 
 import { del } from "@vercel/blob";
 import { AUDIO_BUCKET, isStorageAudio, storageAudioPath } from "reelnotes";
-import type { CreateProjectInput } from "reelnotes/ui";
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { getViewer } from "../auth/viewer";
-import { createProjectFromRecording } from "../projects/actions";
 
 type Result = { success?: true; error?: string };
 
@@ -82,19 +80,6 @@ export async function setMyThingsEnabled(enabled: boolean): Promise<Result> {
     .eq("id", viewer.memberId);
   if (error) return { error: error.message };
   return { success: true };
-}
-
-// Adapts the package UI's onCreateProject hook to MCC: turn a recording's open
-// action items into a Project + Tasks, then hand back the host route to land on.
-// (A server action so it can be passed as a prop to the client component.)
-export async function createProjectFromReelNotes(
-  input: CreateProjectInput,
-): Promise<{ redirectTo?: string; error?: string }> {
-  const res = await createProjectFromRecording(input);
-  if (res.error) return { error: res.error };
-  return res.projectId
-    ? { redirectTo: `/portal/tasks/projects/${res.projectId}` }
-    : { error: "Failed to create project." };
 }
 
 // Looks up the caller and confirms the target recording is theirs. Returns

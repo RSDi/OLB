@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { CommentForm } from "./Actions";
@@ -35,6 +35,21 @@ const PRIORITY_CHIP: Record<string, { label: string; cls: string }> = {
   medium: { label: "Medium", cls: "rsd-chip-mute" },
   high: { label: "High", cls: "rsd-chip-warn" },
   emergency: { label: "Emergency", cls: "rsd-chip-error" },
+};
+
+const collapseToggleStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  padding: 0,
+  background: "transparent",
+  border: "none",
+  color: "var(--gw-fg-muted)",
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: ".04em",
+  cursor: "pointer",
 };
 
 export function CommentThread({
@@ -263,8 +278,12 @@ function RecordedNote({
 }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
   const items = recording.action_items;
   const ready = recording.status === "ready";
+  const hasSummary = !!recording.summary && recording.summary.length > 0;
+  const hasTranscript = !!recording.transcript;
 
   async function pushThings(a: CommentRecordingActionItem) {
     if (busyId) return;
@@ -295,7 +314,12 @@ function RecordedNote({
   }
 
   return (
-    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Audio — play the recording without leaving the task. */}
+      {recording.audio_url && (
+        <audio controls preload="none" src={recording.audio_url} style={{ width: "100%", height: 34 }} />
+      )}
+
       {items.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
           {ready ? "No action items extracted." : "Transcribing…"}
@@ -376,13 +400,54 @@ function RecordedNote({
         </div>
       )}
 
+      {/* Summary — collapsible, content-driven sections. */}
+      {hasSummary && (
+        <div>
+          <button
+            onClick={() => setShowSummary(s => !s)}
+            className="gw-press"
+            style={collapseToggleStyle}
+          >
+            {showSummary ? <Icons.ChevronDown width={12} height={12} /> : <Icons.ChevronRight width={12} height={12} />}
+            Summary
+          </button>
+          {showSummary && (
+            <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
+              {recording.summary!.map((sec, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg)", marginBottom: 2 }}>{sec.heading}</div>
+                  <ul style={{ margin: 0, paddingLeft: 16 }}>
+                    {sec.bullets.map((b, j) => (
+                      <li key={j} style={{ fontSize: 12, lineHeight: 1.55, color: "var(--gw-fg-muted)" }}>{b.text}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Transcript — collapsible, the full text. */}
+      {hasTranscript && (
+        <div>
+          <button
+            onClick={() => setShowTranscript(s => !s)}
+            className="gw-press"
+            style={collapseToggleStyle}
+          >
+            {showTranscript ? <Icons.ChevronDown width={12} height={12} /> : <Icons.ChevronRight width={12} height={12} />}
+            Transcript
+          </button>
+          {showTranscript && (
+            <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.6, color: "var(--gw-fg)", whiteSpace: "pre-wrap" }}>
+              {recording.transcript}
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <a
-          href={`/portal/reelnotes?r=${recording.id}`}
-          style={{ fontSize: 11, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
-        >
-          View transcript in ReelNotes →
-        </a>
         {!thingsEnabled && items.length > 0 && (
           <button
             onClick={enableThings}
