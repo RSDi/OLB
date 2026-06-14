@@ -1117,18 +1117,18 @@ function SelectedDetail({
   function seekTo(ms: number) {
     const el = audioRef.current;
     if (!el) return;
-    const doSeek = () => {
-      el.currentTime = ms / 1000; // <audio> currentTime is in seconds
+    const target = ms / 1000; // <audio> currentTime is in seconds
+    const playFrom = () => {
+      el.currentTime = target;
       void el.play().catch(() => {}); // best-effort; ignore autoplay rejection
     };
-    // If the user clicks "jump" before metadata has loaded (readyState 0),
-    // setting currentTime no-ops — wait for metadata, then seek.
-    if (el.readyState >= 1 /* HAVE_METADATA */) {
-      doSeek();
-    } else {
-      el.addEventListener("loadedmetadata", doSeek, { once: true });
-      el.load();
-    }
+    // Try immediately — keeps the click's user-activation so autoplay allows the
+    // play(). But the element only preloads metadata, so jumping deep into the
+    // clip needs a range fetch first; that first attempt can no-op before the
+    // data at `target` is there. So also retry once enough has buffered.
+    playFrom();
+    el.addEventListener("canplay", playFrom, { once: true });
+    if (el.readyState < 1 /* HAVE_METADATA */) el.load();
   }
 
   // Summary | Transcript toggle. Default to the readable summary when one
