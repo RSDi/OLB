@@ -165,30 +165,41 @@ export function RequestWizard({
 
   return (
     <div className="rsd-card" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      {/* Quick back — always at the top so stepping back never needs a scroll. */}
-      {idx > 0 && (
-        <button
-          type="button"
-          onClick={back}
-          disabled={pending}
-          className="gw-press"
-          style={{
-            alignSelf: "flex-start",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            background: "none",
-            border: "none",
-            padding: 0,
-            marginBottom: -10,
-            color: "var(--gw-fg-muted)",
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: pending ? "default" : "pointer",
-          }}
-        >
-          <Icons.ChevronLeft width={16} height={16} /> Back
-        </button>
+      {/* Top action bar — Back + the primary action both live up here so neither
+          needs a scroll on small screens (the calendar/time steps get tall).
+          Auto-advance steps show no Next (options self-advance). */}
+      {(idx > 0 || !step.autoAdvance) && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: -6 }}>
+          {idx > 0 ? (
+            <button
+              type="button"
+              onClick={back}
+              disabled={pending}
+              className="gw-press"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: "var(--gw-fg-muted)",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: pending ? "default" : "pointer",
+              }}
+            >
+              <Icons.ChevronLeft width={16} height={16} /> Back
+            </button>
+          ) : (
+            <span />
+          )}
+          {!step.autoAdvance && (
+            <Pill variant="accent" size="sm" onClick={next} disabled={pending || !canAdvance}>
+              {isLast ? (pending ? "Sending…" : "Send request") : "Next"}
+            </Pill>
+          )}
+        </div>
       )}
 
       {/* Progress */}
@@ -241,15 +252,6 @@ export function RequestWizard({
         </div>
       )}
 
-      {/* Auto-advance steps need no Next — picking an option moves on, and Back
-          lives at the top. Other steps keep an explicit primary action. */}
-      {!step.autoAdvance && (
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 2 }}>
-          <Pill variant="accent" size="md" onClick={next} disabled={pending || !canAdvance}>
-            {isLast ? (pending ? "Sending…" : "Send request") : "Next"}
-          </Pill>
-        </div>
-      )}
     </div>
   );
 }
