@@ -2263,8 +2263,7 @@ function AssigneePicker({
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {m.full_name || m.nickname || "Member"}
-                      {m.full_name && m.nickname ? ` (${m.nickname})` : ""}
+                      {memberLabel(m)}
                     </span>
                     <button onClick={() => onSetOwner(isOwner ? null : m.id)} className="gw-press" style={pickerToggleStyle(isOwner)}>
                       Owner
