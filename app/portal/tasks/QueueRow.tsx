@@ -317,7 +317,7 @@ function InlineAssignSelect({
   );
 }
 
-function ChipSelect({
+export function ChipSelect({
   value,
   onChange,
   disabled,

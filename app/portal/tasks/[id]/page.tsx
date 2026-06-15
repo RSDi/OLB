@@ -9,6 +9,7 @@ import {
 } from "../../../../lib/auth/permissions";
 import {
   StatusSelect,
+  PrioritySelect,
   AssignSelect,
   CommentForm,
   DeleteButton,
@@ -332,6 +333,7 @@ export default async function TicketDetailPage({
   }
 
   let staffList: StaffMember[] = [];
+  let priorityOptions: { id: string; label: string; chip_class: string }[] = [];
   if (staff) {
     const { data: staffRows } = await supabase
       .from("members")
@@ -340,6 +342,12 @@ export default async function TicketDetailPage({
       .eq("status", "approved")
       .order("full_name", { ascending: true });
     staffList = staffRows ?? [];
+    const { data: prioRows } = await supabase
+      .from("priorities")
+      .select("id, label, chip_class")
+      .is("deleted_at", null)
+      .order("severity", { ascending: true });
+    priorityOptions = prioRows ?? [];
   }
 
   // Committee votes (staff, while pending). Gracefully empty until migration
@@ -708,14 +716,19 @@ export default async function TicketDetailPage({
             <Field
               label="Priority"
               value={
-                ticket.priority ? (
+                staff ? (
+                  <PrioritySelect ticketId={ticket.id} current={ticket.priority?.id ?? ""} priorities={priorityOptions} />
+                ) : ticket.priority ? (
                   <span className={`rsd-chip ${ticket.priority.chip_class}`}>{ticket.priority.label}</span>
                 ) : (
                   "—"
                 )
               }
             />
-            <Field label="Status" value={statusChip(ticket.status)} />
+            <Field
+              label="Status"
+              value={staff ? <StatusSelect ticketId={ticket.id} current={ticket.status} /> : statusChip(ticket.status)}
+            />
             <Field label="Created" value={formatDateTime(ticket.created_at)} />
             {ticket.updated_at !== ticket.created_at && (
               <Field label="Updated" value={formatDateTime(ticket.updated_at)} />
@@ -723,11 +736,20 @@ export default async function TicketDetailPage({
             <Field
               label="Assigned to"
               value={
-                ticket.assignee
-                  ? memberDisplayName(ticket.assignee)
-                  : <span style={{ color: "var(--gw-fg-muted)" }}>Unassigned</span>
+                staff ? (
+                  <AssignSelect ticketId={ticket.id} current={ticket.assigned_to} staff={staffList} />
+                ) : ticket.assignee ? (
+                  memberDisplayName(ticket.assignee)
+                ) : (
+                  <span style={{ color: "var(--gw-fg-muted)" }}>Unassigned</span>
+                )
               }
             />
+            {superAdmin && (
+              <div style={{ paddingTop: 6, borderTop: "1px solid var(--gw-border)" }}>
+                <DeleteButton ticketId={ticket.id} childCount={subtasks.length} />
+              </div>
+            )}
           </div>
 
           {conflicts.length > 0 && (
@@ -790,20 +812,6 @@ export default async function TicketDetailPage({
             </div>
           )}
 
-          {staff && (
-            <div className="rsd-card" style={{ gap: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
-                Actions
-              </h3>
-              <StatusSelect ticketId={ticket.id} current={ticket.status} />
-              <AssignSelect
-                ticketId={ticket.id}
-                current={ticket.assigned_to}
-                staff={staffList}
-              />
-              {superAdmin && <DeleteButton ticketId={ticket.id} childCount={subtasks.length} />}
-            </div>
-          )}
 
           {staff && reviewLog.length > 0 && (
             <div className="rsd-card" style={{ gap: 10 }}>

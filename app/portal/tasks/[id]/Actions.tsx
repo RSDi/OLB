@@ -3,8 +3,10 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { Pill, Select, Textarea, Input } from "../../../components/ui";
+import { ChipSelect } from "../QueueRow";
 import {
   changeTicketStatus,
+  changeTicketPriority,
   assignTicket,
   addTicketComment,
   softDeleteTicket,
@@ -18,41 +20,84 @@ import {
 } from "../../../../lib/maintenance/actions";
 import { memberDisplayName } from "../../../../lib/members/display";
 
-export function StatusSelect({
-  ticketId,
-  current,
-}: {
-  ticketId: string;
-  current: TicketStatus;
-}) {
+// Status / Priority / Assigned-to render as editable "oval" chip selects in the
+// task's Details card (staff only). They update optimistically and refresh the
+// page on success so the matching chips elsewhere (e.g. the description header)
+// stay in sync; on error they roll back and alert.
+function statusChipClass(s: TicketStatus): string {
+  if (s === "open") return "rsd-chip-warn";
+  if (s === "in_progress") return "rsd-chip-accent";
+  if (s === "cancelled") return "rsd-chip-mute";
+  return "rsd-chip-success";
+}
+
+export function StatusSelect({ ticketId, current }: { ticketId: string; current: TicketStatus }) {
+  const router = useRouter();
   const [value, setValue] = useState<TicketStatus>(current);
-  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value as TicketStatus;
     const previous = value;
     setValue(next);
-    setError(null);
     startTransition(async () => {
       const result = await changeTicketStatus(ticketId, next);
       if (result.error) {
-        setError(result.error);
         setValue(previous);
+        window.alert(result.error);
+        return;
       }
+      router.refresh();
     });
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <Select label="Status" value={value} onChange={handleChange} disabled={pending}>
-        <option value="open">Open</option>
-        <option value="in_progress">In Progress</option>
-        <option value="done">Done</option>
-        <option value="cancelled">Cancelled</option>
-      </Select>
-      {error && <ErrorLine message={error} />}
-    </div>
+    <ChipSelect value={value} onChange={handleChange} disabled={pending} chipClass={statusChipClass(value)}>
+      <option value="open">Open</option>
+      <option value="in_progress">In Progress</option>
+      <option value="done">Done</option>
+      <option value="cancelled">Cancelled</option>
+    </ChipSelect>
+  );
+}
+
+export function PrioritySelect({
+  ticketId,
+  current,
+  priorities,
+}: {
+  ticketId: string;
+  current: string;
+  priorities: { id: string; label: string; chip_class: string }[];
+}) {
+  const router = useRouter();
+  const [value, setValue] = useState(current);
+  const [pending, startTransition] = useTransition();
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const next = e.target.value;
+    const previous = value;
+    setValue(next);
+    startTransition(async () => {
+      const result = await changeTicketPriority(ticketId, next);
+      if (result.error) {
+        setValue(previous);
+        window.alert(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  const chipClass = priorities.find((p) => p.id === value)?.chip_class ?? "rsd-chip-mute";
+  return (
+    <ChipSelect value={value} onChange={handleChange} disabled={pending} chipClass={chipClass}>
+      {priorities.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.label}
+        </option>
+      ))}
+    </ChipSelect>
   );
 }
 
@@ -72,36 +117,34 @@ export function AssignSelect({
   current: string | null;
   staff: StaffMember[];
 }) {
+  const router = useRouter();
   const [value, setValue] = useState<string>(current ?? "");
-  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value;
     const previous = value;
     setValue(next);
-    setError(null);
     startTransition(async () => {
       const result = await assignTicket(ticketId, next || null);
       if (result.error) {
-        setError(result.error);
         setValue(previous);
+        window.alert(result.error);
+        return;
       }
+      router.refresh();
     });
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <Select label="Assigned to" value={value} onChange={handleChange} disabled={pending}>
-        <option value="">Unassigned</option>
-        {staff.map((s) => (
-          <option key={s.id} value={s.id}>
-            {memberDisplayName(s)}
-          </option>
-        ))}
-      </Select>
-      {error && <ErrorLine message={error} />}
-    </div>
+    <ChipSelect value={value} onChange={handleChange} disabled={pending} chipClass="rsd-chip-mute">
+      <option value="">Unassigned</option>
+      {staff.map((s) => (
+        <option key={s.id} value={s.id}>
+          {memberDisplayName(s)}
+        </option>
+      ))}
+    </ChipSelect>
   );
 }
 
