@@ -34,6 +34,17 @@ interface EventRow {
 
 const DAY_MS = 86400000;
 
+const monthHeaderStyle: React.CSSProperties = {
+  padding: "8px 18px",
+  background: "var(--gw-bg-elev)",
+  borderBottom: "1px solid var(--gw-border)",
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: ".06em",
+  color: "var(--gw-fg-muted)",
+};
+
 export default async function PortalEventsPage({
   searchParams,
 }: {
@@ -93,6 +104,10 @@ export default async function PortalEventsPage({
   } else {
     occurrences = occurrences.sort((a, b) => b.startAt.localeCompare(a.startAt));
   }
+
+  // Split the (already-sorted) occurrences into month sections, preserving sort
+  // order — Upcoming reads ascending, Past/All descending.
+  const sections = groupByMonth(occurrences);
 
   return (
     <>
@@ -176,13 +191,18 @@ export default async function PortalEventsPage({
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column" }}>
-            {occurrences.map((o, i) => (
-              <EventRow
-                key={`${o.event.id}-${o.startAt}`}
-                occ={o}
-                staff={staff}
-                border={i < occurrences.length - 1}
-              />
+            {sections.map((section, si) => (
+              <div key={section.key}>
+                <div style={monthHeaderStyle}>{section.label}</div>
+                {section.items.map((o, ii) => (
+                  <EventRow
+                    key={`${o.event.id}-${o.startAt}`}
+                    occ={o}
+                    staff={staff}
+                    border={!(si === sections.length - 1 && ii === section.items.length - 1)}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         )}
@@ -305,6 +325,30 @@ function isValidView(s: string | undefined): s is ViewFilter {
 
 function monthShort(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short" });
+}
+
+function monthLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
+// Group sorted occurrences into month sections by walking them in order (so the
+// per-view sort is preserved) and starting a new section on each month change.
+// The key (year*100 + month) is the local month, matching the per-row date chip.
+function groupByMonth(
+  occurrences: EventOccurrence<EventRow>[],
+): { key: number; label: string; items: EventOccurrence<EventRow>[] }[] {
+  const sections: { key: number; label: string; items: EventOccurrence<EventRow>[] }[] = [];
+  for (const o of occurrences) {
+    const d = new Date(o.startAt);
+    const key = d.getFullYear() * 100 + d.getMonth();
+    const last = sections[sections.length - 1];
+    if (last && last.key === key) {
+      last.items.push(o);
+    } else {
+      sections.push({ key, label: monthLabel(o.startAt), items: [o] });
+    }
+  }
+  return sections;
 }
 
 function dayNum(iso: string): string {
