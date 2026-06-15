@@ -17,6 +17,8 @@ export interface WizardCtx {
   form: RequestForm;
   set: (key: string, value: unknown) => void;
   toggle: (key: string, value: string) => void;
+  // Single-select pickers: set value(s) AND advance to the next step in one tap.
+  choose: (updates: Record<string, unknown>) => void;
 }
 
 export interface WizardStep {
@@ -25,6 +27,9 @@ export interface WizardStep {
   hint?: string;
   show?: (form: RequestForm) => boolean;
   valid?: (form: RequestForm) => boolean;
+  // A pick-one step whose options self-advance (via ctx.choose). The footer
+  // "Next" is hidden — selecting an option moves on; Back stays at the top.
+  autoAdvance?: boolean;
   body: (ctx: WizardCtx) => ReactNode;
   // Template routing: if this returns a path, advancing from the step navigates
   // there instead of going to the next step. Lets a "what are you planning?"
@@ -61,13 +66,44 @@ export function RequestWizard({
       const arr = Array.isArray(f[key]) ? (f[key] as string[]) : [];
       return { ...f, [key]: arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value] };
     });
-  const ctx: WizardCtx = { form, set, toggle };
 
   const visible = useMemo(() => steps.filter((s) => !s.show || s.show(form)), [steps, form]);
   const idx = Math.min(stepIndex, visible.length - 1);
   const step = visible[idx];
   const isLast = idx === visible.length - 1;
   const canAdvance = !step.valid || step.valid(form);
+
+  // Advance using an explicit form snapshot, so a just-made selection counts
+  // even though setForm is async. Recomputes visibility from `f` so conditional
+  // steps route correctly (e.g. repair vs purchase). Returns true if it moved
+  // or handed off; false on the last step so the caller can submit.
+  function goForward(f: RequestForm): boolean {
+    setError(null);
+    const vis = steps.filter((s) => !s.show || s.show(f));
+    const i = Math.min(stepIndex, vis.length - 1);
+    const s = vis[i];
+    if (s.valid && !s.valid(f)) return false;
+    // Template hand-off: a step can redirect to a dedicated flow instead of
+    // advancing (e.g. picking "Sports or gym time" launches the gym template).
+    const href = s.nextHref?.(f);
+    if (href) {
+      router.push(href);
+      return true;
+    }
+    if (i < vis.length - 1) {
+      setStepIndex(i + 1);
+      return true;
+    }
+    return false;
+  }
+
+  // Pick-one steps: record the choice and move on in a single tap.
+  const choose = (updates: Record<string, unknown>) => {
+    const nextForm = { ...form, ...updates };
+    setForm(nextForm);
+    goForward(nextForm);
+  };
+  const ctx: WizardCtx = { form, set, toggle, choose };
 
   function back() {
     setError(null);
@@ -79,18 +115,8 @@ export function RequestWizard({
   }
   async function next() {
     if (!canAdvance) return;
-    setError(null);
-    // Template hand-off: a step can redirect to a dedicated flow instead of
-    // advancing (e.g. picking "Sports or gym time" launches the gym template).
-    const href = step.nextHref?.(form);
-    if (href) {
-      router.push(href);
-      return;
-    }
-    if (!isLast) {
-      setStepIndex(idx + 1);
-      return;
-    }
+    if (goForward(form)) return;
+    // Last step → submit.
     setPending(true);
     const result = await createRequest(trackKey, form);
     setPending(false);
@@ -139,6 +165,32 @@ export function RequestWizard({
 
   return (
     <div className="rsd-card" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      {/* Quick back — always at the top so stepping back never needs a scroll. */}
+      {idx > 0 && (
+        <button
+          type="button"
+          onClick={back}
+          disabled={pending}
+          className="gw-press"
+          style={{
+            alignSelf: "flex-start",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            background: "none",
+            border: "none",
+            padding: 0,
+            marginBottom: -10,
+            color: "var(--gw-fg-muted)",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: pending ? "default" : "pointer",
+          }}
+        >
+          <Icons.ChevronLeft width={16} height={16} /> Back
+        </button>
+      )}
+
       {/* Progress */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
@@ -189,14 +241,15 @@ export function RequestWizard({
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
-        <Pill variant="ghost" size="md" onClick={back} disabled={pending}>
-          {idx === 0 ? "Cancel" : "Back"}
-        </Pill>
-        <Pill variant="accent" size="md" onClick={next} disabled={pending || !canAdvance}>
-          {isLast ? (pending ? "Sending…" : "Send request") : "Next"}
-        </Pill>
-      </div>
+      {/* Auto-advance steps need no Next — picking an option moves on, and Back
+          lives at the top. Other steps keep an explicit primary action. */}
+      {!step.autoAdvance && (
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 2 }}>
+          <Pill variant="accent" size="md" onClick={next} disabled={pending || !canAdvance}>
+            {isLast ? (pending ? "Sending…" : "Send request") : "Next"}
+          </Pill>
+        </div>
+      )}
     </div>
   );
 }
@@ -231,10 +284,10 @@ export function OptionCard({
       className="gw-press"
       style={{
         display: "flex",
-        alignItems: "flex-start",
-        gap: 12,
+        alignItems: "center",
+        gap: 11,
         textAlign: "left",
-        padding: 14,
+        padding: "11px 13px",
         borderRadius: 12,
         cursor: "pointer",
         width: "100%",
@@ -246,9 +299,9 @@ export function OptionCard({
       {icon && (
         <div
           style={{
-            width: 38,
-            height: 38,
-            borderRadius: 10,
+            width: 32,
+            height: 32,
+            borderRadius: 9,
             flexShrink: 0,
             display: "flex",
             alignItems: "center",

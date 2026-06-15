@@ -58,19 +58,17 @@ const subTypeStep: WizardStep = {
   title: "What are you planning?",
   hint: "Pick the closest match — we'll tailor the questions.",
   valid: (f) => !!f.subType,
+  autoAdvance: true,
   // "Sports or gym time" hands off to the dedicated gym template (space is the
   // Gym, identity is implied) instead of the general room-booking questions.
   nextHref: (f) => (f.subType === "sports" ? "/portal/requests/gym" : null),
-  body: ({ form, set }) => (
+  body: ({ form, choose }) => (
     <Column>
       {BUILDING_SUBTYPES.map((t) => (
         <OptionCard
           key={t.key}
           selected={form.subType === t.key}
-          onClick={() => {
-            set("subType", t.key);
-            set("subTypeLabel", t.label);
-          }}
+          onClick={() => choose({ subType: t.key, subTypeLabel: t.label })}
           icon={t.icon}
           label={t.label}
           blurb={t.blurb}
@@ -366,16 +364,14 @@ const gymActivityStep: WizardStep = {
   title: "Which activity?",
   hint: "So we can point you to the right setup steps.",
   valid: (f) => !!f.subType,
-  body: ({ form, set }) => (
+  autoAdvance: true,
+  body: ({ form, choose }) => (
     <Column>
       {GYM_ACTIVITIES.map((g) => (
         <OptionCard
           key={g.key}
           selected={form.subType === g.key}
-          onClick={() => {
-            set("subType", g.key);
-            set("subTypeLabel", g.label);
-          }}
+          onClick={() => choose({ subType: g.key, subTypeLabel: g.label })}
           label={g.label}
         />
       ))}
@@ -462,10 +458,11 @@ const maintTypeStep: WizardStep = {
   key: "maintType",
   title: "What do you need?",
   valid: (f) => !!f.maintType,
-  body: ({ form, set }) => (
+  autoAdvance: true,
+  body: ({ form, choose }) => (
     <Column>
       {MAINT_TYPES.map((t) => (
-        <OptionCard key={t.key} selected={form.maintType === t.key} onClick={() => set("maintType", t.key)} icon={t.icon} label={t.label} blurb={t.blurb} />
+        <OptionCard key={t.key} selected={form.maintType === t.key} onClick={() => choose({ maintType: t.key })} icon={t.icon} label={t.label} blurb={t.blurb} />
       ))}
     </Column>
   ),
@@ -487,10 +484,11 @@ const urgencyStep: WizardStep = {
   key: "urgency",
   title: "How urgent is it?",
   show: (f) => f.maintType === "repair",
-  body: ({ form, set }) => (
+  autoAdvance: true,
+  body: ({ form, choose }) => (
     <Column>
       {["Whenever you can get to it", "Soon — it's a real problem", "Urgent — affects a service or event"].map((u) => (
-        <OptionCard key={u} selected={form.urgency === u} onClick={() => set("urgency", u)} label={u} />
+        <OptionCard key={u} selected={form.urgency === u} onClick={() => choose({ urgency: u })} label={u} />
       ))}
     </Column>
   ),
@@ -521,10 +519,11 @@ const questionTopicStep: WizardStep = {
   key: "qtopic",
   title: "What's it about?",
   valid: (f) => !!f.topic,
-  body: ({ form, set }) => (
+  autoAdvance: true,
+  body: ({ form, choose }) => (
     <Column>
       {QUESTION_TOPICS.map((t) => (
-        <OptionCard key={t} selected={form.topic === t} onClick={() => set("topic", t)} label={t} />
+        <OptionCard key={t} selected={form.topic === t} onClick={() => choose({ topic: t })} label={t} />
       ))}
     </Column>
   ),
