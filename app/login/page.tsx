@@ -3,6 +3,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Icons } from "../components/icons";
+import { SlackLogo } from "../components/SlackLogo";
 import { createClient } from "../../lib/supabase/client";
 import { friendlyAuthError } from "../../lib/auth/friendly-error";
 
@@ -64,6 +65,17 @@ function LoginContent() {
 
     router.push(next ?? "/portal");
     router.refresh();
+  }
+
+  async function handleSlack() {
+    setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "slack_oidc",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    // On success the browser redirects to Slack and back through /auth/callback.
+    if (error) setError(friendlyAuthError(error.message));
   }
 
   async function handleEmailPassword(e: React.FormEvent<HTMLFormElement>) {
@@ -287,6 +299,27 @@ function LoginContent() {
           </>
         ) : (
           <>
+            {/* Slack — the seamless path for church members */}
+            <button
+              onClick={handleSlack}
+              disabled={pending !== null}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                height: 44, borderRadius: 8, border: "1px solid var(--gw-stroke)",
+                background: "var(--gw-surface)", color: "var(--gw-ink)",
+                fontSize: 14, fontWeight: 700,
+                cursor: pending !== null ? "not-allowed" : "pointer", width: "100%",
+              }}
+            >
+              <SlackLogo /> Continue with Slack
+            </button>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0" }}>
+              <div style={{ flex: 1, height: 1, background: "var(--gw-stroke)" }}/>
+              <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>or</span>
+              <div style={{ flex: 1, height: 1, background: "var(--gw-stroke)" }}/>
+            </div>
+
             {/* Email / password */}
             <form onSubmit={handleEmailPassword} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>

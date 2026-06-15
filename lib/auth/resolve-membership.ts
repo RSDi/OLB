@@ -37,6 +37,13 @@ export async function resolveMembership({
     null;
   const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
 
+  // Seamless church access: a sign-in via the church's Slack workspace (team id
+  // matches SLACK_TEAM_ID) is auto-approved — no committee gate. Any other
+  // sign-in (email, or Slack from a different workspace) stays pending. Fails
+  // safe: if the team claim is missing or SLACK_TEAM_ID isn't set, no auto-approve.
+  const churchTeam = process.env.SLACK_TEAM_ID?.trim() || null;
+  const isChurchSlack = !!churchTeam && slackTeamId(user) === churchTeam;
+
   if (isAdminEmail(user.email)) {
     const admin = createAdminClient();
     const { data: existing } = await admin
@@ -102,6 +109,22 @@ export async function resolveMembership({
       };
     }
 
+    // Church-Slack sign-ins are approved on the spot (admin client so we're not
+    // relying on RLS to allow a self-approve); everyone else lands pending and
+    // notifies the committee.
+    if (isChurchSlack) {
+      const admin = createAdminClient();
+      await admin.from("members").insert({
+        user_id: user.id,
+        email: user.email,
+        full_name: fullName,
+        avatar_url: avatarUrl,
+        status: "approved",
+        reviewed_at: new Date().toISOString(),
+      });
+      return { status: "approved", role: "member" };
+    }
+
     await supabase.from("members").insert({
       user_id: user.id,
       email: user.email,
@@ -117,9 +140,39 @@ export async function resolveMembership({
     return { status: "pending", role: "member" };
   }
 
+  // A still-pending member who signs in via the church Slack gets approved now.
+  if (member.status === "pending" && isChurchSlack) {
+    const admin = createAdminClient();
+    await admin
+      .from("members")
+      .update({ status: "approved", reviewed_at: new Date().toISOString() })
+      .eq("user_id", user.id);
+    return { status: "approved", role: (member.role as MemberRole) ?? "member" };
+  }
+
   return {
     status: member.status as MemberStatus,
     role: (member.role as MemberRole) ?? "member",
   };
+}
+
+// Pull the Slack workspace (team) id out of a Slack OIDC sign-in, checking the
+// claim's usual locations. Returns null for non-Slack sign-ins.
+function slackTeamId(user: User): string | null {
+  const pick = (o: Record<string, unknown> | null | undefined): string | null => {
+    if (!o) return null;
+    for (const k of ["https://slack.com/team_id", "team_id"]) {
+      const v = o[k];
+      if (typeof v === "string" && v) return v;
+    }
+    return null;
+  };
+  const ident = (user.identities ?? []).find(
+    (i) => i.provider === "slack_oidc" || i.provider === "slack",
+  );
+  return (
+    pick(user.user_metadata as Record<string, unknown>) ??
+    pick(ident?.identity_data as Record<string, unknown> | undefined)
+  );
 }
 

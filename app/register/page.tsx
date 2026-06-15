@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../components/icons";
+import { SlackLogo } from "../components/SlackLogo";
 import { createClient } from "../../lib/supabase/client";
 import { friendlyAuthError } from "../../lib/auth/friendly-error";
 
@@ -72,6 +73,18 @@ export default function RegisterPage() {
     }
   }
 
+  async function handleSlack() {
+    setError(null);
+    const supabase = createClient();
+    const { error: slackError } = await supabase.auth.signInWithOAuth({
+      provider: "slack_oidc",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    // On success the browser leaves for Slack and returns through /auth/callback,
+    // where church-workspace sign-ins are approved on the spot.
+    if (slackError) setError(friendlyAuthError(slackError.message));
+  }
+
   if (confirmEmail) {
     return (
       <Shell>
@@ -100,6 +113,27 @@ export default function RegisterPage() {
 
   return (
     <Shell>
+      {/* Slack — the seamless path. Church-workspace members are approved on the
+          spot, so this skips the committee review the email form below goes through. */}
+      <button onClick={handleSlack} disabled={pending} style={{
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+        height: 44, borderRadius: 8, border: "1px solid var(--gw-stroke)",
+        background: "var(--gw-surface)", color: "var(--gw-ink)",
+        fontSize: 14, fontWeight: 700,
+        cursor: pending ? "not-allowed" : "pointer", width: "100%",
+      }}>
+        <SlackLogo /> Continue with Slack
+      </button>
+      <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
+        Already in the church’s Slack? This gets you in right away.
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0" }}>
+        <div style={{ flex: 1, height: 1, background: "var(--gw-stroke)" }}/>
+        <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>or request access</span>
+        <div style={{ flex: 1, height: 1, background: "var(--gw-stroke)" }}/>
+      </div>
+
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={labelStyle}>Full name</span>
