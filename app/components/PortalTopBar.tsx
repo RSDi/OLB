@@ -13,6 +13,9 @@ interface PortalTopBarProps {
   // inline TopbarSearch renders instead.
   onSearchClick?: () => void;
   inlineSearchRef?: React.Ref<TopbarSearchHandle>;
+  // Opens the per-page help panel. Provided only when the current page has a
+  // doc (PortalShell decides); when absent the "i" button is hidden.
+  onInfoClick?: () => void;
 }
 
 export function PortalTopBar({
@@ -22,6 +25,7 @@ export function PortalTopBar({
   onMenuClick,
   onSearchClick,
   inlineSearchRef,
+  onInfoClick,
 }: PortalTopBarProps) {
   const [variant, setVariant] = useState<"pill" | "inline" | null>(null);
 
@@ -108,6 +112,27 @@ export function PortalTopBar({
         {actions}
         {variant === "pill" && onSearchClick && (
           <PillTrigger onClick={onSearchClick} />
+        )}
+        {onInfoClick && (
+          <button
+            onClick={onInfoClick}
+            className="gw-press"
+            aria-label="About this page"
+            title="About this page"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 100,
+              background: "var(--gw-bg-elev)",
+              border: "1px solid var(--gw-border)",
+              color: "var(--gw-fg)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Icons.Info width={16} height={16} />
+          </button>
         )}
         <button
           className="gw-press"

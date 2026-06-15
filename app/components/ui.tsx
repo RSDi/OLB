@@ -1,5 +1,19 @@
 "use client";
 import type { ReactNode, CSSProperties } from "react";
+import { HelpTip } from "./HelpTip";
+
+// Label row shared by the form inputs below: the uppercase field label plus an
+// optional ⓘ tooltip (rendered when a `help` string is passed).
+function FieldLabel({ label, help }: { label: string; help?: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        {label}
+      </span>
+      {help && <HelpTip text={help} label={`About ${label}`} />}
+    </span>
+  );
+}
 
 // ─── Pill button ────────────────────────────────────────────────
 interface PillProps {
@@ -93,15 +107,12 @@ export function EmptyState({ icon, title, body, action }: {
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  help?: string;
 }
-export function Input({ label, error, style, ...props }: InputProps) {
+export function Input({ label, error, help, style, ...props }: InputProps) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {label && (
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-          {label}
-        </span>
-      )}
+      {label && <FieldLabel label={label} help={help} />}
       <input
         {...props}
         style={{
@@ -125,15 +136,12 @@ export function Input({ label, error, style, ...props }: InputProps) {
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
+  help?: string;
 }
-export function Textarea({ label, error, style, ...props }: TextareaProps) {
+export function Textarea({ label, error, help, style, ...props }: TextareaProps) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {label && (
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-          {label}
-        </span>
-      )}
+      {label && <FieldLabel label={label} help={help} />}
       <textarea
         {...props}
         style={{
@@ -156,15 +164,12 @@ export function Textarea({ label, error, style, ...props }: TextareaProps) {
 // ─── Select ─────────────────────────────────────────────────────
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
+  help?: string;
 }
-export function Select({ label, style, children, ...props }: SelectProps) {
+export function Select({ label, help, style, children, ...props }: SelectProps) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {label && (
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-          {label}
-        </span>
-      )}
+      {label && <FieldLabel label={label} help={help} />}
       <select
         {...props}
         style={{
