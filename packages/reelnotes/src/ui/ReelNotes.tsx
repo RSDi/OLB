@@ -1730,6 +1730,61 @@ export function ActionRow({
     setEditing(false);
   }
 
+  // Once an item has been reviewed and promoted into a sub-task (task_id set),
+  // it's no longer a separate to-do here: render a read-only reference — a
+  // "Sub-task" badge, muted text, and (still) the jump-to-moment play — with no
+  // checkbox, edit, assign, or Send-to. The sub-task itself is tracked above.
+  if (action.task_id) {
+    return (
+      <div
+        ref={rowRef}
+        id={`task-${action.id}`}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "10px 12px",
+          borderRadius: 10,
+          border: "1px solid var(--gw-border)",
+          background: "var(--gw-bg-elev)",
+        }}
+      >
+        <span className="rsd-chip rsd-chip-accent" style={{ fontSize: 10, flexShrink: 0 }}>
+          <Icons.CheckCircle width={9} height={9} style={{ marginRight: 3 }} />
+          Sub-task
+        </span>
+        <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
+          {action.text}
+        </div>
+        {action.transcript_ms != null && (
+          <button
+            onClick={() => onSeekToMs(action.transcript_ms!)}
+            className="gw-press"
+            title="Jump to this moment in the recording"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 10,
+              fontWeight: 700,
+              padding: "2px 8px",
+              borderRadius: 100,
+              background: "transparent",
+              color: "var(--rsd-accent)",
+              border: "1px solid var(--rsd-accent)",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            <Icons.Play width={9} height={9} />
+            {formatMs(action.transcript_ms)}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       ref={rowRef}
