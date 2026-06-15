@@ -5,6 +5,7 @@ import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
 import { QueueRow, TaskScheduleChips } from "./QueueRow";
+import { KanbanBoard, type KanbanCard } from "./KanbanBoard";
 import { memberDisplayName } from "../../../lib/members/display";
 import { churchToday, isOverdue } from "../../../lib/dates/today";
 
@@ -92,13 +93,15 @@ function sortForBucket(rows: TicketRow[], bucket: Bucket, today: string): Ticket
 export default async function PortalMaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ bucket?: string; category?: string; view?: string }>;
+  searchParams: Promise<{ bucket?: string; category?: string; view?: string; layout?: string }>;
 }) {
   const params = await searchParams;
   const bucket: Bucket = isValidBucket(params.bucket) ? params.bucket : "active";
   const categoryFilter = params.category ?? null;
   // "projects" view = only tasks that have sub-tasks (i.e. behave like projects).
   const view: "all" | "projects" = params.view === "projects" ? "projects" : "all";
+  // Board (Kanban by status) is the default; List is the opt-in alternative.
+  const layout: "board" | "list" = params.layout === "list" ? "list" : "board";
   const today = churchToday();
 
   const supabase = await createClient();
@@ -215,10 +218,15 @@ export default async function PortalMaintenancePage({
     .order("name", { ascending: true });
   const categories = (categoriesRaw as { id: string; name: string; chip_class: string }[]) ?? [];
 
-  // Build a queue URL preserving the active bucket, category, and Projects view.
-  const tasksHref = (b: Bucket, c: string | null, v: "all" | "projects" = view) => {
+  // Build a queue URL preserving layout, the active bucket, category, and the
+  // Projects view. Board is the default layout, so `layout` is only set for List
+  // (and the scheduling bucket only matters in List).
+  const tasksHref = (b: Bucket, c: string | null, v: "all" | "projects" = view, l: "board" | "list" = layout) => {
     const p = new URLSearchParams();
-    if (b && b !== "active") p.set("bucket", b);
+    if (l === "list") {
+      p.set("layout", "list");
+      if (b && b !== "active") p.set("bucket", b);
+    }
     if (c) p.set("category", c);
     if (v === "projects") p.set("view", "projects");
     const q = p.toString();
@@ -249,6 +257,37 @@ export default async function PortalMaintenancePage({
   const bucketLabel = BUCKET_TABS.find((t) => t.key === bucket)?.label ?? "Active";
   const empty = emptyCopy(bucket, view, staff);
 
+  // Board cards: top-level tasks by status (Open / In Progress / Done), minus
+  // Someday-parked and Cancelled (those live in the List view). Category +
+  // Projects filters apply. Sorted overdue-first so urgent cards rise.
+  const assigneeNameById = new Map(staffList.map((s) => [s.id, memberDisplayName(s)] as const));
+  const boardCards: KanbanCard[] = allTopLevel
+    .filter((t) => !t.someday && t.status !== "cancelled")
+    .filter((t) => (view === "projects" ? progressByParent.has(t.id) : true))
+    .sort((a, b) => {
+      const ao = isOverdue(a.due_on, today) ? 0 : 1;
+      const bo = isOverdue(b.due_on, today) ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      if ((a.due_on ?? "") !== (b.due_on ?? "")) {
+        if (!a.due_on) return 1;
+        if (!b.due_on) return -1;
+        return a.due_on < b.due_on ? -1 : 1;
+      }
+      return (b.priority?.severity ?? 0) - (a.priority?.severity ?? 0);
+    })
+    .map((t) => ({
+      id: t.id,
+      title: t.description.split("\n")[0],
+      status: t.status,
+      category: t.category,
+      priority: t.priority ? { label: t.priority.label, chip_class: t.priority.chip_class } : null,
+      assigneeName: t.assigned_to ? assigneeNameById.get(t.assigned_to) ?? null : null,
+      start_on: t.start_on,
+      due_on: t.due_on,
+      someday: t.someday,
+      progress: progressByParent.get(t.id) ?? null,
+    }));
+
   return (
     <>
       <TasksSectionNav active="tasks" isStaff={staff} />
@@ -262,6 +301,28 @@ export default async function PortalMaintenancePage({
           gap: 12,
         }}
       >
+        {/* Board ⇄ List layout toggle */}
+        <div style={{ display: "inline-flex", border: "1px solid var(--gw-border)", borderRadius: 100, overflow: "hidden", marginRight: "auto" }}>
+          {(["board", "list"] as const).map((l) => {
+            const on = layout === l;
+            return (
+              <Link
+                key={l}
+                href={tasksHref(bucket, categoryFilter, view, l)}
+                style={{
+                  padding: "9px 18px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                  background: on ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+                  color: on ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+                }}
+              >
+                {l === "board" ? "Board" : "List"}
+              </Link>
+            );
+          })}
+        </div>
         <Link
           href={tasksHref(bucket, categoryFilter, view === "projects" ? "all" : "projects")}
           style={{
@@ -309,60 +370,62 @@ export default async function PortalMaintenancePage({
         <StatCard label="Overdue" value={counts.overdue} chip="rsd-chip-error" />
       </div>
 
-      {/* View tabs */}
-      <div style={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
-        {BUCKET_TABS.map((t) => {
-          const href = tasksHref(t.key, categoryFilter);
-          const active = bucket === t.key;
-          const n = counts[t.key];
-          return (
-            <Link
-              key={t.key}
-              href={href}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 8,
-                background: active ? "var(--gw-bg-elev)" : "transparent",
-                border: "1px solid",
-                borderColor: active ? "var(--gw-border)" : "transparent",
-                fontSize: 13,
-                fontWeight: 700,
-                color: active ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-                textDecoration: "none",
-              }}
-            >
-              {t.label}
-              {n > 0 && (
-                <span style={{ color: "var(--gw-fg-muted)", fontWeight: 600 }}> {n}</span>
-              )}
-            </Link>
-          );
-        })}
-        {superAdmin && (
-          <>
-            <span style={{ width: 1, height: 18, background: "var(--gw-border)", margin: "0 6px" }} />
-            <Link
-              href="/portal/tasks/deleted"
-              style={{
-                padding: "8px 16px",
-                borderRadius: 8,
-                background: "transparent",
-                border: "1px solid transparent",
-                fontSize: 13,
-                fontWeight: 700,
-                color: "var(--gw-fg-muted)",
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <Icons.Trash width={12} height={12} />
-              Deleted
-            </Link>
-          </>
-        )}
-      </div>
+      {/* Scheduling-bucket tabs (List layout only) + the Deleted link. In Board
+          layout, status is the columns, so the buckets don't apply. */}
+      {(layout === "list" || superAdmin) && (
+        <div style={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+          {layout === "list" &&
+            BUCKET_TABS.map((t) => {
+              const href = tasksHref(t.key, categoryFilter);
+              const active = bucket === t.key;
+              const n = counts[t.key];
+              return (
+                <Link
+                  key={t.key}
+                  href={href}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    background: active ? "var(--gw-bg-elev)" : "transparent",
+                    border: "1px solid",
+                    borderColor: active ? "var(--gw-border)" : "transparent",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: active ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+                    textDecoration: "none",
+                  }}
+                >
+                  {t.label}
+                  {n > 0 && <span style={{ color: "var(--gw-fg-muted)", fontWeight: 600 }}> {n}</span>}
+                </Link>
+              );
+            })}
+          {superAdmin && (
+            <>
+              {layout === "list" && <span style={{ width: 1, height: 18, background: "var(--gw-border)", margin: "0 6px" }} />}
+              <Link
+                href="/portal/tasks/deleted"
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  background: "transparent",
+                  border: "1px solid transparent",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "var(--gw-fg-muted)",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Icons.Trash width={12} height={12} />
+                Deleted
+              </Link>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Category filter */}
       {categories.length > 0 && (
@@ -381,7 +444,21 @@ export default async function PortalMaintenancePage({
         </div>
       )}
 
-      {/* Table */}
+      {/* Body: Board (Kanban by status) or List (table / mobile cards) */}
+      {layout === "board" ? (
+        boardCards.length === 0 ? (
+          <div className="rsd-card" style={{ padding: "48px 24px", textAlign: "center" }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gw-fg)", marginBottom: 6 }}>
+              Nothing on the board
+            </div>
+            <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
+              {staff ? "Open tasks show up here by status." : "Submit one with + New task above."}
+            </div>
+          </div>
+        ) : (
+          <KanbanBoard cards={boardCards} today={today} canMove={staff} />
+        )
+      ) : (
       <div className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--gw-border)" }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
@@ -480,6 +557,7 @@ export default async function PortalMaintenancePage({
           </>
         )}
       </div>
+      )}
     </>
   );
 }

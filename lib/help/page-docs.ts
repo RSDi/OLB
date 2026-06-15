@@ -38,6 +38,7 @@ Look for the **ⓘ** in the top-right corner of any page for help like this.`,
     title: "Tasks & Projects",
     body: `Everything being worked on around the church lives here.
 
+- Switch between a **Board** (a Kanban laid out in Open / In Progress / Done columns — drag a card to move it, if you're on the building committee) and a **List** view with the toggle up top. Board is the default.
 - A **task** is a single to-do (a repair, a setup, a follow-up). Add **sub-tasks** to any task to break it into steps — a task with sub-tasks simply *is* a **project**, with a progress bar showing how much is done.
 - At the top of a task, colored pills show its **category** (e.g. Maintenance), **priority** (Low → Emergency), **status** (Open / In Progress / Done / Cancelled), and who it's **assigned to**. Building-committee members tap a pill to change it.
 - On the right, **When** schedules a task (Active now, a future date, or Someday) and **Deadline** sets a hard due date — overdue ones turn red.
