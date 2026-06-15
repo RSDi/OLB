@@ -393,7 +393,7 @@ export async function addSubtasks(
   descriptions: string[],
 ): Promise<AddSubtasksResult> {
   const clean = (descriptions ?? []).map((d) => d.trim()).filter(Boolean);
-  if (clean.length === 0) return { error: "Add at least one sub-task." };
+  if (clean.length === 0) return { error: "Add at least one to-do." };
 
   const viewer = await getViewer();
   if (!viewer) return { error: "You must be signed in." };
@@ -409,9 +409,9 @@ export async function addSubtasks(
     | { id: string; submitted_by: string | null; parent_id: string | null; category_id: string | null; priority_id: string | null }
     | null;
   if (!p) return { error: "Task not found." };
-  if (p.parent_id) return { error: "A sub-task can't have its own sub-tasks." };
+  if (p.parent_id) return { error: "A to-do can't have its own to-dos." };
   if (!viewer.isStaff && p.submitted_by !== viewer.userId) {
-    return { error: "You can only add sub-tasks to your own tasks." };
+    return { error: "You can only add to-dos to your own tasks." };
   }
 
   const rows = clean.map((description) => ({
@@ -461,7 +461,7 @@ export async function addSubtasksFromActionItems(
     .maybeSingle();
   const p = parent as { id: string; parent_id: string | null; category_id: string | null } | null;
   if (!p) return { error: "Task not found." };
-  if (p.parent_id) return { error: "A sub-task can't have its own sub-tasks." };
+  if (p.parent_id) return { error: "A to-do can't have its own to-dos." };
 
   // Only items from this recording that haven't already become a task.
   const { data: itemRows } = await supabase
@@ -524,7 +524,7 @@ export async function addSubtasksFromActionItems(
       })
       .select("id")
       .single();
-    if (cErr || !child) return { error: cErr?.message ?? "Failed to create sub-task." };
+    if (cErr || !child) return { error: cErr?.message ?? "Failed to create to-do." };
     await supabase.from("reel_notes_action_items").update({ task_id: child.id }).eq("id", it.id);
     count += 1;
   }

@@ -388,8 +388,8 @@ export function DeleteButton({ ticketId, childCount = 0 }: { ticketId: string; c
     let cascadeChildren = false;
     if (childCount > 0) {
       cascadeChildren = confirm(
-        `This has ${childCount} sub-task${childCount === 1 ? "" : "s"}.\n\n` +
-          `OK — delete the sub-task${childCount === 1 ? "" : "s"} too.\n` +
+        `This has ${childCount} to-do${childCount === 1 ? "" : "s"}.\n\n` +
+          `OK — delete the to-do${childCount === 1 ? "" : "s"} too.\n` +
           `Cancel — keep ${childCount === 1 ? "it" : "them"} as standalone task${childCount === 1 ? "" : "s"}.`,
       );
     }
@@ -610,7 +610,7 @@ export function AddSubtask({ parentId }: { parentId: string }) {
   function submit() {
     const lines = text.split("\n").map((s) => s.trim()).filter(Boolean);
     if (lines.length === 0) {
-      setError("Add at least one sub-task.");
+      setError("Add at least one to-do.");
       return;
     }
     setError(null);
@@ -629,7 +629,7 @@ export function AddSubtask({ parentId }: { parentId: string }) {
   if (!open) {
     return (
       <Pill variant="ghost" size="sm" onClick={() => setOpen(true)} style={{ justifyContent: "center" }}>
-        <Icons.Plus width={14} height={14} /> Add a sub-task
+        <Icons.Plus width={14} height={14} /> Add a to-do
       </Pill>
     );
   }
@@ -637,7 +637,7 @@ export function AddSubtask({ parentId }: { parentId: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <Textarea
-        label="Sub-tasks (one per line)"
+        label="To-Dos (one per line)"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={4}
@@ -719,7 +719,7 @@ export function PromoteFromRecording({
           cursor: "pointer",
         }}
       >
-        <Icons.LayoutDashboard width={11} height={11} /> Turn into sub-tasks
+        <Icons.LayoutDashboard width={11} height={11} /> Turn into to-dos
       </button>
     );
   }
@@ -737,7 +737,7 @@ export function PromoteFromRecording({
       }}
     >
       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
-        Pick the items to add as sub-tasks
+        Pick the items to add as to-dos
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {available.map((i) => (
@@ -758,7 +758,7 @@ export function PromoteFromRecording({
           Cancel
         </Pill>
         <Pill variant="accent" size="sm" onClick={submit} disabled={pending || chosen.length === 0}>
-          {pending ? "Adding…" : `Add ${chosen.length} sub-task${chosen.length === 1 ? "" : "s"}`}
+          {pending ? "Adding…" : `Add ${chosen.length} to-do${chosen.length === 1 ? "" : "s"}`}
         </Pill>
       </div>
     </div>

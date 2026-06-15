@@ -40,9 +40,9 @@ export interface ReelNoteSourceLink {
 
 const INTEGRATIONS = [
   { id: "things", label: "Things", icon: "CheckCircle" as const },
-  // Host-provided: convert this item into a sub-task of the linked task. Only
-  // shown when the host wires onConvertToSubtask (see ActionRow).
-  { id: "subtask", label: "Sub-task", icon: "CheckCircle" as const },
+  // Host-provided: convert this item into a to-do (sub-task) of the linked task.
+  // Only shown when the host wires onConvertToSubtask (see ActionRow).
+  { id: "subtask", label: "To-Do", icon: "CheckCircle" as const },
   { id: "maintenance", label: "Task", icon: "Wrench" as const },
   { id: "email", label: "Email follow-up", icon: "Mail" as const },
   { id: "hubspot", label: "HubSpot Task", icon: "Briefcase" as const },
@@ -1751,7 +1751,7 @@ export function ActionRow({
       >
         <span className="rsd-chip rsd-chip-accent" style={{ fontSize: 10, flexShrink: 0 }}>
           <Icons.CheckCircle width={9} height={9} style={{ marginRight: 3 }} />
-          Sub-task
+          To-Do
         </span>
         <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
           {action.text}

@@ -81,7 +81,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
     (pathname.startsWith("/portal/requests/")
       ? { title: "New request", subtitle: "Portal" }
       : pathname.startsWith("/portal/tasks/") && pathname !== "/portal/tasks/new"
-      ? { title: "Task", subtitle: "Portal" }
+      ? { title: "Opportunities", subtitle: "Portal" }
       : pathname.startsWith("/portal/pm/templates/")
       ? { title: "Edit template", subtitle: "Facilities" }
       : pathname.startsWith("/portal/pm/assets/")

@@ -149,7 +149,7 @@ export default async function PortalMaintenancePage({
   const { data: ticketsRaw } = await query;
   const allTopLevel = (ticketsRaw as unknown as TicketRow[]) ?? [];
 
-  // Sub-task progress per parent — drives the "Project · 3/7" chip and the
+  // To-do progress per parent — drives the "To-dos · 3/7" chip and the
   // Projects view. RLS scopes this to rows the viewer is allowed to see.
   const { data: childRows } = await supabase
     .from("maintenance_requests")
@@ -444,7 +444,7 @@ export default async function PortalMaintenancePage({
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--gw-border)" }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
             {view === "projects"
-              ? `${tickets.length} ${tickets.length === 1 ? "project" : "projects"}`
+              ? `${tickets.length} ${tickets.length === 1 ? "item" : "items"} with to-dos`
               : `${tickets.length} ${bucketLabel.toLowerCase()}`}
           </h3>
         </div>
@@ -482,7 +482,7 @@ export default async function PortalMaintenancePage({
                     )}
                     {progressByParent.has(t.id) && (
                       <span className="rsd-chip rsd-chip-mute">
-                        Project · {progressByParent.get(t.id)!.done}/{progressByParent.get(t.id)!.total}
+                        To-dos · {progressByParent.get(t.id)!.done}/{progressByParent.get(t.id)!.total}
                       </span>
                     )}
                     <TaskScheduleChips
@@ -563,7 +563,7 @@ function isValidBucket(s: string | undefined): s is Bucket {
 
 function emptyCopy(bucket: Bucket, view: "all" | "projects", staff: boolean): { title: string; body: string } {
   if (view === "projects") {
-    return { title: "No projects here", body: "Open any task and add a sub-task — it becomes a project." };
+    return { title: "Nothing with to-dos yet", body: "Add to-dos to any item to break it into steps." };
   }
   switch (bucket) {
     case "active":

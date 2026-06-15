@@ -132,7 +132,7 @@ export function QueueRow({
           </span>
           {progress && (
             <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>
-              Project · {progress.done}/{progress.total}
+              To-dos · {progress.done}/{progress.total}
             </span>
           )}
           <TaskScheduleChips

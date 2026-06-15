@@ -136,7 +136,7 @@ export function MaintenanceRequestForm({
               padding: "10px 14px",
             }}
           >
-            Adding a sub-task to: <strong style={{ color: "var(--gw-fg)" }}>{parent.label}</strong>
+            Adding a to-do to: <strong style={{ color: "var(--gw-fg)" }}>{parent.label}</strong>
           </div>
         </>
       )}

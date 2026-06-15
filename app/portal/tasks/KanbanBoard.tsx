@@ -144,7 +144,7 @@ export function KanbanBoard({
                   )}
                   {c.progress && (
                     <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>
-                      Project · {c.progress.done}/{c.progress.total}
+                      To-dos · {c.progress.done}/{c.progress.total}
                     </span>
                   )}
                   <TaskScheduleChips

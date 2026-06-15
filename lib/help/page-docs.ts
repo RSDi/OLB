@@ -39,12 +39,11 @@ Look for the **ⓘ** in the top-right corner of any page for help like this.`,
     body: `Everything being worked on around the church lives here.
 
 - Switch between a **Board** (a Kanban laid out in Open / In Progress / Done columns — drag a card to move it, if you're on the building committee) and a **List** view with the toggle up top. Board is the default.
-- A **task** is a single to-do (a repair, a setup, a follow-up). Add **sub-tasks** to any task to break it into steps — a task with sub-tasks simply *is* a **project**, with a progress bar showing how much is done.
+- A **task** is one thing to do (a repair, a setup, a follow-up). Add **to-dos** to any task to break it into steps — a task with to-dos gets a progress bar showing how much is done.
 - At the top of a task, colored pills show its **category** (e.g. Maintenance), **priority** (Low → Emergency), **status** (Open / In Progress / Done / Cancelled), and who it's **assigned to**. Building-committee members tap a pill to change it.
 - On the right, **When** schedules a task (Active now, a future date, or Someday) and **Deadline** sets a hard due date — overdue ones turn red.
-- Open a task to read the details, add **sub-tasks**, add a **comment**, or record a quick **voice note** that's transcribed for you.
-- Recorded a voice note? Its action items can be turned into sub-tasks in one click.
-- The **Projects** button up top filters to just the tasks that have sub-tasks.
+- Open a task to read the details, add **to-dos**, add a **comment**, or record a quick **voice note** that's transcribed for you.
+- Recorded a voice note? Its action items can be turned into to-dos in one click.
 - The building committee assigns and reviews tasks; anyone can comment on their own.`,
   },
 

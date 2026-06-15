@@ -616,11 +616,11 @@ export default async function TicketDetailPage({
             <RequestDetailsCard d={ticket.details!} />
           )}
 
-          {/* Sub-tasks: this task is a "project" once it has any. */}
+          {/* To-Dos: the child tasks that break this one into steps. */}
           {(subtasks.length > 0 || canManageSubtasks) && (
             <div className="rsd-card" style={{ gap: 12 }}>
               <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
-                Sub-tasks
+                To-Dos
                 {subtasks.length > 0 && (
                   <span style={{ color: "var(--gw-fg-muted)", fontWeight: 600 }}> · {doneCount}/{subtasks.length} done</span>
                 )}
@@ -646,7 +646,7 @@ export default async function TicketDetailPage({
               ) : (
                 canManageSubtasks && (
                   <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
-                    Break this into smaller pieces — add a sub-task and it becomes a little project.
+                    Break this into smaller pieces — add a to-do or two.
                   </div>
                 )
               )}
