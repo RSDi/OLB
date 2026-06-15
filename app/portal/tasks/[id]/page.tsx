@@ -494,12 +494,26 @@ export default async function TicketDetailPage({
                   {ticket.category.name}
                 </span>
               )}
-              {ticket.priority && (
-                <span className={`rsd-chip ${ticket.priority.chip_class}`}>
-                  {ticket.priority.label}
-                </span>
+              {/* Priority / Status / Assigned-to: editable oval pills for staff
+                  (no labels — the info panel explains them), read-only chips
+                  otherwise. These are the single home for these fields now. */}
+              {staff ? (
+                <>
+                  <PrioritySelect ticketId={ticket.id} current={ticket.priority?.id ?? ""} priorities={priorityOptions} />
+                  <StatusSelect ticketId={ticket.id} current={ticket.status} />
+                  <AssignSelect ticketId={ticket.id} current={ticket.assigned_to} staff={staffList} />
+                </>
+              ) : (
+                <>
+                  {ticket.priority && (
+                    <span className={`rsd-chip ${ticket.priority.chip_class}`}>{ticket.priority.label}</span>
+                  )}
+                  {statusChip(ticket.status)}
+                  {ticket.assignee && (
+                    <span className="rsd-chip rsd-chip-mute">{memberDisplayName(ticket.assignee)}</span>
+                  )}
+                </>
               )}
-              {statusChip(ticket.status)}
               {reviewChip(ticket)}
               <TaskScheduleChips
                 startOn={ticket.start_on}
@@ -712,39 +726,13 @@ export default async function TicketDetailPage({
             <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
               Details
             </h3>
-            <Field label="Area" value={ticket.area?.name ?? "—"} />
-            <Field
-              label="Priority"
-              value={
-                staff ? (
-                  <PrioritySelect ticketId={ticket.id} current={ticket.priority?.id ?? ""} priorities={priorityOptions} />
-                ) : ticket.priority ? (
-                  <span className={`rsd-chip ${ticket.priority.chip_class}`}>{ticket.priority.label}</span>
-                ) : (
-                  "—"
-                )
-              }
-            />
-            <Field
-              label="Status"
-              value={staff ? <StatusSelect ticketId={ticket.id} current={ticket.status} /> : statusChip(ticket.status)}
-            />
+            {/* Category, Priority, Status, Assigned-to, and Area now live as
+                pills at the top of the task — Details keeps just the timestamps
+                and the delete action. */}
             <Field label="Created" value={formatDateTime(ticket.created_at)} />
             {ticket.updated_at !== ticket.created_at && (
               <Field label="Updated" value={formatDateTime(ticket.updated_at)} />
             )}
-            <Field
-              label="Assigned to"
-              value={
-                staff ? (
-                  <AssignSelect ticketId={ticket.id} current={ticket.assigned_to} staff={staffList} />
-                ) : ticket.assignee ? (
-                  memberDisplayName(ticket.assignee)
-                ) : (
-                  <span style={{ color: "var(--gw-fg-muted)" }}>Unassigned</span>
-                )
-              }
-            />
             {superAdmin && (
               <div style={{ paddingTop: 6, borderTop: "1px solid var(--gw-border)" }}>
                 <DeleteButton ticketId={ticket.id} childCount={subtasks.length} />

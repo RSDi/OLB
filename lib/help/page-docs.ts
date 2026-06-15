@@ -39,7 +39,8 @@ Look for the **ⓘ** in the top-right corner of any page for help like this.`,
     body: `Everything being worked on around the church lives here.
 
 - A **task** is a single to-do (a repair, a setup, a follow-up). Add **sub-tasks** to any task to break it into steps — a task with sub-tasks simply *is* a **project**, with a progress bar showing how much is done.
-- Each task shows its status (Open, In Progress, Done) and who it's assigned to.
+- At the top of a task, colored pills show its **category** (e.g. Maintenance), **priority** (Low → Emergency), **status** (Open / In Progress / Done / Cancelled), and who it's **assigned to**. Building-committee members tap a pill to change it.
+- On the right, **When** schedules a task (Active now, a future date, or Someday) and **Deadline** sets a hard due date — overdue ones turn red.
 - Open a task to read the details, add **sub-tasks**, add a **comment**, or record a quick **voice note** that's transcribed for you.
 - Recorded a voice note? Its action items can be turned into sub-tasks in one click.
 - The **Projects** button up top filters to just the tasks that have sub-tasks.
