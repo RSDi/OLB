@@ -19,10 +19,12 @@ import {
   DeadlineControl,
 } from "./Actions";
 import { TaskScheduleChips } from "../QueueRow";
+import { SubtaskRow } from "./SubtaskRow";
 import { churchToday } from "../../../../lib/dates/today";
 import { CommentThread, type ThreadComment } from "./CommentThread";
 import {
   loadRecordingsForComments,
+  loadSubtaskRecordingLinks,
   loadThingsEnabled,
   loadAssignableMembers,
   type AssignableMember,
@@ -184,6 +186,12 @@ export default async function TicketDetailPage({
     .order("created_at", { ascending: true });
   const subtasks = (childRows as unknown as Subtask[]) ?? [];
   const doneCount = subtasks.filter((s) => s.status === "done").length;
+  // For sub-tasks created from a recorded note: the source audio + moment, so
+  // the row can offer "play from this point".
+  const subtaskRecordingLinks =
+    subtasks.length > 0
+      ? await loadSubtaskRecordingLinks(subtasks.map((s) => s.id))
+      : new Map<string, { audioUrl: string | null; transcriptMs: number | null }>();
   // Only a top-level task can hold sub-tasks (one level). Members manage their
   // own; staff manage any.
   const canManageSubtasks = ticket.parent_id === null && (staff || ticket.submitted_by === user.id);
@@ -622,51 +630,16 @@ export default async function TicketDetailPage({
                   <ProgressBar done={doneCount} total={subtasks.length} />
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     {subtasks.map((s) => (
-                      <Link
+                      <SubtaskRow
                         key={s.id}
-                        href={`/portal/tasks/${s.id}`}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: "9px 0",
-                          borderBottom: "1px solid var(--gw-border)",
-                          textDecoration: "none",
-                          color: "inherit",
-                        }}
-                      >
-                        <span style={{ flexShrink: 0, display: "inline-flex" }}>{subtaskStatusDot(s.status)}</span>
-                        <span
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            fontSize: 13.5,
-                            fontWeight: 600,
-                            color: "var(--gw-fg)",
-                            textDecoration: s.status === "done" ? "line-through" : "none",
-                            opacity: s.status === "done" ? 0.55 : 1,
-                          }}
-                        >
-                          {s.description.split("\n")[0]}
-                        </span>
-                        <TaskScheduleChips
-                          startOn={s.start_on}
-                          dueOn={s.due_on}
-                          someday={false}
-                          status={s.status}
-                          today={today}
-                        />
-                        {s.assignee && (
-                          <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, flexShrink: 0 }}>
-                            {memberDisplayName(s.assignee)}
-                          </span>
-                        )}
-                        {s.priority && (
-                          <span className={`rsd-chip ${s.priority.chip_class}`} style={{ fontSize: 10, flexShrink: 0 }}>
-                            {s.priority.label}
-                          </span>
-                        )}
-                      </Link>
+                        subtask={s}
+                        today={today}
+                        canManage={staff}
+                        canEdit={canManageSubtasks}
+                        staffList={staffList.map((m) => ({ id: m.id, full_name: m.full_name, nickname: m.nickname, email: m.email }))}
+                        thingsEnabled={thingsEnabled}
+                        recordingLink={subtaskRecordingLinks.get(s.id) ?? null}
+                      />
                     ))}
                   </div>
                 </>
@@ -880,23 +853,6 @@ function ProgressBar({ done, total }: { done: number; total: number }) {
       </div>
       <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", flexShrink: 0 }}>{pct}%</span>
     </div>
-  );
-}
-
-function subtaskStatusDot(s: Subtask["status"]) {
-  if (s === "done") return <Icons.CheckCircle width={16} height={16} style={{ color: "var(--rsd-accent)" }} />;
-  if (s === "cancelled")
-    return <span style={{ display: "inline-block", width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--gw-border)", opacity: 0.5 }} />;
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        width: 14,
-        height: 14,
-        borderRadius: "50%",
-        border: `2px solid ${s === "in_progress" ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-      }}
-    />
   );
 }
 

@@ -596,6 +596,36 @@ export async function setTaskDeadline(
   return { success: true };
 }
 
+// Rename a task — sets the title (the first line of the description), preserving
+// any body lines below it (e.g. the "Owner:/Helping:" lines on a sub-task made
+// from a recording). Staff or the task's owner.
+export async function renameTask(taskId: string, title: string): Promise<ActionResult> {
+  const trimmed = title.trim();
+  if (!trimmed) return { error: "Title can't be empty." };
+  const gate = await gateTaskWrite(taskId);
+  if ("error" in gate) return { error: gate.error };
+
+  const { data: row } = await gate.admin
+    .from("maintenance_requests")
+    .select("description")
+    .eq("id", taskId)
+    .maybeSingle();
+  const current = (row as { description: string | null } | null)?.description ?? "";
+  const nl = current.indexOf("\n");
+  const rest = nl >= 0 ? current.slice(nl) : "";
+
+  const { error } = await gate.admin
+    .from("maintenance_requests")
+    .update({ description: trimmed + rest })
+    .eq("id", taskId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${taskId}`);
+  if (gate.parentId) revalidatePath(`/portal/tasks/${gate.parentId}`);
+  return { success: true };
+}
+
 // ─── Member requests (friendly intake wizards) ───────────────────
 // One action for every intake track. Reuses the task table: use-a-space,
 // event, class, question, and equipment *purchases* land as

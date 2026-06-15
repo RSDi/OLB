@@ -14,7 +14,7 @@ import {
   editActionItemText,
   setMyThingsEnabled,
 } from "../../../../lib/reelnotes/actions";
-import { deleteTicketComment } from "../../../../lib/maintenance/actions";
+import { deleteTicketComment, addSubtasksFromActionItems } from "../../../../lib/maintenance/actions";
 import { memberDisplayName } from "../../../../lib/members/display";
 
 export interface ThreadComment {
@@ -427,7 +427,16 @@ function RecordedNote({
               recordingTitle={recording.title}
               members={members}
               thingsEnabled={thingsEnabled}
-              destinationIds={["things"]}
+              destinationIds={canPromoteSubtasks ? ["things", "subtask"] : ["things"]}
+              onConvertToSubtask={
+                canPromoteSubtasks
+                  ? (act) =>
+                      void addSubtasksFromActionItems(ticketId, act.recording_id, [act.id]).then((r) => {
+                        if (r.error) window.alert(r.error);
+                        else router.refresh();
+                      })
+                  : undefined
+              }
               onToggle={() => void toggleActionItemDone(a.id, ticketId, !a.done).then(() => router.refresh())}
               onRoute={target => void setActionItemRouted(a.id, ticketId, target).then(() => router.refresh())}
               onEdit={text => void editActionItemText(a.id, ticketId, text).then(() => router.refresh())}

@@ -227,6 +227,43 @@ export async function loadReelNotesSourceLinks(
   return links;
 }
 
+// For sub-tasks that were created from a recorded-note action item: resolve the
+// source recording's audio + the moment (transcript_ms) so the sub-task row can
+// offer a "play from this point" button. Keyed by the sub-task id (action item's
+// task_id). Tolerant — returns an empty map on any error / pre-link schema.
+export async function loadSubtaskRecordingLinks(
+  taskIds: string[],
+): Promise<Map<string, { audioUrl: string | null; transcriptMs: number | null }>> {
+  const ids = Array.from(new Set(taskIds.filter(Boolean)));
+  if (ids.length === 0) return new Map();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reel_notes_action_items")
+    .select("task_id, transcript_ms, recording:reel_notes_recordings(audio_blob_url)")
+    .in("task_id", ids);
+  if (error) {
+    console.error("loadSubtaskRecordingLinks failed", error);
+    return new Map();
+  }
+
+  const admin = createAdminClient();
+  const rows = (data ?? []) as unknown as {
+    task_id: string;
+    transcript_ms: number | null;
+    recording: { audio_blob_url: string | null } | null;
+  }[];
+  const map = new Map<string, { audioUrl: string | null; transcriptMs: number | null }>();
+  await Promise.all(
+    rows.map(async (r) => {
+      const marker = r.recording?.audio_blob_url ?? null;
+      const audioUrl = marker && isStorageAudio(marker) ? await signAudioUrl(admin, marker) : marker;
+      map.set(r.task_id, { audioUrl, transcriptMs: r.transcript_ms });
+    }),
+  );
+  return map;
+}
+
 // Whether the current viewer has opted into the device-only "push to Things"
 // affordance. Defaults false (and tolerates a pre-0064 schema).
 export async function loadThingsEnabled(): Promise<boolean> {

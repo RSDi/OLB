@@ -40,6 +40,9 @@ export interface ReelNoteSourceLink {
 
 const INTEGRATIONS = [
   { id: "things", label: "Things", icon: "CheckCircle" as const },
+  // Host-provided: convert this item into a sub-task of the linked task. Only
+  // shown when the host wires onConvertToSubtask (see ActionRow).
+  { id: "subtask", label: "Sub-task", icon: "CheckCircle" as const },
   { id: "maintenance", label: "Task", icon: "Wrench" as const },
   { id: "email", label: "Email follow-up", icon: "Mail" as const },
   { id: "hubspot", label: "HubSpot Task", icon: "Briefcase" as const },
@@ -1641,6 +1644,7 @@ export function ActionRow({
   onSetOwner,
   onToggleSupporter,
   onSeekToMs,
+  onConvertToSubtask,
   focused,
   thingsEnabled = true,
   destinationIds,
@@ -1654,6 +1658,9 @@ export function ActionRow({
   onSetOwner: (memberId: string | null) => void;
   onToggleSupporter: (memberId: string) => void;
   onSeekToMs: (ms: number) => void;
+  // Host-provided: convert this item into a sub-task of the linked entity. When
+  // omitted, the "Sub-task" destination is hidden.
+  onConvertToSubtask?: (action: ReelNotesActionItem) => void;
   focused?: boolean;
   thingsEnabled?: boolean;
   // Limit the "Send to" menu to these integration ids (e.g. ["things"]).
@@ -1699,7 +1706,12 @@ export function ActionRow({
   // "Send to" destinations, scoped by destinationIds (if given) and gated so
   // Things only appears when the viewer has opted in.
   const visibleDestinations = INTEGRATIONS.filter(
-    i => (!destinationIds || destinationIds.includes(i.id)) && (thingsEnabled || i.id !== "things"),
+    i =>
+      (!destinationIds || destinationIds.includes(i.id)) &&
+      (thingsEnabled || i.id !== "things") &&
+      // "Sub-task" only when the host wired conversion and this item hasn't
+      // already become one.
+      (i.id !== "subtask" || (!!onConvertToSubtask && !action.task_id)),
   );
 
   function startEdit() {
@@ -2026,6 +2038,11 @@ export function ActionRow({
                         `${action.text}\n\nFrom ReelNotes recording: "${recordingTitle ?? "Untitled recording"}"\n${reelNotesUrl(action.recording_id, action.id)}`
                       )}`
                     );
+                  else if (i.id === "subtask") {
+                    onConvertToSubtask?.(action);
+                    setOpen(false);
+                    return;
+                  }
                   onRoute(i.label);
                   setOpen(false);
                 }}
