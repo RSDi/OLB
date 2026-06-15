@@ -4,17 +4,18 @@ import { Icons } from "../../components/icons";
 import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
-import { QueueRow } from "./QueueRow";
+import { QueueRow, TaskScheduleChips } from "./QueueRow";
 import { memberDisplayName } from "../../../lib/members/display";
+import { churchToday, isOverdue } from "../../../lib/dates/today";
 
-type StatusFilter = "all" | "open" | "in_progress" | "done" | "cancelled";
-
-const STATUS_TABS: { key: StatusFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "open", label: "Open" },
-  { key: "in_progress", label: "In Progress" },
+// "Things"-style views: the queue defaults to Active work and tucks away
+// scheduled-for-later (Upcoming), parked (Someday), and finished (Done) tasks.
+type Bucket = "active" | "upcoming" | "someday" | "done";
+const BUCKET_TABS: { key: Bucket; label: string }[] = [
+  { key: "active", label: "Active" },
+  { key: "upcoming", label: "Upcoming" },
+  { key: "someday", label: "Someday" },
   { key: "done", label: "Done" },
-  { key: "cancelled", label: "Cancelled" },
 ];
 
 interface TicketRow {
@@ -24,8 +25,12 @@ interface TicketRow {
   review_status: "pending_review" | "approved" | "declined";
   reviewed_at: string | null;
   created_at: string;
+  updated_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
+  start_on: string | null;
+  due_on: string | null;
+  someday: boolean;
   category: { name: string; chip_class: string } | null;
   area: { name: string } | null;
   priority: { id: string; label: string; chip_class: string; severity: number } | null;
@@ -44,16 +49,57 @@ interface StaffMember {
   email: string;
 }
 
+// Which view a task belongs in, from its status + schedule. Someday wins over a
+// stray start date; done/cancelled always land in Done.
+function bucketOf(
+  t: { status: string; someday: boolean; start_on: string | null },
+  today: string,
+): Bucket {
+  if (t.status === "done" || t.status === "cancelled") return "done";
+  if (t.someday) return "someday";
+  if (t.start_on && t.start_on > today) return "upcoming";
+  return "active";
+}
+
+function sortForBucket(rows: TicketRow[], bucket: Bucket, today: string): TicketRow[] {
+  const r = [...rows];
+  if (bucket === "active") {
+    // Overdue first, then soonest deadline, then priority, then newest.
+    r.sort((a, b) => {
+      const ao = isOverdue(a.due_on, today) ? 0 : 1;
+      const bo = isOverdue(b.due_on, today) ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      if ((a.due_on ?? "") !== (b.due_on ?? "")) {
+        if (!a.due_on) return 1;
+        if (!b.due_on) return -1;
+        return a.due_on < b.due_on ? -1 : 1;
+      }
+      const as = a.priority?.severity ?? 0;
+      const bs = b.priority?.severity ?? 0;
+      if (as !== bs) return bs - as;
+      return a.created_at < b.created_at ? 1 : -1;
+    });
+  } else if (bucket === "upcoming") {
+    r.sort((a, b) => ((a.start_on ?? "") < (b.start_on ?? "") ? -1 : (a.start_on ?? "") > (b.start_on ?? "") ? 1 : 0));
+  } else if (bucket === "done") {
+    r.sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0));
+  } else {
+    r.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+  }
+  return r;
+}
+
 export default async function PortalMaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; category?: string; view?: string }>;
+  searchParams: Promise<{ bucket?: string; category?: string; view?: string }>;
 }) {
   const params = await searchParams;
-  const status: StatusFilter = isValidStatus(params.status) ? params.status : "all";
+  const bucket: Bucket = isValidBucket(params.bucket) ? params.bucket : "active";
   const categoryFilter = params.category ?? null;
   // "projects" view = only tasks that have sub-tasks (i.e. behave like projects).
   const view: "all" | "projects" = params.view === "projects" ? "projects" : "all";
+  const today = churchToday();
 
   const supabase = await createClient();
   const {
@@ -71,10 +117,12 @@ export default async function PortalMaintenancePage({
   const superAdmin = isSuperAdmin(me);
 
   // RLS already filters: staff sees all non-deleted; members see own only.
+  // We fetch every top-level task and bucket/sort in JS (so "today" uses the
+  // church timezone, not the server's UTC day).
   let query = supabase
     .from("maintenance_requests")
     .select(
-      `id, description, status, review_status, reviewed_at, created_at, submitted_by, assigned_to,
+      `id, description, status, review_status, reviewed_at, created_at, updated_at, submitted_by, assigned_to, start_on, due_on, someday,
        category:task_categories(name, chip_class),
        area:areas(name),
        priority:priorities(id, label, chip_class, severity)`
@@ -90,10 +138,6 @@ export default async function PortalMaintenancePage({
   // shows in their list instead of the request silently vanishing.
   if (staff) {
     query = query.eq("review_status", "approved");
-  }
-
-  if (status !== "all") {
-    query = query.eq("status", status);
   }
   if (categoryFilter) {
     query = query.eq("category_id", categoryFilter);
@@ -116,8 +160,11 @@ export default async function PortalMaintenancePage({
     if (r.status === "done") cur.done += 1;
     progressByParent.set(r.parent_id, cur);
   }
-  // Projects view shows only tasks that actually have sub-tasks.
-  const tickets = view === "projects" ? allTopLevel.filter((t) => progressByParent.has(t.id)) : allTopLevel;
+
+  // Bucket + (optionally) Projects-filter + sort the visible tasks.
+  const inBucket = allTopLevel.filter((t) => bucketOf(t, today) === bucket);
+  const projectFiltered = view === "projects" ? inBucket.filter((t) => progressByParent.has(t.id)) : inBucket;
+  const tickets = sortForBucket(projectFiltered, bucket, today);
 
   // Resolve submitter names. RLS lets staff see all members and lets a member
   // see their own row, so this just works without elevated privileges.
@@ -135,16 +182,21 @@ export default async function PortalMaintenancePage({
     }
   }
 
-  // Counts for stat chips (independent of the current status filter).
-  const { data: allForCounts } = await supabase
+  // Bucket counts for the tabs + stat cards (independent of the active tab and
+  // the category filter). Same visibility as the main query.
+  let countsQuery = supabase
     .from("maintenance_requests")
-    .select("status, priority:priorities(severity)")
+    .select("status, start_on, due_on, someday")
     .is("deleted_at", null)
-    .is("parent_id", null)
-    .eq("review_status", "approved");
-  const counts = countByStatus(
-    (allForCounts as unknown as { status: TicketRow["status"]; priority: { severity: number } | null }[]) ?? []
-  );
+    .is("parent_id", null);
+  if (staff) countsQuery = countsQuery.eq("review_status", "approved");
+  const { data: countRowsRaw } = await countsQuery;
+  const counts = { active: 0, upcoming: 0, someday: 0, done: 0, overdue: 0 };
+  for (const r of (countRowsRaw as { status: string; start_on: string | null; due_on: string | null; someday: boolean }[] | null) ?? []) {
+    const b = bucketOf(r, today);
+    counts[b] += 1;
+    if (b === "active" && isOverdue(r.due_on, today)) counts.overdue += 1;
+  }
 
   // Lookups for the inline row selects. Members never see the staff list (no
   // assignment dropdown) so we skip that fetch for them.
@@ -163,10 +215,10 @@ export default async function PortalMaintenancePage({
     .order("name", { ascending: true });
   const categories = (categoriesRaw as { id: string; name: string; chip_class: string }[]) ?? [];
 
-  // Build a queue URL preserving both the status and category filters.
-  const tasksHref = (s: string, c: string | null, v: "all" | "projects" = view) => {
+  // Build a queue URL preserving the active bucket, category, and Projects view.
+  const tasksHref = (b: Bucket, c: string | null, v: "all" | "projects" = view) => {
     const p = new URLSearchParams();
-    if (s && s !== "all") p.set("status", s);
+    if (b && b !== "active") p.set("bucket", b);
     if (c) p.set("category", c);
     if (v === "projects") p.set("view", "projects");
     const q = p.toString();
@@ -194,6 +246,9 @@ export default async function PortalMaintenancePage({
     staffList = staffRows ?? [];
   }
 
+  const bucketLabel = BUCKET_TABS.find((t) => t.key === bucket)?.label ?? "Active";
+  const empty = emptyCopy(bucket, view, staff);
+
   return (
     <>
       <TasksSectionNav active="tasks" isStaff={staff} />
@@ -208,7 +263,7 @@ export default async function PortalMaintenancePage({
         }}
       >
         <Link
-          href={tasksHref(status, categoryFilter, view === "projects" ? "all" : "projects")}
+          href={tasksHref(bucket, categoryFilter, view === "projects" ? "all" : "projects")}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -248,17 +303,18 @@ export default async function PortalMaintenancePage({
 
       {/* Stats */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <StatCard label="Open" value={counts.open} chip="rsd-chip-warn" />
-        <StatCard label="In Progress" value={counts.in_progress} chip="rsd-chip-accent" />
-        <StatCard label="Done" value={counts.done} chip="rsd-chip-success" />
-        <StatCard label="High Priority" value={counts.high_priority} chip="rsd-chip-error" />
+        <StatCard label="Active" value={counts.active} chip="rsd-chip-accent" />
+        <StatCard label="Upcoming" value={counts.upcoming} chip="rsd-chip-mute" />
+        <StatCard label="Someday" value={counts.someday} chip="rsd-chip-mute" />
+        <StatCard label="Overdue" value={counts.overdue} chip="rsd-chip-error" />
       </div>
 
-      {/* Status tabs */}
+      {/* View tabs */}
       <div style={{ display: "flex", gap: 2, flexWrap: "wrap", alignItems: "center" }}>
-        {STATUS_TABS.map((t) => {
+        {BUCKET_TABS.map((t) => {
           const href = tasksHref(t.key, categoryFilter);
-          const active = status === t.key;
+          const active = bucket === t.key;
+          const n = counts[t.key];
           return (
             <Link
               key={t.key}
@@ -276,6 +332,9 @@ export default async function PortalMaintenancePage({
               }}
             >
               {t.label}
+              {n > 0 && (
+                <span style={{ color: "var(--gw-fg-muted)", fontWeight: 600 }}> {n}</span>
+              )}
             </Link>
           );
         })}
@@ -311,11 +370,11 @@ export default async function PortalMaintenancePage({
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginRight: 2 }}>
             Category
           </span>
-          <Link href={tasksHref(status, null)} style={filterChipStyle(!categoryFilter)}>
+          <Link href={tasksHref(bucket, null)} style={filterChipStyle(!categoryFilter)}>
             All
           </Link>
           {categories.map((c) => (
-            <Link key={c.id} href={tasksHref(status, c.id)} style={filterChipStyle(categoryFilter === c.id)}>
+            <Link key={c.id} href={tasksHref(bucket, c.id)} style={filterChipStyle(categoryFilter === c.id)}>
               {c.name}
             </Link>
           ))}
@@ -328,25 +387,15 @@ export default async function PortalMaintenancePage({
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
             {view === "projects"
               ? `${tickets.length} ${tickets.length === 1 ? "project" : "projects"}`
-              : `${tickets.length} ${tickets.length === 1 ? "request" : "requests"}`}
+              : `${tickets.length} ${bucketLabel.toLowerCase()}`}
           </h3>
         </div>
         {tickets.length === 0 ? (
           <div style={{ padding: "48px 24px", textAlign: "center" }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gw-fg)", marginBottom: 6 }}>
-              {view === "projects"
-                ? "No projects yet"
-                : status === "all"
-                  ? "No requests yet"
-                  : `No ${labelFor(status).toLowerCase()} requests`}
+              {empty.title}
             </div>
-            <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
-              {view === "projects"
-                ? "Open any task and add a sub-task — it becomes a project."
-                : staff
-                  ? "Submitted requests will appear here."
-                  : "Submit one with + New request above."}
-            </div>
+            <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>{empty.body}</div>
           </div>
         ) : (
           <>
@@ -378,6 +427,13 @@ export default async function PortalMaintenancePage({
                         Project · {progressByParent.get(t.id)!.done}/{progressByParent.get(t.id)!.total}
                       </span>
                     )}
+                    <TaskScheduleChips
+                      startOn={t.start_on}
+                      dueOn={t.due_on}
+                      someday={t.someday}
+                      status={t.status}
+                      today={today}
+                    />
                     {decisionChip(t)}
                     {t.priority && (
                       <span className={`rsd-chip ${t.priority.chip_class}`}>{t.priority.label}</span>
@@ -416,6 +472,7 @@ export default async function PortalMaintenancePage({
                     priorities={priorities}
                     staffList={staffList}
                     progress={progressByParent.get(t.id) ?? null}
+                    today={today}
                   />
                 ))}
               </tbody>
@@ -441,25 +498,27 @@ function StatCard({ label, value, chip }: { label: string; value: number; chip: 
   );
 }
 
-function isValidStatus(s: string | undefined): s is StatusFilter {
-  return s === "open" || s === "in_progress" || s === "done" || s === "cancelled" || s === "all";
+function isValidBucket(s: string | undefined): s is Bucket {
+  return s === "active" || s === "upcoming" || s === "someday" || s === "done";
 }
 
-function labelFor(s: StatusFilter): string {
-  return STATUS_TABS.find((t) => t.key === s)?.label ?? "";
-}
-
-function countByStatus(
-  rows: { status: TicketRow["status"]; priority: { severity: number } | null }[]
-) {
-  const out = { open: 0, in_progress: 0, done: 0, cancelled: 0, high_priority: 0 };
-  for (const r of rows) {
-    out[r.status] = (out[r.status] ?? 0) + 1;
-    if ((r.priority?.severity ?? 0) >= 30 && (r.status === "open" || r.status === "in_progress")) {
-      out.high_priority += 1;
-    }
+function emptyCopy(bucket: Bucket, view: "all" | "projects", staff: boolean): { title: string; body: string } {
+  if (view === "projects") {
+    return { title: "No projects here", body: "Open any task and add a sub-task — it becomes a project." };
   }
-  return out;
+  switch (bucket) {
+    case "active":
+      return {
+        title: "Nothing active right now",
+        body: staff ? "Scheduled and someday items are tucked away in the other tabs." : "Submit one with + New task above.",
+      };
+    case "upcoming":
+      return { title: "Nothing scheduled for later", body: "Give a task a start date and it'll wait here until then." };
+    case "someday":
+      return { title: "Nothing parked for someday", body: "Set a task to Someday to park it out of the active list." };
+    case "done":
+      return { title: "Nothing completed yet", body: "Finished tasks land here." };
+  }
 }
 
 function formatDate(iso: string): string {

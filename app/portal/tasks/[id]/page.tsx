@@ -14,7 +14,11 @@ import {
   DeleteButton,
   VotePanel,
   AddSubtask,
+  WhenControl,
+  DeadlineControl,
 } from "./Actions";
+import { TaskScheduleChips } from "../QueueRow";
+import { churchToday } from "../../../../lib/dates/today";
 import { CommentThread, type ThreadComment } from "./CommentThread";
 import {
   loadRecordingsForComments,
@@ -84,6 +88,9 @@ interface Ticket {
   assigned_to: string | null;
   event_id: string | null;
   parent_id: string | null;
+  start_on: string | null;
+  due_on: string | null;
+  someday: boolean;
   category: { name: string; chip_class: string } | null;
   area: { id: string; name: string } | null;
   priority: { id: string; label: string; chip_class: string } | null;
@@ -96,6 +103,8 @@ interface Subtask {
   id: string;
   description: string;
   status: "open" | "in_progress" | "done" | "cancelled";
+  start_on: string | null;
+  due_on: string | null;
   priority: { label: string; chip_class: string } | null;
   assignee: { id: string; full_name: string | null; nickname: string | null; email: string } | null;
 }
@@ -134,7 +143,7 @@ export default async function TicketDetailPage({
   const { data: ticketRaw } = await supabase
     .from("maintenance_requests")
     .select(
-      `id, description, status, review_status, decline_reason, reviewed_at, details, cost, created_at, updated_at, submitted_by, assigned_to, event_id, parent_id,
+      `id, description, status, review_status, decline_reason, reviewed_at, details, cost, created_at, updated_at, submitted_by, assigned_to, event_id, parent_id, start_on, due_on, someday,
        category:task_categories(name, chip_class),
        area:areas(id, name),
        priority:priorities(id, label, chip_class),
@@ -165,7 +174,7 @@ export default async function TicketDetailPage({
   const { data: childRows } = await supabase
     .from("maintenance_requests")
     .select(
-      `id, description, status,
+      `id, description, status, start_on, due_on,
        priority:priorities(label, chip_class),
        assignee:members!assigned_to(id, full_name, nickname, email)`
     )
@@ -177,6 +186,10 @@ export default async function TicketDetailPage({
   // Only a top-level task can hold sub-tasks (one level). Members manage their
   // own; staff manage any.
   const canManageSubtasks = ticket.parent_id === null && (staff || ticket.submitted_by === user.id);
+
+  // Scheduling (When / Someday / Deadline): staff or the owner, once approved.
+  const today = churchToday();
+  const canSchedule = (staff || ticket.submitted_by === user.id) && ticket.review_status === "approved";
 
   // Building-shutdown task (Phase 2b): if this task is linked to an event with
   // a shutdown procedure, surface the run-wizard + opt-out so the assignee (not
@@ -480,6 +493,13 @@ export default async function TicketDetailPage({
               )}
               {statusChip(ticket.status)}
               {reviewChip(ticket)}
+              <TaskScheduleChips
+                startOn={ticket.start_on}
+                dueOn={ticket.due_on}
+                someday={ticket.someday}
+                status={ticket.status}
+                today={today}
+              />
               {ticket.area && <Pill>{ticket.area.name}</Pill>}
               {parentTask && (
                 <Link
@@ -607,6 +627,13 @@ export default async function TicketDetailPage({
                         >
                           {s.description.split("\n")[0]}
                         </span>
+                        <TaskScheduleChips
+                          startOn={s.start_on}
+                          dueOn={s.due_on}
+                          someday={false}
+                          status={s.status}
+                          today={today}
+                        />
                         {s.assignee && (
                           <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, flexShrink: 0 }}>
                             {memberDisplayName(s.assignee)}
@@ -664,6 +691,15 @@ export default async function TicketDetailPage({
 
         {/* Side column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 20 }}>
+          {canSchedule && (
+            <div className="rsd-card" style={{ gap: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+                Schedule
+              </h3>
+              <WhenControl taskId={ticket.id} startOn={ticket.start_on} someday={ticket.someday} />
+              <DeadlineControl taskId={ticket.id} dueOn={ticket.due_on} />
+            </div>
+          )}
           <div className="rsd-card" style={{ gap: 14 }}>
             <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
               Details

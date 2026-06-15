@@ -8,6 +8,7 @@ import {
   type TicketStatus,
 } from "../../../lib/maintenance/actions";
 import { memberDisplayName } from "../../../lib/members/display";
+import { formatShortDate } from "../../../lib/dates/today";
 
 interface PriorityOption {
   id: string;
@@ -37,9 +38,50 @@ interface TicketRow {
   created_at: string;
   submitted_by: string | null;
   assigned_to: string | null;
+  start_on: string | null;
+  due_on: string | null;
+  someday: boolean;
   category: { name: string; chip_class: string } | null;
   area: { name: string } | null;
   priority: { id: string; label: string; chip_class: string } | null;
+}
+
+// Scheduling chips for a task row/card: deadline (with overdue styling), a
+// future "Starts" date, and a "Someday" pill. Renders nothing for done tasks or
+// when there's nothing to show. `today` is the church-local date (computed
+// server-side and passed in so it doesn't drift to the browser's timezone).
+export function TaskScheduleChips({
+  startOn,
+  dueOn,
+  someday,
+  status,
+  today,
+}: {
+  startOn: string | null;
+  dueOn: string | null;
+  someday: boolean;
+  status: TicketStatus;
+  today: string;
+}) {
+  if (status === "done" || status === "cancelled") return null;
+  const overdue = !!dueOn && dueOn < today;
+  const future = !!startOn && startOn > today;
+  return (
+    <>
+      {dueOn && (
+        <span className={`rsd-chip ${overdue ? "rsd-chip-error" : "rsd-chip-warn"}`} style={{ fontSize: 10 }}>
+          {overdue ? "Overdue · " : "Due "}
+          {formatShortDate(dueOn)}
+        </span>
+      )}
+      {future && (
+        <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>
+          Starts {formatShortDate(startOn!)}
+        </span>
+      )}
+      {someday && <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>Someday</span>}
+    </>
+  );
 }
 
 export function QueueRow({
@@ -49,6 +91,7 @@ export function QueueRow({
   priorities,
   staffList,
   progress = null,
+  today,
 }: {
   ticket: TicketRow;
   submitter: Submitter | null;
@@ -57,6 +100,8 @@ export function QueueRow({
   staffList: StaffMember[];
   // Sub-task rollup when this task is a "project" (has children).
   progress?: { done: number; total: number } | null;
+  // Church-local date for overdue/scheduled chips.
+  today: string;
 }) {
   const router = useRouter();
   const [hover, setHover] = useState(false);
@@ -90,6 +135,13 @@ export function QueueRow({
               Project · {progress.done}/{progress.total}
             </span>
           )}
+          <TaskScheduleChips
+            startOn={ticket.start_on}
+            dueOn={ticket.due_on}
+            someday={ticket.someday}
+            status={ticket.status}
+            today={today}
+          />
         </div>
       </td>
       <td>

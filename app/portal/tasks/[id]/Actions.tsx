@@ -2,7 +2,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
-import { Pill, Select, Textarea } from "../../../components/ui";
+import { Pill, Select, Textarea, Input } from "../../../components/ui";
 import {
   changeTicketStatus,
   assignTicket,
@@ -11,6 +11,8 @@ import {
   castRequestVote,
   addSubtasks,
   addSubtasksFromActionItems,
+  setTaskSchedule,
+  setTaskDeadline,
   type TicketStatus,
   type VoteValue,
 } from "../../../../lib/maintenance/actions";
@@ -679,6 +681,136 @@ export function PromoteFromRecording({
           {pending ? "Adding…" : `Add ${chosen.length} sub-task${chosen.length === 1 ? "" : "s"}`}
         </Pill>
       </div>
+    </div>
+  );
+}
+
+// "When" — schedule a task: Active (no date), Scheduled for a day (a "later"
+// item until then), or Someday (parked). Distinct from the deadline.
+export function WhenControl({
+  taskId,
+  startOn,
+  someday,
+}: {
+  taskId: string;
+  startOn: string | null;
+  someday: boolean;
+}) {
+  const router = useRouter();
+  const initialMode: "active" | "scheduled" | "someday" = someday ? "someday" : startOn ? "scheduled" : "active";
+  const [mode, setMode] = useState<"active" | "scheduled" | "someday">(initialMode);
+  const [date, setDate] = useState(startOn ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function save(next: { startOn?: string | null; someday?: boolean }) {
+    setError(null);
+    startTransition(async () => {
+      const r = await setTaskSchedule(taskId, next);
+      if (r.error) {
+        setError(r.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function handleMode(e: React.ChangeEvent<HTMLSelectElement>) {
+    const m = e.target.value as "active" | "scheduled" | "someday";
+    setMode(m);
+    if (m === "active") {
+      setDate("");
+      save({ startOn: null, someday: false });
+    } else if (m === "someday") {
+      setDate("");
+      save({ someday: true });
+    } else if (date) {
+      save({ startOn: date, someday: false });
+    }
+  }
+
+  function handleDate(e: React.ChangeEvent<HTMLInputElement>) {
+    const d = e.target.value;
+    setDate(d);
+    if (d) save({ startOn: d, someday: false });
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <Select
+        label="When"
+        help="When you'll start working on it — separate from the deadline. Someday parks it out of the active list."
+        value={mode}
+        onChange={handleMode}
+        disabled={pending}
+      >
+        <option value="active">Active</option>
+        <option value="scheduled">Scheduled…</option>
+        <option value="someday">Someday</option>
+      </Select>
+      {mode === "scheduled" && (
+        <Input type="date" value={date} onChange={handleDate} disabled={pending} />
+      )}
+      {error && <ErrorLine message={error} />}
+    </div>
+  );
+}
+
+// "Deadline" — a hard due date, shown in red when overdue. Independent of When.
+export function DeadlineControl({ taskId, dueOn }: { taskId: string; dueOn: string | null }) {
+  const router = useRouter();
+  const [date, setDate] = useState(dueOn ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function save(d: string | null) {
+    setError(null);
+    startTransition(async () => {
+      const r = await setTaskDeadline(taskId, d);
+      if (r.error) {
+        setError(r.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <Input
+        type="date"
+        label="Deadline"
+        help="A hard due date — shown in red when overdue. Separate from when you'll start."
+        value={date}
+        onChange={(e) => {
+          setDate(e.target.value);
+          save(e.target.value || null);
+        }}
+        disabled={pending}
+      />
+      {date && (
+        <button
+          type="button"
+          onClick={() => {
+            setDate("");
+            save(null);
+          }}
+          disabled={pending}
+          style={{
+            alignSelf: "flex-start",
+            background: "none",
+            border: "none",
+            padding: 0,
+            color: "var(--gw-fg-muted)",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Clear deadline
+        </button>
+      )}
+      {error && <ErrorLine message={error} />}
     </div>
   );
 }

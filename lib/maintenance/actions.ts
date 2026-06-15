@@ -519,6 +519,83 @@ export async function addSubtasksFromActionItems(
   return { success: true, count };
 }
 
+// ─── Scheduling (Things-style When / Someday / Deadline) ─────────
+// Set a task's "when" (a start date, Someday, or Active=neither) and its
+// deadline. Permission is staff OR the task's owner (submitted_by). Because
+// maintenance_requests has no owner-write RLS policy (only staff/super-admin
+// can UPDATE), we authorize in TypeScript via getViewer() and write with the
+// admin client — the same pattern as deleteTicketComment.
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Resolve "staff or owner" for a task and return the admin client + parent_id
+// (for revalidation), or an error.
+async function gateTaskWrite(taskId: string): Promise<
+  | { error: string }
+  | { admin: ReturnType<typeof createAdminClient>; parentId: string | null }
+> {
+  const viewer = await getViewer();
+  if (!viewer) return { error: "You must be signed in." };
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("maintenance_requests")
+    .select("id, submitted_by, parent_id")
+    .eq("id", taskId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  const row = data as { id: string; submitted_by: string | null; parent_id: string | null } | null;
+  if (!row) return { error: "Task not found." };
+  if (!viewer.isStaff && row.submitted_by !== viewer.userId) {
+    return { error: "You can only schedule your own tasks." };
+  }
+  return { admin, parentId: row.parent_id };
+}
+
+export async function setTaskSchedule(
+  taskId: string,
+  opts: { startOn?: string | null; someday?: boolean },
+): Promise<ActionResult> {
+  if (opts.startOn && !ISO_DATE.test(opts.startOn)) return { error: "Invalid date." };
+  const gate = await gateTaskWrite(taskId);
+  if ("error" in gate) return { error: gate.error };
+
+  // Someday and a start date are mutually exclusive: Someday clears the date; a
+  // date clears Someday; "Active" (neither) clears both.
+  const someday = opts.someday === true;
+  const startOn = someday ? null : (opts.startOn ?? null);
+
+  const { error } = await gate.admin
+    .from("maintenance_requests")
+    .update({ start_on: startOn, someday })
+    .eq("id", taskId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${taskId}`);
+  if (gate.parentId) revalidatePath(`/portal/tasks/${gate.parentId}`);
+  return { success: true };
+}
+
+export async function setTaskDeadline(
+  taskId: string,
+  dueOn: string | null,
+): Promise<ActionResult> {
+  if (dueOn && !ISO_DATE.test(dueOn)) return { error: "Invalid date." };
+  const gate = await gateTaskWrite(taskId);
+  if ("error" in gate) return { error: gate.error };
+
+  const { error } = await gate.admin
+    .from("maintenance_requests")
+    .update({ due_on: dueOn || null })
+    .eq("id", taskId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${taskId}`);
+  if (gate.parentId) revalidatePath(`/portal/tasks/${gate.parentId}`);
+  return { success: true };
+}
+
 // ─── Member requests (friendly intake wizards) ───────────────────
 // One action for every intake track. Reuses the task table: use-a-space,
 // event, class, question, and equipment *purchases* land as
