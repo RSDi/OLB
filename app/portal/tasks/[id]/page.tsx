@@ -661,6 +661,13 @@ export default async function TicketDetailPage({
                 {comments.length} {comments.length === 1 ? "comment" : "comments"}
               </h3>
             </div>
+            {/* Composer sits at the top so Record / Post comment are right under
+                the header, not buried below the whole thread. */}
+            {canComment && (
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--gw-border)" }}>
+                <CommentForm ticketId={ticket.id} enableRecording={staff} />
+              </div>
+            )}
             <CommentThread
               ticketId={ticket.id}
               comments={comments}
@@ -671,16 +678,6 @@ export default async function TicketDetailPage({
               isSuperAdmin={superAdmin}
               canPromoteSubtasks={staff && ticket.parent_id === null}
             />
-            {canComment && (
-              <div
-                style={{
-                  padding: "14px 18px",
-                  borderTop: comments.length > 0 ? "1px solid var(--gw-border)" : "none",
-                }}
-              >
-                <CommentForm ticketId={ticket.id} enableRecording={staff} />
-              </div>
-            )}
           </div>
         </div>
 

@@ -43,6 +43,28 @@ const iconBtn: CSSProperties = {
   flexShrink: 0,
 };
 
+// Accent "▶ m:ss" pill, matching the recorded-note action item's play affordance.
+const playPill: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  fontSize: 10,
+  fontWeight: 700,
+  padding: "3px 9px",
+  borderRadius: 100,
+  background: "transparent",
+  color: "var(--rsd-accent)",
+  border: "1px solid var(--rsd-accent)",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  flexShrink: 0,
+};
+
+function formatMs(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
 export function SubtaskRow({
   subtask,
   today,
@@ -67,8 +89,10 @@ export function SubtaskRow({
   const title = subtask.description.split("\n")[0];
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
+  const [showPlayer, setShowPlayer] = useState(false);
   const [pending, startTransition] = useTransition();
   const done = subtask.status === "done" || subtask.status === "cancelled";
+  const ms = recordingLink?.transcriptMs ?? null;
 
   function toggleDone() {
     if (!canManage) return;
@@ -100,9 +124,10 @@ export function SubtaskRow({
   }
 
   function play() {
+    setShowPlayer(true);
     const el = audioRef.current;
     if (!el) return;
-    if (recordingLink?.transcriptMs != null) el.currentTime = recordingLink.transcriptMs / 1000;
+    if (ms != null) el.currentTime = ms / 1000;
     void el.play().catch(() => {});
   }
 
@@ -116,7 +141,8 @@ export function SubtaskRow({
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--gw-border)" }}>
+    <div style={{ borderBottom: "1px solid var(--gw-border)" }}>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0" }}>
       <button
         type="button"
         onClick={toggleDone}
@@ -183,13 +209,10 @@ export function SubtaskRow({
           )}
           {/* Controls live in the same wrap row as the chips. */}
           {recordingLink?.audioUrl && (
-            <>
-              <button type="button" onClick={play} className="gw-press" aria-label="Play from the recording" style={iconBtn}>
-                <Icons.Play width={13} height={13} />
-              </button>
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <audio ref={audioRef} preload="none" src={recordingLink.audioUrl} style={{ display: "none" }} />
-            </>
+            <button type="button" onClick={play} className="gw-press" aria-label="Play from the recording" style={playPill}>
+              <Icons.Play width={11} height={11} />
+              {ms != null && formatMs(ms)}
+            </button>
           )}
           {canEdit && !editing && (
             <button type="button" onClick={() => { setDraft(title); setEditing(true); }} className="gw-press" aria-label="Rename" style={iconBtn}>
@@ -211,6 +234,18 @@ export function SubtaskRow({
           )}
         </div>
       </div>
+    </div>
+    {/* The player pops up here when Play is pressed. */}
+    {recordingLink?.audioUrl && (
+      // eslint-disable-next-line jsx-a11y/media-has-caption
+      <audio
+        ref={audioRef}
+        controls
+        preload="metadata"
+        src={recordingLink.audioUrl}
+        style={{ width: "100%", height: 34, marginBottom: 10, display: showPlayer ? "block" : "none" }}
+      />
+    )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { CommentForm, PromoteFromRecording } from "./Actions";
@@ -88,6 +88,25 @@ export function CommentThread({
   // sub-tasks of this task.
   canPromoteSubtasks?: boolean;
 }) {
+  // Newest-first by default; a toggle flips to oldest-first. Sort applies to the
+  // top-level comments — replies stay chronological under their parent.
+  const [newestFirst, setNewestFirst] = useState(true);
+
+  // If the page was opened with a #comment-<id> hash (a copied comment link),
+  // scroll to it and briefly highlight it once everything's rendered.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (!hash.startsWith("#comment-")) return;
+    const el = document.getElementById(hash.slice(1));
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.style.transition = "background 200ms";
+    el.style.background = "var(--rsd-accent-bg)";
+    const t = setTimeout(() => { el.style.background = ""; }, 2200);
+    return () => clearTimeout(t);
+  }, []);
+
   const childrenByParent = new Map<string | null, ThreadComment[]>();
   for (const c of comments) {
     const key = c.parent_id;
@@ -112,9 +131,27 @@ export function CommentThread({
     );
   }
 
+  const sortedRoots = [...roots].sort((a, b) =>
+    a.created_at === b.created_at ? 0 : (a.created_at < b.created_at ? 1 : -1) * (newestFirst ? 1 : -1),
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      {roots.map((c, i) => (
+      {roots.length > 1 && (
+        <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px 18px 0" }}>
+          <button
+            type="button"
+            onClick={() => setNewestFirst((v) => !v)}
+            className="gw-press"
+            style={collapseToggleStyle}
+            title="Toggle comment order"
+          >
+            <Icons.ChevronDown width={12} height={12} style={{ transform: newestFirst ? "none" : "rotate(180deg)" }} />
+            {newestFirst ? "Newest first" : "Oldest first"}
+          </button>
+        </div>
+      )}
+      {sortedRoots.map((c, i) => (
         <CommentNode
           key={c.id}
           comment={c}
@@ -127,7 +164,7 @@ export function CommentThread({
           isSuperAdmin={isSuperAdmin}
           canPromoteSubtasks={canPromoteSubtasks}
           depth={0}
-          border={i < roots.length - 1}
+          border={i < sortedRoots.length - 1}
         />
       ))}
     </div>
@@ -162,7 +199,25 @@ function CommentNode({
   const router = useRouter();
   const [replying, setReplying] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [copied, setCopied] = useState(false);
   const children = childrenByParent.get(comment.id) ?? [];
+
+  async function copyLink() {
+    const url = `${location.origin}/portal/tasks/${ticketId}#comment-${comment.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Fallback for non-secure contexts / denied clipboard.
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch { /* ignore */ }
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
   const indent = Math.min(depth, MAX_VISIBLE_DEPTH) * INDENT_PX;
 
   // Author may delete their own reply-free comment; a super-admin may delete
@@ -197,6 +252,7 @@ function CommentNode({
 
   return (
     <div
+      id={`comment-${comment.id}`}
       style={{
         borderBottom: border ? "1px solid var(--gw-border)" : "none",
       }}
@@ -326,6 +382,31 @@ function CommentNode({
             >
               <Icons.Trash width={11} height={11} />
               {deleting ? "Deleting…" : "Delete"}
+            </button>
+          )}
+          {!replying && (
+            <button
+              type="button"
+              onClick={copyLink}
+              title="Copy a link to this comment"
+              aria-label="Copy a link to this comment"
+              style={{
+                marginTop: 6,
+                marginLeft: canComment || canDelete ? 14 : 0,
+                padding: 0,
+                background: "transparent",
+                border: "none",
+                color: copied ? "var(--rsd-accent)" : "var(--gw-fg-muted)",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <Icons.Link width={11} height={11} />
+              {copied ? "Copied" : "Link"}
             </button>
           )}
           {replying && (
