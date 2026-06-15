@@ -1,9 +1,10 @@
 "use client";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { Pill, Select, Textarea, Input } from "../../../components/ui";
 import { ChipSelect } from "../QueueRow";
+import { getRecordedCommentState } from "../../../../lib/reelnotes/actions";
 import {
   changeTicketStatus,
   changeTicketPriority,
@@ -178,6 +179,8 @@ export function CommentForm({
   const [isRecording, setIsRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  // The recording being processed, so we can poll for its comment + auto-refresh.
+  const [recordingId, setRecordingId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -262,6 +265,10 @@ export function CommentForm({
         throw new Error(text || `Upload failed (${res.status})`);
       }
       // Transcription is async — the comment posts when the webhook completes.
+      // Grab the recording id so we can poll for it and auto-refresh.
+      const json = await res.json().catch(() => null);
+      const recId = (json as { recording?: { id?: string } } | null)?.recording?.id ?? null;
+      setRecordingId(recId);
       setTranscribing(true);
       onPosted?.();
     } catch (err) {
@@ -270,6 +277,33 @@ export function CommentForm({
       setUploading(false);
     }
   }
+
+  // While a recording is processing, poll for its comment to land and then
+  // auto-refresh (no manual Refresh needed). Stops on failure or after a few
+  // minutes, leaving the manual Refresh as a fallback.
+  useEffect(() => {
+    if (!transcribing || !recordingId) return;
+    let attempts = 0;
+    const maxAttempts = 45; // ~3 min at 4s intervals
+    const iv = setInterval(async () => {
+      attempts += 1;
+      const st = await getRecordedCommentState(ticketId, recordingId);
+      if (st.posted) {
+        clearInterval(iv);
+        setTranscribing(false);
+        setRecordingId(null);
+        router.refresh();
+      } else if (st.failed) {
+        clearInterval(iv);
+        setTranscribing(false);
+        setRecordingId(null);
+        setError("That recording couldn't be transcribed. Please try again.");
+      } else if (attempts >= maxAttempts) {
+        clearInterval(iv);
+      }
+    }, 4000);
+    return () => clearInterval(iv);
+  }, [transcribing, recordingId, ticketId, router]);
 
   const mins = Math.floor(elapsed / 60);
   const secs = String(elapsed % 60).padStart(2, "0");
@@ -302,14 +336,17 @@ export function CommentForm({
       />
       {error && <ErrorLine message={error} />}
       {transcribing && (
-        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-          Transcribing your recording — it’ll post as a comment here in a moment.{" "}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+          <span
+            style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--rsd-accent)", display: "inline-block", animation: "pulse 1.2s infinite" }}
+          />
+          Transcribing your recording — it’ll appear here automatically when it’s ready.{" "}
           <button
             type="button"
-            onClick={() => { setTranscribing(false); router.refresh(); }}
+            onClick={() => { setTranscribing(false); setRecordingId(null); router.refresh(); }}
             style={{ background: "none", border: "none", padding: 0, color: "var(--rsd-accent)", fontWeight: 700, cursor: "pointer" }}
           >
-            Refresh
+            Refresh now
           </button>
         </div>
       )}

@@ -22,6 +22,39 @@ type Result = { success?: true; error?: string };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Poll target for the in-thread recorder: has the recording finished processing
+// and been mirrored onto this task as a comment yet? `posted` flips true once
+// onRecordingReady (adapter) inserts the ticket_comment carrying recording_id;
+// `failed` lets the composer stop polling and surface an error. Read-only; the
+// recorder owns the recording (RLS) and is staff (reads the comment).
+export async function getRecordedCommentState(
+  ticketId: string,
+  recordingId: string,
+): Promise<{ posted: boolean; failed: boolean }> {
+  if (!UUID_RE.test(ticketId) || !UUID_RE.test(recordingId)) return { posted: false, failed: false };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { posted: false, failed: false };
+
+  const { data: comment } = await supabase
+    .from("ticket_comments")
+    .select("id")
+    .eq("ticket_id", ticketId)
+    .eq("recording_id", recordingId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (comment) return { posted: true, failed: false };
+
+  const { data: rec } = await supabase
+    .from("reel_notes_recordings")
+    .select("status")
+    .eq("id", recordingId)
+    .maybeSingle();
+  return { posted: false, failed: (rec as { status?: string } | null)?.status === "failed" };
+}
+
 // Mark a recorded comment's action item as routed to a destination (e.g.
 // "Things"). The push itself is the client's device-only URL scheme; this
 // records where it went. Staff-update RLS on linked recordings' action items
