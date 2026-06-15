@@ -227,8 +227,11 @@ function recurringPlanner(form: RequestForm, set: (key: string, value: unknown) 
 const whenStep: WizardStep = {
   key: "when",
   title: "When do you need it?",
-  hint: "Include setup and cleanup time if you can.",
-  valid: (f) => !!str(f.date) && !timesReversed(f),
+  hint: "Pick a date, a start time, and how long — include setup and cleanup if you can.",
+  // Require the full window (date + start + end) before advancing. For a
+  // recurring request these top-level times are also the default for any day
+  // not given custom hours, so they're always needed.
+  valid: (f) => !!str(f.date) && !!str(f.startTime) && !!str(f.endTime) && !timesReversed(f),
   body: ({ form, set }) => (
     <>
       <BookingCalendar
