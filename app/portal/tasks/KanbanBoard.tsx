@@ -126,10 +126,11 @@ export function KanbanBoard({
                   router.push(`/portal/tasks/${c.id}`);
                 }}
                 className="rsd-card gw-press"
+                title={canMove ? "Click to open · drag to change status" : "Click to open"}
                 style={{
                   gap: 8,
                   padding: "10px 12px",
-                  cursor: canMove ? "grab" : "pointer",
+                  cursor: "pointer",
                   opacity: dragId === c.id ? 0.4 : 1,
                 }}
               >

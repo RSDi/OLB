@@ -324,25 +324,6 @@ export default async function PortalMaintenancePage({
           })}
         </div>
         <Link
-          href={tasksHref(bucket, categoryFilter, view === "projects" ? "all" : "projects")}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 18px",
-            borderRadius: 100,
-            background: view === "projects" ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-            color: view === "projects" ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-            border: `1px solid ${view === "projects" ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-            fontSize: 13,
-            fontWeight: 700,
-            textDecoration: "none",
-          }}
-        >
-          <Icons.LayoutDashboard width={14} height={14} />
-          {view === "projects" ? "All tasks" : "Projects"}
-        </Link>
-        <Link
           href="/portal/tasks/new"
           style={{
             display: "inline-flex",
