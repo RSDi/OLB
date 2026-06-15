@@ -11,9 +11,10 @@
 // the returned recording carries a short-lived signed URL. AssemblyAI reads its
 // own private upload_url, not our bucket.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ReelNotesAdapter } from "./adapter";
 import type { RecordingSource } from "./types";
-import { signAudioUrl, storageAudioMarker } from "./audio-storage";
+import { signAudioUrl, storageAudioMarker, isStorageAudio, storageAudioPath } from "./audio-storage";
 
 // The column set the loaders + UI expect on a recording (joins its action
 // items). Lives here so the host's upload route and the package agree.
@@ -101,53 +102,110 @@ export async function handleUpload(adapter: ReelNotesAdapter, input: UploadInput
   // Hand off to AssemblyAI. Without a key we still return the saved row (status
   // 'transcribing') so the audio isn't lost; the pipeline stays blocked until a
   // key is configured.
-  if (!config.assemblyAiKey) {
-    await supabase.from("reel_notes_recordings").update({ error: "ASSEMBLYAI_API_KEY not set" }).eq("id", recordingId);
-  } else {
-    try {
-      // Push the bytes to AssemblyAI's own store — the returned upload_url is
-      // readable only by their transcript API, so nothing public is created.
-      const uploadRes = await fetch(AAI_UPLOAD_URL, {
-        method: "POST",
-        headers: { authorization: config.assemblyAiKey, "content-type": "application/octet-stream" },
-        body: bytes,
-      });
-      const uploadBody = (await uploadRes.json()) as { upload_url?: string; error?: string };
-      if (!uploadRes.ok || !uploadBody.upload_url) {
-        throw new Error(uploadBody.error || `AssemblyAI upload HTTP ${uploadRes.status}`);
-      }
-
-      const aaiRes = await fetch(AAI_TRANSCRIPT_URL, {
-        method: "POST",
-        headers: { authorization: config.assemblyAiKey, "content-type": "application/json" },
-        body: JSON.stringify({
-          audio_url: uploadBody.upload_url,
-          speech_models: ["universal-3-pro"],
-          speaker_labels: true,
-          webhook_url: `${config.baseUrl}/api/reelnotes/transcription-webhook`,
-          ...(config.webhookSecret
-            ? { webhook_auth_header_name: WEBHOOK_SECRET_HEADER, webhook_auth_header_value: config.webhookSecret }
-            : {}),
-        }),
-      });
-      const aaiBody = (await aaiRes.json()) as { id?: string; error?: string };
-      if (aaiRes.ok && aaiBody.id) {
-        await supabase.from("reel_notes_recordings").update({ assemblyai_id: aaiBody.id }).eq("id", recordingId);
-      } else {
-        throw new Error(aaiBody.error || `AssemblyAI HTTP ${aaiRes.status}`);
-      }
-    } catch (err) {
-      console.error("ReelNotes: AssemblyAI submission failed", err);
-      await supabase
-        .from("reel_notes_recordings")
-        .update({ status: "failed", error: err instanceof Error ? err.message : "AssemblyAI error" })
-        .eq("id", recordingId);
-    }
-  }
+  await submitToAssemblyAI(config, supabase, recordingId, bytes);
 
   // The client plays audio immediately from the response — swap the storage
   // marker for a signed URL before returning.
   const recording = row as { audio_blob_url: string };
   recording.audio_blob_url = await signAudioUrl(admin, recording.audio_blob_url);
   return { ok: true, recording: row as Record<string, unknown> };
+}
+
+// Uploads the bytes to AssemblyAI's private store and submits a transcript job,
+// then records the job id (status -> 'transcribing') or marks the recording
+// 'failed' with the real error. Shared by the initial upload and retry so the
+// submit shape (model, speaker labels, webhook) stays in one place.
+async function submitToAssemblyAI(
+  config: ReelNotesAdapter["config"],
+  client: SupabaseClient,
+  recordingId: string,
+  bytes: Buffer<ArrayBuffer>,
+): Promise<void> {
+  // No key: keep the audio + 'transcribing' row; note why it's stuck.
+  if (!config.assemblyAiKey) {
+    await client.from("reel_notes_recordings").update({ error: "ASSEMBLYAI_API_KEY not set" }).eq("id", recordingId);
+    return;
+  }
+  try {
+    // Push the bytes to AssemblyAI's own store — the returned upload_url is
+    // readable only by their transcript API, so nothing public is created.
+    const uploadRes = await fetch(AAI_UPLOAD_URL, {
+      method: "POST",
+      headers: { authorization: config.assemblyAiKey, "content-type": "application/octet-stream" },
+      body: bytes,
+    });
+    const uploadBody = (await uploadRes.json()) as { upload_url?: string; error?: string };
+    if (!uploadRes.ok || !uploadBody.upload_url) {
+      throw new Error(uploadBody.error || `AssemblyAI upload HTTP ${uploadRes.status}`);
+    }
+
+    const aaiRes = await fetch(AAI_TRANSCRIPT_URL, {
+      method: "POST",
+      headers: { authorization: config.assemblyAiKey, "content-type": "application/json" },
+      body: JSON.stringify({
+        audio_url: uploadBody.upload_url,
+        speech_models: ["universal-3-pro"],
+        speaker_labels: true,
+        webhook_url: `${config.baseUrl}/api/reelnotes/transcription-webhook`,
+        ...(config.webhookSecret
+          ? { webhook_auth_header_name: WEBHOOK_SECRET_HEADER, webhook_auth_header_value: config.webhookSecret }
+          : {}),
+      }),
+    });
+    const aaiBody = (await aaiRes.json()) as { id?: string; error?: string };
+    if (aaiRes.ok && aaiBody.id) {
+      await client
+        .from("reel_notes_recordings")
+        .update({ assemblyai_id: aaiBody.id, status: "transcribing", error: null })
+        .eq("id", recordingId);
+    } else {
+      throw new Error(aaiBody.error || `AssemblyAI HTTP ${aaiRes.status}`);
+    }
+  } catch (err) {
+    console.error("ReelNotes: AssemblyAI submission failed", err);
+    await client
+      .from("reel_notes_recordings")
+      .update({ status: "failed", error: err instanceof Error ? err.message : "AssemblyAI error" })
+      .eq("id", recordingId);
+  }
+}
+
+// Re-submit a failed recording's stored audio for a fresh transcription.
+// AssemblyAI errors are often transient, so re-uploading the same bytes and
+// starting a new job usually clears them. Returns ok, or a reason it couldn't.
+export async function retryTranscription(
+  adapter: ReelNotesAdapter,
+  recordingId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { config } = adapter;
+  const admin = adapter.getAdminClient();
+
+  const { data: rec } = await admin
+    .from("reel_notes_recordings")
+    .select("id, audio_blob_url")
+    .eq("id", recordingId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  const recording = rec as { id: string; audio_blob_url: string | null } | null;
+  if (!recording) return { ok: false, error: "Recording not found" };
+
+  // Only the new private-bucket recordings keep re-fetchable bytes; pre-B6
+  // recordings in Vercel Blob can't be re-submitted this way.
+  if (!isStorageAudio(recording.audio_blob_url)) {
+    return { ok: false, error: "This recording's audio isn't available to retry." };
+  }
+  const { data: blob, error: dlErr } = await admin.storage
+    .from(config.audioBucket)
+    .download(storageAudioPath(recording.audio_blob_url as string));
+  if (dlErr || !blob) return { ok: false, error: dlErr?.message ?? "Could not read the stored audio." };
+  const bytes = Buffer.from(await blob.arrayBuffer());
+
+  // Flip to 'transcribing' (clearing the old job + error) so polling clients
+  // show progress, then re-submit — which sets the new id or flips back to failed.
+  await admin
+    .from("reel_notes_recordings")
+    .update({ status: "transcribing", error: null, assemblyai_id: null })
+    .eq("id", recordingId);
+  await submitToAssemblyAI(config, admin, recordingId, bytes);
+  return { ok: true };
 }

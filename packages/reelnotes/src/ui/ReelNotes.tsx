@@ -738,6 +738,42 @@ export function ReelNotes({
     }
   }
 
+  async function retryRecording(recordingId: string) {
+    // Optimistic flip to 'transcribing' so the chip moves and the poller (which
+    // watches for non-ready/non-failed rows) starts tracking it again.
+    setRecordings(rs =>
+      rs.map(r => (r.id === recordingId ? { ...r, status: "transcribing", error: null } : r))
+    );
+    try {
+      const res = await fetch(`/api/reelnotes/recordings/${recordingId}/retry-transcription`, { method: "POST" });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Retry failed (${res.status})`);
+      }
+      const { recording } = (await res.json()) as { recording: ReelNotesRecording };
+      setRecordings(rs =>
+        rs.map(r =>
+          r.id === recordingId
+            ? {
+                ...recording,
+                action_items: (recording.action_items ?? [])
+                  .slice()
+                  .sort((a, b) => a.sort_order - b.sort_order),
+              }
+            : r
+        )
+      );
+    } catch (err) {
+      setRecordings(rs =>
+        rs.map(r =>
+          r.id === recordingId
+            ? { ...r, status: "failed", error: err instanceof Error ? err.message : "Retry failed" }
+            : r
+        )
+      );
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <section
@@ -916,6 +952,7 @@ export function ReelNotes({
             onSetOwner={(actionId, memberId) => setActionOwner(selected.id, actionId, memberId)}
             onToggleSupporter={(actionId, memberId) => toggleActionSupporter(selected.id, actionId, memberId)}
             onReextract={() => reextractRecording(selected.id)}
+            onRetry={() => retryRecording(selected.id)}
             onDelete={() => deleteRecording(selected.id)}
             onCreateProject={onCreateProject}
             thingsEnabled={thingsEnabled}
@@ -1122,6 +1159,7 @@ function SelectedDetail({
   onSetOwner,
   onToggleSupporter,
   onReextract,
+  onRetry,
   onDelete,
   onCreateProject,
   thingsEnabled = true,
@@ -1139,6 +1177,7 @@ function SelectedDetail({
   onSetOwner: (actionId: string, memberId: string | null) => void;
   onToggleSupporter: (actionId: string, memberId: string) => void;
   onReextract: () => Promise<void>;
+  onRetry: () => Promise<void>;
   onDelete: () => Promise<void>;
   onCreateProject?: CreateProjectHandler;
   thingsEnabled?: boolean;
@@ -1146,6 +1185,7 @@ function SelectedDetail({
   sourceLink?: ReelNoteSourceLink;
 }) {
   const [reextracting, setReextracting] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(recording.title ?? "");
   const router = useRouter();
@@ -1210,6 +1250,18 @@ function SelectedDetail({
       await onReextract();
     } finally {
       setReextracting(false);
+    }
+  }
+
+  // A failed transcription can be re-submitted (AssemblyAI errors are often
+  // transient). Re-extract needs a transcript and so stays hidden for these.
+  const canRetry = recording.status === "failed" && !retrying;
+  async function handleRetry() {
+    setRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setRetrying(false);
     }
   }
 
@@ -1401,6 +1453,33 @@ function SelectedDetail({
               <Icons.ArrowRight width={11} height={11} style={{ transform: "rotate(90deg)" }} />
               Download audio
             </a>
+          )}
+          {canRetry && (
+            <button
+              onClick={handleRetry}
+              className="gw-press"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 100,
+                background: "var(--rsd-accent)",
+                color: "var(--rsd-accent-on)",
+                border: "none",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <Icons.Refresh width={11} height={11} />
+              Retry transcription
+            </button>
+          )}
+          {retrying && (
+            <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+              Retrying…
+            </span>
           )}
           {canReextract && (
             <button

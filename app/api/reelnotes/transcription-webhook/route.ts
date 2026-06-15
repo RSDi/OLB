@@ -67,15 +67,10 @@ export async function POST(req: NextRequest) {
   }
   const recording = row as { id: string; status: string };
 
-  if (body.status === "error") {
-    await admin
-      .from("reel_notes_recordings")
-      .update({ status: "failed", error: "AssemblyAI reported error" })
-      .eq("id", recording.id);
-    return NextResponse.json({ ok: true });
-  }
-
-  // status=completed (or unspecified — be lenient). Hand off to the pipeline.
+  // Defer to the pipeline for BOTH completed and error transcripts. It fetches
+  // the transcript from AssemblyAI and, on error, stores AssemblyAI's real
+  // error message (e.g. the actual failure reason) instead of a generic one —
+  // so failed recordings are debuggable and the UI can show why.
   await processTranscriptionCompleted(recording.id, mccReelNotesAdapter());
   return NextResponse.json({ ok: true });
 }
