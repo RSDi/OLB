@@ -304,15 +304,24 @@ export async function softDeleteTicket(
   const supabase = await createClient();
   const now = new Date().toISOString();
 
+  // Tasks being removed — the ticket itself plus any cascaded children. Used to
+  // release ReelNotes action items linked to them (below).
+  const deletedIds: string[] = [ticketId];
+
   // If this is a parent ("project"), the caller decides its sub-tasks' fate:
   // delete them along with it, or detach them so they survive as standalone
   // tasks back in the queue. (Decided at delete time in the confirm dialog.)
   if (opts?.cascadeChildren) {
-    await supabase
+    const { data: kids } = await supabase
       .from("maintenance_requests")
-      .update({ deleted_at: now })
+      .select("id")
       .eq("parent_id", ticketId)
       .is("deleted_at", null);
+    const childIds = ((kids as { id: string }[] | null) ?? []).map((k) => k.id);
+    if (childIds.length > 0) {
+      await supabase.from("maintenance_requests").update({ deleted_at: now }).in("id", childIds);
+      deletedIds.push(...childIds);
+    }
   } else {
     await supabase
       .from("maintenance_requests")
@@ -325,6 +334,12 @@ export async function softDeleteTicket(
     .update({ deleted_at: now })
     .eq("id", ticketId);
   if (error) return { error: error.message };
+
+  // Release any ReelNotes action item that was promoted into one of these tasks:
+  // clearing task_id returns the item to "actionable" so it can be re-promoted
+  // instead of staying stuck as a "Sub-task" pointing at a deleted task.
+  const admin = createAdminClient();
+  await admin.from("reel_notes_action_items").update({ task_id: null }).in("task_id", deletedIds);
 
   revalidatePath("/portal/tasks");
   revalidatePath("/portal/tasks/deleted");
