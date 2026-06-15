@@ -5,6 +5,7 @@ import { Input, Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
 import type { MemberRole, MemberStatus } from "../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../lib/members/display";
+import { resolveAvatarUrl } from "../../../lib/members/avatar";
 import {
   createMember,
   addMemberRelationship,
@@ -488,6 +489,7 @@ function MemberRow({
   onSetGrant: (key: GrantKey, value: boolean) => void;
   onEdit: () => void;
 }) {
+  const rowAvatar = resolveAvatarUrl(member);
   return (
     <div
       className="rsd-card"
@@ -515,9 +517,9 @@ function MemberRow({
           justifyContent: "center",
         }}
       >
-        {member.avatar_url ? (
+        {rowAvatar ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={member.avatar_url} alt="" width={40} height={40} style={{ objectFit: "cover" }} />
+          <img src={rowAvatar} alt="" width={40} height={40} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
         ) : (
           <Icons.User width={18} height={18} style={{ color: "var(--gw-fg-muted)" }} />
         )}

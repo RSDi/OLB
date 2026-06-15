@@ -1,19 +1,20 @@
-// Reusable avatar bubble used across directory views.
+// Reusable avatar bubble used across directory views. Falls back to the
+// member's Gravatar (by email) when no explicit avatar_url is set, then to a
+// User icon if there's no email.
 import { Icons } from "../../../components/icons";
-
-interface AvatarLike {
-  avatar_url: string | null;
-}
+import { resolveAvatarUrl, type AvatarMember } from "../../../../lib/members/avatar";
 
 export function Avatar({
   member,
   size = 40,
   ringed,
 }: {
-  member: AvatarLike;
+  member: AvatarMember;
   size?: number;
   ringed?: boolean;
 }) {
+  // Request ~2x for retina; Gravatar always returns an image (d=mp).
+  const src = resolveAvatarUrl(member, Math.max(Math.round(size * 2), 80));
   return (
     <div
       style={{
@@ -30,10 +31,10 @@ export function Avatar({
         outline: ringed ? "1px solid var(--gw-border)" : "none",
       }}
     >
-      {member.avatar_url ? (
+      {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={member.avatar_url}
+          src={src}
           alt=""
           width={size}
           height={size}

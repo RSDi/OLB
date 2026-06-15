@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill } from "../../components/ui";
+import { resolveAvatarUrl } from "../../../lib/members/avatar";
 import type { RelationshipKind } from "../../../lib/auth/member-actions";
 
 // Lightweight shapes — the caller can pass any object with these fields.
@@ -56,6 +57,8 @@ export function MemberEditForm({
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url ?? "");
   const [phone, setPhone] = useState(member.phone ?? "");
   const [birthday, setBirthday] = useState(member.birthday ?? "");
+  // Preview: the typed URL, else the member's Gravatar (by email).
+  const previewAvatar = resolveAvatarUrl({ avatar_url: avatarUrl, email: member.email });
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -101,9 +104,9 @@ export function MemberEditForm({
             justifyContent: "center",
           }}
         >
-          {avatarUrl ? (
+          {previewAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="" width={40} height={40} style={{ objectFit: "cover" }} />
+            <img src={previewAvatar} alt="" width={40} height={40} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
           ) : (
             <Icons.User width={18} height={18} style={{ color: "var(--gw-fg-muted)" }} />
           )}
@@ -155,13 +158,18 @@ export function MemberEditForm({
           disabled={pending}
         />
       </div>
-      <Input
-        label="Avatar URL (optional)"
-        value={avatarUrl}
-        onChange={(e) => setAvatarUrl(e.target.value)}
-        placeholder="https://…"
-        disabled={pending}
-      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <Input
+          label="Avatar URL (optional)"
+          value={avatarUrl}
+          onChange={(e) => setAvatarUrl(e.target.value)}
+          placeholder="https://…"
+          disabled={pending}
+        />
+        <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+          Leave blank to use their Gravatar (set one at gravatar.com for the member&apos;s email).
+        </span>
+      </div>
 
       <FamilySection
         memberId={member.id}

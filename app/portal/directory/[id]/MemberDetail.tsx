@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { Input, Pill, Textarea } from "../../../components/ui";
+import { resolveAvatarUrl } from "../../../../lib/members/avatar";
 import {
   updateOwnProfile,
   addMemberRelationship,
@@ -374,6 +375,7 @@ function ProfileCard({
   isSelf: boolean;
   onEdit: () => void;
 }) {
+  const headerAvatar = resolveAvatarUrl(member, 176);
   return (
     <div className="rsd-card" style={{ padding: "20px 24px", gap: 18 }}>
       <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
@@ -391,10 +393,10 @@ function ProfileCard({
             justifyContent: "center",
           }}
         >
-          {member.avatar_url ? (
+          {headerAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={member.avatar_url}
+              src={headerAvatar}
               alt=""
               width={88}
               height={88}
@@ -753,7 +755,7 @@ function EditForm({
         disabled={pending}
       />
       <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-        Email, role, and approval status are managed by a super-admin.
+        Leave the avatar blank to use your Gravatar (set one at gravatar.com for your email). Email, role, and approval status are managed by a super-admin.
       </div>
 
       {error && (

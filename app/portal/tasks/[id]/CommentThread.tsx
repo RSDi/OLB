@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { CommentForm } from "./Actions";
 import { ActionRow, SummaryBullet, normalizeSummaryBullet } from "reelnotes/ui";
+import { resolveAvatarUrl } from "../../../../lib/members/avatar";
 import type { CommentRecording, AssignableMember } from "../../../../lib/reelnotes/data";
 import {
   setActionItemRouted,
@@ -162,6 +163,7 @@ function CommentNode({
   // live replies — the loader filters out soft-deleted ones.)
   const isAuthor = !!comment.author_id && comment.author_id === viewerMemberId;
   const canDelete = isSuperAdmin || (isAuthor && children.length === 0);
+  const authorAvatar = resolveAvatarUrl(comment.author ?? {}, 64);
 
   function countDescendants(c: ThreadComment): number {
     const kids = childrenByParent.get(c.id) ?? [];
@@ -216,14 +218,14 @@ function CommentNode({
         >
           {comment.recording ? (
             <Icons.Mic width={14} height={14} style={{ color: "var(--rsd-accent)" }} />
-          ) : comment.author?.avatar_url ? (
+          ) : authorAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={comment.author.avatar_url}
+              src={authorAvatar}
               alt=""
               width={32}
               height={32}
-              style={{ objectFit: "cover" }}
+              style={{ objectFit: "cover", width: "100%", height: "100%" }}
             />
           ) : (
             <Icons.User width={14} height={14} style={{ color: "var(--gw-fg-muted)" }} />
