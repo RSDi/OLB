@@ -13,7 +13,7 @@ import {
   CommentForm,
   DeleteButton,
   VotePanel,
-  PromoteToProject,
+  AddSubtask,
 } from "./Actions";
 import { CommentThread, type ThreadComment } from "./CommentThread";
 import {
@@ -83,14 +83,22 @@ interface Ticket {
   submitted_by: string | null;
   assigned_to: string | null;
   event_id: string | null;
+  parent_id: string | null;
   category: { name: string; chip_class: string } | null;
-  project: { id: string; title: string } | null;
   area: { id: string; name: string } | null;
   priority: { id: string; label: string; chip_class: string } | null;
   assignee: { id: string; full_name: string | null; nickname: string | null; email: string } | null;
 }
 
 type Comment = ThreadComment;
+
+interface Subtask {
+  id: string;
+  description: string;
+  status: "open" | "in_progress" | "done" | "cancelled";
+  priority: { label: string; chip_class: string } | null;
+  assignee: { id: string; full_name: string | null; nickname: string | null; email: string } | null;
+}
 
 interface StaffMember {
   id: string;
@@ -126,9 +134,8 @@ export default async function TicketDetailPage({
   const { data: ticketRaw } = await supabase
     .from("maintenance_requests")
     .select(
-      `id, description, status, review_status, decline_reason, reviewed_at, details, cost, created_at, updated_at, submitted_by, assigned_to, event_id,
+      `id, description, status, review_status, decline_reason, reviewed_at, details, cost, created_at, updated_at, submitted_by, assigned_to, event_id, parent_id,
        category:task_categories(name, chip_class),
-       project:projects(id, title),
        area:areas(id, name),
        priority:priorities(id, label, chip_class),
        assignee:members!assigned_to(id, full_name, nickname, email)`
@@ -139,6 +146,37 @@ export default async function TicketDetailPage({
 
   if (!ticketRaw) notFound();
   const ticket = ticketRaw as unknown as Ticket;
+
+  // Parent ("project") this task belongs to, if it's a sub-task — for the
+  // breadcrumb. Separate query so it stays tolerant pre-0068 (no parent_id).
+  let parentTask: { id: string; description: string } | null = null;
+  if (ticket.parent_id) {
+    const { data: par } = await supabase
+      .from("maintenance_requests")
+      .select("id, description")
+      .eq("id", ticket.parent_id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    parentTask = (par as { id: string; description: string } | null) ?? null;
+  }
+
+  // Sub-tasks of this task — it's a "project" when it has any. A member sees
+  // sub-tasks under their own task via RLS (0068); staff see all.
+  const { data: childRows } = await supabase
+    .from("maintenance_requests")
+    .select(
+      `id, description, status,
+       priority:priorities(label, chip_class),
+       assignee:members!assigned_to(id, full_name, nickname, email)`
+    )
+    .eq("parent_id", id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+  const subtasks = (childRows as unknown as Subtask[]) ?? [];
+  const doneCount = subtasks.filter((s) => s.status === "done").length;
+  // Only a top-level task can hold sub-tasks (one level). Members manage their
+  // own; staff manage any.
+  const canManageSubtasks = ticket.parent_id === null && (staff || ticket.submitted_by === user.id);
 
   // Building-shutdown task (Phase 2b): if this task is linked to an event with
   // a shutdown procedure, surface the run-wizard + opt-out so the assignee (not
@@ -388,12 +426,6 @@ export default async function TicketDetailPage({
 
   const canComment = staff || ticket.submitted_by === user.id;
 
-  const reqWhat =
-    ticket.details?.eventTypeLabel || ticket.details?.classTitle || ticket.details?.purpose || ticket.details?.subTypeLabel;
-  const promoteTitle = reqWhat
-    ? `${reqWhat}${ticket.details?.outsideOrg ? ` — ${ticket.details.outsideOrg}` : ""}`
-    : truncate(ticket.description, 60);
-
   return (
     <>
       {/* Header */}
@@ -449,9 +481,9 @@ export default async function TicketDetailPage({
               {statusChip(ticket.status)}
               {reviewChip(ticket)}
               {ticket.area && <Pill>{ticket.area.name}</Pill>}
-              {ticket.project && (
+              {parentTask && (
                 <Link
-                  href={`/portal/tasks/projects/${ticket.project.id}`}
+                  href={`/portal/tasks/${parentTask.id}`}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -467,7 +499,7 @@ export default async function TicketDetailPage({
                   }}
                 >
                   <Icons.LayoutDashboard width={11} height={11} />
-                  {ticket.project.title}
+                  Part of: {truncate(parentTask.description.split("\n")[0], 40)}
                 </Link>
               )}
             </div>
@@ -534,6 +566,72 @@ export default async function TicketDetailPage({
             <RequestDetailsCard d={ticket.details!} />
           )}
 
+          {/* Sub-tasks: this task is a "project" once it has any. */}
+          {(subtasks.length > 0 || canManageSubtasks) && (
+            <div className="rsd-card" style={{ gap: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+                Sub-tasks
+                {subtasks.length > 0 && (
+                  <span style={{ color: "var(--gw-fg-muted)", fontWeight: 600 }}> · {doneCount}/{subtasks.length} done</span>
+                )}
+              </h3>
+              {subtasks.length > 0 ? (
+                <>
+                  <ProgressBar done={doneCount} total={subtasks.length} />
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {subtasks.map((s) => (
+                      <Link
+                        key={s.id}
+                        href={`/portal/tasks/${s.id}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "9px 0",
+                          borderBottom: "1px solid var(--gw-border)",
+                          textDecoration: "none",
+                          color: "inherit",
+                        }}
+                      >
+                        <span style={{ flexShrink: 0, display: "inline-flex" }}>{subtaskStatusDot(s.status)}</span>
+                        <span
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            fontSize: 13.5,
+                            fontWeight: 600,
+                            color: "var(--gw-fg)",
+                            textDecoration: s.status === "done" ? "line-through" : "none",
+                            opacity: s.status === "done" ? 0.55 : 1,
+                          }}
+                        >
+                          {s.description.split("\n")[0]}
+                        </span>
+                        {s.assignee && (
+                          <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, flexShrink: 0 }}>
+                            {memberDisplayName(s.assignee)}
+                          </span>
+                        )}
+                        {s.priority && (
+                          <span className={`rsd-chip ${s.priority.chip_class}`} style={{ fontSize: 10, flexShrink: 0 }}>
+                            {s.priority.label}
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                canManageSubtasks && (
+                  <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+                    Break this into smaller pieces — add a sub-task and it becomes a little project.
+                  </div>
+                )
+              )}
+              {canManageSubtasks && <AddSubtask parentId={ticket.id} />}
+            </div>
+          )}
+
           {/* Comments */}
           <div className="rsd-card" style={{ gap: 14, padding: 0, overflow: "hidden" }}>
             <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--gw-border)" }}>
@@ -549,6 +647,7 @@ export default async function TicketDetailPage({
               members={assignableMembers}
               viewerMemberId={viewerMemberId}
               isSuperAdmin={superAdmin}
+              canPromoteSubtasks={staff && ticket.parent_id === null}
             />
             {canComment && (
               <div
@@ -666,10 +765,7 @@ export default async function TicketDetailPage({
                 current={ticket.assigned_to}
                 staff={staffList}
               />
-              {ticket.review_status === "approved" && !ticket.project && (
-                <PromoteToProject ticketId={ticket.id} defaultTitle={promoteTitle} />
-              )}
-              {superAdmin && <DeleteButton ticketId={ticket.id} />}
+              {superAdmin && <DeleteButton ticketId={ticket.id} childCount={subtasks.length} />}
             </div>
           )}
 
@@ -741,6 +837,35 @@ function statusChip(s: Ticket["status"]) {
   if (s === "in_progress") return <span className="rsd-chip rsd-chip-accent">In Progress</span>;
   if (s === "cancelled") return <span className="rsd-chip rsd-chip-mute">Cancelled</span>;
   return <span className="rsd-chip rsd-chip-success">Done</span>;
+}
+
+function ProgressBar({ done, total }: { done: number; total: number }) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ flex: 1, height: 8, borderRadius: 100, background: "var(--gw-bg-elev)", border: "1px solid var(--gw-border)", overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: "var(--rsd-accent)", transition: "width 200ms" }} />
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", flexShrink: 0 }}>{pct}%</span>
+    </div>
+  );
+}
+
+function subtaskStatusDot(s: Subtask["status"]) {
+  if (s === "done") return <Icons.CheckCircle width={16} height={16} style={{ color: "var(--rsd-accent)" }} />;
+  if (s === "cancelled")
+    return <span style={{ display: "inline-block", width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--gw-border)", opacity: 0.5 }} />;
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        width: 14,
+        height: 14,
+        borderRadius: "50%",
+        border: `2px solid ${s === "in_progress" ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+      }}
+    />
+  );
 }
 
 function truncate(s: string, n: number): string {

@@ -145,7 +145,7 @@ export async function loadRecordingsForComments(
        action_items:reel_notes_action_items(
          id, recording_id, text, routed_to, done, sort_order, priority,
          owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
-         suggested_supporter_names, transcript_ms, created_at, updated_at
+         suggested_supporter_names, transcript_ms, task_id, created_at, updated_at
        )`
     )
     .in("id", ids)

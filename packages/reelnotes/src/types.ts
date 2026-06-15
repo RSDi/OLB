@@ -41,6 +41,10 @@ export interface ReelNotesActionItem {
   // B4: resolved start offset (ms) of the utterance where this item was
   // raised, or null when no confident transcript anchor exists.
   transcript_ms: number | null;
+  // Host-app backlink: the work item (task) this action item was turned into,
+  // if any. Optional — the package core never sets it; the host stamps it when
+  // an item is promoted so it shows as "added" and can't be re-added.
+  task_id?: string | null;
   created_at: string;
   updated_at: string;
 }

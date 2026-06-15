@@ -2,17 +2,18 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
-import { Pill, Select, Textarea, Input } from "../../../components/ui";
+import { Pill, Select, Textarea } from "../../../components/ui";
 import {
   changeTicketStatus,
   assignTicket,
   addTicketComment,
   softDeleteTicket,
   castRequestVote,
+  addSubtasks,
+  addSubtasksFromActionItems,
   type TicketStatus,
   type VoteValue,
 } from "../../../../lib/maintenance/actions";
-import { promoteTaskToProject } from "../../../../lib/projects/actions";
 import { memberDisplayName } from "../../../../lib/members/display";
 
 export function StatusSelect({
@@ -293,16 +294,26 @@ export function CommentForm({
   );
 }
 
-export function DeleteButton({ ticketId }: { ticketId: string }) {
+export function DeleteButton({ ticketId, childCount = 0 }: { ticketId: string; childCount?: number }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleClick() {
     if (!confirm("Soft-delete this request? You can restore it from Settings → Deleted.")) return;
+    // A parent ("project"): ask whether to take its sub-tasks down with it or
+    // keep them as standalone tasks. OK = delete them too; Cancel = keep them.
+    let cascadeChildren = false;
+    if (childCount > 0) {
+      cascadeChildren = confirm(
+        `This has ${childCount} sub-task${childCount === 1 ? "" : "s"}.\n\n` +
+          `OK — delete the sub-task${childCount === 1 ? "" : "s"} too.\n` +
+          `Cancel — keep ${childCount === 1 ? "it" : "them"} as standalone task${childCount === 1 ? "" : "s"}.`,
+      );
+    }
     setError(null);
     startTransition(async () => {
-      const result = await softDeleteTicket(ticketId);
+      const result = await softDeleteTicket(ticketId, { cascadeChildren });
       if (result.error) {
         setError(result.error);
         return;
@@ -504,62 +515,168 @@ export function VotePanel({
   );
 }
 
-// "A task became 2+ things to get done" — turn this request into a Project and
-// seed the coordinated steps. The original request becomes the first task.
-export function PromoteToProject({ ticketId, defaultTitle }: { ticketId: string; defaultTitle: string }) {
+// Add sub-tasks to a task — turning it into a "project". Any member may add to
+// their own task; staff to any. One textarea, one sub-task per line. Inline so
+// there's no trip to a separate form.
+export function AddSubtask({ parentId }: { parentId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState(defaultTitle);
-  const [stepsText, setStepsText] = useState("");
+  const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function submit() {
-    if (!title.trim()) {
-      setError("Give the project a title.");
+    const lines = text.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (lines.length === 0) {
+      setError("Add at least one sub-task.");
       return;
     }
-    const steps = stepsText.split("\n").map((s) => s.trim()).filter(Boolean);
     setError(null);
     startTransition(async () => {
-      const r = await promoteTaskToProject(ticketId, { title: title.trim(), steps });
+      const r = await addSubtasks(parentId, lines);
       if (r.error) {
         setError(r.error);
         return;
       }
-      if (r.projectId) router.push(`/portal/tasks/projects/${r.projectId}`);
-      else router.refresh();
+      setText("");
+      setOpen(false);
+      router.refresh();
     });
   }
 
   if (!open) {
     return (
       <Pill variant="ghost" size="sm" onClick={() => setOpen(true)} style={{ justifyContent: "center" }}>
-        <Icons.LayoutDashboard width={14} height={14} /> Bigger than one task? Make it a project
+        <Icons.Plus width={14} height={14} /> Add a sub-task
       </Pill>
     );
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <Input label="Project title" value={title} onChange={(e) => setTitle(e.target.value)} />
       <Textarea
-        label="Steps (one per line)"
-        value={stepsText}
-        onChange={(e) => setStepsText(e.target.value)}
-        rows={5}
-        placeholder={"Confirm booking & details\nSet up tables & chairs\nKitchen access\nOpen & lock the building\nCustodial cleanup"}
+        label="Sub-tasks (one per line)"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={4}
+        autoFocus
+        placeholder={"Confirm booking & details\nSet up tables & chairs\nOpen & lock the building"}
       />
-      <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
-        This request becomes the first task; each line adds another.
-      </div>
       {error && <ErrorLine message={error} />}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <Pill variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={pending}>
+        <Pill variant="ghost" size="sm" onClick={() => { setOpen(false); setError(null); }} disabled={pending}>
           Cancel
         </Pill>
         <Pill variant="accent" size="sm" onClick={submit} disabled={pending}>
-          {pending ? "Creating…" : "Create project"}
+          {pending ? "Adding…" : "Add"}
+        </Pill>
+      </div>
+    </div>
+  );
+}
+
+// "Turn into sub-tasks" — from a recorded note's action items, create one
+// sub-task per ticked item on this task (carrying owner + priority). Items
+// already turned into a task (task_id set) show as added and can't re-add.
+export function PromoteFromRecording({
+  parentId,
+  recordingId,
+  items,
+}: {
+  parentId: string;
+  recordingId: string;
+  items: { id: string; text: string; task_id?: string | null }[];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const available = items.filter((i) => !i.task_id);
+  const [checked, setChecked] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(available.map((i) => [i.id, true])),
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  if (available.length === 0) return null;
+
+  const chosen = available.filter((i) => checked[i.id]).map((i) => i.id);
+
+  function submit() {
+    if (chosen.length === 0) {
+      setError("Pick at least one item.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const r = await addSubtasksFromActionItems(parentId, recordingId, chosen);
+      if (r.error) {
+        setError(r.error);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="gw-press"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "3px 10px",
+          borderRadius: 100,
+          background: "transparent",
+          color: "var(--rsd-accent)",
+          border: "1px dashed var(--gw-border)",
+          fontSize: 10,
+          fontWeight: 700,
+          cursor: "pointer",
+        }}
+      >
+        <Icons.LayoutDashboard width={11} height={11} /> Turn into sub-tasks
+      </button>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        padding: "10px 12px",
+        border: "1px solid var(--gw-border)",
+        borderRadius: 10,
+        background: "var(--gw-bg-elev)",
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
+        Pick the items to add as sub-tasks
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {available.map((i) => (
+          <label key={i.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={!!checked[i.id]}
+              onChange={(e) => setChecked((c) => ({ ...c, [i.id]: e.target.checked }))}
+              style={{ marginTop: 3 }}
+            />
+            <span style={{ color: "var(--gw-fg)", lineHeight: 1.45 }}>{i.text}</span>
+          </label>
+        ))}
+      </div>
+      {error && <ErrorLine message={error} />}
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <Pill variant="ghost" size="sm" onClick={() => { setOpen(false); setError(null); }} disabled={pending}>
+          Cancel
+        </Pill>
+        <Pill variant="accent" size="sm" onClick={submit} disabled={pending || chosen.length === 0}>
+          {pending ? "Adding…" : `Add ${chosen.length} sub-task${chosen.length === 1 ? "" : "s"}`}
         </Pill>
       </div>
     </div>

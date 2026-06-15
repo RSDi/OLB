@@ -22,8 +22,8 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
   const areaId = formData.get("area_id");
   const priorityId = formData.get("priority_id");
   const description = formData.get("description");
-  const projectId = formData.get("project_id");
-  const cleanProjectId = typeof projectId === "string" && projectId ? projectId : null;
+  const parentId = formData.get("parent_id");
+  const cleanParentId = typeof parentId === "string" && parentId ? parentId : null;
 
   if (typeof categoryId !== "string" || !categoryId) return { error: "Category is required." };
   if (typeof priorityId !== "string" || !priorityId) return { error: "Priority is required." };
@@ -69,7 +69,10 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
       area_id: cleanAreaId,
       priority_id: priorityId,
       description: trimmedDescription,
-      project_id: cleanProjectId,
+      parent_id: cleanParentId,
+      // A sub-task is a breakdown of already-accepted work, so it skips the
+      // committee review queue and lands in the work queue directly.
+      ...(cleanParentId ? { review_status: "approved" } : {}),
     })
     .select("id")
     .single();
@@ -292,18 +295,40 @@ function collectCommentSubtree(
   return out;
 }
 
-export async function softDeleteTicket(ticketId: string): Promise<ActionResult> {
+export async function softDeleteTicket(
+  ticketId: string,
+  opts?: { cascadeChildren?: boolean },
+): Promise<ActionResult> {
   const gate = await requireStaff();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
+  const now = new Date().toISOString();
+
+  // If this is a parent ("project"), the caller decides its sub-tasks' fate:
+  // delete them along with it, or detach them so they survive as standalone
+  // tasks back in the queue. (Decided at delete time in the confirm dialog.)
+  if (opts?.cascadeChildren) {
+    await supabase
+      .from("maintenance_requests")
+      .update({ deleted_at: now })
+      .eq("parent_id", ticketId)
+      .is("deleted_at", null);
+  } else {
+    await supabase
+      .from("maintenance_requests")
+      .update({ parent_id: null })
+      .eq("parent_id", ticketId);
+  }
+
   const { error } = await supabase
     .from("maintenance_requests")
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: now })
     .eq("id", ticketId);
   if (error) return { error: error.message };
 
   revalidatePath("/portal/tasks");
   revalidatePath("/portal/tasks/deleted");
+  revalidatePath(`/portal/tasks/${ticketId}`);
   return { success: true };
 }
 
@@ -334,6 +359,164 @@ export async function hardDeleteTicket(ticketId: string): Promise<ActionResult> 
 
   revalidatePath("/portal/tasks/deleted");
   return { success: true };
+}
+
+// ─── Sub-tasks (a task with sub-tasks IS a "project") ────────────
+// Any member may add sub-tasks to their OWN task; staff to any task. Sub-tasks
+// inherit the parent's category + priority and land approved (a breakdown of
+// already-accepted work, not a new request to review). One level only — a
+// sub-task can't itself hold sub-tasks.
+
+export interface AddSubtasksResult {
+  success?: boolean;
+  error?: string;
+  count?: number;
+}
+
+export async function addSubtasks(
+  parentId: string,
+  descriptions: string[],
+): Promise<AddSubtasksResult> {
+  const clean = (descriptions ?? []).map((d) => d.trim()).filter(Boolean);
+  if (clean.length === 0) return { error: "Add at least one sub-task." };
+
+  const viewer = await getViewer();
+  if (!viewer) return { error: "You must be signed in." };
+
+  const supabase = await createClient();
+  const { data: parent } = await supabase
+    .from("maintenance_requests")
+    .select("id, submitted_by, parent_id, category_id, priority_id")
+    .eq("id", parentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  const p = parent as
+    | { id: string; submitted_by: string | null; parent_id: string | null; category_id: string | null; priority_id: string | null }
+    | null;
+  if (!p) return { error: "Task not found." };
+  if (p.parent_id) return { error: "A sub-task can't have its own sub-tasks." };
+  if (!viewer.isStaff && p.submitted_by !== viewer.userId) {
+    return { error: "You can only add sub-tasks to your own tasks." };
+  }
+
+  const rows = clean.map((description) => ({
+    submitted_by: viewer.userId,
+    parent_id: parentId,
+    category_id: p.category_id,
+    priority_id: p.priority_id,
+    area_id: null,
+    description,
+    review_status: "approved",
+  }));
+  const { error } = await supabase.from("maintenance_requests").insert(rows);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${parentId}`);
+  return { success: true, count: rows.length };
+}
+
+// Turn selected action items from a recorded note into sub-tasks of this task.
+// Each carries its priority and (when the owner is staff) its assignee;
+// non-staff owners + supporters are written into the sub-task description so
+// "Matt takes it, Corey helps" survives. Stamps task_id back on the action item
+// so it shows as "added" and a re-run won't duplicate it. Staff-only (the
+// recorded note + its items are staff-visible).
+export async function addSubtasksFromActionItems(
+  parentId: string,
+  recordingId: string,
+  itemIds: string[],
+): Promise<AddSubtasksResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
+  const ids = Array.from(new Set((itemIds ?? []).filter(Boolean)));
+  if (ids.length === 0) return { error: "Pick at least one item." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const { data: parent } = await supabase
+    .from("maintenance_requests")
+    .select("id, parent_id, category_id")
+    .eq("id", parentId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  const p = parent as { id: string; parent_id: string | null; category_id: string | null } | null;
+  if (!p) return { error: "Task not found." };
+  if (p.parent_id) return { error: "A sub-task can't have its own sub-tasks." };
+
+  // Only items from this recording that haven't already become a task.
+  const { data: itemRows } = await supabase
+    .from("reel_notes_action_items")
+    .select("id, text, priority, owner_member_id, supporter_member_ids, task_id")
+    .eq("recording_id", recordingId)
+    .in("id", ids);
+  const items = ((itemRows as {
+    id: string;
+    text: string;
+    priority: string | null;
+    owner_member_id: string | null;
+    supporter_member_ids: string[] | null;
+    task_id: string | null;
+  }[]) ?? []).filter((it) => !it.task_id);
+  if (items.length === 0) return { error: "Those items are already added." };
+
+  const memberIds = Array.from(
+    new Set(
+      items
+        .flatMap((it) => [it.owner_member_id, ...(it.supporter_member_ids ?? [])])
+        .filter((v): v is string => Boolean(v)),
+    ),
+  );
+  const [{ data: prios }, { data: staff }, { data: mems }] = await Promise.all([
+    supabase.from("priorities").select("id, key").is("deleted_at", null),
+    supabase.from("members").select("id").in("role", ["admin", "super_admin"]).eq("status", "approved"),
+    memberIds.length > 0
+      ? supabase.from("members").select("id, full_name, nickname").in("id", memberIds)
+      : Promise.resolve({ data: [] as { id: string; full_name: string | null; nickname: string | null }[] }),
+  ]);
+  const priorityByKey = new Map((prios ?? []).map((pr) => [pr.key, pr.id] as const));
+  const staffIds = new Set((staff ?? []).map((s) => s.id));
+  const nameById = new Map((mems ?? []).map((m) => [m.id, memberDisplayName(m)] as const));
+
+  let count = 0;
+  for (const it of items) {
+    const staffAssignable = Boolean(it.owner_member_id && staffIds.has(it.owner_member_id));
+    const peopleLines: string[] = [];
+    if (!staffAssignable && it.owner_member_id) {
+      const n = nameById.get(it.owner_member_id);
+      if (n) peopleLines.push(`Owner: ${n}`);
+    }
+    const supporters = (it.supporter_member_ids ?? [])
+      .map((sid) => nameById.get(sid))
+      .filter((v): v is string => Boolean(v));
+    if (supporters.length > 0) peopleLines.push(`Helping: ${supporters.join(", ")}`);
+
+    const { data: child, error: cErr } = await supabase
+      .from("maintenance_requests")
+      .insert({
+        submitted_by: user.id,
+        parent_id: parentId,
+        category_id: p.category_id,
+        area_id: null,
+        priority_id: priorityByKey.get(it.priority ?? "medium") ?? priorityByKey.get("medium") ?? null,
+        description: peopleLines.length > 0 ? `${it.text}\n\n${peopleLines.join("\n")}` : it.text,
+        assigned_to: staffAssignable ? it.owner_member_id : null,
+        review_status: "approved",
+      })
+      .select("id")
+      .single();
+    if (cErr || !child) return { error: cErr?.message ?? "Failed to create sub-task." };
+    await supabase.from("reel_notes_action_items").update({ task_id: child.id }).eq("id", it.id);
+    count += 1;
+  }
+
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${parentId}`);
+  return { success: true, count };
 }
 
 // ─── Member requests (friendly intake wizards) ───────────────────

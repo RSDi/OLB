@@ -48,12 +48,15 @@ export function QueueRow({
   staff,
   priorities,
   staffList,
+  progress = null,
 }: {
   ticket: TicketRow;
   submitter: Submitter | null;
   staff: boolean;
   priorities: PriorityOption[];
   staffList: StaffMember[];
+  // Sub-task rollup when this task is a "project" (has children).
+  progress?: { done: number; total: number } | null;
 }) {
   const router = useRouter();
   const [hover, setHover] = useState(false);
@@ -78,8 +81,15 @@ export function QueueRow({
       }}
     >
       <td>
-        <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gw-fg)", lineHeight: 1.3 }}>
-          {truncate(ticket.description, 80)}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontWeight: 700, fontSize: 13, color: "var(--gw-fg)", lineHeight: 1.3 }}>
+            {truncate(ticket.description, 80)}
+          </span>
+          {progress && (
+            <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>
+              Project · {progress.done}/{progress.total}
+            </span>
+          )}
         </div>
       </td>
       <td>

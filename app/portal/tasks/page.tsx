@@ -47,11 +47,13 @@ interface StaffMember {
 export default async function PortalMaintenancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; category?: string }>;
+  searchParams: Promise<{ status?: string; category?: string; view?: string }>;
 }) {
   const params = await searchParams;
   const status: StatusFilter = isValidStatus(params.status) ? params.status : "all";
   const categoryFilter = params.category ?? null;
+  // "projects" view = only tasks that have sub-tasks (i.e. behave like projects).
+  const view: "all" | "projects" = params.view === "projects" ? "projects" : "all";
 
   const supabase = await createClient();
   const {
@@ -78,6 +80,8 @@ export default async function PortalMaintenancePage({
        priority:priorities(id, label, chip_class, severity)`
     )
     .is("deleted_at", null)
+    // Top-level only: sub-tasks live on their parent's detail page, not the queue.
+    .is("parent_id", null)
     .order("created_at", { ascending: false });
 
   // Keep requests still awaiting committee review out of the operational queue.
@@ -96,7 +100,24 @@ export default async function PortalMaintenancePage({
   }
 
   const { data: ticketsRaw } = await query;
-  const tickets = (ticketsRaw as unknown as TicketRow[]) ?? [];
+  const allTopLevel = (ticketsRaw as unknown as TicketRow[]) ?? [];
+
+  // Sub-task progress per parent — drives the "Project · 3/7" chip and the
+  // Projects view. RLS scopes this to rows the viewer is allowed to see.
+  const { data: childRows } = await supabase
+    .from("maintenance_requests")
+    .select("parent_id, status")
+    .not("parent_id", "is", null)
+    .is("deleted_at", null);
+  const progressByParent = new Map<string, { done: number; total: number }>();
+  for (const r of (childRows as { parent_id: string; status: string }[] | null) ?? []) {
+    const cur = progressByParent.get(r.parent_id) ?? { done: 0, total: 0 };
+    cur.total += 1;
+    if (r.status === "done") cur.done += 1;
+    progressByParent.set(r.parent_id, cur);
+  }
+  // Projects view shows only tasks that actually have sub-tasks.
+  const tickets = view === "projects" ? allTopLevel.filter((t) => progressByParent.has(t.id)) : allTopLevel;
 
   // Resolve submitter names. RLS lets staff see all members and lets a member
   // see their own row, so this just works without elevated privileges.
@@ -119,6 +140,7 @@ export default async function PortalMaintenancePage({
     .from("maintenance_requests")
     .select("status, priority:priorities(severity)")
     .is("deleted_at", null)
+    .is("parent_id", null)
     .eq("review_status", "approved");
   const counts = countByStatus(
     (allForCounts as unknown as { status: TicketRow["status"]; priority: { severity: number } | null }[]) ?? []
@@ -142,10 +164,11 @@ export default async function PortalMaintenancePage({
   const categories = (categoriesRaw as { id: string; name: string; chip_class: string }[]) ?? [];
 
   // Build a queue URL preserving both the status and category filters.
-  const tasksHref = (s: string, c: string | null) => {
+  const tasksHref = (s: string, c: string | null, v: "all" | "projects" = view) => {
     const p = new URLSearchParams();
     if (s && s !== "all") p.set("status", s);
     if (c) p.set("category", c);
+    if (v === "projects") p.set("view", "projects");
     const q = p.toString();
     return q ? `/portal/tasks?${q}` : "/portal/tasks";
   };
@@ -185,23 +208,23 @@ export default async function PortalMaintenancePage({
         }}
       >
         <Link
-          href="/portal/tasks/projects"
+          href={tasksHref(status, categoryFilter, view === "projects" ? "all" : "projects")}
           style={{
             display: "inline-flex",
             alignItems: "center",
             gap: 8,
             padding: "10px 18px",
             borderRadius: 100,
-            background: "var(--gw-bg-elev)",
-            color: "var(--gw-fg)",
-            border: "1px solid var(--gw-border)",
+            background: view === "projects" ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+            color: view === "projects" ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+            border: `1px solid ${view === "projects" ? "var(--rsd-accent)" : "var(--gw-border)"}`,
             fontSize: 13,
             fontWeight: 700,
             textDecoration: "none",
           }}
         >
           <Icons.LayoutDashboard width={14} height={14} />
-          Projects
+          {view === "projects" ? "All tasks" : "Projects"}
         </Link>
         <Link
           href="/portal/tasks/new"
@@ -303,16 +326,26 @@ export default async function PortalMaintenancePage({
       <div className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--gw-border)" }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
-            {tickets.length} {tickets.length === 1 ? "request" : "requests"}
+            {view === "projects"
+              ? `${tickets.length} ${tickets.length === 1 ? "project" : "projects"}`
+              : `${tickets.length} ${tickets.length === 1 ? "request" : "requests"}`}
           </h3>
         </div>
         {tickets.length === 0 ? (
           <div style={{ padding: "48px 24px", textAlign: "center" }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--gw-fg)", marginBottom: 6 }}>
-              {status === "all" ? "No requests yet" : `No ${labelFor(status).toLowerCase()} requests`}
+              {view === "projects"
+                ? "No projects yet"
+                : status === "all"
+                  ? "No requests yet"
+                  : `No ${labelFor(status).toLowerCase()} requests`}
             </div>
             <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
-              {staff ? "Submitted requests will appear here." : "Submit one with + New request above."}
+              {view === "projects"
+                ? "Open any task and add a sub-task — it becomes a project."
+                : staff
+                  ? "Submitted requests will appear here."
+                  : "Submit one with + New request above."}
             </div>
           </div>
         ) : (
@@ -339,6 +372,11 @@ export default async function PortalMaintenancePage({
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                     {t.category && (
                       <span className={`rsd-chip ${t.category.chip_class}`}>{t.category.name}</span>
+                    )}
+                    {progressByParent.has(t.id) && (
+                      <span className="rsd-chip rsd-chip-mute">
+                        Project · {progressByParent.get(t.id)!.done}/{progressByParent.get(t.id)!.total}
+                      </span>
                     )}
                     {decisionChip(t)}
                     {t.priority && (
@@ -377,6 +415,7 @@ export default async function PortalMaintenancePage({
                     staff={staff}
                     priorities={priorities}
                     staffList={staffList}
+                    progress={progressByParent.get(t.id) ?? null}
                   />
                 ))}
               </tbody>

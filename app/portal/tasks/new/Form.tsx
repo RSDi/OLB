@@ -26,7 +26,7 @@ export function MaintenanceRequestForm({
   categories,
   initialDescription = "",
   initialPriorityKey = "",
-  project = null,
+  parent = null,
   initialCategoryName = "",
 }: {
   areas: Area[];
@@ -34,7 +34,7 @@ export function MaintenanceRequestForm({
   categories: Category[];
   initialDescription?: string;
   initialPriorityKey?: string;
-  project?: { id: string; title: string } | null;
+  parent?: { id: string; label: string } | null;
   initialCategoryName?: string;
 }) {
   const router = useRouter();
@@ -122,9 +122,9 @@ export function MaintenanceRequestForm({
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {project && (
+      {parent && (
         <>
-          <input type="hidden" name="project_id" value={project.id} />
+          <input type="hidden" name="parent_id" value={parent.id} />
           <div
             style={{
               fontSize: 13,
@@ -136,7 +136,7 @@ export function MaintenanceRequestForm({
               padding: "10px 14px",
             }}
           >
-            Adding to project: <strong style={{ color: "var(--gw-fg)" }}>{project.title}</strong>
+            Adding a sub-task to: <strong style={{ color: "var(--gw-fg)" }}>{parent.label}</strong>
           </div>
         </>
       )}

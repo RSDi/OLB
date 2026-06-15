@@ -7,9 +7,9 @@ import { MaintenanceRequestForm } from "./Form";
 export default async function NewMaintenanceRequestPage({
   searchParams,
 }: {
-  searchParams: Promise<{ description?: string; priority?: string; project?: string; category?: string }>;
+  searchParams: Promise<{ description?: string; priority?: string; parent?: string; category?: string }>;
 }) {
-  const { description, priority, project, category } = await searchParams;
+  const { description, priority, parent, category } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -37,9 +37,12 @@ export default async function NewMaintenanceRequestPage({
       .order("name", { ascending: true }),
   ]);
 
-  const { data: projectRow } = project
-    ? await supabase.from("projects").select("id, title").eq("id", project).is("deleted_at", null).maybeSingle()
-    : { data: null as { id: string; title: string } | null };
+  const { data: parentRow } = parent
+    ? await supabase.from("maintenance_requests").select("id, description").eq("id", parent).is("deleted_at", null).maybeSingle()
+    : { data: null as { id: string; description: string } | null };
+  const parentInfo = parentRow
+    ? { id: parentRow.id, label: (parentRow.description ?? "").split("\n")[0].slice(0, 80) || "task" }
+    : null;
 
   return (
     <>
@@ -81,7 +84,7 @@ export default async function NewMaintenanceRequestPage({
             categories={categories ?? []}
             initialDescription={description ?? ""}
             initialPriorityKey={priority ?? ""}
-            project={projectRow ?? null}
+            parent={parentInfo}
             initialCategoryName={category ?? ""}
           />
         </div>

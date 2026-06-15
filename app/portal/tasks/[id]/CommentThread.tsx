@@ -2,7 +2,7 @@
 import { useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
-import { CommentForm } from "./Actions";
+import { CommentForm, PromoteFromRecording } from "./Actions";
 import { ActionRow, SummaryBullet, normalizeSummaryBullet } from "reelnotes/ui";
 import { resolveAvatarUrl } from "../../../../lib/members/avatar";
 import type { CommentRecording, AssignableMember } from "../../../../lib/reelnotes/data";
@@ -72,6 +72,7 @@ export function CommentThread({
   members = [],
   viewerMemberId = null,
   isSuperAdmin = false,
+  canPromoteSubtasks = false,
 }: {
   ticketId: string;
   comments: ThreadComment[];
@@ -83,6 +84,9 @@ export function CommentThread({
   // super-admins may delete a whole thread.
   viewerMemberId?: string | null;
   isSuperAdmin?: boolean;
+  // Staff, on a top-level task: a recorded note can turn its action items into
+  // sub-tasks of this task.
+  canPromoteSubtasks?: boolean;
 }) {
   const childrenByParent = new Map<string | null, ThreadComment[]>();
   for (const c of comments) {
@@ -121,6 +125,7 @@ export function CommentThread({
           members={members}
           viewerMemberId={viewerMemberId}
           isSuperAdmin={isSuperAdmin}
+          canPromoteSubtasks={canPromoteSubtasks}
           depth={0}
           border={i < roots.length - 1}
         />
@@ -138,6 +143,7 @@ function CommentNode({
   members,
   viewerMemberId,
   isSuperAdmin,
+  canPromoteSubtasks,
   depth,
   border,
 }: {
@@ -149,6 +155,7 @@ function CommentNode({
   members: AssignableMember[];
   viewerMemberId: string | null;
   isSuperAdmin: boolean;
+  canPromoteSubtasks: boolean;
   depth: number;
   border: boolean;
 }) {
@@ -250,7 +257,13 @@ function CommentNode({
           {/* A recorded comment renders its action items inline; a typed
               comment renders its text. */}
           {comment.recording ? (
-            <RecordedNote ticketId={ticketId} recording={comment.recording} thingsEnabled={thingsEnabled} members={members} />
+            <RecordedNote
+              ticketId={ticketId}
+              recording={comment.recording}
+              thingsEnabled={thingsEnabled}
+              members={members}
+              canPromoteSubtasks={canPromoteSubtasks}
+            />
           ) : (
             <div
               style={{
@@ -344,6 +357,7 @@ function CommentNode({
               members={members}
               viewerMemberId={viewerMemberId}
               isSuperAdmin={isSuperAdmin}
+              canPromoteSubtasks={canPromoteSubtasks}
               depth={depth + 1}
               border={i < children.length - 1}
             />
@@ -363,11 +377,13 @@ function RecordedNote({
   recording,
   thingsEnabled,
   members,
+  canPromoteSubtasks,
 }: {
   ticketId: string;
   recording: CommentRecording;
   thingsEnabled: boolean;
   members: AssignableMember[];
+  canPromoteSubtasks: boolean;
 }) {
   const router = useRouter();
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -483,6 +499,9 @@ function RecordedNote({
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        {canPromoteSubtasks && items.length > 0 && (
+          <PromoteFromRecording parentId={ticketId} recordingId={recording.id} items={items} />
+        )}
         {!thingsEnabled && items.length > 0 && (
           <button
             onClick={enableThings}

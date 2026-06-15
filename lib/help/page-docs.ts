@@ -38,10 +38,11 @@ Look for the **ⓘ** in the top-right corner of any page for help like this.`,
     title: "Tasks & Projects",
     body: `Everything being worked on around the church lives here.
 
-- **Tasks** are individual to-dos (a repair, a setup, a follow-up). **Projects** group related tasks together.
+- A **task** is a single to-do (a repair, a setup, a follow-up). Add **sub-tasks** to any task to break it into steps — a task with sub-tasks simply *is* a **project**, with a progress bar showing how much is done.
 - Each task shows its status (Open, In Progress, Done) and who it's assigned to.
-- Open a task to read the details, add a **comment**, or record a quick **voice note** that's transcribed for you.
-- Big tasks can be promoted to a **Project** to track them as a group.
+- Open a task to read the details, add **sub-tasks**, add a **comment**, or record a quick **voice note** that's transcribed for you.
+- Recorded a voice note? Its action items can be turned into sub-tasks in one click.
+- The **Projects** button up top filters to just the tasks that have sub-tasks.
 - The building committee assigns and reviews tasks; anyone can comment on their own.`,
   },
 
