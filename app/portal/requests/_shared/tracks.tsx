@@ -62,7 +62,9 @@ const subTypeStep: WizardStep = {
   branches: true,
   // "Sports or gym time" hands off to the dedicated gym template (space is the
   // Gym, identity is implied) instead of the general room-booking questions.
-  nextHref: (f) => (f.subType === "sports" ? "/portal/requests/gym" : null),
+  // prior=1: this "what are you planning?" pick counts as step 1, so the gym
+  // flow opens at "Step 2 of 4" rather than resetting to a fresh "Step 1".
+  nextHref: (f) => (f.subType === "sports" ? "/portal/requests/gym?prior=1" : null),
   body: ({ form, choose }) => (
     <Column>
       {BUILDING_SUBTYPES.map((t) => (
@@ -330,6 +332,7 @@ function reviewStep(
     key: "review",
     title: "Review & send",
     hint: "Make sure this looks right, then send it to the committee.",
+    terminal: true,
     body: ({ form, set }) => (
       <>
         <div style={{ display: "flex", flexDirection: "column" }}>

@@ -36,6 +36,9 @@ export interface WizardStep {
   // unknown here, so we show "Step 1" without an "of N" promise or a
   // proportional bar until the path is chosen.
   branches?: boolean;
+  // The final "review & send" screen. Not given a step number — it's the
+  // send-off, not a question — so the count reflects only the questions asked.
+  terminal?: boolean;
   body: (ctx: WizardCtx) => ReactNode;
   // Template routing: if this returns a path, advancing from the step navigates
   // there instead of going to the next step. Lets a "what are you planning?"
@@ -58,7 +61,11 @@ export function RequestWizard({
   initial,
   requesterName,
   successBody,
-}: Omit<TrackConfig, "key"> & { trackKey: string; requesterName: string | null }) {
+  // Steps already completed in a flow that handed off to this one (e.g. picking
+  // "Sports" in building-use → the gym track). Keeps the count continuous
+  // (gym opens at "Step 2 of 4", not a fresh "Step 1") instead of resetting.
+  priorSteps = 0,
+}: Omit<TrackConfig, "key"> & { trackKey: string; requesterName: string | null; priorSteps?: number }) {
   const router = useRouter();
   const [form, setForm] = useState<RequestForm>(initial);
   const [stepIndex, setStepIndex] = useState(0);
@@ -78,10 +85,35 @@ export function RequestWizard({
   const step = visible[idx];
   const isLast = idx === visible.length - 1;
   const canAdvance = !step.valid || step.valid(form);
-  // On a branching entry step the total isn't known yet, so don't promise one
-  // or fill the bar proportionally — show "Step 1" and a small starter sliver.
-  const showTotal = !step.branches;
-  const progressPct = step.branches ? 9 : ((idx + 1) / visible.length) * 100;
+
+  // Step numbering: count only the question steps (the terminal review/send
+  // screen isn't numbered), and offset by any steps already done before a
+  // hand-off so the count stays continuous across tracks.
+  const numbered = visible.filter((s) => !s.terminal);
+  const totalNumbered = priorSteps + numbered.length;
+  const numberedIndex = numbered.indexOf(step); // -1 on the terminal step
+  const stepNumber = priorSteps + numberedIndex + 1;
+
+  // The progress label/bar:
+  // - branching entry step: total unknown → "Step N" + a small starter sliver.
+  // - terminal review step: "Review" + a full bar.
+  // - otherwise: "Step N of T" + proportional fill.
+  const progressLabel = step.branches
+    ? `Step ${stepNumber}`
+    : step.terminal
+      ? "Review"
+      : `Step ${stepNumber} of ${totalNumbered}`;
+  const progressPct = step.branches
+    ? 9
+    : step.terminal
+      ? 100
+      : (stepNumber / totalNumbered) * 100;
+
+  // Back shows once we're past the first step, OR when we arrived via a hand-off
+  // (so the gym flow's first step can step back to "what are you planning?").
+  // Next is hidden on auto-advance picker steps (tapping an option moves on).
+  const showBack = idx > 0 || priorSteps > 0;
+  const showNext = !step.autoAdvance;
 
   // Advance using an explicit form snapshot, so a just-made selection counts
   // even though setForm is async. Recomputes visibility from `f` so conditional
@@ -118,7 +150,9 @@ export function RequestWizard({
   function back() {
     setError(null);
     if (idx === 0) {
-      router.push("/portal/requests");
+      // Handed off here from another flow → step back into that flow's entry
+      // (only the building-use "what are you planning?" picker hands off today).
+      router.push(priorSteps > 0 ? "/portal/requests/building-use" : "/portal/requests");
       return;
     }
     setStepIndex(idx - 1);
@@ -178,9 +212,9 @@ export function RequestWizard({
       {/* Top action bar — Back + the primary action both live up here so neither
           needs a scroll on small screens (the calendar/time steps get tall).
           Auto-advance steps show no Next (options self-advance). */}
-      {(idx > 0 || !step.autoAdvance) && (
+      {(showBack || showNext) && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: -6 }}>
-          {idx > 0 ? (
+          {showBack ? (
             <button
               type="button"
               onClick={back}
@@ -204,7 +238,7 @@ export function RequestWizard({
           ) : (
             <span />
           )}
-          {!step.autoAdvance && (
+          {showNext && (
             <Pill variant="accent" size="sm" onClick={next} disabled={pending || !canAdvance}>
               {isLast ? (pending ? "Sending…" : "Send request") : "Next"}
             </Pill>
@@ -216,9 +250,7 @@ export function RequestWizard({
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
           <span>{title}</span>
-          <span>
-            {showTotal ? `Step ${idx + 1} of ${visible.length}` : `Step ${idx + 1}`}
-          </span>
+          <span>{progressLabel}</span>
         </div>
         <div style={{ height: 6, borderRadius: 100, background: "var(--gw-bg-elev)", overflow: "hidden" }}>
           <div

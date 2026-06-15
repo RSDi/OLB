@@ -9,11 +9,18 @@ const VALID = ["gym", "building-use", "maintenance", "question"];
 
 export default async function RequestTrackPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ track: string }>;
+  searchParams: Promise<{ prior?: string }>;
 }) {
   const { track } = await params;
   if (!VALID.includes(track)) notFound();
+
+  // Steps already completed in a flow that handed off here (e.g. the building-use
+  // "Sports" pick → this gym track), so the wizard's count stays continuous.
+  const { prior } = await searchParams;
+  const priorSteps = Math.min(10, Math.max(0, Number.parseInt(prior ?? "", 10) || 0));
 
   const supabase = await createClient();
   const {
@@ -52,7 +59,7 @@ export default async function RequestTrackPage({
       </div>
 
       <div style={{ maxWidth: 640 }}>
-        <TrackWizard trackKey={track} requesterName={member ? memberFirstName(member) : null} />
+        <TrackWizard trackKey={track} requesterName={member ? memberFirstName(member) : null} priorSteps={priorSteps} />
       </div>
     </>
   );
