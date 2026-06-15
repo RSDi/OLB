@@ -20,7 +20,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
   "/portal/requests": { title: "Make a Request", subtitle: "Portal" },
   "/portal/review": { title: "Review queue", subtitle: "Building committee" },
-  "/portal/tasks": { title: "Tasks & Projects",  subtitle: "Portal" },
+  "/portal/tasks": { title: "Opportunities",  subtitle: "Portal" },
   "/portal/tasks/new": { title: "New task", subtitle: "Portal" },
   "/portal/events/new": { title: "New event", subtitle: "Calendar" },
   "/portal/pm":           { title: "Preventative", subtitle: "Facilities" },

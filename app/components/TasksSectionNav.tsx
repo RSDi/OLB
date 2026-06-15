@@ -5,7 +5,7 @@ import Link from "next/link";
 // sees just their tasks with no tab-bar (the bar hides when only one tab is
 // visible). Each page renders this at the top with its own `active` key.
 const TABS: { key: string; href: string; label: string; staff: boolean }[] = [
-  { key: "tasks", href: "/portal/tasks", label: "Tasks & Projects", staff: false },
+  { key: "tasks", href: "/portal/tasks", label: "Opportunities", staff: false },
   { key: "review", href: "/portal/review", label: "Review", staff: true },
   { key: "pm", href: "/portal/pm", label: "PM", staff: true },
 ];

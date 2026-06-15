@@ -35,7 +35,7 @@ Look for the **ⓘ** in the top-right corner of any page for help like this.`,
   },
 
   "/portal/tasks": {
-    title: "Tasks & Projects",
+    title: "Opportunities",
     body: `Everything being worked on around the church lives here.
 
 - Switch between a **Board** (a Kanban laid out in Open / In Progress / Done columns — drag a card to move it, if you're on the building committee) and a **List** view with the toggle up top. Board is the default.

@@ -21,8 +21,8 @@ interface NavItem {
 // top-level item — it lives under Settings → Integrations.
 const NAV: NavItem[] = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true },
-  { href: "/portal/tasks", label: "Tasks & Projects", icon: <Icons.CheckCircle width={16} height={16}/> },
   { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/> },
+  { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/> },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
   // Building Committee can view Settings; editing is gated per grant inside.
