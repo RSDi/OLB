@@ -30,6 +30,12 @@ export interface WizardStep {
   // A pick-one step whose options self-advance (via ctx.choose). The footer
   // "Next" is hidden — selecting an option moves on; Back stays at the top.
   autoAdvance?: boolean;
+  // A router/entry step where the choice determines the rest of the flow (and
+  // its length) — e.g. picking "Sports" hands off to the 4-step gym track, or
+  // repair-vs-purchase changes which steps follow. The total step count is
+  // unknown here, so we show "Step 1" without an "of N" promise or a
+  // proportional bar until the path is chosen.
+  branches?: boolean;
   body: (ctx: WizardCtx) => ReactNode;
   // Template routing: if this returns a path, advancing from the step navigates
   // there instead of going to the next step. Lets a "what are you planning?"
@@ -72,6 +78,10 @@ export function RequestWizard({
   const step = visible[idx];
   const isLast = idx === visible.length - 1;
   const canAdvance = !step.valid || step.valid(form);
+  // On a branching entry step the total isn't known yet, so don't promise one
+  // or fill the bar proportionally — show "Step 1" and a small starter sliver.
+  const showTotal = !step.branches;
+  const progressPct = step.branches ? 9 : ((idx + 1) / visible.length) * 100;
 
   // Advance using an explicit form snapshot, so a just-made selection counts
   // even though setForm is async. Recomputes visibility from `f` so conditional
@@ -207,14 +217,14 @@ export function RequestWizard({
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
           <span>{title}</span>
           <span>
-            Step {idx + 1} of {visible.length}
+            {showTotal ? `Step ${idx + 1} of ${visible.length}` : `Step ${idx + 1}`}
           </span>
         </div>
         <div style={{ height: 6, borderRadius: 100, background: "var(--gw-bg-elev)", overflow: "hidden" }}>
           <div
             style={{
               height: "100%",
-              width: `${((idx + 1) / visible.length) * 100}%`,
+              width: `${progressPct}%`,
               background: "var(--rsd-accent)",
               borderRadius: 100,
               transition: "width 220ms var(--gw-ease, ease)",

@@ -59,6 +59,7 @@ const subTypeStep: WizardStep = {
   hint: "Pick the closest match — we'll tailor the questions.",
   valid: (f) => !!f.subType,
   autoAdvance: true,
+  branches: true,
   // "Sports or gym time" hands off to the dedicated gym template (space is the
   // Gym, identity is implied) instead of the general room-booking questions.
   nextHref: (f) => (f.subType === "sports" ? "/portal/requests/gym" : null),
@@ -459,6 +460,7 @@ const maintTypeStep: WizardStep = {
   title: "What do you need?",
   valid: (f) => !!f.maintType,
   autoAdvance: true,
+  branches: true,
   body: ({ form, choose }) => (
     <Column>
       {MAINT_TYPES.map((t) => (
