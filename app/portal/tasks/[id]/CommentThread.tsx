@@ -14,6 +14,7 @@ import {
   setMyThingsEnabled,
 } from "../../../../lib/reelnotes/actions";
 import { deleteTicketComment } from "../../../../lib/maintenance/actions";
+import { memberDisplayName } from "../../../../lib/members/display";
 
 export interface ThreadComment {
   id: string;
@@ -27,13 +28,25 @@ export interface ThreadComment {
   recording?: CommentRecording | null;
   author: {
     full_name: string | null;
+    nickname: string | null;
     email: string;
     avatar_url: string | null;
+    // Synthetic author for Slack thread replies: full_name is already a
+    // ready-to-show display name, so it's shown verbatim (not short-named).
+    external?: boolean;
   } | null;
 }
 
 const MAX_VISIBLE_DEPTH = 5;
 const INDENT_PX = 28;
+
+// A comment author's display name. Real members get the short name; synthetic
+// Slack authors carry a ready-to-show full_name that's shown verbatim.
+function authorName(author: ThreadComment["author"]): string {
+  if (!author) return "Unknown";
+  if (author.external) return author.full_name || author.email || "Unknown";
+  return memberDisplayName(author);
+}
 
 const collapseToggleStyle: CSSProperties = {
   display: "inline-flex",
@@ -219,7 +232,7 @@ function CommentNode({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>
-              {comment.author?.full_name ?? comment.author?.email ?? "Unknown"}
+              {authorName(comment.author)}
             </span>
             {comment.recording && (
               <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>
@@ -305,7 +318,7 @@ function CommentNode({
               <CommentForm
                 ticketId={ticketId}
                 parentId={comment.id}
-                placeholder={`Reply to ${comment.author?.full_name ?? comment.author?.email ?? "this comment"}…`}
+                placeholder={`Reply to ${comment.author ? authorName(comment.author) : "this comment"}…`}
                 submitLabel="Post reply"
                 compact
                 onCancel={() => setReplying(false)}

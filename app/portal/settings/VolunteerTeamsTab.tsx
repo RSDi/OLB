@@ -4,6 +4,7 @@ import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
 import { canEditSettings, type MemberLike } from "../../../lib/auth/permissions";
+import { memberDisplayName } from "../../../lib/members/display";
 import {
   createTeam,
   updateTeam,
@@ -22,6 +23,7 @@ interface Team {
 interface MemberOption {
   id: string;
   full_name: string | null;
+  nickname: string | null;
   email: string;
 }
 
@@ -57,7 +59,7 @@ export function VolunteerTeamsTab({ me }: { me: MemberLike }) {
         .order("name", { ascending: true }),
       supabase
         .from("members")
-        .select("id, full_name, email")
+        .select("id, full_name, nickname, email")
         .eq("status", "approved")
         .order("full_name", { ascending: true }),
       supabase.from("member_volunteer_teams").select("member_id, team_id, role"),
@@ -73,7 +75,7 @@ export function VolunteerTeamsTab({ me }: { me: MemberLike }) {
   }, [load]);
 
   function memberLabel(m: MemberOption): string {
-    return m.full_name ?? m.email;
+    return memberDisplayName(m);
   }
 
   function membershipsFor(teamId: string): { leads: Membership[]; regulars: Membership[] } {

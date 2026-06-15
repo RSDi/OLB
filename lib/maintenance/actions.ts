@@ -9,6 +9,7 @@ import { sendNewTicketNotification } from "../notifications/new-ticket";
 import { sendNewTicketSlack } from "../notifications/slack";
 import { sendRequestDecisionNotification } from "../notifications/request-decision";
 import { resolveRequestDates, resolveOccurrences, summarizeDates, formatDateLabel } from "../requests/recurrence";
+import { memberDisplayName } from "../members/display";
 
 export interface CreateTicketResult {
   success?: boolean;
@@ -44,7 +45,7 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
   const [{ data: category }, { data: priority }, { data: member }] = await Promise.all([
     supabase.from("task_categories").select("name").eq("id", categoryId).maybeSingle(),
     supabase.from("priorities").select("label").eq("id", priorityId).maybeSingle(),
-    supabase.from("members").select("full_name, email").eq("user_id", user.id).maybeSingle(),
+    supabase.from("members").select("full_name, nickname, email").eq("user_id", user.id).maybeSingle(),
   ]);
 
   if (!category) return { error: "Category no longer exists." };
@@ -83,7 +84,7 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
     ticketId: inserted.id,
     areaId: cleanAreaId,
     submitterEmail: member?.email ?? user.email ?? null,
-    submitterName: member?.full_name ?? null,
+    submitterName: member ? memberDisplayName(member) : null,
     areaName: area?.name ?? null,
     categoryName: category.name,
     priorityLabel: priority.label,
@@ -410,7 +411,7 @@ export async function createRequest(
   const [{ data: cats }, { data: prios }, { data: member }] = await Promise.all([
     supabase.from("task_categories").select("id, name").is("deleted_at", null),
     supabase.from("priorities").select("id, key, label").is("deleted_at", null),
-    supabase.from("members").select("full_name, email").eq("user_id", user.id).maybeSingle(),
+    supabase.from("members").select("full_name, nickname, email").eq("user_id", user.id).maybeSingle(),
   ]);
 
   const pref = CATEGORY_PREFERENCE[trackKey] ?? ["General"];
@@ -460,7 +461,7 @@ export async function createRequest(
     ticketId: inserted.id,
     areaId: null,
     submitterEmail: member?.email ?? user.email ?? null,
-    submitterName: member?.full_name ?? null,
+    submitterName: member ? memberDisplayName(member) : null,
     areaName: null,
     categoryName: category.name,
     priorityLabel: reviewStatus === "pending_review" ? "Needs review" : priority.label ?? priority.key,
@@ -731,11 +732,11 @@ async function notifyDecision(
   if (row.submitted_by) {
     const { data: sub } = await supabase
       .from("members")
-      .select("email, full_name")
+      .select("email, full_name, nickname")
       .eq("user_id", row.submitted_by)
       .maybeSingle();
     to = sub?.email ?? null;
-    name = sub?.full_name ?? null;
+    name = sub ? memberDisplayName(sub) : null;
   }
   if (!to && row.details) {
     const contact = row.details["contactEmail"];

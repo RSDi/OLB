@@ -90,6 +90,7 @@ export function MemberDetail({
 
   async function handleAdminSave(fields: {
     full_name: string | null;
+    nickname: string | null;
     avatar_url: string | null;
     phone: string | null;
     birthday: string | null;
@@ -309,17 +310,17 @@ function NotesPanel({ memberId, initialNotes }: { memberId: string; initialNotes
           }}
         >
           <Icons.Pencil width={12} height={12} />
-          Staff notes
+          Member notes
         </span>
         <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          Private — visible to staff only
+          Building committee only — the member can&apos;t see these
         </span>
       </div>
 
       <Textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Pastoral notes, follow-ups, context… (not shown to the member)"
+        placeholder="Notes for the building committee — follow-ups, context… (the member can't see these)"
         rows={4}
         disabled={pending}
       />
@@ -676,6 +677,7 @@ function EditForm({
 }) {
   const router = useRouter();
   const [fullName, setFullName] = useState(member.full_name ?? "");
+  const [nickname, setNickname] = useState(member.nickname ?? "");
   const [phone, setPhone] = useState(member.phone ?? "");
   const [birthday, setBirthday] = useState(member.birthday ?? "");
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url ?? "");
@@ -689,6 +691,7 @@ function EditForm({
     startTransition(async () => {
       const result = await updateOwnProfile({
         fullName: fullName.trim(),
+        nickname: nickname.trim() || null,
         phone: phone.trim() || null,
         birthday: birthday || null,
         avatarUrl: avatarUrl.trim() || null,
@@ -716,6 +719,13 @@ function EditForm({
         onChange={(e) => setFullName(e.target.value)}
         autoFocus
         required
+        disabled={pending}
+      />
+      <Input
+        label="Nickname"
+        value={nickname}
+        onChange={(e) => setNickname(e.target.value)}
+        placeholder="e.g. Jeff — shown on tickets & lists (defaults to your first name)"
         disabled={pending}
       />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

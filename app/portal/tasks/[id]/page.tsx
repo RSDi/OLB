@@ -33,6 +33,7 @@ import {
   loadLinkedContactsForEntity,
   loadContactPickerOptions,
 } from "../../contacts/_shared/data";
+import { memberDisplayName, memberFirstName } from "../../../../lib/members/display";
 
 interface RequestDetails {
   kind?: string;
@@ -86,7 +87,7 @@ interface Ticket {
   project: { id: string; title: string } | null;
   area: { id: string; name: string } | null;
   priority: { id: string; label: string; chip_class: string } | null;
-  assignee: { id: string; full_name: string | null; email: string } | null;
+  assignee: { id: string; full_name: string | null; nickname: string | null; email: string } | null;
 }
 
 type Comment = ThreadComment;
@@ -95,6 +96,7 @@ interface StaffMember {
   id: string;
   user_id: string | null;
   full_name: string | null;
+  nickname: string | null;
   email: string;
 }
 
@@ -129,7 +131,7 @@ export default async function TicketDetailPage({
        project:projects(id, title),
        area:areas(id, name),
        priority:priorities(id, label, chip_class),
-       assignee:members!assigned_to(id, full_name, email)`
+       assignee:members!assigned_to(id, full_name, nickname, email)`
     )
     .is("deleted_at", null)
     .eq("id", id)
@@ -187,21 +189,21 @@ export default async function TicketDetailPage({
     if (teamId) {
       const { data: rows } = await supabase
         .from("member_volunteer_teams")
-        .select("member:members(id, full_name)")
+        .select("member:members(id, full_name, nickname, email)")
         .eq("team_id", teamId);
-      shutdownTeam = ((rows as unknown as { member: { id: string; full_name: string | null } | null }[]) ?? [])
+      shutdownTeam = ((rows as unknown as { member: { id: string; full_name: string | null; nickname: string | null; email: string | null } | null }[]) ?? [])
         .map((r) => r.member)
-        .filter((m): m is { id: string; full_name: string | null } => !!m)
-        .map((m) => ({ id: m.id, fullName: m.full_name ?? "(no name)" }))
+        .filter((m): m is { id: string; full_name: string | null; nickname: string | null; email: string | null } => !!m)
+        .map((m) => ({ id: m.id, fullName: memberDisplayName(m) }))
         .sort((a, b) => a.fullName.localeCompare(b.fullName));
     }
   }
 
-  let submitter: { full_name: string | null; email: string } | null = null;
+  let submitter: { full_name: string | null; nickname: string | null; email: string } | null = null;
   if (ticket.submitted_by) {
     const { data: sub } = await supabase
       .from("members")
-      .select("full_name, email")
+      .select("full_name, nickname, email")
       .eq("user_id", ticket.submitted_by)
       .maybeSingle();
     submitter = sub ?? null;
@@ -211,7 +213,7 @@ export default async function TicketDetailPage({
     .from("ticket_comments")
     .select(
       `id, body, created_at, author_id, parent_id,
-       author:members!author_id(full_name, email, avatar_url)`
+       author:members!author_id(full_name, nickname, email, avatar_url)`
     )
     .eq("ticket_id", id)
     .is("deleted_at", null)
@@ -239,7 +241,7 @@ export default async function TicketDetailPage({
     if (extById.size > 0) {
       comments = comments.map(c =>
         !c.author && extById.has(c.id)
-          ? { ...c, author: { full_name: extById.get(c.id)!, email: "", avatar_url: null } }
+          ? { ...c, author: { full_name: extById.get(c.id)!, nickname: null, email: "", avatar_url: null, external: true } }
           : c
       );
     }
@@ -282,7 +284,7 @@ export default async function TicketDetailPage({
   if (staff) {
     const { data: staffRows } = await supabase
       .from("members")
-      .select("id, user_id, full_name, email")
+      .select("id, user_id, full_name, nickname, email")
       .in("role", ["admin", "super_admin"])
       .eq("status", "approved")
       .order("full_name", { ascending: true });
@@ -313,7 +315,7 @@ export default async function TicketDetailPage({
   const eligibleVoters = staffList.filter((s) => s.user_id);
   const voteThreshold = majorityThreshold(eligibleVoters.length);
   const staffNameByUserId: Record<string, string> = {};
-  for (const s of eligibleVoters) staffNameByUserId[s.user_id as string] = s.full_name ?? s.email;
+  for (const s of eligibleVoters) staffNameByUserId[s.user_id as string] = memberDisplayName(s);
   const votesForPanel = voteRows.map((v) => ({
     voterName: staffNameByUserId[v.voter_id] ?? "Committee member",
     vote: v.vote,
@@ -323,7 +325,7 @@ export default async function TicketDetailPage({
   const votedIds = new Set(voteRows.map((v) => v.voter_id));
   const waitingOn = eligibleVoters
     .filter((s) => !votedIds.has(s.user_id as string))
-    .map((s) => (s.full_name ?? s.email).split(" ")[0]);
+    .map((s) => memberFirstName(s));
   const myVote = voteRows.find((v) => v.voter_id === user.id)?.vote ?? null;
 
   // Committee decision history (staff). Gracefully empty until migration 0048
@@ -352,8 +354,8 @@ export default async function TicketDetailPage({
     const actorIds = Array.from(new Set(rows.map((r) => r.changed_by).filter((v): v is string => Boolean(v))));
     const nameMap: Record<string, string> = {};
     if (actorIds.length > 0) {
-      const { data: actors } = await supabase.from("members").select("user_id, full_name, email").in("user_id", actorIds);
-      for (const a of actors ?? []) nameMap[a.user_id] = a.full_name ?? a.email;
+      const { data: actors } = await supabase.from("members").select("user_id, full_name, nickname, email").in("user_id", actorIds);
+      for (const a of actors ?? []) nameMap[a.user_id] = memberDisplayName(a);
     }
     reviewLog = rows.map((r) => ({
       id: r.id,
@@ -476,7 +478,7 @@ export default async function TicketDetailPage({
               <span>
                 Submitted by{" "}
                 <strong style={{ color: "var(--gw-fg)" }}>
-                  {submitter ? submitter.full_name ?? submitter.email : "Unknown"}
+                  {submitter ? memberDisplayName(submitter) : "Unknown"}
                 </strong>
               </span>
               <span>· {formatDateTime(ticket.created_at)}</span>
@@ -501,7 +503,7 @@ export default async function TicketDetailPage({
                       taskId={ticket.id}
                       teamMembers={shutdownTeam}
                       assigneeId={ticket.assigned_to}
-                      assigneeName={ticket.assignee?.full_name ?? null}
+                      assigneeName={ticket.assignee ? memberDisplayName(ticket.assignee) : null}
                     />
                   )}
                   <ProcedureRunner
@@ -587,7 +589,7 @@ export default async function TicketDetailPage({
               label="Assigned to"
               value={
                 ticket.assignee
-                  ? ticket.assignee.full_name ?? ticket.assignee.email
+                  ? memberDisplayName(ticket.assignee)
                   : <span style={{ color: "var(--gw-fg-muted)" }}>Unassigned</span>
               }
             />

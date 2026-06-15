@@ -5,6 +5,7 @@ import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
 import { QueueRow } from "./QueueRow";
+import { memberDisplayName } from "../../../lib/members/display";
 
 type StatusFilter = "all" | "open" | "in_progress" | "done" | "cancelled";
 
@@ -39,6 +40,7 @@ interface PriorityOption {
 interface StaffMember {
   id: string;
   full_name: string | null;
+  nickname: string | null;
   email: string;
 }
 
@@ -101,14 +103,14 @@ export default async function PortalMaintenancePage({
   const submitterIds = Array.from(
     new Set(tickets.map((t) => t.submitted_by).filter((v): v is string => Boolean(v)))
   );
-  const submitterMap: Record<string, { full_name: string | null; email: string }> = {};
+  const submitterMap: Record<string, { full_name: string | null; nickname: string | null; email: string }> = {};
   if (submitterIds.length > 0) {
     const { data: submitters } = await supabase
       .from("members")
-      .select("user_id, full_name, email")
+      .select("user_id, full_name, nickname, email")
       .in("user_id", submitterIds);
     for (const s of submitters ?? []) {
-      submitterMap[s.user_id] = { full_name: s.full_name, email: s.email };
+      submitterMap[s.user_id] = { full_name: s.full_name, nickname: s.nickname, email: s.email };
     }
   }
 
@@ -162,7 +164,7 @@ export default async function PortalMaintenancePage({
   if (staff) {
     const { data: staffRows } = await supabase
       .from("members")
-      .select("id, full_name, email")
+      .select("id, full_name, nickname, email")
       .in("role", ["admin", "super_admin"])
       .eq("status", "approved")
       .order("full_name", { ascending: true });
@@ -346,7 +348,7 @@ export default async function PortalMaintenancePage({
                   <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
                     {t.area?.name ?? "No area"} · {formatDate(t.created_at)}
                     {staff && t.submitted_by && submitterMap[t.submitted_by]
-                      ? ` · ${submitterMap[t.submitted_by].full_name ?? submitterMap[t.submitted_by].email}`
+                      ? ` · ${memberDisplayName(submitterMap[t.submitted_by])}`
                       : ""}
                   </div>
                 </Link>

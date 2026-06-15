@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { createClient } from "../../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../../lib/auth/permissions";
+import { memberDisplayName } from "../../../../lib/members/display";
 import { ChecklistAndActions } from "./Actions";
 import { AssetScopedActions, type AssetRow } from "./AssetScopedActions";
 import type { InstanceStatus, InstanceStepCheck } from "../../../../lib/pm/actions";
@@ -19,7 +20,7 @@ interface Instance {
   completed_at: string | null;
   area: { name: string } | null;
   priority: { label: string; chip_class: string } | null;
-  completed_by_member: { full_name: string | null; email: string } | null;
+  completed_by_member: { full_name: string | null; nickname: string | null; email: string } | null;
 }
 
 interface TemplateSteps {
@@ -52,7 +53,7 @@ export default async function PmInstanceDetailPage({
       `id, template_id, title, description, scheduled_for, status, step_checks, notes, completed_at,
        area:areas(name),
        priority:priorities(label, chip_class),
-       completed_by_member:members!completed_by(full_name, email)`
+       completed_by_member:members!completed_by(full_name, nickname, email)`
     )
     .eq("id", id)
     .is("deleted_at", null)
@@ -265,7 +266,7 @@ export default async function PmInstanceDetailPage({
                 {inst.completed_by_member && (
                   <Field
                     label="By"
-                    value={inst.completed_by_member.full_name ?? inst.completed_by_member.email}
+                    value={memberDisplayName(inst.completed_by_member)}
                   />
                 )}
               </>

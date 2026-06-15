@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
+import { memberDisplayName } from "../../../lib/members/display";
 import { majorityThreshold } from "../../../lib/votes/threshold";
 import { loadConflictCounts } from "../../../lib/requests/conflict-loader";
 
@@ -75,9 +76,9 @@ export default async function ReviewQueuePage({
   if (ids.length > 0) {
     const { data: subs } = await supabase
       .from("members")
-      .select("user_id, full_name, email")
+      .select("user_id, full_name, nickname, email")
       .in("user_id", ids);
-    for (const s of subs ?? []) submitterMap[s.user_id] = s.full_name ?? s.email;
+    for (const s of subs ?? []) submitterMap[s.user_id] = memberDisplayName(s);
   }
 
   // Vote tallies for the pending list (gracefully empty until migration 0050).

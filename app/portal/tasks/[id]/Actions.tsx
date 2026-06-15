@@ -13,6 +13,7 @@ import {
   type VoteValue,
 } from "../../../../lib/maintenance/actions";
 import { promoteTaskToProject } from "../../../../lib/projects/actions";
+import { memberDisplayName } from "../../../../lib/members/display";
 
 export function StatusSelect({
   ticketId,
@@ -55,6 +56,7 @@ export function StatusSelect({
 interface StaffMember {
   id: string;
   full_name: string | null;
+  nickname: string | null;
   email: string;
 }
 
@@ -91,7 +93,7 @@ export function AssignSelect({
         <option value="">Unassigned</option>
         {staff.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.full_name ?? s.email}
+            {memberDisplayName(s)}
           </option>
         ))}
       </Select>

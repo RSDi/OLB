@@ -5,6 +5,7 @@ import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { sendProcedureCompletionSlack } from "../notifications/slack";
+import { memberDisplayName } from "../members/display";
 
 export interface ProcedureActionResult {
   success?: boolean;
@@ -136,11 +137,11 @@ export async function completeProcedure(
 
   const { data: me } = await supabase
     .from("members")
-    .select("id, full_name")
+    .select("id, full_name, nickname")
     .eq("user_id", gate.userId)
     .maybeSingle();
-  const meRow = me as { id: string; full_name: string | null } | null;
-  const person = meRow?.full_name || "A team member";
+  const meRow = me as { id: string; full_name: string | null; nickname: string | null } | null;
+  const person = (meRow ? memberDisplayName(meRow) : "") || "A team member";
 
   // Optional event link, for the Slack FYI back-reference.
   let event: { id: string; title: string } | undefined;

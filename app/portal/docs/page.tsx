@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
+import { memberDisplayName } from "../../../lib/members/display";
 
 interface PlaybookRow {
   id: string;
@@ -70,7 +71,7 @@ export default async function PortalPlaybooksPage() {
       nickname: string | null;
       email: string | null;
     }[]) ?? []) {
-      nameByUid.set(m.user_id, m.nickname || m.full_name || m.email || "");
+      nameByUid.set(m.user_id, memberDisplayName(m));
     }
   }
 

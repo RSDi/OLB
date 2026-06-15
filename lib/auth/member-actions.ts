@@ -129,6 +129,7 @@ export async function addMemberRelationship(
 
 export interface UpdateOwnProfileInput {
   fullName: string;
+  nickname: string | null;
   phone: string | null;
   birthday: string | null; // YYYY-MM-DD
   avatarUrl: string | null;
@@ -152,6 +153,7 @@ export async function updateOwnProfile(
     .from("members")
     .update({
       full_name: input.fullName.trim(),
+      nickname: input.nickname?.trim() || null,
       phone: input.phone?.trim() || null,
       birthday: input.birthday || null,
       avatar_url: input.avatarUrl?.trim() || null,

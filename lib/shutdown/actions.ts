@@ -11,6 +11,7 @@ import {
   sendProcedureCompletionSlack,
   type SlackEventRef,
 } from "../notifications/slack";
+import { memberDisplayName } from "../members/display";
 
 // Building-shutdown wizard, Phase 2b. A shutdown is a maintenance_requests row
 // linked to its event (event_id) and assigned to a Building Shutdown team
@@ -28,7 +29,7 @@ interface ActionResult {
 interface CallerCtx {
   userId: string;
   memberId: string | null;
-  fullName: string | null;
+  displayName: string | null;
   staff: boolean;
 }
 
@@ -40,14 +41,20 @@ async function callerContext(): Promise<CallerCtx | null> {
   if (!user) return null;
   const { data } = await supabase
     .from("members")
-    .select("id, full_name, role, status")
+    .select("id, full_name, nickname, role, status")
     .eq("user_id", user.id)
     .maybeSingle();
-  const m = data as { id: string; full_name: string | null; role: MemberRole; status: MemberStatus } | null;
+  const m = data as {
+    id: string;
+    full_name: string | null;
+    nickname: string | null;
+    role: MemberRole;
+    status: MemberStatus;
+  } | null;
   return {
     userId: user.id,
     memberId: m?.id ?? null,
-    fullName: m?.full_name ?? null,
+    displayName: m ? memberDisplayName(m) : null,
     staff: isStaff(m),
   };
 }
@@ -135,12 +142,13 @@ export async function assignShutdown(eventId: string, memberId: string): Promise
   // Confirm the assignee exists and is on the Building Shutdown team.
   const { data: assignee } = await admin
     .from("members")
-    .select("id, full_name")
+    .select("id, full_name, nickname")
     .eq("id", memberId)
     .is("deleted_at", null)
     .maybeSingle();
   if (!assignee) return { error: "That member no longer exists." };
-  const assigneeName = (assignee as { full_name: string | null }).full_name || "A team member";
+  const assigneeName =
+    memberDisplayName(assignee as { full_name: string | null; nickname: string | null }) || "A team member";
 
   // Find an existing (non-deleted) shutdown task for this event.
   const { data: existing } = await admin
@@ -215,12 +223,13 @@ export async function assignShutdownTask(taskId: string, memberId: string): Prom
 
   const { data: assignee } = await admin
     .from("members")
-    .select("full_name")
+    .select("full_name, nickname")
     .eq("id", memberId)
     .is("deleted_at", null)
     .maybeSingle();
   if (!assignee) return { error: "That member no longer exists." };
-  const assigneeName = (assignee as { full_name: string | null }).full_name || "A team member";
+  const assigneeName =
+    memberDisplayName(assignee as { full_name: string | null; nickname: string | null }) || "A team member";
 
   const { error } = await admin
     .from("maintenance_requests")
@@ -262,8 +271,12 @@ export async function optOutShutdown(taskId: string): Promise<ActionResult> {
   // Capture the former assignee's name for the cover request.
   let formerName: string | null = null;
   if (t.assigned_to) {
-    const { data: m } = await admin.from("members").select("full_name").eq("id", t.assigned_to).maybeSingle();
-    formerName = (m as { full_name: string | null } | null)?.full_name ?? null;
+    const { data: m } = await admin
+      .from("members")
+      .select("full_name, nickname")
+      .eq("id", t.assigned_to)
+      .maybeSingle();
+    formerName = m ? memberDisplayName(m as { full_name: string | null; nickname: string | null }) : null;
   }
 
   const { error } = await admin
@@ -317,7 +330,7 @@ export async function completeShutdownTask(
     .eq("id", taskId);
   if (error) return { error: error.message };
 
-  const person = caller.fullName || "A team member";
+  const person = caller.displayName || "A team member";
   let posted = false;
   if (ev.notify && ev.channel) {
     const template = ev.completionMessage || `✅ ${ev.procedureTitle ?? "Building shutdown"} complete — by {person}.`;

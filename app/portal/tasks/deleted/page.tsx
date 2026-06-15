@@ -4,6 +4,7 @@ import { Icons } from "../../../components/icons";
 import { createClient } from "../../../../lib/supabase/server";
 import { isSuperAdmin, type MemberLike } from "../../../../lib/auth/permissions";
 import { DeletedActions } from "./Actions";
+import { memberDisplayName } from "../../../../lib/members/display";
 
 interface DeletedTicket {
   id: string;
@@ -49,14 +50,14 @@ export default async function DeletedMaintenancePage() {
   const submitterIds = Array.from(
     new Set(tickets.map((t) => t.submitted_by).filter((v): v is string => Boolean(v)))
   );
-  const submitterMap: Record<string, { full_name: string | null; email: string }> = {};
+  const submitterMap: Record<string, { full_name: string | null; nickname: string | null; email: string }> = {};
   if (submitterIds.length > 0) {
     const { data: submitters } = await supabase
       .from("members")
-      .select("user_id, full_name, email")
+      .select("user_id, full_name, nickname, email")
       .in("user_id", submitterIds);
     for (const s of submitters ?? []) {
-      submitterMap[s.user_id] = { full_name: s.full_name, email: s.email };
+      submitterMap[s.user_id] = { full_name: s.full_name, nickname: s.nickname, email: s.email };
     }
   }
 
@@ -157,7 +158,7 @@ export default async function DeletedMaintenancePage() {
                     </div>
                     <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 4 }}>
                       Submitted{" "}
-                      {submitter ? `by ${submitter.full_name ?? submitter.email}` : "(unknown)"} on{" "}
+                      {submitter ? `by ${memberDisplayName(submitter)}` : "(unknown)"} on{" "}
                       {formatDate(t.created_at)} · Deleted {formatDate(t.deleted_at)}
                     </div>
                   </div>

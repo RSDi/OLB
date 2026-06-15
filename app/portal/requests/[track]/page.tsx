@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import { Icons } from "../../../components/icons";
+import { memberFirstName } from "../../../../lib/members/display";
 import { TrackWizard } from "../_shared/TrackWizard";
 
 const VALID = ["gym", "building-use", "maintenance", "question"];
@@ -22,7 +23,7 @@ export default async function RequestTrackPage({
 
   const { data: member } = await supabase
     .from("members")
-    .select("full_name")
+    .select("full_name, nickname")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -51,7 +52,7 @@ export default async function RequestTrackPage({
       </div>
 
       <div style={{ maxWidth: 640 }}>
-        <TrackWizard trackKey={track} requesterName={member?.full_name ?? null} />
+        <TrackWizard trackKey={track} requesterName={member ? memberFirstName(member) : null} />
       </div>
     </>
   );

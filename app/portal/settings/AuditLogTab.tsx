@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
+import { memberDisplayName } from "../../../lib/members/display";
 
 type AuditAction = "insert" | "update" | "delete";
 
@@ -44,11 +45,11 @@ export function AuditLogTab() {
     if (actorIds.length > 0) {
       const { data: actors } = await supabase
         .from("members")
-        .select("user_id, full_name, email")
+        .select("user_id, full_name, nickname, email")
         .in("user_id", actorIds);
       const map: Record<string, string> = {};
-      for (const a of (actors as { user_id: string; full_name: string | null; email: string | null }[]) ?? []) {
-        map[a.user_id] = a.full_name ?? a.email ?? "Unknown";
+      for (const a of (actors as { user_id: string; full_name: string | null; nickname: string | null; email: string | null }[]) ?? []) {
+        map[a.user_id] = memberDisplayName(a);
       }
       setActorNames(map);
     }
@@ -112,8 +113,11 @@ export function AuditLogTab() {
 
 function AuditEntry({ row, actorName }: { row: AuditRow; actorName: string }) {
   const subject = row.new_data ?? row.old_data ?? {};
-  const subjectName =
-    (subject["full_name"] as string | null) ?? (subject["email"] as string | null) ?? "Unknown member";
+  const subjectName = memberDisplayName({
+    full_name: (subject["full_name"] as string | null) ?? null,
+    nickname: (subject["nickname"] as string | null) ?? null,
+    email: (subject["email"] as string | null) ?? null,
+  });
   const changes = diffFields(row.old_data, row.new_data, row.action);
 
   return (

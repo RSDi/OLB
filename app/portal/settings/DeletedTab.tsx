@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
+import { memberDisplayName } from "../../../lib/members/display";
 import {
   restorePmTemplate,
   hardDeletePmTemplate,
@@ -50,6 +51,7 @@ interface DeletedPmTemplate {
 interface DeletedMember {
   id: string;
   full_name: string | null;
+  nickname: string | null;
   email: string | null;
   directory_category: "regular" | "extended" | "memorial";
   deleted_at: string;
@@ -104,7 +106,7 @@ export function DeletedTab() {
         .order("deleted_at", { ascending: false }),
       supabase
         .from("members")
-        .select("id, full_name, email, directory_category, deleted_at")
+        .select("id, full_name, nickname, email, directory_category, deleted_at")
         .not("deleted_at", "is", null)
         .order("deleted_at", { ascending: false }),
       supabase
@@ -293,7 +295,7 @@ export function DeletedTab() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {members.map((m) => {
-              const label = m.full_name ?? m.email ?? "Unknown";
+              const label = memberDisplayName(m);
               const cat =
                 m.directory_category === "extended"
                   ? "Extended family"

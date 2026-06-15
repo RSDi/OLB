@@ -7,6 +7,7 @@ import {
   assignTicket,
   type TicketStatus,
 } from "../../../lib/maintenance/actions";
+import { memberDisplayName } from "../../../lib/members/display";
 
 interface PriorityOption {
   id: string;
@@ -17,11 +18,13 @@ interface PriorityOption {
 interface StaffMember {
   id: string;
   full_name: string | null;
+  nickname: string | null;
   email: string;
 }
 
 interface Submitter {
   full_name: string | null;
+  nickname: string | null;
   email: string;
 }
 
@@ -119,7 +122,7 @@ export function QueueRow({
         )}
       </td>
       <td style={{ whiteSpace: "nowrap" }}>{formatDate(ticket.created_at)}</td>
-      {staff && <td>{submitter ? submitter.full_name ?? submitter.email : "—"}</td>}
+      {staff && <td>{submitter ? memberDisplayName(submitter) : "—"}</td>}
       {staff && (
         <td onClick={stop}>
           <InlineAssignSelect ticketId={ticket.id} current={ticket.assigned_to} staff={staffList} />
@@ -245,7 +248,7 @@ function InlineAssignSelect({
       <option value="">Unassigned</option>
       {staff.map((s) => (
         <option key={s.id} value={s.id}>
-          {s.full_name ?? s.email}
+          {memberDisplayName(s)}
         </option>
       ))}
     </select>

@@ -4,6 +4,7 @@ import { Icons } from "../../components/icons";
 import { Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
 import { canEditSettings, type MemberLike } from "../../../lib/auth/permissions";
+import { memberDisplayName } from "../../../lib/members/display";
 import {
   assignMemberToArea,
   removeMemberFromArea,
@@ -19,6 +20,7 @@ interface Area {
 interface MemberOption {
   id: string;
   full_name: string | null;
+  nickname: string | null;
   email: string;
 }
 
@@ -53,7 +55,7 @@ export function AssignmentsTab({ me }: { me: MemberLike }) {
         .order("name", { ascending: true }),
       supabase
         .from("members")
-        .select("id, full_name, email")
+        .select("id, full_name, nickname, email")
         .eq("status", "approved")
         .order("full_name", { ascending: true }),
       supabase.from("area_members").select("id, area_id, member_id, role"),
@@ -125,7 +127,7 @@ export function AssignmentsTab({ me }: { me: MemberLike }) {
   }
 
   function memberLabel(m: MemberOption): string {
-    return m.full_name ?? m.email;
+    return memberDisplayName(m);
   }
 
   function assignmentsFor(areaId: string): { owners: Assignment[]; helpers: Assignment[] } {

@@ -4,6 +4,7 @@ import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
 import type { MemberRole, MemberStatus } from "../../../lib/auth/permissions";
+import { memberDisplayName } from "../../../lib/members/display";
 import {
   createMember,
   addMemberRelationship,
@@ -19,6 +20,7 @@ interface Member {
   user_id: string | null;
   email: string | null;
   full_name: string | null;
+  nickname: string | null;
   avatar_url: string | null;
   phone: string | null;
   birthday: string | null;
@@ -79,7 +81,7 @@ export function MembersTab({
       supabase
         .from("members")
         .select(
-          "id, user_id, email, full_name, avatar_url, phone, birthday, status, role, can_edit_settings, can_delete_settings, can_undelete_settings, requested_at, reviewed_at"
+          "id, user_id, email, full_name, nickname, avatar_url, phone, birthday, status, role, can_edit_settings, can_delete_settings, can_undelete_settings, requested_at, reviewed_at"
         )
         .is("deleted_at", null)
         .order("requested_at", { ascending: false }),
@@ -158,6 +160,7 @@ export function MembersTab({
     id: string,
     fields: {
       full_name: string | null;
+      nickname: string | null;
       avatar_url: string | null;
       phone: string | null;
       birthday: string | null;
@@ -524,7 +527,7 @@ function MemberRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, lineHeight: 1.2, flexWrap: "wrap" }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gw-fg)" }}>
-            {member.full_name ?? "Unknown"}
+            {memberDisplayName(member)}
           </span>
           {member.role === "super_admin" && (
             <span className="rsd-chip rsd-chip-accent">Super-admin</span>

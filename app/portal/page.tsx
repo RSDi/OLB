@@ -5,6 +5,7 @@ import { KpiCard } from "../components/ui";
 import { createClient } from "../../lib/supabase/server";
 import { isStaff, type MemberLike } from "../../lib/auth/permissions";
 import { expandEventOccurrences } from "../../lib/events/occurrences";
+import { memberDisplayName, memberFirstName } from "../../lib/members/display";
 
 interface RecentTicket {
   id: string;
@@ -32,10 +33,10 @@ export default async function PortalDashboard() {
 
   const { data: meRow } = await supabase
     .from("members")
-    .select("id, role, status, full_name")
+    .select("id, role, status, full_name, nickname")
     .eq("user_id", user.id)
     .maybeSingle();
-  const me = (meRow as (MemberLike & { id: string; full_name: string | null }) | null) ?? null;
+  const me = (meRow as (MemberLike & { id: string; full_name: string | null; nickname: string | null }) | null) ?? null;
   const staff = isStaff(me);
 
   // KPIs are for people "actively helping" — staff, area owners/helpers, or
@@ -73,19 +74,19 @@ export default async function PortalDashboard() {
   const submitterIds = Array.from(
     new Set(recent.map((t) => t.submitted_by).filter((v): v is string => Boolean(v)))
   );
-  const submitterMap: Record<string, { full_name: string | null; email: string }> = {};
+  const submitterMap: Record<string, { full_name: string | null; nickname: string | null; email: string }> = {};
   if (submitterIds.length > 0) {
     const { data: submitters } = await supabase
       .from("members")
-      .select("user_id, full_name, email")
+      .select("user_id, full_name, nickname, email")
       .in("user_id", submitterIds);
     for (const s of submitters ?? []) {
-      submitterMap[s.user_id] = { full_name: s.full_name, email: s.email };
+      submitterMap[s.user_id] = { full_name: s.full_name, nickname: s.nickname, email: s.email };
     }
   }
 
   const recentLabel = staff ? "Recent Requests" : "My Recent Requests";
-  const firstName = me?.full_name?.split(" ")[0] ?? null;
+  const firstName = me ? memberFirstName(me) : null;
 
   // Due PM tasks (staff-only). Pending/in-progress instances whose
   // scheduled date has already arrived or lands within the next 7 days.
@@ -422,7 +423,7 @@ export default async function PortalDashboard() {
                         }}
                       >
                         {r.area?.name ?? "Unknown area"} · {formatDate(r.created_at)}
-                        {staff && submitter ? ` · ${submitter.full_name ?? submitter.email}` : ""}
+                        {staff && submitter ? ` · ${memberDisplayName(submitter)}` : ""}
                       </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>

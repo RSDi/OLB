@@ -120,11 +120,17 @@ function findMember(members: AssignableMember[], id: string | null): AssignableM
   return id ? members.find(m => m.id === id) : undefined;
 }
 
-// Display name for a chip. Prefer full name ("David Orrick"); fall back to
-// nickname, then a generic label for a stale/unknown id.
+// Display name for a chip. Show a short name: nickname (or first name) plus
+// last name, dropping any middle name ("David Andrew Orrick" -> "David Orrick").
+// Falls back to the full name, then a generic label for a stale/unknown id.
 function memberLabel(m: AssignableMember | undefined): string {
   if (!m) return "Unknown member";
-  return m.full_name || m.nickname || "Member";
+  const tokens = (m.full_name ?? "").trim().split(/\s+/).filter(Boolean);
+  const first = tokens[0] ?? "";
+  const last = tokens.length > 1 ? tokens[tokens.length - 1] : "";
+  const given = m.nickname?.trim() || first;
+  const short = [given, last].filter(Boolean).join(" ");
+  return short || m.full_name || "Unknown";
 }
 
 // LLM-inferred priority → chip label/color + a rank for sorting. Keys mirror

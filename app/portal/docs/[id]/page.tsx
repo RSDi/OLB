@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../../lib/auth/permissions";
+import { memberDisplayName } from "../../../../lib/members/display";
 import { PlaybookDetail, type PlaybookDetailData } from "./PlaybookDetail";
 import { loadProcedures, loadProcedureRuns, type ProcedureRun } from "../../../../lib/playbooks/procedures-data";
 import {
@@ -70,7 +71,7 @@ export default async function PlaybookDetailPage({
       nickname: string | null;
       email: string | null;
     }[]) ?? []) {
-      nameByUid.set(m.user_id, m.nickname || m.full_name || m.email || "");
+      nameByUid.set(m.user_id, memberDisplayName(m));
     }
   }
 

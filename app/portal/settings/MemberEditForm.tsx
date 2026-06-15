@@ -9,6 +9,7 @@ export interface EditFormMember {
   id: string;
   email: string | null;
   full_name: string | null;
+  nickname?: string | null;
   avatar_url: string | null;
   phone: string | null;
   birthday: string | null;
@@ -39,6 +40,7 @@ export function MemberEditForm({
   onCancel: () => void;
   onSave: (fields: {
     full_name: string | null;
+    nickname: string | null;
     avatar_url: string | null;
     phone: string | null;
     birthday: string | null;
@@ -50,6 +52,7 @@ export function MemberEditForm({
   onDelete?: () => void | Promise<void>;
 }) {
   const [fullName, setFullName] = useState(member.full_name ?? "");
+  const [nickname, setNickname] = useState(member.nickname ?? "");
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url ?? "");
   const [phone, setPhone] = useState(member.phone ?? "");
   const [birthday, setBirthday] = useState(member.birthday ?? "");
@@ -58,6 +61,7 @@ export function MemberEditForm({
     e.preventDefault();
     await onSave({
       full_name: fullName.trim() || null,
+      nickname: nickname.trim() || null,
       avatar_url: avatarUrl.trim() || null,
       phone: phone.trim() || null,
       birthday: birthday || null,
@@ -118,10 +122,22 @@ export function MemberEditForm({
         label="Full name"
         value={fullName}
         onChange={(e) => setFullName(e.target.value)}
-        placeholder="e.g. Jeff Malone"
+        placeholder="e.g. Jeffrey Wayne Malone"
         autoFocus
         disabled={pending}
       />
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <Input
+          label="Nickname"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="e.g. Jeff"
+          disabled={pending}
+        />
+        <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+          Shown on tickets and lists (the full name + middle name only appear in the directory). Defaults to the first name if blank.
+        </span>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <Input
           label="Phone"
