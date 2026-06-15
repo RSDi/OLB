@@ -30,7 +30,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export async function getRecordedCommentState(
   ticketId: string,
   recordingId: string,
-): Promise<{ posted: boolean; failed: boolean }> {
+): Promise<{ posted: boolean; failed: boolean; error?: string | null }> {
   if (!UUID_RE.test(ticketId) || !UUID_RE.test(recordingId)) return { posted: false, failed: false };
   const supabase = await createClient();
   const {
@@ -49,10 +49,11 @@ export async function getRecordedCommentState(
 
   const { data: rec } = await supabase
     .from("reel_notes_recordings")
-    .select("status")
+    .select("status, error")
     .eq("id", recordingId)
     .maybeSingle();
-  return { posted: false, failed: (rec as { status?: string } | null)?.status === "failed" };
+  const row = rec as { status?: string; error?: string | null } | null;
+  return { posted: false, failed: row?.status === "failed", error: row?.error ?? null };
 }
 
 // Mark a recorded comment's action item as routed to a destination (e.g.

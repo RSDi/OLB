@@ -120,6 +120,9 @@ export interface CommentRecording {
   id: string;
   title: string | null;
   status: string;
+  // AssemblyAI's real failure reason when status === "failed" (shown inline so
+  // a failed recording on a task explains itself + offers Retry).
+  error: string | null;
   duration_sec: number;
   // Short-lived signed URL for playback, or null (typed/audioless or signing
   // skipped). The recorded comment plays this inline — no trip to ReelNotes.
@@ -141,7 +144,7 @@ export async function loadRecordingsForComments(
   const { data, error } = await supabase
     .from("reel_notes_recordings")
     .select(
-      `id, title, status, duration_sec, audio_blob_url, transcript, summary,
+      `id, title, status, error, duration_sec, audio_blob_url, transcript, summary,
        action_items:reel_notes_action_items(
          id, recording_id, text, routed_to, done, sort_order, priority,
          owner_member_id, supporter_member_ids, suggested_assignee_name, suggested_member_id,
@@ -174,6 +177,7 @@ export async function loadRecordingsForComments(
         id: r.id,
         title: r.title,
         status: r.status,
+        error: r.error ?? null,
         duration_sec: r.duration_sec ?? 0,
         audio_url,
         transcript: r.transcript ?? null,

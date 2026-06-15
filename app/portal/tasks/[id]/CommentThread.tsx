@@ -470,10 +470,32 @@ function RecordedNote({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const items = recording.action_items;
   const ready = recording.status === "ready";
+  const failed = recording.status === "failed";
   const hasSummary = !!recording.summary && recording.summary.length > 0;
   const hasTranscript = !!recording.transcript;
+
+  // Re-submit a failed recording's audio for a fresh transcription (AssemblyAI
+  // errors are usually transient). On success the row flips to 'transcribing';
+  // refresh so the note reflects it.
+  async function retryTranscription() {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      const res = await fetch(`/api/reelnotes/recordings/${recording.id}/retry-transcription`, { method: "POST" });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Retry failed (${res.status})`);
+      }
+      router.refresh();
+    } catch (err) {
+      setRetryError(err instanceof Error ? err.message : "Retry failed");
+      setRetrying(false);
+    }
+  }
 
   // "Jump to this moment" seeks the inline player instead of opening ReelNotes.
   function seekTo(ms: number) {
@@ -495,7 +517,37 @@ function RecordedNote({
         <audio ref={audioRef} controls preload="none" src={recording.audio_url} style={{ width: "100%", height: 34 }} />
       )}
 
-      {items.length === 0 ? (
+      {failed ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+          <div style={{ fontSize: 13, color: "var(--gw-error)", fontWeight: 600 }}>
+            Transcription failed{recording.error ? `: ${recording.error}` : "."}
+          </div>
+          <button
+            onClick={retryTranscription}
+            disabled={retrying}
+            className="gw-press"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 100,
+              background: "var(--rsd-accent)",
+              color: "var(--rsd-accent-on)",
+              border: "none",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: retrying ? "default" : "pointer",
+            }}
+          >
+            <Icons.Refresh width={12} height={12} />
+            {retrying ? "Retrying…" : "Retry transcription"}
+          </button>
+          {retryError && (
+            <div style={{ fontSize: 12, color: "var(--gw-error)" }}>{retryError}</div>
+          )}
+        </div>
+      ) : items.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
           {ready ? "No action items extracted." : "Transcribing…"}
         </div>

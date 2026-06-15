@@ -181,6 +181,9 @@ export function CommentForm({
   const [transcribing, setTranscribing] = useState(false);
   // The recording being processed, so we can poll for its comment + auto-refresh.
   const [recordingId, setRecordingId] = useState<string | null>(null);
+  // A recording that failed transcription, kept so the user can retry it inline.
+  const [failedRecordingId, setFailedRecordingId] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -204,8 +207,30 @@ export function CommentForm({
     });
   }
 
+  async function retryFailedTranscription() {
+    if (!failedRecordingId) return;
+    setRetrying(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/reelnotes/recordings/${failedRecordingId}/retry-transcription`, { method: "POST" });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || `Retry failed (${res.status})`);
+      }
+      // Re-submitted: resume polling for the fresh job.
+      setRecordingId(failedRecordingId);
+      setFailedRecordingId(null);
+      setTranscribing(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Retry failed");
+    } finally {
+      setRetrying(false);
+    }
+  }
+
   async function startRecording() {
     setError(null);
+    setFailedRecordingId(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -296,8 +321,11 @@ export function CommentForm({
       } else if (st.failed) {
         clearInterval(iv);
         setTranscribing(false);
+        // Keep the id so the user can retry without re-recording; surface
+        // AssemblyAI's real reason when we have it.
+        setFailedRecordingId(recordingId);
         setRecordingId(null);
-        setError("That recording couldn't be transcribed. Please try again.");
+        setError(st.error ? `Transcription failed: ${st.error}` : "That recording couldn't be transcribed.");
       } else if (attempts >= maxAttempts) {
         clearInterval(iv);
       }
@@ -335,6 +363,31 @@ export function CommentForm({
         autoFocus={Boolean(parentId)}
       />
       {error && <ErrorLine message={error} />}
+      {failedRecordingId && !transcribing && (
+        <button
+          type="button"
+          onClick={retryFailedTranscription}
+          disabled={retrying}
+          className="gw-press"
+          style={{
+            alignSelf: "flex-start",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 12px",
+            borderRadius: 100,
+            background: "var(--rsd-accent)",
+            color: "var(--rsd-accent-on)",
+            border: "none",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: retrying ? "default" : "pointer",
+          }}
+        >
+          <Icons.Refresh width={12} height={12} />
+          {retrying ? "Retrying…" : "Retry transcription"}
+        </button>
+      )}
       {transcribing && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
           <span
