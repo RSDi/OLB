@@ -689,27 +689,15 @@ function formatShortDate(iso: string): string {
 }
 
 function formatEventTime(startIso: string, endIso: string | null): string {
-  const start = new Date(startIso);
-  const startStr = start.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  // Church timezone (America/Chicago), not the server's UTC — see events list.
+  const long = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" } as const;
+  const startStr = new Date(startIso).toLocaleString(undefined, long);
   if (!endIso) return startStr;
-  const end = new Date(endIso);
-  const sameDay =
-    start.getFullYear() === end.getFullYear() &&
-    start.getMonth() === end.getMonth() &&
-    start.getDate() === end.getDate();
+  const dayKey = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+  const sameDay = dayKey(startIso) === dayKey(endIso);
   const endStr = sameDay
-    ? end.toLocaleString(undefined, { hour: "numeric", minute: "2-digit" })
-    : end.toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      });
+    ? new Date(endIso).toLocaleString(undefined, { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })
+    : new Date(endIso).toLocaleString(undefined, long);
   return `${startStr} – ${endStr}`;
 }
 

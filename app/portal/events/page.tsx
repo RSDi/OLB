@@ -323,24 +323,38 @@ function isValidView(s: string | undefined): s is ViewFilter {
   return s === "upcoming" || s === "past" || s === "all";
 }
 
+// Everything here renders in the church's timezone (America/Chicago), NOT the
+// server's — which is UTC on Vercel, so a 9:30 AM Central event was showing as
+// 2:30 PM. Grouping, the date chip, and the time range all pin to CHURCH_TZ.
+const CHURCH_TZ = "America/Chicago";
+
 function monthShort(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short" });
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", timeZone: CHURCH_TZ });
 }
 
 function monthLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  return new Date(iso).toLocaleDateString(undefined, { month: "long", year: "numeric", timeZone: CHURCH_TZ });
+}
+
+function dayNum(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", timeZone: CHURCH_TZ });
+}
+
+// year*100 + (month-1) in the church timezone, so grouping + the date chip agree
+// even for a late-night event whose UTC date differs from its local one.
+function churchYearMonth(iso: string): number {
+  const [y, m] = new Date(iso).toLocaleDateString("en-CA", { timeZone: CHURCH_TZ }).split("-").map(Number);
+  return y * 100 + (m - 1);
 }
 
 // Group sorted occurrences into month sections by walking them in order (so the
 // per-view sort is preserved) and starting a new section on each month change.
-// The key (year*100 + month) is the local month, matching the per-row date chip.
 function groupByMonth(
   occurrences: EventOccurrence<EventRow>[],
 ): { key: number; label: string; items: EventOccurrence<EventRow>[] }[] {
   const sections: { key: number; label: string; items: EventOccurrence<EventRow>[] }[] = [];
   for (const o of occurrences) {
-    const d = new Date(o.startAt);
-    const key = d.getFullYear() * 100 + d.getMonth();
+    const key = churchYearMonth(o.startAt);
     const last = sections[sections.length - 1];
     if (last && last.key === key) {
       last.items.push(o);
@@ -351,33 +365,15 @@ function groupByMonth(
   return sections;
 }
 
-function dayNum(iso: string): string {
-  return String(new Date(iso).getDate());
-}
-
 function formatTimeRange(startIso: string, endIso: string | null): string {
-  const start = new Date(startIso);
-  const startStr = start.toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const long = { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ } as const;
+  const startStr = new Date(startIso).toLocaleString(undefined, long);
   if (!endIso) return startStr;
-  const end = new Date(endIso);
-  const sameDay =
-    start.getFullYear() === end.getFullYear() &&
-    start.getMonth() === end.getMonth() &&
-    start.getDate() === end.getDate();
+  // Compare the local (church-TZ) calendar day to decide whether to repeat it.
+  const dayKey = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: CHURCH_TZ });
+  const sameDay = dayKey(startIso) === dayKey(endIso);
   const endStr = sameDay
-    ? end.toLocaleString(undefined, { hour: "numeric", minute: "2-digit" })
-    : end.toLocaleString(undefined, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      });
+    ? new Date(endIso).toLocaleString(undefined, { hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ })
+    : new Date(endIso).toLocaleString(undefined, long);
   return `${startStr} – ${endStr}`;
 }
