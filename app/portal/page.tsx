@@ -59,6 +59,19 @@ export default async function PortalDashboard() {
     (countRows as unknown as { status: RecentTicket["status"]; priority: { severity: number } | null }[]) ?? []
   );
 
+  // Building-committee KPI: requests waiting on a review vote. Staff-only;
+  // mirrors the Review queue's "Needs review" count.
+  let reviewCount = 0;
+  if (staff) {
+    const { count } = await supabase
+      .from("maintenance_requests")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .not("details", "is", null)
+      .eq("review_status", "pending_review");
+    reviewCount = count ?? 0;
+  }
+
   const { data: recentRaw } = await supabase
     .from("maintenance_requests")
     .select(
@@ -175,7 +188,10 @@ export default async function PortalDashboard() {
     <>
       {/* KPIs — only for people actively helping (staff / area leads / volunteers) */}
       {involved && (
-        <div className="rsd-kpi-grid">
+        <div
+          className="rsd-kpi-grid"
+          style={staff ? { gridTemplateColumns: "repeat(5, 1fr)" } : undefined}
+        >
           <KpiCard
             label={staff ? "Open Requests" : "My Open"}
             value={counts.open}
@@ -188,6 +204,15 @@ export default async function PortalDashboard() {
             sub={counts.in_progress > 0 ? "Being worked on" : undefined}
           />
           <KpiCard label="Done" value={counts.done} sub="All time" />
+          {staff && (
+            <KpiCard
+              label="Needs Review"
+              value={reviewCount}
+              sub={reviewCount > 0 ? "Review queue →" : "All caught up"}
+              accent={reviewCount > 0}
+              href="/portal/review"
+            />
+          )}
           <KpiCard
             label="Upcoming Events"
             value={upcomingEvents.length}

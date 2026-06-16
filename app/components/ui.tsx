@@ -1,5 +1,6 @@
 "use client";
 import type { ReactNode, CSSProperties } from "react";
+import Link from "next/link";
 import { HelpTip } from "./HelpTip";
 
 // Label row shared by the form inputs below: the uppercase field label plus an
@@ -51,14 +52,16 @@ export function Pill({ children, variant = "light", size = "md", onClick, style,
 }
 
 // ─── KPI card ───────────────────────────────────────────────────
-export function KpiCard({ label, value, sub, accent }: {
-  label: string; value: string | number; sub?: string; accent?: boolean;
+export function KpiCard({ label, value, sub, accent, href }: {
+  label: string; value: string | number; sub?: string; accent?: boolean; href?: string;
 }) {
-  return (
-    <div className="rsd-card" style={{
-      padding: "var(--rsd-kpi-pad)", gap: 10,
-      ...(accent ? { background: "var(--gw-rose-bg)", border: "1px solid rgba(108,140,89,.25)" } : {}),
-    }}>
+  const style: CSSProperties = {
+    padding: "var(--rsd-kpi-pad)", gap: 10,
+    ...(accent ? { background: "var(--gw-rose-bg)", border: "1px solid rgba(108,140,89,.25)" } : {}),
+    ...(href ? { textDecoration: "none", cursor: "pointer" } : {}),
+  };
+  const body = (
+    <>
       <span className="rsd-eyebrow">{label}</span>
       <span style={{
         fontWeight: 700,
@@ -67,7 +70,14 @@ export function KpiCard({ label, value, sub, accent }: {
         color: accent ? "var(--rsd-accent)" : "var(--gw-fg)",
       }}>{value}</span>
       {sub && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)" }}>{sub}</span>}
-    </div>
+    </>
+  );
+  // With an href the card itself is the link (an <a> styled as .rsd-card), so it
+  // stays a normal grid item and keeps equal row height with its siblings.
+  return href ? (
+    <Link href={href} className="rsd-card" style={style}>{body}</Link>
+  ) : (
+    <div className="rsd-card" style={style}>{body}</div>
   );
 }
 
