@@ -14,7 +14,7 @@ export function TasksSectionNav({ active, isStaff }: { active: "tasks" | "review
   const visible = TABS.filter((t) => !t.staff || isStaff);
   if (visible.length <= 1) return null;
   return (
-    <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: 4, marginBottom: 18, borderBottom: "1px solid var(--gw-border)", flexWrap: "wrap" }}>
       {visible.map((t) => {
         const on = t.key === active;
         return (
@@ -23,14 +23,13 @@ export function TasksSectionNav({ active, isStaff }: { active: "tasks" | "review
             href={t.href}
             className="gw-press"
             style={{
-              padding: "7px 14px",
-              borderRadius: 100,
-              fontSize: 13,
+              padding: "8px 14px",
+              fontSize: 14,
               fontWeight: 700,
               textDecoration: "none",
-              background: on ? "var(--rsd-accent)" : "transparent",
-              color: on ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
-              border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+              color: on ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+              borderBottom: `2px solid ${on ? "var(--rsd-accent)" : "transparent"}`,
+              marginBottom: -1,
             }}
           >
             {t.label}
