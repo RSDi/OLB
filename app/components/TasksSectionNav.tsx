@@ -28,8 +28,8 @@ export function TasksSectionNav({ active, isStaff }: { active: "tasks" | "review
               fontSize: 13,
               fontWeight: 700,
               textDecoration: "none",
-              background: on ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-              color: on ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+              background: on ? "var(--rsd-accent)" : "transparent",
+              color: on ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
               border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`,
             }}
           >

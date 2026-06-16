@@ -6,6 +6,7 @@ import { createClient } from "../../../lib/supabase/server";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
 import { QueueRow, TaskScheduleChips } from "./QueueRow";
 import { KanbanBoard, type KanbanCard } from "./KanbanBoard";
+import { CategoryFilter } from "./CategoryFilter";
 import { memberDisplayName } from "../../../lib/members/display";
 import { churchToday, isOverdue } from "../../../lib/dates/today";
 
@@ -232,16 +233,12 @@ export default async function PortalMaintenancePage({
     const q = p.toString();
     return q ? `/portal/tasks?${q}` : "/portal/tasks";
   };
-  const filterChipStyle = (active: boolean) => ({
-    padding: "5px 12px",
-    borderRadius: 100,
-    fontSize: 12,
-    fontWeight: 700,
-    textDecoration: "none",
-    border: "1px solid var(--gw-border)",
-    background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-    color: active ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
-  });
+  // Category filter options for the dropdown (each carries its full href so the
+  // <select> just navigates). Replaces the old row of category chips.
+  const categoryOptions = [
+    { value: "", label: "All", href: tasksHref(bucket, null) },
+    ...categories.map((c) => ({ value: c.id, label: c.name, href: tasksHref(bucket, c.id) })),
+  ];
 
   let staffList: StaffMember[] = [];
   if (staff) {
@@ -291,37 +288,43 @@ export default async function PortalMaintenancePage({
   return (
     <>
       <TasksSectionNav active="tasks" isStaff={staff} />
-      {/* Header */}
+      {/* Header toolbar — view controls grouped on the left, the one primary
+          action on the right. */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           flexWrap: "wrap",
           gap: 12,
         }}
       >
-        {/* Board ⇄ List layout toggle */}
-        <div style={{ display: "inline-flex", border: "1px solid var(--gw-border)", borderRadius: 100, overflow: "hidden", marginRight: "auto" }}>
-          {(["board", "list"] as const).map((l) => {
-            const on = layout === l;
-            return (
-              <Link
-                key={l}
-                href={tasksHref(bucket, categoryFilter, view, l)}
-                style={{
-                  padding: "9px 18px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  textDecoration: "none",
-                  background: on ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-                  color: on ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
-                }}
-              >
-                {l === "board" ? "Board" : "List"}
-              </Link>
-            );
-          })}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {/* Board ⇄ List layout toggle (unselected is quiet/transparent) */}
+          <div style={{ display: "inline-flex", border: "1px solid var(--gw-border)", borderRadius: 100, overflow: "hidden" }}>
+            {(["board", "list"] as const).map((l) => {
+              const on = layout === l;
+              return (
+                <Link
+                  key={l}
+                  href={tasksHref(bucket, categoryFilter, view, l)}
+                  style={{
+                    padding: "9px 18px",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textDecoration: "none",
+                    background: on ? "var(--rsd-accent)" : "transparent",
+                    color: on ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+                  }}
+                >
+                  {l === "board" ? "Board" : "List"}
+                </Link>
+              );
+            })}
+          </div>
+          {categories.length > 0 && (
+            <CategoryFilter value={categoryFilter ?? ""} options={categoryOptions} />
+          )}
         </div>
         <Link
           href="/portal/tasks/new"
@@ -343,12 +346,19 @@ export default async function PortalMaintenancePage({
         </Link>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <StatCard label="Active" value={counts.active} chip="rsd-chip-accent" />
-        <StatCard label="Upcoming" value={counts.upcoming} chip="rsd-chip-mute" />
-        <StatCard label="Someday" value={counts.someday} chip="rsd-chip-mute" />
-        <StatCard label="Overdue" value={counts.overdue} chip="rsd-chip-error" />
+      {/* At-a-glance counts — one quiet line instead of four boxes. Overdue only
+          shows up (as a red chip that earns attention) when there's one. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
+        <span>{counts.active} active</span>
+        <span style={{ opacity: 0.4 }}>·</span>
+        <span>{counts.upcoming} upcoming</span>
+        <span style={{ opacity: 0.4 }}>·</span>
+        <span>{counts.someday} someday</span>
+        {counts.overdue > 0 && (
+          <span className="rsd-chip rsd-chip-error" style={{ marginLeft: 4 }}>
+            {counts.overdue} overdue
+          </span>
+        )}
       </div>
 
       {/* Scheduling-bucket tabs (List layout only) + the Deleted link. In Board
@@ -408,23 +418,6 @@ export default async function PortalMaintenancePage({
         </div>
       )}
 
-      {/* Category filter */}
-      {categories.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginRight: 2 }}>
-            Category
-          </span>
-          <Link href={tasksHref(bucket, null)} style={filterChipStyle(!categoryFilter)}>
-            All
-          </Link>
-          {categories.map((c) => (
-            <Link key={c.id} href={tasksHref(bucket, c.id)} style={filterChipStyle(categoryFilter === c.id)}>
-              {c.name}
-            </Link>
-          ))}
-        </div>
-      )}
-
       {/* Body: Board (Kanban by status) or List (table / mobile cards) */}
       {layout === "board" ? (
         boardCards.length === 0 ? (
@@ -474,12 +467,16 @@ export default async function PortalMaintenancePage({
                   }}
                 >
                   <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.45 }}>
+                    {t.category && (
+                      <span
+                        className={`rsd-chip ${t.category.chip_class}`}
+                        title={t.category.name}
+                        style={{ display: "inline-block", width: 9, height: 9, padding: 0, borderRadius: "50%", marginRight: 7, verticalAlign: "middle", flexShrink: 0 }}
+                      />
+                    )}
                     {t.description.split("\n")[0]}
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    {t.category && (
-                      <span className={`rsd-chip ${t.category.chip_class}`}>{t.category.name}</span>
-                    )}
                     {progressByParent.has(t.id) && (
                       <span className="rsd-chip rsd-chip-mute">
                         To-dos · {progressByParent.get(t.id)!.done}/{progressByParent.get(t.id)!.total}
@@ -540,20 +537,6 @@ export default async function PortalMaintenancePage({
       </div>
       )}
     </>
-  );
-}
-
-function StatCard({ label, value, chip }: { label: string; value: number; chip: string }) {
-  return (
-    <div
-      className="rsd-card"
-      style={{ padding: "14px 20px", gap: 6, flexDirection: "row", alignItems: "center" }}
-    >
-      <span style={{ fontSize: 22, fontWeight: 800, color: "var(--gw-fg)", letterSpacing: "-.02em" }}>
-        {value}
-      </span>
-      <span className={`rsd-chip ${chip}`}>{label}</span>
-    </div>
   );
 }
 

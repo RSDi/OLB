@@ -134,11 +134,17 @@ export function KanbanBoard({
                   opacity: dragId === c.id ? 0.4 : 1,
                 }}
               >
-                <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.35, color: "var(--gw-fg)" }}>{c.title}</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.35, color: "var(--gw-fg)" }}>
                   {c.category && (
-                    <span className={`rsd-chip ${c.category.chip_class}`} style={{ fontSize: 10 }}>{c.category.name}</span>
+                    <span
+                      className={`rsd-chip ${c.category.chip_class}`}
+                      title={c.category.name}
+                      style={{ display: "inline-block", width: 9, height: 9, padding: 0, borderRadius: "50%", marginRight: 7, verticalAlign: "middle", flexShrink: 0 }}
+                    />
                   )}
+                  {c.title}
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                   {c.priority && (
                     <span className={`rsd-chip ${c.priority.chip_class}`} style={{ fontSize: 10 }}>{c.priority.label}</span>
                   )}
