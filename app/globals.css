@@ -172,6 +172,12 @@ main::-webkit-scrollbar-track { background: transparent; }
   gap: 16px;
 }
 
+/* The request wizard pins its header (nav + progress) while a tall step scrolls.
+   Keep this card from becoming a scroll container — the mobile rule below sets
+   overflow-x:auto on every .rsd-card, which would trap position:sticky inside
+   the card instead of letting it stick to the scrolling <main>. */
+.rsd-card.gw-wizard { overflow: visible !important; }
+
 /* Table */
 .rsd-tbl { width: 100%; border-collapse: collapse; }
 .rsd-tbl thead th {

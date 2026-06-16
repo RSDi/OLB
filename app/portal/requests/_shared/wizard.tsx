@@ -208,12 +208,15 @@ export function RequestWizard({
   }
 
   return (
-    <div className="rsd-card" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      {/* Top action bar — Back + the primary action both live up here so neither
-          needs a scroll on small screens (the calendar/time steps get tall).
-          Auto-advance steps show no Next (options self-advance). */}
+    <div className="rsd-card gw-wizard" style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      {/* Sticky header — nav + progress stay pinned to the top of the scrolling
+          <main> while a tall step scrolls, so Next/Back + the step indicator are
+          always reachable. .gw-wizard keeps the card overflow:visible so sticky
+          escapes it and sticks to <main> rather than being trapped in the card. */}
+      <div style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--gw-bg-elev)", display: "flex", flexDirection: "column", gap: 14, paddingTop: 2, paddingBottom: 12, borderBottom: "1px solid var(--gw-border)" }}>
+      {/* Back + the primary action both up top so neither needs a scroll. */}
       {(showBack || showNext) && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: -6 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           {showBack ? (
             <button
               type="button"
@@ -264,6 +267,7 @@ export function RequestWizard({
           />
         </div>
       </div>
+      </div>{/* end sticky header */}
 
       {/* Step */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
