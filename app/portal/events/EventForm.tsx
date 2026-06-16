@@ -151,6 +151,10 @@ export function EventForm({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    if (!title.trim()) {
+      setError("Give the event a title (the field at the top).");
+      return;
+    }
     if (!startAt) {
       setError("Pick a start date/time.");
       return;
@@ -521,7 +525,7 @@ export function EventForm({
           >
             Cancel
           </Pill>
-          <Pill variant="accent" size="md" type="submit" disabled={pending || !title.trim()}>
+          <Pill variant="accent" size="md" type="submit" disabled={pending}>
             {pending ? "Saving…" : isEdit ? "Save changes" : "Create event"}
           </Pill>
         </div>
