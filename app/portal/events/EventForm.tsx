@@ -1,5 +1,5 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../components/ui";
@@ -74,7 +74,19 @@ const WEEK_OPTIONS: { value: number; label: string }[] = [
   { value: -1, label: "Last" },
 ];
 
+const SKIP_WEEK_LABELS: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th", [-1]: "Last" };
+const SKIP_DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const skipSelectStyle: CSSProperties = {
+  height: 38, padding: "0 8px", borderRadius: 8, border: "1px solid var(--gw-border)",
+  background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13, fontWeight: 700,
+};
+
 function fmtSkip(d: string): string {
+  // Repeating-skip rule ("rule:<week>:<weekday>") → "Every Last Sun".
+  if (d.startsWith("rule:")) {
+    const [, w, wd] = d.split(":");
+    return `Every ${SKIP_WEEK_LABELS[Number(w)] ?? ""} ${SKIP_DAY_LABELS[Number(wd)] ?? ""}`.replace(/\s+/g, " ").trim();
+  }
   const [y, m, day] = d.split("-").map(Number);
   return new Date(y, m - 1, day).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
@@ -112,6 +124,9 @@ export function EventForm({
   const [recurUntil, setRecurUntil] = useState(start.recurUntil);
   const [recurExcept, setRecurExcept] = useState<string[]>(start.recurExcept);
   const [skipDraft, setSkipDraft] = useState("");
+  // Repeating-skip rule draft: which Nth weekday of each month to skip.
+  const [skipRuleWeek, setSkipRuleWeek] = useState<number>(-1); // default "Last"
+  const [skipRuleWeekday, setSkipRuleWeekday] = useState<number>(0); // default Sunday
   const [error, setError] = useState<string | null>(null);
 
   function toggleWeekday(d: number) {
@@ -124,6 +139,12 @@ export function EventForm({
       setRecurExcept((prev) => [...prev, skipDraft].sort());
     }
     setSkipDraft("");
+  }
+  function addSkipRule() {
+    const entry = `rule:${skipRuleWeek}:${skipRuleWeekday}`;
+    if (!recurExcept.includes(entry)) {
+      setRecurExcept((prev) => [...prev, entry]);
+    }
   }
   const [pending, startTransition] = useTransition();
 
@@ -400,6 +421,38 @@ export function EventForm({
                   Add skip
                 </button>
               </div>
+              {/* Repeating skip — e.g. the last Sunday of every month. */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12.5, color: "var(--gw-fg-muted)" }}>
+                <span>or skip the</span>
+                <select
+                  value={skipRuleWeek}
+                  onChange={(e) => setSkipRuleWeek(Number(e.target.value))}
+                  style={skipSelectStyle}
+                >
+                  <option value={1}>1st</option>
+                  <option value={2}>2nd</option>
+                  <option value={3}>3rd</option>
+                  <option value={4}>4th</option>
+                  <option value={-1}>Last</option>
+                </select>
+                <select
+                  value={skipRuleWeekday}
+                  onChange={(e) => setSkipRuleWeekday(Number(e.target.value))}
+                  style={skipSelectStyle}
+                >
+                  {SKIP_DAY_LABELS.map((d, i) => (
+                    <option key={i} value={i}>{d}</option>
+                  ))}
+                </select>
+                <span>of every month</span>
+                <button
+                  type="button"
+                  onClick={addSkipRule}
+                  style={{ padding: "8px 14px", borderRadius: 100, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                >
+                  Add
+                </button>
+              </div>
               {recurExcept.length > 0 && (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
                   {recurExcept.map((d) => (
@@ -409,7 +462,7 @@ export function EventForm({
                         type="button"
                         onClick={() => setRecurExcept((prev) => prev.filter((x) => x !== d))}
                         style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontWeight: 800, padding: 0, lineHeight: 1 }}
-                        aria-label={`Remove skip ${d}`}
+                        aria-label={`Remove skip ${fmtSkip(d)}`}
                       >
                         ×
                       </button>

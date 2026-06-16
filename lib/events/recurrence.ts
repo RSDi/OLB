@@ -94,9 +94,32 @@ export function eventOccurrenceDates(ev: EventRecurrence, fromStr: string, toStr
     dates = weeklyDates(start, weekdays, until);
   }
 
+  // recur_except holds two kinds of skip: exact dates (YYYY-MM-DD) and repeating
+  // rules ("rule:<week>:<weekday>", e.g. "rule:-1:0" = the last Sunday of every
+  // month). The rule lets an indefinite weekly event drop one occurrence a month.
   if (ev.recur_except && ev.recur_except.length > 0) {
-    const skip = new Set(ev.recur_except);
-    dates = dates.filter((d) => !skip.has(d));
+    const exact = new Set<string>();
+    const rules: { week: number; weekday: number }[] = [];
+    for (const e of ev.recur_except) {
+      if (typeof e === "string" && e.startsWith("rule:")) {
+        const [, w, wd] = e.split(":");
+        const week = Number(w);
+        const weekday = Number(wd);
+        if (Number.isInteger(week) && Number.isInteger(weekday)) rules.push({ week, weekday });
+      } else {
+        exact.add(e);
+      }
+    }
+    dates = dates.filter((d) => {
+      if (exact.has(d)) return false;
+      if (rules.length > 0) {
+        const [yy, mm] = d.split("-").map(Number);
+        for (const r of rules) {
+          if (monthlyOccurrence(yy, mm - 1, r.week, r.weekday) === d) return false;
+        }
+      }
+      return true;
+    });
   }
   return dates;
 }

@@ -63,6 +63,42 @@ test("recur_except drops skipped occurrences", () => {
   assert.deepEqual(dates, ["2026-06-07", "2026-06-21", "2026-06-28"]);
 });
 
+test("repeating skip rule drops the last Sunday of every month", () => {
+  const dates = eventOccurrenceDates(
+    {
+      start_at: "2026-06-01T10:00:00",
+      recurring: true,
+      recur_freq: "weekly",
+      recur_weekdays: [0],
+      recur_except: ["rule:-1:0"], // last (−1) Sunday (0) of each month
+    },
+    "2026-06-01",
+    "2026-08-31"
+  );
+  // Sundays minus the last Sunday of each month (Jun 28, Jul 26, Aug 30).
+  assert.deepEqual(dates, [
+    "2026-06-07", "2026-06-14", "2026-06-21",
+    "2026-07-05", "2026-07-12", "2026-07-19",
+    "2026-08-02", "2026-08-09", "2026-08-16", "2026-08-23",
+  ]);
+});
+
+test("a skip rule and an exact-date skip combine", () => {
+  const dates = eventOccurrenceDates(
+    {
+      start_at: "2026-06-01T10:00:00",
+      recurring: true,
+      recur_freq: "weekly",
+      recur_weekdays: [0],
+      recur_except: ["rule:-1:0", "2026-06-14"],
+    },
+    "2026-06-01",
+    "2026-06-30"
+  );
+  // Jun Sundays 7,14,21,28 → drop 28 (rule) and 14 (exact) → 7, 21.
+  assert.deepEqual(dates, ["2026-06-07", "2026-06-21"]);
+});
+
 test("recur_until caps the series", () => {
   const dates = eventOccurrenceDates(
     { start_at: "2026-06-01T10:00:00", recurring: true, recur_freq: "weekly", recur_weekdays: [0], recur_until: "2026-06-15" },
