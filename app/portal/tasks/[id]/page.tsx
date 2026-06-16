@@ -845,7 +845,7 @@ function ProgressBar({ done, total }: { done: number; total: number }) {
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ flex: 1, height: 8, borderRadius: 100, background: "var(--gw-bg-elev)", border: "1px solid var(--gw-border)", overflow: "hidden" }}>
+      <div style={{ flex: 1, height: 8, borderRadius: 100, background: "var(--gw-border)", overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: "var(--rsd-accent)", transition: "width 200ms" }} />
       </div>
       <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", flexShrink: 0 }}>{pct}%</span>

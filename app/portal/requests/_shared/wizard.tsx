@@ -255,7 +255,7 @@ export function RequestWizard({
           <span>{title}</span>
           <span>{progressLabel}</span>
         </div>
-        <div style={{ height: 6, borderRadius: 100, background: "var(--gw-bg-elev)", overflow: "hidden" }}>
+        <div style={{ height: 6, borderRadius: 100, background: "var(--gw-border)", overflow: "hidden" }}>
           <div
             style={{
               height: "100%",
