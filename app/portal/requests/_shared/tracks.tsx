@@ -203,10 +203,10 @@ function recurringPlanner(form: RequestForm, set: (key: string, value: unknown) 
         </div>
       )}
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <Input label="Add a specific date" type="date" value={addDate} onChange={(e) => set("recurAddDate", e.target.value)} />
+        <div style={{ flex: "0 1 220px", minWidth: 0 }}>
+          <Input label="Add a specific date" type="date" value={addDate} onChange={(e) => set("recurAddDate", e.target.value)} style={{ minWidth: 0 }} />
         </div>
-        <div style={{ paddingBottom: 2 }}>
+        <div style={{ paddingBottom: 2, flexShrink: 0 }}>
           <Chip
             selected={false}
             onClick={() => {
