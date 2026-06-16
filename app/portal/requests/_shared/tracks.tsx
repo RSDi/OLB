@@ -178,7 +178,7 @@ function recurringPlanner(form: RequestForm, set: (key: string, value: unknown) 
           </Chip>
         ))}
       </Wrap>
-      <Input label="Repeat until" type="date" value={str(form.recurUntil)} onChange={(e) => set("recurUntil", e.target.value)} />
+      <Input label="Repeat until" type="date" value={str(form.recurUntil)} onChange={(e) => set("recurUntil", e.target.value)} style={{ maxWidth: 220 }} />
       {dates.length > 1 ? (
         <>
           <div style={{ fontSize: 12.5, fontWeight: 700 }}>
