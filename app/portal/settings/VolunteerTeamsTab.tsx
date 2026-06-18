@@ -193,7 +193,7 @@ export function VolunteerTeamsTab({ me }: { me: MemberLike }) {
         }}
       >
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 540 }}>
-          Volunteer teams group members who serve together (Worship, Kids, Tech…). Assign approved
+          Teams group members who serve together (Worship, Kids, Tech…). Assign approved
           members as <strong>leads</strong> or <strong>members</strong>. Teams are filterable in the
           member directory.
         </div>
@@ -224,7 +224,7 @@ export function VolunteerTeamsTab({ me }: { me: MemberLike }) {
       ) : teams.length === 0 ? (
         <div className="rsd-card" style={{ textAlign: "center", padding: "40px 24px" }}>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            No volunteer teams yet.
+            No teams yet.
           </div>
         </div>
       ) : (

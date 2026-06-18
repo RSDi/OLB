@@ -1,5 +1,5 @@
-// Server-only. Emails super-admins plus the owners/helpers assigned to the
-// ticket's area when a new maintenance ticket is submitted. Mirrors
+// Server-only. Emails super-admins plus the members of the team responsible
+// for the ticket's area when a new maintenance ticket is submitted. Mirrors
 // access-request.ts in shape and graceful-degradation behavior (no-ops if
 // RESEND_API_KEY is missing).
 
@@ -49,18 +49,28 @@ export async function sendNewTicketNotification({
     .eq("status", "approved");
   const dbEmails = (recipients ?? []).map((r) => r.email).filter(Boolean);
 
-  // Route to the owners/helpers assigned to this ticket's area, so the people
-  // actually responsible for the area hear about it (not just super-admins).
-  let areaEmails: (string | null)[] = [];
+  // Route to the members of the team responsible for this ticket's area, so the
+  // people who actually cover the area hear about it (not just super-admins).
+  // Two hops: area -> responsible_team_id, then that team's approved members.
+  let teamEmails: (string | null)[] = [];
   if (areaId) {
-    const { data: areaMembers } = await admin
-      .from("area_members")
-      .select("members(email, status)")
-      .eq("area_id", areaId);
-    areaEmails = ((areaMembers as unknown as { members: { email: string | null; status: string } | null }[]) ?? [])
-      .map((am) => am.members)
-      .filter((m): m is { email: string | null; status: string } => !!m && m.status === "approved")
-      .map((m) => m.email);
+    const { data: area } = await admin
+      .from("areas")
+      .select("responsible_team_id")
+      .eq("id", areaId)
+      .maybeSingle();
+    const teamId =
+      (area as { responsible_team_id: string | null } | null)?.responsible_team_id ?? null;
+    if (teamId) {
+      const { data: teamMembers } = await admin
+        .from("member_volunteer_teams")
+        .select("members(email, status)")
+        .eq("team_id", teamId);
+      teamEmails = ((teamMembers as unknown as { members: { email: string | null; status: string } | null }[]) ?? [])
+        .map((tm) => tm.members)
+        .filter((m): m is { email: string | null; status: string } => !!m && m.status === "approved")
+        .map((m) => m.email);
+    }
   }
 
   const envEmails = (process.env.ADMIN_EMAILS ?? "")
@@ -69,7 +79,7 @@ export async function sendNewTicketNotification({
     .filter(Boolean);
   const to = Array.from(
     new Set(
-      [...dbEmails, ...areaEmails, ...envEmails].filter(Boolean).map((e) => e!.toLowerCase())
+      [...dbEmails, ...teamEmails, ...envEmails].filter(Boolean).map((e) => e!.toLowerCase())
     )
   );
 

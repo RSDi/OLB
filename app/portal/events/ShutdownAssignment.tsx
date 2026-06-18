@@ -67,7 +67,7 @@ export function ShutdownAssignment({
 
       {teamMembers.length === 0 ? (
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
-          No Building Shutdown team members yet — add some in Settings → Volunteer Teams.
+          No Building Shutdown team members yet — add some in Settings → Teams.
         </div>
       ) : (
         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>

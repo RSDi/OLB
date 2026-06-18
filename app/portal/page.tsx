@@ -39,15 +39,15 @@ export default async function PortalDashboard() {
   const me = (meRow as (MemberLike & { id: string; full_name: string | null; nickname: string | null }) | null) ?? null;
   const staff = isStaff(me);
 
-  // KPIs are for people "actively helping" — staff, area owners/helpers, or
-  // volunteer-team members. Plain members get the lean request-focused view.
+  // KPIs are for people "actively helping" — staff or members of a team.
+  // Plain members get the lean request-focused view.
   let involved = staff;
   if (!involved && me?.id) {
-    const [{ count: areaCount }, { count: teamCount }] = await Promise.all([
-      supabase.from("area_members").select("member_id", { count: "exact", head: true }).eq("member_id", me.id),
-      supabase.from("member_volunteer_teams").select("member_id", { count: "exact", head: true }).eq("member_id", me.id),
-    ]);
-    involved = (areaCount ?? 0) > 0 || (teamCount ?? 0) > 0;
+    const { count: teamCount } = await supabase
+      .from("member_volunteer_teams")
+      .select("member_id", { count: "exact", head: true })
+      .eq("member_id", me.id);
+    involved = (teamCount ?? 0) > 0;
   }
 
   // Counts are RLS-bound — staff sees totals, members see their own.

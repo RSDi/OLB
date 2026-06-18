@@ -94,7 +94,7 @@ export async function loadVolunteerTeams(): Promise<VolunteerTeam[]> {
   return (data as VolunteerTeam[] | null) ?? [];
 }
 
-// member_id -> [team_id, ...] for filtering the directory by volunteer team.
+// member_id -> [team_id, ...] for filtering the directory by team.
 export async function loadMemberTeamMap(): Promise<Record<string, string[]>> {
   const supabase = await createClient();
   const { data } = await supabase

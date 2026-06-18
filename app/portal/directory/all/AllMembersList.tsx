@@ -120,7 +120,7 @@ export function AllMembersList({
               <select
                 value={team}
                 onChange={(e) => setTeam(e.target.value)}
-                aria-label="Filter by volunteer team"
+                aria-label="Filter by team"
                 style={{
                   height: 32,
                   padding: "0 28px 0 12px",
@@ -134,7 +134,7 @@ export function AllMembersList({
                   cursor: "pointer",
                 }}
               >
-                <option value="all">All volunteer teams</option>
+                <option value="all">All teams</option>
                 {teams.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}

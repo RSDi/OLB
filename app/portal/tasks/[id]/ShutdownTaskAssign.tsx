@@ -47,7 +47,7 @@ export function ShutdownTaskAssign({
       </span>
       {teamMembers.length === 0 ? (
         <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
-          No Building Shutdown team members yet — add some in Settings → Volunteer Teams.
+          No Building Shutdown team members yet — add some in Settings → Teams.
         </span>
       ) : (
         <select

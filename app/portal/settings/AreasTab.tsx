@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
-import { Input, Pill } from "../../components/ui";
+import { Input, Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
 import type { MemberLike } from "../../../lib/auth/permissions";
 import { canDeleteAreas } from "../../../lib/auth/permissions";
@@ -10,10 +10,17 @@ interface Area {
   id: string;
   name: string;
   sort_order: number;
+  responsible_team_id: string | null;
+}
+
+interface Team {
+  id: string;
+  name: string;
 }
 
 export function AreasTab({ me }: { me: MemberLike }) {
   const [areas, setAreas] = useState<Area[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -24,16 +31,25 @@ export function AreasTab({ me }: { me: MemberLike }) {
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const { data, error: loadError } = await supabase
-      .from("areas")
-      .select("id, name, sort_order")
-      .is("deleted_at", null)
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true });
-    if (loadError) {
-      setError(loadError.message);
+    const [areaRes, teamRes] = await Promise.all([
+      supabase
+        .from("areas")
+        .select("id, name, sort_order, responsible_team_id")
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true }),
+      supabase
+        .from("volunteer_teams")
+        .select("id, name")
+        .order("name", { ascending: true }),
+    ]);
+    if (areaRes.error) {
+      setError(areaRes.error.message);
     } else {
-      setAreas((data as Area[]) ?? []);
+      setAreas((areaRes.data as Area[]) ?? []);
+    }
+    if (!teamRes.error) {
+      setTeams((teamRes.data as Team[]) ?? []);
     }
     setLoading(false);
   }, []);
@@ -42,12 +58,12 @@ export function AreasTab({ me }: { me: MemberLike }) {
     load();
   }, [load]);
 
-  async function addArea(name: string, sortOrder: number) {
+  async function addArea(name: string, sortOrder: number, responsibleTeamId: string | null) {
     setError(null);
     const supabase = createClient();
     const { error: insertError } = await supabase
       .from("areas")
-      .insert({ name, sort_order: sortOrder });
+      .insert({ name, sort_order: sortOrder, responsible_team_id: responsibleTeamId });
     if (insertError) {
       setError(insertError.message);
       return;
@@ -56,13 +72,13 @@ export function AreasTab({ me }: { me: MemberLike }) {
     await load();
   }
 
-  async function updateArea(id: string, name: string, sortOrder: number) {
+  async function updateArea(id: string, name: string, sortOrder: number, responsibleTeamId: string | null) {
     setError(null);
     setActing(id);
     const supabase = createClient();
     const { error: updateError } = await supabase
       .from("areas")
-      .update({ name, sort_order: sortOrder })
+      .update({ name, sort_order: sortOrder, responsible_team_id: responsibleTeamId })
       .eq("id", id);
     if (updateError) {
       setError(updateError.message);
@@ -108,6 +124,7 @@ export function AreasTab({ me }: { me: MemberLike }) {
 
       {adding && (
         <AreaForm
+          teams={teams}
           submitLabel="Add area"
           onCancel={() => {
             setAdding(false);
@@ -133,12 +150,16 @@ export function AreasTab({ me }: { me: MemberLike }) {
                 key={area.id}
                 initialName={area.name}
                 initialSortOrder={area.sort_order}
+                initialResponsibleTeamId={area.responsible_team_id}
+                teams={teams}
                 submitLabel="Save"
                 onCancel={() => {
                   setEditingId(null);
                   setError(null);
                 }}
-                onSubmit={(name, sortOrder) => updateArea(area.id, name, sortOrder)}
+                onSubmit={(name, sortOrder, responsibleTeamId) =>
+                  updateArea(area.id, name, sortOrder, responsibleTeamId)
+                }
               />
             ) : (
               <AreaRow
@@ -146,6 +167,7 @@ export function AreasTab({ me }: { me: MemberLike }) {
                 area={area}
                 acting={acting === area.id}
                 canDelete={canDelete}
+                responsibleTeamName={teams.find((t) => t.id === area.responsible_team_id)?.name}
                 onEdit={() => {
                   setEditingId(area.id);
                   setError(null);
@@ -164,12 +186,14 @@ function AreaRow({
   area,
   acting,
   canDelete,
+  responsibleTeamName,
   onEdit,
   onDelete,
 }: {
   area: Area;
   acting: boolean;
   canDelete: boolean;
+  responsibleTeamName?: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -191,6 +215,7 @@ function AreaRow({
         </div>
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 2 }}>
           Sort order: {area.sort_order}
+          {responsibleTeamName ? ` · Team: ${responsibleTeamName}` : ""}
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -210,18 +235,23 @@ function AreaRow({
 function AreaForm({
   initialName = "",
   initialSortOrder = 100,
+  initialResponsibleTeamId = null,
+  teams,
   submitLabel,
   onSubmit,
   onCancel,
 }: {
   initialName?: string;
   initialSortOrder?: number;
+  initialResponsibleTeamId?: string | null;
+  teams: Team[];
   submitLabel: string;
-  onSubmit: (name: string, sortOrder: number) => void | Promise<void>;
+  onSubmit: (name: string, sortOrder: number, responsibleTeamId: string | null) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(initialName);
   const [sortOrder, setSortOrder] = useState(String(initialSortOrder));
+  const [responsibleTeamId, setResponsibleTeamId] = useState(initialResponsibleTeamId ?? "");
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -229,7 +259,7 @@ function AreaForm({
     const trimmed = name.trim();
     if (!trimmed) return;
     setPending(true);
-    await onSubmit(trimmed, Number(sortOrder) || 100);
+    await onSubmit(trimmed, Number(sortOrder) || 100, responsibleTeamId || null);
     setPending(false);
   }
 
@@ -253,6 +283,19 @@ function AreaForm({
           onChange={(e) => setSortOrder(e.target.value)}
         />
       </div>
+      <Select
+        label="Responsible team"
+        help="Members of this team are emailed when a maintenance request is filed for this area."
+        value={responsibleTeamId}
+        onChange={(e) => setResponsibleTeamId(e.target.value)}
+      >
+        <option value="">— None —</option>
+        {teams.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
+        ))}
+      </Select>
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           Cancel

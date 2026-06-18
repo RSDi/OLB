@@ -24,7 +24,7 @@ const VIEWS: ViewCard[] = [
   {
     href: "/portal/directory/all",
     title: "All members",
-    blurb: "Flat A–Z list with search and filters by volunteer team, status, and more.",
+    blurb: "Flat A–Z list with search and filters by team, status, and more.",
     icon: <Icons.Users width={20} height={20} />,
     accent: { bg: "rgb(239,246,255)", color: "#1d4ed8" },
   },
