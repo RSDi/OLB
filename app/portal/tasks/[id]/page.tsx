@@ -72,6 +72,11 @@ interface RequestDetails {
   selfCleanup?: boolean;
   paidActivity?: boolean;
   insuranceAck?: boolean;
+  // Gym readiness (mirrors the description builder in lib/maintenance/actions.ts).
+  subType?: string;
+  netKnown?: boolean;
+  scoreboardKnown?: boolean;
+  shutdownKnown?: boolean;
   notes?: string;
 }
 
@@ -551,9 +556,16 @@ export default async function TicketDetailPage({
                 </Link>
               )}
             </div>
-            <div style={{ fontSize: 14, color: "var(--gw-fg)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-              {ticket.description}
-            </div>
+            {["gym", "building-use", "use-a-space", "event", "class"].includes(ticket.details?.kind ?? "") && ticket.details ? (
+              // Structured request: the grid is the canonical view; the
+              // auto-generated free-text description just duplicates it (and the
+              // page title), so we don't repeat it here.
+              <RequestDetailsRows d={ticket.details} />
+            ) : (
+              <div style={{ fontSize: 14, color: "var(--gw-fg)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                {ticket.description}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, flexWrap: "wrap" }}>
               <span>
                 Submitted by{" "}
@@ -608,10 +620,6 @@ export default async function TicketDetailPage({
               </span>
               <div style={{ fontSize: 14, color: "var(--gw-fg)", lineHeight: 1.6 }}>{ticket.decline_reason}</div>
             </div>
-          )}
-
-          {["gym", "building-use", "use-a-space", "event", "class"].includes(ticket.details?.kind ?? "") && (
-            <RequestDetailsCard d={ticket.details!} />
           )}
 
           {/* To-Dos: the child tasks that break this one into steps. */}
@@ -910,7 +918,11 @@ function DecisionChecklist() {
   );
 }
 
-function RequestDetailsCard({ d }: { d: RequestDetails }) {
+// The structured request fields, rendered inline inside the header card (no
+// separate card/heading) so a request shows as ONE card. Mirrors the
+// description builder in lib/maintenance/actions.ts, incl. gym readiness, so
+// dropping the redundant free-text description loses nothing.
+function RequestDetailsRows({ d }: { d: RequestDetails }) {
   const time = [d.startTime, d.endTime].filter(Boolean).join("–");
   const when = [d.date, time].filter(Boolean).join(" ");
   const rows: [string, string][] = [];
@@ -930,16 +942,20 @@ function RequestDetailsCard({ d }: { d: RequestDetails }) {
     .filter(Boolean)
     .join(" · ");
   if (access) rows.push(["Access", access]);
+  if (d.kind === "gym") {
+    const r: string[] = [];
+    if (d.subType === "volleyball") r.push(d.netKnown ? "knows net setup" : "may need help with the net");
+    if (d.subType === "basketball") r.push(d.scoreboardKnown ? "knows the scoreboard" : "may need help with the scoreboard");
+    r.push(d.shutdownKnown ? "can close up the building" : "may need help closing up");
+    if (r.length) rows.push(["Readiness", r.join(" · ")]);
+  }
   if (d.alcohol) rows.push(["Alcohol", "Will be served"]);
   if (d.hasFee) rows.push(["Cost", "There's a cost to attend"]);
   if (d.paidActivity) rows.push(["Paid activity", d.insuranceAck ? "can provide insurance/waiver" : "yes"]);
   if (d.contact) rows.push(["Contact", d.contact]);
 
   return (
-    <div className="rsd-card" style={{ gap: 12 }}>
-      <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
-        Request details
-      </h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", flexDirection: "column" }}>
         {rows.map(([k, v]) => (
           <div key={k} style={{ display: "flex", gap: 12, padding: "7px 0", borderBottom: "1px solid var(--gw-border)" }}>

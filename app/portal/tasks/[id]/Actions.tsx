@@ -606,30 +606,41 @@ export function VotePanel({
         </div>
       )}
 
-      {/* My vote */}
+      {/* My advisory vote — a compact Yes/No toggle that highlights your pick. */}
       {!decliningNote ? (
-        <div style={{ display: "flex", gap: 8 }}>
-          <Pill
-            variant="accent"
-            size="md"
-            onClick={() => cast("yes")}
-            disabled={pending || myVote === "yes"}
-            style={{ flex: 1, justifyContent: "center" }}
-          >
-            <Icons.CheckCircle width={15} height={15} /> {myVote === "yes" ? "You voted yes" : myVote ? "Change to yes" : "Vote yes"}
-          </Pill>
-          <Pill
-            variant="ghost"
-            size="md"
-            onClick={() => {
-              setDecliningNote(true);
-              setError(null);
-            }}
-            disabled={pending || myVote === "no"}
-            style={{ flex: 1, justifyContent: "center" }}
-          >
-            <Icons.X width={15} height={15} /> {myVote === "no" ? "You voted no" : myVote ? "Change to no" : "Vote no"}
-          </Pill>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+            Your vote
+          </span>
+          <div style={{ display: "flex", gap: 6 }}>
+            <Pill
+              variant={myVote === "yes" ? "accent" : "ghost"}
+              size="sm"
+              onClick={() => cast("yes")}
+              disabled={pending || myVote === "yes"}
+              style={{ flex: 1, justifyContent: "center" }}
+            >
+              <Icons.CheckCircle width={14} height={14} /> Yes
+            </Pill>
+            <Pill
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDecliningNote(true);
+                setError(null);
+              }}
+              disabled={pending || myVote === "no"}
+              style={{
+                flex: 1,
+                justifyContent: "center",
+                ...(myVote === "no"
+                  ? { background: "var(--gw-error-bg)", borderColor: "var(--gw-error)", color: "var(--gw-error)" }
+                  : {}),
+              }}
+            >
+              <Icons.X width={14} height={14} /> No
+            </Pill>
+          </div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
