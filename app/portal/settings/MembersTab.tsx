@@ -117,17 +117,43 @@ export function MembersTab({
     setActing(id);
     setError(null);
     const supabase = createClient();
+    // Settings grants only apply to Building Committee (admin). Clear them when
+    // moving to any other group, so they don't linger on a plain member or
+    // reappear if the person is later re-promoted. (Super-admins hold every
+    // grant implicitly, so they don't need the flags.)
     const { error: updateError } = await supabase
       .from("members")
       .update({
         role,
         reviewed_by: currentUserId,
         reviewed_at: new Date().toISOString(),
+        ...(role !== "admin"
+          ? { can_edit_settings: false, can_delete_settings: false, can_undelete_settings: false }
+          : {}),
       })
       .eq("id", id);
     if (updateError) setError(updateError.message);
     else await load();
     setActing(null);
+  }
+
+  // Set a member's permission group, confirming the sensitive transitions
+  // (granting or removing Super-admin). Self is never editable here, so the
+  // acting super-admin can't demote themselves and lock everyone out.
+  async function changeRole(member: Member, role: MemberRole) {
+    if (role === member.role) return;
+    if (role === "super_admin") {
+      if (
+        !confirm(
+          `Make ${memberDisplayName(member)} a Super-admin? They'll have full control — managing members, roles, and every setting.`
+        )
+      )
+        return;
+    } else if (member.role === "super_admin") {
+      const to = role === "admin" ? "Building Committee" : "Member";
+      if (!confirm(`Remove Super-admin from ${memberDisplayName(member)} and set them to ${to}?`)) return;
+    }
+    await setRole(member.id, role);
   }
 
   // Toggle a settings grant on a committee member. RLS allows only super-admins
@@ -447,8 +473,7 @@ export function MembersTab({
                 onDeny={() => setStatus(member.id, "denied")}
                 onRestore={() => setStatus(member.id, "pending")}
                 onRemove={() => removeMember(member.id)}
-                onPromote={() => setRole(member.id, "admin")}
-                onDemote={() => setRole(member.id, "member")}
+                onSetRole={(role) => changeRole(member, role)}
                 onSetGrant={(key, value) => setGrant(member.id, key, value)}
                 onEdit={() => setEditingId(member.id)}
               />
@@ -457,6 +482,44 @@ export function MembersTab({
         </div>
       )}
     </div>
+  );
+}
+
+// Compact permission-group picker for the member row. Super-admin only (the
+// row only renders it when canManage). Lets a super-admin move anyone directly
+// into any of the three groups.
+function RoleSelect({
+  role,
+  disabled,
+  onChange,
+}: {
+  role: MemberRole;
+  disabled: boolean;
+  onChange: (role: MemberRole) => void;
+}) {
+  return (
+    <select
+      value={role}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value as MemberRole)}
+      aria-label="Permission group"
+      title="Permission group"
+      style={{
+        height: 30,
+        padding: "0 26px 0 10px",
+        borderRadius: 8,
+        border: "1px solid var(--gw-border)",
+        background: "var(--gw-bg-elev)",
+        color: "var(--gw-fg)",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: disabled ? "not-allowed" : "pointer",
+      }}
+    >
+      <option value="member">Member</option>
+      <option value="admin">Building Committee</option>
+      <option value="super_admin">Super-admin</option>
+    </select>
   );
 }
 
@@ -470,8 +533,7 @@ function MemberRow({
   onDeny,
   onRestore,
   onRemove,
-  onPromote,
-  onDemote,
+  onSetRole,
   onSetGrant,
   onEdit,
 }: {
@@ -484,8 +546,7 @@ function MemberRow({
   onDeny: () => void;
   onRestore: () => void;
   onRemove: () => void;
-  onPromote: () => void;
-  onDemote: () => void;
+  onSetRole: (role: MemberRole) => void;
   onSetGrant: (key: GrantKey, value: boolean) => void;
   onEdit: () => void;
 }) {
@@ -588,25 +649,8 @@ function MemberRow({
         )}
         {tab === "approved" && canManage && (
           <>
-            {!isSelf && member.role === "member" && (
-              <ActionBtn
-                onClick={onPromote}
-                disabled={acting}
-                color="var(--rsd-accent)"
-                bgColor="var(--rsd-accent-bg)"
-              >
-                Promote to admin
-              </ActionBtn>
-            )}
-            {!isSelf && member.role === "admin" && (
-              <ActionBtn
-                onClick={onDemote}
-                disabled={acting}
-                color="var(--gw-fg-muted)"
-                bgColor="var(--gw-bg-elev)"
-              >
-                Demote to member
-              </ActionBtn>
+            {!isSelf && (
+              <RoleSelect role={member.role} disabled={acting} onChange={onSetRole} />
             )}
             {!isSelf && member.role !== "super_admin" && (
               <ActionBtn
