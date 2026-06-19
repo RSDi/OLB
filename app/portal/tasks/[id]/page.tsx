@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { Icons } from "../../../components/icons";
+import { HelpTip } from "../../../components/HelpTip";
 import { createClient } from "../../../../lib/supabase/server";
 import {
   isStaff,
@@ -903,17 +904,19 @@ function DecisionChecklist() {
     "Fits our mission?",
   ];
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
         Things to weigh
       </span>
-      <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 3 }}>
-        {items.map((i) => (
-          <li key={i} style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
-            {i}
-          </li>
-        ))}
-      </ul>
+      <HelpTip label="Things to weigh">
+        <ul style={{ margin: 0, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 4 }}>
+          {items.map((i) => (
+            <li key={i} style={{ lineHeight: 1.45 }}>
+              {i}
+            </li>
+          ))}
+        </ul>
+      </HelpTip>
     </div>
   );
 }

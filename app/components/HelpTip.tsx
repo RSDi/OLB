@@ -2,10 +2,10 @@
 // Inline field-level help: a small "i" the user can hover (desktop) or tap
 // (mobile) to read a short explanation. For one- or two-sentence hints next to
 // a form field or control. For whole-page docs use the top-bar info panel.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icons } from "./icons";
 
-export function HelpTip({ text, label }: { text: string; label?: string }) {
+export function HelpTip({ text, label, children }: { text?: string; label?: string; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
 
@@ -75,7 +75,7 @@ export function HelpTip({ text, label }: { text: string; label?: string }) {
             whiteSpace: "normal",
           }}
         >
-          {text}
+          {children ?? text}
         </span>
       )}
     </span>
