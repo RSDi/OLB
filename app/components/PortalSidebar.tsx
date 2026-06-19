@@ -64,6 +64,14 @@ export function PortalSidebar({
   const isSuperAdmin = viewer?.role === "super_admin";
   const pendingCount = pendingMembersCount;
 
+  // Members (non-staff) get the request page as their "Dashboard"; staff keep
+  // the KPI overview at /portal.
+  const navItems: NavItem[] = NAV.map((item) =>
+    item.href === "/portal" && !isStaff
+      ? { ...item, href: "/portal/requests", exact: false }
+      : item
+  );
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
     setIsMobile(mq.matches);
@@ -112,7 +120,7 @@ export function PortalSidebar({
 
       {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
-        {NAV.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin)).map(item => {
+        {navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin)).map(item => {
           const active = isActive(item.href, item.exact);
           const isSettings = item.href === "/portal/settings";
           return (

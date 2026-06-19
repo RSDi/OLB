@@ -39,9 +39,13 @@ export default async function PortalDashboard() {
   const me = (meRow as (MemberLike & { id: string; full_name: string | null; nickname: string | null }) | null) ?? null;
   const staff = isStaff(me);
 
-  // KPIs are for people "actively helping" — staff or members of a team.
-  // Plain members get the lean request-focused view.
-  let involved = staff;
+  // Members (non-staff) use the request page as their dashboard; only staff see
+  // the KPI overview here.
+  if (!staff) redirect("/portal/requests");
+
+  // KPIs are for people "actively helping". Only staff reach this point now
+  // (members are redirected above), so this stays true here.
+  let involved: boolean = staff;
   if (!involved && me?.id) {
     const { count: teamCount } = await supabase
       .from("member_volunteer_teams")
@@ -241,44 +245,28 @@ export default async function PortalDashboard() {
           <Icons.Plus width={14} height={14} />
           Make a request
         </Link>
-        <Link
-          href="/portal/tasks"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 20px",
-            borderRadius: 100,
-            background: "var(--gw-bg-elev)",
-            border: "1px solid var(--gw-border)",
-            fontSize: 13,
-            fontWeight: 700,
-            color: "var(--gw-fg)",
-            textDecoration: "none",
-          }}
-        >
-          <Icons.Wrench width={14} height={14} />
-          View all requests
-        </Link>
-        <Link
-          href="/portal/requests/building-use"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 20px",
-            borderRadius: 100,
-            background: "var(--gw-bg-elev)",
-            border: "1px solid var(--gw-border)",
-            fontSize: 13,
-            fontWeight: 700,
-            color: "var(--gw-fg)",
-            textDecoration: "none",
-          }}
-        >
-          <Icons.Calendar width={14} height={14} />
-          Reserve a room or space
-        </Link>
+        {/* Staff-only shortcut; plain members just get "Make a request". */}
+        {staff && (
+          <Link
+            href="/portal/tasks"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 20px",
+              borderRadius: 100,
+              background: "var(--gw-bg-elev)",
+              border: "1px solid var(--gw-border)",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--gw-fg)",
+              textDecoration: "none",
+            }}
+          >
+            <Icons.Wrench width={14} height={14} />
+            View all requests
+          </Link>
+        )}
       </div>
 
       {firstName && (

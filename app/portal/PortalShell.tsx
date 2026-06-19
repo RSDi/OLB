@@ -98,6 +98,13 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
       ? { title: "Playbook", subtitle: "Operations" }
       : { title: "Portal", subtitle: "" });
 
+  // Members (non-staff) use /portal/requests as their dashboard — label it
+  // "Dashboard" there instead of "Make a Request" (staff keep /portal).
+  const topMeta =
+    pathname === "/portal/requests" && !(viewer?.isStaff ?? false)
+      ? { title: "Dashboard", subtitle: "Overview" }
+      : meta;
+
   return (
     <div className={`rsd-app${collapsed ? " sidebar-collapsed" : ""}`}>
       <PortalSidebar
@@ -109,8 +116,8 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
         onNavigate={() => setMobileOpen(false)}
       />
       <PortalTopBar
-        title={meta.title}
-        subtitle={meta.subtitle}
+        title={topMeta.title}
+        subtitle={topMeta.subtitle}
         onMenuClick={() => setMobileOpen(v => !v)}
         onSearchClick={() => setSearchOpen(true)}
         inlineSearchRef={inlineSearchRef}
