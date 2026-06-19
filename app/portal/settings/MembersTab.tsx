@@ -12,6 +12,8 @@ import {
   removeMemberRelationship,
   softDeleteMember,
   setMemberStatus,
+  revokeMemberLogin,
+  restoreMemberLogin,
   type RelationshipKind,
 } from "../../../lib/auth/member-actions";
 import { MemberEditForm } from "./MemberEditForm";
@@ -30,6 +32,8 @@ interface Member {
   can_edit_settings: boolean;
   can_delete_settings: boolean;
   can_undelete_settings: boolean;
+  membership_status: string;
+  access_revoked_at: string | null;
   requested_at: string;
   reviewed_at: string | null;
 }
@@ -82,7 +86,7 @@ export function MembersTab({
       supabase
         .from("members")
         .select(
-          "id, user_id, email, full_name, nickname, avatar_url, phone, birthday, status, role, can_edit_settings, can_delete_settings, can_undelete_settings, requested_at, reviewed_at"
+          "id, user_id, email, full_name, nickname, avatar_url, phone, birthday, status, role, can_edit_settings, can_delete_settings, can_undelete_settings, membership_status, access_revoked_at, requested_at, reviewed_at"
         )
         .is("deleted_at", null)
         .order("requested_at", { ascending: false }),
@@ -191,6 +195,8 @@ export function MembersTab({
       avatar_url: string | null;
       phone: string | null;
       birthday: string | null;
+      email: string | null;
+      membership_status: string;
     }
   ) {
     setActing(id);
@@ -201,6 +207,24 @@ export function MembersTab({
       .update(fields)
       .eq("id", id);
     if (updateError) setError(updateError.message);
+    else await load();
+    setActing(null);
+  }
+
+  async function revokeLogin(id: string, membershipStatus: "moved" | "inactive") {
+    setActing(id);
+    setError(null);
+    const result = await revokeMemberLogin(id, membershipStatus);
+    if (result.error) setError(result.error);
+    else await load();
+    setActing(null);
+  }
+
+  async function restoreLogin(id: string) {
+    setActing(id);
+    setError(null);
+    const result = await restoreMemberLogin(id);
+    if (result.error) setError(result.error);
     else await load();
     setActing(null);
   }
@@ -452,6 +476,16 @@ export function MembersTab({
                 onRemoveRelationship={(relatedId, kind) =>
                   handleRemoveRelationship(member.id, relatedId, kind)
                 }
+                onRevokeLogin={
+                  tab === "approved" && member.user_id !== currentUserId
+                    ? (status) => revokeLogin(member.id, status)
+                    : undefined
+                }
+                onRestoreLogin={
+                  tab === "approved" && member.user_id !== currentUserId
+                    ? () => restoreLogin(member.id)
+                    : undefined
+                }
                 onDelete={
                   member.user_id === currentUserId
                     ? undefined
@@ -597,10 +631,13 @@ function MemberRow({
           )}
           {member.role === "admin" && <span className="rsd-chip rsd-chip-mute">Building Committee</span>}
           {isSelf && <span className="rsd-chip rsd-chip-mute">You</span>}
-          {!member.email && <span className="rsd-chip rsd-chip-mute">Directory only</span>}
-          {member.email && !member.user_id && (
+          {member.access_revoked_at ? (
+            <span className="rsd-chip rsd-chip-warn">No login</span>
+          ) : !member.email ? (
+            <span className="rsd-chip rsd-chip-mute">Directory only</span>
+          ) : !member.user_id ? (
             <span className="rsd-chip rsd-chip-warn">Invited</span>
-          )}
+          ) : null}
         </div>
         <div
           style={{

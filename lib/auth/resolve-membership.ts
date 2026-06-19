@@ -76,7 +76,7 @@ export async function resolveMembership({
 
   const { data: member } = await supabase
     .from("members")
-    .select("status, role")
+    .select("status, role, access_revoked_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -138,6 +138,13 @@ export async function resolveMembership({
       (err) => console.error("[notify] access-request slack failed:", err)
     );
     return { status: "pending", role: "member" };
+  }
+
+  // A revoked member (login disabled by a super-admin, e.g. they left the
+  // church) is denied even if the auth ban was somehow bypassed. Their
+  // directory entry stays; portal access does not.
+  if ((member as { access_revoked_at?: string | null }).access_revoked_at) {
+    return { status: "denied", role: (member.role as MemberRole) ?? "member" };
   }
 
   // A still-pending member who signs in via the church Slack gets approved now.

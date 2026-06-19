@@ -1,19 +1,22 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Icons } from "../../components/icons";
-import { Input, Pill } from "../../components/ui";
+import { Input, Pill, Select } from "../../components/ui";
 import { resolveAvatarUrl } from "../../../lib/members/avatar";
 import type { RelationshipKind } from "../../../lib/auth/member-actions";
 
 // Lightweight shapes — the caller can pass any object with these fields.
 export interface EditFormMember {
   id: string;
+  user_id?: string | null;
   email: string | null;
   full_name: string | null;
   nickname?: string | null;
   avatar_url: string | null;
   phone: string | null;
   birthday: string | null;
+  membership_status?: string | null;
+  access_revoked_at?: string | null;
 }
 
 export interface EditFormRelationship {
@@ -33,6 +36,8 @@ export function MemberEditForm({
   onAddRelationship,
   onRemoveRelationship,
   onDelete,
+  onRevokeLogin,
+  onRestoreLogin,
 }: {
   member: EditFormMember;
   allMembers: EditFormMember[];
@@ -45,20 +50,37 @@ export function MemberEditForm({
     avatar_url: string | null;
     phone: string | null;
     birthday: string | null;
+    email: string | null;
+    membership_status: string;
   }) => void | Promise<void>;
   onAddRelationship: (relatedId: string, kind: RelationshipKind) => void | Promise<void>;
   onRemoveRelationship: (relatedId: string, kind: RelationshipKind) => void | Promise<void>;
   // Optional — host passes this when soft-delete is allowed (super-admin
   // only). The button is hidden if undefined.
   onDelete?: () => void | Promise<void>;
+  // Optional — host passes these on the approved tab (super-admin) to
+  // disable/re-enable the person's portal login.
+  onRevokeLogin?: (membershipStatus: "moved" | "inactive") => void | Promise<void>;
+  onRestoreLogin?: () => void | Promise<void>;
 }) {
   const [fullName, setFullName] = useState(member.full_name ?? "");
   const [nickname, setNickname] = useState(member.nickname ?? "");
   const [avatarUrl, setAvatarUrl] = useState(member.avatar_url ?? "");
   const [phone, setPhone] = useState(member.phone ?? "");
   const [birthday, setBirthday] = useState(member.birthday ?? "");
+  const [email, setEmail] = useState(member.email ?? "");
+  const [membershipStatus, setMembershipStatus] = useState(member.membership_status ?? "regular");
   // Preview: the typed URL, else the member's Gravatar (by email).
   const previewAvatar = resolveAvatarUrl({ avatar_url: avatarUrl, email: member.email });
+
+  const revoked = !!member.access_revoked_at;
+  const loginState = revoked
+    ? "No login — access revoked"
+    : member.email && member.user_id
+    ? "Active — can sign in"
+    : member.email
+    ? "Invited — signs in once they register"
+    : "Directory only — no login";
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -68,6 +90,8 @@ export function MemberEditForm({
       avatar_url: avatarUrl.trim() || null,
       phone: phone.trim() || null,
       birthday: birthday || null,
+      email: email.trim() || null,
+      membership_status: membershipStatus,
     });
   }
 
@@ -113,10 +137,10 @@ export function MemberEditForm({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-            {member.email}
+            {member.email ?? "No email"}
           </div>
           <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 2 }}>
-            Email is read-only — it's tied to the sign-in account.
+            {loginState}
           </div>
         </div>
       </div>
@@ -170,6 +194,100 @@ export function MemberEditForm({
           Leave blank to use their Gravatar (set one at gravatar.com for the member&apos;s email).
         </span>
       </div>
+
+      <fieldset
+        style={{
+          border: "1px solid var(--gw-border)",
+          borderRadius: 10,
+          padding: 16,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <legend
+          style={{
+            padding: "0 8px",
+            fontSize: 12,
+            fontWeight: 700,
+            color: "var(--gw-fg-muted)",
+            textTransform: "uppercase",
+            letterSpacing: ".04em",
+          }}
+        >
+          Access
+        </legend>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@example.com"
+            disabled={pending}
+          />
+          <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+            Their sign-in identity and directory contact. Leave blank for a directory-only entry (no login).
+          </span>
+        </div>
+        <Select
+          label="Membership status"
+          value={membershipStatus}
+          onChange={(e) => setMembershipStatus(e.target.value)}
+          disabled={pending}
+        >
+          <option value="visiting">Visiting</option>
+          <option value="regular">Regular</option>
+          <option value="moved">Moved</option>
+          <option value="inactive">Inactive</option>
+        </Select>
+        {(onRevokeLogin || onRestoreLogin) && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--gw-fg-muted)",
+                textTransform: "uppercase",
+                letterSpacing: ".04em",
+              }}
+            >
+              Portal login
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+                {loginState}
+              </span>
+              {revoked ? (
+                <Pill variant="accent" size="sm" onClick={() => onRestoreLogin?.()} disabled={pending}>
+                  Restore login
+                </Pill>
+              ) : member.email ? (
+                <Pill
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Revoke ${member.full_name ?? member.email}'s portal login? They'll stay in the directory with their email, but can't sign in. You can restore it later.`
+                      )
+                    ) {
+                      onRevokeLogin?.(membershipStatus === "moved" ? "moved" : "inactive");
+                    }
+                  }}
+                >
+                  Revoke login
+                </Pill>
+              ) : (
+                <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500, fontStyle: "italic" }}>
+                  Add an email and save to enable a login.
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </fieldset>
 
       <FamilySection
         memberId={member.id}

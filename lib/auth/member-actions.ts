@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireStaff, requireSuperAdmin } from "./guards";
 import { createClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
 import { isStaff, type MemberLike, type MemberRole, type MemberStatus } from "./permissions";
 import { sendMembershipApprovedNotification } from "../notifications/membership-decision";
 
@@ -86,6 +87,97 @@ export async function createMember(input: CreateMemberInput): Promise<MemberActi
 
   revalidatePath("/portal/settings");
   return { success: true, memberId: data.id };
+}
+
+export type MembershipStatus = "visiting" | "regular" | "moved" | "inactive";
+
+// Revoke a member's portal login (e.g. they left the church). Bans their auth
+// account so the credential can't be used, stamps access_revoked_at, and
+// records where they now stand (membership_status). Their directory entry and
+// email are KEPT. Super-admin only. Reversible via restoreMemberLogin.
+export async function revokeMemberLogin(
+  memberId: string,
+  membershipStatus: MembershipStatus = "inactive",
+): Promise<MemberActionResult> {
+  const gate = await requireSuperAdmin();
+  if ("error" in gate) return { error: gate.error };
+
+  const supabase = await createClient();
+  const { data: target } = await supabase
+    .from("members")
+    .select("id, user_id")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (!target) return { error: "Member not found." };
+
+  // Never let a super-admin revoke their own login (lockout guard) — the UI
+  // hides this for self, but enforce it server-side too.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user && (target as { user_id: string | null }).user_id === user.id) {
+    return { error: "You can't revoke your own login." };
+  }
+
+  // Ban the auth account so the credential can't be used. Deleting it isn't
+  // safe — several tables FK to auth.users without cascade — and a ban is
+  // reversible. Skipped when there's no linked account (an un-registered invite).
+  const userId = (target as { user_id: string | null }).user_id;
+  if (userId) {
+    const admin = createAdminClient();
+    const { error: banError } = await admin.auth.admin.updateUserById(userId, {
+      ban_duration: "876000h", // ~100 years
+    });
+    if (banError) return { error: banError.message };
+  }
+
+  const { error } = await supabase
+    .from("members")
+    .update({
+      access_revoked_at: new Date().toISOString(),
+      membership_status: membershipStatus,
+    })
+    .eq("id", memberId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/settings");
+  revalidatePath("/portal/directory");
+  return { success: true, memberId };
+}
+
+// Restore a member's portal login: un-ban their auth account and clear
+// access_revoked_at. Leaves membership_status alone (set it in the edit form).
+// Super-admin only.
+export async function restoreMemberLogin(memberId: string): Promise<MemberActionResult> {
+  const gate = await requireSuperAdmin();
+  if ("error" in gate) return { error: gate.error };
+
+  const supabase = await createClient();
+  const { data: target } = await supabase
+    .from("members")
+    .select("id, user_id")
+    .eq("id", memberId)
+    .maybeSingle();
+  if (!target) return { error: "Member not found." };
+
+  const userId = (target as { user_id: string | null }).user_id;
+  if (userId) {
+    const admin = createAdminClient();
+    const { error: unbanError } = await admin.auth.admin.updateUserById(userId, {
+      ban_duration: "none",
+    });
+    if (unbanError) return { error: unbanError.message };
+  }
+
+  const { error } = await supabase
+    .from("members")
+    .update({ access_revoked_at: null })
+    .eq("id", memberId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/settings");
+  revalidatePath("/portal/directory");
+  return { success: true, memberId };
 }
 
 export type RelationshipKind = "spouse" | "parent" | "child";
