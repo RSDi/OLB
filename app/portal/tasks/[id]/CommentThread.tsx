@@ -253,6 +253,7 @@ function CommentNode({
   return (
     <div
       id={`comment-${comment.id}`}
+      data-recording-id={comment.recording?.id}
       style={{
         borderBottom: border ? "1px solid var(--gw-border)" : "none",
       }}

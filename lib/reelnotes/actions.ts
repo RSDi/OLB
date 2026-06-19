@@ -100,6 +100,24 @@ export async function toggleActionItemDone(
   return { success: true };
 }
 
+// Dismiss a suggested action item so it stops showing as a suggested To-Do on
+// the task. Mirrors toggleActionItemDone; staff-only.
+export async function dismissActionItem(actionId: string, ticketId: string): Promise<Result> {
+  const viewer = await getViewer();
+  if (!viewer?.isStaff) return { error: "Not authorized." };
+  if (!UUID_RE.test(actionId)) return { error: "Invalid item." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("reel_notes_action_items")
+    .update({ dismissed: true })
+    .eq("id", actionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/portal/tasks/${ticketId}`);
+  return { success: true };
+}
+
 // Set (or clear, with null) the action item's owner member. Label-only
 // assignment metadata, mirroring the ReelNotes inbox; rides along on a Things
 // push. Staff-update RLS on linked recordings' action items (0064) permits it.

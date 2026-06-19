@@ -74,7 +74,7 @@ const CONTRACT: Record<string, string> = {
   reel_notes_recordings:
     "id,user_id,title,audio_blob_url,duration_sec,source,status,assemblyai_id,transcript,utterances,summary,error,linked_entity_type,linked_entity_id,deleted_at",
   reel_notes_action_items:
-    "id,recording_id,text,routed_to,done,sort_order,priority,owner_member_id,supporter_member_ids,suggested_assignee_name,suggested_member_id,suggested_supporter_names,transcript_ms,anchor_quote",
+    "id,recording_id,text,routed_to,done,sort_order,priority,owner_member_id,supporter_member_ids,suggested_assignee_name,suggested_member_id,suggested_supporter_names,transcript_ms,anchor_quote,task_id,dismissed",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {

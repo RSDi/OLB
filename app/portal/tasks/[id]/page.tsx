@@ -21,11 +21,13 @@ import {
 } from "./Actions";
 import { TaskScheduleChips } from "../QueueRow";
 import { SubtaskRow } from "./SubtaskRow";
+import { SuggestedTodos } from "./SuggestedTodos";
 import { churchToday } from "../../../../lib/dates/today";
 import { CommentThread, type ThreadComment } from "./CommentThread";
 import {
   loadRecordingsForComments,
   loadSubtaskRecordingLinks,
+  loadSuggestedActionItems,
   loadThingsEnabled,
   loadAssignableMembers,
   type AssignableMember,
@@ -197,6 +199,9 @@ export default async function TicketDetailPage({
     subtasks.length > 0
       ? await loadSubtaskRecordingLinks(subtasks.map((s) => s.id))
       : new Map<string, { audioUrl: string | null; transcriptMs: number | null }>();
+  // ReelNotes action items linked to this task that aren't promoted/dismissed,
+  // shown as "suggested" To-Dos (staff only — RLS hides them from others too).
+  const suggestedTodos = staff ? await loadSuggestedActionItems(ticket.id) : [];
   // Only a top-level task can hold sub-tasks (one level). Members manage their
   // own; staff manage any.
   const canManageSubtasks = ticket.parent_id === null && (staff || ticket.submitted_by === user.id);
@@ -624,7 +629,7 @@ export default async function TicketDetailPage({
           )}
 
           {/* To-Dos: the child tasks that break this one into steps. */}
-          {(subtasks.length > 0 || canManageSubtasks) && (
+          {(subtasks.length > 0 || canManageSubtasks || suggestedTodos.length > 0) && (
             <div className="rsd-card" style={{ gap: 12 }}>
               <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
                 To-Dos
@@ -656,6 +661,9 @@ export default async function TicketDetailPage({
                     Break this into smaller pieces — add a to-do or two.
                   </div>
                 )
+              )}
+              {staff && suggestedTodos.length > 0 && (
+                <SuggestedTodos ticketId={ticket.id} items={suggestedTodos} />
               )}
               {canManageSubtasks && <AddSubtask parentId={ticket.id} />}
             </div>

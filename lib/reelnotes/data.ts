@@ -270,6 +270,41 @@ export async function loadSubtaskRecordingLinks(
 
 // Whether the current viewer has opted into the device-only "push to Things"
 // affordance. Defaults false (and tolerates a pre-0064 schema).
+export interface SuggestedTodo {
+  id: string; // action item id
+  recordingId: string;
+  text: string;
+}
+
+// Action items from recordings linked to this task that haven't been promoted
+// to a To-Do (task_id null, 0068) and haven't been dismissed (0076) — surfaced
+// as "suggested" To-Dos. Staff-only via the linked-action-item RLS (0064).
+// Tolerant: empty on any error or before the `dismissed` column exists.
+export async function loadSuggestedActionItems(taskId: string): Promise<SuggestedTodo[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("reel_notes_recordings")
+    .select("id, action_items:reel_notes_action_items(id, text, task_id, dismissed, sort_order)")
+    .eq("linked_entity_type", "task")
+    .eq("linked_entity_id", taskId)
+    .is("deleted_at", null);
+  if (error || !data) return [];
+  const rows = data as unknown as {
+    id: string;
+    action_items: { id: string; text: string; task_id: string | null; dismissed: boolean; sort_order: number | null }[];
+  }[];
+  const out: { id: string; recordingId: string; text: string; sort: number }[] = [];
+  for (const rec of rows) {
+    for (const ai of rec.action_items ?? []) {
+      if (!ai.task_id && !ai.dismissed) {
+        out.push({ id: ai.id, recordingId: rec.id, text: ai.text, sort: ai.sort_order ?? 0 });
+      }
+    }
+  }
+  out.sort((a, b) => a.sort - b.sort);
+  return out.map((i) => ({ id: i.id, recordingId: i.recordingId, text: i.text }));
+}
+
 export async function loadThingsEnabled(): Promise<boolean> {
   const supabase = await createClient();
   const {
