@@ -98,10 +98,22 @@ export function mccReelNotesAdapter(): ReelNotesAdapter {
         "",
         `Listen & route items: ${baseUrl()}/portal/reelnotes?r=${ctx.recordingId}`,
       ].join("\n");
-      const { error: commentErr } = await admin
+      // Idempotent: re-processing a recording (retry-transcription, re-extract,
+      // or a re-fired transcription webhook) must refresh the one recorded-note
+      // comment, not post another. Migration 0075 also enforces one live comment
+      // per recording at the DB level.
+      const { data: existingComment } = await admin
         .from("ticket_comments")
-        .insert({ ticket_id: linkedTicketId, author_id: authorId, body, recording_id: ctx.recordingId });
-      if (commentErr) console.error("ReelNotes comment insert failed", commentErr);
+        .select("id")
+        .eq("recording_id", ctx.recordingId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      const { error: commentErr } = existingComment
+        ? await admin.from("ticket_comments").update({ body }).eq("id", existingComment.id)
+        : await admin
+            .from("ticket_comments")
+            .insert({ ticket_id: linkedTicketId, author_id: authorId, body, recording_id: ctx.recordingId });
+      if (commentErr) console.error("ReelNotes comment upsert failed", commentErr);
     },
   };
 }
