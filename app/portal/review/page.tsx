@@ -4,7 +4,6 @@ import { createClient } from "../../../lib/supabase/server";
 import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../lib/members/display";
-import { majorityThreshold } from "../../../lib/votes/threshold";
 import { loadConflictCounts } from "../../../lib/requests/conflict-loader";
 
 type ReviewFilter = "pending_review" | "approved" | "declined";
@@ -81,9 +80,8 @@ export default async function ReviewQueuePage({
     for (const s of subs ?? []) submitterMap[s.user_id] = memberDisplayName(s);
   }
 
-  // Vote tallies for the pending list (gracefully empty until migration 0050).
+  // Advisory vote tallies for the pending list (gracefully empty until 0050).
   const tally: Record<string, { yes: number; no: number }> = {};
-  let voteThreshold = 0;
   if (status === "pending_review" && rows.length > 0) {
     const { data: votes } = await supabase
       .from("request_votes")
@@ -94,13 +92,6 @@ export default async function ReviewQueuePage({
       if (v.vote === "yes") t.yes += 1;
       else t.no += 1;
     }
-    const { count: staffCount } = await supabase
-      .from("members")
-      .select("id", { count: "exact", head: true })
-      .in("role", ["admin", "super_admin"])
-      .eq("status", "approved")
-      .not("user_id", "is", null);
-    voteThreshold = majorityThreshold(staffCount ?? 0);
   }
 
   // Schedule-conflict counts for the pending list → a "⚠ Conflict" chip.
@@ -114,7 +105,7 @@ export default async function ReviewQueuePage({
       <TasksSectionNav active="review" isStaff={true} />
       <p style={{ margin: "0 0 4px", fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.6, maxWidth: 620 }}>
         Requests from members waiting on the building committee. Open one to see the details, discuss in
-        the thread, and cast your vote — a simple majority decides it, and a no vote needs a reason.
+        the thread, weigh in with an advisory vote, then approve or decline it with a note to the requester.
       </p>
 
       {/* Tabs */}
@@ -187,9 +178,9 @@ export default async function ReviewQueuePage({
                     ⚠ Conflict
                   </span>
                 ) : null}
-                {status === "pending_review" && voteThreshold > 0 && (
+                {status === "pending_review" && (
                   <span className="rsd-chip rsd-chip-mute" style={{ marginLeft: "auto" }}>
-                    {tally[r.id]?.yes ?? 0}✓ {tally[r.id]?.no ?? 0}✗ · {voteThreshold} to decide
+                    {tally[r.id]?.yes ?? 0}✓ {tally[r.id]?.no ?? 0}✗
                   </span>
                 )}
               </div>

@@ -9,14 +9,14 @@ export async function sendRequestDecisionNotification({
   to,
   recipientName,
   decision,
-  reason,
+  note,
   summary,
 }: {
   ticketId: string;
   to: string | null;
   recipientName: string | null;
   decision: "approved" | "declined";
-  reason?: string | null;
+  note?: string | null;
   summary: string;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -36,26 +36,23 @@ export async function sendRequestDecisionNotification({
       ? "Your request was approved"
       : "An update on your request";
 
-  const body =
-    decision === "approved"
-      ? `
-        <p>${hi}</p>
-        <p>Good news — the building committee <strong>approved</strong> your request:</p>
-        <blockquote style="margin:0 0 16px;padding:12px 16px;background:#f6f6f6;border-left:3px solid #ddd;">
-          ${escapeHtml(summary).replace(/\n/g, "<br/>")}
-        </blockquote>
-        <p>We'll be in touch with any details. You can view it in the portal:</p>
-        <p><a href="${siteUrl()}/portal/tasks/${ticketId}">View your request</a></p>
-      `
-      : `
-        <p>${hi}</p>
-        <p>Thanks for your request. After review, the building committee wasn't able to approve it this time:</p>
-        <blockquote style="margin:0 0 16px;padding:12px 16px;background:#f6f6f6;border-left:3px solid #ddd;">
-          ${escapeHtml(summary).replace(/\n/g, "<br/>")}
-        </blockquote>
-        <p><strong>Reason:</strong> ${escapeHtml(reason ?? "—")}</p>
-        <p>If you have questions, just reply and we'll be glad to talk it through.</p>
-      `;
+  // The committee's editable note is the message body. Fall back to a default
+  // line if they left it blank (only possible on an approval).
+  const lead =
+    note && note.trim()
+      ? escapeHtml(note).replace(/\n/g, "<br/>")
+      : decision === "approved"
+        ? "Good news — the building committee approved your request."
+        : "After review, the building committee wasn't able to approve this request.";
+
+  const body = `
+    <p>${hi}</p>
+    <p>${lead}</p>
+    <blockquote style="margin:0 0 16px;padding:12px 16px;background:#f6f6f6;border-left:3px solid #ddd;">
+      ${escapeHtml(summary).replace(/\n/g, "<br/>")}
+    </blockquote>
+    <p><a href="${siteUrl()}/portal/tasks/${ticketId}">View your request</a></p>
+  `;
 
   const res = await fetch(RESEND_ENDPOINT, {
     method: "POST",

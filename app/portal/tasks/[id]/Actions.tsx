@@ -12,6 +12,7 @@ import {
   addTicketComment,
   softDeleteTicket,
   castRequestVote,
+  decideRequest,
   addSubtasks,
   addSubtasksFromActionItems,
   setTaskSchedule,
@@ -496,9 +497,9 @@ function ErrorLine({ message }: { message: string }) {
   );
 }
 
-// Committee voting (migration 0050): every committee member votes yes/no; a
-// simple majority decides instantly. "No" requires a note. Votes can be
-// changed until the decision lands. Shown only while pending_review.
+// Committee review (migrations 0050 + 0074): members cast advisory yes/no votes
+// (a "no" needs a reason), then any one member finalizes with a manual Approve
+// or Decline + a note that's emailed to the requester. Shown while pending_review.
 export interface VoteRow {
   voterName: string;
   vote: VoteValue;
@@ -511,7 +512,6 @@ export function VotePanel({
   votes,
   yesCount,
   noCount,
-  threshold,
   waitingOn,
   myVote,
 }: {
@@ -519,15 +519,16 @@ export function VotePanel({
   votes: VoteRow[];
   yesCount: number;
   noCount: number;
-  threshold: number;
   waitingOn: string[];
   myVote: VoteValue | null;
 }) {
   const router = useRouter();
   const [decliningNote, setDecliningNote] = useState(false);
   const [note, setNote] = useState("");
+  const [deciding, setDeciding] = useState<null | "approved" | "declined">(null);
+  const [decisionNote, setDecisionNote] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [decidedMsg, setDecidedMsg] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function cast(vote: VoteValue, voteNote?: string) {
@@ -538,23 +539,46 @@ export function VotePanel({
         setError(r.error);
         return;
       }
-      if (r.decided === "approved") setDecidedMsg("That was the deciding vote — request approved. The requester has been notified.");
-      if (r.decided === "declined") setDecidedMsg("That was the deciding vote — request declined. The requester has been notified.");
       setDecliningNote(false);
       setNote("");
       router.refresh();
     });
   }
 
+  function openDecision(decision: "approved" | "declined") {
+    setError(null);
+    setDeciding(decision);
+    setDecisionNote(
+      decision === "approved" ? "Good news — the building committee approved your request." : "",
+    );
+  }
+
+  function submitDecision() {
+    if (!deciding) return;
+    setError(null);
+    startTransition(async () => {
+      const r = await decideRequest(ticketId, deciding, decisionNote);
+      if (r.error) {
+        setError(r.error);
+        return;
+      }
+      setDone(
+        deciding === "approved"
+          ? "Request approved — the requester has been emailed."
+          : "Request declined — the requester has been emailed.",
+      );
+      setDeciding(null);
+      router.refresh();
+    });
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Tally */}
+      {/* Advisory tally */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
         <span className="rsd-chip rsd-chip-accent">{yesCount} yes</span>
         <span className="rsd-chip rsd-chip-warn">{noCount} no</span>
-        <span style={{ color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-          {threshold} {threshold === 1 ? "vote" : "votes"} decide{threshold === 1 ? "s" : ""} it
-        </span>
+        <span style={{ color: "var(--gw-fg-muted)", fontWeight: 600 }}>advisory</span>
       </div>
 
       {/* Votes cast so far */}
@@ -642,8 +666,50 @@ export function VotePanel({
           </div>
         </div>
       )}
-      {decidedMsg && (
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--rsd-accent)" }}>{decidedMsg}</div>
+      {/* Manual decision — any one committee member finalizes. */}
+      <div style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+          Finalize decision
+        </div>
+        {deciding === null ? (
+          <div style={{ display: "flex", gap: 8 }}>
+            <Pill variant="accent" size="md" onClick={() => openDecision("approved")} disabled={pending} style={{ flex: 1, justifyContent: "center" }}>
+              <Icons.CheckCircle width={15} height={15} /> Approve
+            </Pill>
+            <Pill variant="ghost" size="md" onClick={() => openDecision("declined")} disabled={pending} style={{ flex: 1, justifyContent: "center" }}>
+              <Icons.X width={15} height={15} /> Decline
+            </Pill>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <Textarea
+              label={deciding === "approved" ? "Note to the requester (emailed)" : "Reason — emailed to the requester"}
+              value={decisionNote}
+              onChange={(e) => setDecisionNote(e.target.value)}
+              rows={4}
+              placeholder={deciding === "approved" ? "Sent with the approval — edit as needed." : "Required — explain why it wasn't approved."}
+              autoFocus
+            />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <Pill variant="ghost" size="sm" onClick={() => { setDeciding(null); setError(null); }} disabled={pending}>
+                Cancel
+              </Pill>
+              <Pill
+                variant="accent"
+                size="sm"
+                onClick={submitDecision}
+                disabled={pending || (deciding === "declined" && !decisionNote.trim())}
+                style={deciding === "declined" ? { background: "var(--gw-error)", borderColor: "var(--gw-error)", color: "#fff" } : undefined}
+              >
+                {pending ? "Saving…" : deciding === "approved" ? "Approve & send" : "Decline & send"}
+              </Pill>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {done && (
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--rsd-accent)" }}>{done}</div>
       )}
       {error && <ErrorLine message={error} />}
     </div>

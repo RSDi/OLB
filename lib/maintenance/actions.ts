@@ -1013,10 +1013,13 @@ export type VoteValue = "yes" | "no";
 
 export interface CastVoteResult {
   error?: string;
-  decided?: "approved" | "declined" | null;
   yes?: number;
   no?: number;
-  threshold?: number;
+}
+
+export interface DecideResult {
+  error?: string;
+  decided?: "approved" | "declined";
 }
 
 async function notifyDecision(
@@ -1028,7 +1031,7 @@ async function notifyDecision(
     details: Record<string, unknown> | null;
   },
   decision: "approved" | "declined",
-  reason?: string,
+  note?: string | null,
 ) {
   // Prefer the requester's account email; public (no-login) submissions fall
   // back to the contact email collected by the wizard.
@@ -1054,7 +1057,7 @@ async function notifyDecision(
     to,
     recipientName: name,
     decision,
-    reason,
+    note,
     summary: row.description,
   }).catch((err) => console.error("[notify] decision email failed:", err));
 }
@@ -1135,44 +1138,65 @@ export async function castRequestVote(
   });
   if (error) return { error: error.message };
 
-  const result = (data ?? {}) as {
-    decided: "approved" | "declined" | null;
-    yes: number;
-    no: number;
-    threshold: number;
-  };
+  // Votes are advisory now — recording one just updates the tally. The
+  // approve/decline decision is a separate manual step (decideRequest).
+  const result = (data ?? {}) as { yes: number; no: number };
 
-  // The vote that crosses the majority fires the requester notification and,
-  // for approvals, puts the booking on the events calendar (A4).
-  if (result.decided) {
-    const { data: row } = await supabase
-      .from("maintenance_requests")
-      .select("id, submitted_by, description, details, decline_reason")
-      .eq("id", ticketId)
-      .maybeSingle();
-    if (row) {
-      const ticketRow = row as {
-        id: string;
-        submitted_by: string | null;
-        description: string;
-        details: Record<string, unknown> | null;
-      };
-      await notifyDecision(
-        supabase,
-        ticketRow,
-        result.decided,
-        (row as { decline_reason?: string | null }).decline_reason ?? undefined,
+  revalidatePath("/portal/review");
+  revalidatePath("/portal/tasks");
+  revalidatePath(`/portal/tasks/${ticketId}`);
+  return { yes: result.yes, no: result.no };
+}
+
+// Manual committee decision: any one building-committee member approves or
+// declines a request with a note that's emailed to the requester. Replaces the
+// old auto-decide-on-majority. The status change is audited by the
+// task_review_log trigger; approvals also create the calendar event (A4).
+export async function decideRequest(
+  ticketId: string,
+  decision: "approved" | "declined",
+  note?: string,
+): Promise<DecideResult> {
+  const trimmed = note?.trim() ?? "";
+  if (decision === "declined" && !trimmed) {
+    return { error: "Please add a note so the requester understands." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be signed in." };
+
+  const { error } = await supabase.rpc("decide_request", {
+    p_ticket_id: ticketId,
+    p_decision: decision,
+    p_note: trimmed || null,
+  });
+  if (error) return { error: error.message };
+
+  const { data: row } = await supabase
+    .from("maintenance_requests")
+    .select("id, submitted_by, description, details")
+    .eq("id", ticketId)
+    .maybeSingle();
+  if (row) {
+    const ticketRow = row as {
+      id: string;
+      submitted_by: string | null;
+      description: string;
+      details: Record<string, unknown> | null;
+    };
+    await notifyDecision(supabase, ticketRow, decision, trimmed || null);
+    if (decision === "approved") {
+      await createEventFromApprovedRequest(supabase, ticketRow).catch((err) =>
+        console.error("[events] auto-create from approved request failed:", err),
       );
-      if (result.decided === "approved") {
-        await createEventFromApprovedRequest(supabase, ticketRow).catch((err) =>
-          console.error("[events] auto-create from approved request failed:", err),
-        );
-      }
     }
   }
 
   revalidatePath("/portal/review");
   revalidatePath("/portal/tasks");
   revalidatePath(`/portal/tasks/${ticketId}`);
-  return { decided: result.decided, yes: result.yes, no: result.no, threshold: result.threshold };
+  return { decided: decision };
 }

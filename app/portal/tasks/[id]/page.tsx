@@ -32,7 +32,6 @@ import {
 import { ProcedureRunner } from "../../../components/ProcedureRunner";
 import { ShutdownOptOutButton } from "./ShutdownOptOutButton";
 import { ShutdownTaskAssign } from "./ShutdownTaskAssign";
-import { majorityThreshold } from "../../../../lib/votes/threshold";
 import { loadConflictsForTicket } from "../../../../lib/requests/conflict-loader";
 import { formatDateLabel } from "../../../../lib/requests/recurrence";
 import { LinkedContacts } from "../../contacts/_shared/LinkedContacts";
@@ -380,7 +379,6 @@ export default async function TicketDetailPage({
         })
       : [];
   const eligibleVoters = staffList.filter((s) => s.user_id);
-  const voteThreshold = majorityThreshold(eligibleVoters.length);
   const staffNameByUserId: Record<string, string> = {};
   for (const s of eligibleVoters) staffNameByUserId[s.user_id as string] = memberDisplayName(s);
   const votesForPanel = voteRows.map((v) => ({
@@ -763,7 +761,6 @@ export default async function TicketDetailPage({
                 votes={votesForPanel}
                 yesCount={votesForPanel.filter((v) => v.vote === "yes").length}
                 noCount={votesForPanel.filter((v) => v.vote === "no").length}
-                threshold={voteThreshold}
                 waitingOn={waitingOn}
                 myVote={myVote}
               />
