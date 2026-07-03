@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/shutdown-generate",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/slack-archive-sync",
+      "schedule": "7 5 * * *"
     }
   ]
 }

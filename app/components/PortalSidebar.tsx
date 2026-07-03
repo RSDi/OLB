@@ -27,6 +27,8 @@ const NAV: NavItem[] = [
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
   // Building Committee can view Settings; editing is gated per grant inside.
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
+  // Slack Channel Archive: siloed feature, super-admin-only for now.
+  { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, superAdminOnly: true },
 ];
 
 // Trimmed viewer shape — sidebar only needs role/status to decide which nav

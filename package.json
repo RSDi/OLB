@@ -12,6 +12,7 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "import-directory": "tsx --env-file=.env.local scripts/import-directory.ts",
+    "slack-archive-backfill": "tsx --env-file=.env.local scripts/slack-archive-backfill.ts",
     "test": "node --test \"tests/**/*.test.ts\" \"packages/**/*.test.ts\""
   },
   "dependencies": {
