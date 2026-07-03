@@ -21,6 +21,7 @@
     "@vercel/blob": "^2.4.0",
     "ai": "^6.0.192",
     "next": "16.2.6",
+    "node-emoji": "^2.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",

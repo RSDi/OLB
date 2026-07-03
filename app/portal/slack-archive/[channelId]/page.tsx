@@ -4,6 +4,7 @@
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import * as emoji from "node-emoji";
 import { Icons } from "../../../components/icons";
 import { MarkdownView } from "../../../components/MarkdownView";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
@@ -141,6 +142,10 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {message.reactions.map((r) => {
             const names = r.users.map((u) => u.name ?? "Someone").join(", ");
+            // Slack's shortcode names mostly match the standard emoji-shortcode
+            // set node-emoji knows; workspace-custom emoji have no Unicode
+            // equivalent and fall back to the :name: text, same as before.
+            const glyph = emoji.get(r.name.split("::")[0]);
             return (
               <span
                 key={r.name}
@@ -150,7 +155,7 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
                   background: "var(--gw-bg-elev)", borderRadius: 6, padding: "2px 6px",
                 }}
               >
-                :{r.name}: {r.count} — {names}
+                {glyph ? <span style={{ fontSize: 13 }}>{glyph}</span> : `:${r.name}:`} {r.count} — {names}
               </span>
             );
           })}
