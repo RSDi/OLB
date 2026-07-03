@@ -2,10 +2,12 @@
 
 // Server actions for managing the Slack archive's channel registry.
 // Super-admin only (both here and via RLS on slack_archive_channels —
-// migration 0077). Mirrors the shape of lib/contacts/category-actions.ts.
+// migration 0077). Mirrors the shape of lib/contacts/category-actions.ts,
+// but uses getViewer() rather than requireSuperAdmin() since it already
+// resolves memberId alongside the super-admin check in one query.
 
 import { revalidatePath } from "next/cache";
-import { requireSuperAdmin } from "../auth/guards";
+import { getViewer } from "../auth/viewer";
 import { createClient } from "../supabase/server";
 
 export interface ArchiveChannelActionResult {
@@ -17,8 +19,9 @@ export async function addArchiveChannel(
   slackChannelId: string,
   label: string,
 ): Promise<ArchiveChannelActionResult> {
-  const gate = await requireSuperAdmin();
-  if ("error" in gate) return { error: gate.error };
+  const viewer = await getViewer();
+  if (!viewer) return { error: "You must be signed in." };
+  if (!viewer.isSuperAdmin) return { error: "Super-admin access required." };
 
   const channelId = slackChannelId.trim();
   const trimmedLabel = label.trim();
@@ -26,16 +29,10 @@ export async function addArchiveChannel(
   if (!trimmedLabel) return { error: "Label is required." };
 
   const supabase = await createClient();
-  const { data: me } = await supabase
-    .from("members")
-    .select("id")
-    .eq("user_id", gate.userId)
-    .maybeSingle();
-
   const { error } = await supabase.from("slack_archive_channels").insert({
     slack_channel_id: channelId,
     label: trimmedLabel,
-    added_by: (me as { id: string } | null)?.id ?? null,
+    added_by: viewer.memberId,
   });
   if (error) {
     if ((error as { code?: string }).code === "23505") {
@@ -52,8 +49,9 @@ export async function setArchiveChannelActive(
   id: string,
   active: boolean,
 ): Promise<ArchiveChannelActionResult> {
-  const gate = await requireSuperAdmin();
-  if ("error" in gate) return { error: gate.error };
+  const viewer = await getViewer();
+  if (!viewer) return { error: "You must be signed in." };
+  if (!viewer.isSuperAdmin) return { error: "Super-admin access required." };
 
   const supabase = await createClient();
   const { error } = await supabase.from("slack_archive_channels").update({ active }).eq("id", id);

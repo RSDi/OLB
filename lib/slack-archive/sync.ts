@@ -10,6 +10,18 @@
 // (onConflict), so a run that hits its time budget mid-walk just leaves the
 // watermark untouched and redoes the same range next time.
 //
+// The watermark only catches messages POSTED after it — it says nothing
+// about older threads getting new replies (a very normal way a committee
+// channel keeps evolving). refreshKnownThreads() closes that gap by
+// re-checking every thread this channel has ever seen, using each thread's
+// own latest-known-reply ts as its cursor, so it stays cheap (Slack returns
+// nothing new on an inactive thread) rather than re-walking full history.
+// It deliberately does NOT attempt to catch edits/reactions added to old,
+// non-thread messages after their sync — that would require periodically
+// re-walking the entire channel, defeating the point of an incremental
+// watermark. Accepted trade-off, same spirit as other documented
+// known-limitations in this repo's migrations (e.g. 0031's orphaned files).
+//
 // Used by both the nightly cron (bounded deadlineMs, to fit Vercel's
 // maxDuration) and the local one-time backfill script (effectively
 // unbounded — a local process has no platform timeout).
@@ -22,7 +34,7 @@ import {
   fetchSlackUserInfo,
   type SlackMessage,
 } from "./slack-api";
-import { downloadAndStoreSlackFile, type ArchivedFile } from "./files";
+import { downloadAndStoreSlackFile } from "./files";
 
 export interface ChannelSyncSummary {
   channel: string;
@@ -46,39 +58,46 @@ interface AuthorInfo {
 
 // Cache Slack user lookups + member matches across an entire sync run
 // (potentially many channels) to avoid repeat users.info calls for the same
-// person.
+// person. Caches the in-flight Promise (not just the resolved value) so
+// concurrent resolve() calls for the same not-yet-seen user — expected now
+// that messages within a page process in parallel — share one lookup
+// instead of racing duplicate ones.
 class AuthorResolver {
-  private cache = new Map<string, AuthorInfo>();
+  private cache = new Map<string, Promise<AuthorInfo>>();
   constructor(
     private admin: SupabaseClient,
     private token: string,
   ) {}
 
-  async resolve(msg: SlackMessage): Promise<AuthorInfo> {
+  resolve(msg: SlackMessage): Promise<AuthorInfo> {
     if (msg.user) {
       const cached = this.cache.get(msg.user);
       if (cached) return cached;
-
-      const { email, name } = await fetchSlackUserInfo(msg.user, this.token);
-      let memberId: string | null = null;
-      if (email) {
-        const { data } = await this.admin
-          .from("members")
-          .select("id")
-          .ilike("email", email)
-          .is("deleted_at", null)
-          .maybeSingle();
-        memberId = (data as { id: string } | null)?.id ?? null;
-      }
-      const info: AuthorInfo = { author_slack_id: msg.user, author_member_id: memberId, author_name: name };
-      this.cache.set(msg.user, info);
-      return info;
+      const promise = this.lookup(msg.user);
+      this.cache.set(msg.user, promise);
+      return promise;
     }
     if (msg.bot_id) {
       const botName = (msg as { username?: string }).username ?? "Bot";
-      return { author_slack_id: null, author_member_id: null, author_name: botName };
+      return Promise.resolve({ author_slack_id: null, author_member_id: null, author_name: botName });
     }
-    return { author_slack_id: null, author_member_id: null, author_name: null };
+    return Promise.resolve({ author_slack_id: null, author_member_id: null, author_name: null });
+  }
+
+  private async lookup(userId: string): Promise<AuthorInfo> {
+    const { email, name } = await fetchSlackUserInfo(userId, this.token);
+    let memberId: string | null = null;
+    if (email) {
+      const { data, error } = await this.admin
+        .from("members")
+        .select("id")
+        .ilike("email", email)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) console.error(`[slack-archive] member lookup failed for ${email}:`, error.message);
+      memberId = (data as { id: string } | null)?.id ?? null;
+    }
+    return { author_slack_id: userId, author_member_id: memberId, author_name: name };
   }
 }
 
@@ -86,13 +105,24 @@ function tsToDate(ts: string): string {
   return new Date(parseFloat(ts) * 1000).toISOString();
 }
 
-async function upsertMessage(
+// Resolves the author, downloads any file attachments (concurrently — each
+// is an independent Slack fetch + Storage upload), and upserts the row.
+// Shared by top-level messages, thread replies, and thread-refresh replies
+// so a future change to any of that logic only needs to happen once.
+async function persistMessage(
   admin: SupabaseClient,
   channelId: string,
   msg: SlackMessage,
-  author: AuthorInfo,
-  files: ArchivedFile[],
+  token: string,
+  resolver: AuthorResolver,
+  summary: ChannelSyncSummary,
 ): Promise<void> {
+  const [author, files] = await Promise.all([
+    resolver.resolve(msg),
+    Promise.all((msg.files ?? []).map((f) => downloadAndStoreSlackFile(admin, f, channelId, msg.ts, token))),
+  ]);
+  summary.files_stored += files.filter((f) => f.storage_path).length;
+
   const { error } = await admin.from("slack_archive_messages").upsert(
     {
       channel_id: channelId,
@@ -111,6 +141,23 @@ async function upsertMessage(
     { onConflict: "channel_id,ts" },
   );
   if (error) throw new Error(`upsert failed for ts=${msg.ts}: ${error.message}`);
+  summary.new_or_updated += 1;
+}
+
+async function fetchAllReplies(
+  channelId: string,
+  threadTs: string,
+  token: string,
+  oldest: string | undefined,
+): Promise<SlackMessage[]> {
+  const all: SlackMessage[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await fetchConversationsReplies(channelId, threadTs, token, cursor, oldest);
+    all.push(...page.messages);
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+  return all;
 }
 
 async function processMessage(
@@ -121,34 +168,58 @@ async function processMessage(
   resolver: AuthorResolver,
   summary: ChannelSyncSummary,
 ): Promise<void> {
-  const author = await resolver.resolve(msg);
-  const files: ArchivedFile[] = [];
-  for (const f of msg.files ?? []) {
-    const stored = await downloadAndStoreSlackFile(admin, f, channelId, msg.ts, token);
-    files.push(stored);
-    if (stored.storage_path) summary.files_stored += 1;
-  }
-  await upsertMessage(admin, channelId, msg, author, files);
-  summary.new_or_updated += 1;
+  await persistMessage(admin, channelId, msg, token, resolver, summary);
 
   if ((msg.reply_count ?? 0) > 0 && msg.thread_ts === msg.ts) {
-    let cursor: string | undefined;
-    do {
-      const page = await fetchConversationsReplies(channelId, msg.ts, token, cursor);
-      for (const reply of page.messages) {
-        const replyAuthor = await resolver.resolve(reply);
-        const replyFiles: ArchivedFile[] = [];
-        for (const f of reply.files ?? []) {
-          const stored = await downloadAndStoreSlackFile(admin, f, channelId, reply.ts, token);
-          replyFiles.push(stored);
-          if (stored.storage_path) summary.files_stored += 1;
-        }
-        await upsertMessage(admin, channelId, reply, replyAuthor, replyFiles);
-        summary.new_or_updated += 1;
-      }
-      cursor = page.nextCursor ?? undefined;
-    } while (cursor);
+    const replies = await fetchAllReplies(channelId, msg.ts, token, undefined);
+    await Promise.all(replies.map((reply) => persistMessage(admin, channelId, reply, token, resolver, summary)));
     summary.threads_synced += 1;
+  }
+}
+
+// Re-checks every thread this channel has ever archived for replies newer
+// than the newest one already stored, using each thread's own cursor — so a
+// thread with no new activity costs one cheap Slack call, not a full re-walk.
+async function refreshKnownThreads(
+  admin: SupabaseClient,
+  channelId: string,
+  token: string,
+  resolver: AuthorResolver,
+  summary: ChannelSyncSummary,
+  deadlineAt: number,
+): Promise<void> {
+  const { data, error } = await admin
+    .from("slack_archive_messages")
+    .select("ts, thread_ts")
+    .eq("channel_id", channelId)
+    .not("thread_ts", "is", null);
+  if (error) {
+    summary.errors.push(`thread refresh lookup failed: ${error.message}`);
+    return;
+  }
+
+  const rows = (data ?? []) as { ts: string; thread_ts: string }[];
+  const latestKnownByParent = new Map<string, string>();
+  for (const r of rows) {
+    if (r.thread_ts === r.ts) {
+      if (!latestKnownByParent.has(r.ts)) latestKnownByParent.set(r.ts, r.ts);
+    } else {
+      const current = latestKnownByParent.get(r.thread_ts);
+      if (!current || r.ts > current) latestKnownByParent.set(r.thread_ts, r.ts);
+    }
+  }
+
+  for (const [parentTs, latestTs] of latestKnownByParent) {
+    if (Date.now() >= deadlineAt) return; // rest picked up on a later run
+    try {
+      const newReplies = await fetchAllReplies(channelId, parentTs, token, latestTs);
+      if (newReplies.length > 0) {
+        await Promise.all(newReplies.map((r) => persistMessage(admin, channelId, r, token, resolver, summary)));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      summary.errors.push(`thread refresh failed for ${parentTs}: ${message}`);
+    }
   }
 }
 
@@ -191,14 +262,18 @@ export async function syncArchiveChannel(
       if (newWatermark === null && page.messages.length > 0) {
         newWatermark = page.messages[0].ts; // newest-first: first page's first message is the new high-water mark
       }
-      for (const msg of page.messages) {
-        await processMessage(admin, channelId, msg, token, resolver, summary);
-      }
+      await Promise.all(page.messages.map((msg) => processMessage(admin, channelId, msg, token, resolver, summary)));
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
 
     summary.done = true;
-    await admin.from("slack_archive_sync_state").upsert(
+
+    // New messages take priority; spend any remaining budget catching up
+    // replies on threads that predate this run's watermark. Best-effort —
+    // failures here don't downgrade the otherwise-successful sync below.
+    await refreshKnownThreads(admin, channelId, token, resolver, summary, deadlineAt);
+
+    const { error: stateErr } = await admin.from("slack_archive_sync_state").upsert(
       {
         channel_id: channelId,
         last_ts: newWatermark ?? watermark ?? null,
@@ -208,6 +283,7 @@ export async function syncArchiveChannel(
       },
       { onConflict: "channel_id" },
     );
+    if (stateErr) summary.errors.push(`sync_state update failed: ${stateErr.message}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     summary.errors.push(message);

@@ -19,8 +19,8 @@ export interface ArchivedFile {
   name: string;
   mimetype: string;
   size: number;
-  storage_path: string | null; // null if the download failed — permalink still works
-  permalink: string;
+  storage_path: string | null; // null if the download failed — permalink is kept as a fallback,
+  permalink: string;           // though Slack permalinks require a logged-in session in the workspace
 }
 
 export async function downloadAndStoreSlackFile(
@@ -59,13 +59,21 @@ export async function downloadAndStoreSlackFile(
   }
 }
 
-export async function signArchiveFileUrl(admin: SupabaseClient, storagePath: string): Promise<string | null> {
+// Batched — one Storage API round trip for however many files a channel page
+// needs to render, rather than one call per file.
+export async function signArchiveFileUrls(admin: SupabaseClient, storagePaths: string[]): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (storagePaths.length === 0) return result;
+
   const { data, error } = await admin.storage
     .from(ARCHIVE_FILES_BUCKET)
-    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
-  if (error || !data?.signedUrl) {
-    console.error("[slack-archive] signing file URL failed:", error?.message);
-    return null;
+    .createSignedUrls(storagePaths, SIGNED_URL_TTL_SECONDS);
+  if (error || !data) {
+    console.error("[slack-archive] signing file URLs failed:", error?.message);
+    return result;
   }
-  return data.signedUrl;
+  for (const entry of data) {
+    if (entry.signedUrl && entry.path) result.set(entry.path, entry.signedUrl);
+  }
+  return result;
 }

@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { getViewer, type Viewer } from "../auth/viewer";
-import { signArchiveFileUrl, type ArchivedFile } from "./files";
+import { signArchiveFileUrls, type ArchivedFile } from "./files";
 
 export async function loadArchiveViewer(): Promise<Viewer> {
   const viewer = await getViewer();
@@ -29,7 +29,7 @@ export interface ArchiveChannel {
 
 export async function loadArchiveChannels(): Promise<ArchiveChannel[]> {
   const supabase = await createClient();
-  const [{ data: channels, error: chErr }, { data: states }] = await Promise.all([
+  const [{ data: channels, error: chErr }, { data: states, error: stErr }] = await Promise.all([
     supabase
       .from("slack_archive_channels")
       .select("id, slack_channel_id, label, active, created_at")
@@ -39,6 +39,12 @@ export async function loadArchiveChannels(): Promise<ArchiveChannel[]> {
   if (chErr) {
     console.error("loadArchiveChannels failed", chErr);
     return [];
+  }
+  if (stErr) {
+    // Non-fatal — channels still render, just without sync status, and this
+    // is logged rather than silently showing "Not synced yet" for channels
+    // that are actually syncing fine.
+    console.error("loadArchiveChannels: sync_state query failed", stErr);
   }
 
   const stateByChannel = new Map(
@@ -97,40 +103,39 @@ export async function loadArchiveChannelMessages(slackChannelId: string): Promis
   }
 
   const rows = (data ?? []) as ArchiveMessage[];
-  const anyFiles = rows.some((r) => (r.files ?? []).some((f) => f.storage_path));
-  const admin = anyFiles ? createAdminClient() : null;
-
-  if (admin) {
-    await Promise.all(
-      rows.map(async (r) => {
-        r.files = await Promise.all(
-          (r.files ?? []).map(async (f) => {
-            if (!f.storage_path) return f;
-            const signedUrl = await signArchiveFileUrl(admin, f.storage_path);
-            return signedUrl ? { ...f, permalink: signedUrl } : f;
-          }),
-        );
-      }),
-    );
+  const allPaths = rows.flatMap((r) => (r.files ?? []).flatMap((f) => (f.storage_path ? [f.storage_path] : [])));
+  if (allPaths.length > 0) {
+    const admin = createAdminClient();
+    const signedUrls = await signArchiveFileUrls(admin, allPaths);
+    for (const r of rows) {
+      r.files = (r.files ?? []).map((f) => {
+        const signedUrl = f.storage_path ? signedUrls.get(f.storage_path) : undefined;
+        return signedUrl ? { ...f, permalink: signedUrl } : f;
+      });
+    }
   }
 
-  const byTs = new Map(rows.map((r) => [r.ts, r]));
+  // Single pass, relying on posted_at ascending order so a parent always
+  // appears before its replies. A reply whose parent isn't in this fetch
+  // (e.g. the parent's own sync run hasn't happened yet) renders as its own
+  // standalone thread rather than silently vanishing.
   const parents: ArchiveThread[] = [];
-  const repliesByParent = new Map<string, ArchiveMessage[]>();
+  const threadByParentTs = new Map<string, ArchiveThread>();
 
   for (const r of rows) {
     const isParent = !r.thread_ts || r.thread_ts === r.ts;
-    if (isParent) continue;
-    if (!byTs.has(r.thread_ts!)) continue; // parent outside this fetch window — treat orphan replies as standalone below
-    const list = repliesByParent.get(r.thread_ts!) ?? [];
-    list.push(r);
-    repliesByParent.set(r.thread_ts!, list);
-  }
-
-  for (const r of rows) {
-    const isParent = !r.thread_ts || r.thread_ts === r.ts;
-    if (!isParent) continue;
-    parents.push({ parent: r, replies: repliesByParent.get(r.ts) ?? [] });
+    if (isParent) {
+      const thread: ArchiveThread = { parent: r, replies: [] };
+      parents.push(thread);
+      threadByParentTs.set(r.ts, thread);
+      continue;
+    }
+    const parentThread = threadByParentTs.get(r.thread_ts!);
+    if (parentThread) {
+      parentThread.replies.push(r);
+    } else {
+      parents.push({ parent: r, replies: [] });
+    }
   }
 
   return parents;

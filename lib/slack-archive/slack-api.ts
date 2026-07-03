@@ -115,9 +115,11 @@ export async function fetchConversationsReplies(
   threadTs: string,
   token: string,
   cursor?: string,
+  oldest?: string,
 ): Promise<HistoryPage> {
   const params: Record<string, string> = { channel, ts: threadTs, limit: "200" };
   if (cursor) params.cursor = cursor;
+  if (oldest) params.oldest = oldest;
 
   const body = await slackApiCall("conversations.replies", params, token);
   if (!body.ok) throw new Error(`conversations.replies failed: ${body.error}`);

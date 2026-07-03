@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Icons } from "../../../components/icons";
 import { MarkdownView } from "../../../components/MarkdownView";
+import { CHURCH_TZ } from "../../../../lib/dates/today";
 import {
   loadArchiveViewer,
   loadArchiveChannels,
@@ -74,7 +75,7 @@ function groupByDay(threads: ArchiveThread[]): [string, ArchiveThread[]][] {
   const byDay = new Map<string, ArchiveThread[]>();
   for (const t of threads) {
     const day = new Date(t.parent.posted_at).toLocaleDateString(undefined, {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
+      weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: CHURCH_TZ,
     });
     const list = byDay.get(day) ?? [];
     list.push(t);
@@ -99,7 +100,7 @@ function ThreadCard({ thread }: { thread: ArchiveThread }) {
 }
 
 function MessageRow({ message }: { message: ArchiveMessage }) {
-  const time = new Date(message.posted_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const time = new Date(message.posted_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ });
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
