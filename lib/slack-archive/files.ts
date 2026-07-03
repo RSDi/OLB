@@ -23,6 +23,18 @@ export interface ArchivedFile {
   permalink: string;           // though Slack permalinks require a logged-in session in the workspace
 }
 
+// Supabase Storage keys are S3-compatible and reject some characters Slack
+// happily allows in a file name (em dashes, commas, etc. have been seen to
+// fail with "Invalid key" in practice). Sanitize for the storage path only —
+// the original name is kept in ArchivedFile.name for display.
+function sanitizeFileName(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .replace(/_{2,}/g, "_")
+    .slice(0, 150);
+}
+
 export async function downloadAndStoreSlackFile(
   admin: SupabaseClient,
   file: SlackFile,
@@ -39,12 +51,19 @@ export async function downloadAndStoreSlackFile(
     permalink: file.permalink,
   };
 
+  // Some Slack file objects (e.g. certain external/unfurled files) carry no
+  // url_private at all — nothing to download, fall back to the permalink.
+  if (!file.url_private) {
+    console.warn(`[slack-archive] file ${file.id} has no url_private, skipping download`);
+    return base;
+  }
+
   try {
     const res = await fetch(file.url_private, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return base;
     const bytes = await res.arrayBuffer();
 
-    const path = `${channelId}/${ts}/${file.id}-${file.name}`;
+    const path = `${channelId}/${ts}/${file.id}-${sanitizeFileName(file.name)}`;
     const { error } = await admin.storage
       .from(ARCHIVE_FILES_BUCKET)
       .upload(path, bytes, { contentType: file.mimetype, upsert: true });

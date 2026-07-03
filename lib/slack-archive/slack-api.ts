@@ -27,7 +27,7 @@ export interface SlackFile {
   name: string;
   mimetype: string;
   size: number;
-  url_private: string;
+  url_private?: string; // absent for some file types (e.g. certain external/unfurled files)
   permalink: string;
 }
 
