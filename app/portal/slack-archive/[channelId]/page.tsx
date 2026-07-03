@@ -138,18 +138,22 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
         </div>
       )}
       {message.reactions.length > 0 && (
-        <div style={{ display: "flex", gap: 6 }}>
-          {message.reactions.map((r) => (
-            <span
-              key={r.name}
-              style={{
-                fontSize: 11, fontWeight: 600, color: "var(--gw-fg-muted)",
-                background: "var(--gw-bg-elev)", borderRadius: 6, padding: "2px 6px",
-              }}
-            >
-              :{r.name}: {r.count}
-            </span>
-          ))}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {message.reactions.map((r) => {
+            const names = r.users.map((u) => u.name ?? "Someone").join(", ");
+            return (
+              <span
+                key={r.name}
+                title={names}
+                style={{
+                  fontSize: 11, fontWeight: 600, color: "var(--gw-fg-muted)",
+                  background: "var(--gw-bg-elev)", borderRadius: 6, padding: "2px 6px",
+                }}
+              >
+                :{r.name}: {r.count} — {names}
+              </span>
+            );
+          })}
         </div>
       )}
     </div>

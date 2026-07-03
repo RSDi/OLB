@@ -33,6 +33,7 @@ import {
   fetchConversationsReplies,
   fetchSlackUserInfo,
   type SlackMessage,
+  type SlackReaction,
 } from "./slack-api";
 import { downloadAndStoreSlackFile } from "./files";
 
@@ -70,18 +71,23 @@ class AuthorResolver {
   ) {}
 
   resolve(msg: SlackMessage): Promise<AuthorInfo> {
-    if (msg.user) {
-      const cached = this.cache.get(msg.user);
-      if (cached) return cached;
-      const promise = this.lookup(msg.user);
-      this.cache.set(msg.user, promise);
-      return promise;
-    }
+    if (msg.user) return this.resolveUserId(msg.user);
     if (msg.bot_id) {
       const botName = (msg as { username?: string }).username ?? "Bot";
       return Promise.resolve({ author_slack_id: null, author_member_id: null, author_name: botName });
     }
     return Promise.resolve({ author_slack_id: null, author_member_id: null, author_name: null });
+  }
+
+  // Exposed separately from resolve() so reaction users — raw Slack IDs with
+  // no enclosing message — can share the same cache and users.info/member
+  // lookup as message authors, instead of a second resolution path.
+  resolveUserId(userId: string): Promise<AuthorInfo> {
+    const cached = this.cache.get(userId);
+    if (cached) return cached;
+    const promise = this.lookup(userId);
+    this.cache.set(userId, promise);
+    return promise;
   }
 
   private async lookup(userId: string): Promise<AuthorInfo> {
@@ -105,6 +111,39 @@ function tsToDate(ts: string): string {
   return new Date(parseFloat(ts) * 1000).toISOString();
 }
 
+export interface StoredReactionUser {
+  slack_id: string;
+  name: string | null;
+}
+
+export interface StoredReaction {
+  name: string;
+  count: number;
+  users: StoredReactionUser[];
+}
+
+// Slack hands back reactions as raw user IDs; resolve each to a display name
+// via the same cached AuthorResolver used for message authors, so this adds
+// no extra API calls for anyone who's already posted in the channel.
+async function resolveReactions(
+  reactions: SlackReaction[] | undefined,
+  resolver: AuthorResolver,
+): Promise<StoredReaction[]> {
+  if (!reactions?.length) return [];
+  return Promise.all(
+    reactions.map(async (r) => ({
+      name: r.name,
+      count: r.count,
+      users: await Promise.all(
+        r.users.map(async (id) => {
+          const info = await resolver.resolveUserId(id);
+          return { slack_id: id, name: info.author_name };
+        }),
+      ),
+    })),
+  );
+}
+
 // Resolves the author, downloads any file attachments (concurrently — each
 // is an independent Slack fetch + Storage upload), and upserts the row.
 // Shared by top-level messages, thread replies, and thread-refresh replies
@@ -117,9 +156,10 @@ async function persistMessage(
   resolver: AuthorResolver,
   summary: ChannelSyncSummary,
 ): Promise<void> {
-  const [author, files] = await Promise.all([
+  const [author, files, reactions] = await Promise.all([
     resolver.resolve(msg),
     Promise.all((msg.files ?? []).map((f) => downloadAndStoreSlackFile(admin, f, channelId, msg.ts, token))),
+    resolveReactions(msg.reactions, resolver),
   ]);
   summary.files_stored += files.filter((f) => f.storage_path).length;
 
@@ -132,7 +172,7 @@ async function persistMessage(
       author_member_id: author.author_member_id,
       author_name: author.author_name,
       message_text: msg.text ?? "",
-      reactions: msg.reactions ?? [],
+      reactions,
       files,
       raw: msg,
       edited: Boolean(msg.edited),

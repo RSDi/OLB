@@ -8,6 +8,7 @@ import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { getViewer, type Viewer } from "../auth/viewer";
 import { signArchiveFileUrls, type ArchivedFile } from "./files";
+import type { StoredReaction } from "./sync";
 
 export async function loadArchiveViewer(): Promise<Viewer> {
   const viewer = await getViewer();
@@ -73,7 +74,7 @@ export interface ArchiveMessage {
   thread_ts: string | null;
   author_name: string | null;
   message_text: string;
-  reactions: { name: string; count: number }[];
+  reactions: StoredReaction[];
   files: ArchivedFile[];
   posted_at: string;
   edited: boolean;
