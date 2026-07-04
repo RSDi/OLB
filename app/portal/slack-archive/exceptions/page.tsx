@@ -6,12 +6,17 @@
 import Link from "next/link";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import { loadArchiveViewer, loadArchiveChannels, loadAllFailedFiles } from "../../../../lib/slack-archive/data";
+import { loadLatestCompressionRun } from "../../../../lib/slack-archive/compress-actions";
+import { CompressTriggerButton } from "./CompressTriggerButton";
 
 export default async function SlackArchiveExceptionsPage() {
   await loadArchiveViewer();
-  const channels = await loadArchiveChannels();
+  const [channels, lastCompressionRun] = await Promise.all([loadArchiveChannels(), loadLatestCompressionRun()]);
   const { entries: failedFiles, totalScanned, queryError } = await loadAllFailedFiles(channels);
   const erroredChannels = channels.filter((c) => c.last_status === "error");
+  const oversizedMediaCount = failedFiles.filter(
+    (f) => (f.file.mimetype ?? "").match(/^(video|audio)\//) && f.file.size > 50 * 1024 * 1024,
+  ).length;
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -49,6 +54,25 @@ export default async function SlackArchiveExceptionsPage() {
           ))
         )}
       </Section>
+
+      {oversizedMediaCount > 0 && (
+        <div
+          className="rsd-card"
+          style={{ padding: "14px 18px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}
+        >
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gw-fg)" }}>
+              {oversizedMediaCount} video/audio attachment{oversizedMediaCount === 1 ? "" : "s"} over 50MB
+            </div>
+            <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", marginTop: 2 }}>
+              These failed because they&rsquo;re too large to store as-is. Compressing runs on GitHub Actions
+              (nightly at 05:40 UTC, or on demand below) — not here, since it needs ffmpeg and more time than
+              this site&rsquo;s functions get.
+            </div>
+          </div>
+          <CompressTriggerButton lastRun={lastCompressionRun} />
+        </div>
+      )}
 
       <Section
         title={`Attachments needing attention (${failedFiles.length})`}
