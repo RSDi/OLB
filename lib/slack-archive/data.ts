@@ -175,6 +175,118 @@ export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<Fa
   return { entries, totalScanned: rows.length, queryError };
 }
 
+export interface ArchiveAuthor {
+  name: string;
+  count: number;
+}
+
+// Distinct authors across every channel, for the search page's "filter by
+// user" picker. Keyset-paginated by id (same reasoning as
+// loadAllFailedFiles — no ORDER BY on an unindexed cross-channel column),
+// but only pulls the one narrow column, so it stays cheap even as the
+// archive grows: deduping/counting happens in JS over plain short strings,
+// not full message rows.
+export async function loadArchiveAuthors(): Promise<ArchiveAuthor[]> {
+  const supabase = await createClient();
+  const PAGE_SIZE = 1000;
+  const counts = new Map<string, number>();
+  let lastId: string | null = null;
+  for (;;) {
+    const base = supabase
+      .from("slack_archive_messages")
+      .select("id, author_name")
+      .not("author_name", "is", null)
+      .order("id", { ascending: true })
+      .limit(PAGE_SIZE);
+    const { data, error } = await (lastId ? base.gt("id", lastId) : base);
+    if (error) {
+      console.error("loadArchiveAuthors failed", error);
+      break;
+    }
+    const page = (data ?? []) as { id: string; author_name: string | null }[];
+    for (const r of page) {
+      if (!r.author_name) continue;
+      counts.set(r.author_name, (counts.get(r.author_name) ?? 0) + 1);
+    }
+    if (page.length < PAGE_SIZE) break;
+    lastId = page[page.length - 1].id;
+  }
+
+  return Array.from(counts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export interface ArchiveSearchResult {
+  channelId: string;
+  channelLabel: string;
+  messageId: string;
+  messageTs: string;
+  threadTs: string | null;
+  authorName: string | null;
+  messageText: string;
+  postedAt: string;
+}
+
+const SEARCH_RESULT_LIMIT = 200;
+
+// Search across every channel by author and/or message text. Requires at
+// least one of the two — an unfiltered query would sort the entire table
+// with nothing to narrow it down first, exactly the shape of query that
+// blew the statement timeout on the exceptions page. author_name filtering
+// uses the (author_name, posted_at) index from 0078; text search uses the
+// generated tsvector column's GIN index via websearch_to_tsquery, which
+// understands natural typed queries (including "quoted phrases") without
+// the user needing to learn tsquery syntax.
+export async function searchArchiveMessages(
+  channels: ArchiveChannel[],
+  opts: { authors?: string[]; query?: string },
+): Promise<{ results: ArchiveSearchResult[]; error: string | null }> {
+  const authors = opts.authors?.filter(Boolean) ?? [];
+  const query = opts.query?.trim() ?? "";
+  if (authors.length === 0 && !query) return { results: [], error: null };
+
+  const supabase = await createClient();
+  let q = supabase
+    .from("slack_archive_messages")
+    .select("id, channel_id, ts, thread_ts, author_name, message_text, posted_at")
+    .order("posted_at", { ascending: false })
+    .limit(SEARCH_RESULT_LIMIT);
+
+  if (authors.length > 0) q = q.in("author_name", authors);
+  if (query) q = q.textSearch("message_text_search", query, { type: "websearch", config: "english" });
+
+  const { data, error } = await q;
+  if (error) {
+    console.error("searchArchiveMessages failed", error);
+    return { results: [], error: error.message };
+  }
+
+  const labelByChannel = new Map(channels.map((c) => [c.slack_channel_id, c.label]));
+  const rows = (data ?? []) as {
+    id: string;
+    channel_id: string;
+    ts: string;
+    thread_ts: string | null;
+    author_name: string | null;
+    message_text: string;
+    posted_at: string;
+  }[];
+
+  const results = rows.map((r) => ({
+    channelId: r.channel_id,
+    channelLabel: labelByChannel.get(r.channel_id) ?? r.channel_id,
+    messageId: r.id,
+    messageTs: r.ts,
+    threadTs: r.thread_ts,
+    authorName: r.author_name,
+    messageText: r.message_text,
+    postedAt: r.posted_at,
+  }));
+
+  return { results, error: null };
+}
+
 // Groups flat rows into threads (a parent with thread_ts === its own ts or
 // null, followed by any replies whose thread_ts points at it) and resolves
 // each file's storage_path to a short-lived signed URL. Signing needs the

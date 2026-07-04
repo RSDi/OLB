@@ -16,12 +16,20 @@ export default async function SlackArchivePage() {
         <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)", marginBottom: 4 }}>
           Slack Archive
         </h1>
-        <Link
-          href="/portal/slack-archive/exceptions"
-          style={{ fontSize: 12.5, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
-        >
-          View all exceptions →
-        </Link>
+        <div style={{ display: "flex", gap: 16 }}>
+          <Link
+            href="/portal/slack-archive/search"
+            style={{ fontSize: 12.5, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+          >
+            Search archive →
+          </Link>
+          <Link
+            href="/portal/slack-archive/exceptions"
+            style={{ fontSize: 12.5, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+          >
+            View all exceptions →
+          </Link>
+        </div>
       </div>
       <p style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, marginBottom: 24 }}>
         Full-history archive of registered Slack channels, synced nightly. Visible to super admins only.
