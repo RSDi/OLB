@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import * as emoji from "node-emoji";
 import { Icons } from "../../../components/icons";
 import { MarkdownView } from "../../../components/MarkdownView";
 import { Pill } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import type { ArchiveMessage, ArchiveThread } from "../../../../lib/slack-archive/data";
+import { emojify, resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";
 import { DateJumpCalendar } from "./DateJumpCalendar";
 
 interface DayGroup {
@@ -124,9 +124,9 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
       {message.message_text && (
         <div style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5 }}>
           {needsMarkdown(message.message_text) ? (
-            <MarkdownView>{emoji.emojify(message.message_text)}</MarkdownView>
+            <MarkdownView>{emojify(message.message_text)}</MarkdownView>
           ) : (
-            <div style={{ whiteSpace: "pre-wrap" }}>{emoji.emojify(message.message_text)}</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{emojify(message.message_text)}</div>
           )}
         </div>
       )}
@@ -166,10 +166,9 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {message.reactions.map((r) => {
             const names = r.users.map((u) => u.name ?? "Someone").join(", ");
-            // Slack's shortcode names mostly match the standard emoji-shortcode
-            // set node-emoji knows; workspace-custom emoji have no Unicode
-            // equivalent and fall back to the :name: text, same as before.
-            const glyph = emoji.get(r.name.split("::")[0]);
+            // Workspace-custom emoji have no Unicode equivalent and fall
+            // back to the :name: text, same as before.
+            const glyph = resolveEmojiShortcode(r.name.split("::")[0]);
             return (
               <span
                 key={r.name}

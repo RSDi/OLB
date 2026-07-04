@@ -2,12 +2,12 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import * as emoji from "node-emoji";
 import { Icons } from "../../../components/icons";
 import { MarkdownView } from "../../../components/MarkdownView";
 import { Input, Pill } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import { runArchiveAuthorsForQuery, runArchiveSearch } from "../../../../lib/slack-archive/search-actions";
+import { emojify } from "../../../../lib/slack-archive/emoji";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
 
 export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
@@ -170,7 +170,7 @@ export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
                 </div>
                 {r.messageText && (
                   <div style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5, marginTop: 4 }}>
-                    <MarkdownView>{emoji.emojify(r.messageText)}</MarkdownView>
+                    <MarkdownView>{emojify(r.messageText)}</MarkdownView>
                   </div>
                 )}
                 <div style={{ marginTop: 6, fontSize: 12.5 }}>

@@ -13,6 +13,7 @@
     "type-check": "tsc --noEmit",
     "import-directory": "tsx --env-file=.env.local scripts/import-directory.ts",
     "slack-archive-backfill": "tsx --env-file=.env.local scripts/slack-archive-backfill.ts",
+    "slack-archive-emoji-map": "tsx scripts/slack-archive-generate-emoji-map.ts",
     "test": "node --test \"tests/**/*.test.ts\" \"packages/**/*.test.ts\""
   },
   "dependencies": {
@@ -21,7 +22,6 @@
     "@vercel/blob": "^2.4.0",
     "ai": "^6.0.192",
     "next": "16.2.6",
-    "node-emoji": "^2.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
@@ -36,6 +36,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "emoji-datasource": "^16.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "exceljs": "^4.4.0",
