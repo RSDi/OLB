@@ -10,7 +10,7 @@ import { loadArchiveViewer, loadArchiveChannels, loadAllFailedFiles } from "../.
 export default async function SlackArchiveExceptionsPage() {
   await loadArchiveViewer();
   const channels = await loadArchiveChannels();
-  const failedFiles = await loadAllFailedFiles(channels);
+  const { entries: failedFiles, totalScanned, queryError } = await loadAllFailedFiles(channels);
   const erroredChannels = channels.filter((c) => c.last_status === "error");
 
   return (
@@ -48,7 +48,15 @@ export default async function SlackArchiveExceptionsPage() {
         )}
       </Section>
 
-      <Section title={`Attachments needing attention (${failedFiles.length})`}>
+      <Section
+        title={`Attachments needing attention (${failedFiles.length})`}
+        subtitle={queryError ? undefined : `Scanned ${totalScanned.toLocaleString()} messages across all channels.`}
+      >
+        {queryError && (
+          <div className="rsd-card" style={{ padding: "12px 18px", borderColor: "rgba(229,62,62,.25)", color: "var(--gw-error)", fontSize: 12.5, fontWeight: 600 }}>
+            Scan failed: {queryError}
+          </div>
+        )}
         {failedFiles.length === 0 ? (
           <EmptyNote>No attachment errors.</EmptyNote>
         ) : (
@@ -97,11 +105,22 @@ export default async function SlackArchiveExceptionsPage() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div style={{ marginBottom: 32 }}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--gw-fg)", marginBottom: 10 }}>{title}</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{children}</div>
+      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--gw-fg)" }}>{title}</div>
+      {subtitle && (
+        <div style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", marginTop: 2, marginBottom: 8 }}>{subtitle}</div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: subtitle ? 0 : 10 }}>{children}</div>
     </div>
   );
 }

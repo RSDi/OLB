@@ -106,6 +106,12 @@ type FailedFileRow = {
   files: ArchivedFile[];
 };
 
+export interface FailedFilesResult {
+  entries: FailedFileEntry[];
+  totalScanned: number; // surfaced on the page so a pagination/query regression is visible, not silent
+  queryError: string | null;
+}
+
 // Cross-channel view for the exceptions page — pulls every message with any
 // file attachment across every registered channel and filters to the ones
 // that carry an error, rather than requiring a click into each channel to
@@ -118,10 +124,11 @@ type FailedFileRow = {
 // realistically exceed with several channels registered — silently
 // truncating to the newest 1000 rows would drop exactly the older
 // exceptions this page exists to surface.
-export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<FailedFileEntry[]> {
+export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<FailedFilesResult> {
   const supabase = await createClient();
   const PAGE_SIZE = 1000;
   const rows: FailedFileRow[] = [];
+  let queryError: string | null = null;
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("slack_archive_messages")
@@ -130,6 +137,7 @@ export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<Fa
       .range(from, from + PAGE_SIZE - 1);
     if (error) {
       console.error("loadAllFailedFiles failed", error);
+      queryError = error.message;
       break;
     }
     const page = (data ?? []) as FailedFileRow[];
@@ -139,7 +147,7 @@ export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<Fa
 
   const labelByChannel = new Map(channels.map((c) => [c.slack_channel_id, c.label]));
 
-  return rows.flatMap((r) =>
+  const entries = rows.flatMap((r) =>
     (r.files ?? [])
       .filter((f) => f.error)
       .map((f) => ({
@@ -153,6 +161,8 @@ export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<Fa
         file: f,
       })),
   );
+
+  return { entries, totalScanned: rows.length, queryError };
 }
 
 // Groups flat rows into threads (a parent with thread_ts === its own ts or
