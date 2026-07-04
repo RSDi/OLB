@@ -110,7 +110,7 @@ export function FilterDropdown({
       </Pill>
 
       {open && (
-        <div className="rsd-card rsd-filter-dropdown-panel">
+        <div className="rsd-card rsd-slack-popover-panel">
           {hint && (
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)", marginBottom: 8 }}>
               {hint}

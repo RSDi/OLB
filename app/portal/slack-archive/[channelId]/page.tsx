@@ -11,6 +11,7 @@ import Link from "next/link";
 import { loadArchiveViewer, loadArchiveChannels, loadArchiveChannelMessages } from "../../../../lib/slack-archive/data";
 import { MessageList } from "./MessageList";
 import { SyncNowButton } from "./SyncNowButton";
+import { ChannelSwitcher } from "./ChannelSwitcher";
 
 // Server Actions inherit their page's maxDuration (see SyncNowButton's
 // syncChannelNow call) — without this, the platform default (as low as 10s
@@ -50,9 +51,10 @@ export default async function SlackArchiveChannelPage({
         </Link>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, margin: "4px 0 24px" }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)" }}>
-          {channel.label}
-        </h1>
+        <ChannelSwitcher
+          channels={channels.map((c) => ({ slackChannelId: c.slack_channel_id, label: c.label, active: c.active }))}
+          currentChannelId={slackChannelId}
+        />
         <SyncNowButton slackChannelId={slackChannelId} />
       </div>
 

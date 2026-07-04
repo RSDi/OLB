@@ -672,7 +672,8 @@ main::-webkit-scrollbar-track { background: transparent; }
   }
 }
 
-/* ── Slack Channel Archive: filter dropdown panel ────────────────────────
+/* ── Slack Channel Archive: popover panel (filter dropdowns, channel
+   switcher) ──────────────────────────────────────────────────────────────
    Anchored to its trigger button via `left: 0`, which works fine on
    desktop when there's room to the right — but on a phone-width sticky
    bar with 3 pills in a row, the third trigger (e.g. "Filter") sits near
@@ -680,7 +681,7 @@ main::-webkit-scrollbar-track { background: transparent; }
    past the screen edge, uninteractable. Below the mobile breakpoint this
    switches to a fixed bottom sheet instead of trying to anchor to
    wherever the trigger happens to be. */
-.rsd-filter-dropdown-panel {
+.rsd-slack-popover-panel {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
@@ -691,7 +692,7 @@ main::-webkit-scrollbar-track { background: transparent; }
   box-shadow: 0 8px 24px rgba(0,0,0,.15);
 }
 @media (max-width: 768px) {
-  .rsd-filter-dropdown-panel {
+  .rsd-slack-popover-panel {
     position: fixed;
     top: auto;
     left: 12px;
