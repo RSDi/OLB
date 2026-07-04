@@ -33,9 +33,11 @@ export default async function SlackArchiveExceptionsPage() {
             <div key={c.id} className="rsd-card" style={{ padding: "12px 18px" }}>
               <Link
                 href={`/portal/slack-archive/${encodeURIComponent(c.slack_channel_id)}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{ fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
               >
-                {c.label}
+                {c.label} ↗
               </Link>
               <div style={{ fontSize: 12.5, color: "var(--gw-error)", marginTop: 4 }}>{c.last_error}</div>
               {c.last_run_at && (
@@ -70,7 +72,12 @@ export default async function SlackArchiveExceptionsPage() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".02em" }}>
                   {f.channelLabel}
                 </div>
-                <Link href={jumpHref} style={{ textDecoration: "none", color: "inherit", display: "block", marginTop: 4 }}>
+                <Link
+                  href={jumpHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none", color: "inherit", display: "block", marginTop: 4 }}
+                >
                   <div style={{ fontWeight: 700, color: "var(--gw-fg)" }}>
                     {f.authorName ?? "Unknown"} <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>· {time}</span>
                   </div>
@@ -84,8 +91,8 @@ export default async function SlackArchiveExceptionsPage() {
                   {f.file.name || "(unnamed attachment)"} — {f.file.error}
                 </div>
                 <div style={{ marginTop: 2, fontSize: 12.5 }}>
-                  <Link href={jumpHref} style={{ color: "var(--rsd-accent)" }}>
-                    Jump to message
+                  <Link href={jumpHref} target="_blank" rel="noopener noreferrer" style={{ color: "var(--rsd-accent)" }}>
+                    Jump to message ↗
                   </Link>
                   {f.file.permalink && (
                     <>
