@@ -7,7 +7,7 @@ import { SearchPanel } from "./SearchPanel";
 
 export default async function SlackArchiveSearchPage() {
   await loadArchiveViewer();
-  const authors = await loadArchiveAuthors();
+  const { authors, error: authorsError } = await loadArchiveAuthors();
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -20,6 +20,18 @@ export default async function SlackArchiveSearchPage() {
       <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)", margin: "4px 0 24px" }}>
         Search Archive
       </h1>
+      {authorsError && (
+        <div
+          style={{
+            marginBottom: 16, padding: "12px 16px", borderRadius: 10,
+            background: "var(--gw-error-bg)", border: "1px solid rgba(229,62,62,.25)",
+            color: "var(--gw-error)", fontSize: 12.5, fontWeight: 600,
+          }}
+        >
+          Couldn&rsquo;t load the user list: {authorsError}. If migration 0079 hasn&rsquo;t been applied
+          to Supabase yet, that&rsquo;s almost certainly why — text search below still works either way.
+        </div>
+      )}
       <SearchPanel authors={authors} />
     </div>
   );

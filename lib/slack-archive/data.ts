@@ -185,17 +185,22 @@ export interface ArchiveAuthor {
 // migration 0079) instead of paginating the whole messages table into JS
 // just to dedupe — a GROUP BY using the (author_name, posted_at) index
 // costs nothing close to shipping 9,500+ rows over the wire on every visit.
-export async function loadArchiveAuthors(): Promise<ArchiveAuthor[]> {
+//
+// Error is returned (not just logged) so the page can tell "the migration
+// hasn't been applied yet" apart from "no authors exist" — a silently
+// empty picker looks identical to both otherwise.
+export async function loadArchiveAuthors(): Promise<{ authors: ArchiveAuthor[]; error: string | null }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("archive_author_counts");
   if (error) {
     console.error("loadArchiveAuthors failed", error);
-    return [];
+    return { authors: [], error: error.message };
   }
-  return ((data ?? []) as { author_name: string; message_count: number }[]).map((r) => ({
+  const authors = ((data ?? []) as { author_name: string; message_count: number }[]).map((r) => ({
     name: r.author_name,
     count: r.message_count,
   }));
+  return { authors, error: null };
 }
 
 export interface ArchiveSearchResult {
