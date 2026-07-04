@@ -1,5 +1,5 @@
 /*
- * One-off sweep to shrink oversized video attachments that failed to
+ * One-off sweep to shrink oversized video/audio attachments that failed to
  * archive because they exceeded Supabase Storage's max upload size (the
  * "Upload failed: The object exceeded the maximum allowed size" entries
  * visible on the Slack archive's exceptions page).
@@ -7,11 +7,12 @@
  * Usage:
  *   npx tsx --env-file=.env.local scripts/slack-archive-compress-large-files.ts
  *
- * For every already-archived message with a video file over 50MB that
- * failed to store, this re-downloads the original from Slack (via the
+ * For every already-archived message with a video or audio file over 50MB
+ * that failed to store, this re-downloads the original from Slack (via the
  * url_private captured in that message's `raw` payload — no re-sync
- * needed), transcodes it down with ffmpeg, and uploads the result in place
- * of the failed attempt.
+ * needed), transcodes it down with ffmpeg (video: H.264 + resolution/CRF
+ * ladder; audio: MP3 + bitrate/channel ladder), and uploads the result in
+ * place of the failed attempt.
  *
  * Deliberately NOT wired into lib/slack-archive/files.ts's normal sync path
  * (used by both the nightly cron and scripts/slack-archive-backfill.ts):
@@ -22,7 +23,7 @@
  *     channel-viewer page, which only needs it to sign URLs) if it were a
  *     static import there instead of only here.
  * So this only ever runs locally, on demand — re-run it after a backfill
- * or whenever the exceptions page shows new oversized videos.
+ * or whenever the exceptions page shows new oversized attachments.
  *
  * Requires `@ffmpeg-installer/ffmpeg` (devDependency — installs a static
  * ffmpeg binary via npm, nothing to install system-wide).
@@ -45,10 +46,20 @@ const PAGE_SIZE = 1000;
 // (not the previous pass's output, to avoid stacking lossy re-encodes).
 // Stops at the first pass that lands under TARGET_BYTES, or the last pass
 // if none do (still much smaller than the source, even if not under target).
-const COMPRESSION_LADDER = [
+const VIDEO_COMPRESSION_LADDER = [
   { width: 1280, crf: 28 },
   { width: 960, crf: 32 },
   { width: 640, crf: 36 },
+];
+
+// Long meeting/voice-memo recordings are the usual cause of oversized audio
+// (50MB at 128kbps stereo is ~54 minutes) — bitrate + mono downmix gets
+// most of the way there without needing a resolution-style ladder.
+const AUDIO_COMPRESSION_LADDER = [
+  { bitrate: "128k", channels: 2 },
+  { bitrate: "96k", channels: 1 },
+  { bitrate: "64k", channels: 1 },
+  { bitrate: "32k", channels: 1 },
 ];
 
 function runFfmpeg(args: string[]): Promise<void> {
@@ -76,7 +87,7 @@ async function compressVideo(bytes: ArrayBuffer, file: SlackFile): Promise<FileT
     await writeFile(inputPath, Buffer.from(bytes));
 
     let lastOutputBytes: Buffer | null = null;
-    for (const [i, pass] of COMPRESSION_LADDER.entries()) {
+    for (const [i, pass] of VIDEO_COMPRESSION_LADDER.entries()) {
       await runFfmpeg([
         "-y",
         "-i", inputPath,
@@ -91,7 +102,7 @@ async function compressVideo(bytes: ArrayBuffer, file: SlackFile): Promise<FileT
       ]);
       const outputBytes = await readFile(outputPath);
       lastOutputBytes = outputBytes;
-      const isLastPass = i === COMPRESSION_LADDER.length - 1;
+      const isLastPass = i === VIDEO_COMPRESSION_LADDER.length - 1;
       if (outputBytes.byteLength <= TARGET_BYTES || isLastPass) break;
     }
 
@@ -106,6 +117,49 @@ async function compressVideo(bytes: ArrayBuffer, file: SlackFile): Promise<FileT
   }
 }
 
+async function compressAudio(bytes: ArrayBuffer, file: SlackFile): Promise<FileTransformResult | null> {
+  if (!file.mimetype.startsWith("audio/") || bytes.byteLength <= SIZE_THRESHOLD_BYTES) return null;
+
+  const workDir = await mkdtemp(join(tmpdir(), "slack-archive-compress-"));
+  const inputPath = join(workDir, `input${extname(file.name) || ".bin"}`);
+  const outputPath = join(workDir, "output.mp3");
+  try {
+    await writeFile(inputPath, Buffer.from(bytes));
+
+    let lastOutputBytes: Buffer | null = null;
+    for (const [i, pass] of AUDIO_COMPRESSION_LADDER.entries()) {
+      await runFfmpeg([
+        "-y",
+        "-i", inputPath,
+        "-vn",
+        "-c:a", "libmp3lame",
+        "-b:a", pass.bitrate,
+        "-ac", String(pass.channels),
+        outputPath,
+      ]);
+      const outputBytes = await readFile(outputPath);
+      lastOutputBytes = outputBytes;
+      const isLastPass = i === AUDIO_COMPRESSION_LADDER.length - 1;
+      if (outputBytes.byteLength <= TARGET_BYTES || isLastPass) break;
+    }
+
+    if (!lastOutputBytes) return null;
+    return {
+      bytes: lastOutputBytes,
+      mimetype: "audio/mpeg",
+      name: file.name.replace(/\.\w+$/, "") + ".mp3",
+    };
+  } finally {
+    await rm(workDir, { recursive: true, force: true });
+  }
+}
+
+function compressLargeMedia(bytes: ArrayBuffer, file: SlackFile): Promise<FileTransformResult | null> {
+  if (file.mimetype.startsWith("video/")) return compressVideo(bytes, file);
+  if (file.mimetype.startsWith("audio/")) return compressAudio(bytes, file);
+  return Promise.resolve(null);
+}
+
 interface MessageRow {
   id: string;
   channel_id: string;
@@ -115,7 +169,8 @@ interface MessageRow {
 }
 
 function needsCompression(f: ArchivedFile): boolean {
-  return Boolean(f.error) && f.mimetype.startsWith("video/") && f.size > SIZE_THRESHOLD_BYTES;
+  const isMedia = f.mimetype.startsWith("video/") || f.mimetype.startsWith("audio/");
+  return Boolean(f.error) && isMedia && f.size > SIZE_THRESHOLD_BYTES;
 }
 
 async function main() {
@@ -162,7 +217,7 @@ async function main() {
         }
         attempted += 1;
         const result = await downloadAndStoreSlackFile(admin, rawFile, row.channel_id, row.ts, token, {
-          transform: compressVideo,
+          transform: compressLargeMedia,
         });
         updatedFiles = updatedFiles.map((f) => (f.id === candidate.id ? result : f));
         if (result.storage_path) {
