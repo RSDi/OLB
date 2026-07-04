@@ -346,17 +346,35 @@ export async function searchArchiveMessages(
 // directly.
 export async function loadArchiveChannelMessages(slackChannelId: string): Promise<ArchiveThread[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("slack_archive_messages")
-    .select("id, ts, thread_ts, author_name, message_text, reactions, files, posted_at, edited")
-    .eq("channel_id", slackChannelId)
-    .order("posted_at", { ascending: true });
-  if (error) {
-    console.error("loadArchiveChannelMessages failed", error);
-    return [];
-  }
 
-  const rows = (data ?? []) as ArchiveMessage[];
+  // Paginated explicitly rather than one unbounded select — PostgREST caps
+  // an unbounded query at its project-configured max rows (1000 by default),
+  // silently truncating rather than erroring. A channel's full history
+  // crossing that count (e.g. after a full-history backfill) would then
+  // render only its oldest N messages with everything newer invisible, with
+  // no error anywhere to notice by. Scoped to one channel_id and ordered by
+  // the (channel_id, posted_at) index from migration 0077, so each page is a
+  // cheap indexed range scan, unlike the cross-channel case in
+  // loadAllFailedFiles that needed keyset pagination to avoid a full sort.
+  const PAGE_SIZE = 1000;
+  const rows: ArchiveMessage[] = [];
+  let offset = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("slack_archive_messages")
+      .select("id, ts, thread_ts, author_name, message_text, reactions, files, posted_at, edited")
+      .eq("channel_id", slackChannelId)
+      .order("posted_at", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+    if (error) {
+      console.error("loadArchiveChannelMessages failed", error);
+      break;
+    }
+    const page = (data ?? []) as ArchiveMessage[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
   const allPaths = rows.flatMap((r) => (r.files ?? []).flatMap((f) => (f.storage_path ? [f.storage_path] : [])));
   if (allPaths.length > 0) {
     const admin = createAdminClient();

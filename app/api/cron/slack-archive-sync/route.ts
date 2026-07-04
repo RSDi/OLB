@@ -1,9 +1,16 @@
 // Vercel Cron endpoint — nightly Slack channel archive sync.
 //
-// Loops every active row in slack_archive_channels, pulling anything new
-// since each channel's stored high-water mark. Mirrors
-// /api/cron/shutdown-generate's thin shape: auth-gate, then delegate
-// everything to lib/slack-archive/sync.ts.
+// Loops every active row in slack_archive_channels, re-pulling and
+// overwriting the last 24 hours of each channel's history — a fixed rolling
+// window, NOT each channel's stored high-water mark. Deliberately not
+// incremental-from-watermark: a channel whose watermark gets stuck (a bad
+// sync_state row, a manual reset gone wrong, anything) would otherwise sit
+// silently frozen forever, since nothing else ever re-checks it. A rolling
+// 24h re-fetch is self-healing every night regardless of watermark state, at
+// the cost of never catching edits/reactions on messages older than 24h
+// (refreshKnownThreads still covers new thread replies on older parents —
+// see sync.ts). Mirrors /api/cron/shutdown-generate's thin shape: auth-gate,
+// then delegate everything to lib/slack-archive/sync.ts.
 //
 // Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` automatically when
 // the schedule is configured in vercel.json. Manual curl invocations need
@@ -18,6 +25,7 @@ export const maxDuration = 60;
 // Leave headroom under maxDuration so a mid-walk stop (see sync.ts) has time
 // to return cleanly instead of being hard-killed by the platform.
 const SYNC_DEADLINE_MS = 50_000;
+const SYNC_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export async function GET(request: Request) {
   // When CRON_SECRET is unset, fail closed with the same 401 as a bad secret —
@@ -38,6 +46,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const summary = await syncAllActiveChannels({ deadlineMs: SYNC_DEADLINE_MS });
+  const summary = await syncAllActiveChannels({ deadlineMs: SYNC_DEADLINE_MS, windowMs: SYNC_WINDOW_MS });
   return NextResponse.json(summary);
 }

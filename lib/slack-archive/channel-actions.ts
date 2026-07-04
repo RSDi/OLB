@@ -75,9 +75,14 @@ export interface SyncChannelActionResult {
 
 // Syncs exactly one channel on demand — for a channel that's fallen behind
 // (e.g. the bot was only just re-invited after being locked out for a
-// while), this catches it up without needing to wait a turn in the nightly
-// cron's shared time budget across every registered channel. A single call
-// may not finish a large backlog (see syncOneChannel's deadline) — the
+// while, or the nightly cron's rolling window missed it for some reason),
+// this catches it up without needing to wait a turn in the nightly cron's
+// shared time budget across every registered channel. Forces a full-history
+// re-walk (ignoring the stored watermark) rather than trusting it, so this
+// button is always a reliable "re-fetch and overwrite everything for this
+// channel" escape hatch — every message gets a fresh upsert regardless of
+// whether it was already synced (by this button or by the cron). A single
+// call may not finish a large backlog (see syncOneChannel's deadline) — the
 // caller checks `summary.done` and can just click again.
 export async function syncChannelNow(slackChannelId: string): Promise<SyncChannelActionResult> {
   const viewer = await getViewer();
@@ -87,7 +92,7 @@ export async function syncChannelNow(slackChannelId: string): Promise<SyncChanne
     return { error: "SUPABASE_SERVICE_ROLE_KEY not set; cannot sync (RLS blocks unauthenticated writes)." };
   }
 
-  const summary = await syncOneChannel(slackChannelId, { deadlineMs: SYNC_DEADLINE_MS });
+  const summary = await syncOneChannel(slackChannelId, { deadlineMs: SYNC_DEADLINE_MS, force: true });
   if (summary.errors.length > 0) return { error: summary.errors.join("; "), summary };
 
   revalidatePath(`/portal/slack-archive/${encodeURIComponent(slackChannelId)}`);

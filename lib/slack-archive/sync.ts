@@ -111,6 +111,12 @@ function tsToDate(ts: string): string {
   return new Date(parseFloat(ts) * 1000).toISOString();
 }
 
+// Inverse of tsToDate — Slack ts format is seconds (with microsecond
+// precision) as a string, e.g. "1712345678.123456".
+function dateToTs(ms: number): string {
+  return (ms / 1000).toFixed(6);
+}
+
 export interface StoredReactionUser {
   slack_id: string;
   name: string | null;
@@ -322,6 +328,16 @@ export async function syncArchiveChannel(
   token: string,
   resolver: AuthorResolver,
   deadlineAt: number,
+  // Omitted (default): read the stored high-water mark, same as ever — what
+  // the one-time backfill scripts want (full history the first time, then
+  // incremental). `null`: ignore the stored watermark and walk full history
+  // regardless — what the "Sync now" button forces, so a super admin always
+  // has a "re-fetch and overwrite everything for this channel" escape hatch
+  // rather than trusting the watermark math. A string: use it as a fixed
+  // cutoff instead of the stored watermark — what the nightly cron passes
+  // (a rolling 24h window) so a corrupted/stuck watermark can never leave
+  // the archive silently frozen the way it did here.
+  opts: { oldest?: string | null } = {},
 ): Promise<ChannelSyncSummary> {
   const summary: ChannelSyncSummary = {
     channel: channelId,
@@ -332,12 +348,17 @@ export async function syncArchiveChannel(
     done: false,
   };
 
-  const { data: stateRow } = await admin
-    .from("slack_archive_sync_state")
-    .select("last_ts")
-    .eq("channel_id", channelId)
-    .maybeSingle();
-  const watermark = (stateRow as { last_ts: string | null } | null)?.last_ts ?? undefined;
+  let watermark: string | undefined;
+  if ("oldest" in opts) {
+    watermark = opts.oldest ?? undefined;
+  } else {
+    const { data: stateRow } = await admin
+      .from("slack_archive_sync_state")
+      .select("last_ts")
+      .eq("channel_id", channelId)
+      .maybeSingle();
+    watermark = (stateRow as { last_ts: string | null } | null)?.last_ts ?? undefined;
+  }
 
   let newWatermark: string | null = null;
   let cursor: string | undefined;
@@ -402,7 +423,10 @@ export async function syncArchiveChannel(
 // syncAllActiveChannels below, which shares one deadline across ALL
 // channels and always processes them in the same order — a channel late in
 // that order can go starved indefinitely if the ones ahead of it are slow).
-export async function syncOneChannel(channelId: string, opts: { deadlineMs?: number } = {}): Promise<ChannelSyncSummary> {
+export async function syncOneChannel(
+  channelId: string,
+  opts: { deadlineMs?: number; force?: boolean } = {},
+): Promise<ChannelSyncSummary> {
   const token = process.env.SLACK_BOT_TOKEN;
   if (!token) {
     return { channel: channelId, new_or_updated: 0, threads_synced: 0, files_stored: 0, errors: ["SLACK_BOT_TOKEN not set"], done: false };
@@ -410,15 +434,21 @@ export async function syncOneChannel(channelId: string, opts: { deadlineMs?: num
   const admin = createAdminClient();
   const deadlineAt = Date.now() + (opts.deadlineMs ?? Number.MAX_SAFE_INTEGER);
   const resolver = new AuthorResolver(admin, token);
-  return syncArchiveChannel(admin, channelId, token, resolver, deadlineAt);
+  return syncArchiveChannel(admin, channelId, token, resolver, deadlineAt, opts.force ? { oldest: null } : {});
 }
 
 // Loops every active registered channel, sharing one deadline and one author
-// cache across all of them. What both the cron and the backfill script call.
-export async function syncAllActiveChannels(opts: { deadlineMs?: number } = {}): Promise<ArchiveSyncSummary> {
+// cache across all of them. What both the cron and the backfill script call
+// — the cron passes `windowMs` (a fixed rolling lookback, ignoring each
+// channel's stored watermark entirely) so a corrupted/stuck watermark can
+// never leave a channel silently frozen; the backfill script omits it,
+// keeping the normal from-the-watermark-or-full-history behavior it needs
+// for a one-time complete pull.
+export async function syncAllActiveChannels(opts: { deadlineMs?: number; windowMs?: number } = {}): Promise<ArchiveSyncSummary> {
   const token = process.env.SLACK_BOT_TOKEN;
   const admin = createAdminClient();
   const deadlineAt = Date.now() + (opts.deadlineMs ?? Number.MAX_SAFE_INTEGER);
+  const oldestOverride = opts.windowMs !== undefined ? dateToTs(Date.now() - opts.windowMs) : undefined;
 
   const summary: ArchiveSyncSummary = { timestamp: new Date().toISOString(), channels: [] };
   if (!token) {
@@ -452,7 +482,14 @@ export async function syncAllActiveChannels(opts: { deadlineMs?: number } = {}):
       });
       continue;
     }
-    const result = await syncArchiveChannel(admin, channelId, token, resolver, deadlineAt);
+    const result = await syncArchiveChannel(
+      admin,
+      channelId,
+      token,
+      resolver,
+      deadlineAt,
+      oldestOverride !== undefined ? { oldest: oldestOverride } : {},
+    );
     summary.channels.push(result);
   }
 
