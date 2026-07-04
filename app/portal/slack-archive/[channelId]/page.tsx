@@ -96,20 +96,44 @@ function FailedFilesPanel({
       <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--gw-error)" }}>
         {items.length} attachment{items.length === 1 ? "" : "s"} need attention
       </summary>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-        {items.map(({ file, message }) => (
-          <div key={`${message.id}-${file.id}`} style={{ fontSize: 12.5 }}>
-            <a href={`#msg-${message.ts}`} style={{ fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}>
-              {file.name}
-            </a>
-            <div style={{ color: "var(--gw-fg-muted)", marginTop: 2 }}>
-              {file.error} ·{" "}
-              <a href={file.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--rsd-accent)" }}>
-                Open in Slack
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+        {items.map(({ file, message }) => {
+          const time = new Date(message.posted_at).toLocaleString(undefined, {
+            month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ,
+          });
+          return (
+            <div
+              key={`${message.id}-${file.id}`}
+              style={{ fontSize: 12.5, borderTop: "1px solid var(--gw-border)", paddingTop: 10 }}
+            >
+              {/* The message itself, not the (possibly empty) file name, is the
+                  reliable jump target — some degraded Slack file stubs (the
+                  same ones missing url_private) also have no name at all. */}
+              <a href={`#msg-${message.ts}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+                <div style={{ fontWeight: 700, color: "var(--gw-fg)" }}>
+                  {message.author_name ?? "Unknown"} <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>· {time}</span>
+                </div>
+                {message.message_text && (
+                  <div style={{ color: "var(--gw-fg-muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {message.message_text}
+                  </div>
+                )}
               </a>
+              <div style={{ color: "var(--gw-error)", marginTop: 6, fontWeight: 600 }}>
+                {file.name || "(unnamed attachment)"} — {file.error}
+              </div>
+              <div style={{ marginTop: 2 }}>
+                <a href={`#msg-${message.ts}`} style={{ color: "var(--rsd-accent)" }}>
+                  Jump to message
+                </a>
+                {" · "}
+                <a href={file.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--rsd-accent)" }}>
+                  Open in Slack
+                </a>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </details>
   );
