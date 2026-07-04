@@ -96,33 +96,48 @@ export interface FailedFileEntry {
   file: ArchivedFile;
 }
 
+type FailedFileRow = {
+  id: string;
+  channel_id: string;
+  ts: string;
+  author_name: string | null;
+  message_text: string;
+  posted_at: string;
+  files: ArchivedFile[];
+};
+
 // Cross-channel view for the exceptions page — pulls every message with any
 // file attachment across every registered channel and filters to the ones
 // that carry an error, rather than requiring a click into each channel to
 // find them. Files with an error never have a storage_path (that's what the
 // error means), so unlike loadArchiveChannelMessages there's no signed URL
 // to resolve — every failed file's link is always its Slack permalink.
+//
+// Paginated: a plain .select() caps out at Postgrest's default 1000-row
+// response limit, which (unlike a per-channel query) this one can now
+// realistically exceed with several channels registered — silently
+// truncating to the newest 1000 rows would drop exactly the older
+// exceptions this page exists to surface.
 export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<FailedFileEntry[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("slack_archive_messages")
-    .select("id, channel_id, ts, author_name, message_text, posted_at, files")
-    .order("posted_at", { ascending: false });
-  if (error) {
-    console.error("loadAllFailedFiles failed", error);
-    return [];
+  const PAGE_SIZE = 1000;
+  const rows: FailedFileRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("slack_archive_messages")
+      .select("id, channel_id, ts, author_name, message_text, posted_at, files")
+      .order("posted_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) {
+      console.error("loadAllFailedFiles failed", error);
+      break;
+    }
+    const page = (data ?? []) as FailedFileRow[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
   }
 
   const labelByChannel = new Map(channels.map((c) => [c.slack_channel_id, c.label]));
-  const rows = (data ?? []) as {
-    id: string;
-    channel_id: string;
-    ts: string;
-    author_name: string | null;
-    message_text: string;
-    posted_at: string;
-    files: ArchivedFile[];
-  }[];
 
   return rows.flatMap((r) =>
     (r.files ?? [])
