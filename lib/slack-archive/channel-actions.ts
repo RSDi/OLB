@@ -9,6 +9,13 @@
 import { revalidatePath } from "next/cache";
 import { getViewer } from "../auth/viewer";
 import { createClient } from "../supabase/server";
+import { syncOneChannel, type ChannelSyncSummary } from "./sync";
+
+// Leaves headroom under the channel page's `maxDuration = 60` (Server
+// Actions inherit their page's maxDuration — see that file) so a mid-walk
+// stop (see sync.ts) has time to return cleanly instead of being hard-
+// killed by the platform, same margin as the nightly cron route.
+const SYNC_DEADLINE_MS = 50_000;
 
 export interface ArchiveChannelActionResult {
   success?: boolean;
@@ -59,4 +66,31 @@ export async function setArchiveChannelActive(
 
   revalidatePath("/portal/slack-archive");
   return { success: true };
+}
+
+export interface SyncChannelActionResult {
+  summary?: ChannelSyncSummary;
+  error?: string;
+}
+
+// Syncs exactly one channel on demand — for a channel that's fallen behind
+// (e.g. the bot was only just re-invited after being locked out for a
+// while), this catches it up without needing to wait a turn in the nightly
+// cron's shared time budget across every registered channel. A single call
+// may not finish a large backlog (see syncOneChannel's deadline) — the
+// caller checks `summary.done` and can just click again.
+export async function syncChannelNow(slackChannelId: string): Promise<SyncChannelActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return { error: "You must be signed in." };
+  if (!viewer.isSuperAdmin) return { error: "Super-admin access required." };
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { error: "SUPABASE_SERVICE_ROLE_KEY not set; cannot sync (RLS blocks unauthenticated writes)." };
+  }
+
+  const summary = await syncOneChannel(slackChannelId, { deadlineMs: SYNC_DEADLINE_MS });
+  if (summary.errors.length > 0) return { error: summary.errors.join("; "), summary };
+
+  revalidatePath(`/portal/slack-archive/${encodeURIComponent(slackChannelId)}`);
+  revalidatePath("/portal/slack-archive");
+  return { summary };
 }

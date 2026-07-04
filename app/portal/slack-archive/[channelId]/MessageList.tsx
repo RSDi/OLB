@@ -106,11 +106,8 @@ export function MessageList({ threads }: { threads: ArchiveThread[] }) {
   return (
     <div>
       <div
-        style={{
-          position: "sticky", top: 0, zIndex: 5, background: "var(--gw-bg-elev)",
-          borderBottom: "1px solid var(--gw-border)", paddingTop: 2, paddingBottom: 12,
-          display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20,
-        }}
+        className="rsd-slack-sticky-bar"
+        style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}
       >
         <Pill
           variant="ghost"

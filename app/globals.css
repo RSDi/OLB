@@ -633,3 +633,31 @@ main::-webkit-scrollbar-track { background: transparent; }
   color: var(--rsd-accent);
   text-decoration: underline;
 }
+
+/* ── Slack Channel Archive: sticky filter/toolbar bars ───────────────────
+   `.rsd-app main` (this file, "Portal app shell") is the actual scrolling
+   container and carries its own padding (`var(--rsd-pad)`, overridden to a
+   literal 16px under the 768px breakpoint) — a plain `position: sticky;
+   top: 0` child of a maxWidth wrapper inside `main` sticks flush against
+   that padding's *inner* edge, not the real top of the scrollport, leaving
+   that padding visible as a gap above the bar every time it's scrolled
+   under. Bleeding the bar out by main's own padding (negative margin) and
+   adding the same amount back as its own padding — the standard fix for a
+   sticky element that needs to ignore an ancestor's padding — closes that
+   gap and, as a side effect, gives the bar's own content left/right
+   breathing room instead of touching its edges. */
+.rsd-slack-sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--gw-bg-elev);
+  border-bottom: 1px solid var(--gw-border);
+  margin: calc(-1 * var(--rsd-pad)) calc(-1 * var(--rsd-pad)) 0;
+  padding: var(--rsd-pad) var(--rsd-pad) 12px;
+}
+@media (max-width: 768px) {
+  .rsd-slack-sticky-bar {
+    margin: -16px -16px 0;
+    padding: 16px 16px 12px;
+  }
+}

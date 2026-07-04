@@ -13,6 +13,12 @@ import {
 } from "../../../../lib/slack-archive/data";
 import type { ArchivedFile } from "../../../../lib/slack-archive/files";
 import { MessageList } from "./MessageList";
+import { SyncNowButton } from "./SyncNowButton";
+
+// Server Actions inherit their page's maxDuration (see SyncNowButton's
+// syncChannelNow call) — without this, the platform default (as low as 10s
+// on some plans) would cut off a sync well before its own 50s deadline.
+export const maxDuration = 60;
 
 export default async function SlackArchiveChannelPage({
   params,
@@ -50,9 +56,12 @@ export default async function SlackArchiveChannelPage({
           View exceptions →
         </Link>
       </div>
-      <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)", margin: "4px 0 24px" }}>
-        {channel.label}
-      </h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, margin: "4px 0 24px" }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)" }}>
+          {channel.label}
+        </h1>
+        <SyncNowButton slackChannelId={slackChannelId} />
+      </div>
 
       {failedFiles.length > 0 && <FailedFilesPanel items={failedFiles} />}
 

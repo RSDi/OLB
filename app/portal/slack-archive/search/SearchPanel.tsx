@@ -105,11 +105,8 @@ export function SearchPanel({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div
-        style={{
-          position: "sticky", top: 0, zIndex: 5, background: "var(--gw-bg-elev)",
-          borderBottom: "1px solid var(--gw-border)", paddingTop: 2, paddingBottom: 12,
-          display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8,
-        }}
+        className="rsd-slack-sticky-bar"
+        style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8 }}
       >
         <div style={{ flex: "1 1 240px" }}>
           <Input

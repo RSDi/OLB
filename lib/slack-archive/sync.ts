@@ -394,6 +394,25 @@ export async function syncArchiveChannel(
   return summary;
 }
 
+// Syncs exactly one channel, regardless of its `active` flag or position in
+// the registry — what the per-channel "Sync now" button and the single-
+// channel backfill script call, so a channel that's competing with 20
+// others for one shared nightly time budget can be caught up on demand
+// without waiting on every other channel's turn first (see
+// syncAllActiveChannels below, which shares one deadline across ALL
+// channels and always processes them in the same order — a channel late in
+// that order can go starved indefinitely if the ones ahead of it are slow).
+export async function syncOneChannel(channelId: string, opts: { deadlineMs?: number } = {}): Promise<ChannelSyncSummary> {
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token) {
+    return { channel: channelId, new_or_updated: 0, threads_synced: 0, files_stored: 0, errors: ["SLACK_BOT_TOKEN not set"], done: false };
+  }
+  const admin = createAdminClient();
+  const deadlineAt = Date.now() + (opts.deadlineMs ?? Number.MAX_SAFE_INTEGER);
+  const resolver = new AuthorResolver(admin, token);
+  return syncArchiveChannel(admin, channelId, token, resolver, deadlineAt);
+}
+
 // Loops every active registered channel, sharing one deadline and one author
 // cache across all of them. What both the cron and the backfill script call.
 export async function syncAllActiveChannels(opts: { deadlineMs?: number } = {}): Promise<ArchiveSyncSummary> {
