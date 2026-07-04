@@ -113,60 +113,57 @@ export function SearchPanel({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div
-        className="rsd-slack-sticky-bar"
-        style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8 }}
-      >
-        <div style={{ flex: "1 1 240px" }}>
-          <Input
-            label="Search text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={'e.g. building shutdown, or "exact phrase"'}
-          />
+      <div className="rsd-slack-sticky-bar" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <Input
+          label="Search text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={'e.g. building shutdown, or "exact phrase"'}
+        />
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+          {channels.length > 0 && (
+            <FilterDropdown
+              label="Channel"
+              items={channelItems}
+              selected={selectedChannels}
+              onChange={setSelectedChannels}
+              open={openDropdown === "channel"}
+              onOpenChange={() => setOpenDropdown((v) => (v === "channel" ? null : "channel"))}
+              searchPlaceholder="Search channels…"
+              hint={channelsNarrowedByOthers ? "Narrowed by your other filters" : undefined}
+              emptyMessage="No channels match your other filters."
+            />
+          )}
+          {authors.length > 0 && (
+            <FilterDropdown
+              label="User"
+              items={authorItems}
+              selected={selectedAuthors}
+              onChange={setSelectedAuthors}
+              open={openDropdown === "user"}
+              onOpenChange={() => setOpenDropdown((v) => (v === "user" ? null : "user"))}
+              searchPlaceholder="Search users…"
+              hint={authorsNarrowedByOthers ? "Narrowed by your other filters" : undefined}
+              emptyMessage="No one matches your other filters."
+            />
+          )}
+          {canSearch && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setSelectedAuthors([]);
+                setSelectedChannels([]);
+              }}
+              style={{
+                fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)",
+                background: "none", border: "none", cursor: "pointer", padding: "5px 4px",
+              }}
+            >
+              Clear all
+            </button>
+          )}
         </div>
-        {channels.length > 0 && (
-          <FilterDropdown
-            label="Channel"
-            items={channelItems}
-            selected={selectedChannels}
-            onChange={setSelectedChannels}
-            open={openDropdown === "channel"}
-            onOpenChange={() => setOpenDropdown((v) => (v === "channel" ? null : "channel"))}
-            searchPlaceholder="Search channels…"
-            hint={channelsNarrowedByOthers ? "Narrowed by your other filters" : undefined}
-            emptyMessage="No channels match your other filters."
-          />
-        )}
-        {authors.length > 0 && (
-          <FilterDropdown
-            label="User"
-            items={authorItems}
-            selected={selectedAuthors}
-            onChange={setSelectedAuthors}
-            open={openDropdown === "user"}
-            onOpenChange={() => setOpenDropdown((v) => (v === "user" ? null : "user"))}
-            searchPlaceholder="Search users…"
-            hint={authorsNarrowedByOthers ? "Narrowed by your other filters" : undefined}
-            emptyMessage="No one matches your other filters."
-          />
-        )}
-        {canSearch && (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              setSelectedAuthors([]);
-              setSelectedChannels([]);
-            }}
-            style={{
-              fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)",
-              background: "none", border: "none", cursor: "pointer", padding: "5px 4px",
-            }}
-          >
-            Clear all
-          </button>
-        )}
       </div>
 
       <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, minHeight: 16 }}>
