@@ -6,8 +6,14 @@ import { MarkdownView } from "../../../components/MarkdownView";
 import { Pill } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import type { ArchiveMessage, ArchiveThread } from "../../../../lib/slack-archive/data";
+import type { ArchivedFile } from "../../../../lib/slack-archive/files";
 import { emojify, resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";
 import { DateJumpCalendar } from "./DateJumpCalendar";
+import { VideoModal } from "./VideoModal";
+
+function isVideoFile(f: ArchivedFile): boolean {
+  return (f.mimetype ?? "").startsWith("video/") || /\.(mp4|mov|webm|m4v|ogv)$/i.test(f.name || "");
+}
 
 interface DayGroup {
   dateKey: string; // YYYY-MM-DD in CHURCH_TZ — stable id for sorting/jump-anchors
@@ -115,6 +121,7 @@ function ThreadCard({ thread }: { thread: ArchiveThread }) {
 
 function MessageRow({ message }: { message: ArchiveMessage }) {
   const time = new Date(message.posted_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ });
+  const [playingFile, setPlayingFile] = useState<ArchivedFile | null>(null);
   return (
     <div id={`msg-${message.ts}`} style={{ display: "flex", flexDirection: "column", gap: 4, scrollMarginTop: 16 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -143,8 +150,9 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
               background: "var(--gw-bg-elev)",
               border: `1px solid ${f.error ? "rgba(229,62,62,.25)" : "var(--gw-border)"}`,
               borderRadius: 8, padding: "4px 10px", textDecoration: "none",
+              cursor: "pointer", font: "inherit",
             };
-            const icon = f.error ? <Icons.AlertCircle width={13} height={13} /> : <Icons.FileText width={13} height={13} />;
+            const icon = f.error ? <Icons.AlertCircle width={13} height={13} /> : isVideoFile(f) ? <Icons.Video width={13} height={13} /> : <Icons.FileText width={13} height={13} />;
             // A handful of degraded Slack file objects (the same ones with no
             // name/url_private) also lack a permalink — an empty href would
             // silently reload the page instead of going anywhere, so those
@@ -157,6 +165,17 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
                 </span>
               );
             }
+            // Videos play in an overlay right here instead of navigating away
+            // in a new tab — closing it lands you back in the same spot in
+            // the thread. Everything else still opens in a new tab.
+            if (isVideoFile(f) && !f.error) {
+              return (
+                <button key={f.id} type="button" onClick={() => setPlayingFile(f)} title={f.error ?? undefined} style={chipStyle}>
+                  {icon}
+                  {f.name}
+                </button>
+              );
+            }
             return (
               <a key={f.id} href={f.permalink} target="_blank" rel="noopener noreferrer" title={f.error ?? undefined} style={chipStyle}>
                 {icon}
@@ -165,6 +184,9 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
             );
           })}
         </div>
+      )}
+      {playingFile?.permalink && (
+        <VideoModal src={playingFile.permalink} title={playingFile.name} onClose={() => setPlayingFile(null)} />
       )}
       {message.reactions.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
