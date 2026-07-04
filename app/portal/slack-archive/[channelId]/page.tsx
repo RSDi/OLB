@@ -65,7 +65,7 @@ export default async function SlackArchiveChannelPage({
           </div>
         </div>
       ) : (
-        <MessageList threads={threads} />
+        <MessageList threads={threads} channelId={slackChannelId} />
       )}
     </div>
   );

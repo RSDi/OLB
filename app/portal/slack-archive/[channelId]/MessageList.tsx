@@ -73,7 +73,7 @@ function countAuthors(threads: ArchiveThread[]): { name: string; count: number }
     .sort((a, b) => b.count - a.count);
 }
 
-export function MessageList({ threads }: { threads: ArchiveThread[] }) {
+export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; channelId: string }) {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [openDropdown, setOpenDropdown] = useState<null | "author">(null);
@@ -138,7 +138,7 @@ export function MessageList({ threads }: { threads: ArchiveThread[] }) {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {g.threads.map((t) => (
-                <ThreadCard key={t.parent.id} thread={t} />
+                <ThreadCard key={t.parent.id} thread={t} channelId={channelId} />
               ))}
             </div>
           </div>
@@ -148,14 +148,14 @@ export function MessageList({ threads }: { threads: ArchiveThread[] }) {
   );
 }
 
-function ThreadCard({ thread }: { thread: ArchiveThread }) {
+function ThreadCard({ thread, channelId }: { thread: ArchiveThread; channelId: string }) {
   return (
     <div className="rsd-card" style={{ padding: "14px 18px", gap: 10 }}>
-      <MessageRow message={thread.parent} />
+      <MessageRow message={thread.parent} channelId={channelId} />
       {thread.replies.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginLeft: 20, paddingLeft: 14, borderLeft: "2px solid var(--gw-border)" }}>
           {thread.replies.map((r) => (
-            <MessageRow key={r.id} message={r} />
+            <MessageRow key={r.id} message={r} channelId={channelId} />
           ))}
         </div>
       )}
@@ -163,9 +163,23 @@ function ThreadCard({ thread }: { thread: ArchiveThread }) {
   );
 }
 
-function MessageRow({ message }: { message: ArchiveMessage }) {
+function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId: string }) {
   const time = new Date(message.posted_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ });
   const [playingFile, setPlayingFile] = useState<ArchivedFile | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  async function copyLink() {
+    const url = `${window.location.origin}/portal/slack-archive/${encodeURIComponent(channelId)}#msg-${message.ts}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1500);
+    } catch {
+      // Clipboard API unavailable/denied (e.g. insecure context) — nothing
+      // more to do; the icon just silently won't confirm a copy.
+    }
+  }
+
   return (
     <div id={`msg-${message.ts}`} style={{ display: "flex", flexDirection: "column", gap: 4, scrollMarginTop: 16 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -175,6 +189,19 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
         <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
           {time}{message.edited ? " (edited)" : ""}
         </span>
+        <button
+          type="button"
+          onClick={copyLink}
+          title={linkCopied ? "Link copied!" : "Copy link to this message"}
+          className="gw-press"
+          style={{
+            marginLeft: "auto", display: "inline-flex", alignItems: "center",
+            background: "none", border: "none", cursor: "pointer", padding: 2,
+            color: linkCopied ? "var(--rsd-accent)" : "var(--gw-fg-muted)",
+          }}
+        >
+          {linkCopied ? <Icons.CheckCircle width={13} height={13} /> : <Icons.Link width={13} height={13} />}
+        </button>
       </div>
       {message.message_text && (
         <div className="rsd-slack-msg-text" style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5 }}>
