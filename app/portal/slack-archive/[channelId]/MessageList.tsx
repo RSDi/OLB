@@ -10,6 +10,7 @@ import type { ArchivedFile } from "../../../../lib/slack-archive/files";
 import { emojify, resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";
 import { DateJumpCalendar } from "./DateJumpCalendar";
 import { VideoModal } from "./VideoModal";
+import { FilterDropdown } from "../_shared/FilterDropdown";
 
 function isVideoFile(f: ArchivedFile): boolean {
   return (f.mimetype ?? "").startsWith("video/") || /\.(mp4|mov|webm|m4v|ogv)$/i.test(f.name || "");
@@ -57,17 +58,46 @@ function groupByDay(threads: ArchiveThread[]): DayGroup[] {
   return Array.from(byDay.values());
 }
 
+// Tallies every author across both parents and replies — the same
+// count-and-sort convention as the search page's author chips.
+function countAuthors(threads: ArchiveThread[]): { name: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const t of threads) {
+    for (const m of [t.parent, ...t.replies]) {
+      const name = m.author_name ?? "Unknown";
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+  }
+  return Array.from(counts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 export function MessageList({ threads }: { threads: ArchiveThread[] }) {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
+  const [openDropdown, setOpenDropdown] = useState<null | "author">(null);
+
+  const authorCounts = useMemo(() => countAuthors(threads), [threads]);
+
+  // Whole-thread inclusion, not top-level-only: a thread stays visible if
+  // ANY message in it (parent or a reply) was authored by someone selected,
+  // so filtering never leaves an orphaned reply whose parent got hidden, or
+  // a parent whose replies mysteriously vanished.
+  const filteredThreads = useMemo(() => {
+    if (selectedAuthors.length === 0) return threads;
+    const selected = new Set(selectedAuthors);
+    return threads.filter((t) => [t.parent, ...t.replies].some((m) => selected.has(m.author_name ?? "Unknown")));
+  }, [threads, selectedAuthors]);
 
   const groups = useMemo(() => {
-    const ascending = groupByDay(threads); // threads already arrive oldest-first
+    const ascending = groupByDay(filteredThreads); // threads already arrive oldest-first
     if (sortOrder === "asc") return ascending;
     // Newest-first: flip both the day order and the order of threads within
     // each day. Replies inside a thread stay chronological — reversing a
     // conversation's own back-and-forth would just be confusing to read.
     return [...ascending].reverse().map((g) => ({ ...g, threads: [...g.threads].reverse() }));
-  }, [threads, sortOrder]);
+  }, [filteredThreads, sortOrder]);
 
   function jumpToDate(date: string) {
     document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -75,7 +105,13 @@ export function MessageList({ threads }: { threads: ArchiveThread[] }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+      <div
+        style={{
+          position: "sticky", top: 0, zIndex: 5, background: "var(--gw-bg-elev)",
+          borderBottom: "1px solid var(--gw-border)", paddingTop: 2, paddingBottom: 12,
+          display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20,
+        }}
+      >
         <Pill
           variant="ghost"
           size="sm"
@@ -84,6 +120,44 @@ export function MessageList({ threads }: { threads: ArchiveThread[] }) {
           {sortOrder === "asc" ? "Oldest first ↓" : "Newest first ↑"}
         </Pill>
         <DateJumpCalendar dates={groups.map((g) => g.dateKey)} onSelect={jumpToDate} />
+        {authorCounts.length > 0 && (
+          <FilterDropdown
+            label="Filter"
+            count={selectedAuthors.length}
+            open={openDropdown === "author"}
+            onToggle={() => setOpenDropdown((v) => (v === "author" ? null : "author"))}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 8 }}>
+              Filter by user
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+              {authorCounts.map((a) => {
+                const active = selectedAuthors.includes(a.name);
+                return (
+                  <button
+                    key={a.name}
+                    type="button"
+                    onClick={() =>
+                      setSelectedAuthors((cur) =>
+                        cur.includes(a.name) ? cur.filter((n) => n !== a.name) : [...cur, a.name],
+                      )
+                    }
+                    className="gw-press"
+                    style={{
+                      fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
+                      background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+                      color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+                      border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {a.name} <span style={{ opacity: 0.7 }}>({a.count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </FilterDropdown>
+        )}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>

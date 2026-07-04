@@ -13,6 +13,7 @@ import {
 } from "../../../../lib/slack-archive/search-actions";
 import { emojify } from "../../../../lib/slack-archive/emoji";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
+import { FilterDropdown } from "../_shared/FilterDropdown";
 
 // Debounce for the live search — long enough that a fast typist doesn't
 // fire a request per keystroke, short enough to still feel instant once
@@ -39,6 +40,7 @@ export function SearchPanel({
   // whether the *other* filters are non-empty, for the "narrowed by..." hint.
   const [displayedAuthors, setDisplayedAuthors] = useState<ArchiveAuthor[]>(authors);
   const [displayedChannelIds, setDisplayedChannelIds] = useState<Set<string> | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<null | "channel" | "user">(null);
 
   const canSearch = selectedAuthors.length > 0 || selectedChannels.length > 0 || query.trim().length > 0;
   const authorsNarrowedByOthers = selectedChannels.length > 0 || query.trim().length > 0;
@@ -105,115 +107,135 @@ export function SearchPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `authors` is a stable prop, not a dependency of when to re-search
   }, [query, selectedAuthors, selectedChannels, canSearch]);
 
+  function renderChannelPicker() {
+    if (displayedChannels.length === 0 && channelsNarrowedByOthers) {
+      return (
+        <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
+          No channels match your other filters.
+        </div>
+      );
+    }
+    return (
+      <>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 8 }}>
+          Filter by channel
+          {channelsNarrowedByOthers && (
+            <span style={{ fontWeight: 500 }}> — narrowed by your other filters</span>
+          )}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+          {displayedChannels.map((c) => {
+            const active = selectedChannels.includes(c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => toggleChannel(c.id)}
+                className="gw-press"
+                style={{
+                  fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
+                  background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+                  color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+                  border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+                  cursor: "pointer",
+                }}
+              >
+                {c.label}
+              </button>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+
+  function renderAuthorPicker() {
+    if (displayedAuthors.length === 0 && authorsNarrowedByOthers) {
+      return (
+        <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
+          No one matches your other filters.
+        </div>
+      );
+    }
+    return (
+      <>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 8 }}>
+          Filter by user
+          {authorsNarrowedByOthers && (
+            <span style={{ fontWeight: 500 }}> — narrowed by your other filters</span>
+          )}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+          {displayedAuthors.map((a) => {
+            const active = selectedAuthors.includes(a.name);
+            return (
+              <button
+                key={a.name}
+                type="button"
+                onClick={() => toggleAuthor(a.name)}
+                className="gw-press"
+                style={{
+                  fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
+                  background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+                  color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+                  border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+                  cursor: "pointer",
+                }}
+              >
+                {a.name} <span style={{ opacity: 0.7 }}>({a.count})</span>
+              </button>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Input
-          label="Search text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={'e.g. building shutdown, or "exact phrase"'}
-        />
-
-        {channels.length > 0 && (
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 6 }}>
-              Filter by channel{selectedChannels.length > 0 ? ` (${selectedChannels.length} selected)` : ""}
-              {channelsNarrowedByOthers && (
-                <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>
-                  {" "}— narrowed by your other filters
-                </span>
-              )}
-            </div>
-            {displayedChannels.length === 0 && channelsNarrowedByOthers ? (
-              <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
-                No channels match your other filters.
-              </div>
-            ) : (
-            <div
-              style={{
-                display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 160, overflowY: "auto",
-                padding: 10, borderRadius: 10, border: "1px solid var(--gw-border)", background: "var(--gw-bg)",
-              }}
-            >
-              {displayedChannels.map((c) => {
-                const active = selectedChannels.includes(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => toggleChannel(c.id)}
-                    className="gw-press"
-                    style={{
-                      fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
-                      background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-                      color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-                      border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {c.label}
-                  </button>
-                );
-              })}
-            </div>
-            )}
-          </div>
-        )}
-
-        {authors.length > 0 && (
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 6 }}>
-              Filter by user{selectedAuthors.length > 0 ? ` (${selectedAuthors.length} selected)` : ""}
-              {authorsNarrowedByOthers && (
-                <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>
-                  {" "}— narrowed by your other filters
-                </span>
-              )}
-            </div>
-            {displayedAuthors.length === 0 && authorsNarrowedByOthers ? (
-              <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
-                No one matches your other filters.
-              </div>
-            ) : (
-            <div
-              style={{
-                display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 160, overflowY: "auto",
-                padding: 10, borderRadius: 10, border: "1px solid var(--gw-border)", background: "var(--gw-bg)",
-              }}
-            >
-              {displayedAuthors.map((a) => {
-                const active = selectedAuthors.includes(a.name);
-                return (
-                  <button
-                    key={a.name}
-                    type="button"
-                    onClick={() => toggleAuthor(a.name)}
-                    className="gw-press"
-                    style={{
-                      fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
-                      background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-                      color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-                      border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {a.name} <span style={{ opacity: 0.7 }}>({a.count})</span>
-                  </button>
-                );
-              })}
-            </div>
-            )}
-          </div>
-        )}
-
-        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, minHeight: 16 }}>
-          {searching
-            ? "Searching…"
-            : !canSearch
-              ? "Enter search text, or select at least one user or channel."
-              : null}
+      <div
+        style={{
+          position: "sticky", top: 0, zIndex: 5, background: "var(--gw-bg-elev)",
+          borderBottom: "1px solid var(--gw-border)", paddingTop: 2, paddingBottom: 12,
+          display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 8,
+        }}
+      >
+        <div style={{ flex: "1 1 240px" }}>
+          <Input
+            label="Search text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={'e.g. building shutdown, or "exact phrase"'}
+          />
         </div>
+        {channels.length > 0 && (
+          <FilterDropdown
+            label="Channel"
+            count={selectedChannels.length}
+            open={openDropdown === "channel"}
+            onToggle={() => setOpenDropdown((v) => (v === "channel" ? null : "channel"))}
+          >
+            {renderChannelPicker()}
+          </FilterDropdown>
+        )}
+        {authors.length > 0 && (
+          <FilterDropdown
+            label="User"
+            count={selectedAuthors.length}
+            open={openDropdown === "user"}
+            onToggle={() => setOpenDropdown((v) => (v === "user" ? null : "user"))}
+          >
+            {renderAuthorPicker()}
+          </FilterDropdown>
+        )}
+      </div>
+
+      <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, minHeight: 16 }}>
+        {searching
+          ? "Searching…"
+          : !canSearch
+            ? "Enter search text, or select at least one user or channel."
+            : null}
       </div>
 
       {error && (
