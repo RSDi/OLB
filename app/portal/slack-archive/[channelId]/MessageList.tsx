@@ -124,9 +124,9 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
       {message.message_text && (
         <div style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5 }}>
           {needsMarkdown(message.message_text) ? (
-            <MarkdownView>{message.message_text}</MarkdownView>
+            <MarkdownView>{emoji.emojify(message.message_text)}</MarkdownView>
           ) : (
-            <div style={{ whiteSpace: "pre-wrap" }}>{message.message_text}</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{emoji.emojify(message.message_text)}</div>
           )}
         </div>
       )}

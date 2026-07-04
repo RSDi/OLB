@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import * as emoji from "node-emoji";
 import { Icons } from "../../../components/icons";
 import { MarkdownView } from "../../../components/MarkdownView";
 import { Input, Pill } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
-import { runArchiveSearch } from "../../../../lib/slack-archive/search-actions";
+import { runArchiveAuthorsForQuery, runArchiveSearch } from "../../../../lib/slack-archive/search-actions";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
 
 export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
@@ -15,6 +16,11 @@ export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
   const [results, setResults] = useState<ArchiveSearchResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Full author list until a text search actually runs; then narrowed to
+  // just the authors who said the searched words, so picking a name that
+  // never matched the query isn't offered as if it would.
+  const [displayedAuthors, setDisplayedAuthors] = useState<ArchiveAuthor[]>(authors);
+  const [narrowedQuery, setNarrowedQuery] = useState<string | null>(null);
 
   const canSearch = selectedAuthors.length > 0 || query.trim().length > 0;
 
@@ -25,14 +31,32 @@ export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
   function runSearch() {
     if (!canSearch) return;
     setError(null);
+    const trimmedQuery = query.trim();
     startTransition(async () => {
-      const res = await runArchiveSearch(selectedAuthors, query);
-      if (res.error) {
-        setError(res.error);
+      const [searchRes, authorsRes] = await Promise.all([
+        runArchiveSearch(selectedAuthors, query),
+        trimmedQuery ? runArchiveAuthorsForQuery(trimmedQuery) : Promise.resolve(null),
+      ]);
+      if (searchRes.error) {
+        setError(searchRes.error);
         setResults(null);
-        return;
+      } else {
+        setResults(searchRes.results);
       }
-      setResults(res.results);
+
+      if (authorsRes) {
+        // Narrowing errors aren't fatal to the search itself — fall back to
+        // the full author list rather than hiding the picker entirely.
+        if (!authorsRes.error) {
+          const matchingNames = new Set(authorsRes.authors.map((a) => a.name));
+          setDisplayedAuthors(authorsRes.authors);
+          setNarrowedQuery(trimmedQuery);
+          setSelectedAuthors((cur) => cur.filter((a) => matchingNames.has(a)));
+        }
+      } else {
+        setDisplayedAuthors(authors);
+        setNarrowedQuery(null);
+      }
     });
   }
 
@@ -55,14 +79,24 @@ export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 6 }}>
               Filter by user{selectedAuthors.length > 0 ? ` (${selectedAuthors.length} selected)` : ""}
+              {narrowedQuery && (
+                <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>
+                  {" "}— only showing users who said &ldquo;{narrowedQuery}&rdquo;
+                </span>
+              )}
             </div>
+            {displayedAuthors.length === 0 && narrowedQuery ? (
+              <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
+                No one said &ldquo;{narrowedQuery}&rdquo;.
+              </div>
+            ) : (
             <div
               style={{
                 display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 160, overflowY: "auto",
                 padding: 10, borderRadius: 10, border: "1px solid var(--gw-border)", background: "var(--gw-bg)",
               }}
             >
-              {authors.map((a) => {
+              {displayedAuthors.map((a) => {
                 const active = selectedAuthors.includes(a.name);
                 return (
                   <button
@@ -83,6 +117,7 @@ export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
                 );
               })}
             </div>
+            )}
           </div>
         )}
 
@@ -135,7 +170,7 @@ export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
                 </div>
                 {r.messageText && (
                   <div style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5, marginTop: 4 }}>
-                    <MarkdownView>{r.messageText}</MarkdownView>
+                    <MarkdownView>{emoji.emojify(r.messageText)}</MarkdownView>
                   </div>
                 )}
                 <div style={{ marginTop: 6, fontSize: 12.5 }}>

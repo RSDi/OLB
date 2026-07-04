@@ -203,6 +203,27 @@ export async function loadArchiveAuthors(): Promise<{ authors: ArchiveAuthor[]; 
   return { authors, error: null };
 }
 
+// Same as loadArchiveAuthors() but scoped to authors whose messages actually
+// match a websearch query (archive_author_counts_for_query, migration 0081)
+// — used to narrow the search page's "filter by user" picker once text has
+// been entered, instead of always listing every author in the archive
+// regardless of whether they ever said the searched words.
+export async function loadArchiveAuthorsForQuery(
+  query: string,
+): Promise<{ authors: ArchiveAuthor[]; error: string | null }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("archive_author_counts_for_query", { p_query: query });
+  if (error) {
+    console.error("loadArchiveAuthorsForQuery failed", error);
+    return { authors: [], error: error.message };
+  }
+  const authors = ((data ?? []) as { author_name: string; message_count: number }[]).map((r) => ({
+    name: r.author_name,
+    count: r.message_count,
+  }));
+  return { authors, error: null };
+}
+
 export interface ArchiveSearchResult {
   channelId: string;
   channelLabel: string;

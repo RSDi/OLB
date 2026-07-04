@@ -7,7 +7,13 @@
 // itself.
 
 import { getViewer } from "../auth/viewer";
-import { loadArchiveChannels, searchArchiveMessages, type ArchiveSearchResult } from "./data";
+import {
+  loadArchiveAuthorsForQuery,
+  loadArchiveChannels,
+  searchArchiveMessages,
+  type ArchiveAuthor,
+  type ArchiveSearchResult,
+} from "./data";
 
 export interface ArchiveSearchActionResult {
   results: ArchiveSearchResult[];
@@ -26,4 +32,19 @@ export async function runArchiveSearch(
   const { results, error } = await searchArchiveMessages(channels, { authors, query });
   if (error) return { results: [], error };
   return { results };
+}
+
+export interface ArchiveAuthorsActionResult {
+  authors: ArchiveAuthor[];
+  error?: string;
+}
+
+export async function runArchiveAuthorsForQuery(query: string): Promise<ArchiveAuthorsActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return { authors: [], error: "You must be signed in." };
+  if (!viewer.isSuperAdmin) return { authors: [], error: "Super-admin access required." };
+
+  const { authors, error } = await loadArchiveAuthorsForQuery(query);
+  if (error) return { authors: [], error };
+  return { authors };
 }
