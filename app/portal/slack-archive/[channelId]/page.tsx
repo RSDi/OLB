@@ -35,7 +35,7 @@ export default async function SlackArchiveChannelPage({
     .flatMap((m) => (m.files ?? []).filter((f) => f.error).map((f) => ({ file: f, message: m })));
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div style={{ maxWidth: 920 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <Link
           href="/portal/slack-archive"

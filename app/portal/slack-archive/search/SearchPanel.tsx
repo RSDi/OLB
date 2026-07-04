@@ -13,7 +13,7 @@ import {
 } from "../../../../lib/slack-archive/search-actions";
 import { emojify } from "../../../../lib/slack-archive/emoji";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
-import { FilterDropdown } from "../_shared/FilterDropdown";
+import { FilterDropdown, type FilterDropdownItem } from "../_shared/FilterDropdown";
 
 // Debounce for the live search — long enough that a fast typist doesn't
 // fire a request per keystroke, short enough to still feel instant once
@@ -50,14 +50,6 @@ export function SearchPanel({
   // results — only the most recently *started* request is allowed to apply
   // what it finds.
   const requestIdRef = useRef(0);
-
-  function toggleAuthor(name: string) {
-    setSelectedAuthors((cur) => (cur.includes(name) ? cur.filter((a) => a !== name) : [...cur, name]));
-  }
-
-  function toggleChannel(id: string) {
-    setSelectedChannels((cur) => (cur.includes(id) ? cur.filter((c) => c !== id) : [...cur, id]));
-  }
 
   useEffect(() => {
     if (!canSearch) {
@@ -107,89 +99,8 @@ export function SearchPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `authors` is a stable prop, not a dependency of when to re-search
   }, [query, selectedAuthors, selectedChannels, canSearch]);
 
-  function renderChannelPicker() {
-    if (displayedChannels.length === 0 && channelsNarrowedByOthers) {
-      return (
-        <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
-          No channels match your other filters.
-        </div>
-      );
-    }
-    return (
-      <>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 8 }}>
-          Filter by channel
-          {channelsNarrowedByOthers && (
-            <span style={{ fontWeight: 500 }}> — narrowed by your other filters</span>
-          )}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 220, overflowY: "auto" }}>
-          {displayedChannels.map((c) => {
-            const active = selectedChannels.includes(c.id);
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => toggleChannel(c.id)}
-                className="gw-press"
-                style={{
-                  fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
-                  background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-                  color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-                  border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-                  cursor: "pointer",
-                }}
-              >
-                {c.label}
-              </button>
-            );
-          })}
-        </div>
-      </>
-    );
-  }
-
-  function renderAuthorPicker() {
-    if (displayedAuthors.length === 0 && authorsNarrowedByOthers) {
-      return (
-        <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
-          No one matches your other filters.
-        </div>
-      );
-    }
-    return (
-      <>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 8 }}>
-          Filter by user
-          {authorsNarrowedByOthers && (
-            <span style={{ fontWeight: 500 }}> — narrowed by your other filters</span>
-          )}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 220, overflowY: "auto" }}>
-          {displayedAuthors.map((a) => {
-            const active = selectedAuthors.includes(a.name);
-            return (
-              <button
-                key={a.name}
-                type="button"
-                onClick={() => toggleAuthor(a.name)}
-                className="gw-press"
-                style={{
-                  fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
-                  background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-                  color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-                  border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-                  cursor: "pointer",
-                }}
-              >
-                {a.name} <span style={{ opacity: 0.7 }}>({a.count})</span>
-              </button>
-            );
-          })}
-        </div>
-      </>
-    );
-  }
+  const channelItems: FilterDropdownItem[] = displayedChannels.map((c) => ({ id: c.id, label: c.label }));
+  const authorItems: FilterDropdownItem[] = displayedAuthors.map((a) => ({ id: a.name, label: a.name, count: a.count }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -211,22 +122,28 @@ export function SearchPanel({
         {channels.length > 0 && (
           <FilterDropdown
             label="Channel"
-            count={selectedChannels.length}
+            items={channelItems}
+            selected={selectedChannels}
+            onChange={setSelectedChannels}
             open={openDropdown === "channel"}
-            onToggle={() => setOpenDropdown((v) => (v === "channel" ? null : "channel"))}
-          >
-            {renderChannelPicker()}
-          </FilterDropdown>
+            onOpenChange={() => setOpenDropdown((v) => (v === "channel" ? null : "channel"))}
+            searchPlaceholder="Search channels…"
+            hint={channelsNarrowedByOthers ? "Narrowed by your other filters" : undefined}
+            emptyMessage="No channels match your other filters."
+          />
         )}
         {authors.length > 0 && (
           <FilterDropdown
             label="User"
-            count={selectedAuthors.length}
+            items={authorItems}
+            selected={selectedAuthors}
+            onChange={setSelectedAuthors}
             open={openDropdown === "user"}
-            onToggle={() => setOpenDropdown((v) => (v === "user" ? null : "user"))}
-          >
-            {renderAuthorPicker()}
-          </FilterDropdown>
+            onOpenChange={() => setOpenDropdown((v) => (v === "user" ? null : "user"))}
+            searchPlaceholder="Search users…"
+            hint={authorsNarrowedByOthers ? "Narrowed by your other filters" : undefined}
+            emptyMessage="No one matches your other filters."
+          />
         )}
       </div>
 

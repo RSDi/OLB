@@ -123,40 +123,13 @@ export function MessageList({ threads }: { threads: ArchiveThread[] }) {
         {authorCounts.length > 0 && (
           <FilterDropdown
             label="Filter"
-            count={selectedAuthors.length}
+            items={authorCounts.map((a) => ({ id: a.name, label: a.name, count: a.count }))}
+            selected={selectedAuthors}
+            onChange={setSelectedAuthors}
             open={openDropdown === "author"}
-            onToggle={() => setOpenDropdown((v) => (v === "author" ? null : "author"))}
-          >
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 8 }}>
-              Filter by user
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 220, overflowY: "auto" }}>
-              {authorCounts.map((a) => {
-                const active = selectedAuthors.includes(a.name);
-                return (
-                  <button
-                    key={a.name}
-                    type="button"
-                    onClick={() =>
-                      setSelectedAuthors((cur) =>
-                        cur.includes(a.name) ? cur.filter((n) => n !== a.name) : [...cur, a.name],
-                      )
-                    }
-                    className="gw-press"
-                    style={{
-                      fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
-                      background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-                      color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-                      border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {a.name} <span style={{ opacity: 0.7 }}>({a.count})</span>
-                  </button>
-                );
-              })}
-            </div>
-          </FilterDropdown>
+            onOpenChange={() => setOpenDropdown((v) => (v === "author" ? null : "author"))}
+            searchPlaceholder="Search users…"
+          />
         )}
       </div>
 

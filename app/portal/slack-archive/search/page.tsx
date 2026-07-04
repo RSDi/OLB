@@ -13,7 +13,7 @@ export default async function SlackArchiveSearchPage() {
   ]);
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div style={{ maxWidth: 920 }}>
       <Link
         href="/portal/slack-archive"
         style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", textDecoration: "none" }}
