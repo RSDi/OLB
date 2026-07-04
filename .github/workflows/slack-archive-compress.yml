@@ -1,0 +1,43 @@
+name: "Slack Archive: Compress Large Files"
+
+# Sweeps for oversized video/audio attachments that failed to archive
+# (Supabase Storage's ~50MB upload limit) and re-uploads compressed
+# versions via ffmpeg. Runs here instead of the nightly Vercel cron
+# (api/cron/slack-archive-sync) because that's a serverless function with
+# a 60s duration cap — nowhere near enough for video transcoding. GitHub's
+# hosted runners have no such limit (jobs can run for hours), and `npm ci`
+# installs @ffmpeg-installer/ffmpeg's own bundled binary regardless of
+# what the runner image does or doesn't have preinstalled — so this runs
+# the exact same script (scripts/slack-archive-compress-large-files.ts),
+# just on its own schedule here instead of locally on demand.
+#
+# Scheduled ~35 minutes after the nightly sync (05:07 UTC, see
+# vercel.json) so that run's newly-archived (and possibly newly-oversized)
+# files are already in place before this sweeps for them.
+
+on:
+  schedule:
+    - cron: "40 5 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  compress:
+    name: Compress oversized attachments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compress large video/audio attachments
+        run: npx tsx scripts/slack-archive-compress-large-files.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
