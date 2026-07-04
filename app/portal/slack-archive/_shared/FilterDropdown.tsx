@@ -110,14 +110,7 @@ export function FilterDropdown({
       </Pill>
 
       {open && (
-        <div
-          className="rsd-card"
-          style={{
-            position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 21,
-            minWidth: 280, maxWidth: 340, padding: 14,
-            boxShadow: "0 8px 24px rgba(0,0,0,.15)",
-          }}
-        >
+        <div className="rsd-card rsd-filter-dropdown-panel">
           {hint && (
             <div style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)", marginBottom: 8 }}>
               {hint}

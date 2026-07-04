@@ -671,3 +671,35 @@ main::-webkit-scrollbar-track { background: transparent; }
     padding: 16px 16px 12px;
   }
 }
+
+/* ── Slack Channel Archive: filter dropdown panel ────────────────────────
+   Anchored to its trigger button via `left: 0`, which works fine on
+   desktop when there's room to the right — but on a phone-width sticky
+   bar with 3 pills in a row, the third trigger (e.g. "Filter") sits near
+   the right edge, and a panel anchored `left: 0` off of it extends mostly
+   past the screen edge, uninteractable. Below the mobile breakpoint this
+   switches to a fixed bottom sheet instead of trying to anchor to
+   wherever the trigger happens to be. */
+.rsd-filter-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 21;
+  min-width: 280px;
+  max-width: 340px;
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+}
+@media (max-width: 768px) {
+  .rsd-filter-dropdown-panel {
+    position: fixed;
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    min-width: 0;
+    max-width: none;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+}
