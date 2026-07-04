@@ -21,6 +21,7 @@ export interface ArchivedFile {
   size: number;
   storage_path: string | null; // null if the download failed — permalink is kept as a fallback,
   permalink: string;           // though Slack permalinks require a logged-in session in the workspace
+  error: string | null;        // why storage_path is null, for the "needs attention" panel; null on success
 }
 
 // Supabase Storage keys are S3-compatible and reject some characters Slack
@@ -49,18 +50,24 @@ export async function downloadAndStoreSlackFile(
     size: file.size,
     storage_path: null,
     permalink: file.permalink,
+    error: null,
   };
 
   // Some Slack file objects (e.g. certain external/unfurled files) carry no
   // url_private at all — nothing to download, fall back to the permalink.
   if (!file.url_private) {
+    const reason = "No downloadable URL provided by Slack for this file type.";
     console.warn(`[slack-archive] file ${file.id} has no url_private, skipping download`);
-    return base;
+    return { ...base, error: reason };
   }
 
   try {
     const res = await fetch(file.url_private, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return base;
+    if (!res.ok) {
+      const reason = `Download failed: HTTP ${res.status}`;
+      console.warn(`[slack-archive] ${reason} for file ${file.id}`);
+      return { ...base, error: reason };
+    }
     const bytes = await res.arrayBuffer();
 
     const path = `${channelId}/${ts}/${file.id}-${sanitizeFileName(file.name)}`;
@@ -69,12 +76,13 @@ export async function downloadAndStoreSlackFile(
       .upload(path, bytes, { contentType: file.mimetype, upsert: true });
     if (error) {
       console.error("[slack-archive] file upload failed:", error.message);
-      return base;
+      return { ...base, error: `Upload failed: ${error.message}` };
     }
     return { ...base, storage_path: path };
   } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
     console.error("[slack-archive] file download failed:", err);
-    return base;
+    return { ...base, error: `Download error: ${message}` };
   }
 }
 

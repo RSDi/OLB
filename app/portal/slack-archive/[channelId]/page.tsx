@@ -15,6 +15,7 @@ import {
   type ArchiveMessage,
   type ArchiveThread,
 } from "../../../../lib/slack-archive/data";
+import type { ArchivedFile } from "../../../../lib/slack-archive/files";
 
 export default async function SlackArchiveChannelPage({
   params,
@@ -33,6 +34,9 @@ export default async function SlackArchiveChannelPage({
   if (!channel) notFound();
 
   const grouped = groupByDay(threads);
+  const failedFiles = threads
+    .flatMap((t) => [t.parent, ...t.replies])
+    .flatMap((m) => (m.files ?? []).filter((f) => f.error).map((f) => ({ file: f, message: m })));
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -45,6 +49,8 @@ export default async function SlackArchiveChannelPage({
       <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)", margin: "4px 0 24px" }}>
         {channel.label}
       </h1>
+
+      {failedFiles.length > 0 && <FailedFilesPanel items={failedFiles} />}
 
       {threads.length === 0 ? (
         <div className="rsd-card" style={{ textAlign: "center", padding: "40px 24px" }}>
@@ -69,6 +75,43 @@ export default async function SlackArchiveChannelPage({
         </div>
       )}
     </div>
+  );
+}
+
+// Attachments that couldn't be self-hosted (too large, no downloadable URL,
+// a storage key Supabase rejected, etc.) fall back to their Slack permalink
+// automatically, so nothing is lost — but there's no other way to know
+// *which* files those are or why without this panel. Case-by-case fixes:
+// raise the bucket's max file size, or just accept the permalink fallback.
+function FailedFilesPanel({
+  items,
+}: {
+  items: { file: ArchivedFile; message: ArchiveMessage }[];
+}) {
+  return (
+    <details
+      className="rsd-card"
+      style={{ padding: "12px 18px", marginBottom: 20, borderColor: "rgba(229,62,62,.25)" }}
+    >
+      <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--gw-error)" }}>
+        {items.length} attachment{items.length === 1 ? "" : "s"} need attention
+      </summary>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+        {items.map(({ file, message }) => (
+          <div key={`${message.id}-${file.id}`} style={{ fontSize: 12.5 }}>
+            <a href={`#msg-${message.ts}`} style={{ fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}>
+              {file.name}
+            </a>
+            <div style={{ color: "var(--gw-fg-muted)", marginTop: 2 }}>
+              {file.error} ·{" "}
+              <a href={file.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--rsd-accent)" }}>
+                Open in Slack
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -103,7 +146,7 @@ function ThreadCard({ thread }: { thread: ArchiveThread }) {
 function MessageRow({ message }: { message: ArchiveMessage }) {
   const time = new Date(message.posted_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ });
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div id={`msg-${message.ts}`} style={{ display: "flex", flexDirection: "column", gap: 4, scrollMarginTop: 16 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>
           {message.author_name ?? "Unknown"}
@@ -125,14 +168,16 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
               href={f.permalink}
               target="_blank"
               rel="noopener noreferrer"
+              title={f.error ?? undefined}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
-                fontSize: 12, fontWeight: 600, color: "var(--rsd-accent)",
-                background: "var(--gw-bg-elev)", border: "1px solid var(--gw-border)",
+                fontSize: 12, fontWeight: 600, color: f.error ? "var(--gw-error)" : "var(--rsd-accent)",
+                background: "var(--gw-bg-elev)",
+                border: `1px solid ${f.error ? "rgba(229,62,62,.25)" : "var(--gw-border)"}`,
                 borderRadius: 8, padding: "4px 10px", textDecoration: "none",
               }}
             >
-              <Icons.FileText width={13} height={13} />
+              {f.error ? <Icons.AlertCircle width={13} height={13} /> : <Icons.FileText width={13} height={13} />}
               {f.name}
             </a>
           ))}
