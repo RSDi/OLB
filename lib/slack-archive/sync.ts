@@ -144,6 +144,58 @@ async function resolveReactions(
   );
 }
 
+// Names get spliced into message_text, which MarkdownView renders as
+// Markdown — escape characters that would otherwise be misparsed (e.g. a
+// literal underscore in "David_Orrick" reading as italics).
+function escapeMarkdown(s: string): string {
+  return s.replace(/([_*`[\]])/g, "\\$1");
+}
+
+// Slack's mrkdwn encodes @-mentions, #-channel mentions, @here/@channel/
+// @everyone, user-group mentions, and links as <...> tokens. Resolves each
+// to readable text (mentions via the same cached AuthorResolver used for
+// authors/reactions — no extra API calls for anyone already seen this run)
+// or real Markdown (links), so raw Slack wire syntax never leaks into the
+// archive. Dedupes tokens first and resolves concurrently, then does one
+// synchronous replace pass — String.replace has no async replacer, and a
+// naive per-token replace in a loop would only touch the first occurrence
+// of a mention repeated in the same message.
+async function resolveMentions(text: string, resolver: AuthorResolver): Promise<string> {
+  const tokens = [...new Set([...text.matchAll(/<([^<>]+)>/g)].map((m) => m[0]))];
+  if (tokens.length === 0) return text;
+
+  const entries = await Promise.all(
+    tokens.map(async (full): Promise<[string, string]> => {
+      const inner = full.slice(1, -1);
+      const pipeIdx = inner.indexOf("|");
+      const head = pipeIdx === -1 ? inner : inner.slice(0, pipeIdx);
+      const label = pipeIdx === -1 ? undefined : inner.slice(pipeIdx + 1);
+
+      if (head.startsWith("@")) {
+        const info = await resolver.resolveUserId(head.slice(1));
+        return [full, `@${escapeMarkdown(info.author_name ?? label ?? "someone")}`];
+      }
+      if (head.startsWith("#")) return [full, `#${escapeMarkdown(label ?? "channel")}`];
+      if (head === "!here") return [full, "@here"];
+      if (head === "!channel") return [full, "@channel"];
+      if (head === "!everyone") return [full, "@everyone"];
+      if (head.startsWith("!subteam^")) {
+        // Slack's subteam label already includes the leading "@" (unlike
+        // channel/user fallback labels, which don't) — avoid doubling it.
+        const teamLabel = label ?? "@team";
+        return [full, escapeMarkdown(teamLabel.startsWith("@") ? teamLabel : `@${teamLabel}`)];
+      }
+      if (head.startsWith("http://") || head.startsWith("https://")) {
+        return [full, label ? `[${escapeMarkdown(label)}](${head})` : head];
+      }
+      return [full, label ?? head]; // unrecognized token — best-effort, strip the brackets
+    }),
+  );
+
+  const replacements = new Map(entries);
+  return text.replace(/<([^<>]+)>/g, (full) => replacements.get(full) ?? full);
+}
+
 // Resolves the author, downloads any file attachments (concurrently — each
 // is an independent Slack fetch + Storage upload), and upserts the row.
 // Shared by top-level messages, thread replies, and thread-refresh replies
@@ -156,10 +208,11 @@ async function persistMessage(
   resolver: AuthorResolver,
   summary: ChannelSyncSummary,
 ): Promise<void> {
-  const [author, files, reactions] = await Promise.all([
+  const [author, files, reactions, messageText] = await Promise.all([
     resolver.resolve(msg),
     Promise.all((msg.files ?? []).map((f) => downloadAndStoreSlackFile(admin, f, channelId, msg.ts, token))),
     resolveReactions(msg.reactions, resolver),
+    resolveMentions(msg.text ?? "", resolver),
   ]);
   summary.files_stored += files.filter((f) => f.storage_path).length;
 
@@ -171,7 +224,7 @@ async function persistMessage(
       author_slack_id: author.author_slack_id,
       author_member_id: author.author_member_id,
       author_name: author.author_name,
-      message_text: msg.text ?? "",
+      message_text: messageText,
       reactions,
       files,
       raw: msg,
