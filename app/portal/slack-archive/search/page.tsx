@@ -2,12 +2,15 @@
 // and/or message text. Super-admin only, same as the rest of this feature.
 
 import Link from "next/link";
-import { loadArchiveViewer, loadArchiveAuthors } from "../../../../lib/slack-archive/data";
+import { loadArchiveViewer, loadArchiveAuthors, loadArchiveChannels } from "../../../../lib/slack-archive/data";
 import { SearchPanel } from "./SearchPanel";
 
 export default async function SlackArchiveSearchPage() {
   await loadArchiveViewer();
-  const { authors, error: authorsError } = await loadArchiveAuthors();
+  const [{ authors, error: authorsError }, channels] = await Promise.all([
+    loadArchiveAuthors(),
+    loadArchiveChannels(),
+  ]);
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -32,7 +35,10 @@ export default async function SlackArchiveSearchPage() {
           to Supabase yet, that&rsquo;s almost certainly why — text search below still works either way.
         </div>
       )}
-      <SearchPanel authors={authors} />
+      <SearchPanel
+        authors={authors}
+        channels={channels.map((c) => ({ id: c.slack_channel_id, label: c.label }))}
+      />
     </div>
   );
 }

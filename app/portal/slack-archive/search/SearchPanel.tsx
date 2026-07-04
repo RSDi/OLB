@@ -1,46 +1,79 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../../components/icons";
 import { MarkdownView } from "../../../components/MarkdownView";
-import { Input, Pill } from "../../../components/ui";
+import { Input } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import { runArchiveAuthorsForQuery, runArchiveSearch } from "../../../../lib/slack-archive/search-actions";
 import { emojify } from "../../../../lib/slack-archive/emoji";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
 
-export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
+// Debounce for the live search — long enough that a fast typist doesn't
+// fire a request per keystroke, short enough to still feel instant once
+// they pause.
+const SEARCH_DEBOUNCE_MS = 350;
+
+export function SearchPanel({
+  authors,
+  channels,
+}: {
+  authors: ArchiveAuthor[];
+  channels: { id: string; label: string }[];
+}) {
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
+  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ArchiveSearchResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [searching, setSearching] = useState(false);
   // Full author list until a text search actually runs; then narrowed to
   // just the authors who said the searched words, so picking a name that
   // never matched the query isn't offered as if it would.
   const [displayedAuthors, setDisplayedAuthors] = useState<ArchiveAuthor[]>(authors);
   const [narrowedQuery, setNarrowedQuery] = useState<string | null>(null);
 
-  const canSearch = selectedAuthors.length > 0 || query.trim().length > 0;
+  const canSearch = selectedAuthors.length > 0 || selectedChannels.length > 0 || query.trim().length > 0;
+  // Guards against an earlier, slower request overwriting a later one's
+  // results — only the most recently *started* request is allowed to apply
+  // what it finds.
+  const requestIdRef = useRef(0);
 
   function toggleAuthor(name: string) {
     setSelectedAuthors((cur) => (cur.includes(name) ? cur.filter((a) => a !== name) : [...cur, name]));
   }
 
-  function runSearch() {
-    if (!canSearch) return;
-    setError(null);
+  function toggleChannel(id: string) {
+    setSelectedChannels((cur) => (cur.includes(id) ? cur.filter((c) => c !== id) : [...cur, id]));
+  }
+
+  useEffect(() => {
+    if (!canSearch) {
+      requestIdRef.current += 1;
+      setResults(null);
+      setError(null);
+      setSearching(false);
+      setDisplayedAuthors(authors);
+      setNarrowedQuery(null);
+      return;
+    }
+
+    const requestId = ++requestIdRef.current;
     const trimmedQuery = query.trim();
-    startTransition(async () => {
+    setSearching(true);
+    const timer = setTimeout(async () => {
       const [searchRes, authorsRes] = await Promise.all([
-        runArchiveSearch(selectedAuthors, query),
+        runArchiveSearch(selectedAuthors, query, selectedChannels),
         trimmedQuery ? runArchiveAuthorsForQuery(trimmedQuery) : Promise.resolve(null),
       ]);
+      if (requestIdRef.current !== requestId) return; // a newer search superseded this one
+
       if (searchRes.error) {
         setError(searchRes.error);
         setResults(null);
       } else {
+        setError(null);
         setResults(searchRes.results);
       }
 
@@ -57,23 +90,57 @@ export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
         setDisplayedAuthors(authors);
         setNarrowedQuery(null);
       }
-    });
-  }
+      setSearching(false);
+    }, SEARCH_DEBOUNCE_MS);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    runSearch();
-  }
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `authors` is a stable prop, not a dependency of when to re-search
+  }, [query, selectedAuthors, selectedChannels, canSearch]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Input
           label="Search text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={'e.g. building shutdown, or "exact phrase"'}
         />
+
+        {channels.length > 0 && (
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 6 }}>
+              Filter by channel{selectedChannels.length > 0 ? ` (${selectedChannels.length} selected)` : ""}
+            </div>
+            <div
+              style={{
+                display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 160, overflowY: "auto",
+                padding: 10, borderRadius: 10, border: "1px solid var(--gw-border)", background: "var(--gw-bg)",
+              }}
+            >
+              {channels.map((c) => {
+                const active = selectedChannels.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleChannel(c.id)}
+                    className="gw-press"
+                    style={{
+                      fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
+                      background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+                      color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+                      border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {authors.length > 0 && (
           <div>
@@ -121,17 +188,14 @@ export function SearchPanel({ authors }: { authors: ArchiveAuthor[] }) {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Pill variant="accent" size="sm" type="submit" disabled={!canSearch || pending}>
-            {pending ? "Searching…" : "Search"}
-          </Pill>
-          {!canSearch && (
-            <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
-              Enter search text or select at least one user.
-            </span>
-          )}
+        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, minHeight: 16 }}>
+          {searching
+            ? "Searching…"
+            : !canSearch
+              ? "Enter search text, or select at least one user or channel."
+              : null}
         </div>
-      </form>
+      </div>
 
       {error && (
         <div

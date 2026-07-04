@@ -237,21 +237,25 @@ export interface ArchiveSearchResult {
 
 const SEARCH_RESULT_LIMIT = 200;
 
-// Search across every channel by author and/or message text. Requires at
-// least one of the two — an unfiltered query would sort the entire table
-// with nothing to narrow it down first, exactly the shape of query that
-// blew the statement timeout on the exceptions page. author_name filtering
-// uses the (author_name, posted_at) index from 0078; text search uses the
-// generated tsvector column's GIN index via websearch_to_tsquery, which
-// understands natural typed queries (including "quoted phrases") without
-// the user needing to learn tsquery syntax.
+// Search across every channel by author, channel, and/or message text.
+// Requires at least one filter — an unfiltered query would sort the entire
+// table with nothing to narrow it down first, exactly the shape of query
+// that blew the statement timeout on the exceptions page. author_name
+// filtering uses the (author_name, posted_at) index from 0078; channel_id
+// filtering uses the (channel_id, posted_at) index from 0077 (each selected
+// channel is its own indexed, already-sorted range, so even several of them
+// combine cheaply under the LIMIT below); text search uses the generated
+// tsvector column's GIN index via websearch_to_tsquery, which understands
+// natural typed queries (including "quoted phrases") without the user
+// needing to learn tsquery syntax.
 export async function searchArchiveMessages(
   channels: ArchiveChannel[],
-  opts: { authors?: string[]; query?: string },
+  opts: { authors?: string[]; query?: string; channelIds?: string[] },
 ): Promise<{ results: ArchiveSearchResult[]; error: string | null }> {
   const authors = opts.authors?.filter(Boolean) ?? [];
   const query = opts.query?.trim() ?? "";
-  if (authors.length === 0 && !query) return { results: [], error: null };
+  const channelIds = opts.channelIds?.filter(Boolean) ?? [];
+  if (authors.length === 0 && !query && channelIds.length === 0) return { results: [], error: null };
 
   const supabase = await createClient();
   let q = supabase
@@ -261,6 +265,7 @@ export async function searchArchiveMessages(
     .limit(SEARCH_RESULT_LIMIT);
 
   if (authors.length > 0) q = q.in("author_name", authors);
+  if (channelIds.length > 0) q = q.in("channel_id", channelIds);
   if (query) q = q.textSearch("message_text_search", query, { type: "websearch", config: "english" });
 
   const { data, error } = await q;

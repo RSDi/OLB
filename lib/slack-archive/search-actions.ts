@@ -23,13 +23,14 @@ export interface ArchiveSearchActionResult {
 export async function runArchiveSearch(
   authors: string[],
   query: string,
+  channelIds: string[] = [],
 ): Promise<ArchiveSearchActionResult> {
   const viewer = await getViewer();
   if (!viewer) return { results: [], error: "You must be signed in." };
   if (!viewer.isSuperAdmin) return { results: [], error: "Super-admin access required." };
 
   const channels = await loadArchiveChannels();
-  const { results, error } = await searchArchiveMessages(channels, { authors, query });
+  const { results, error } = await searchArchiveMessages(channels, { authors, query, channelIds });
   if (error) return { results: [], error };
   return { results };
 }
