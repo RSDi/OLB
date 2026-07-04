@@ -640,24 +640,34 @@ main::-webkit-scrollbar-track { background: transparent; }
    literal 16px under the 768px breakpoint) — a plain `position: sticky;
    top: 0` child of a maxWidth wrapper inside `main` sticks flush against
    that padding's *inner* edge, not the real top of the scrollport, leaving
-   that padding visible as a gap above the bar every time it's scrolled
-   under. Bleeding the bar out by main's own padding (negative margin) and
-   adding the same amount back as its own padding — the standard fix for a
-   sticky element that needs to ignore an ancestor's padding — closes that
-   gap and, as a side effect, gives the bar's own content left/right
-   breathing room instead of touching its edges. */
+   that padding visible as a gap above the bar (showing whatever content is
+   still scrolling past underneath) every time it's scrolled under.
+   A negative *margin* fix was tried first and made things worse — pulling
+   the box up via margin also shifts its normal-flow (unstuck) position,
+   overlapping whatever precedes it (the page title, breadcrumbs) instead of
+   only affecting the stuck state. A negative `top` offset instead only
+   changes *when* stickiness engages, not the element's normal-flow
+   position, so it can't overlap a preceding sibling — it engages `var(
+   --rsd-pad)` earlier in the scroll and locks that much higher, flush with
+   the real top. The matching padding-top is added back so the bar's visible
+   content doesn't sit flush against the very edge once stuck (the
+   permanently-taller box at rest is the accepted trade-off). Horizontal
+   bleed still uses negative margin (safe — width isn't part of the sticky
+   engage/lock calculation the way top-offset is), giving the bar's content
+   left/right breathing room instead of touching its edges. */
 .rsd-slack-sticky-bar {
   position: sticky;
-  top: 0;
+  top: calc(-1 * var(--rsd-pad));
   z-index: 5;
   background: var(--gw-bg-elev);
   border-bottom: 1px solid var(--gw-border);
-  margin: calc(-1 * var(--rsd-pad)) calc(-1 * var(--rsd-pad)) 0;
+  margin: 0 calc(-1 * var(--rsd-pad));
   padding: var(--rsd-pad) var(--rsd-pad) 12px;
 }
 @media (max-width: 768px) {
   .rsd-slack-sticky-bar {
-    margin: -16px -16px 0;
+    top: -16px;
+    margin: 0 -16px;
     padding: 16px 16px 12px;
   }
 }
