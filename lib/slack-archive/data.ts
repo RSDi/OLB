@@ -119,22 +119,30 @@ export interface FailedFilesResult {
 // error means), so unlike loadArchiveChannelMessages there's no signed URL
 // to resolve — every failed file's link is always its Slack permalink.
 //
-// Paginated: a plain .select() caps out at Postgrest's default 1000-row
-// response limit, which (unlike a per-channel query) this one can now
-// realistically exceed with several channels registered — silently
-// truncating to the newest 1000 rows would drop exactly the older
-// exceptions this page exists to surface.
+// Paginated by primary key, NOT by posted_at/OFFSET: migration 0077 only
+// indexes (channel_id, posted_at) together, which can't help a cross-channel
+// sort, so ordering the whole table by posted_at forced a full sort on every
+// page — OFFSET pagination made each subsequent page scan+discard more rows
+// than the last, and at ~9,500 rows this blew Postgres's statement timeout
+// (confirmed in production: "canceling statement due to statement timeout").
+// Keyset pagination on `id` uses the primary key's own index for both the
+// seek and the order, so cost per page stays flat regardless of table size.
+// Newest-first ordering for display happens in JS afterward, over the much
+// smaller filtered result set, instead of asking Postgres to sort everything
+// up front.
 export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<FailedFilesResult> {
   const supabase = await createClient();
   const PAGE_SIZE = 1000;
   const rows: FailedFileRow[] = [];
   let queryError: string | null = null;
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
+  let lastId: string | null = null;
+  for (;;) {
+    const base = supabase
       .from("slack_archive_messages")
       .select("id, channel_id, ts, author_name, message_text, posted_at, files")
-      .order("posted_at", { ascending: false })
-      .range(from, from + PAGE_SIZE - 1);
+      .order("id", { ascending: true })
+      .limit(PAGE_SIZE);
+    const { data, error } = await (lastId ? base.gt("id", lastId) : base);
     if (error) {
       console.error("loadAllFailedFiles failed", error);
       queryError = error.message;
@@ -143,6 +151,7 @@ export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<Fa
     const page = (data ?? []) as FailedFileRow[];
     rows.push(...page);
     if (page.length < PAGE_SIZE) break;
+    lastId = page[page.length - 1].id;
   }
 
   const labelByChannel = new Map(channels.map((c) => [c.slack_channel_id, c.label]));
@@ -161,6 +170,7 @@ export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<Fa
         file: f,
       })),
   );
+  entries.sort((a, b) => b.postedAt.localeCompare(a.postedAt));
 
   return { entries, totalScanned: rows.length, queryError };
 }
