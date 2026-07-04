@@ -181,40 +181,21 @@ export interface ArchiveAuthor {
 }
 
 // Distinct authors across every channel, for the search page's "filter by
-// user" picker. Keyset-paginated by id (same reasoning as
-// loadAllFailedFiles — no ORDER BY on an unindexed cross-channel column),
-// but only pulls the one narrow column, so it stays cheap even as the
-// archive grows: deduping/counting happens in JS over plain short strings,
-// not full message rows.
+// user" picker. Delegates the count to Postgres (archive_author_counts(),
+// migration 0079) instead of paginating the whole messages table into JS
+// just to dedupe — a GROUP BY using the (author_name, posted_at) index
+// costs nothing close to shipping 9,500+ rows over the wire on every visit.
 export async function loadArchiveAuthors(): Promise<ArchiveAuthor[]> {
   const supabase = await createClient();
-  const PAGE_SIZE = 1000;
-  const counts = new Map<string, number>();
-  let lastId: string | null = null;
-  for (;;) {
-    const base = supabase
-      .from("slack_archive_messages")
-      .select("id, author_name")
-      .not("author_name", "is", null)
-      .order("id", { ascending: true })
-      .limit(PAGE_SIZE);
-    const { data, error } = await (lastId ? base.gt("id", lastId) : base);
-    if (error) {
-      console.error("loadArchiveAuthors failed", error);
-      break;
-    }
-    const page = (data ?? []) as { id: string; author_name: string | null }[];
-    for (const r of page) {
-      if (!r.author_name) continue;
-      counts.set(r.author_name, (counts.get(r.author_name) ?? 0) + 1);
-    }
-    if (page.length < PAGE_SIZE) break;
-    lastId = page[page.length - 1].id;
+  const { data, error } = await supabase.rpc("archive_author_counts");
+  if (error) {
+    console.error("loadArchiveAuthors failed", error);
+    return [];
   }
-
-  return Array.from(counts.entries())
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return ((data ?? []) as { author_name: string; message_count: number }[]).map((r) => ({
+    name: r.author_name,
+    count: r.message_count,
+  }));
 }
 
 export interface ArchiveSearchResult {

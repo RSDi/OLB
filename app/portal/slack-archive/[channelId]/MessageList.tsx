@@ -15,6 +15,18 @@ interface DayGroup {
   threads: ArchiveThread[];
 }
 
+// Most Slack messages are one short plain-text line — running the full
+// react-markdown + remark-gfm + rehype-raw + rehype-sanitize pipeline on
+// every single one adds up fast on a channel with hundreds/thousands of
+// messages. Skip it (and render as plain text) unless the message actually
+// contains something Markdown would do anything with; newlines route
+// through Markdown too since a plain white-space:pre-wrap div renders
+// multi-paragraph text slightly differently than proper paragraph tags.
+const MARKDOWN_SYNTAX = /[*_~`[\]()#>]|\n/;
+function needsMarkdown(text: string): boolean {
+  return MARKDOWN_SYNTAX.test(text);
+}
+
 // en-CA formats as ISO (YYYY-MM-DD), matching the convention lib/dates/today.ts
 // already established for church-local date keys.
 function groupByDay(threads: ArchiveThread[]): DayGroup[] {
@@ -111,7 +123,11 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
       </div>
       {message.message_text && (
         <div style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5 }}>
-          <MarkdownView>{message.message_text}</MarkdownView>
+          {needsMarkdown(message.message_text) ? (
+            <MarkdownView>{message.message_text}</MarkdownView>
+          ) : (
+            <div style={{ whiteSpace: "pre-wrap" }}>{message.message_text}</div>
+          )}
         </div>
       )}
       {message.files.length > 0 && (
