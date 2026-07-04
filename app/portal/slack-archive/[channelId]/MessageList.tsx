@@ -9,11 +9,25 @@ import type { ArchiveMessage, ArchiveThread } from "../../../../lib/slack-archiv
 import type { ArchivedFile } from "../../../../lib/slack-archive/files";
 import { emojify, resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";
 import { DateJumpCalendar } from "./DateJumpCalendar";
-import { VideoModal } from "./VideoModal";
+import { FilePreviewModal, type PreviewKind } from "./FilePreviewModal";
 import { FilterDropdown } from "../_shared/FilterDropdown";
 
 function isVideoFile(f: ArchivedFile): boolean {
   return (f.mimetype ?? "").startsWith("video/") || /\.(mp4|mov|webm|m4v|ogv)$/i.test(f.name || "");
+}
+function isImageFile(f: ArchivedFile): boolean {
+  return (f.mimetype ?? "").startsWith("image/") || /\.(jpe?g|png|gif|webp|bmp|svg|heic|heif)$/i.test(f.name || "");
+}
+function isAudioFile(f: ArchivedFile): boolean {
+  return (f.mimetype ?? "").startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(f.name || "");
+}
+// null for anything that isn't previewable in-page (docs, PDFs, etc.) — those
+// still open in a new tab, same as before.
+function previewKind(f: ArchivedFile): PreviewKind | null {
+  if (isVideoFile(f)) return "video";
+  if (isImageFile(f)) return "image";
+  if (isAudioFile(f)) return "audio";
+  return null;
 }
 
 interface DayGroup {
@@ -223,7 +237,13 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
               borderRadius: 8, padding: "4px 10px", textDecoration: "none",
               cursor: "pointer", font: "inherit",
             };
-            const icon = f.error ? <Icons.AlertCircle width={13} height={13} /> : isVideoFile(f) ? <Icons.Video width={13} height={13} /> : <Icons.FileText width={13} height={13} />;
+            const kind = previewKind(f);
+            const icon = f.error
+              ? <Icons.AlertCircle width={13} height={13} />
+              : kind === "video" ? <Icons.Video width={13} height={13} />
+              : kind === "image" ? <Icons.Image width={13} height={13} />
+              : kind === "audio" ? <Icons.Music width={13} height={13} />
+              : <Icons.FileText width={13} height={13} />;
             // A handful of degraded Slack file objects (the same ones with no
             // name/url_private) also lack a permalink — an empty href would
             // silently reload the page instead of going anywhere, so those
@@ -236,10 +256,11 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
                 </span>
               );
             }
-            // Videos play in an overlay right here instead of navigating away
-            // in a new tab — closing it lands you back in the same spot in
-            // the thread. Everything else still opens in a new tab.
-            if (isVideoFile(f) && !f.error) {
+            // Images/video/audio preview in an overlay right here instead of
+            // navigating away in a new tab — closing it lands you back in
+            // the same spot in the thread. Everything else (PDFs, docs, …)
+            // still opens in a new tab.
+            if (kind && !f.error) {
               return (
                 <button key={f.id} type="button" onClick={() => setPlayingFile(f)} title={f.error ?? undefined} style={chipStyle}>
                   {icon}
@@ -256,8 +277,13 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
           })}
         </div>
       )}
-      {playingFile?.permalink && (
-        <VideoModal src={playingFile.permalink} title={playingFile.name} onClose={() => setPlayingFile(null)} />
+      {playingFile?.permalink && previewKind(playingFile) && (
+        <FilePreviewModal
+          src={playingFile.permalink}
+          title={playingFile.name}
+          kind={previewKind(playingFile)!}
+          onClose={() => setPlayingFile(null)}
+        />
       )}
       {message.reactions.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
