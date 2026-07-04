@@ -79,10 +79,14 @@ export default async function SlackArchiveExceptionsPage() {
                   <Link href={jumpHref} style={{ color: "var(--rsd-accent)" }}>
                     Jump to message
                   </Link>
-                  {" · "}
-                  <a href={f.file.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--rsd-accent)" }}>
-                    Open in Slack
-                  </a>
+                  {f.file.permalink && (
+                    <>
+                      {" · "}
+                      <a href={f.file.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--rsd-accent)" }}>
+                        Open in Slack
+                      </a>
+                    </>
+                  )}
                 </div>
               </div>
             );

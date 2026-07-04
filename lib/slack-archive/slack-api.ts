@@ -28,7 +28,7 @@ export interface SlackFile {
   mimetype: string;
   size: number;
   url_private?: string; // absent for some file types (e.g. certain external/unfurled files)
-  permalink: string;
+  permalink?: string;   // same degraded file objects that lack url_private often lack this too
 }
 
 export interface SlackMessage {

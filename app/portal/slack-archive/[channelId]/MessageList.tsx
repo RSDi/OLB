@@ -116,25 +116,34 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
       )}
       {message.files.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {message.files.map((f) => (
-            <a
-              key={f.id}
-              href={f.permalink}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={f.error ?? undefined}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                fontSize: 12, fontWeight: 600, color: f.error ? "var(--gw-error)" : "var(--rsd-accent)",
-                background: "var(--gw-bg-elev)",
-                border: `1px solid ${f.error ? "rgba(229,62,62,.25)" : "var(--gw-border)"}`,
-                borderRadius: 8, padding: "4px 10px", textDecoration: "none",
-              }}
-            >
-              {f.error ? <Icons.AlertCircle width={13} height={13} /> : <Icons.FileText width={13} height={13} />}
-              {f.name}
-            </a>
-          ))}
+          {message.files.map((f) => {
+            const chipStyle: React.CSSProperties = {
+              display: "inline-flex", alignItems: "center", gap: 6,
+              fontSize: 12, fontWeight: 600, color: f.error ? "var(--gw-error)" : "var(--rsd-accent)",
+              background: "var(--gw-bg-elev)",
+              border: `1px solid ${f.error ? "rgba(229,62,62,.25)" : "var(--gw-border)"}`,
+              borderRadius: 8, padding: "4px 10px", textDecoration: "none",
+            };
+            const icon = f.error ? <Icons.AlertCircle width={13} height={13} /> : <Icons.FileText width={13} height={13} />;
+            // A handful of degraded Slack file objects (the same ones with no
+            // name/url_private) also lack a permalink — an empty href would
+            // silently reload the page instead of going anywhere, so those
+            // render as plain (non-clickable) text instead of a dead link.
+            if (!f.permalink) {
+              return (
+                <span key={f.id} title={f.error ?? undefined} style={{ ...chipStyle, opacity: 0.7, cursor: "default" }}>
+                  {icon}
+                  {f.name || "(unnamed attachment)"}
+                </span>
+              );
+            }
+            return (
+              <a key={f.id} href={f.permalink} target="_blank" rel="noopener noreferrer" title={f.error ?? undefined} style={chipStyle}>
+                {icon}
+                {f.name}
+              </a>
+            );
+          })}
         </div>
       )}
       {message.reactions.length > 0 && (

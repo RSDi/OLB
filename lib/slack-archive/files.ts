@@ -20,7 +20,8 @@ export interface ArchivedFile {
   mimetype: string;
   size: number;
   storage_path: string | null; // null if the download failed — permalink is kept as a fallback,
-  permalink: string;           // though Slack permalinks require a logged-in session in the workspace
+  permalink: string | null;    // though Slack permalinks require a logged-in session in the workspace,
+                                // and some degraded file objects have no permalink at all either
   error: string | null;        // why storage_path is null, for the "needs attention" panel; null on success
 }
 
@@ -49,7 +50,7 @@ export async function downloadAndStoreSlackFile(
     mimetype: file.mimetype,
     size: file.size,
     storage_path: null,
-    permalink: file.permalink,
+    permalink: file.permalink ?? null,
     error: null,
   };
 

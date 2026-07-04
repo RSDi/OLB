@@ -109,10 +109,14 @@ function FailedFilesPanel({
                 <a href={`#msg-${message.ts}`} style={{ color: "var(--rsd-accent)" }}>
                   Jump to message
                 </a>
-                {" · "}
-                <a href={file.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--rsd-accent)" }}>
-                  Open in Slack
-                </a>
+                {file.permalink && (
+                  <>
+                    {" · "}
+                    <a href={file.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--rsd-accent)" }}>
+                      Open in Slack
+                    </a>
+                  </>
+                )}
               </div>
             </div>
           );
