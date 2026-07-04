@@ -70,7 +70,15 @@ export function PortalTopBar({
         <Icons.Menu width={16} height={16} />
       </button>
 
-      {/* Title */}
+      {/* `subtitle` is the broader section (e.g. "Slack Archive", "Calendar",
+          "Directory") and `title` is the specific page within it (e.g.
+          "Channel", "New event", "Households") — per PortalShell's PAGE_META.
+          The section reads as the more prominent, orienting piece of
+          information ("where am I broadly"), so it gets the large/bold
+          treatment; the specific page is the secondary line underneath.
+          When there's no section (subtitle empty), title alone takes the
+          large/bold treatment instead of being stranded as a small line
+          with nothing above it. */}
       <div style={{ flex: variant === "inline" ? "0 0 auto" : 1, minWidth: 0 }}>
         <div
           style={{
@@ -83,7 +91,7 @@ export function PortalTopBar({
             textOverflow: "ellipsis",
           }}
         >
-          {title}
+          {subtitle || title}
         </div>
         {subtitle && (
           <div
@@ -93,9 +101,12 @@ export function PortalTopBar({
               lineHeight: 1,
               fontWeight: 500,
               marginTop: 3,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
-            {subtitle}
+            {title}
           </div>
         )}
       </div>
