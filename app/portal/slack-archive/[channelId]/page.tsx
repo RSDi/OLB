@@ -36,12 +36,20 @@ export default async function SlackArchiveChannelPage({
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <Link
-        href="/portal/slack-archive"
-        style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", textDecoration: "none" }}
-      >
-        ← All channels
-      </Link>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <Link
+          href="/portal/slack-archive"
+          style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", textDecoration: "none" }}
+        >
+          ← All channels
+        </Link>
+        <Link
+          href="/portal/slack-archive/exceptions"
+          style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+        >
+          View exceptions →
+        </Link>
+      </div>
       <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)", margin: "4px 0 24px" }}>
         {channel.label}
       </h1>
