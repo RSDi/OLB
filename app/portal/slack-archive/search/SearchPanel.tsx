@@ -54,12 +54,20 @@ export function SearchPanel({
 
   useEffect(() => {
     if (!canSearch) {
+      // Not the pure-derived-state case the lint rule expects (which would
+      // belong in a render-time adjustment instead, per FilterDropdown.tsx's
+      // convention) — requestIdRef must be bumped here specifically because
+      // a ref can't be mutated during render, and it has to happen before
+      // any in-flight request can resolve and overwrite this reset with
+      // stale results.
+      /* eslint-disable react-hooks/set-state-in-effect */
       requestIdRef.current += 1;
       setResults(null);
       setError(null);
       setSearching(false);
       setDisplayedAuthors(authors);
       setDisplayedChannelIds(null);
+      /* eslint-enable react-hooks/set-state-in-effect */
       return;
     }
 
