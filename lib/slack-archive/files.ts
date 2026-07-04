@@ -37,12 +37,32 @@ function sanitizeFileName(name: string): string {
     .slice(0, 150);
 }
 
+export interface FileTransformResult {
+  bytes: ArrayBuffer | Buffer;
+  mimetype: string;
+  name: string;
+}
+
+export interface DownloadAndStoreOptions {
+  // Optional hook to rewrite the downloaded bytes before upload — e.g. video
+  // compression for oversized files. Deliberately dependency-injected rather
+  // than called directly here: anything heavy enough to need its own native
+  // binary (ffmpeg) has no business being a static import of this module,
+  // since files.ts is imported by the live channel-viewer page as well as
+  // the sync engine, and every one of those callers would otherwise ship
+  // that dependency in its own bundle. Only scripts/slack-archive-compress-
+  // large-files.ts currently supplies one. Returning null/undefined leaves
+  // the original bytes untouched.
+  transform?: (bytes: ArrayBuffer, file: SlackFile) => Promise<FileTransformResult | null | undefined>;
+}
+
 export async function downloadAndStoreSlackFile(
   admin: SupabaseClient,
   file: SlackFile,
   channelId: string,
   ts: string,
   token: string,
+  opts: DownloadAndStoreOptions = {},
 ): Promise<ArchivedFile> {
   const base: ArchivedFile = {
     id: file.id,
@@ -71,15 +91,33 @@ export async function downloadAndStoreSlackFile(
     }
     const bytes = await res.arrayBuffer();
 
-    const path = `${channelId}/${ts}/${file.id}-${sanitizeFileName(file.name)}`;
+    let uploadBytes: ArrayBuffer | Buffer = bytes;
+    let uploadMimetype = file.mimetype;
+    let uploadName = file.name;
+    if (opts.transform) {
+      const transformed = await opts.transform(bytes, file);
+      if (transformed) {
+        uploadBytes = transformed.bytes;
+        uploadMimetype = transformed.mimetype;
+        uploadName = transformed.name;
+      }
+    }
+
+    const path = `${channelId}/${ts}/${file.id}-${sanitizeFileName(uploadName)}`;
     const { error } = await admin.storage
       .from(ARCHIVE_FILES_BUCKET)
-      .upload(path, bytes, { contentType: file.mimetype, upsert: true });
+      .upload(path, uploadBytes, { contentType: uploadMimetype, upsert: true });
     if (error) {
       console.error("[slack-archive] file upload failed:", error.message);
       return { ...base, error: `Upload failed: ${error.message}` };
     }
-    return { ...base, storage_path: path };
+    return {
+      ...base,
+      storage_path: path,
+      name: uploadName,
+      mimetype: uploadMimetype,
+      size: uploadBytes.byteLength,
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[slack-archive] file download failed:", err);
