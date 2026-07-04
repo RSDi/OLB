@@ -697,10 +697,35 @@ main::-webkit-scrollbar-track { background: transparent; }
     top: auto;
     left: 12px;
     right: 12px;
-    bottom: 12px;
+    /* env() fallback covers browsers without notch/home-indicator support;
+       without it, Mobile Safari's bottom toolbar can overlap the last
+       row of a tall panel, making it look like content got cut off. */
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     min-width: 0;
     max-width: none;
     max-height: 60vh;
     overflow-y: auto;
+    padding-top: 22px;
+    /* The huge spread radius fakes a full-viewport dimmed backdrop with no
+       extra markup — a fixed-position sheet with nothing behind it just
+       looks like a floating card with a gap above it, not a modal. Clicks
+       on the "backdrop" still land on the real page underneath, outside
+       this panel's root ref, so the existing outside-click-to-close
+       handler needs no changes to work through it. */
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.45), 0 -4px 24px rgba(0,0,0,.2);
+  }
+  /* Grab-handle affordance, standard bottom-sheet convention — signals
+     "this is a dismissable sheet" at a glance. Decorative only; dismissal
+     is still click-outside/select-an-option, not an actual drag gesture. */
+  .rsd-slack-popover-panel::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--gw-border);
   }
 }
