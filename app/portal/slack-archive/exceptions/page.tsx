@@ -8,6 +8,7 @@ import { CHURCH_TZ } from "../../../../lib/dates/today";
 import { loadArchiveViewer, loadArchiveChannels, loadAllFailedFiles } from "../../../../lib/slack-archive/data";
 import { loadLatestCompressionRun } from "../../../../lib/slack-archive/compress-actions";
 import { CompressTriggerButton } from "./CompressTriggerButton";
+import { ScrollToTopButton } from "../_shared/ScrollToTopButton";
 
 export default async function SlackArchiveExceptionsPage() {
   await loadArchiveViewer();
@@ -132,6 +133,7 @@ export default async function SlackArchiveExceptionsPage() {
           })
         )}
       </Section>
+      <ScrollToTopButton />
     </div>
   );
 }

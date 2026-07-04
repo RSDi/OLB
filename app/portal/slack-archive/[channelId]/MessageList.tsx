@@ -11,6 +11,7 @@ import { emojify, resolveEmojiShortcode } from "../../../../lib/slack-archive/em
 import { DateJumpCalendar } from "./DateJumpCalendar";
 import { FilePreviewModal, type PreviewKind } from "./FilePreviewModal";
 import { FilterDropdown } from "../_shared/FilterDropdown";
+import { ScrollToTopButton } from "../_shared/ScrollToTopButton";
 
 function isVideoFile(f: ArchivedFile): boolean {
   return (f.mimetype ?? "").startsWith("video/") || /\.(mp4|mov|webm|m4v|ogv)$/i.test(f.name || "");
@@ -158,6 +159,7 @@ export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; 
           </div>
         ))}
       </div>
+      <ScrollToTopButton />
     </div>
   );
 }

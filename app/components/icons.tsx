@@ -28,6 +28,7 @@ export const Icons = {
   Refresh:    ico(<><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>),
   ChevronRight: ico(<polyline points="9 18 15 12 9 6"/>),
   ChevronDown:  ico(<polyline points="6 9 12 15 18 9"/>),
+  ChevronUp:    ico(<polyline points="18 15 12 9 6 15"/>),
   ChevronLeft:  ico(<polyline points="15 18 9 12 15 6"/>),
   ChevronsLeft: ico(<><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></>),
   ChevronsRight:ico(<><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></>),
