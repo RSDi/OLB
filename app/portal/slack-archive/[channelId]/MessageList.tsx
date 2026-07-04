@@ -48,7 +48,7 @@ function groupByDay(threads: ArchiveThread[]): DayGroup[] {
 }
 
 export function MessageList({ threads }: { threads: ArchiveThread[] }) {
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const groups = useMemo(() => {
     const ascending = groupByDay(threads); // threads already arrive oldest-first
