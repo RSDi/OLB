@@ -39,6 +39,9 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
   "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
   "/portal/settings":    { title: "Settings",     subtitle: "Admin" },
+  "/portal/slack-archive":            { title: "Slack Archive", subtitle: "" },
+  "/portal/slack-archive/search":     { title: "Search archive", subtitle: "Slack Archive" },
+  "/portal/slack-archive/exceptions": { title: "Exceptions",     subtitle: "Slack Archive" },
 };
 
 interface Props {
@@ -96,6 +99,8 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
       ? { title: "History", subtitle: "Operations" }
       : pathname.startsWith("/portal/docs/")
       ? { title: "Playbook", subtitle: "Operations" }
+      : pathname.startsWith("/portal/slack-archive/")
+      ? { title: "Channel", subtitle: "Slack Archive" }
       : { title: "Portal", subtitle: "" });
 
   // Members (non-staff) use /portal/requests as their dashboard — label it
