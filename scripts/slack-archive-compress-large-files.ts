@@ -78,7 +78,7 @@ function runFfmpeg(args: string[]): Promise<void> {
 }
 
 async function compressVideo(bytes: ArrayBuffer, file: SlackFile): Promise<FileTransformResult | null> {
-  if (!file.mimetype.startsWith("video/") || bytes.byteLength <= SIZE_THRESHOLD_BYTES) return null;
+  if (!(file.mimetype ?? "").startsWith("video/") || bytes.byteLength <= SIZE_THRESHOLD_BYTES) return null;
 
   const workDir = await mkdtemp(join(tmpdir(), "slack-archive-compress-"));
   const inputPath = join(workDir, `input${extname(file.name) || ".bin"}`);
@@ -118,7 +118,7 @@ async function compressVideo(bytes: ArrayBuffer, file: SlackFile): Promise<FileT
 }
 
 async function compressAudio(bytes: ArrayBuffer, file: SlackFile): Promise<FileTransformResult | null> {
-  if (!file.mimetype.startsWith("audio/") || bytes.byteLength <= SIZE_THRESHOLD_BYTES) return null;
+  if (!(file.mimetype ?? "").startsWith("audio/") || bytes.byteLength <= SIZE_THRESHOLD_BYTES) return null;
 
   const workDir = await mkdtemp(join(tmpdir(), "slack-archive-compress-"));
   const inputPath = join(workDir, `input${extname(file.name) || ".bin"}`);
@@ -155,8 +155,9 @@ async function compressAudio(bytes: ArrayBuffer, file: SlackFile): Promise<FileT
 }
 
 function compressLargeMedia(bytes: ArrayBuffer, file: SlackFile): Promise<FileTransformResult | null> {
-  if (file.mimetype.startsWith("video/")) return compressVideo(bytes, file);
-  if (file.mimetype.startsWith("audio/")) return compressAudio(bytes, file);
+  const mimetype = file.mimetype ?? "";
+  if (mimetype.startsWith("video/")) return compressVideo(bytes, file);
+  if (mimetype.startsWith("audio/")) return compressAudio(bytes, file);
   return Promise.resolve(null);
 }
 
@@ -169,7 +170,8 @@ interface MessageRow {
 }
 
 function needsCompression(f: ArchivedFile): boolean {
-  const isMedia = f.mimetype.startsWith("video/") || f.mimetype.startsWith("audio/");
+  const mimetype = f.mimetype ?? "";
+  const isMedia = mimetype.startsWith("video/") || mimetype.startsWith("audio/");
   return Boolean(f.error) && isMedia && f.size > SIZE_THRESHOLD_BYTES;
 }
 
