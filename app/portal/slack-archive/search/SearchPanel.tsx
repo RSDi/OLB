@@ -142,6 +142,22 @@ export function SearchPanel({
             emptyMessage="No one matches your other filters."
           />
         )}
+        {canSearch && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setSelectedAuthors([]);
+              setSelectedChannels([]);
+            }}
+            style={{
+              fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)",
+              background: "none", border: "none", cursor: "pointer", padding: "5px 4px",
+            }}
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
       <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, minHeight: 16 }}>

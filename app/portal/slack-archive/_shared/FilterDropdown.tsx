@@ -70,9 +70,36 @@ export function FilterDropdown({
     onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]);
   }
 
+  // Selected items are pinned at the top, in their own group, regardless of
+  // the current search term — so picking a couple of names, then typing to
+  // search for more, doesn't scroll what's already chosen out of view. The
+  // searchable list below never repeats them.
+  const selectedItems = items.filter((i) => selected.includes(i.id));
+  const unselectedItems = items.filter((i) => !selected.includes(i.id));
   const filtered = searchTerm.trim()
-    ? items.filter((i) => i.label.toLowerCase().includes(searchTerm.trim().toLowerCase()))
-    : items;
+    ? unselectedItems.filter((i) => i.label.toLowerCase().includes(searchTerm.trim().toLowerCase()))
+    : unselectedItems;
+
+  function renderChip(item: FilterDropdownItem, active: boolean) {
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => toggle(item.id)}
+        className="gw-press"
+        style={{
+          fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
+          background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+          color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+          border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+          cursor: "pointer",
+        }}
+      >
+        {item.label}
+        {item.count !== undefined && <span style={{ opacity: 0.7 }}> ({item.count})</span>}
+      </button>
+    );
+  }
 
   return (
     <div ref={rootRef} style={{ position: "relative" }}>
@@ -115,33 +142,35 @@ export function FilterDropdown({
                   color: "var(--gw-fg)", background: "var(--gw-bg)", outline: "none",
                 }}
               />
+
+              {selectedItems.length > 0 && (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".02em" }}>
+                      Selected
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onChange([])}
+                      style={{ fontSize: 11, fontWeight: 700, color: "var(--rsd-accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                    {selectedItems.map((item) => renderChip(item, true))}
+                  </div>
+                  <div style={{ borderTop: "1px solid var(--gw-border)", marginBottom: 10 }} />
+                </>
+              )}
+
               {filtered.length === 0 ? (
                 <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
-                  No matches for &ldquo;{searchTerm.trim()}&rdquo;.
+                  {searchTerm.trim() ? <>No matches for &ldquo;{searchTerm.trim()}&rdquo;.</> : "Nothing else to select."}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 220, overflowY: "auto" }}>
-                  {filtered.map((item) => {
-                    const active = selected.includes(item.id);
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => toggle(item.id)}
-                        className="gw-press"
-                        style={{
-                          fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
-                          background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-                          color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-                          border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {item.label}
-                        {item.count !== undefined && <span style={{ opacity: 0.7 }}> ({item.count})</span>}
-                      </button>
-                    );
-                  })}
+                  {filtered.map((item) => renderChip(item, false))}
                 </div>
               )}
             </>
