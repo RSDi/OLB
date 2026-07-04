@@ -6,7 +6,11 @@ import { Icons } from "../../../components/icons";
 import { MarkdownView } from "../../../components/MarkdownView";
 import { Input } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
-import { runArchiveAuthorsForQuery, runArchiveSearch } from "../../../../lib/slack-archive/search-actions";
+import {
+  runArchiveAuthorCounts,
+  runArchiveChannelCounts,
+  runArchiveSearch,
+} from "../../../../lib/slack-archive/search-actions";
 import { emojify } from "../../../../lib/slack-archive/emoji";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
 
@@ -28,13 +32,18 @@ export function SearchPanel({
   const [results, setResults] = useState<ArchiveSearchResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
-  // Full author list until a text search actually runs; then narrowed to
-  // just the authors who said the searched words, so picking a name that
-  // never matched the query isn't offered as if it would.
+  // Each picker is narrowed by the OTHER active filters (the other picker's
+  // selection, plus any text query) — never by its own selection, so
+  // picking one option doesn't shrink the list out from under the rest.
+  // null = unfiltered (show the full prop list); narrowingActive tracks
+  // whether the *other* filters are non-empty, for the "narrowed by..." hint.
   const [displayedAuthors, setDisplayedAuthors] = useState<ArchiveAuthor[]>(authors);
-  const [narrowedQuery, setNarrowedQuery] = useState<string | null>(null);
+  const [displayedChannelIds, setDisplayedChannelIds] = useState<Set<string> | null>(null);
 
   const canSearch = selectedAuthors.length > 0 || selectedChannels.length > 0 || query.trim().length > 0;
+  const authorsNarrowedByOthers = selectedChannels.length > 0 || query.trim().length > 0;
+  const channelsNarrowedByOthers = selectedAuthors.length > 0 || query.trim().length > 0;
+  const displayedChannels = displayedChannelIds === null ? channels : channels.filter((c) => displayedChannelIds.has(c.id));
   // Guards against an earlier, slower request overwriting a later one's
   // results — only the most recently *started* request is allowed to apply
   // what it finds.
@@ -55,17 +64,17 @@ export function SearchPanel({
       setError(null);
       setSearching(false);
       setDisplayedAuthors(authors);
-      setNarrowedQuery(null);
+      setDisplayedChannelIds(null);
       return;
     }
 
     const requestId = ++requestIdRef.current;
-    const trimmedQuery = query.trim();
     setSearching(true);
     const timer = setTimeout(async () => {
-      const [searchRes, authorsRes] = await Promise.all([
+      const [searchRes, authorsRes, channelsRes] = await Promise.all([
         runArchiveSearch(selectedAuthors, query, selectedChannels),
-        trimmedQuery ? runArchiveAuthorsForQuery(trimmedQuery) : Promise.resolve(null),
+        runArchiveAuthorCounts(query, selectedChannels),
+        runArchiveChannelCounts(query, selectedAuthors),
       ]);
       if (requestIdRef.current !== requestId) return; // a newer search superseded this one
 
@@ -77,18 +86,17 @@ export function SearchPanel({
         setResults(searchRes.results);
       }
 
-      if (authorsRes) {
-        // Narrowing errors aren't fatal to the search itself — fall back to
-        // the full author list rather than hiding the picker entirely.
-        if (!authorsRes.error) {
-          const matchingNames = new Set(authorsRes.authors.map((a) => a.name));
-          setDisplayedAuthors(authorsRes.authors);
-          setNarrowedQuery(trimmedQuery);
-          setSelectedAuthors((cur) => cur.filter((a) => matchingNames.has(a)));
-        }
-      } else {
-        setDisplayedAuthors(authors);
-        setNarrowedQuery(null);
+      // Narrowing errors aren't fatal to the search itself — fall back to
+      // the full picker list rather than hiding it entirely.
+      if (!authorsRes.error) {
+        const matchingNames = new Set(authorsRes.authors.map((a) => a.name));
+        setDisplayedAuthors(authorsRes.authors);
+        setSelectedAuthors((cur) => cur.filter((a) => matchingNames.has(a)));
+      }
+      if (!channelsRes.error) {
+        const matchingIds = new Set(channelsRes.channels.map((c) => c.channelId));
+        setDisplayedChannelIds(matchingIds);
+        setSelectedChannels((cur) => cur.filter((c) => matchingIds.has(c)));
       }
       setSearching(false);
     }, SEARCH_DEBOUNCE_MS);
@@ -111,14 +119,24 @@ export function SearchPanel({
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 6 }}>
               Filter by channel{selectedChannels.length > 0 ? ` (${selectedChannels.length} selected)` : ""}
+              {channelsNarrowedByOthers && (
+                <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>
+                  {" "}— narrowed by your other filters
+                </span>
+              )}
             </div>
+            {displayedChannels.length === 0 && channelsNarrowedByOthers ? (
+              <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
+                No channels match your other filters.
+              </div>
+            ) : (
             <div
               style={{
                 display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 160, overflowY: "auto",
                 padding: 10, borderRadius: 10, border: "1px solid var(--gw-border)", background: "var(--gw-bg)",
               }}
             >
-              {channels.map((c) => {
+              {displayedChannels.map((c) => {
                 const active = selectedChannels.includes(c.id);
                 return (
                   <button
@@ -139,6 +157,7 @@ export function SearchPanel({
                 );
               })}
             </div>
+            )}
           </div>
         )}
 
@@ -146,15 +165,15 @@ export function SearchPanel({
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg-muted)", marginBottom: 6 }}>
               Filter by user{selectedAuthors.length > 0 ? ` (${selectedAuthors.length} selected)` : ""}
-              {narrowedQuery && (
+              {authorsNarrowedByOthers && (
                 <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>
-                  {" "}— only showing users who said &ldquo;{narrowedQuery}&rdquo;
+                  {" "}— narrowed by your other filters
                 </span>
               )}
             </div>
-            {displayedAuthors.length === 0 && narrowedQuery ? (
+            {displayedAuthors.length === 0 && authorsNarrowedByOthers ? (
               <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", fontStyle: "italic" }}>
-                No one said &ldquo;{narrowedQuery}&rdquo;.
+                No one matches your other filters.
               </div>
             ) : (
             <div
@@ -233,7 +252,7 @@ export function SearchPanel({
                   <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>{time}</span>
                 </div>
                 {r.messageText && (
-                  <div style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5, marginTop: 4 }}>
+                  <div className="rsd-slack-msg-text" style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5, marginTop: 4 }}>
                     <MarkdownView>{emojify(r.messageText)}</MarkdownView>
                   </div>
                 )}

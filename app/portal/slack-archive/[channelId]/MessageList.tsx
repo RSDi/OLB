@@ -22,7 +22,11 @@ interface DayGroup {
 // contains something Markdown would do anything with; newlines route
 // through Markdown too since a plain white-space:pre-wrap div renders
 // multi-paragraph text slightly differently than proper paragraph tags.
-const MARKDOWN_SYNTAX = /[*_~`[\]()#>]|\n/;
+// A bare URL with no other markdown syntax and no newline (a single-line
+// "just a link" message) also needs to route through Markdown — remark-gfm
+// autolinks it, but only messages that reach MarkdownView in the first
+// place get that treatment.
+const MARKDOWN_SYNTAX = /[*_~`[\]()#>]|\n|https?:\/\//;
 function needsMarkdown(text: string): boolean {
   return MARKDOWN_SYNTAX.test(text);
 }
@@ -122,7 +126,7 @@ function MessageRow({ message }: { message: ArchiveMessage }) {
         </span>
       </div>
       {message.message_text && (
-        <div style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5 }}>
+        <div className="rsd-slack-msg-text" style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5 }}>
           {needsMarkdown(message.message_text) ? (
             <MarkdownView>{emojify(message.message_text)}</MarkdownView>
           ) : (

@@ -8,10 +8,12 @@
 
 import { getViewer } from "../auth/viewer";
 import {
-  loadArchiveAuthorsForQuery,
+  loadArchiveAuthorCounts,
+  loadArchiveChannelCounts,
   loadArchiveChannels,
   searchArchiveMessages,
   type ArchiveAuthor,
+  type ArchiveChannelCount,
   type ArchiveSearchResult,
 } from "./data";
 
@@ -40,12 +42,37 @@ export interface ArchiveAuthorsActionResult {
   error?: string;
 }
 
-export async function runArchiveAuthorsForQuery(query: string): Promise<ArchiveAuthorsActionResult> {
+// Narrows "Filter by user" by whatever's currently selected in the OTHER
+// facets (channels, text query) — never by the user's own selection.
+export async function runArchiveAuthorCounts(
+  query: string,
+  channelIds: string[] = [],
+): Promise<ArchiveAuthorsActionResult> {
   const viewer = await getViewer();
   if (!viewer) return { authors: [], error: "You must be signed in." };
   if (!viewer.isSuperAdmin) return { authors: [], error: "Super-admin access required." };
 
-  const { authors, error } = await loadArchiveAuthorsForQuery(query);
+  const { authors, error } = await loadArchiveAuthorCounts({ query, channelIds });
   if (error) return { authors: [], error };
   return { authors };
+}
+
+export interface ArchiveChannelCountsActionResult {
+  channels: ArchiveChannelCount[];
+  error?: string;
+}
+
+// Narrows "Filter by channel" by whatever's currently selected in the OTHER
+// facets (authors, text query) — never by the channel's own selection.
+export async function runArchiveChannelCounts(
+  query: string,
+  authors: string[] = [],
+): Promise<ArchiveChannelCountsActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return { channels: [], error: "You must be signed in." };
+  if (!viewer.isSuperAdmin) return { channels: [], error: "Super-admin access required." };
+
+  const { channels, error } = await loadArchiveChannelCounts({ query, authors });
+  if (error) return { channels: [], error };
+  return { channels };
 }

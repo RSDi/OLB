@@ -616,3 +616,20 @@ main::-webkit-scrollbar-track { background: transparent; }
     opacity: 1;
   }
 }
+
+/* ── Slack Channel Archive: message body text ────────────────────────────
+   Pasted links (often long e-commerce URLs with big query strings) need to
+   wrap inside the message card instead of overflowing past its edge, and
+   need to actually look clickable — the global `a { color: inherit }` reset
+   above otherwise makes a rendered link indistinguishable from plain text,
+   even though it's already functional (opens in a new tab). Scoped to this
+   feature's own class rather than changing the global reset or MarkdownView
+   itself, both of which are shared well beyond this silo. */
+.rsd-slack-msg-text {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.rsd-slack-msg-text a {
+  color: var(--rsd-accent);
+  text-decoration: underline;
+}

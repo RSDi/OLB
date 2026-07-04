@@ -203,18 +203,25 @@ export async function loadArchiveAuthors(): Promise<{ authors: ArchiveAuthor[]; 
   return { authors, error: null };
 }
 
-// Same as loadArchiveAuthors() but scoped to authors whose messages actually
-// match a websearch query (archive_author_counts_for_query, migration 0081)
-// — used to narrow the search page's "filter by user" picker once text has
-// been entered, instead of always listing every author in the archive
-// regardless of whether they ever said the searched words.
-export async function loadArchiveAuthorsForQuery(
-  query: string,
-): Promise<{ authors: ArchiveAuthor[]; error: string | null }> {
+// Faceted narrowing for the search page's "filter by user" picker: authors
+// scoped to whatever's currently selected in the OTHER facets (channel(s)
+// and/or text query), via archive_author_counts_filtered (migration 0082) —
+// never scoped by the user's own current selection, so picking one author
+// doesn't shrink the list out from under the others. Passing no channelIds
+// and no query is equivalent to loadArchiveAuthors()'s unfiltered list.
+export async function loadArchiveAuthorCounts(opts: {
+  query?: string;
+  channelIds?: string[];
+}): Promise<{ authors: ArchiveAuthor[]; error: string | null }> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("archive_author_counts_for_query", { p_query: query });
+  const query = opts.query?.trim() || null;
+  const channelIds = opts.channelIds?.filter(Boolean) ?? [];
+  const { data, error } = await supabase.rpc("archive_author_counts_filtered", {
+    p_query: query,
+    p_channel_ids: channelIds.length > 0 ? channelIds : null,
+  });
   if (error) {
-    console.error("loadArchiveAuthorsForQuery failed", error);
+    console.error("loadArchiveAuthorCounts failed", error);
     return { authors: [], error: error.message };
   }
   const authors = ((data ?? []) as { author_name: string; message_count: number }[]).map((r) => ({
@@ -222,6 +229,38 @@ export async function loadArchiveAuthorsForQuery(
     count: r.message_count,
   }));
   return { authors, error: null };
+}
+
+export interface ArchiveChannelCount {
+  channelId: string;
+  count: number;
+}
+
+// Faceted narrowing for the search page's "filter by channel" picker:
+// channels scoped to whatever's currently selected in the OTHER facets
+// (author(s) and/or text query), via archive_channel_counts_filtered
+// (migration 0082) — same never-scoped-by-itself rule as
+// loadArchiveAuthorCounts above.
+export async function loadArchiveChannelCounts(opts: {
+  query?: string;
+  authors?: string[];
+}): Promise<{ channels: ArchiveChannelCount[]; error: string | null }> {
+  const supabase = await createClient();
+  const query = opts.query?.trim() || null;
+  const authors = opts.authors?.filter(Boolean) ?? [];
+  const { data, error } = await supabase.rpc("archive_channel_counts_filtered", {
+    p_query: query,
+    p_authors: authors.length > 0 ? authors : null,
+  });
+  if (error) {
+    console.error("loadArchiveChannelCounts failed", error);
+    return { channels: [], error: error.message };
+  }
+  const channels = ((data ?? []) as { channel_id: string; message_count: number }[]).map((r) => ({
+    channelId: r.channel_id,
+    count: r.message_count,
+  }));
+  return { channels, error: null };
 }
 
 export interface ArchiveSearchResult {
