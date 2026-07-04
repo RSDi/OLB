@@ -85,6 +85,61 @@ export interface ArchiveThread {
   replies: ArchiveMessage[];
 }
 
+export interface FailedFileEntry {
+  channelId: string;
+  channelLabel: string;
+  messageId: string;
+  messageTs: string;
+  messageText: string;
+  authorName: string | null;
+  postedAt: string;
+  file: ArchivedFile;
+}
+
+// Cross-channel view for the exceptions page — pulls every message with any
+// file attachment across every registered channel and filters to the ones
+// that carry an error, rather than requiring a click into each channel to
+// find them. Files with an error never have a storage_path (that's what the
+// error means), so unlike loadArchiveChannelMessages there's no signed URL
+// to resolve — every failed file's link is always its Slack permalink.
+export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<FailedFileEntry[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("slack_archive_messages")
+    .select("id, channel_id, ts, author_name, message_text, posted_at, files")
+    .order("posted_at", { ascending: false });
+  if (error) {
+    console.error("loadAllFailedFiles failed", error);
+    return [];
+  }
+
+  const labelByChannel = new Map(channels.map((c) => [c.slack_channel_id, c.label]));
+  const rows = (data ?? []) as {
+    id: string;
+    channel_id: string;
+    ts: string;
+    author_name: string | null;
+    message_text: string;
+    posted_at: string;
+    files: ArchivedFile[];
+  }[];
+
+  return rows.flatMap((r) =>
+    (r.files ?? [])
+      .filter((f) => f.error)
+      .map((f) => ({
+        channelId: r.channel_id,
+        channelLabel: labelByChannel.get(r.channel_id) ?? r.channel_id,
+        messageId: r.id,
+        messageTs: r.ts,
+        messageText: r.message_text,
+        authorName: r.author_name,
+        postedAt: r.posted_at,
+        file: f,
+      })),
+  );
+}
+
 // Groups flat rows into threads (a parent with thread_ts === its own ts or
 // null, followed by any replies whose thread_ts points at it) and resolves
 // each file's storage_path to a short-lived signed URL. Signing needs the

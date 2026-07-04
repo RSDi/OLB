@@ -82,7 +82,7 @@ function FailedFilesPanel({
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
         {items.map(({ file, message }) => {
           const time = new Date(message.posted_at).toLocaleString(undefined, {
-            month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ,
+            year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ,
           });
           return (
             <div
