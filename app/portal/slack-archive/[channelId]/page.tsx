@@ -12,6 +12,7 @@ import { loadArchiveViewer, loadArchiveChannels, loadArchiveChannelMessages } fr
 import { MessageList } from "./MessageList";
 import { SyncNowButton } from "./SyncNowButton";
 import { ChannelSwitcher } from "./ChannelSwitcher";
+import { TopbarTitle } from "../../TopbarOverride";
 
 // Server Actions inherit their page's maxDuration (see SyncNowButton's
 // syncChannelNow call) — without this, the platform default (as low as 10s
@@ -36,6 +37,8 @@ export default async function SlackArchiveChannelPage({
 
   return (
     <div style={{ maxWidth: 920 }}>
+      {/* Topbar reads "Channel - #tech" instead of the generic "Channel" */}
+      <TopbarTitle title={`Channel - #${channel.label.replace(/^#/, "")}`} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
         <Link
           href="/portal/slack-archive"

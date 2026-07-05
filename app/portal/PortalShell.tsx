@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
 import { PortalTopBar } from "../components/PortalTopBar";
+import { TopbarOverrideContext, type TopbarOverride } from "./TopbarOverride";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
 import { pageDocFor } from "../../lib/help/page-docs";
@@ -55,6 +56,8 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  // Page-supplied topbar label (via <TopbarTitle>); null = use PAGE_META.
+  const [titleOverride, setTitleOverride] = useState<TopbarOverride | null>(null);
   const inlineSearchRef = useRef<TopbarSearchHandle>(null);
   const pathname = usePathname();
   const pageDoc = pageDocFor(pathname);
@@ -111,6 +114,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
       : meta;
 
   return (
+    <TopbarOverrideContext.Provider value={setTitleOverride}>
     <div className={`rsd-app${collapsed ? " sidebar-collapsed" : ""}`}>
       <PortalSidebar
         viewer={viewer}
@@ -121,8 +125,8 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
         onNavigate={() => setMobileOpen(false)}
       />
       <PortalTopBar
-        title={topMeta.title}
-        subtitle={topMeta.subtitle}
+        title={titleOverride?.title ?? topMeta.title}
+        subtitle={titleOverride?.subtitle ?? topMeta.subtitle}
         onMenuClick={() => setMobileOpen(v => !v)}
         onSearchClick={() => setSearchOpen(true)}
         inlineSearchRef={inlineSearchRef}
@@ -143,5 +147,6 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <InfoPanel doc={pageDoc} open={infoOpen} onClose={() => setInfoOpen(false)} />
     </div>
+    </TopbarOverrideContext.Provider>
   );
 }
