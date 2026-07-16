@@ -8,6 +8,7 @@ import { CHURCH_TZ } from "../../../../lib/dates/today";
 import type { ArchiveMessage, ArchiveThread } from "../../../../lib/slack-archive/data";
 import type { ArchivedFile } from "../../../../lib/slack-archive/files";
 import { emojify, resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";
+import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
 import { DateJumpCalendar } from "./DateJumpCalendar";
 import { FilePreviewModal, type PreviewKind } from "./FilePreviewModal";
 import { FilterDropdown } from "../_shared/FilterDropdown";
@@ -181,6 +182,7 @@ function ThreadCard({ thread, channelId }: { thread: ArchiveThread; channelId: s
 
 function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId: string }) {
   const time = new Date(message.posted_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ });
+  const messageText = decodeSlackEntities(message.message_text);
   const [playingFile, setPlayingFile] = useState<ArchivedFile | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -219,12 +221,12 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
           {linkCopied ? <Icons.CheckCircle width={13} height={13} /> : <Icons.Link width={13} height={13} />}
         </button>
       </div>
-      {message.message_text && (
+      {messageText && (
         <div className="rsd-slack-msg-text" style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5 }}>
-          {needsMarkdown(message.message_text) ? (
-            <MarkdownView>{emojify(message.message_text)}</MarkdownView>
+          {needsMarkdown(messageText) ? (
+            <MarkdownView>{emojify(messageText)}</MarkdownView>
           ) : (
-            <div style={{ whiteSpace: "pre-wrap" }}>{emojify(message.message_text)}</div>
+            <div style={{ whiteSpace: "pre-wrap" }}>{emojify(messageText)}</div>
           )}
         </div>
       )}

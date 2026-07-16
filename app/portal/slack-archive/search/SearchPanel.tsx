@@ -12,6 +12,7 @@ import {
   runArchiveSearch,
 } from "../../../../lib/slack-archive/search-actions";
 import { emojify } from "../../../../lib/slack-archive/emoji";
+import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
 import { FilterDropdown, type FilterDropdownItem } from "../_shared/FilterDropdown";
 import { ScrollToTopButton } from "../_shared/ScrollToTopButton";
@@ -211,7 +212,7 @@ export function SearchPanel({
                 </div>
                 {r.messageText && (
                   <div className="rsd-slack-msg-text" style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5, marginTop: 4 }}>
-                    <MarkdownView>{emojify(r.messageText)}</MarkdownView>
+                    <MarkdownView>{emojify(decodeSlackEntities(r.messageText))}</MarkdownView>
                   </div>
                 )}
                 <div style={{ marginTop: 6, fontSize: 12.5 }}>

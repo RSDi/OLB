@@ -7,6 +7,7 @@ import Link from "next/link";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import { loadArchiveViewer, loadArchiveChannels, loadAllFailedFiles } from "../../../../lib/slack-archive/data";
 import { loadLatestCompressionRun } from "../../../../lib/slack-archive/compress-actions";
+import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
 import { CompressTriggerButton } from "./CompressTriggerButton";
 import { ScrollToTopButton } from "../_shared/ScrollToTopButton";
 
@@ -108,7 +109,7 @@ export default async function SlackArchiveExceptionsPage() {
                   </div>
                   {f.messageText && (
                     <div style={{ color: "var(--gw-fg-muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {f.messageText}
+                      {decodeSlackEntities(f.messageText)}
                     </div>
                   )}
                 </Link>
