@@ -47,8 +47,8 @@ function closureRow(input: ClosureInput) {
 }
 
 function revalidateClosurePages() {
-  revalidatePath("/not-here");
-  revalidatePath("/not-here-sign");
+  revalidatePath("/meeting-times");
+  revalidatePath("/door-sign");
   revalidatePath("/portal/settings");
 }
 

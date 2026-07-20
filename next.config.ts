@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
       // Dave's Idea was renamed to ReelNotes; keep old links + installed PWAs working.
       { source: "/portal/daves-idea", destination: "/portal/reelnotes", permanent: false },
       { source: "/portal/daves-idea/:path*", destination: "/portal/reelnotes/:path*", permanent: false },
+      // The door-QR landing page launched as /not-here before becoming the
+      // evergreen Meeting Times page; keep anything already printed working.
+      { source: "/not-here", destination: "/meeting-times", permanent: false },
+      { source: "/not-here-sign", destination: "/door-sign", permanent: false },
     ];
   },
   async headers() {

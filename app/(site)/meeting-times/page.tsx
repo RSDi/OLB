@@ -3,12 +3,12 @@ import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { MarkdownView } from "../../components/MarkdownView";
 import { getActiveClosure } from "../../../lib/closures/data";
-import { CHURCH_ADDRESS, MEETING_TIMES } from "../meeting-times";
+import { CHURCH_ADDRESS, MEETING_TIMES } from "../schedule";
 
 export const metadata: Metadata = {
-  title: "Are We Meeting Today? — Millard Community Church",
+  title: "Meeting Times — Millard Community Church",
   description:
-    "Scan the sign on the door? Check here to see whether Millard Community Church is meeting today and why.",
+    "When and where Millard Community Church meets — and any changes to this week's schedule.",
 };
 
 // This is the page behind the permanent QR code on the door sign — someone is
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 // a stale answer.
 export const dynamic = "force-dynamic";
 
-export default async function NotHerePage() {
+export default async function MeetingTimesPage() {
   const closure = await getActiveClosure();
   return closure ? <NotMeeting title={closure.title} bodyMd={closure.body_md} /> : <Meeting />;
 }
@@ -91,14 +91,14 @@ function Meeting() {
             fontSize: 12, fontWeight: 800, letterSpacing: ".08em",
             textTransform: "uppercase", color: "var(--rsd-accent)",
           }}>
-            Good news
+            Meeting as scheduled
           </div>
           <h1 style={{
             margin: "0 0 16px",
             fontSize: "clamp(30px, 6vw, 52px)",
             fontWeight: 800, lineHeight: 1.1, letterSpacing: "-.03em",
           }}>
-            We&rsquo;re meeting as usual
+            When we meet
           </h1>
           <p style={{
             margin: 0,
@@ -106,7 +106,7 @@ function Meeting() {
             lineHeight: 1.75,
             color: "rgba(255,255,255,.6)",
           }}>
-            No closures today — we&rsquo;d love to see you at our next gathering.
+            Everyone is welcome — come as you are.
           </p>
         </div>
       </section>

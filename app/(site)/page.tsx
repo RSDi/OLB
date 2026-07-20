@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Icons } from "../components/icons";
-import { MEETING_TIMES } from "./meeting-times";
+import { MEETING_TIMES } from "./schedule";
 
 const EPISODES = [
   { title: "Majordomo", scripture: "Daniel 2:31–46", date: "April 18, 2015" },

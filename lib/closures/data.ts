@@ -1,4 +1,4 @@
-// Server-side reads for the public /not-here page. Anon RLS (0083) already
+// Server-side reads for the public /meeting-times page. Anon RLS (0083) already
 // restricts the query to the open closure; the date window is applied here in
 // church-local time so auto-expiry happens at request time without a cron.
 
@@ -30,7 +30,7 @@ export async function getActiveClosure(): Promise<ActiveClosure | null> {
   return closure;
 }
 
-// The permanent door QR encodes `${siteUrl()}/not-here`, so in production
+// The permanent door QR encodes `${siteUrl()}/meeting-times`, so in production
 // NEXT_PUBLIC_SITE_URL must be set — the VERCEL_URL fallback would bake a
 // deployment-specific URL into a sign meant to last for years.
 export function siteUrl(): string {

@@ -5,13 +5,13 @@ import { PrintButton } from "./PrintButton";
 
 export const metadata: Metadata = {
   title: "Door Sign — We're Not Meeting Today",
-  description: "Printable one-page door sign with a QR code to /not-here.",
+  description: "Printable one-page door sign with a QR code to /meeting-times.",
 };
 
 // The sign is printed once and taped up for years, so the QR must encode the
 // canonical production URL — warn loudly if we'd bake in a fallback origin.
 export default async function NotHereSignPage() {
-  const url = `${siteUrl()}/not-here`;
+  const url = `${siteUrl()}/meeting-times`;
   const displayUrl = url.replace(/^https?:\/\//, "");
   const qrSvg = await QRCode.toString(url, {
     type: "svg",

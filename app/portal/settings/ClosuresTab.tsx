@@ -35,7 +35,7 @@ interface ClosureReason {
 
 // The open closure's standing relative to the church-local day. "scheduled"
 // and "expired" rows are still the single open closure — they just don't
-// render on /not-here yet/anymore.
+// render on /meeting-times yet/anymore.
 function closureStatus(c: Closure, today: string): "active" | "scheduled" | "expired" {
   if (c.starts_on > today) return "scheduled";
   if (c.ends_on && c.ends_on < today) return "expired";
@@ -96,7 +96,7 @@ export function ClosuresTab({ me }: { me: MemberLike }) {
 
   async function handleClear() {
     if (!open) return;
-    if (!confirm("Mark the church as meeting again? The /not-here page will switch back to the regular schedule.")) {
+    if (!confirm("Mark the church as meeting again? The Meeting Times page will switch back to the regular schedule.")) {
       return;
     }
     setError(null);
@@ -182,7 +182,7 @@ export function ClosuresTab({ me }: { me: MemberLike }) {
         <div>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>Meeting status</h3>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 4 }}>
-            Controls the public &ldquo;are we meeting?&rdquo; page behind the door sign&rsquo;s QR code.
+            Controls the public Meeting Times page behind the door sign&rsquo;s QR code.
           </div>
         </div>
 
@@ -219,7 +219,7 @@ export function ClosuresTab({ me }: { me: MemberLike }) {
                 We&rsquo;re meeting as normal
               </div>
               <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 4 }}>
-                Visitors who scan the door sign see the regular meeting schedule.
+                The public Meeting Times page shows the regular schedule.
               </div>
             </div>
             <Pill variant="accent" size="sm" onClick={() => { setEditingClosure(true); setError(null); }}>
@@ -242,10 +242,10 @@ export function ClosuresTab({ me }: { me: MemberLike }) {
             One page, letter size: &ldquo;We&rsquo;re not meeting today — scan for more information.&rdquo;
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Link href="/not-here" target="_blank" style={{ textDecoration: "none" }}>
+            <Link href="/meeting-times" target="_blank" style={{ textDecoration: "none" }}>
               <Pill variant="ghost" size="sm">View live page</Pill>
             </Link>
-            <Link href="/not-here-sign" target="_blank" style={{ textDecoration: "none" }}>
+            <Link href="/door-sign" target="_blank" style={{ textDecoration: "none" }}>
               <Pill variant="accent" size="sm">
                 <Icons.ArrowRight width={13} height={13} /> Print the door sign
               </Pill>
@@ -365,7 +365,7 @@ function OpenClosureCard({
     status === "scheduled"
       ? `Scheduled — the public page switches over on ${formatShortDate(closure.starts_on)}.`
       : status === "expired"
-      ? "Ended — the public page is already back to the regular schedule. Clear it to tidy up."
+      ? "Ended — the Meeting Times page is already back to the regular schedule. Clear it to tidy up."
       : closure.ends_on
       ? `Live on the public page. Auto-expires after ${formatShortDate(closure.ends_on)}.`
       : "Live on the public page until cleared manually.";

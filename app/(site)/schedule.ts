@@ -1,6 +1,6 @@
 // Regular meeting schedule + location, shared by the public home page and
-// /not-here (which shows it both as the "when we normally meet" footer of a
-// closure notice and in the "we ARE meeting today" fallback).
+// /meeting-times (which shows it both as the "when we normally meet" footer
+// of a closure notice and as the page's main content on normal weeks).
 
 export const MEETING_TIMES = [
   {
