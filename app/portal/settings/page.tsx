@@ -13,6 +13,7 @@ import { VolunteerTeamsTab } from "./VolunteerTeamsTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
 import { TaskCategoriesTab } from "./TaskCategoriesTab";
 import { PlaybooksTab } from "./PlaybooksTab";
+import { ClosuresTab } from "./ClosuresTab";
 import { ContactCategoriesTab } from "./ContactCategoriesTab";
 import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
@@ -29,6 +30,7 @@ type Tab =
   | "event_categories"
   | "task_categories"
   | "playbooks"
+  | "closures"
   | "contact_categories"
   | "integrations"
   | "audit_log"
@@ -103,6 +105,7 @@ export default function SettingsPage() {
     { key: "event_categories", label: "Event Categories", visible: true },
     { key: "task_categories", label: "Task Categories", visible: true },
     { key: "playbooks", label: "Playbooks", visible: true },
+    { key: "closures", label: "Closures", visible: true },
     { key: "contact_categories", label: "Contact Categories", visible: true },
     { key: "integrations", label: "Integrations", visible: true },
     { key: "audit_log", label: "Audit Log", visible: true },
@@ -149,6 +152,7 @@ export default function SettingsPage() {
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}
+      {tab === "closures" && <ClosuresTab me={me} />}
       {tab === "contact_categories" && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && <IntegrationsTab />}
       {tab === "audit_log" && <AuditLogTab />}

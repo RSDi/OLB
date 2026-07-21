@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/",        label: "Home" },
   { href: "/beliefs", label: "Beliefs" },
   { href: "/messages", label: "Messages" },
+  { href: "/meeting-times", label: "Meeting Times" },
 ];
 
 export function PublicNav() {

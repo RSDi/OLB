@@ -1,21 +1,6 @@
 import Link from "next/link";
 import { Icons } from "../components/icons";
-
-const MEETING_TIMES = [
-  {
-    day: "Sunday",
-    sessions: [
-      { time: "9:30 AM", label: "Adult Bible Study & Children's Ministry" },
-      { time: "11:00 AM", label: "Congregational Singing & Preaching" },
-    ],
-  },
-  {
-    day: "Wednesday",
-    sessions: [
-      { time: "7:00 PM", label: "Adult Bible Study & Children's Ministry" },
-    ],
-  },
-];
+import { MEETING_TIMES } from "./schedule";
 
 const EPISODES = [
   { title: "Majordomo", scripture: "Daniel 2:31–46", date: "April 18, 2015" },
