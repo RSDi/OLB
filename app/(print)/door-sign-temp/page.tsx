@@ -64,16 +64,9 @@ export default async function DoorSignTempPage() {
           letterSpacing: "-.02em",
         }}>
           We&rsquo;re not meeting here today.
+          <br />
+          Sorry we missed you!
         </h1>
-
-        <p style={{
-          margin: 0,
-          fontSize: 22,
-          lineHeight: 1.5,
-          fontWeight: 500,
-        }}>
-          Once a year we meet at a lake for baptisms and fellowship.
-        </p>
 
         <div
           style={{ width: 320, height: 320 }}
@@ -88,8 +81,6 @@ export default async function DoorSignTempPage() {
         <div style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.6 }}>
           Questions? Contact Jeff Malone
           <br />
-          <a href="mailto:jeff@malone.net" style={{ color: "inherit" }}>jeff@malone.net</a>
-          {" · "}
           <a href="tel:+14026600403" style={{ color: "inherit" }}>(402) 660-0403</a>
         </div>
 
