@@ -176,9 +176,19 @@ function needsCompression(f: ArchivedFile): boolean {
 }
 
 async function main() {
+  // Check everything up front and name every missing variable at once. This
+  // runs unattended in GitHub Actions (.github/workflows/slack-archive-
+  // compress.yml), where the only feedback is a failure email — reporting
+  // just "SLACK_BOT_TOKEN not set" hid that all three repository secrets
+  // were missing, and that they were secrets at all.
   const token = process.env.SLACK_BOT_TOKEN;
-  if (!token) {
-    console.error("[compress-large-files] SLACK_BOT_TOKEN not set");
+  const missing = ["SLACK_BOT_TOKEN", "NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].filter((k) => !process.env[k]);
+  if (!token || missing.length > 0) {
+    console.error(
+      `[compress-large-files] missing environment variable${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}. ` +
+        "Locally these come from .env.local; in GitHub Actions they must be added as repository secrets " +
+        "(repo Settings → Secrets and variables → Actions).",
+    );
     process.exit(1);
   }
   const admin = createAdminClient();
