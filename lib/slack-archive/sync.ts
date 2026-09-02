@@ -276,8 +276,18 @@ async function processMessage(
   }
 }
 
-// Re-checks every thread this channel has ever archived for replies newer
-// than the newest one already stored, using each thread's own cursor — so a
+// Threads whose latest known activity is older than this are skipped by the
+// refresh below. Checking every thread a channel has ever had — one Slack
+// call each, against a ~50/min rate limit — is what starved the nightly
+// cron: building-comittee alone has 150+ threads, more than the whole 50s
+// budget could get through, so no channel after it ever got a turn. A
+// months-quiet thread essentially never gets a new reply; one that does
+// revive is still caught by the next "Sync now" (a full re-walk refetches
+// every thread's replies).
+const THREAD_REFRESH_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000;
+
+// Re-checks this channel's recently-active threads for replies newer than
+// the newest one already stored, using each thread's own cursor — so a
 // thread with no new activity costs one cheap Slack call, not a full re-walk.
 async function refreshKnownThreads(
   admin: SupabaseClient,
@@ -308,7 +318,9 @@ async function refreshKnownThreads(
     }
   }
 
+  const cutoffTs = (Date.now() - THREAD_REFRESH_LOOKBACK_MS) / 1000;
   for (const [parentTs, latestTs] of latestKnownByParent) {
+    if (parseFloat(latestTs) < cutoffTs) continue;
     if (Date.now() >= deadlineAt) return; // rest picked up on a later run
     try {
       const newReplies = await fetchAllReplies(channelId, parentTs, token, latestTs);
@@ -337,7 +349,12 @@ export async function syncArchiveChannel(
   // cutoff instead of the stored watermark — what the nightly cron passes
   // (a rolling 24h window) so a corrupted/stuck watermark can never leave
   // the archive silently frozen the way it did here.
-  opts: { oldest?: string | null } = {},
+  //
+  // `refreshThreads: false` skips the thread-reply refresh after the walk —
+  // the cron does that as its own separate pass across every channel (see
+  // syncAllActiveChannels) rather than letting one channel's refresh eat
+  // the budget before the next channel's new messages are even fetched.
+  opts: { oldest?: string | null; refreshThreads?: boolean } = {},
 ): Promise<ChannelSyncSummary> {
   const summary: ChannelSyncSummary = {
     channel: channelId,
@@ -385,7 +402,11 @@ export async function syncArchiveChannel(
     // New messages take priority; spend any remaining budget catching up
     // replies on threads that predate this run's watermark. Best-effort —
     // failures here don't downgrade the otherwise-successful sync below.
-    await refreshKnownThreads(admin, channelId, token, resolver, summary, deadlineAt);
+    // Pointless after a full-history walk (watermark undefined): every
+    // thread's replies were just refetched by processMessage anyway.
+    if (opts.refreshThreads !== false && watermark !== undefined) {
+      await refreshKnownThreads(admin, channelId, token, resolver, summary, deadlineAt);
+    }
 
     const { error: stateErr } = await admin.from("slack_archive_sync_state").upsert(
       {
@@ -437,61 +458,87 @@ export async function syncOneChannel(
   return syncArchiveChannel(admin, channelId, token, resolver, deadlineAt, opts.force ? { oldest: null } : {});
 }
 
+function skippedSummary(channelId: string): ChannelSyncSummary {
+  return { channel: channelId, new_or_updated: 0, threads_synced: 0, files_stored: 0, errors: [], done: false };
+}
+
 // Loops every active registered channel, sharing one deadline and one author
-// cache across all of them. What both the cron and the backfill script call
-// — the cron passes `windowMs` (a fixed rolling lookback, ignoring each
-// channel's stored watermark entirely) so a corrupted/stuck watermark can
-// never leave a channel silently frozen; the backfill script omits it,
-// keeping the normal from-the-watermark-or-full-history behavior it needs
-// for a one-time complete pull.
+// cache across all of them. What both the cron and the backfill script call.
+//
+// Cron mode (`windowMs` given — a fixed rolling lookback, ignoring each
+// channel's stored watermark so a corrupted/stuck one can never leave a
+// channel silently frozen) runs in two passes so one slow channel can't
+// starve the rest, which is exactly what used to happen: one shared 50s
+// budget, channels always in registration order, and the first channel's
+// thread refresh alone (150+ Slack calls against a ~50/min rate limit) ate
+// nearly all of it, so channels 3–10 were skipped every single night.
+//   1. New messages for EVERY channel first — cheap (a 24h window is a page
+//      or two each) and the part that actually matters nightly.
+//   2. Thread-reply refresh with whatever budget is left, best-effort.
+// Both passes start from a position that rotates daily, so even a pass
+// that can't finish gives a different channel first dibs each night
+// instead of the same tail channels always losing out.
+//
+// Backfill mode (`windowMs` omitted) is unchanged: each channel does its
+// normal from-the-watermark-or-full-history pull, thread refresh included,
+// in registry order — a local process has no time budget to ration.
 export async function syncAllActiveChannels(opts: { deadlineMs?: number; windowMs?: number } = {}): Promise<ArchiveSyncSummary> {
   const token = process.env.SLACK_BOT_TOKEN;
   const admin = createAdminClient();
   const deadlineAt = Date.now() + (opts.deadlineMs ?? Number.MAX_SAFE_INTEGER);
-  const oldestOverride = opts.windowMs !== undefined ? dateToTs(Date.now() - opts.windowMs) : undefined;
 
   const summary: ArchiveSyncSummary = { timestamp: new Date().toISOString(), channels: [] };
   if (!token) {
-    summary.channels.push({
-      channel: "(none)",
-      new_or_updated: 0,
-      threads_synced: 0,
-      files_stored: 0,
-      errors: ["SLACK_BOT_TOKEN not set"],
-      done: false,
-    });
+    summary.channels.push({ ...skippedSummary("(none)"), errors: ["SLACK_BOT_TOKEN not set"] });
     return summary;
   }
 
   const { data: channelRows } = await admin
     .from("slack_archive_channels")
     .select("slack_channel_id")
-    .eq("active", true);
-  const channels = ((channelRows as { slack_channel_id: string }[] | null) ?? []).map((c) => c.slack_channel_id);
-
+    .eq("active", true)
+    .order("created_at", { ascending: true });
+  const registered = ((channelRows as { slack_channel_id: string }[] | null) ?? []).map((c) => c.slack_channel_id);
   const resolver = new AuthorResolver(admin, token);
-  for (const channelId of channels) {
-    if (Date.now() >= deadlineAt) {
-      summary.channels.push({
-        channel: channelId,
-        new_or_updated: 0,
-        threads_synced: 0,
-        files_stored: 0,
-        errors: [],
-        done: false,
-      });
-      continue;
+
+  if (opts.windowMs === undefined) {
+    for (const channelId of registered) {
+      if (Date.now() >= deadlineAt) {
+        summary.channels.push(skippedSummary(channelId));
+        continue;
+      }
+      summary.channels.push(await syncArchiveChannel(admin, channelId, token, resolver, deadlineAt));
     }
-    const result = await syncArchiveChannel(
-      admin,
-      channelId,
-      token,
-      resolver,
-      deadlineAt,
-      oldestOverride !== undefined ? { oldest: oldestOverride } : {},
-    );
-    summary.channels.push(result);
+    return summary;
   }
 
+  // Stateless daily rotation: the cron fires once a night, so the day
+  // number advances the start position by one each run without needing to
+  // persist a cursor anywhere.
+  const startIdx = registered.length > 0 ? Math.floor(Date.now() / 86_400_000) % registered.length : 0;
+  const channels = [...registered.slice(startIdx), ...registered.slice(0, startIdx)];
+  const oldest = dateToTs(Date.now() - opts.windowMs);
+
+  const byChannel = new Map<string, ChannelSyncSummary>();
+  for (const channelId of channels) {
+    const result =
+      Date.now() >= deadlineAt
+        ? skippedSummary(channelId)
+        : await syncArchiveChannel(admin, channelId, token, resolver, deadlineAt, { oldest, refreshThreads: false });
+    byChannel.set(channelId, result);
+  }
+
+  for (const channelId of channels) {
+    if (Date.now() >= deadlineAt) break;
+    const s = byChannel.get(channelId)!;
+    // A channel whose own sync failed (e.g. bot not in channel) would just
+    // fail once more per thread here — skip it rather than flood its errors.
+    if (!s.done || s.errors.length > 0) continue;
+    await refreshKnownThreads(admin, channelId, token, resolver, s, deadlineAt);
+  }
+
+  // Report in registry order regardless of tonight's rotation, so the cron
+  // response reads the same way as the channel list page.
+  for (const channelId of registered) summary.channels.push(byChannel.get(channelId)!);
   return summary;
 }

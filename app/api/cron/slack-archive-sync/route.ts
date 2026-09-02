@@ -7,10 +7,13 @@
 // sync_state row, a manual reset gone wrong, anything) would otherwise sit
 // silently frozen forever, since nothing else ever re-checks it. A rolling
 // 24h re-fetch is self-healing every night regardless of watermark state, at
-// the cost of never catching edits/reactions on messages older than 24h
-// (refreshKnownThreads still covers new thread replies on older parents —
-// see sync.ts). Mirrors /api/cron/shutdown-generate's thin shape: auth-gate,
-// then delegate everything to lib/slack-archive/sync.ts.
+// the cost of never catching edits/reactions on messages older than 24h.
+// Runs as two passes over the channels — every channel's new messages
+// first, then thread-reply refresh with whatever budget is left — so one
+// channel with a lot of threads can't starve the others (see
+// syncAllActiveChannels in sync.ts for the history). Mirrors
+// /api/cron/shutdown-generate's thin shape: auth-gate, then delegate
+// everything to lib/slack-archive/sync.ts.
 //
 // Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` automatically when
 // the schedule is configured in vercel.json. Manual curl invocations need
