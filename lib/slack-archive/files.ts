@@ -95,7 +95,17 @@ export async function downloadAndStoreSlackFile(
     let uploadMimetype = file.mimetype;
     let uploadName = file.name;
     if (opts.transform) {
-      const transformed = await opts.transform(bytes, file);
+      // Caught here, not by the catch-all below: the download worked, so a
+      // failed transform (ffmpeg rejecting a video) shouldn't be reported
+      // as a download error.
+      let transformed: FileTransformResult | null | undefined;
+      try {
+        transformed = await opts.transform(bytes, file);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[slack-archive] file processing failed:", err);
+        return { ...base, error: `Processing failed: ${message}` };
+      }
       if (transformed) {
         uploadBytes = transformed.bytes;
         uploadMimetype = transformed.mimetype;

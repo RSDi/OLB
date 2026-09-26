@@ -64,15 +64,22 @@ const AUDIO_COMPRESSION_LADDER = [
 
 function runFfmpeg(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(ffmpegInstaller.path, args);
+    // -loglevel error keeps stderr down to the lines that explain a failure,
+    // without the banner, stream listing and progress it's otherwise full
+    // of. The error message is shown on the exceptions page, so it needs to
+    // be readable.
+    const proc = spawn(ffmpegInstaller.path, ["-hide_banner", "-loglevel", "error", ...args]);
     let stderr = "";
     proc.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
     });
     proc.on("error", reject);
     proc.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(-2000)}`));
+      if (code === 0) return resolve();
+      // The last few lines are the ones that matter: a component's specific
+      // complaint (e.g. the encoder's) followed by ffmpeg's summary of it.
+      const reason = stderr.split(/[\r\n]+/).filter((line) => line.trim()).slice(-3).join(" ");
+      reject(new Error(`ffmpeg exited with code ${code}${reason ? `: ${reason}` : ""}`));
     });
   });
 }
@@ -91,6 +98,13 @@ async function compressVideo(bytes: ArrayBuffer, file: SlackFile): Promise<FileT
       await runFfmpeg([
         "-y",
         "-i", inputPath,
+        // Name the tracks rather than letting ffmpeg choose. Its default is
+        // the audio track with the most channels, and iPhones that record
+        // spatial audio store a 4-channel APAC track (which ffmpeg can't
+        // decode) alongside the normal stereo one, which comes first. `?`
+        // keeps videos with no audio track working.
+        "-map", "0:v:0",
+        "-map", "0:a:0?",
         "-vf", `scale='min(${pass.width},iw)':-2`,
         "-c:v", "libx264",
         "-crf", String(pass.crf),
@@ -131,7 +145,9 @@ async function compressAudio(bytes: ArrayBuffer, file: SlackFile): Promise<FileT
       await runFfmpeg([
         "-y",
         "-i", inputPath,
-        "-vn",
+        // First audio track only, as in compressVideo. Mapping just that
+        // also leaves out any cover art, which is what -vn used to do here.
+        "-map", "0:a:0",
         "-c:a", "libmp3lame",
         "-b:a", pass.bitrate,
         "-ac", String(pass.channels),
