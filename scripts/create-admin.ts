@@ -12,7 +12,7 @@
  *
  * Someone who already has a member row (say they signed up and are pending, or
  * a super-admin added them to the directory) gets that row approved, given the
- * role and linked to their sign-in. That needs migration 0087, which lets the
+ * role and linked to their sign-in. That needs migration 0088, which lets the
  * service role through the members column firewall
  * (members_enforce_self_update_columns); without it the database rejects the
  * change and the row is reported instead. Rows that were deleted or had their

@@ -1,4 +1,4 @@
--- 0087_member_firewall_service_role.sql
+-- 0088_member_firewall_service_role.sql
 --
 -- Lets the service-role backend through the members column firewall. The
 -- firewall (last version 0073) returned early only for super-admins, and
