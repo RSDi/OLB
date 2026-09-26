@@ -28,6 +28,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "../supabase/admin";
+import { exactRegex } from "../supabase/filters";
 import {
   fetchChannelIsPrivate,
   fetchChannelMemberIds,
@@ -102,14 +103,13 @@ class AuthorResolver {
     const { email, name } = await fetchSlackUserInfo(userId, this.token);
     let memberId: string | null = null;
     if (email) {
-      // ilike for case-insensitivity only: escape LIKE's wildcards so an
-      // address like "j_smith@…" can't match "jxsmith@…". This match now
+      // Case-insensitive but otherwise exact (see exactRegex). This match now
       // grants private-channel access (see refreshChannelAccess), not just
       // an author name.
       const { data, error } = await this.admin
         .from("members")
         .select("id")
-        .ilike("email", email.replace(/[\\%_]/g, "\\$&"))
+        .regexIMatch("email", exactRegex(email))
         .is("deleted_at", null)
         .maybeSingle();
       if (error) console.error(`[slack-archive] member lookup failed for ${email}:`, error.message);

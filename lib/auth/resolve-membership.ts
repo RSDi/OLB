@@ -8,6 +8,7 @@
 
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createAdminClient } from "../supabase/admin";
+import { exactRegex } from "../supabase/filters";
 import { isAdminEmail } from "./admin-emails";
 import { sendAccessRequestNotification } from "../notifications/access-request";
 import { sendAccessRequestSlack } from "../notifications/slack";
@@ -82,15 +83,15 @@ export async function resolveMembership({
 
   if (!member) {
     // Check for a pre-created (orphan) member row a super-admin set up with
-    // matching email but no user_id yet. If found, link it instead of
-    // creating a new pending row — preserve whatever role/status the
-    // super-admin set, and keep the pre-set name if there is one.
+    // the same email (ignoring case) but no user_id yet. If found, link it
+    // instead of creating a new pending row — preserve whatever role/status
+    // the super-admin set, and keep the pre-set name if there is one.
     const admin = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : null;
     const linkClient = admin ?? supabase;
     const { data: orphan } = await linkClient
       .from("members")
       .select("id, status, role, full_name")
-      .ilike("email", user.email)
+      .regexIMatch("email", exactRegex(user.email))
       .is("user_id", null)
       .maybeSingle();
 

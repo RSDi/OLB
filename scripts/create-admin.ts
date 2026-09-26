@@ -25,6 +25,7 @@
 import { parseArgs } from "node:util";
 import type { User } from "@supabase/supabase-js";
 import { createAdminClient } from "../lib/supabase/admin";
+import { exactRegex } from "../lib/supabase/filters";
 import type { MemberRole } from "../lib/auth/permissions";
 
 const USAGE =
@@ -159,11 +160,13 @@ async function findMember(admin: AdminClient, userId: string | null, email: stri
     if (error) throw new Error(`couldn't look up their member row: ${error.message}`);
     if (data) return data as MemberRow;
   }
-  // ilike for case; `_` and `%` in an email act as wildcards there, so any
-  // extra matches are dropped by the exact comparison.
-  const { data, error } = await admin.from("members").select(MEMBER_COLUMNS).ilike("email", email);
+  const { data, error } = await admin
+    .from("members")
+    .select(MEMBER_COLUMNS)
+    .regexIMatch("email", exactRegex(email))
+    .maybeSingle();
   if (error) throw new Error(`couldn't look up their member row: ${error.message}`);
-  return (data as MemberRow[]).find((m) => m.email?.toLowerCase() === email) ?? null;
+  return data as MemberRow | null;
 }
 
 // Every sign-in, keyed by email. Pages until an empty page rather than
