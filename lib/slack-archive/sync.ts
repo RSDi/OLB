@@ -34,10 +34,11 @@ import {
   fetchConversationsHistory,
   fetchConversationsReplies,
   fetchSlackUserInfo,
+  type SlackFile,
   type SlackMessage,
   type SlackReaction,
 } from "./slack-api";
-import { downloadAndStoreSlackFile } from "./files";
+import { archiveMessageFiles, downloadAndStoreSlackFile, type ArchivedFile } from "./files";
 
 export interface ChannelSyncSummary {
   channel: string;
@@ -213,10 +214,26 @@ async function resolveMentions(text: string, resolver: AuthorResolver): Promise<
   return text.replace(/<([^<>]+)>/g, (full) => replacements.get(full) ?? full);
 }
 
-// Resolves the author, downloads any file attachments (concurrently — each
-// is an independent Slack fetch + Storage upload), and upserts the row.
-// Shared by top-level messages, thread replies, and thread-refresh replies
-// so a future change to any of that logic only needs to happen once.
+// The files already archived for a message; none yet if it's new. Throws
+// rather than returning [] on a failed read: carrying on would save the
+// message as if nothing were archived, and could replace saved files with
+// Slack's placeholders (see archiveMessageFiles).
+async function loadSavedFiles(admin: SupabaseClient, channelId: string, ts: string): Promise<ArchivedFile[]> {
+  const { data, error } = await admin
+    .from("slack_archive_messages")
+    .select("files")
+    .eq("channel_id", channelId)
+    .eq("ts", ts)
+    .maybeSingle();
+  if (error) throw new Error(`loading saved files failed for ts=${ts}: ${error.message}`);
+  return (data as { files: ArchivedFile[] | null } | null)?.files ?? [];
+}
+
+// Resolves the author, downloads any file attachments not already archived
+// (concurrently — each is an independent Slack fetch + Storage upload), and
+// upserts the row. Shared by top-level messages, thread replies, and
+// thread-refresh replies so a future change to any of that logic only needs
+// to happen once.
 async function persistMessage(
   admin: SupabaseClient,
   channelId: string,
@@ -225,13 +242,17 @@ async function persistMessage(
   resolver: AuthorResolver,
   summary: ChannelSyncSummary,
 ): Promise<void> {
+  const download = async (f: SlackFile) => {
+    const result = await downloadAndStoreSlackFile(admin, f, channelId, msg.ts, token);
+    if (result.storage_path) summary.files_stored += 1;
+    return result;
+  };
   const [author, files, reactions, messageText] = await Promise.all([
     resolver.resolve(msg),
-    Promise.all((msg.files ?? []).map((f) => downloadAndStoreSlackFile(admin, f, channelId, msg.ts, token))),
+    loadSavedFiles(admin, channelId, msg.ts).then((saved) => archiveMessageFiles(saved, msg.files ?? [], download)),
     resolveReactions(msg.reactions, resolver),
     resolveMentions(msg.text ?? "", resolver),
   ]);
-  summary.files_stored += files.filter((f) => f.storage_path).length;
 
   const { error } = await admin.from("slack_archive_messages").upsert(
     {
@@ -424,8 +445,10 @@ export async function syncArchiveChannel(
   // incremental). `null`: ignore the stored watermark and walk full history
   // regardless — what the "Sync now" button forces, so a super admin always
   // has a "re-fetch and overwrite everything for this channel" escape hatch
-  // rather than trusting the watermark math. A string: use it as a fixed
-  // cutoff instead of the stored watermark — what the nightly cron passes
+  // rather than trusting the watermark math. (Everything except files the
+  // archive already saved, which are kept as they are; see
+  // archiveMessageFiles.) A string: use it as a fixed cutoff instead of the
+  // stored watermark — what the nightly cron passes
   // (a rolling 24h window) so a corrupted/stuck watermark can never leave
   // the archive silently frozen the way it did here.
   //

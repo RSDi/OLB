@@ -156,15 +156,19 @@ type FailedFileRow = {
 export interface FailedFilesResult {
   entries: FailedFileEntry[];
   totalScanned: number; // surfaced on the page so a pagination/query regression is visible, not silent
+  deletedInSlack: number; // files Slack deleted before they could be archived, counted instead of listed
   queryError: string | null;
 }
 
 // Cross-channel view for the exceptions page — pulls every message with any
 // file attachment across every registered channel and filters to the ones
 // that carry an error, rather than requiring a click into each channel to
-// find them. Files with an error never have a storage_path (that's what the
-// error means), so unlike loadArchiveChannelMessages there's no signed URL
-// to resolve — every failed file's link is always its Slack permalink.
+// find them. Files Slack had already deleted when the archive first saw them
+// are only counted: nothing can be downloaded or fixed, so listing them just
+// buries the entries someone can act on. Files with an error never have a
+// storage_path (that's what the error means), so unlike
+// loadArchiveChannelMessages there's no signed URL to resolve — every
+// failed file's link is always its Slack permalink.
 //
 // Paginated by primary key, NOT by posted_at/OFFSET: migration 0077 only
 // indexes (channel_id, posted_at) together, which can't help a cross-channel
@@ -203,23 +207,22 @@ export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<Fa
 
   const labelByChannel = new Map(channels.map((c) => [c.slack_channel_id, c.label]));
 
-  const entries = rows.flatMap((r) =>
-    (r.files ?? [])
-      .filter((f) => f.error)
-      .map((f) => ({
-        channelId: r.channel_id,
-        channelLabel: labelByChannel.get(r.channel_id) ?? r.channel_id,
-        messageId: r.id,
-        messageTs: r.ts,
-        messageText: r.message_text,
-        authorName: r.author_name,
-        postedAt: r.posted_at,
-        file: f,
-      })),
-  );
+  const failed = rows.flatMap((r) => (r.files ?? []).filter((f) => f.error).map((f) => ({ r, f })));
+  const entries = failed
+    .filter(({ f }) => !f.deleted_in_slack)
+    .map(({ r, f }) => ({
+      channelId: r.channel_id,
+      channelLabel: labelByChannel.get(r.channel_id) ?? r.channel_id,
+      messageId: r.id,
+      messageTs: r.ts,
+      messageText: r.message_text,
+      authorName: r.author_name,
+      postedAt: r.posted_at,
+      file: f,
+    }));
   entries.sort((a, b) => b.postedAt.localeCompare(a.postedAt));
 
-  return { entries, totalScanned: rows.length, queryError };
+  return { entries, totalScanned: rows.length, deletedInSlack: failed.length - entries.length, queryError };
 }
 
 export interface ArchiveAuthor {

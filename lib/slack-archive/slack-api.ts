@@ -29,6 +29,10 @@ export interface SlackFile {
   size: number;
   url_private?: string; // absent for some file types (e.g. certain external/unfurled files)
   permalink?: string;   // same degraded file objects that lack url_private often lack this too
+  // Set when Slack sends a placeholder instead of the file, which then has
+  // only an id: "tombstone" (deleted in Slack) or "hidden_by_limit" (hidden
+  // by the workspace's plan; the free plan hides anything older than 90 days).
+  mode?: string;
 }
 
 export interface SlackMessage {

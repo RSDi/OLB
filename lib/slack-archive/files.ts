@@ -23,6 +23,10 @@ export interface ArchivedFile {
   permalink: string | null;    // though Slack permalinks require a logged-in session in the workspace,
                                 // and some degraded file objects have no permalink at all either
   error: string | null;        // why storage_path is null, for the "needs attention" panel; null on success
+  // Slack only had a tombstone for this file by the time the archive saw it.
+  // There's nothing to download and nothing anyone can fix, so the
+  // exceptions page counts these rather than listing them.
+  deleted_in_slack?: boolean;
 }
 
 // Supabase Storage keys are S3-compatible and reject some characters Slack
@@ -74,12 +78,21 @@ export async function downloadAndStoreSlackFile(
     error: null,
   };
 
-  // Some Slack file objects (e.g. certain external/unfurled files) carry no
-  // url_private at all — nothing to download, fall back to the permalink.
+  // No url_private means nothing to download: a placeholder for a file
+  // Slack deleted or is hiding (see SlackFile.mode), or one of the external/
+  // unfurled file types that never have one. The permalink, if any, is kept
+  // as a fallback. "Before it was archived" holds for both placeholders
+  // because a file the archive already saved is never downloaded again
+  // (see archiveMessageFiles).
   if (!file.url_private) {
-    const reason = "No downloadable URL provided by Slack for this file type.";
-    console.warn(`[slack-archive] file ${file.id} has no url_private, skipping download`);
-    return { ...base, error: reason };
+    console.warn(`[slack-archive] file ${file.id} has no url_private (mode ${file.mode ?? "none"}), skipping download`);
+    if (file.mode === "tombstone") {
+      return { ...base, error: "Deleted in Slack before it was archived.", deleted_in_slack: true };
+    }
+    if (file.mode === "hidden_by_limit") {
+      return { ...base, error: "Hidden by Slack's plan limit before it was archived." };
+    }
+    return { ...base, error: "No downloadable URL provided by Slack for this file type." };
   }
 
   try {
@@ -133,6 +146,26 @@ export async function downloadAndStoreSlackFile(
     console.error("[slack-archive] file download failed:", err);
     return { ...base, error: `Download error: ${message}` };
   }
+}
+
+// The files to save for a message that may already be archived. A file the
+// archive already holds is kept exactly as saved (never downloaded again,
+// never replaced), and only the rest go to `download`. Once Slack deletes a
+// file or starts hiding it behind the workspace's plan, re-fetching its
+// message gets a placeholder with no URL instead (old thread replies still
+// come back, with one per file), and saving that over the stored entry is
+// what unlinked 15 photos and videos in a September 2026 re-sync. Saved
+// files Slack no longer lists at all are kept too: the archive keeps files
+// people later delete in Slack.
+export async function archiveMessageFiles(
+  saved: ArchivedFile[],
+  incoming: SlackFile[],
+  download: (file: SlackFile) => Promise<ArchivedFile>,
+): Promise<ArchivedFile[]> {
+  const savedById = new Map(saved.filter((f) => f.storage_path).map((f) => [f.id, f]));
+  const files = await Promise.all(incoming.map((f) => savedById.get(f.id) ?? download(f)));
+  const listed = new Set(incoming.map((f) => f.id));
+  return [...files, ...[...savedById.values()].filter((f) => !listed.has(f.id))];
 }
 
 // Batched — one Storage API round trip per SIGN_BATCH_SIZE paths rather than

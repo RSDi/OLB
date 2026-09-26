@@ -14,11 +14,17 @@ import { ScrollToTopButton } from "../_shared/ScrollToTopButton";
 export default async function SlackArchiveExceptionsPage() {
   await loadArchiveAdmin(); // managing the archive, not reading it — super admins only
   const [channels, lastCompressionRun] = await Promise.all([loadArchiveChannels(), loadLatestCompressionRun()]);
-  const { entries: failedFiles, totalScanned, queryError } = await loadAllFailedFiles(channels);
+  const { entries: failedFiles, totalScanned, deletedInSlack, queryError } = await loadAllFailedFiles(channels);
   const erroredChannels = channels.filter((c) => c.last_status === "error");
   const oversizedMediaCount = failedFiles.filter(
     (f) => (f.file.mimetype ?? "").match(/^(video|audio)\//) && f.file.size > 50 * 1024 * 1024,
   ).length;
+  const deletedNote =
+    deletedInSlack === 0
+      ? ""
+      : deletedInSlack === 1
+        ? " 1 attachment deleted in Slack before it could be archived isn’t listed."
+        : ` ${deletedInSlack} attachments deleted in Slack before they could be archived aren’t listed.`;
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -78,7 +84,7 @@ export default async function SlackArchiveExceptionsPage() {
 
       <Section
         title={`Attachments needing attention (${failedFiles.length})`}
-        subtitle={queryError ? undefined : `Scanned ${totalScanned.toLocaleString()} messages across all channels.`}
+        subtitle={queryError ? undefined : `Scanned ${totalScanned.toLocaleString()} messages across all channels.${deletedNote}`}
       >
         {queryError && (
           <div className="rsd-card" style={{ padding: "12px 18px", borderColor: "rgba(229,62,62,.25)", color: "var(--gw-error)", fontSize: 12.5, fontWeight: 600 }}>

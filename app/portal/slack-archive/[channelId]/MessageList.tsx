@@ -256,7 +256,7 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
               return (
                 <span key={f.id} title={f.error ?? undefined} style={{ ...chipStyle, opacity: 0.7, cursor: "default" }}>
                   {icon}
-                  {f.name || "(unnamed attachment)"}
+                  {f.name || (f.deleted_in_slack ? "Deleted in Slack" : "(unnamed attachment)")}
                 </span>
               );
             }
