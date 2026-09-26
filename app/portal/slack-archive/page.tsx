@@ -2,7 +2,7 @@
 // sees only the channels they may read (public ones, plus private ones
 // they're in on Slack — migration 0084); super admins see every channel
 // plus the controls for managing the archive. A siloed feature: see
-// supabase/migrations/0077_slack_archive.sql for the removal plan.
+// supabase/migrations-archive/0077_slack_archive.sql for the removal plan.
 
 import Link from "next/link";
 import { loadArchiveViewer, loadArchiveChannels } from "../../../lib/slack-archive/data";
