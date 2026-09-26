@@ -152,8 +152,8 @@ function BirthdayRow({
           className="rsd-chip"
           style={{
             flexShrink: 0,
-            background: wiffle === "eligible" ? "rgb(254,243,199)" : "var(--gw-bg-elev)",
-            color: wiffle === "eligible" ? "#92400e" : "var(--gw-fg-muted)",
+            background: wiffle === "eligible" ? "var(--rsd-warn-bg)" : "var(--gw-bg-elev)",
+            color: wiffle === "eligible" ? "var(--rsd-warn)" : "var(--gw-fg-muted)",
             borderColor: "transparent",
           }}
         >

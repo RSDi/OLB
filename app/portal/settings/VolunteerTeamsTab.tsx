@@ -503,7 +503,7 @@ function Chip({
 }) {
   const bg = accent ? "var(--rsd-accent-bg)" : "var(--gw-bg-elev)";
   const color = accent ? "var(--rsd-accent)" : "var(--gw-fg)";
-  const border = accent ? "rgba(108,140,89,.25)" : "var(--gw-border)";
+  const border = accent ? "var(--rsd-accent-line)" : "var(--gw-border)";
   return (
     <span
       style={{

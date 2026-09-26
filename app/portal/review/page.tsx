@@ -135,7 +135,7 @@ export default async function ReviewQueuePage({
               {t.key === "pending_review" && (pendingCount ?? 0) > 0 && (
                 <span
                   style={{
-                    background: "var(--gw-error)",
+                    background: "var(--rsd-error-fill)",
                     color: "#fff",
                     fontSize: 10,
                     fontWeight: 800,

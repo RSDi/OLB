@@ -396,7 +396,7 @@ export function MembersTab({
             {counts[t.key] > 0 && (
               <span
                 style={{
-                  background: t.key === "pending" ? "var(--gw-error)" : "var(--gw-bg)",
+                  background: t.key === "pending" ? "var(--rsd-error-fill)" : "var(--gw-bg)",
                   color: t.key === "pending" ? "#fff" : "var(--gw-fg-muted)",
                   border: t.key !== "pending" ? "1px solid var(--gw-border)" : "none",
                   fontSize: 10,

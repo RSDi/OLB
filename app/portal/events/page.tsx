@@ -37,7 +37,7 @@ const DAY_MS = 86400000;
 
 const monthHeaderStyle: React.CSSProperties = {
   padding: "8px 18px",
-  background: "var(--gw-bg-elev)",
+  background: "var(--gw-bg)",
   borderBottom: "1px solid var(--gw-border)",
   fontSize: 11,
   fontWeight: 700,
@@ -248,7 +248,7 @@ function EventRow({
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em" }}>
           {monthShort(occ.startAt)}
         </div>
-        <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
+        <div style={{ fontFamily: "var(--rsd-display)", fontSize: "calc(18px * var(--rsd-display-scale))", fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>
           {dayNum(occ.startAt)}
         </div>
       </div>

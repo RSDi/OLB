@@ -36,7 +36,7 @@ export function GenerateInstanceButton({ templateId }: { templateId: string }) {
           borderRadius: 8,
           background: "var(--rsd-accent-bg)",
           color: "var(--rsd-accent)",
-          border: "1px solid rgba(108,140,89,.25)",
+          border: "1px solid var(--rsd-accent-line)",
           fontSize: 12,
           fontWeight: 700,
           cursor: pending ? "not-allowed" : "pointer",

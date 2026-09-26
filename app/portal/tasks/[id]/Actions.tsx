@@ -670,7 +670,7 @@ export function VotePanel({
               size="sm"
               onClick={() => cast("no", note)}
               disabled={pending || !note.trim()}
-              style={{ background: "var(--gw-error)", borderColor: "var(--gw-error)", color: "#fff" }}
+              style={{ background: "var(--rsd-error-fill)", borderColor: "var(--rsd-error-fill)", color: "#fff" }}
             >
               {pending ? "Voting…" : "Confirm no vote"}
             </Pill>
@@ -710,7 +710,7 @@ export function VotePanel({
                 size="sm"
                 onClick={submitDecision}
                 disabled={pending || (deciding === "declined" && !decisionNote.trim())}
-                style={deciding === "declined" ? { background: "var(--gw-error)", borderColor: "var(--gw-error)", color: "#fff" } : undefined}
+                style={deciding === "declined" ? { background: "var(--rsd-error-fill)", borderColor: "var(--rsd-error-fill)", color: "#fff" } : undefined}
               >
                 {pending ? "Saving…" : deciding === "approved" ? "Approve & send" : "Decline & send"}
               </Pill>

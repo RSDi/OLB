@@ -15,6 +15,7 @@ import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
 import { pageDocFor } from "../../lib/help/page-docs";
 import type { TopbarSearchHandle } from "../components/TopbarSearch";
+import { portalFontVariables } from "./fonts";
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
@@ -78,6 +79,18 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, []);
+
+  // The Lightning theme is set on the shell below (so the first paint is
+  // already dark) and mirrored onto <html> while the portal is mounted, so
+  // the page background and anything portaled to <body> pick it up too.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = "lightning";
+    return () => {
+      delete root.dataset.theme;
+    };
+  }, []);
+
   // Exact match first; otherwise label individual ticket detail pages
   // (`/portal/tasks/<id>`, but not /new) as "Request".
   const meta =
@@ -112,7 +125,10 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
       : meta;
 
   return (
-    <div className={`rsd-app${collapsed ? " sidebar-collapsed" : ""}`}>
+    <div
+      data-theme="lightning"
+      className={`rsd-app ${portalFontVariables}${collapsed ? " sidebar-collapsed" : ""}`}
+    >
       <PortalSidebar
         viewer={viewer}
         pendingMembersCount={pendingMembersCount}
@@ -135,7 +151,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
           onClick={() => setMobileOpen(false)}
           style={{
             position: "fixed", inset: 0, zIndex: 1100,
-            background: "rgba(0,0,0,.4)",
+            background: "rgba(0,0,0,.6)",
             animation: "gw-fade-in 160ms ease",
           }}
         />

@@ -88,7 +88,8 @@ export function KanbanBoard({
                 : undefined
             }
             style={{
-              background: isOver ? "var(--rsd-accent-bg)" : "var(--gw-bg-elev)",
+              // Columns are page-colored lanes so the cards inside stand off them.
+              background: isOver ? "var(--rsd-accent-bg)" : "var(--gw-bg)",
               border: `1px solid ${isOver ? "var(--rsd-accent)" : "var(--gw-border)"}`,
               borderRadius: 12,
               padding: 10,
@@ -100,7 +101,7 @@ export function KanbanBoard({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 4px" }}>
-              <span style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--gw-fg-muted)" }}>
+              <span style={{ fontFamily: "var(--rsd-display)", fontSize: "calc(12px * var(--rsd-display-scale))", fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--gw-fg-muted)" }}>
                 {col.label}
               </span>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)" }}>{colCards.length}</span>
@@ -137,7 +138,7 @@ export function KanbanBoard({
                 <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.35, color: "var(--gw-fg)" }}>
                   {c.category && (
                     <span
-                      className={`rsd-chip ${c.category.chip_class}`}
+                      className={`rsd-chip rsd-chip-dot ${c.category.chip_class}`}
                       title={c.category.name}
                       style={{ display: "inline-block", width: 9, height: 9, padding: 0, borderRadius: "50%", marginRight: 7, verticalAlign: "middle", flexShrink: 0 }}
                     />

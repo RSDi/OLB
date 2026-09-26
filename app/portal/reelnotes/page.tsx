@@ -24,7 +24,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#6C8C59",
+  themeColor: "#000000",
+  colorScheme: "dark",
 };
 
 export default async function ReelNotesPage({

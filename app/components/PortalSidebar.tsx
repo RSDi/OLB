@@ -33,6 +33,18 @@ const NAV: NavItem[] = [
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true },
 ];
 
+// Wordmark in the sidebar's brand block (Lightning theme).
+const BRAND = { name: "OLB", tagline: "MEMBER PORTAL" };
+
+// Filled lightning bolt for the brand tile. Icons in ./icons are stroke-only.
+function BoltMark({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M14 2 5 13.5h6L10 22l9-11.5h-6L14 2z" fill="currentColor" />
+    </svg>
+  );
+}
+
 // Trimmed viewer shape — sidebar only needs role/status to decide which nav
 // items to show. Layout fetches the full viewer once per request and hands
 // us this slice so we don't fire a duplicate Supabase query post-hydration.
@@ -98,27 +110,40 @@ export function PortalSidebar({
 
   return (
     <aside className={`rsd-sidebar${mobileOpen ? " rsd-mob-open" : ""}`} style={{
-      background: "var(--gw-ink)",
-      borderRight: "1px solid var(--gw-stroke-dark)",
+      background: "var(--rsd-frame)",
+      borderRight: "1px solid var(--rsd-frame-line)",
       padding: c ? "20px 8px" : "20px 14px",
       display: "flex", flexDirection: "column", gap: 14,
-      color: "rgba(255,255,255,.7)",
+      color: "var(--rsd-frame-fg-2)",
       transition: "padding 200ms var(--gw-ease)",
     }}>
       {/* Brand */}
-      <Link href="/" style={{
-        display: "flex", gap: c ? 0 : 10, alignItems: "center",
+      <Link href="/" aria-label={`${BRAND.name} home`} style={{
+        display: "flex", gap: 10, alignItems: "center",
         justifyContent: c ? "center" : "flex-start",
-        padding: c ? "10px 0" : "10px 12px",
-        border: "1px solid var(--gw-stroke-dark)",
-        borderRadius: 12, background: "var(--gw-ink-2)",
+        padding: c ? "8px 0" : "10px 12px",
+        border: "1px solid var(--rsd-frame-line)",
+        borderRadius: 12, background: "var(--rsd-frame-2)",
         textDecoration: "none",
         flexShrink: 0,
       }}>
+        <span style={{
+          width: 34, height: 34, flexShrink: 0, borderRadius: 9,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "var(--rsd-accent)", color: "var(--rsd-accent-on)",
+        }}>
+          <BoltMark />
+        </span>
         {!c && (
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: 11, color: "#fff", lineHeight: 1 }}>Millard Community</div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,.4)", lineHeight: 1, marginTop: 2, letterSpacing: ".04em" }}>MEMBER PORTAL</div>
+          <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{
+              fontFamily: "var(--rsd-display)", fontWeight: 800,
+              fontSize: "calc(15px * var(--rsd-display-scale))", lineHeight: 1,
+              letterSpacing: ".02em", textTransform: "uppercase", color: "var(--rsd-frame-fg)",
+            }}>
+              {BRAND.name}
+            </div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "var(--rsd-frame-fg-3)", lineHeight: 1, letterSpacing: ".08em" }}>{BRAND.tagline}</div>
           </div>
         )}
       </Link>
@@ -136,7 +161,8 @@ export function PortalSidebar({
               key={item.href}
               href={item.href}
               prefetch={false}
-              className="gw-press"
+              aria-current={active ? "page" : undefined}
+              className="gw-press rsd-nav-item"
               onClick={() => { if (isMobile) onNavigate?.(); }}
               style={{
                 display: "flex",
@@ -144,12 +170,14 @@ export function PortalSidebar({
                 alignItems: "center",
                 justifyContent: c ? "center" : "flex-start",
                 gap: c ? 3 : (isMobile ? 14 : 10),
-                padding: c ? "7px 2px" : (isMobile ? "14px 14px" : "8px 10px"),
-                borderRadius: 9,
-                background: active ? "var(--gw-ink-2)" : "transparent",
-                color: active ? "#fff" : "rgba(255,255,255,.65)",
+                padding: c ? "7px 2px" : (isMobile ? "14px 14px" : "9px 10px"),
+                borderRadius: isMobile ? 10 : 9,
+                // Inactive items leave background unset so the hover rule in
+                // globals.css (.rsd-nav-item) can apply.
+                background: active ? "var(--rsd-accent)" : undefined,
+                color: active ? "var(--rsd-accent-on)" : "var(--rsd-frame-fg-2)",
                 border: "1px solid",
-                borderColor: active ? "var(--gw-stroke-dark)" : "transparent",
+                borderColor: active ? "var(--rsd-accent)" : "transparent",
                 fontWeight: 700, fontSize: isMobile ? 15 : 13, lineHeight: 1,
                 textDecoration: "none",
                 transition: "background 150ms",
@@ -157,13 +185,13 @@ export function PortalSidebar({
                 minHeight: isMobile ? 48 : undefined,
               }}
             >
-              <span style={{ display: "flex", flexShrink: 0, color: active ? "var(--rsd-accent)" : "rgba(255,255,255,.5)", position: "relative", transform: isMobile ? "scale(1.15)" : undefined, transformOrigin: "center" }}>
+              <span style={{ display: "flex", flexShrink: 0, color: active ? "var(--rsd-accent-on)" : "var(--rsd-frame-fg-3)", position: "relative", transform: isMobile ? "scale(1.15)" : undefined, transformOrigin: "center" }}>
                 {item.icon}
                 {isSettings && pendingCount > 0 && (
                   <span style={{
                     position: "absolute", top: -4, right: -4,
                     width: 14, height: 14, borderRadius: "50%",
-                    background: "var(--gw-error)", color: "#fff",
+                    background: "var(--rsd-error-fill)", color: "#fff",
                     fontSize: 9, fontWeight: 800,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     lineHeight: 1,
@@ -181,7 +209,7 @@ export function PortalSidebar({
                   {item.label}
                   {isSettings && pendingCount > 0 && !c && (
                     <span style={{
-                      background: "var(--gw-error)", color: "#fff",
+                      background: "var(--rsd-error-fill)", color: "#fff",
                       fontSize: 10, fontWeight: 800, borderRadius: 100,
                       padding: "2px 6px", lineHeight: 1.4,
                     }}>
@@ -205,8 +233,8 @@ export function PortalSidebar({
             style={{
               display: "flex", alignItems: "center", justifyContent: c ? "center" : "flex-start",
               gap: 10, padding: "10px 12px", borderRadius: 10, width: "100%",
-              background: "var(--gw-ink-3)", border: "1px solid var(--gw-stroke-dark)",
-              color: "rgba(255,255,255,.75)", fontWeight: 700, fontSize: 13,
+              background: "var(--rsd-frame-2)", border: "1px solid var(--rsd-frame-line)",
+              color: "var(--rsd-frame-fg-2)", fontWeight: 700, fontSize: 13,
             }}
           >
             <span style={{ display: "flex", flexShrink: 0 }}>
@@ -222,13 +250,13 @@ export function PortalSidebar({
             gap: isMobile ? 14 : 10,
             padding: isMobile ? "14px 14px" : "10px 12px",
             borderRadius: 10, width: "100%",
-            color: "rgba(255,255,255,.5)", fontWeight: 700,
+            color: "var(--rsd-frame-fg-3)", fontWeight: 700,
             fontSize: isMobile ? 15 : 13,
             minHeight: isMobile ? 48 : undefined,
             background: "none", border: "none", cursor: "pointer", transition: "color 150ms",
           }}
           onMouseEnter={e => (e.currentTarget.style.color = "var(--gw-error)")}
-          onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,.5)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "var(--rsd-frame-fg-3)")}
         >
           <span style={{ display: "flex", transform: isMobile ? "scale(1.15)" : undefined }}>
             <Icons.LogOut width={16} height={16}/>

@@ -120,8 +120,11 @@ export const TopbarSearch = forwardRef<TopbarSearchHandle>(function TopbarSearch
         minWidth: 0,
       }}
     >
-      {/* Input shell — looks like the existing pill but is a real input. */}
+      {/* Input shell — looks like the existing pill but is a real input.
+          Sits on the black top bar, so it uses the frame tokens; the focus
+          ring and placeholder color are .rsd-topbar-search in globals.css. */}
       <div
+        className="rsd-topbar-search"
         style={{
           display: "flex",
           alignItems: "center",
@@ -129,9 +132,9 @@ export const TopbarSearch = forwardRef<TopbarSearchHandle>(function TopbarSearch
           height: 36,
           padding: "0 10px 0 12px",
           borderRadius: 100,
-          background: "var(--gw-bg-elev)",
-          border: "1px solid var(--gw-border)",
-          color: "var(--gw-fg-muted)",
+          background: "var(--rsd-frame-2)",
+          border: "1px solid var(--rsd-frame-line)",
+          color: "var(--rsd-frame-fg-3)",
         }}
       >
         <Icons.Search width={14} height={14} />
@@ -156,7 +159,7 @@ export const TopbarSearch = forwardRef<TopbarSearchHandle>(function TopbarSearch
             background: "transparent",
             fontSize: 13,
             fontWeight: 500,
-            color: "var(--gw-fg)",
+            color: "var(--rsd-frame-fg)",
             padding: 0,
             minWidth: 0,
           }}
@@ -177,7 +180,7 @@ export const TopbarSearch = forwardRef<TopbarSearchHandle>(function TopbarSearch
               borderRadius: 100,
               border: "none",
               background: "transparent",
-              color: "var(--gw-fg-muted)",
+              color: "var(--rsd-frame-fg-3)",
               cursor: "pointer",
               padding: 0,
             }}
@@ -195,9 +198,9 @@ export const TopbarSearch = forwardRef<TopbarSearchHandle>(function TopbarSearch
               height: 22,
               padding: "0 6px",
               borderRadius: 6,
-              border: "1px solid var(--gw-border)",
-              background: "var(--gw-bg)",
-              color: "var(--gw-fg-muted)",
+              border: "1px solid var(--rsd-frame-line)",
+              background: "var(--rsd-frame)",
+              color: "var(--rsd-frame-fg-3)",
               fontSize: 10,
               fontWeight: 700,
             }}

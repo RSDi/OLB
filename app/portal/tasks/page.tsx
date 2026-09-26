@@ -468,7 +468,7 @@ export default async function PortalMaintenancePage({
                   <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.45 }}>
                     {t.category && (
                       <span
-                        className={`rsd-chip ${t.category.chip_class}`}
+                        className={`rsd-chip rsd-chip-dot ${t.category.chip_class}`}
                         title={t.category.name}
                         style={{ display: "inline-block", width: 9, height: 9, padding: 0, borderRadius: "50%", marginRight: 7, verticalAlign: "middle", flexShrink: 0 }}
                       />
