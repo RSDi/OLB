@@ -125,21 +125,55 @@ export async function downloadAndStoreSlackFile(
   }
 }
 
-// Batched — one Storage API round trip for however many files a channel page
-// needs to render, rather than one call per file.
-export async function signArchiveFileUrls(admin: SupabaseClient, storagePaths: string[]): Promise<Map<string, string>> {
+// Batched — one Storage API round trip per SIGN_BATCH_SIZE paths rather than
+// one call per file, and chunked so a page signing thousands of paths (the
+// photo album signs a preview for every photo in the archive) sends several
+// modest requests in parallel instead of one enormous one. A path whose
+// object doesn't exist comes back without a signed URL and is simply absent
+// from the result — the album relies on that to tell which previews exist.
+const SIGN_BATCH_SIZE = 1000;
+
+export async function signArchiveFileUrls(
+  admin: SupabaseClient,
+  storagePaths: string[],
+  ttlSeconds: number = SIGNED_URL_TTL_SECONDS,
+): Promise<Map<string, string>> {
   const result = new Map<string, string>();
   if (storagePaths.length === 0) return result;
 
-  const { data, error } = await admin.storage
-    .from(ARCHIVE_FILES_BUCKET)
-    .createSignedUrls(storagePaths, SIGNED_URL_TTL_SECONDS);
-  if (error || !data) {
-    console.error("[slack-archive] signing file URLs failed:", error?.message);
-    return result;
+  const batches: string[][] = [];
+  for (let i = 0; i < storagePaths.length; i += SIGN_BATCH_SIZE) {
+    batches.push(storagePaths.slice(i, i + SIGN_BATCH_SIZE));
   }
-  for (const entry of data) {
-    if (entry.signedUrl && entry.path) result.set(entry.path, entry.signedUrl);
+  const responses = await Promise.all(
+    batches.map((batch) => admin.storage.from(ARCHIVE_FILES_BUCKET).createSignedUrls(batch, ttlSeconds)),
+  );
+  for (const { data, error } of responses) {
+    if (error || !data) {
+      console.error("[slack-archive] signing file URLs failed:", error?.message);
+      continue;
+    }
+    for (const entry of data) {
+      if (entry.signedUrl && entry.path) result.set(entry.path, entry.signedUrl);
+    }
   }
   return result;
+}
+
+// One original, signed on demand — what the album's media route redirects
+// to. `download` names the file and makes the browser save it rather than
+// display it. Null when the object doesn't exist (or signing failed).
+export async function signArchiveFileUrl(
+  admin: SupabaseClient,
+  storagePath: string,
+  opts: { download?: string } = {},
+): Promise<string | null> {
+  const { data, error } = await admin.storage
+    .from(ARCHIVE_FILES_BUCKET)
+    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS, opts.download ? { download: opts.download } : undefined);
+  if (error || !data?.signedUrl) {
+    if (error) console.error("[slack-archive] signing file URL failed:", error.message);
+    return null;
+  }
+  return data.signedUrl;
 }

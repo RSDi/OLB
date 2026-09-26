@@ -9,6 +9,19 @@ import { createAdminClient } from "../supabase/admin";
 import { getViewer, type Viewer } from "../auth/viewer";
 import { signArchiveFileUrls, type ArchivedFile } from "./files";
 import type { StoredReaction } from "./sync";
+import {
+  albumMediaKind,
+  buildAlbumItems,
+  isThreadReply,
+  orderAlbumItems,
+  threadParentKey,
+  thumbnailPathFor,
+  type AlbumItem,
+  type AlbumMediaKind,
+  type AlbumSourceMessage,
+  type AlbumThreadParent,
+} from "./album";
+import { decodeSlackEntities } from "./text";
 
 export async function loadArchiveViewer(): Promise<Viewer> {
   const viewer = await getViewer();
@@ -411,4 +424,194 @@ export async function loadArchiveChannelMessages(slackChannelId: string): Promis
   }
 
   return parents;
+}
+
+// ─── Photo album ────────────────────────────────────────────────────────
+
+// Album previews are signed for longer than the channel page's one-hour
+// attachment links: an album is something you browse for a while, and a
+// preview that expires mid-scroll just leaves a hole. They're small derived
+// images of files only super admins can reach in the first place. Full-size
+// originals don't need this — the viewer loads them through the media route,
+// which signs a fresh URL per request.
+const ALBUM_PREVIEW_TTL_SECONDS = 3 * 60 * 60;
+
+export interface ArchiveAlbum {
+  items: AlbumItem[];      // oldest first; the page orders them for display
+  missingPreviews: number; // items the thumbnail job hasn't reached yet
+  signedAt: number;        // when the preview URLs were minted (epoch ms)
+  previewTtlMs: number;
+  queryError: string | null;
+}
+
+type ArchiveSupabase = Awaited<ReturnType<typeof createClient>>;
+
+const ALBUM_MESSAGE_COLUMNS = "id, channel_id, ts, thread_ts, author_name, message_text, posted_at, files";
+
+function hasAlbumMedia(row: AlbumSourceMessage): boolean {
+  return (row.files ?? []).some((f) => f?.storage_path && !f.error && albumMediaKind(f));
+}
+
+function decodeAlbumRow(row: AlbumSourceMessage): AlbumSourceMessage {
+  return { ...row, message_text: decodeSlackEntities(row.message_text ?? "") };
+}
+
+// The text of the thread each reply was posted in, so a photo posted as a
+// bare reply is still findable by what the thread was about ("Roof repair
+// update"). One indexed lookup per channel (chunked to keep URLs short) via
+// the (channel_id, ts) unique index from migration 0077.
+async function loadAlbumThreadParents(
+  supabase: ArchiveSupabase,
+  replies: AlbumSourceMessage[],
+): Promise<Map<string, AlbumThreadParent>> {
+  const tsByChannel = new Map<string, Set<string>>();
+  for (const r of replies) {
+    if (!r.thread_ts) continue;
+    const set = tsByChannel.get(r.channel_id) ?? new Set<string>();
+    set.add(r.thread_ts);
+    tsByChannel.set(r.channel_id, set);
+  }
+
+  const CHUNK_SIZE = 150;
+  const lookups: PromiseLike<{ data: unknown; error: { message: string } | null }>[] = [];
+  for (const [channelId, tsSet] of tsByChannel) {
+    const threadTs = [...tsSet];
+    for (let i = 0; i < threadTs.length; i += CHUNK_SIZE) {
+      lookups.push(
+        supabase
+          .from("slack_archive_messages")
+          .select("channel_id, ts, author_name, message_text")
+          .eq("channel_id", channelId)
+          .in("ts", threadTs.slice(i, i + CHUNK_SIZE)),
+      );
+    }
+  }
+
+  const parents = new Map<string, AlbumThreadParent>();
+  for (const { data, error } of await Promise.all(lookups)) {
+    if (error) {
+      // Non-fatal — the photos still show; they just lose their thread's
+      // text as search context.
+      console.error("loadArchiveAlbum: thread parent lookup failed", error);
+      continue;
+    }
+    for (const p of (data ?? []) as { channel_id: string; ts: string; author_name: string | null; message_text: string }[]) {
+      parents.set(threadParentKey(p.channel_id, p.ts), {
+        author: p.author_name,
+        text: decodeSlackEntities(p.message_text ?? ""),
+      });
+    }
+  }
+  return parents;
+}
+
+// Every stored photo and video across every registered channel (inactive
+// ones included — their history stays browsable), for the album page.
+//
+// Scans only messages that carry attachments at all (`files <> '[]'`), with
+// the same keyset-on-`id` pagination as loadAllFailedFiles and for the same
+// reason: a cross-channel posted_at sort has no index to lean on. Display
+// order is applied afterwards, in JS, over the much smaller media set.
+//
+// Each item's grid image is its generated preview when one exists
+// (thumbnailPathFor; made by scripts/slack-archive-generate-thumbnails.ts),
+// else the full original for photos, else nothing for videos — the page
+// shows a placeholder tile until the thumbnail job reaches it.
+export async function loadArchiveAlbum(): Promise<ArchiveAlbum> {
+  const supabase = await createClient();
+  const PAGE_SIZE = 1000;
+  const rows: AlbumSourceMessage[] = [];
+  let queryError: string | null = null;
+  let lastId: string | null = null;
+  for (;;) {
+    const base = supabase
+      .from("slack_archive_messages")
+      .select(ALBUM_MESSAGE_COLUMNS)
+      .neq("files", "[]")
+      .order("id", { ascending: true })
+      .limit(PAGE_SIZE);
+    const { data, error } = await (lastId ? base.gt("id", lastId) : base);
+    if (error) {
+      console.error("loadArchiveAlbum failed", error);
+      queryError = error.message;
+      break;
+    }
+    const page = (data ?? []) as AlbumSourceMessage[];
+    for (const row of page) if (hasAlbumMedia(row)) rows.push(decodeAlbumRow(row));
+    if (page.length < PAGE_SIZE) break;
+    lastId = page[page.length - 1].id;
+  }
+
+  const parents = await loadAlbumThreadParents(supabase, rows.filter(isThreadReply));
+  const items = buildAlbumItems(rows, parents);
+  const signedAt = Date.now();
+  if (items.length === 0) {
+    return { items, missingPreviews: 0, signedAt, previewTtlMs: ALBUM_PREVIEW_TTL_SECONDS * 1000, queryError };
+  }
+
+  const admin = createAdminClient();
+  const previews = await signArchiveFileUrls(admin, items.map((i) => thumbnailPathFor(i.path)), ALBUM_PREVIEW_TTL_SECONDS);
+  const photosWithoutPreview = items.filter((i) => i.kind === "image" && !previews.has(thumbnailPathFor(i.path)));
+  const originals = await signArchiveFileUrls(admin, photosWithoutPreview.map((i) => i.path), ALBUM_PREVIEW_TTL_SECONDS);
+
+  let missingPreviews = 0;
+  for (const item of items) {
+    const preview = previews.get(thumbnailPathFor(item.path));
+    if (preview) {
+      item.thumbUrl = preview;
+      item.hasThumb = true;
+    } else {
+      missingPreviews += 1;
+      item.thumbUrl = item.kind === "image" ? (originals.get(item.path) ?? null) : null;
+    }
+  }
+
+  return { items, missingPreviews, signedAt, previewTtlMs: ALBUM_PREVIEW_TTL_SECONDS * 1000, queryError };
+}
+
+export interface AlbumPreviewTile {
+  id: string;
+  kind: AlbumMediaKind;
+  url: string;
+}
+
+// A few of the newest photos for the album card on /portal/slack-archive.
+// One small query (the latest posts with attachments) rather than the full
+// album scan, so the channel list page stays quick. Best-effort: any failure
+// just leaves the card without pictures.
+export async function loadAlbumPreviewTiles(count = 4): Promise<AlbumPreviewTile[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("slack_archive_messages")
+      .select(ALBUM_MESSAGE_COLUMNS)
+      .neq("files", "[]")
+      .order("posted_at", { ascending: false })
+      .limit(60);
+    if (error) {
+      console.error("loadAlbumPreviewTiles failed", error);
+      return [];
+    }
+    const rows = ((data ?? []) as AlbumSourceMessage[]).filter(hasAlbumMedia);
+    const candidates = orderAlbumItems(buildAlbumItems(rows, new Map()), "newest").slice(0, count * 3);
+    if (candidates.length === 0) return [];
+
+    const admin = createAdminClient();
+    const previews = await signArchiveFileUrls(admin, candidates.map((i) => thumbnailPathFor(i.path)), ALBUM_PREVIEW_TTL_SECONDS);
+    const withPreview = candidates.filter((i) => previews.has(thumbnailPathFor(i.path)));
+    if (withPreview.length > 0) {
+      return withPreview.slice(0, count).map((i) => ({ id: i.id, kind: i.kind, url: previews.get(thumbnailPathFor(i.path))! }));
+    }
+    // No previews generated yet (the thumbnail job hasn't run) — fall back to
+    // a few full-size photos so the card isn't empty in the meantime.
+    const photos = candidates.filter((i) => i.kind === "image").slice(0, count);
+    const originals = await signArchiveFileUrls(admin, photos.map((i) => i.path), ALBUM_PREVIEW_TTL_SECONDS);
+    return photos.flatMap((i) => {
+      const url = originals.get(i.path);
+      return url ? [{ id: i.id, kind: i.kind, url }] : [];
+    });
+  } catch (err) {
+    console.error("loadAlbumPreviewTiles failed", err);
+    return [];
+  }
 }

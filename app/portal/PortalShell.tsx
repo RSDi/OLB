@@ -42,6 +42,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/slack-archive":            { title: "Slack Archive", subtitle: "" },
   "/portal/slack-archive/search":     { title: "Search archive", subtitle: "Slack Archive" },
   "/portal/slack-archive/exceptions": { title: "Exceptions",     subtitle: "Slack Archive" },
+  "/portal/slack-archive/album":      { title: "Photo Album",    subtitle: "Slack Archive" },
 };
 
 interface Props {

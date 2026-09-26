@@ -1,0 +1,42 @@
+name: "Slack Archive: Make Album Previews"
+
+# Makes the small preview images the photo album's grid shows
+# (/portal/slack-archive/album) for any archived photo or video that doesn't
+# have one yet — see scripts/slack-archive-generate-thumbnails.ts. Runs here
+# rather than in the nightly Vercel sync for the same reasons as the
+# compression workflow: it needs sharp and ffmpeg (heavy native binaries,
+# installed by `npm ci` from devDependencies) and more time than a 60s
+# serverless function gets on a big backlog.
+#
+# Scheduled after the nightly sync (05:07 UTC, see vercel.json) and the
+# compression sweep (05:40 UTC, slack-archive-compress.yml), so that night's
+# new and newly-compressed files get previews the same morning. The album's
+# "Make previews now" button dispatches it on demand.
+
+on:
+  schedule:
+    - cron: "10 6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  thumbnails:
+    name: Make missing previews
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Make previews for new photos and videos
+        run: npx tsx scripts/slack-archive-generate-thumbnails.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Optional: lets files this can't decode (e.g. HEIC) use Slack's own preview.
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

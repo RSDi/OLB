@@ -4,6 +4,7 @@
 
 import Link from "next/link";
 import { loadArchiveViewer, loadArchiveChannels } from "../../../lib/slack-archive/data";
+import { AlbumCard } from "./AlbumCard";
 import { ChannelsPanel } from "./ChannelsPanel";
 
 export default async function SlackArchivePage() {
@@ -34,6 +35,7 @@ export default async function SlackArchivePage() {
       <p style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, marginBottom: 24 }}>
         Full-history archive of registered Slack channels, synced nightly. Visible to super admins only.
       </p>
+      <AlbumCard />
       <ChannelsPanel channels={channels} />
     </div>
   );

@@ -43,12 +43,20 @@ export default async function SlackArchiveChannelPage({
         >
           ← All channels
         </Link>
-        <Link
-          href="/portal/slack-archive/exceptions"
-          style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
-        >
-          View exceptions →
-        </Link>
+        <div style={{ display: "flex", gap: 16 }}>
+          <Link
+            href={`/portal/slack-archive/album?channel=${encodeURIComponent(slackChannelId)}`}
+            style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+          >
+            Photos →
+          </Link>
+          <Link
+            href="/portal/slack-archive/exceptions"
+            style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+          >
+            View exceptions →
+          </Link>
+        </div>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, margin: "4px 0 24px" }}>
         <ChannelSwitcher
