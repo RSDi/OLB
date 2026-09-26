@@ -57,16 +57,17 @@ export function KpiCard({ label, value, sub, accent, href }: {
 }) {
   const style: CSSProperties = {
     padding: "var(--rsd-kpi-pad)", gap: 10,
-    ...(accent ? { background: "var(--gw-rose-bg)", border: "1px solid rgba(108,140,89,.25)" } : {}),
+    ...(accent ? { background: "var(--rsd-kpi-accent-bg)", border: "1px solid var(--rsd-kpi-accent-line)" } : {}),
     ...(href ? { textDecoration: "none", cursor: "pointer" } : {}),
   };
   const body = (
     <>
-      <span className="rsd-eyebrow">{label}</span>
+      <span className="rsd-eyebrow" style={accent ? { color: "var(--rsd-kpi-accent-label)" } : undefined}>{label}</span>
       <span style={{
+        fontFamily: "var(--rsd-display)",
         fontWeight: 700,
-        fontSize: "var(--rsd-kpi-num)",
-        lineHeight: 1, letterSpacing: "-.02em",
+        fontSize: "calc(var(--rsd-kpi-num) * var(--rsd-display-scale))",
+        lineHeight: 1,
         color: accent ? "var(--rsd-accent)" : "var(--gw-fg)",
       }}>{value}</span>
       {sub && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)" }}>{sub}</span>}

@@ -212,7 +212,7 @@ export function ClosuresTab({ me }: { me: MemberLike }) {
         ) : (
           <div className="rsd-card" style={{
             flexDirection: "row", alignItems: "center", gap: 14, padding: "18px 20px",
-            background: "var(--gw-rose-bg)", border: "1px solid rgba(108,140,89,.25)",
+            background: "var(--rsd-accent-bg)", border: "1px solid var(--rsd-accent-line)",
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 800, fontSize: 14, color: "var(--rsd-accent)" }}>

@@ -510,7 +510,7 @@ export default async function PortalDashboard() {
                     height: 36,
                     borderRadius: 9,
                     background: "var(--rsd-accent-bg)",
-                    border: "1px solid rgba(108,140,89,.2)",
+                    border: "1px solid var(--rsd-accent-edge)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",

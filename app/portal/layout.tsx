@@ -9,8 +9,16 @@
 // All UI state (collapse, mobile drawer, page title computation) lives in
 // the `PortalShell` client component below.
 
+import type { Viewport } from "next";
 import { getPendingMembersCount, getViewer } from "../../lib/auth/viewer";
 import { PortalShell } from "./PortalShell";
+
+// The portal is dark (the Lightning theme): tint mobile browser chrome to
+// match the black top bar, and tell the browser before any CSS loads.
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  colorScheme: "dark",
+};
 
 export default async function PortalLayout({
   children,

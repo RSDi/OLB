@@ -78,6 +78,23 @@
   --rsd-accent-soft: var(--gw-rose-soft);
   --rsd-accent-on: var(--gw-rose-dark);
   --rsd-accent-bg: var(--gw-rose-bg);
+
+  /* Defaults for the tokens the member portal's Lightning theme (bottom of
+     this file) retunes, so anything using them outside the portal still
+     resolves to this palette. */
+  --rsd-accent-rgb: 108, 140, 89;
+  --rsd-accent-line: rgba(108, 140, 89, 0.25);
+  --rsd-accent-edge: rgba(108, 140, 89, 0.2);
+  --rsd-kpi-accent-bg: var(--gw-rose-bg);
+  --rsd-kpi-accent-line: rgba(108, 140, 89, 0.25);
+  --rsd-kpi-accent-label: var(--gw-fg-muted);
+  --rsd-row-hover: var(--gw-bg);
+  --rsd-error-fill: var(--gw-error);
+  --rsd-warn: #92400e;
+  --rsd-warn-bg: rgb(254, 243, 199);
+  --rsd-warn-line: rgba(146, 64, 14, 0.25);
+  --rsd-display: var(--gw-font);
+  --rsd-display-scale: 1;
 }
 
 [data-theme="dark"] {
@@ -1447,3 +1464,135 @@ main::-webkit-scrollbar-track { background: transparent; }
 }
 .rsd-album-card-text p { margin: 0; max-width: 52ch; font-size: 13px; line-height: 1.5; font-weight: 500; color: var(--gw-fg-muted); }
 .rsd-album-card-cta { margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--rsd-accent); }
+
+/* ─── Lightning theme — the member portal ────────────────────────────────
+   Everything behind the login (/portal) renders in this theme: a black
+   frame (sidebar + top bar), a near-black page, charcoal cards, and one
+   yellow accent. PortalShell puts data-theme="lightning" on the app shell,
+   and on <html> once it mounts so the page background and anything portaled
+   to <body> match. The public site and the auth pages keep the :root palette
+   above. Yellow is a fill (buttons, the active nav item, In Progress) with
+   black text on it; on these dark surfaces it also works as link text. Kept
+   last in the file so it wins over the :root defaults on <html>. */
+[data-theme="lightning"] {
+  color-scheme: dark;
+  accent-color: #FFD100;
+
+  /* Frame: sidebar + top bar */
+  --rsd-frame: #000000;
+  --rsd-frame-2: #141416;
+  --rsd-frame-line: #26262A;
+  --rsd-frame-fg: #FFFFFF;
+  --rsd-frame-fg-2: rgba(255, 255, 255, 0.7);
+  --rsd-frame-fg-3: rgba(255, 255, 255, 0.48);
+
+  /* Content */
+  --gw-bg: #0E0E10;
+  --gw-bg-elev: #18181B;
+  --gw-fg: #F5F5F3;
+  --gw-fg-muted: rgba(245, 245, 243, 0.64);
+  --gw-fg-faint: rgba(245, 245, 243, 0.4);
+  --gw-border: #2B2B30;
+  --rsd-row-hover: #202024;
+
+  /* Accent: Lightning yellow */
+  --gw-rose: #FFD100;
+  --gw-rose-soft: #FFE066;
+  --gw-rose-bg: rgba(255, 209, 0, 0.12);
+  --gw-rose-dark: #0B0B0C;
+  --gw-rose-border-bg: rgba(255, 209, 0, 0.2);
+  --rsd-accent: #FFD100;
+  --rsd-accent-rgb: 255, 209, 0;
+  --rsd-accent-soft: #FFE066;
+  --rsd-accent-on: #0B0B0C;
+  --rsd-accent-bg: rgba(255, 209, 0, 0.12);
+  --rsd-accent-line: rgba(255, 209, 0, 0.45);
+  --rsd-accent-edge: rgba(255, 209, 0, 0.28);
+  --rsd-kpi-accent-bg: rgba(255, 209, 0, 0.07);
+  --rsd-kpi-accent-line: rgba(255, 209, 0, 0.55);
+  --rsd-kpi-accent-label: rgba(255, 209, 0, 0.85);
+
+  /* Status colors, retuned to read on dark surfaces. --gw-error is text on
+     dark; a solid red fill under white text uses --rsd-error-fill. */
+  --gw-success: #22C55E;
+  --gw-success-bg: rgba(34, 197, 94, 0.13);
+  --gw-success-bg-dark: rgba(34, 197, 94, 0.13);
+  --gw-error: #F87171;
+  --gw-error-bg: rgba(239, 68, 68, 0.12);
+  --rsd-error-fill: #DC2626;
+  --rsd-warn: #FFAD4D;
+  --rsd-warn-bg: rgba(255, 140, 0, 0.14);
+  --rsd-warn-line: rgba(255, 140, 0, 0.38);
+
+  /* Shadows without the light inset highlight, which reads as a bright edge
+     on dark cards. */
+  --gw-shadow-1: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --gw-shadow-2: 0 2px 6px 0 rgba(0, 0, 0, 0.45);
+  --gw-shadow-3: 0 8px 24px 0 rgba(0, 0, 0, 0.5);
+
+  /* Condensed display face for the wordmark, top-bar titles and big numbers
+     (loaded in app/portal/fonts.ts). Condensed type sets smaller than Inter,
+     so display sizes scale up by --rsd-display-scale. */
+  --rsd-display: var(--rsd-font-display, "Barlow Condensed"), "Arial Narrow", sans-serif;
+  --rsd-display-scale: 1.25;
+
+  background: var(--gw-bg);
+  color: var(--gw-fg);
+}
+
+[data-theme="lightning"] ::selection { background: rgba(255, 209, 0, 0.35); color: #FFFFFF; }
+/* :where() keeps this below the components' own focus styles. */
+:where([data-theme="lightning"]) :focus-visible { outline: 2px solid var(--rsd-accent); outline-offset: 2px; }
+
+/* Chips. Yellow is reserved for accent (In Progress, Approved); "warn"
+   (Open, Pending, due dates) moves to amber so the two don't blur. */
+[data-theme="lightning"] .rsd-chip-accent  { background: var(--rsd-accent); color: var(--rsd-accent-on); border-color: var(--rsd-accent); }
+[data-theme="lightning"] .rsd-chip-warn    { background: var(--rsd-warn-bg); color: var(--rsd-warn); border-color: var(--rsd-warn-line); }
+[data-theme="lightning"] .rsd-chip-success { background: rgba(34, 197, 94, 0.13); color: #4ADE80; border-color: rgba(34, 197, 94, 0.32); }
+[data-theme="lightning"] .rsd-chip-error   { background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border-color: rgba(239, 68, 68, 0.38); }
+[data-theme="lightning"] .rsd-chip-mute    { background: var(--gw-bg); color: var(--gw-fg-muted); border-color: var(--gw-border); }
+/* A category dot is a bare 9px chip; fill it with the chip's text color so
+   the tinted chip backgrounds don't disappear on dark. */
+[data-theme="lightning"] .rsd-chip.rsd-chip-dot { background: currentColor; border-color: transparent; }
+[data-theme="lightning"] .rsd-chip.rsd-chip-dot.rsd-chip-accent { background: var(--rsd-accent); }
+
+/* Hover lightens on dark instead of dropping to the page color. */
+[data-theme="lightning"] .rsd-tbl tbody tr:hover td,
+[data-theme="lightning"] .rsd-dash-row:hover { background: var(--rsd-row-hover); }
+[data-theme="lightning"] .rsd-seg button[aria-pressed="true"] { background: var(--rsd-accent); color: var(--rsd-accent-on); box-shadow: none; }
+[data-theme="lightning"] .gw-sum-bullet:hover { background: rgba(255, 255, 255, 0.05); }
+[data-theme="lightning"] .rsd-album-toast { background: #26262A; border: 1px solid #34343A; }
+
+/* Sidebar + top bar (PortalSidebar, PortalTopBar, TopbarSearch). Only the
+   hover and focus states live here; the rest is inline. */
+[data-theme="lightning"] .rsd-nav-item:not([aria-current="page"]):hover { background: var(--rsd-frame-2); }
+[data-theme="lightning"] .rsd-topbar-search:focus-within { box-shadow: 0 0 0 2px var(--rsd-accent); }
+[data-theme="lightning"] .rsd-topbar-search input::placeholder { color: var(--rsd-frame-fg-3); }
+
+/* Print on white paper: dark text, no yellow text, plain chips. */
+@media print {
+  [data-theme="lightning"] {
+    color-scheme: light;
+    --gw-bg: #FFFFFF;
+    --gw-bg-elev: #FFFFFF;
+    --gw-fg: #1A1A1A;
+    --gw-fg-muted: rgba(26, 26, 26, 0.62);
+    --gw-fg-faint: rgba(26, 26, 26, 0.4);
+    --gw-border: #D9D9D9;
+    --gw-error: #C53030;
+    --gw-success: #15803D;
+    --rsd-accent: #1A1A1A;
+    --rsd-accent-on: #FFFFFF;
+    --rsd-accent-bg: transparent;
+    --rsd-accent-line: #D9D9D9;
+    --rsd-kpi-accent-label: rgba(26, 26, 26, 0.62);
+    --rsd-warn: #92400E;
+    --rsd-frame: #FFFFFF;
+    --rsd-frame-2: #FFFFFF;
+    --rsd-frame-line: #D9D9D9;
+    --rsd-frame-fg: #1A1A1A;
+    --rsd-frame-fg-2: rgba(26, 26, 26, 0.75);
+    --rsd-frame-fg-3: rgba(26, 26, 26, 0.6);
+  }
+  [data-theme="lightning"] .rsd-chip { background: transparent; color: #1A1A1A; border-color: #BDBDBD; }
+}

@@ -18,21 +18,21 @@ const CARDS: RequestCard[] = [
     title: "Reserve a room or space",
     blurb: "A room, the kitchen, the gym, or the whole building — for a gathering, sports, party, wedding, or class.",
     icon: <Icons.Home width={22} height={22} />,
-    accent: { bg: "var(--rsd-accent-bg)", color: "var(--rsd-accent)" },
+    accent: { bg: "var(--rsd-accent)", color: "var(--rsd-accent-on)" },
   },
   {
     href: "/portal/requests/maintenance",
     title: "Report a problem",
     blurb: "Something's broken or needs fixing — or we should buy a piece of equipment.",
     icon: <Icons.Wrench width={22} height={22} />,
-    accent: { bg: "rgb(254,243,199)", color: "#92400e" },
+    accent: { bg: "var(--rsd-accent)", color: "var(--rsd-accent-on)" },
   },
   {
     href: "/portal/requests/question",
     title: "Ask the committee",
     blurb: "A question or a suggestion for the building committee.",
     icon: <Icons.Info width={22} height={22} />,
-    accent: { bg: "var(--gw-success-bg)", color: "#16a34a" },
+    accent: { bg: "var(--rsd-accent)", color: "var(--rsd-accent-on)" },
   },
 ];
 
@@ -56,7 +56,7 @@ export default async function RequestsLandingPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 640 }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "var(--gw-fg)" }}>What do you need?</h2>
+        <h2 style={{ margin: 0, fontFamily: "var(--rsd-display)", fontSize: "calc(22px * var(--rsd-display-scale))", fontWeight: 800, letterSpacing: ".02em", textTransform: "uppercase", lineHeight: 1.1, color: "var(--gw-fg)" }}>What do you need?</h2>
         <p style={{ margin: 0, fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.6 }}>
           Pick one below and we&rsquo;ll walk you through a few quick questions. The building committee
           reviews every request and follows up.

@@ -193,7 +193,7 @@ export function SummaryBullet({ bullet }: { bullet: ReelNotesSummaryBullet }) {
               flexShrink: 0,
               borderRadius: 6,
               border: "1px solid var(--gw-border)",
-              background: open ? "var(--rsd-accent)" : "var(--gw-surface)",
+              background: open ? "var(--rsd-accent)" : "var(--gw-bg)",
               color: open ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
               cursor: "pointer",
             }}
@@ -208,7 +208,7 @@ export function SummaryBullet({ bullet }: { bullet: ReelNotesSummaryBullet }) {
             marginTop: 6,
             marginLeft: 16,
             padding: 12,
-            background: "var(--gw-surface)",
+            background: "var(--gw-bg)",
             border: "1px solid var(--gw-border)",
             borderRadius: 8,
           }}
@@ -818,7 +818,7 @@ export function ReelNotes({
                 padding: isMobile ? "14px 20px" : "10px 18px",
                 borderRadius: 100,
                 background: "var(--rsd-accent)",
-                color: "#fff",
+                color: "var(--rsd-accent-on)",
                 border: "none",
                 fontSize: isMobile ? 15 : 13,
                 fontWeight: 700,
@@ -1051,7 +1051,7 @@ export function ReelNotes({
                     style={{
                       fontSize: 10,
                       background: "var(--rsd-accent)",
-                      color: "#fff",
+                      color: "var(--rsd-accent-on)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 3,
@@ -1359,7 +1359,7 @@ function SelectedDetail({
               <button
                 onClick={commitTitle}
                 className="gw-press"
-                style={{ padding: "5px 12px", borderRadius: 100, background: "var(--rsd-accent)", color: "#fff", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                style={{ padding: "5px 12px", borderRadius: 100, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
               >
                 Save
               </button>
@@ -1917,7 +1917,7 @@ export function ActionRow({
               padding: "5px 12px",
               borderRadius: 100,
               background: "var(--rsd-accent)",
-              color: "#fff",
+              color: "var(--rsd-accent-on)",
               border: "none",
               fontSize: 11,
               fontWeight: 700,
@@ -1961,7 +1961,7 @@ export function ActionRow({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#fff",
+          color: "var(--rsd-accent-on)",
         }}
       >
         {action.done && <Icons.CheckCircle width={12} height={12} />}
@@ -1988,7 +1988,7 @@ export function ActionRow({
             {owner && (
               <span
                 className="rsd-chip"
-                style={{ fontSize: 10, background: "var(--rsd-accent)", color: "#fff", display: "inline-flex", alignItems: "center", gap: 3 }}
+                style={{ fontSize: 10, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", display: "inline-flex", alignItems: "center", gap: 3 }}
               >
                 <Icons.User width={9} height={9} />
                 {memberLabel(owner)}
@@ -2219,7 +2219,7 @@ function pickerToggleStyle(active: boolean): CSSProperties {
     borderRadius: 100,
     cursor: "pointer",
     background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-    color: active ? "#fff" : "var(--gw-fg-muted)",
+    color: active ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
     border: active ? "1px solid var(--rsd-accent)" : "1px solid var(--gw-border)",
   };
 }
@@ -2273,7 +2273,7 @@ function AssigneePicker({
           padding: ownerId ? 0 : "0 11px",
           borderRadius: 100,
           background: ownerId ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-          color: ownerId ? "#fff" : "var(--gw-fg)",
+          color: ownerId ? "var(--rsd-accent-on)" : "var(--gw-fg)",
           border: "1px solid var(--gw-border)",
           fontSize: 11,
           fontWeight: 700,
@@ -2432,8 +2432,8 @@ function WatchMockup() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#fff",
-            boxShadow: "0 0 0 6px rgba(108,140,89,0.18), 0 0 0 14px rgba(108,140,89,0.08)",
+            color: "var(--rsd-accent-on)",
+            boxShadow: "0 0 0 6px rgba(var(--rsd-accent-rgb), 0.18), 0 0 0 14px rgba(var(--rsd-accent-rgb), 0.08)",
           }}
         >
           <Icons.Mic width={26} height={26} />
@@ -2477,7 +2477,7 @@ function RecordingModal({ elapsed, onStop }: { elapsed: number; onStop: () => vo
             width: 88,
             height: 88,
             borderRadius: "50%",
-            background: "var(--gw-error)",
+            background: "var(--rsd-error-fill)",
             color: "#fff",
             display: "flex",
             alignItems: "center",
