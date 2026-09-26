@@ -77,6 +77,13 @@ const CONTRACT: Record<string, string> = {
     "id,recording_id,text,routed_to,done,sort_order,priority,owner_member_id,supporter_member_ids,suggested_assignee_name,suggested_member_id,suggested_supporter_names,transcript_ms,anchor_quote,task_id,dismissed",
   slack_archive_channels: "id,slack_channel_id,label,active,added_by,created_at,is_private,access_checked_at,access_error",
   slack_archive_channel_members: "channel_id,member_id,created_at",
+  olb_boards: "id,season,name",
+  olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at",
+  olb_players: "id,board_id,team_id,full_name,dob,grade,sort_order,import_flag,updated_at",
+  olb_coaches: "id,board_id,team_id,name,role,sort_order,updated_at",
+  olb_registrations:
+    "id,board_id,first_name,last_name,dob,grade,parent_name,parent_email,parent_phone,extra,status,player_id,reviewed_by,reviewed_at,created_at",
+  olb_import_batches: "id,board_id,filename,summary",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {
