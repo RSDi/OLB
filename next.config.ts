@@ -16,6 +16,15 @@ const nextConfig: NextConfig = {
       // evergreen Meeting Times page; keep anything already printed working.
       { source: "/not-here", destination: "/meeting-times", permanent: false },
       { source: "/not-here-sign", destination: "/door-sign", permanent: false },
+      // URLs from the club's old Squarespace site, so existing links still land.
+      { source: "/sponsors-1", destination: "/sponsors", permanent: true },
+      { source: "/new-folder", destination: "/philosophy", permanent: false },
+      { source: "/new-dropdown", destination: "/summer", permanent: false },
+      {
+        source: "/resources",
+        destination: "https://drive.google.com/file/d/124S_qN47dtCvRyezXGfx8EcA-7C5W2Ke/view?usp=sharing",
+        permanent: false,
+      },
     ];
   },
   async headers() {

@@ -1,0 +1,1133 @@
+/*
+ * Omaha Lightning Basketball — public site.
+ *
+ * A rule-for-rule port of the club's Squarespace 7.1 site
+ * (omahalightningbasketball.com), so pages match it at every screen width.
+ * Numbers that look arbitrary (vmax paddings, the 0.0215 row factor, 16.8px,
+ * 1.87 line heights…) are Squarespace's own values.
+ *
+ * Everything hangs off .site, so none of it reaches the portal even after a
+ * client-side navigation keeps this stylesheet loaded.
+ */
+
+/* ── Root: colors, spacing and the type scale ───────────────────────────── */
+
+.site {
+  --accent: #fbcb44;
+  --light-accent: #ffc625;
+  --page-padding: 4vw;
+  --max-width: 1400px;
+  --grid-gap: 11px;
+  --header-height: calc(105px + 4vw);
+
+  /* Squarespace's responsive type: a size value V renders as
+     (V - 1) × 1.2vw + 1rem, capped at its size on a 1400px-wide page and
+     floored at V rem. Phones held upright scale with screen height instead. */
+  --fs-h1: min(calc(5.37 * 1.2vw + 1rem), max(calc(5.37 * 16.8px + 1rem), 6.37rem));
+  --fs-h2: min(calc(3.12 * 1.2vw + 1rem), max(calc(3.12 * 16.8px + 1rem), 4.12rem));
+  --fs-h3: min(calc(1.74 * 1.2vw + 1rem), max(calc(1.74 * 16.8px + 1rem), 2.74rem));
+  --fs-h4: min(calc(0.57 * 1.2vw + 1rem), max(calc(0.57 * 16.8px + 1rem), 1.57rem));
+  --fs-large: min(calc(0.47 * 1.2vw + 1rem), max(calc(0.47 * 16.8px + 1rem), 1.47rem));
+  --fs-normal: min(calc(0.08 * 1.2vw + 1rem), max(calc(0.08 * 16.8px + 1rem), 1.08rem));
+  --fs-small: min(calc(-0.02 * 1.2vw + 1rem), max(calc(-0.02 * 16.8px + 1rem), 0.98rem));
+
+  /* The site-wide default theme (Squarespace's "bright"): black on yellow. */
+  --bg: var(--accent);
+  --text: #000;
+  --btn-bg: #000;
+  --btn-text: var(--accent);
+  --box-bg: #000;
+  --box-text: var(--accent);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--accent);
+  color: var(--text);
+  font-weight: 300;
+  font-size: var(--fs-normal);
+  line-height: 1.87;
+}
+
+@media screen and (max-width: 767px) and (orientation: portrait) {
+  .site {
+    --fs-h1: calc(5.37 * 0.012 * min(100vh, 900px) + 1rem);
+    --fs-h2: calc(3.12 * 0.012 * min(100vh, 900px) + 1rem);
+    --fs-h3: calc(1.74 * 0.012 * min(100vh, 900px) + 1rem);
+    --fs-h4: calc(0.57 * 0.012 * min(100vh, 900px) + 1rem);
+    --fs-large: calc(0.47 * 0.012 * min(100vh, 900px) + 1rem);
+    --fs-normal: calc(0.08 * 0.012 * min(100vh, 900px) + 1rem);
+    --fs-small: calc(-0.02 * 0.012 * min(100vh, 900px) + 1rem);
+  }
+}
+
+@media screen and (max-width: 799px), screen and (pointer: coarse) and (max-width: 1024px) {
+  .site { --header-height: calc(105px + 12vw); }
+}
+
+@media screen and (max-width: 767px) {
+  .site { --header-height: calc(48px + 12vw); }
+}
+
+.main {
+  position: relative;
+  flex: 1;
+}
+
+/* The header floats over the top of the page, as on Squarespace, so the first
+   section reserves its height (and its background runs up behind it). */
+.main > .section:first-child {
+  padding-top: var(--header-height);
+}
+
+/* Pages that aren't built from sections (Meeting Times, building requests). */
+.main > :first-child:not(.section) {
+  margin-top: var(--header-height);
+}
+
+/* ── Section color themes ───────────────────────────────────────────────── */
+
+.themeWhite {
+  --bg: #fff;
+  --text: #000;
+  --btn-bg: #000;
+  --btn-text: #fff;
+}
+
+.themeLight {
+  --bg: var(--light-accent);
+  --text: #000;
+  --btn-bg: #000;
+  --btn-text: #fff;
+}
+
+.themeInverse {
+  --bg: #000;
+  --text: var(--accent);
+  --btn-bg: var(--accent);
+  --btn-text: #000;
+}
+
+/* ── Sections ───────────────────────────────────────────────────────────── */
+
+.section {
+  position: relative;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: var(--section-min-height, 0);
+  color: var(--text);
+}
+
+.small { --section-min-height: 33vh; --section-padding: 3.3vmax; }
+.medium { --section-min-height: 66vh; --section-padding: 6.6vmax; }
+.large { --section-min-height: 100vh; --section-padding: 10vmax; }
+
+.background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bg);
+}
+
+.backgroundImage {
+  object-fit: cover;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+}
+
+.contentWrapper {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--section-padding, 0) 0;
+}
+
+/* A background box inset from the page edges. */
+.inset {
+  padding: var(--page-padding);
+}
+
+.inset > .background {
+  inset: var(--page-padding);
+}
+
+/* "Pointed" divider: the section's bottom edge is cut into a chevron. */
+.divider {
+  z-index: 1;
+  padding-bottom: var(--divider-height);
+}
+
+.divider > .background {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--divider-height)),
+    var(--divider-tip) 100%,
+    0 calc(100% - var(--divider-height))
+  );
+}
+
+/* The next section's background slides up under the cut so the corners show
+   it, the way Squarespace does. 10vw clears every divider height used; the
+   divider section covers the rest. */
+.divider + .section > .background {
+  top: -10vw;
+}
+
+.dividerStroke {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: var(--divider-height);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.rule {
+  z-index: 1;
+}
+
+.rule::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 6px;
+  background: #000;
+  pointer-events: none;
+}
+
+/* ── Fluid grid ─────────────────────────────────────────────────────────── */
+
+/* Squarespace's "fluid engine": 8 columns on phones, 24 from 768px, each
+   capped so the grid never passes the 1400px page width. Blocks are placed
+   with explicit grid areas per breakpoint (see <Block m=… d=…>). */
+.grid {
+  --gutter: calc(6vw - var(--grid-gap));
+  --cell: calc((var(--max-width) - var(--grid-gap) * 7) / 8);
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(var(--rows-m), minmax(24px, auto));
+  grid-template-columns:
+    minmax(var(--gutter), 1fr)
+    repeat(8, minmax(0, var(--cell)))
+    minmax(var(--gutter), 1fr);
+  gap: var(--grid-gap);
+  overflow-x: clip;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    --gutter: calc(var(--page-padding) - var(--grid-gap));
+    --cell: calc((var(--max-width) - var(--grid-gap) * 23) / 24);
+    --container: min(var(--max-width), calc(100vw - var(--page-padding) * 2 - var(--inset, 0px)));
+    grid-template-rows: repeat(var(--rows-d), minmax(calc(var(--container) * 0.0215), auto));
+    grid-template-columns:
+      minmax(var(--gutter), 1fr)
+      repeat(24, minmax(0, var(--cell)))
+      minmax(var(--gutter), 1fr);
+  }
+
+  .inset .grid {
+    --inset: calc(var(--page-padding) * 2);
+  }
+}
+
+.block {
+  position: relative;
+  grid-area: var(--area-m);
+  display: flex;
+  flex-direction: column;
+  justify-content: var(--align-m);
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .block {
+    grid-area: var(--area-d);
+    justify-content: var(--align-d);
+  }
+}
+
+/* ── Text blocks ────────────────────────────────────────────────────────── */
+
+.text > :first-child { margin-top: 0; }
+.text > :last-child { margin-bottom: 0; }
+
+/* Long words (like the email address) break rather than overflow. */
+.text :not(h1, h2, h3) {
+  overflow-wrap: break-word;
+}
+
+.text h1,
+.text h2,
+.text h3,
+.text h4 {
+  margin: 2rem 0;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: pre-wrap;
+}
+
+/* Heading line height shrinks as the size grows: 1.46 × (1 + (1 − V) / 25). */
+.text h1 { font-size: var(--fs-h1); line-height: calc(1.46 * (1 + (1 - 6.37) / 25)); }
+.text h2 { font-size: var(--fs-h2); line-height: calc(1.46 * (1 + (1 - 4.12) / 25)); }
+.text h3 { font-size: var(--fs-h3); line-height: calc(1.46 * (1 + (1 - 2.74) / 25)); }
+.text h4 { font-size: var(--fs-h4); line-height: calc(1.46 * (1 + (1 - 1.57) / 25)); }
+
+.text p {
+  margin: 1rem 0;
+  line-height: 1.87;
+  white-space: pre-wrap;
+}
+
+/* Empty paragraphs still take a line, as spacers. */
+.text p:empty::before {
+  content: "";
+  display: inline-block;
+}
+
+.text p.smallText { font-size: var(--fs-small); }
+.text p.largeText { font-size: var(--fs-large); }
+
+.text strong { font-weight: 700; }
+
+/* A hairline underline set well below the text, as the original renders it. */
+.text a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.19em;
+}
+
+.text ul {
+  margin: 1em 0;
+  padding-left: 40px;
+  list-style: none;
+}
+
+.text li > * {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* The bullet hangs in the list's 40px indent. */
+.text li > :first-child::before {
+  content: "\2022";
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: 40px;
+  margin-left: -40px;
+  padding-right: 10px;
+  text-align: right;
+  white-space: pre;
+}
+
+.alignCenter { text-align: center; }
+
+/* Double underline, drawn in from the left when the page loads. */
+.highlight {
+  position: relative;
+}
+
+.highlight::after {
+  content: "";
+  position: absolute;
+  left: -0.115em;
+  right: -0.115em;
+  bottom: -0.035em;
+  height: 0.221em;
+  box-sizing: border-box;
+  border-top: 0.1em solid var(--text);
+  border-bottom: 0.1em solid var(--text);
+  transform-origin: left;
+  animation: draw 0.5s ease both;
+}
+
+@keyframes draw {
+  from { transform: scaleX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .highlight::after { animation: none; }
+}
+
+/* A text block with its own background box. */
+.box {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 6%;
+  background: var(--box-bg);
+  color: var(--box-text);
+}
+
+/* Fit-to-width headlines (Squarespace's scaled text): each line fills the
+   block, so its size is a fixed share of the block's width. The inline-block
+   wrapper keeps Squarespace's spacing: on phones the surrounding line adds a
+   few pixels under the smaller headlines. */
+.scaled {
+  container-type: inline-size;
+}
+
+.scaledLine {
+  display: inline-block;
+}
+
+.text .scaledLine > * {
+  margin: 0;
+  font-size: calc(var(--fit) * 1cqi);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.scaled a {
+  display: inline-block;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+/* Squarespace's primary button, "petal" shape. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 1.2rem 2.004rem;
+  border: 3px solid var(--btn-text);
+  border-radius: 16px 0;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  font-family: inherit;
+  font-size: var(--fs-normal);
+  font-weight: 500;
+  line-height: normal;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.1s linear;
+}
+
+.button:hover {
+  opacity: 0.8;
+}
+
+.stretched {
+  width: 100%;
+  height: 100%;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.grow,
+.tilt {
+  transition: opacity 0.1s linear, transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.grow:hover { transform: scale(1.1); }
+.tilt:hover { transform: rotate(-5deg) scale(1.1); }
+
+/* ── Images ─────────────────────────────────────────────────────────────── */
+
+.picture {
+  position: relative;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  container-type: size;
+}
+
+.frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Keeps the image's shape and fits it inside the block, centered. */
+.fitted {
+  width: min(100cqw, calc(100cqh * var(--ratio)));
+  height: min(100cqh, calc(100cqw / var(--ratio)));
+}
+
+.oval {
+  clip-path: ellipse(50% 50% at 50% 50%);
+}
+
+/* ── Gallery (masonry) sections ─────────────────────────────────────────── */
+
+.gallerySection {
+  padding: 6vw;
+}
+
+@media (min-width: 768px) {
+  .gallerySection { padding: var(--page-padding); }
+}
+
+.gallery {
+  position: relative;
+  width: 100%;
+  container-type: inline-size;
+}
+
+.galleryInset .gallery {
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+/* Squarespace spaces masonry columns by its gutter setting × width / 2000,
+   scaled down in steps on narrower galleries (measured from the live site). */
+.galleryColumns {
+  --step: 0.25;
+  --gap: calc(var(--gutter) / 20 * var(--step) * 1cqi);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+
+@container (min-width: 520px) { .galleryColumns { --step: 0.5; } }
+@container (min-width: 720px) { .galleryColumns { --step: 0.75; } }
+@container (min-width: 916px) { .galleryColumns { --step: 1; } }
+
+.galleryColumn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.galleryItem {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ── Accordion ──────────────────────────────────────────────────────────── */
+
+.accordion {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.accordionItem {
+  position: relative;
+}
+
+.accordionDivider {
+  height: 1px;
+  background: currentColor;
+}
+
+.accordionHeading {
+  margin: 0;
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  line-height: normal;
+}
+
+.accordionButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 15px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.accordionButton:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.accordionTitle {
+  flex: 1;
+  padding-right: 24px;
+  overflow: hidden;
+}
+
+.plus {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.plus::before,
+.plus::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 3px;
+  background: currentColor;
+}
+
+.plus::after {
+  transform: rotate(90deg);
+}
+
+.accordionItem[data-open="true"] .plus::after {
+  transform: rotate(0deg);
+}
+
+.accordionDescription {
+  box-sizing: border-box;
+  max-width: 300px;
+  min-width: 70%;
+  padding: 0 0 30px;
+}
+
+.accordionDescription > :first-child { margin-top: 0; }
+.accordionDescription > :last-child { margin-bottom: 0; }
+
+/* ── Social icons ───────────────────────────────────────────────────────── */
+
+.socialIcons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.socialIcon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  color: #000;
+}
+
+.socialIcon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+/* ── Contact form ───────────────────────────────────────────────────────── */
+
+.form {
+  line-height: normal;
+}
+
+.formError {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  background: #d0312d;
+  color: #fff;
+  font-size: var(--fs-small);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.formError svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.legend,
+.fieldTitle {
+  padding: 0 0 4px;
+  font-size: var(--fs-normal);
+  line-height: 1.87;
+}
+
+/* "(required)" follows the label, dropping below it when there's no room. */
+.fieldTitle,
+.fieldCaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 1ch;
+}
+
+.fieldRow {
+  display: flex;
+  gap: 10px;
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 20px;
+}
+
+.fieldCaption {
+  margin-top: 4px;
+  padding: 0 0 2px;
+  font-size: var(--fs-small);
+  line-height: 1.87;
+}
+
+.required {
+  opacity: 0.7;
+  font-size: var(--fs-small);
+}
+
+.fieldCaption .required {
+  line-height: 1;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #000;
+  border-radius: 0;
+  background: #fafafa;
+  color: #000;
+  font: inherit;
+  /* !important beats globals.css's phone-width 16px input rule (which stops
+     iOS zooming in on focus); this size never drops below 16px anyway. */
+  font-size: var(--fs-normal) !important;
+  font-weight: 300;
+  line-height: 1.87;
+}
+
+.input:focus {
+  background: #fff;
+  outline: 2px solid #000;
+  outline-offset: -1px;
+}
+
+textarea.input {
+  min-height: 100px;
+  height: 100px;
+  resize: vertical;
+}
+
+/* Off-screen trap field; people never see or fill it, spam bots do. */
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.formSuccess {
+  margin: 20px 0 0;
+  font-size: var(--fs-normal);
+  line-height: 1.87;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  width: 100%;
+  color: #000;
+}
+
+.headerOpen {
+  position: fixed;
+}
+
+.skipLink {
+  position: absolute;
+  top: 1.5em;
+  left: -1000em;
+  z-index: 3;
+  padding: 1em 1.5em;
+  background: #000;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.skipLink:focus {
+  left: 1.3em;
+}
+
+.headerBackground {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.headerOpen .headerBackground {
+  opacity: 0;
+}
+
+.headerInner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 2vw var(--page-padding);
+}
+
+.logoLink {
+  display: block;
+  flex-shrink: 0;
+  font-size: 0;
+}
+
+.logo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 105px;
+}
+
+.nav {
+  display: flex;
+  flex: 1;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  font-size: var(--fs-normal);
+  line-height: 1.87;
+}
+
+.navItem {
+  position: relative;
+  white-space: nowrap;
+}
+
+.navItem:not(:last-child) {
+  margin-right: 1.3vw;
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1em 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Current page: a hairline underline drawn just under the text. */
+.active {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: repeat-x;
+  background-size: 1px 1px;
+  background-position: 0 calc(100% - 0.1em);
+}
+
+.dropdown {
+  position: absolute;
+  top: auto;
+  right: -1em;
+  z-index: 10;
+  display: none;
+  box-sizing: content-box;
+  min-width: 200px;
+  padding: 0.5em 1em;
+  background: #fff;
+  text-align: right;
+}
+
+.navItem:hover .dropdown,
+.navItem:focus-within .dropdown {
+  display: block;
+}
+
+.dropdownItem {
+  line-height: 1.3;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  margin-left: 2vw;
+}
+
+.headerSocial {
+  display: flex;
+  align-items: center;
+  gap: 1.3vw;
+}
+
+.headerSocial a {
+  display: block;
+  width: 24px;
+  height: 24px;
+  color: inherit;
+}
+
+.headerSocial svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.headerCta {
+  margin-left: 2vw;
+  border-color: var(--accent);
+  background: #000;
+  color: var(--accent);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+
+.burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 37px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.burgerBox {
+  position: relative;
+  width: 35px;
+  height: 35px;
+}
+
+.burgerLine {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  margin-top: -0.5px;
+  background: currentColor;
+  transition: transform 250ms cubic-bezier(0.2, 0.6, 0.3, 1);
+}
+
+.burgerLine:first-child { transform: translateY(-5.5px); }
+.burgerLine:last-child { transform: translateY(5.5px); }
+.headerOpen .burgerLine:first-child { transform: rotate(45deg); }
+.headerOpen .burgerLine:last-child { transform: rotate(-45deg); }
+
+.burgerSpacer {
+  display: none;
+  width: 50px;
+  flex-shrink: 0;
+}
+
+@media screen and (max-width: 799px), screen and (pointer: coarse) and (max-width: 1024px) {
+  .headerInner { padding: 6vw; }
+  .nav,
+  .headerActions { display: none; }
+  .burger,
+  .burgerSpacer { display: flex; }
+  .logoLink {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .logo { max-height: 48px; }
+}
+
+/* Phone menu: a full-screen yellow overlay under the header bar. */
+.menu {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--header-height);
+  background: var(--accent);
+  opacity: 0;
+  visibility: hidden;
+  font-size: 1.2em;
+  text-align: center;
+  transition: visibility 600ms cubic-bezier(0.4, 0, 0.2, 1), opacity 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.headerOpen .menu {
+  opacity: 1;
+  visibility: visible;
+}
+
+.menuNav {
+  position: relative;
+  flex-grow: 1;
+  width: 100%;
+  overflow: hidden;
+  transform: translateY(20px);
+  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.headerOpen .menuNav {
+  transform: translateY(0);
+}
+
+/* Each panel fills the menu; the top level also carries the social icons and
+   Contact Us button, so they slide away when a folder opens. */
+.menuPanel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menuPanelActive { transform: translateX(0); }
+.menuPanelLeft { transform: translateX(-100%); }
+
+.menuList {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.menuItem {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 var(--page-padding);
+}
+
+.menuLink {
+  display: inline-flex;
+  align-items: center;
+  margin: 3vw 5vw;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 8.5vmin;
+  font-weight: 300;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media screen and (min-width: 576px) { .menuLink { font-size: 6.6vmin; } }
+@media screen and (min-width: 768px) { .menuLink { font-size: 6vmin; } }
+
+@media (hover: hover) {
+  .menuLink:hover { opacity: 0.9; }
+}
+
+.menuBackItem {
+  padding-bottom: 10px;
+  opacity: 0.5;
+}
+
+.menuBack {
+  padding: 0 10px;
+}
+
+.menuArrow {
+  width: 1em;
+  height: 1em;
+  margin-left: 0.15em;
+  stroke: currentColor;
+  transform: rotate(270deg);
+}
+
+.menuBack .menuArrow {
+  margin: 0 0.15em 0 0;
+  transform: rotate(90deg);
+}
+
+.menuSocial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin: 0 20px 6vw;
+  transform: translateY(100%);
+  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menuSocial a {
+  display: block;
+  width: 25px;
+  height: 25px;
+  margin: 15px 0;
+  color: inherit;
+}
+
+.menuSocial svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.menuCtaWrap {
+  transform: translateY(100%);
+  transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.headerOpen .menuSocial,
+.headerOpen .menuCtaWrap {
+  transform: translateY(0);
+}
+
+.menuCta {
+  display: inline-block;
+  min-width: 210px;
+  margin: 4vw 6vw 6vw;
+  border-color: #000;
+  background: #000;
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+
+.footer {
+  position: relative;
+}
+
+/* The one addition to the original design: a quiet sign-in link for club
+   members, centered in the footer's bottom padding so nothing else moves. */
+.login {
+  position: absolute;
+  left: 50%;
+  bottom: 3.3vmax;
+  transform: translate(-50%, 50%);
+  color: #000;
+  font-size: var(--fs-small);
+  line-height: 1.87;
+  text-decoration: underline;
+}
