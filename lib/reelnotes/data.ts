@@ -9,7 +9,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
-import { getViewer } from "../auth/viewer";
+import { getAuthUser, getViewer } from "../auth/viewer";
 import { isStorageAudio, signAudioUrl } from "reelnotes";
 import type {
   ReelNotesRecording,
@@ -306,11 +306,9 @@ export async function loadSuggestedActionItems(taskId: string): Promise<Suggeste
 }
 
 export async function loadThingsEnabled(): Promise<boolean> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return false;
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("members")
     .select("things_enabled")

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Icons } from "../../../../../components/icons";
 import { createClient } from "../../../../../../lib/supabase/server";
+import { getAuthUser } from "../../../../../../lib/auth/viewer";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../../../../lib/auth/permissions";
 import { TemplateForm, type TemplateInitialValues } from "../../TemplateForm";
 import type { ScheduleKind } from "../../../../../../lib/pm/schedule";
@@ -28,9 +29,7 @@ export default async function EditTemplatePage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: meRow } = await supabase

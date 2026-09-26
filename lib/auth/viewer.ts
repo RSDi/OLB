@@ -3,13 +3,14 @@
 // React's `cache()` dedupes identical calls within a single server render —
 // the layout, the sidebar, and every nested page can all call `getViewer()`
 // and only the first one hits Supabase. Without this, every server page
-// repeats the same `auth.getUser()` + `members` fetch, and the client
-// sidebar then refetches the same row after hydration.
+// repeats the same auth check + `members` fetch, and the client sidebar then
+// refetches the same row after hydration.
 //
 // `Viewer` exposes pre-computed `isStaff` / `isSuperAdmin` so callers don't
 // need to import permission helpers separately.
 
 import { cache } from "react";
+import { unstable_rethrow } from "next/navigation";
 import { createClient } from "../supabase/server";
 import {
   isStaff,
@@ -34,12 +35,36 @@ export interface Viewer {
   canUndeleteSettings: boolean;
 }
 
-export const getViewer = cache(async (): Promise<Viewer | null> => {
+// The signed-in user, verified, once per request. Server pages use this
+// instead of calling `supabase.auth.getUser()` themselves.
+//
+// Middleware has already made the full `getUser()` round trip to Supabase
+// Auth for every /portal request (validating the session, refreshing its
+// cookie, rejecting banned users), so rendering only needs the token's
+// verified `sub`: `getClaims()`. With asymmetric JWT signing keys that check
+// runs locally against Supabase's published public keys (cached across
+// requests), so it costs no network call; with the legacy shared secret it
+// falls back to `getUser()`, exactly as before. The ReelNotes API routes,
+// which middleware doesn't cover, still make their own `getUser()` check.
+export const getAuthUser = cache(async (): Promise<{ id: string } | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const { data } = await supabase.auth.getClaims();
+    const id = data?.claims?.sub;
+    return typeof id === "string" && id ? { id } : null;
+  } catch (err) {
+    // getClaims() throws, rather than returning an error, for a few malformed
+    // tokens (e.g. one already past its expiry). getUser() never threw, so
+    // treat those as signed out, as before.
+    unstable_rethrow(err);
+    return null;
+  }
+});
+
+export const getViewer = cache(async (): Promise<Viewer | null> => {
+  const user = await getAuthUser();
   if (!user) return null;
+  const supabase = await createClient();
 
   // Core auth row never selects the grant columns, so a pre-0057 deploy can't
   // log everyone out. Settings grants (migration 0057) load in a separate

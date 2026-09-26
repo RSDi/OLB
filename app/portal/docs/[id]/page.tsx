@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
+import { getAuthUser } from "../../../../lib/auth/viewer";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../../lib/members/display";
 import { PlaybookDetail, type PlaybookDetailData } from "./PlaybookDetail";
@@ -30,9 +31,7 @@ export default async function PlaybookDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: meRow } = await supabase

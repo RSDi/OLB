@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
+import { getAuthUser } from "../../../lib/auth/viewer";
 import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../lib/members/display";
@@ -34,9 +35,7 @@ export default async function ReviewQueuePage({
   const status: ReviewFilter = isValid(params.status) ? params.status : "pending_review";
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: meRow } = await supabase

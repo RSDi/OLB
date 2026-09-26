@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
+import { getAuthUser } from "../../../lib/auth/viewer";
 import { Icons } from "../../components/icons";
 
 interface RequestCard {
@@ -37,9 +38,7 @@ const CARDS: RequestCard[] = [
 
 export default async function RequestsLandingPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   // The member's own recent requests (wizard submissions have details), so they

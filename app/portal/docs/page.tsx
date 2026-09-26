@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/server";
+import { getAuthUser } from "../../../lib/auth/viewer";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../lib/members/display";
 
@@ -31,9 +32,7 @@ function authorLabel(name: string | null | undefined): string {
 
 export default async function PortalPlaybooksPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: meRow } = await supabase

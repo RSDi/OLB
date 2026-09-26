@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Icons } from "../components/icons";
 import { KpiCard } from "../components/ui";
 import { createClient } from "../../lib/supabase/server";
+import { getAuthUser } from "../../lib/auth/viewer";
 import { isStaff, type MemberLike } from "../../lib/auth/permissions";
 import { expandEventOccurrences } from "../../lib/events/occurrences";
 import { memberDisplayName, memberFirstName } from "../../lib/members/display";
@@ -26,9 +27,7 @@ interface UpcomingEvent {
 
 export default async function PortalDashboard() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: meRow } = await supabase

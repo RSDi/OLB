@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/server";
+import { getAuthUser } from "../../../lib/auth/viewer";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
 import { expandEventOccurrences, type EventOccurrence } from "../../../lib/events/occurrences";
 import { recurrenceSummary } from "../../../lib/events/recurrence";
@@ -54,9 +55,7 @@ export default async function PortalEventsPage({
   const view: ViewFilter = isValidView(params.view) ? params.view : "upcoming";
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: meRow } = await supabase

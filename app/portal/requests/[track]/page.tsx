@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
+import { getAuthUser } from "../../../../lib/auth/viewer";
 import { Icons } from "../../../components/icons";
 import { memberFirstName } from "../../../../lib/members/display";
 import { TrackWizard } from "../_shared/TrackWizard";
@@ -23,9 +24,7 @@ export default async function RequestTrackPage({
   const priorSteps = Math.min(10, Math.max(0, Number.parseInt(prior ?? "", 10) || 0));
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: member } = await supabase

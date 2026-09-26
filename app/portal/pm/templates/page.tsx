@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { createClient } from "../../../../lib/supabase/server";
+import { getAuthUser } from "../../../../lib/auth/viewer";
 import { isStaff, type MemberLike } from "../../../../lib/auth/permissions";
 import { describeSchedule, type ScheduleKind } from "../../../../lib/pm/schedule";
 import { GenerateInstanceButton } from "./GenerateInstanceButton";
@@ -20,9 +21,7 @@ interface TemplateRow {
 
 export default async function PmTemplatesPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: meRow } = await supabase

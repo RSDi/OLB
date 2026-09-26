@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { HelpTip } from "../../../components/HelpTip";
 import { createClient } from "../../../../lib/supabase/server";
+import { getAuthUser } from "../../../../lib/auth/viewer";
 import {
   isStaff,
   isSuperAdmin,
@@ -135,9 +136,7 @@ export default async function TicketDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: meRow } = await supabase

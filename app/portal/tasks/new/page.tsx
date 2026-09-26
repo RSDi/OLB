@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
+import { getAuthUser } from "../../../../lib/auth/viewer";
 import { Icons } from "../../../components/icons";
 import { MaintenanceRequestForm } from "./Form";
 
@@ -12,9 +13,7 @@ export default async function NewMaintenanceRequestPage({
   const { description, priority, parent, category } = await searchParams;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const [{ data: areas }, { data: priorities }, { data: categories }] = await Promise.all([

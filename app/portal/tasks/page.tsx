@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { TasksSectionNav } from "../../components/TasksSectionNav";
 import { createClient } from "../../../lib/supabase/server";
+import { getAuthUser } from "../../../lib/auth/viewer";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
 import { QueueRow, TaskScheduleChips } from "./QueueRow";
 import { KanbanBoard, type KanbanCard } from "./KanbanBoard";
@@ -106,9 +107,7 @@ export default async function PortalMaintenancePage({
   const today = churchToday();
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const { data: meRow } = await supabase
