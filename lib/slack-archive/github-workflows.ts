@@ -9,10 +9,34 @@
 // workflow file name would let a caller dispatch any workflow in the repo.
 // The action modules wrap these with their own super-admin check and a
 // fixed workflow file.
+//
+// The target repo is GITHUB_ACTIONS_REPO ("owner/name") when set. Otherwise
+// it's the GitHub repo this Vercel deployment was built from (Vercel's
+// VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG system env vars), so each site
+// dispatches its own workflows, never another site's. Runs start on
+// GITHUB_ACTIONS_REF, default "main" — deliberately not the deployment's own
+// branch, since the workflows run against the production database.
 
-const REPO_OWNER = "jeffmalone";
-const REPO_NAME = "mcc";
 const GITHUB_API_VERSION = "2022-11-28";
+const REPO_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+
+function workflowRepo(): { repo: string } | { error: string } {
+  const explicit = process.env.GITHUB_ACTIONS_REPO?.trim();
+  if (explicit) {
+    return REPO_PATTERN.test(explicit)
+      ? { repo: explicit }
+      : { error: `GITHUB_ACTIONS_REPO must look like "owner/name" (got "${explicit}").` };
+  }
+  const { VERCEL_GIT_PROVIDER, VERCEL_GIT_REPO_OWNER, VERCEL_GIT_REPO_SLUG } = process.env;
+  if (VERCEL_GIT_PROVIDER === "github" && VERCEL_GIT_REPO_OWNER && VERCEL_GIT_REPO_SLUG) {
+    return { repo: `${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}` };
+  }
+  return { error: "GITHUB_ACTIONS_REPO is not configured on the server." };
+}
+
+function workflowRef(): string {
+  return process.env.GITHUB_ACTIONS_REF?.trim() || "main";
+}
 
 export interface WorkflowRunStatus {
   status: string; // "queued" | "in_progress" | "completed"
@@ -32,13 +56,15 @@ function githubHeaders(token: string): HeadersInit {
 export async function dispatchWorkflow(workflowFile: string): Promise<{ error?: string }> {
   const token = process.env.GITHUB_ACTIONS_TOKEN;
   if (!token) return { error: "GITHUB_ACTIONS_TOKEN is not configured on the server." };
+  const target = workflowRepo();
+  if ("error" in target) return target;
 
   const res = await fetch(
-    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${workflowFile}/dispatches`,
+    `https://api.github.com/repos/${target.repo}/actions/workflows/${workflowFile}/dispatches`,
     {
       method: "POST",
       headers: { ...githubHeaders(token), "Content-Type": "application/json" },
-      body: JSON.stringify({ ref: "main" }),
+      body: JSON.stringify({ ref: workflowRef() }),
     },
   );
   if (!res.ok) {
@@ -55,10 +81,12 @@ export async function dispatchWorkflow(workflowFile: string): Promise<{ error?: 
 export async function fetchLatestWorkflowRun(workflowFile: string): Promise<WorkflowRunStatus | null> {
   const token = process.env.GITHUB_ACTIONS_TOKEN;
   if (!token) return null;
+  const target = workflowRepo();
+  if ("error" in target) return null;
 
   try {
     const res = await fetch(
-      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${workflowFile}/runs?per_page=1`,
+      `https://api.github.com/repos/${target.repo}/actions/workflows/${workflowFile}/runs?per_page=1`,
       { headers: githubHeaders(token), cache: "no-store" },
     );
     if (!res.ok) return null;

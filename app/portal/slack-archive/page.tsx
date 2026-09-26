@@ -43,7 +43,7 @@ export default async function SlackArchivePage() {
         </div>
       </div>
       <p style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, marginBottom: 24 }}>
-        Full-history archive of the church&rsquo;s Slack channels, synced nightly. Private channels are visible
+        Full-history archive of our Slack channels, synced nightly. Private channels are visible
         only to their members in Slack.
       </p>
       <AlbumCard />
