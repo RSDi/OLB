@@ -1,0 +1,133 @@
+/*
+ * The sign-in pages (Login, Request access, Set a new password) in the public
+ * site's look. They reuse its form fields and petal buttons from
+ * site.module.css; this adds the few pieces a sign-in form needs. Every rule
+ * hangs off .auth, so it wins over site.module.css whichever loads first.
+ */
+
+.auth {
+  line-height: normal;
+}
+
+/* On phones the form sits under the page heading. */
+@media (max-width: 767px) {
+  .auth {
+    margin-top: 1rem;
+  }
+}
+
+/* Buttons fill the column, one per row. The border takes the button's own
+   color (the site's is the text color, which vanishes on yellow), so stacked
+   buttons line up edge to edge. */
+.auth .action {
+  width: 100%;
+  gap: 10px;
+  border-color: var(--btn-bg);
+}
+
+.auth .action:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The other ways in: the same petal, outlined. */
+.auth .outline {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--text);
+}
+
+/* "or", on a hairline, between the ways to sign in. */
+.auth .or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  font-size: var(--fs-small);
+}
+
+.auth .or::before,
+.auth .or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.4;
+}
+
+/* Text links and text buttons, underlined like the site's links. */
+.auth .link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.19em;
+  cursor: pointer;
+}
+
+.auth .link:disabled {
+  opacity: 0.6;
+  text-decoration: none;
+  cursor: default;
+}
+
+/* A field label with a link at the far end ("Forgot password?"). */
+.auth .labelRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: 1ch;
+}
+
+.auth .labelRow .link {
+  font-size: var(--fs-small);
+}
+
+.auth .note {
+  margin: 0 0 20px;
+  font-size: var(--fs-normal);
+  line-height: 1.87;
+}
+
+.auth .hint {
+  margin: 8px 0 0;
+  font-size: var(--fs-small);
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* The emailed code: big, spaced-out digits. The indent balances the spacing
+   after the last digit so the code stays centered. */
+.auth .code {
+  font-size: calc(var(--fs-normal) * 1.5) !important;
+  font-weight: 500;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  text-align: center;
+}
+
+/* A message shown in place of the form ("Request submitted"…). */
+.auth .statusTitle {
+  font-size: var(--fs-h4);
+  line-height: calc(1.46 * (1 + (1 - 1.57) / 25));
+}
+
+/* The links under the form ("New here? Request access"). */
+.auth .more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 28px;
+  font-size: var(--fs-small);
+  line-height: 1.6;
+}
+
+.auth .more p {
+  margin: 0;
+}

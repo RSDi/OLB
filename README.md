@@ -80,6 +80,7 @@ playbooks/docs, volunteer teams, and global search.
 app/                  Routes (App Router)
   (site)/             Public site: the Omaha Lightning Basketball pages (a port of
                       its Squarespace site; styles in _components/site.module.css)
+                      and the sign-in pages (login, register, reset-password)
   portal/             Authenticated member portal
     directory/        Members, households, birthdays, volunteer-team filter, …
     maintenance/      Maintenance request tickets + comments
