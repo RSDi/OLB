@@ -37,12 +37,14 @@ export async function resolveMembership({
     null;
   const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
 
-  // Seamless access: a sign-in via the site's own Slack workspace (team id
-  // matches SLACK_TEAM_ID) is auto-approved — no review gate. Any other
-  // sign-in (email, or Slack from a different workspace) stays pending. Fails
-  // safe: if the team claim is missing or SLACK_TEAM_ID isn't set, no auto-approve.
+  // Seamless access: a user whose Slack identity is from the site's own
+  // workspace (team id matches SLACK_TEAM_ID) is auto-approved — no review
+  // gate. Everyone else (email sign-ups, Slack from a different workspace)
+  // stays pending. The team id comes only from the Slack identity Supabase
+  // Auth records (see slackTeamIds). Fails safe: if the team claim is missing
+  // or SLACK_TEAM_ID isn't set, no auto-approve.
   const homeTeam = process.env.SLACK_TEAM_ID?.trim() || null;
-  const isHomeSlack = !!homeTeam && slackTeamId(user) === homeTeam;
+  const isHomeSlack = !!homeTeam && slackTeamIds(user).includes(homeTeam);
 
   if (isAdminEmail(user.email)) {
     const admin = createAdminClient();
@@ -163,23 +165,23 @@ export async function resolveMembership({
   };
 }
 
-// Pull the Slack workspace (team) id out of a Slack OIDC sign-in, checking the
-// claim's usual locations. Returns null for non-Slack sign-ins.
-function slackTeamId(user: User): string | null {
-  const pick = (o: Record<string, unknown> | null | undefined): string | null => {
-    if (!o) return null;
-    for (const k of ["https://slack.com/team_id", "team_id"]) {
-      const v = o[k];
-      if (typeof v === "string" && v) return v;
-    }
-    return null;
+// The Slack workspace (team) ids on the user's Slack identities (provider
+// slack_oidc, or the legacy slack); empty if they've never signed in with
+// Slack. On each Slack sign-in Supabase Auth rewrites that identity's
+// identity_data from Slack's response, with the team id under custom_claims
+// (a top-level key is accepted as a fallback). Only identity_data is read:
+// user_metadata isn't a trusted source for access decisions. A user can have
+// more than one Slack identity (e.g. the same email in two workspaces), so
+// all of them are returned.
+function slackTeamIds(user: User): string[] {
+  const teamClaim = (o: unknown): string | null => {
+    if (!o || typeof o !== "object") return null;
+    const v = (o as Record<string, unknown>)["https://slack.com/team_id"];
+    return typeof v === "string" && v ? v : null;
   };
-  const ident = (user.identities ?? []).find(
-    (i) => i.provider === "slack_oidc" || i.provider === "slack",
-  );
-  return (
-    pick(user.user_metadata as Record<string, unknown>) ??
-    pick(ident?.identity_data as Record<string, unknown> | undefined)
-  );
+  return (user.identities ?? [])
+    .filter((i) => i.provider === "slack_oidc" || i.provider === "slack")
+    .map((i) => teamClaim(i.identity_data?.custom_claims) ?? teamClaim(i.identity_data))
+    .filter((id): id is string => id !== null);
 }
 
