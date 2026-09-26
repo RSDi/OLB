@@ -1,0 +1,250 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Omaha Lightning Basketball team manager + player registration — scoped theme.
+   Everything lives under .olb-root and uses --olb-* tokens ONLY, so it never
+   bleeds into the portal or public-site styles. Ported as-is from the
+   operations app's /olb module. Brand palette: black + gold (#FFCD00) +
+   red (#E30613).
+   ───────────────────────────────────────────────────────────────────────── */
+
+.olb-root {
+  --olb-black: #0a0a0a;
+  --olb-ink: #16181d;
+  --olb-surface: #ffffff;
+  --olb-surface-2: #f3f4f6;
+  --olb-stroke: #e4e6ea;
+  --olb-stroke-2: #d3d6db;
+  --olb-muted: #6b7280;
+  --olb-faint: #9aa0aa;
+
+  --olb-gold: #ffcd00;
+  --olb-gold-deep: #d9ad00;
+  --olb-gold-bg: #fff8d6;
+  --olb-red: #e30613;
+  --olb-red-deep: #b80512;
+  --olb-red-bg: #fdecec;
+  --olb-ok: #16a34a;
+  --olb-ok-bg: #e9f9f0;
+
+  --olb-radius: 14px;
+  --olb-radius-sm: 9px;
+  --olb-shadow: 0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.06);
+  --olb-shadow-lg: 0 12px 40px rgba(0,0,0,.18);
+  --olb-ease: cubic-bezier(.2,.8,.2,1);
+
+  background: var(--olb-surface-2);
+  color: var(--olb-ink);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.olb-root *, .olb-root *::before, .olb-root *::after { box-sizing: border-box; }
+
+/* Team-color accent — set via data-color on a team column/chip. */
+.olb-root [data-color]            { --olb-team: var(--olb-muted); }
+.olb-root [data-color="grey"]     { --olb-team: #9aa0a6; }
+.olb-root [data-color="black"]    { --olb-team: #111315; }
+.olb-root [data-color="red"]      { --olb-team: var(--olb-red); }
+.olb-root [data-color="blue"]     { --olb-team: #1d6fe0; }
+.olb-root [data-color="white"]    { --olb-team: #b9c0c8; }
+.olb-root [data-color="gold"]     { --olb-team: var(--olb-gold); }
+
+/* ── Manager nav row ───────────────────────────────────────────── */
+.olb-nav {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 10px 20px; background: var(--olb-surface);
+  border-bottom: 1px solid var(--olb-stroke);
+}
+.olb-nav a {
+  text-decoration: none; color: var(--olb-muted); font-weight: 600; font-size: 13.5px;
+  padding: 7px 13px; border-radius: 999px; transition: all .12s var(--olb-ease);
+}
+.olb-nav a:hover { color: var(--olb-ink); background: var(--olb-surface-2); }
+.olb-nav a[data-active="true"] { color: var(--olb-black); background: var(--olb-gold); }
+
+/* ── Layout shells ─────────────────────────────────────────────── */
+.olb-center { min-height: 60vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.olb-page { max-width: 1320px; margin: 0 auto; padding: 22px 20px 64px; }
+
+.olb-h1 { font-size: 22px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
+.olb-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--olb-faint); }
+.olb-muted { color: var(--olb-muted); }
+.olb-sub { color: var(--olb-muted); font-size: 13.5px; }
+
+/* ── Cards / panels ────────────────────────────────────────────── */
+.olb-card {
+  background: var(--olb-surface); border: 1px solid var(--olb-stroke);
+  border-radius: var(--olb-radius); box-shadow: var(--olb-shadow);
+}
+.olb-card--pad { padding: 22px; }
+
+/* ── Buttons ───────────────────────────────────────────────────── */
+.olb-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; padding: 0 18px; border-radius: 10px; border: 1px solid transparent;
+  font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: all .12s var(--olb-ease); white-space: nowrap;
+}
+.olb-btn:disabled { opacity: .6; cursor: not-allowed; }
+.olb-btn--gold { background: var(--olb-gold); color: var(--olb-black); }
+.olb-btn--gold:hover:not(:disabled) { background: var(--olb-gold-deep); }
+.olb-btn--dark { background: var(--olb-black); color: #fff; }
+.olb-btn--dark:hover:not(:disabled) { background: #25282e; }
+.olb-btn--ghost { background: var(--olb-surface); color: var(--olb-ink); border-color: var(--olb-stroke-2); }
+.olb-btn--ghost:hover:not(:disabled) { background: var(--olb-surface-2); }
+.olb-btn--danger { background: var(--olb-red); color: #fff; }
+.olb-btn--danger:hover:not(:disabled) { background: var(--olb-red-deep); }
+.olb-btn--sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+
+/* ── Forms ─────────────────────────────────────────────────────── */
+.olb-label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--olb-muted); margin-bottom: 6px; }
+.olb-input, .olb-select, .olb-textarea {
+  width: 100%; height: 42px; padding: 0 13px; font-family: inherit; font-size: 14px;
+  color: var(--olb-ink); background: var(--olb-surface);
+  border: 1px solid var(--olb-stroke-2); border-radius: 9px; outline: none;
+  transition: border-color .12s var(--olb-ease);
+}
+.olb-textarea { height: auto; min-height: 84px; padding: 11px 13px; resize: vertical; }
+.olb-input:focus, .olb-select:focus, .olb-textarea:focus { border-color: var(--olb-gold-deep); }
+.olb-field { display: block; }
+.olb-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .olb-grid-2 { grid-template-columns: 1fr; } }
+
+.olb-alert { font-size: 13px; border-radius: 9px; padding: 10px 14px; }
+.olb-alert--error { color: var(--olb-red-deep); background: var(--olb-red-bg); border: 1px solid rgba(227,6,19,.2); }
+.olb-alert--ok { color: #166534; background: var(--olb-ok-bg); border: 1px solid rgba(22,163,74,.25); }
+
+/* ── Board ─────────────────────────────────────────────────────── */
+.olb-statbar {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.olb-stat { display: flex; flex-direction: column; }
+.olb-stat__num { font-size: 26px; font-weight: 800; line-height: 1; }
+.olb-stat__lbl { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--olb-faint); margin-top: 4px; }
+
+.olb-board {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(248px, 1fr);
+  gap: 14px; align-items: start; overflow-x: auto; padding-bottom: 12px;
+}
+@media (max-width: 720px) {
+  .olb-board { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: 1fr; }
+}
+
+.olb-col {
+  background: var(--olb-surface); border: 1px solid var(--olb-stroke);
+  border-top: 4px solid var(--olb-team, var(--olb-muted));
+  border-radius: var(--olb-radius); box-shadow: var(--olb-shadow);
+  display: flex; flex-direction: column; min-height: 96px;
+  transition: box-shadow .12s var(--olb-ease), border-color .12s var(--olb-ease);
+}
+.olb-col--over { outline: 2px dashed var(--olb-gold-deep); outline-offset: 2px; background: var(--olb-gold-bg); }
+.olb-col__head { padding: 12px 13px 10px; border-bottom: 1px solid var(--olb-stroke); }
+.olb-col__title { display: flex; align-items: center; gap: 8px; }
+.olb-chip {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  color: #fff; background: var(--olb-team, var(--olb-muted));
+}
+.olb-chip[data-color="white"], .olb-chip[data-color="gold"], .olb-chip[data-color="grey"] { color: #1a1a1a; }
+.olb-col__name { font-weight: 800; font-size: 14px; }
+.olb-col__meta { font-size: 12px; color: var(--olb-muted); margin-top: 3px; }
+.olb-col__count {
+  display: inline-flex; align-items: baseline; gap: 4px; margin-top: 9px;
+  font-size: 12px; font-weight: 700;
+}
+.olb-flag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+.olb-flag--ok    { color: var(--olb-ok); background: var(--olb-ok-bg); }
+.olb-flag--under { color: var(--olb-gold-deep); background: var(--olb-gold-bg); }
+.olb-flag--over  { color: var(--olb-red-deep); background: var(--olb-red-bg); }
+
+.olb-coaches { display: flex; flex-wrap: wrap; gap: 6px; padding: 9px 11px; border-bottom: 1px dashed var(--olb-stroke); min-height: 10px; }
+.olb-coach {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px;
+  border-radius: 999px; background: var(--olb-black); color: #fff;
+  font-size: 12px; font-weight: 700; cursor: grab; user-select: none;
+}
+.olb-coach::before { content: "★"; color: var(--olb-gold); font-size: 11px; }
+.olb-coach:active { cursor: grabbing; }
+
+.olb-list { padding: 9px; display: flex; flex-direction: column; gap: 7px; min-height: 44px; }
+.olb-player {
+  display: flex; align-items: center; gap: 9px; padding: 8px 10px;
+  background: var(--olb-surface); border: 1px solid var(--olb-stroke);
+  border-radius: var(--olb-radius-sm); cursor: grab; user-select: none;
+  transition: border-color .1s var(--olb-ease), box-shadow .1s var(--olb-ease);
+}
+.olb-player:hover { border-color: var(--olb-stroke-2); box-shadow: var(--olb-shadow); }
+.olb-player:active { cursor: grabbing; }
+.olb-player__name { font-weight: 600; font-size: 13.5px; }
+.olb-player__meta { font-size: 11.5px; color: var(--olb-muted); margin-top: 1px; }
+.olb-player__spacer { flex: 1; }
+.olb-player__flag { color: var(--olb-red); font-size: 14px; line-height: 1; }
+.olb-player.olb-dragging { opacity: .4; }
+.olb-empty { font-size: 12px; color: var(--olb-faint); text-align: center; padding: 14px 8px; }
+
+/* Unassigned pool — wider, set apart */
+.olb-pool { border-top-color: var(--olb-faint); }
+.olb-pool .olb-col__name { color: var(--olb-muted); }
+
+/* Drag overlay ghost */
+.olb-overlay { transform: rotate(2deg); box-shadow: var(--olb-shadow-lg); }
+
+/* ── Mobile move sheet ─────────────────────────────────────────── */
+.olb-sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50;
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: olb-fade .15s var(--olb-ease);
+}
+.olb-sheet {
+  width: 100%; max-width: 520px; background: var(--olb-surface);
+  border-radius: 18px 18px 0 0; box-shadow: var(--olb-shadow-lg);
+  padding: 8px 0 max(16px, env(safe-area-inset-bottom)); max-height: 80vh; overflow-y: auto;
+  animation: olb-rise .2s var(--olb-ease);
+}
+.olb-sheet__grab { width: 40px; height: 4px; border-radius: 2px; background: var(--olb-stroke-2); margin: 8px auto 6px; }
+.olb-sheet__title { padding: 6px 18px 12px; font-weight: 800; font-size: 16px; border-bottom: 1px solid var(--olb-stroke); }
+.olb-sheet__opt {
+  display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+  padding: 13px 18px; background: none; border: none; border-bottom: 1px solid var(--olb-stroke);
+  font-family: inherit; font-size: 15px; font-weight: 600; color: var(--olb-ink); cursor: pointer;
+}
+.olb-sheet__opt:hover { background: var(--olb-surface-2); }
+.olb-sheet__opt[data-current="true"] { color: var(--olb-faint); }
+.olb-sheet__optcount { margin-left: auto; font-size: 12px; color: var(--olb-muted); font-weight: 700; }
+
+@keyframes olb-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes olb-rise { from { transform: translateY(16px); } to { transform: translateY(0); } }
+
+/* Tables (registrations) */
+.olb-tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.olb-tbl th { text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--olb-faint); padding: 9px 12px; border-bottom: 1px solid var(--olb-stroke); }
+.olb-tbl td { padding: 11px 12px; border-bottom: 1px solid var(--olb-stroke); }
+.olb-tbl tr:hover td { background: var(--olb-surface-2); }
+
+/* Edit-team icon button in the column header */
+.olb-iconbtn { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--olb-faint); font-size: 14px; line-height: 1; padding: 3px 7px; border-radius: 6px; }
+.olb-iconbtn:hover { background: var(--olb-surface-2); color: var(--olb-ink); }
+
+/* Move-sheet edit/remove actions + label */
+.olb-sheet__actions { display: flex; gap: 8px; padding: 10px 18px; border-bottom: 1px solid var(--olb-stroke); }
+.olb-sheet__label { padding: 12px 18px 4px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--olb-faint); }
+
+/* Edit modal (player / team) */
+.olb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; animation: olb-fade .15s var(--olb-ease); }
+.olb-modal { width: 100%; max-width: 440px; background: var(--olb-surface); border-radius: 16px; box-shadow: var(--olb-shadow-lg); padding: 22px; animation: olb-rise .2s var(--olb-ease); }
+.olb-modal__title { font-size: 18px; font-weight: 800; margin-bottom: 16px; }
+.olb-modal__actions { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
+
+/* Signature pad (draw / type) */
+.olb-sigtabs { display: inline-flex; border: 1px solid var(--olb-stroke-2); border-radius: 8px; overflow: hidden; }
+.olb-sigtab { background: #fff; border: none; padding: 6px 18px; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--olb-muted); cursor: pointer; }
+.olb-sigtab + .olb-sigtab { border-left: 1px solid var(--olb-stroke-2); }
+.olb-sigtab--on { background: var(--olb-black); color: #fff; }
+.olb-sigcanvas { border: 1px solid var(--olb-stroke-2); border-radius: 9px; background: #fff; display: block; cursor: crosshair; }
+
+/* ── Mobile (phones) ───────────────────────────────────────────────
+   Keep the 3-link nav on one line on a ~380px screen. */
+@media (max-width: 560px) {
+  .olb-nav { padding: 7px 12px; gap: 2px; }
+  .olb-nav a { font-size: 13px; padding: 6px 10px; }
+  .olb-page { padding: 16px 14px calc(40px + env(safe-area-inset-bottom, 0px)); }
+}

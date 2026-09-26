@@ -27,6 +27,8 @@ const NAV: NavItem[] = [
   { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/> },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
+  // Team manager (roster board, registrations, import): super-admin only.
+  { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true },
   // Building Committee can view Settings; editing is gated per grant inside.
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
