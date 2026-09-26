@@ -81,7 +81,8 @@ export default function RegisterPage() {
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     // On success the browser leaves for Slack and returns through /auth/callback,
-    // where church-workspace sign-ins are approved on the spot.
+    // where sign-ins from the site's own workspace (SLACK_TEAM_ID) are approved
+    // on the spot.
     if (slackError) setError(friendlyAuthError(slackError.message));
   }
 
@@ -113,8 +114,9 @@ export default function RegisterPage() {
 
   return (
     <Shell>
-      {/* Slack — the seamless path. Church-workspace members are approved on the
-          spot, so this skips the committee review the email form below goes through. */}
+      {/* Slack — the seamless path. Members of the site's own workspace are
+          approved on the spot, so this skips the review the email form below
+          goes through. */}
       <button onClick={handleSlack} disabled={pending} style={{
         display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
         height: 44, borderRadius: 8, border: "1px solid var(--gw-stroke)",
@@ -125,7 +127,7 @@ export default function RegisterPage() {
         <SlackLogo /> Continue with Slack
       </button>
       <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", textAlign: "center", marginTop: 8, lineHeight: 1.5 }}>
-        Already in the church’s Slack? This gets you in right away.
+        Already in our Slack workspace? This gets you in right away.
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0" }}>

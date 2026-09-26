@@ -299,7 +299,7 @@ function LoginContent() {
           </>
         ) : (
           <>
-            {/* Slack — the seamless path for church members */}
+            {/* Slack — the seamless path for members of the site's workspace */}
             <button
               onClick={handleSlack}
               disabled={pending !== null}

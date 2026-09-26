@@ -17,6 +17,7 @@
     "slack-archive-compress-large-files": "tsx --env-file=.env.local scripts/slack-archive-compress-large-files.ts",
     "slack-archive-emoji-map": "tsx scripts/slack-archive-generate-emoji-map.ts",
     "slack-archive-thumbnails": "tsx --env-file=.env.local scripts/slack-archive-generate-thumbnails.ts",
+    "slack-app-manifest": "tsx --env-file=.env.local scripts/slack-app-manifest.ts",
     "test": "node --test \"tests/**/*.test.ts\" \"packages/**/*.test.ts\""
   },
   "dependencies": {
