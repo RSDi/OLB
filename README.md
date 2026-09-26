@@ -46,6 +46,16 @@ playbooks/docs, volunteer teams, and global search.
    Set `ADMIN_EMAILS` to your address before signing up; the first matching
    account is promoted to super-admin so you can approve other members.
 
+   Or create admins who sign in with a password straight away (needs
+   `.env.local` with the service-role key):
+
+   ```bash
+   npm run create-admin -- --password 'temporary-password' you@example.com
+   ```
+
+   They're Super-admins, or Building Committee with `--role admin`. Re-running
+   resets the password. Each person then picks their own at `/reset-password`.
+
 5. **(Optional) Import an existing directory**
 
    ```bash
@@ -73,6 +83,7 @@ playbooks/docs, volunteer teams, and global search.
 | `npm run type-check` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm run import-directory` | One-shot Excel directory importer |
+| `npm run create-admin` | Create admins who sign in with a password (see step 4 above) |
 | `npm run slack-app-manifest` | Print the Slack app manifest for this site (see the Slack section of `.env.example`) |
 
 ## Project layout
