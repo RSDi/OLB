@@ -55,6 +55,7 @@ export function HouseholdsList({
       >
         <Link
           href="/portal/directory"
+          prefetch={false}
           style={{
             fontSize: 12,
             fontWeight: 700,
@@ -124,6 +125,11 @@ export function HouseholdsList({
   );
 }
 
+// The per-member and per-family links on these cards don't prefetch. With
+// ~150 cards, every link scrolled into view would otherwise fire a background
+// request (each a Supabase auth check in middleware), and since these pages
+// are dynamic a prefetch only fetched the route's shape — a click costs the
+// same one request either way.
 function HouseholdCard({
   household,
   currentMemberId,
@@ -215,6 +221,7 @@ function HouseholdCard({
                 {i > 0 && " & "}
                 <Link
                   href={`/portal/directory/${p.id}`}
+                  prefetch={false}
                   style={{
                     color: "var(--gw-fg)",
                     textDecoration: "none",
@@ -238,6 +245,7 @@ function HouseholdCard({
 
       <Link
         href={familyHref}
+        prefetch={false}
         aria-label={`Open ${displayName(household.heads[0])} family`}
         style={{
           flexShrink: 0,
@@ -278,6 +286,7 @@ function HeadBlock({
       >
         <Link
           href={`/portal/directory/${member.id}`}
+          prefetch={false}
           style={{
             fontSize: 14,
             fontWeight: 700,
@@ -380,6 +389,7 @@ function ChildLink({ member, adult }: { member: DirectoryMember; adult: boolean 
   return (
     <Link
       href={`/portal/directory/${member.id}`}
+      prefetch={false}
       style={{
         display: "flex",
         alignItems: "center",

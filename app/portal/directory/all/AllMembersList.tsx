@@ -60,6 +60,7 @@ export function AllMembersList({
       >
         <Link
           href="/portal/directory"
+          prefetch={false}
           style={{
             fontSize: 12,
             fontWeight: 700,
@@ -223,9 +224,13 @@ function MemberRow({
   isSelf: boolean;
   border: boolean;
 }) {
+  // No prefetch: in a list this long, every row scrolled into view would fire
+  // a background request (and a middleware auth check). The page is dynamic,
+  // so a click costs the same either way.
   return (
     <Link
       href={`/portal/directory/${member.id}`}
+      prefetch={false}
       style={{
         display: "flex",
         alignItems: "center",

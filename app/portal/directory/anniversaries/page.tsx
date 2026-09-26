@@ -84,6 +84,7 @@ export default async function AnniversariesPage() {
       >
         <Link
           href="/portal/directory"
+          prefetch={false}
           style={{
             fontSize: 12,
             fontWeight: 700,
@@ -142,9 +143,13 @@ function AnniversaryRow({ couple, border }: { couple: Couple; border: boolean })
       ? `${last.toUpperCase()} — ${firstName(couple.memberA)} & ${firstName(couple.memberB)}`
       : `${couple.memberA.full_name ?? "?"} & ${couple.memberB.full_name ?? "?"}`;
 
+  // No prefetch: in a list this long, every row scrolled into view would fire
+  // a background request (and a middleware auth check). The page is dynamic,
+  // so a click costs the same either way.
   return (
     <Link
       href={`/portal/directory/${couple.memberA.id}`}
+      prefetch={false}
       style={{
         display: "flex",
         alignItems: "center",

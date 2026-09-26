@@ -48,6 +48,7 @@ export default async function MemorialsPage() {
       >
         <Link
           href="/portal/directory"
+          prefetch={false}
           style={{
             fontSize: 12,
             fontWeight: 700,
@@ -80,9 +81,13 @@ export default async function MemorialsPage() {
 
 function MemorialRow({ member, border }: { member: DirectoryMember; border: boolean }) {
   const years = yearsLived(member.birthday, member.deceased_at);
+  // No prefetch: in a list this long, every row scrolled into view would fire
+  // a background request (and a middleware auth check). The page is dynamic,
+  // so a click costs the same either way.
   return (
     <Link
       href={`/portal/directory/${member.id}`}
+      prefetch={false}
       style={{
         display: "flex",
         alignItems: "center",

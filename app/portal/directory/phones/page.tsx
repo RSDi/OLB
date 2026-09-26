@@ -47,6 +47,7 @@ export default async function PhoneTreePage() {
       >
         <Link
           href="/portal/directory"
+          prefetch={false}
           style={{
             fontSize: 12,
             fontWeight: 700,
@@ -137,8 +138,12 @@ function PhoneRow({ member }: { member: DirectoryMember }) {
         fontSize: 13,
       }}
     >
+      {/* No prefetch: in a list this long, every row scrolled into view would
+          fire a background request (and a middleware auth check). The page is
+          dynamic, so a click costs the same either way. */}
       <Link
         href={`/portal/directory/${member.id}`}
+        prefetch={false}
         style={{ fontWeight: 600, color: "var(--gw-fg)", textDecoration: "none" }}
       >
         {displayName(member)}

@@ -128,10 +128,14 @@ export function PortalSidebar({
         {navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved)).map(item => {
           const active = isActive(item.href, item.exact);
           const isSettings = item.href === "/portal/settings";
+          // No prefetch: every portal page is dynamic, so a prefetch only
+          // fetched the route's shape — but it still cost a request (and a
+          // Supabase auth check in middleware) per nav item on every page view.
           return (
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className="gw-press"
               onClick={() => { if (isMobile) onNavigate?.(); }}
               style={{
