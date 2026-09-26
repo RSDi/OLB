@@ -75,7 +75,8 @@ export function RegisterForm() {
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     // On success the browser leaves for Slack and returns through /auth/callback,
-    // where sign-ins from the club's workspace (SLACK_TEAM_ID) are approved on the spot.
+    // where sign-ins from the site's own workspace (SLACK_TEAM_ID) are approved
+    // on the spot.
     if (slackError) setError(friendlyAuthError(slackError.message));
   }
 
@@ -97,8 +98,9 @@ export function RegisterForm() {
 
   return (
     <>
-      {/* Slack — the seamless path. Members of the club's workspace are approved
-          on the spot, so this skips the review the email form below goes through. */}
+      {/* Slack — the seamless path. Members of the site's own workspace are
+          approved on the spot, so this skips the review the email form below
+          goes through. */}
       <button
         type="button"
         onClick={handleSlack}
@@ -107,7 +109,7 @@ export function RegisterForm() {
       >
         <SlackLogo /> Continue with Slack
       </button>
-      <p className={auth.hint}>Already in the club’s Slack? This gets you in right away.</p>
+      <p className={auth.hint}>Already in our Slack workspace? This gets you in right away.</p>
 
       <Or>or request access</Or>
 

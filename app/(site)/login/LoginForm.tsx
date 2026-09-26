@@ -261,6 +261,7 @@ export function LoginForm({
         )
       ) : (
         <>
+          {/* Slack — the seamless path for members of the site's workspace */}
           <button type="button" onClick={handleSlack} disabled={pending !== null} className={outline}>
             <SlackLogo /> Continue with Slack
           </button>

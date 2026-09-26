@@ -37,12 +37,12 @@ export async function resolveMembership({
     null;
   const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
 
-  // Seamless church access: a sign-in via the church's Slack workspace (team id
-  // matches SLACK_TEAM_ID) is auto-approved — no committee gate. Any other
+  // Seamless access: a sign-in via the site's own Slack workspace (team id
+  // matches SLACK_TEAM_ID) is auto-approved — no review gate. Any other
   // sign-in (email, or Slack from a different workspace) stays pending. Fails
   // safe: if the team claim is missing or SLACK_TEAM_ID isn't set, no auto-approve.
-  const churchTeam = process.env.SLACK_TEAM_ID?.trim() || null;
-  const isChurchSlack = !!churchTeam && slackTeamId(user) === churchTeam;
+  const homeTeam = process.env.SLACK_TEAM_ID?.trim() || null;
+  const isHomeSlack = !!homeTeam && slackTeamId(user) === homeTeam;
 
   if (isAdminEmail(user.email)) {
     const admin = createAdminClient();
@@ -109,10 +109,10 @@ export async function resolveMembership({
       };
     }
 
-    // Church-Slack sign-ins are approved on the spot (admin client so we're not
-    // relying on RLS to allow a self-approve); everyone else lands pending and
-    // notifies the committee.
-    if (isChurchSlack) {
+    // Sign-ins from the site's Slack workspace are approved on the spot (admin
+    // client so we're not relying on RLS to allow a self-approve); everyone
+    // else lands pending and sends an access-request notification.
+    if (isHomeSlack) {
       const admin = createAdminClient();
       await admin.from("members").insert({
         user_id: user.id,
@@ -147,8 +147,8 @@ export async function resolveMembership({
     return { status: "denied", role: (member.role as MemberRole) ?? "member" };
   }
 
-  // A still-pending member who signs in via the church Slack gets approved now.
-  if (member.status === "pending" && isChurchSlack) {
+  // A still-pending member who signs in via the site's Slack gets approved now.
+  if (member.status === "pending" && isHomeSlack) {
     const admin = createAdminClient();
     await admin
       .from("members")

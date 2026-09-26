@@ -1,10 +1,11 @@
 // POST /api/slack/events — Slack Events API receiver (B2: two-way Slack).
 //
-// The notifier posts each new task to the MCC Saints channel and stores the
-// message's ts on the ticket (0053). When someone replies in that Slack
-// thread, Slack delivers a message event here; we match thread_ts back to
-// the ticket and append the reply to its comment history. The committee can
-// talk where they already talk, and the task keeps the record.
+// The notifier posts each new task to the notify channel
+// (SLACK_NOTIFY_CHANNEL_ID) and stores the message's ts on the ticket (0053).
+// When someone replies in that Slack thread, Slack delivers a message event
+// here; we match thread_ts back to the ticket and append the reply to its
+// comment history. People can talk where they already talk, and the task
+// keeps the record.
 //
 // Authenticity: every request is verified against SLACK_SIGNING_SECRET
 // (v0 HMAC-SHA256 over `v0:{timestamp}:{rawBody}`, timing-safe compare,
@@ -19,16 +20,13 @@
 // Replays: Slack retries deliveries; ticket_comments.slack_ts has a unique
 // index, so a replayed event inserts nothing (23505 → treated as success).
 //
-// Jeff-side setup (one time, in api.slack.com/apps → the mcc_portal app):
-//   1. Basic Information → copy the Signing Secret →
-//      `vercel env add SLACK_SIGNING_SECRET production` (+ .env.local)
-//   2. OAuth & Permissions → add bot scopes: channels:history, users:read,
-//      users:read.email (+ groups:history if the channel is private) →
-//      Reinstall to workspace
-//   3. Event Subscriptions → Enable → Request URL:
-//      https://millard-community-church.vercel.app/api/slack/events
-//      → Subscribe to bot events: message.channels (and message.groups if
-//      private) → Save
+// Setup (once per site): the app manifest from `npm run slack-app-manifest`
+// (lib/slack/app-manifest.ts) already points Event Subscriptions at
+// https://<site>/api/slack/events for message.channels + message.groups and
+// requests the scopes this needs. Copy the app's Signing Secret
+// (api.slack.com/apps → Basic Information) into SLACK_SIGNING_SECRET,
+// redeploy, then verify the Request URL in the app's settings — until the
+// secret is live, Slack's verification request fails here with 401.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";

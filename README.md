@@ -73,6 +73,7 @@ playbooks/docs, volunteer teams, and global search.
 | `npm run type-check` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm run import-directory` | One-shot Excel directory importer |
+| `npm run slack-app-manifest` | Print the Slack app manifest for this site (see the Slack section of `.env.example`) |
 
 ## Project layout
 

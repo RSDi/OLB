@@ -8,8 +8,8 @@
 // out. See supabase/migrations/0077_slack_archive.sql for the same
 // isolation rationale applied to the schema.
 //
-// Reuses the existing SLACK_BOT_TOKEN (mccsaints workspace, already
-// configured for outbound notifications) — this is the first caller of
+// Reuses the existing SLACK_BOT_TOKEN (the same bot that posts outbound
+// notifications, in the site's own workspace) — this is the first caller of
 // conversations.history/replies, a higher-volume (Tier 3) surface than the
 // single chat.postMessage call elsewhere, so unlike that code this client
 // handles 429s.
