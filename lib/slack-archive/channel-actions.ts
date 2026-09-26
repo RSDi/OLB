@@ -9,7 +9,7 @@
 import { revalidatePath } from "next/cache";
 import { getViewer } from "../auth/viewer";
 import { createClient } from "../supabase/server";
-import { syncOneChannel, type ChannelSyncSummary } from "./sync";
+import { refreshAllChannelAccess, syncOneChannel, type ChannelSyncSummary } from "./sync";
 
 // Leaves headroom under the channel page's `maxDuration = 60` (Server
 // Actions inherit their page's maxDuration — see that file) so a mid-walk
@@ -98,4 +98,36 @@ export async function syncChannelNow(slackChannelId: string): Promise<SyncChanne
   revalidatePath(`/portal/slack-archive/${encodeURIComponent(slackChannelId)}`);
   revalidatePath("/portal/slack-archive");
   return { summary };
+}
+
+export interface RefreshAccessActionResult {
+  message?: string;
+  error?: string;
+}
+
+// Re-checks every channel's Slack privacy + membership right now, instead of
+// waiting for the nightly sync — e.g. right after someone is added to or
+// removed from #building-committee in Slack. Super-admin only. Access for any
+// channel that fails keeps its last confirmed state (see refreshChannelAccess).
+export async function refreshArchiveAccessNow(): Promise<RefreshAccessActionResult> {
+  const viewer = await getViewer();
+  if (!viewer) return { error: "You must be signed in." };
+  if (!viewer.isSuperAdmin) return { error: "Super-admin access required." };
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { error: "SUPABASE_SERVICE_ROLE_KEY not set; cannot update channel access." };
+  }
+
+  const results = await refreshAllChannelAccess({ deadlineMs: SYNC_DEADLINE_MS });
+  revalidatePath("/portal/slack-archive", "layout");
+
+  const failed = results.filter((r) => r.error);
+  if (failed.length === 0) return { message: `Access refreshed for all ${results.length} channels.` };
+  const scopeHint = failed.some((r) => r.error?.includes("missing_scope"))
+    ? " \"missing_scope\" means the Slack bot needs the channels:read and groups:read scopes (then reinstall the app)."
+    : "";
+  return {
+    error:
+      `Access refreshed for ${results.length - failed.length} of ${results.length} channels; ` +
+      `${failed.length} failed and keep their last known access (see each channel below).${scopeHint}`,
+  };
 }

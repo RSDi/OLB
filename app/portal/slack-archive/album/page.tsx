@@ -1,7 +1,8 @@
 // Slack Channel Archive — photo album: every photo and video shared in the
-// registered channels, month by month, searchable. Super-admin only, same as
-// the rest of this feature (re-checked here so a direct link can't bypass
-// the gate).
+// registered channels, month by month, searchable. Any approved member can
+// open it; row-level security (migration 0084) limits the photos to the
+// channels they may see, so a private channel's photos only appear for
+// that channel's members. The "make previews" controls are super-admin only.
 
 import Link from "next/link";
 import { loadArchiveViewer, loadArchiveChannels, loadArchiveAlbum } from "../../../../lib/slack-archive/data";
@@ -16,10 +17,13 @@ export default async function SlackArchiveAlbumPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await loadArchiveViewer();
+  const viewer = await loadArchiveViewer();
   const [channels, album, params] = await Promise.all([loadArchiveChannels(), loadArchiveAlbum(), searchParams]);
-  // Only worth a GitHub API call while there's something left to make.
-  const lastPreviewRun = album.missingPreviews > 0 ? await loadLatestThumbnailRun() : null;
+  // Previews are a super-admin chore (it triggers a GitHub workflow); others
+  // just see photos without a preview fall back to the original. Only worth
+  // a GitHub API call while there's something left to make.
+  const showPreviewStatus = viewer.isSuperAdmin && album.missingPreviews > 0;
+  const lastPreviewRun = showPreviewStatus ? await loadLatestThumbnailRun() : null;
 
   return (
     <div className={albumFontVariables} style={{ maxWidth: 1440 }}>
@@ -46,7 +50,7 @@ export default async function SlackArchiveAlbumPage({
         initialState={parseAlbumUrlState(params)}
         signedAt={album.signedAt}
         previewTtlMs={album.previewTtlMs}
-        notice={album.missingPreviews > 0 ? <PreviewStatus missing={album.missingPreviews} lastRun={lastPreviewRun} /> : null}
+        notice={showPreviewStatus ? <PreviewStatus missing={album.missingPreviews} lastRun={lastPreviewRun} /> : null}
       />
     </div>
   );

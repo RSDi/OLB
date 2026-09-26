@@ -24,6 +24,9 @@ export function SyncNowButton({ slackChannelId }: { slackChannelId: string }) {
       const parts = [`${s.new_or_updated} message${s.new_or_updated === 1 ? "" : "s"} synced`];
       if (s.files_stored > 0) parts.push(`${s.files_stored} file${s.files_stored === 1 ? "" : "s"} stored`);
       if (!s.done) parts.push("more to catch up — click again");
+      // Messages synced fine, but who-can-see-this couldn't be confirmed —
+      // access stays as it last was (see refreshChannelAccess in sync.ts).
+      if (s.access_error) parts.push(`access check failed: ${s.access_error}`);
       setMessage(parts.join(", "));
     });
   }

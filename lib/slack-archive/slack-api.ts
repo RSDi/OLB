@@ -52,6 +52,8 @@ interface SlackApiResponse {
   messages?: SlackMessage[];
   has_more?: boolean;
   response_metadata?: { next_cursor?: string };
+  channel?: { id: string; is_private?: boolean; is_archived?: boolean };
+  members?: string[];
 }
 
 function sleep(ms: number): Promise<void> {
@@ -130,6 +132,34 @@ export async function fetchConversationsReplies(
     messages,
     nextCursor: body.has_more ? (body.response_metadata?.next_cursor ?? null) : null,
   };
+}
+
+// Access control for the archive (migration 0084) mirrors Slack: a private
+// channel's archive is visible only to portal members who are in that
+// channel in Slack. Both calls need a read scope the history calls don't —
+// channels:read for public channels, groups:read for private ones. Slack
+// reports a missing one as `missing_scope`, which callers must treat as
+// "privacy unknown" (fail closed), never as "public".
+export async function fetchChannelIsPrivate(channel: string, token: string): Promise<boolean> {
+  const body = await slackApiCall("conversations.info", { channel }, token);
+  if (!body.ok || !body.channel) throw new Error(`conversations.info failed: ${body.error ?? "no channel in response"}`);
+  return Boolean(body.channel.is_private);
+}
+
+export async function fetchChannelMemberIds(channel: string, token: string): Promise<string[]> {
+  const ids: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const params: Record<string, string> = { channel, limit: "1000" };
+    if (cursor) params.cursor = cursor;
+    const body = await slackApiCall("conversations.members", params, token);
+    if (!body.ok) throw new Error(`conversations.members failed: ${body.error}`);
+    ids.push(...(body.members ?? []));
+    // conversations.members signals more pages with a non-empty cursor
+    // only (no has_more flag), unlike conversations.history.
+    cursor = body.response_metadata?.next_cursor || undefined;
+  } while (cursor);
+  return ids;
 }
 
 export interface SlackUserInfo {

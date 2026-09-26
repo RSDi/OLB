@@ -13,6 +13,8 @@ interface NavItem {
   exact?: boolean;
   staffOnly?: boolean;
   superAdminOnly?: boolean;
+  // Any approved member (plus super admins) — hidden from pending/denied accounts.
+  approvedOnly?: boolean;
 }
 
 // Slimmed nav (2026-06): "Make a Request" lives on the Dashboard; Review + PM
@@ -28,7 +30,7 @@ const NAV: NavItem[] = [
   // Building Committee can view Settings; editing is gated per grant inside.
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
-  { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, superAdminOnly: true },
+  { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true },
 ];
 
 // Trimmed viewer shape — sidebar only needs role/status to decide which nav
@@ -64,6 +66,7 @@ export function PortalSidebar({
   // Settings (incl. the member-approval queue) is super-admin only for now, so
   // the pending badge rides Settings visibility.
   const isSuperAdmin = viewer?.role === "super_admin";
+  const isApproved = isSuperAdmin || viewer?.status === "approved";
   const pendingCount = pendingMembersCount;
 
   // Members (non-staff) get the request page as their "Dashboard"; staff keep
@@ -122,7 +125,7 @@ export function PortalSidebar({
 
       {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
-        {navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin)).map(item => {
+        {navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved)).map(item => {
           const active = isActive(item.href, item.exact);
           const isSettings = item.href === "/portal/settings";
           return (

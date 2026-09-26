@@ -29,6 +29,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "../supabase/admin";
 import {
+  fetchChannelIsPrivate,
+  fetchChannelMemberIds,
   fetchConversationsHistory,
   fetchConversationsReplies,
   fetchSlackUserInfo,
@@ -44,6 +46,11 @@ export interface ChannelSyncSummary {
   files_stored: number;
   errors: string[];
   done: boolean;
+  // Why the privacy/membership check failed, if it did. Kept apart from
+  // `errors` on purpose: a failed access check leaves the last confirmed
+  // access in place (fail closed) and doesn't make the message sync itself
+  // a failure.
+  access_error?: string;
 }
 
 export interface ArchiveSyncSummary {
@@ -94,10 +101,14 @@ class AuthorResolver {
     const { email, name } = await fetchSlackUserInfo(userId, this.token);
     let memberId: string | null = null;
     if (email) {
+      // ilike for case-insensitivity only: escape LIKE's wildcards so an
+      // address like "j_smith@…" can't match "jxsmith@…". This match now
+      // grants private-channel access (see refreshChannelAccess), not just
+      // an author name.
       const { data, error } = await this.admin
         .from("members")
         .select("id")
-        .ilike("email", email)
+        .ilike("email", email.replace(/[\\%_]/g, "\\$&"))
         .is("deleted_at", null)
         .maybeSingle();
       if (error) console.error(`[slack-archive] member lookup failed for ${email}:`, error.message);
@@ -334,6 +345,74 @@ async function refreshKnownThreads(
   }
 }
 
+// Mirrors one channel's Slack privacy and (for private channels) Slack
+// membership into slack_archive_channels / slack_archive_channel_members —
+// what migration 0084's RLS reads to decide who can see the channel's
+// messages and photos. Runs at the start of every sync (cron, "Sync now",
+// backfill) and from the "Refresh access" button.
+//
+// Fail closed at every step. Nothing is written unless Slack answered, so a
+// failed check (most likely missing_scope: public channels need
+// channels:read, private ones groups:read) keeps the last confirmed state —
+// and a never-confirmed channel stays hidden from everyone but super admins.
+// Slack members whose email doesn't match a portal member (or who are bots)
+// simply get no access. Returns the failure message, or null on success.
+async function refreshChannelAccess(
+  admin: SupabaseClient,
+  channelId: string,
+  token: string,
+  resolver: AuthorResolver,
+): Promise<string | null> {
+  const recordError = async (message: string) => {
+    console.warn(`[slack-archive] access check failed for ${channelId}: ${message}`);
+    await admin
+      .from("slack_archive_channels")
+      .update({ access_error: message, access_checked_at: new Date().toISOString() })
+      .eq("slack_channel_id", channelId);
+    return message;
+  };
+
+  try {
+    const isPrivate = await fetchChannelIsPrivate(channelId, token);
+
+    let memberIds: string[] = [];
+    if (isPrivate) {
+      const slackUserIds = await fetchChannelMemberIds(channelId, token);
+      const resolved = await Promise.all(slackUserIds.map((id) => resolver.resolveUserId(id)));
+      memberIds = [...new Set(resolved.flatMap((r) => (r.author_member_id ? [r.author_member_id] : [])))];
+    }
+
+    // Order matters for failing closed: when a channel turns private, flip
+    // the flag first (briefly hiding it from everyone) and then grant its
+    // members; never the other way round, which would briefly expose it.
+    const { error: flagErr } = await admin
+      .from("slack_archive_channels")
+      .update({ is_private: isPrivate, access_checked_at: new Date().toISOString(), access_error: null })
+      .eq("slack_channel_id", channelId);
+    if (flagErr) return await recordError(`saving privacy failed: ${flagErr.message}`);
+
+    // Revoke first, then grant, so a failure part-way through errs on the
+    // side of too little access rather than too much.
+    let revoke = admin.from("slack_archive_channel_members").delete().eq("channel_id", channelId);
+    if (memberIds.length > 0) revoke = revoke.not("member_id", "in", `(${memberIds.join(",")})`);
+    const { error: revokeErr } = await revoke;
+    if (revokeErr) return await recordError(`removing old members failed: ${revokeErr.message}`);
+
+    if (memberIds.length > 0) {
+      const { error: grantErr } = await admin
+        .from("slack_archive_channel_members")
+        .upsert(
+          memberIds.map((memberId) => ({ channel_id: channelId, member_id: memberId })),
+          { onConflict: "channel_id,member_id", ignoreDuplicates: true },
+        );
+      if (grantErr) return await recordError(`saving members failed: ${grantErr.message}`);
+    }
+    return null;
+  } catch (err) {
+    return await recordError(err instanceof Error ? err.message : String(err));
+  }
+}
+
 export async function syncArchiveChannel(
   admin: SupabaseClient,
   channelId: string,
@@ -364,6 +443,12 @@ export async function syncArchiveChannel(
     errors: [],
     done: false,
   };
+
+  // Access first: it's a few cheap calls, and a membership change (someone
+  // leaving #building-committee) should take effect even on a run whose
+  // message walk later runs out of time.
+  const accessError = await refreshChannelAccess(admin, channelId, token, resolver);
+  if (accessError) summary.access_error = accessError;
 
   let watermark: string | undefined;
   if ("oldest" in opts) {
@@ -456,6 +541,40 @@ export async function syncOneChannel(
   const deadlineAt = Date.now() + (opts.deadlineMs ?? Number.MAX_SAFE_INTEGER);
   const resolver = new AuthorResolver(admin, token);
   return syncArchiveChannel(admin, channelId, token, resolver, deadlineAt, opts.force ? { oldest: null } : {});
+}
+
+export interface AccessRefreshResult {
+  channel: string;
+  error: string | null; // null = refreshed; "skipped: out of time" when the deadline hit first
+}
+
+// Re-checks privacy + membership for every registered channel — including
+// deactivated ones, whose history is still browsable — without syncing any
+// messages. What the channel list's "Refresh access" button and
+// scripts/slack-archive-refresh-access.ts call, so a membership change in
+// Slack can take effect right away instead of at the next nightly sync.
+export async function refreshAllChannelAccess(opts: { deadlineMs?: number } = {}): Promise<AccessRefreshResult[]> {
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token) return [{ channel: "(none)", error: "SLACK_BOT_TOKEN not set" }];
+  const admin = createAdminClient();
+  const deadlineAt = Date.now() + (opts.deadlineMs ?? Number.MAX_SAFE_INTEGER);
+
+  const { data, error } = await admin
+    .from("slack_archive_channels")
+    .select("slack_channel_id")
+    .order("created_at", { ascending: true });
+  if (error) return [{ channel: "(none)", error: `channel lookup failed: ${error.message}` }];
+
+  const resolver = new AuthorResolver(admin, token);
+  const results: AccessRefreshResult[] = [];
+  for (const { slack_channel_id: channel } of (data ?? []) as { slack_channel_id: string }[]) {
+    if (Date.now() >= deadlineAt) {
+      results.push({ channel, error: "skipped: out of time" });
+      continue;
+    }
+    results.push({ channel, error: await refreshChannelAccess(admin, channel, token, resolver) });
+  }
+  return results;
 }
 
 function skippedSummary(channelId: string): ChannelSyncSummary {

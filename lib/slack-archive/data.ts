@@ -23,9 +23,26 @@ import {
 } from "./album";
 import { decodeSlackEntities } from "./text";
 
+// Who may open the archive at all: any approved member (super admins
+// always). Which channels — and so which messages and photos — they then
+// see is decided by row-level security (migration 0084): public channels
+// for everyone, private ones only for members of that Slack channel. This
+// gate just keeps pending/denied accounts out of the pages entirely.
+export function canViewArchive(viewer: Viewer | null): viewer is Viewer {
+  return Boolean(viewer && (viewer.isSuperAdmin || viewer.status === "approved"));
+}
+
 export async function loadArchiveViewer(): Promise<Viewer> {
   const viewer = await getViewer();
-  if (!viewer?.isSuperAdmin) redirect("/portal");
+  if (!canViewArchive(viewer)) redirect("/portal");
+  return viewer;
+}
+
+// For the pages that manage the archive rather than read it (sync
+// exceptions, compression, previews) — still super-admin only.
+export async function loadArchiveAdmin(): Promise<Viewer> {
+  const viewer = await getViewer();
+  if (!viewer?.isSuperAdmin) redirect("/portal/slack-archive");
   return viewer;
 }
 
@@ -39,17 +56,30 @@ export interface ArchiveChannel {
   last_run_at: string | null;
   last_status: "ok" | "error" | null;
   last_error: string | null;
+  // Mirrored from Slack by the sync (migration 0084). null = not confirmed
+  // with Slack yet, which RLS treats as private (super admins only).
+  is_private: boolean | null;
+  access_checked_at: string | null;
+  access_error: string | null;
 }
+
+type ChannelAccessRow = Pick<ArchiveChannel, "slack_channel_id" | "is_private" | "access_checked_at" | "access_error">;
 
 export async function loadArchiveChannels(): Promise<ArchiveChannel[]> {
   const supabase = await createClient();
-  const [{ data: channels, error: chErr }, { data: states, error: stErr }] = await Promise.all([
+  const [{ data: channels, error: chErr }, { data: states, error: stErr }, { data: access, error: acErr }] = await Promise.all([
     supabase
       .from("slack_archive_channels")
       .select("id, slack_channel_id, label, active, created_at")
       .order("created_at", { ascending: true }),
     supabase.from("slack_archive_sync_state").select("channel_id, last_ts, last_run_at, last_status, last_error"),
+    // Separate, best-effort query (like getViewer's grants): if migration
+    // 0084 hasn't been applied yet the columns don't exist, and the list
+    // should still render rather than come up empty.
+    supabase.from("slack_archive_channels").select("slack_channel_id, is_private, access_checked_at, access_error"),
   ]);
+  if (acErr) console.error("loadArchiveChannels: access columns query failed (migration 0084 applied?)", acErr);
+  const accessByChannel = new Map(((access ?? []) as ChannelAccessRow[]).map((a) => [a.slack_channel_id, a]));
   if (chErr) {
     console.error("loadArchiveChannels failed", chErr);
     return [];
@@ -71,12 +101,16 @@ export async function loadArchiveChannels(): Promise<ArchiveChannel[]> {
     (channels ?? []) as { id: string; slack_channel_id: string; label: string; active: boolean; created_at: string }[]
   ).map((c) => {
     const state = stateByChannel.get(c.slack_channel_id);
+    const acc = accessByChannel.get(c.slack_channel_id);
     return {
       ...c,
       last_ts: state?.last_ts ?? null,
       last_run_at: state?.last_run_at ?? null,
       last_status: state?.last_status ?? null,
       last_error: state?.last_error ?? null,
+      is_private: acc?.is_private ?? null,
+      access_checked_at: acc?.access_checked_at ?? null,
+      access_error: acc?.access_error ?? null,
     };
   });
 }

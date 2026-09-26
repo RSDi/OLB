@@ -1,6 +1,8 @@
 // Slack Channel Archive — message viewer for one registered channel.
-// Super-admin only; re-checked here (not just at /portal/slack-archive) so a
-// direct link can't bypass the gate.
+// Any approved member, but only for channels they may see: the channel list
+// is loaded through row-level security (migration 0084), so a private
+// channel the viewer isn't in is simply absent and a direct link 404s —
+// its messages are filtered out by the same policy regardless.
 //
 // Attachment errors are surfaced only on /portal/slack-archive/exceptions
 // now, not duplicated here too — one place to manage them across every
@@ -23,7 +25,7 @@ export default async function SlackArchiveChannelPage({
 }: {
   params: Promise<{ channelId: string }>;
 }) {
-  await loadArchiveViewer();
+  const viewer = await loadArchiveViewer();
   const { channelId } = await params;
   const slackChannelId = decodeURIComponent(channelId);
 
@@ -50,12 +52,14 @@ export default async function SlackArchiveChannelPage({
           >
             Photos →
           </Link>
-          <Link
-            href="/portal/slack-archive/exceptions"
-            style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
-          >
-            View exceptions →
-          </Link>
+          {viewer.isSuperAdmin && (
+            <Link
+              href="/portal/slack-archive/exceptions"
+              style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+            >
+              View exceptions →
+            </Link>
+          )}
         </div>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, margin: "4px 0 24px" }}>
@@ -63,7 +67,7 @@ export default async function SlackArchiveChannelPage({
           channels={channels.map((c) => ({ slackChannelId: c.slack_channel_id, label: c.label, active: c.active }))}
           currentChannelId={slackChannelId}
         />
-        <SyncNowButton slackChannelId={slackChannelId} />
+        {viewer.isSuperAdmin && <SyncNowButton slackChannelId={slackChannelId} />}
       </div>
 
       {threads.length === 0 ? (

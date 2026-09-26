@@ -1,13 +1,15 @@
 "use server";
 
 // Server action wrapping searchArchiveMessages for the interactive search
-// page's client component. Super-admin gate mirrors channel-actions.ts —
-// RLS on slack_archive_messages (migration 0077) already scopes reads to
-// is_super_admin(), this is the defense-in-depth check for the action call
-// itself.
+// page's client component. Open to any approved member: RLS on
+// slack_archive_messages (migration 0084) limits every query here to the
+// channels the viewer may see, so a private channel's messages, authors,
+// and counts never reach someone outside it. The gate below is the
+// defense-in-depth check for the action call itself.
 
 import { getViewer } from "../auth/viewer";
 import {
+  canViewArchive,
   loadArchiveAuthorCounts,
   loadArchiveChannelCounts,
   loadArchiveChannels,
@@ -29,7 +31,7 @@ export async function runArchiveSearch(
 ): Promise<ArchiveSearchActionResult> {
   const viewer = await getViewer();
   if (!viewer) return { results: [], error: "You must be signed in." };
-  if (!viewer.isSuperAdmin) return { results: [], error: "Super-admin access required." };
+  if (!canViewArchive(viewer)) return { results: [], error: "Your account isn\'t approved to view the archive." };
 
   const channels = await loadArchiveChannels();
   const { results, error } = await searchArchiveMessages(channels, { authors, query, channelIds });
@@ -50,7 +52,7 @@ export async function runArchiveAuthorCounts(
 ): Promise<ArchiveAuthorsActionResult> {
   const viewer = await getViewer();
   if (!viewer) return { authors: [], error: "You must be signed in." };
-  if (!viewer.isSuperAdmin) return { authors: [], error: "Super-admin access required." };
+  if (!canViewArchive(viewer)) return { authors: [], error: "Your account isn\'t approved to view the archive." };
 
   const { authors, error } = await loadArchiveAuthorCounts({ query, channelIds });
   if (error) return { authors: [], error };
@@ -70,7 +72,7 @@ export async function runArchiveChannelCounts(
 ): Promise<ArchiveChannelCountsActionResult> {
   const viewer = await getViewer();
   if (!viewer) return { channels: [], error: "You must be signed in." };
-  if (!viewer.isSuperAdmin) return { channels: [], error: "Super-admin access required." };
+  if (!canViewArchive(viewer)) return { channels: [], error: "Your account isn\'t approved to view the archive." };
 
   const { channels, error } = await loadArchiveChannelCounts({ query, authors });
   if (error) return { channels: [], error };

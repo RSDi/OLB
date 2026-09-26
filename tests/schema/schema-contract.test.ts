@@ -75,6 +75,8 @@ const CONTRACT: Record<string, string> = {
     "id,user_id,title,audio_blob_url,duration_sec,source,status,assemblyai_id,transcript,utterances,summary,error,linked_entity_type,linked_entity_id,deleted_at",
   reel_notes_action_items:
     "id,recording_id,text,routed_to,done,sort_order,priority,owner_member_id,supporter_member_ids,suggested_assignee_name,suggested_member_id,suggested_supporter_names,transcript_ms,anchor_quote,task_id,dismissed",
+  slack_archive_channels: "id,slack_channel_id,label,active,added_by,created_at,is_private,access_checked_at,access_error",
+  slack_archive_channel_members: "channel_id,member_id,created_at",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {
