@@ -6,7 +6,7 @@ import { getActiveClosure } from "../../../lib/closures/data";
 import { CHURCH_ADDRESS, MEETING_TIMES } from "../schedule";
 
 export const metadata: Metadata = {
-  title: "Meeting Times — Millard Community Church",
+  title: { absolute: "Meeting Times — Millard Community Church" },
   description:
     "When and where Millard Community Church meets — and any changes to this week's schedule.",
 };
