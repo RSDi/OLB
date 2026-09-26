@@ -12,6 +12,7 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "import-directory": "tsx --env-file=.env.local scripts/import-directory.ts",
+    "create-admin": "tsx --env-file=.env.local scripts/create-admin.ts",
     "slack-archive-backfill": "tsx --env-file=.env.local scripts/slack-archive-backfill.ts",
     "slack-archive-refresh-access": "tsx --env-file=.env.local scripts/slack-archive-refresh-access.ts",
     "slack-archive-compress-large-files": "tsx --env-file=.env.local scripts/slack-archive-compress-large-files.ts",
