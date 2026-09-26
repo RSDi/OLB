@@ -6,13 +6,15 @@ import { HouseholdsList } from "../households/HouseholdsList";
 // rows. Relationships still passed in so spouse + child links resolve when
 // extended-family members are themselves married / have kids.
 export default async function ExtendedPage() {
-  const viewer = await loadViewer();
-  if (!viewer) return <AccessDenied />;
-
-  const [members, relationships] = await Promise.all([
+  // Started before the viewer check on purpose — see loadViewer().
+  const data = Promise.all([
     loadMembers({ categories: ["extended"] }),
     loadRelationships(),
   ]);
+  const viewer = await loadViewer();
+  if (!viewer) return <AccessDenied />;
+
+  const [members, relationships] = await data;
 
   return (
     <HouseholdsList

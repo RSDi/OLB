@@ -10,10 +10,12 @@ function normalizeAddress(addr: string | null): string {
 }
 
 export default async function PhoneTreePage() {
+  // Started before the viewer check on purpose — see loadViewer().
+  const data = loadMembers({ categories: ["regular"] });
   const viewer = await loadViewer();
   if (!viewer) return <AccessDenied />;
 
-  const members = await loadMembers({ categories: ["regular"] });
+  const members = await data;
 
   // Group by address. Members with no address bucket into "no address".
   const groups = new Map<string, DirectoryMember[]>();

@@ -25,13 +25,15 @@ interface Couple {
 }
 
 export default async function AnniversariesPage() {
-  const viewer = await loadViewer();
-  if (!viewer) return <AccessDenied />;
-
-  const [members, rels] = await Promise.all([
+  // Started before the viewer check on purpose — see loadViewer().
+  const data = Promise.all([
     loadMembers({ categories: ["regular", "extended"] }),
     loadRelationships(),
   ]);
+  const viewer = await loadViewer();
+  if (!viewer) return <AccessDenied />;
+
+  const [members, rels] = await data;
 
   const memberById = new Map(members.map((m) => [m.id, m]));
 

@@ -41,6 +41,12 @@ export interface DirectoryViewer {
 // (caller renders an inline notice). Delegates the actual fetch to
 // `getViewer()` so the layout's cached lookup is reused — no duplicate
 // Supabase query per request.
+//
+// Views start their member queries *before* awaiting this, so the two run in
+// parallel instead of back to back (one fewer round trip per page view). That
+// is safe because every query here runs under the viewer's own RLS: someone
+// who isn't approved gets nothing back, and the view renders AccessDenied
+// without using it.
 export async function loadViewer(): Promise<DirectoryViewer | null> {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");

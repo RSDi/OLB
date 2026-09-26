@@ -1,6 +1,7 @@
 // Reusable avatar bubble used across directory views. Falls back to the
 // member's Gravatar (by email) when no explicit avatar_url is set, then to a
-// User icon if there's no email.
+// User icon if there's no email. Images load lazily, so a long list only
+// fetches the avatars scrolled near the viewport instead of hundreds up front.
 import { Icons } from "../../../components/icons";
 import { resolveAvatarUrl, type AvatarMember } from "../../../../lib/members/avatar";
 
@@ -38,6 +39,8 @@ export function Avatar({
           alt=""
           width={size}
           height={size}
+          loading="lazy"
+          decoding="async"
           style={{ objectFit: "cover", width: "100%", height: "100%" }}
         />
       ) : (

@@ -10,13 +10,15 @@ export default async function FamilyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const viewer = await loadViewer();
-  if (!viewer) return <AccessDenied />;
-
-  const [members, relationships] = await Promise.all([
+  // Started before the viewer check on purpose — see loadViewer().
+  const data = Promise.all([
     loadMembers({ categories: ["regular", "extended"] }),
     loadRelationships(),
   ]);
+  const viewer = await loadViewer();
+  if (!viewer) return <AccessDenied />;
+
+  const [members, relationships] = await data;
 
   const households = computeHouseholds(members, relationships);
   const household = findHouseholdFor(households, id);

@@ -42,23 +42,25 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   if (!user) return null;
 
   // Core auth row never selects the grant columns, so a pre-0057 deploy can't
-  // log everyone out. Grants load in a separate best-effort query below.
-  const { data } = await supabase
-    .from("members")
-    .select("id, role, status")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // log everyone out. Settings grants (migration 0057) load in a separate
+  // best-effort query, in parallel on the same user_id so they cost no extra
+  // round trip. If the columns aren't there yet that query errors → grants
+  // default false (view-only), which is the safe default.
+  const [{ data }, { data: g }] = await Promise.all([
+    supabase
+      .from("members")
+      .select("id, role, status")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("members")
+      .select("can_edit_settings, can_delete_settings, can_undelete_settings")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
   if (!data) return null;
 
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
-
-  // Settings grants (migration 0057). If the columns aren't there yet the query
-  // errors → grants default false (view-only), which is the safe default.
-  const { data: g } = await supabase
-    .from("members")
-    .select("can_edit_settings, can_delete_settings, can_undelete_settings")
-    .eq("id", row.id)
-    .maybeSingle();
   const grants = (g as Partial<MemberLike> | null) ?? {};
   const member: MemberLike = {
     role: row.role,

@@ -15,11 +15,13 @@ import {
 const CURRENT_YEAR = new Date().getFullYear();
 
 export default async function BirthdaysPage() {
+  // Memorials excluded by default; we want living members' birthdays.
+  // Started before the viewer check on purpose — see loadViewer().
+  const data = loadMembers({ categories: ["regular", "extended"] });
   const viewer = await loadViewer();
   if (!viewer) return <AccessDenied />;
 
-  // Memorials excluded by default; we want living members' birthdays.
-  const members = await loadMembers({ categories: ["regular", "extended"] });
+  const members = await data;
 
   // Group by month.
   const byMonth = new Map<number, DirectoryMember[]>();

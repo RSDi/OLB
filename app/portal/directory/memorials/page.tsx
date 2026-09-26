@@ -24,10 +24,12 @@ function yearsLived(birth: string | null, death: string | null): number | null {
 }
 
 export default async function MemorialsPage() {
+  // Started before the viewer check on purpose — see loadViewer().
+  const data = loadMembers({ categories: ["memorial"], includeMemorials: true });
   const viewer = await loadViewer();
   if (!viewer) return <AccessDenied />;
 
-  const members = await loadMembers({ categories: ["memorial"], includeMemorials: true });
+  const members = await data;
   // Newest deaths first.
   const sorted = [...members].sort((a, b) =>
     (b.deceased_at ?? "").localeCompare(a.deceased_at ?? "")

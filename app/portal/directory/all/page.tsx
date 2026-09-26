@@ -8,15 +8,17 @@ import {
 import { AllMembersList } from "./AllMembersList";
 
 export default async function AllMembersPage() {
-  const viewer = await loadViewer();
-  if (!viewer) return <AccessDenied />;
-
-  // Include extended; memorials excluded by default.
-  const [members, teams, memberTeams] = await Promise.all([
+  // Include extended; memorials excluded by default. Started before the
+  // viewer check on purpose — see loadViewer().
+  const data = Promise.all([
     loadMembers({ categories: ["regular", "extended"] }),
     loadVolunteerTeams(),
     loadMemberTeamMap(),
   ]);
+  const viewer = await loadViewer();
+  if (!viewer) return <AccessDenied />;
+
+  const [members, teams, memberTeams] = await data;
   return (
     <AllMembersList
       members={members}

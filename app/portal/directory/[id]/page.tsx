@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
-import { isStaff, isSuperAdmin, type MemberLike } from "../../../../lib/auth/permissions";
-import { loadMembers, loadRelationships } from "../_shared/data";
+import { getViewer } from "../../../../lib/auth/viewer";
+import { loadMembers, type DirectoryRelationship } from "../_shared/data";
 import { computeHouseholds, findBirthFamilyFor, findFamilyFor } from "../_shared/households";
 import { lastNameLower } from "../_shared/format";
 import { MemberDetail } from "./MemberDetail";
@@ -28,10 +28,7 @@ interface DetailMember {
   status: string;
 }
 
-interface RelatedRef {
-  related_member_id: string;
-  relationship: "spouse" | "parent" | "child";
-}
+type RelationshipRow = DirectoryRelationship & { id: string };
 
 export default async function MemberDetailPage({
   params,
@@ -40,61 +37,58 @@ export default async function MemberDetailPage({
 }) {
   const { id } = await params;
 
+  // Everything the page shows depends only on the route id, so it goes out as
+  // one parallel batch rather than a chain of dependent round trips — and
+  // before the viewer check, on purpose (see loadViewer() in ../_shared/data).
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const batch = Promise.all([
+    supabase
+      .from("members")
+      .select("id, user_id, email, full_name, nickname, avatar_url, phone, home_phone, birthday, anniversary, address, directory_category, deceased_at, status, deleted_at")
+      .eq("id", id)
+      .maybeSingle(),
+    // Every approved member, memorials included, so a relationship chip can
+    // still name a spouse or parent who has passed. The family lookup and the
+    // editor below use the non-memorial subset.
+    loadMembers({ includeMemorials: true }),
+    // With ids: the admin editor's remove buttons need them. One read serves
+    // this member's own links, the family lookup, and the editor.
+    supabase
+      .from("member_relationships")
+      .select("id, member_id, related_member_id, relationship"),
+  ]);
 
-  const { data: meRow } = await supabase
-    .from("members")
-    .select("id, role, status")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  const me = (meRow as (MemberLike & { id: string }) | null) ?? null;
-  if (!me || (me.status !== "approved" && !isStaff(me))) {
+  // Same per-request cached lookup the portal layout already made, so this
+  // costs no extra auth or members round trip.
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
+  if (viewer.status !== "approved" && !viewer.isStaff) {
     redirect("/portal/directory");
   }
 
-  const { data: memberRow } = await supabase
-    .from("members")
-    .select("id, user_id, email, full_name, nickname, avatar_url, phone, home_phone, birthday, anniversary, address, directory_category, deceased_at, status, deleted_at")
-    .eq("id", id)
-    .maybeSingle();
+  const [[{ data: memberRow }, everyone, { data: relRows }], notesRes] = await Promise.all([
+    batch,
+    // Staff-only private notes (RLS returns nothing for non-staff viewers).
+    viewer.isStaff
+      ? supabase.from("members_notes").select("notes").eq("member_id", id).maybeSingle()
+      : null,
+  ]);
+
   const member = (memberRow as (DetailMember & { deleted_at: string | null }) | null) ?? null;
   if (!member) notFound();
   if (member.deleted_at) notFound();
 
   // Non-staff can only view approved members. (RLS already enforces this for
   // SELECT, but guard explicitly so we render notFound rather than a blank.)
-  if (member.status !== "approved" && !isStaff(me)) notFound();
+  if (member.status !== "approved" && !viewer.isStaff) notFound();
 
-  const { data: relRows } = await supabase
-    .from("member_relationships")
-    .select("related_member_id, relationship")
-    .eq("member_id", id);
-  const rels = (relRows as RelatedRef[] | null) ?? [];
-
-  const relatedIds = [...new Set(rels.map((r) => r.related_member_id))];
-  let related: { id: string; full_name: string | null; email: string | null }[] = [];
-  if (relatedIds.length > 0) {
-    const { data: relatedRows } = await supabase
-      .from("members")
-      .select("id, full_name, email")
-      .in("id", relatedIds)
-      .eq("status", "approved");
-    related = (relatedRows as typeof related | null) ?? [];
-  }
-  const nameById = new Map(related.map((m) => [m.id, m.full_name ?? m.email ?? "Unknown"]));
+  const allRels = (relRows as RelationshipRow[] | null) ?? [];
+  const rels = allRels.filter((r) => r.member_id === id);
+  const nameById = new Map(everyone.map((m) => [m.id, m.full_name ?? m.email ?? "Unknown"]));
   const visibleRels = rels.filter((r) => nameById.has(r.related_member_id));
 
-  // Resolve this member's family + load full directory for the inline admin
-  // editor (relationship picker needs every candidate; all-rels needed so the
-  // edit form can show existing links on whichever side of the join they sit).
-  const [allMembers, allRels] = await Promise.all([
-    loadMembers({ categories: ["regular", "extended"] }),
-    loadRelationships(),
-  ]);
+  // Resolve this member's family from the directory proper (no memorials).
+  const allMembers = everyone.filter((m) => m.directory_category !== "memorial");
   const households = computeHouseholds(allMembers, allRels);
   const familyHousehold = findFamilyFor(households, id);
   const family = familyHousehold
@@ -118,43 +112,27 @@ export default async function MemberDetailPage({
         }
       : null;
 
-  // Lightweight shapes for the edit form — strip what it doesn't need.
-  const editMembers = allMembers.map((m) => ({
-    id: m.id,
-    email: m.email,
-    full_name: m.full_name,
-    avatar_url: m.avatar_url,
-    phone: m.phone,
-    birthday: m.birthday,
-  }));
-  // Need IDs on the relationships for the X buttons in the edit form. The
-  // shared loadRelationships() doesn't return id — pull them separately.
-  const { data: relRowsWithId } = await supabase
-    .from("member_relationships")
-    .select("id, member_id, related_member_id, relationship");
-  const editRelationships = (relRowsWithId ?? []) as {
-    id: string;
-    member_id: string;
-    related_member_id: string;
-    relationship: "spouse" | "parent" | "child";
-  }[];
+  // The inline admin editor (super-admins only) needs every member and every
+  // relationship for its pickers. Everyone else gets empty lists rather than
+  // the whole directory serialized into their page.
+  const editMembers = viewer.isSuperAdmin
+    ? allMembers.map((m) => ({
+        id: m.id,
+        email: m.email,
+        full_name: m.full_name,
+        avatar_url: m.avatar_url,
+        phone: m.phone,
+        birthday: m.birthday,
+      }))
+    : [];
+  const editRelationships = viewer.isSuperAdmin ? allRels : [];
 
-  // Staff-only private notes (RLS returns nothing for non-staff viewers).
-  const viewerIsStaff = isStaff(me);
-  let notes = "";
-  if (viewerIsStaff) {
-    const { data: notesRow } = await supabase
-      .from("members_notes")
-      .select("notes")
-      .eq("member_id", id)
-      .maybeSingle();
-    notes = (notesRow as { notes: string } | null)?.notes ?? "";
-  }
+  const notes = (notesRes?.data as { notes: string } | null)?.notes ?? "";
 
   return (
     <MemberDetail
       member={member}
-      isStaff={viewerIsStaff}
+      isStaff={viewer.isStaff}
       notes={notes}
       relationships={visibleRels.map((r) => ({
         relatedId: r.related_member_id,
@@ -165,8 +143,8 @@ export default async function MemberDetailPage({
       birthFamily={birthFamily}
       allMembers={editMembers}
       allRelationships={editRelationships}
-      isSelf={member.user_id === user.id}
-      isSuperAdmin={isSuperAdmin(me)}
+      isSelf={member.user_id === viewer.userId}
+      isSuperAdmin={viewer.isSuperAdmin}
     />
   );
 }
