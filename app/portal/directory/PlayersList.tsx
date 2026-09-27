@@ -136,28 +136,6 @@ export function PlayersList({
 
   return (
     <>
-      {isStaff && (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Link
-            href="/portal/contacts"
-            prefetch={false}
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "var(--gw-fg-muted)",
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <Icons.Briefcase width={12} height={12} />
-            External contacts
-            <Icons.ChevronRight width={12} height={12} />
-          </Link>
-        </div>
-      )}
-
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ position: "relative", flex: "1 1 320px", maxWidth: 480 }}>
