@@ -15,6 +15,8 @@ interface NavItem {
   superAdminOnly?: boolean;
   // Any approved member (plus super admins) — hidden from pending/denied accounts.
   approvedOnly?: boolean;
+  // Staged rollout: only shown to accounts in lib/auth/feature-preview.ts.
+  previewOnly?: boolean;
 }
 
 // Slimmed nav (2026-06): "Make a Request" lives on the Dashboard; Review + PM
@@ -22,13 +24,13 @@ interface NavItem {
 // staff-only (Building Committee + Super Admin). ReelNotes is no longer a
 // top-level item — it lives under Settings → Integrations.
 const NAV: NavItem[] = [
-  { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true },
-  { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/> },
-  { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/> },
+  { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true, previewOnly: true },
+  { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/>, previewOnly: true },
+  { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/>, previewOnly: true },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
   // Team manager (roster board, registrations, import): super-admin only.
-  { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true },
+  { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
   // Building Committee can view Settings; editing is gated per grant inside.
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
@@ -54,6 +56,7 @@ export interface SidebarViewer {
   role: MemberRole;
   status: MemberStatus;
   isStaff: boolean;
+  seesFullUi: boolean;
 }
 
 interface PortalSidebarProps {
@@ -82,6 +85,7 @@ export function PortalSidebar({
   const isSuperAdmin = viewer?.role === "super_admin";
   const isApproved = isSuperAdmin || viewer?.status === "approved";
   const pendingCount = pendingMembersCount;
+  const fullUi = viewer?.seesFullUi ?? false;
 
   // Members (non-staff) get the request page as their "Dashboard"; staff keep
   // the KPI overview at /portal.
@@ -152,7 +156,7 @@ export function PortalSidebar({
 
       {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
-        {navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved)).map(item => {
+        {navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi)).map(item => {
           const active = isActive(item.href, item.exact);
           const isSettings = item.href === "/portal/settings";
           // No prefetch: every portal page is dynamic, so a prefetch only

@@ -22,6 +22,7 @@ import {
   type MemberRole,
   type MemberStatus,
 } from "./permissions";
+import { seesFullUi } from "./feature-preview";
 
 export interface Viewer {
   userId: string;
@@ -33,6 +34,8 @@ export interface Viewer {
   canEditSettings: boolean;
   canDeleteSettings: boolean;
   canUndeleteSettings: boolean;
+  // Staged rollout: sees the nav items and Settings tabs still in preview.
+  seesFullUi: boolean;
 }
 
 // The signed-in user, verified, once per request. Server pages use this
@@ -46,12 +49,15 @@ export interface Viewer {
 // requests), so it costs no network call; with the legacy shared secret it
 // falls back to `getUser()`, exactly as before. The ReelNotes API routes,
 // which middleware doesn't cover, still make their own `getUser()` check.
-export const getAuthUser = cache(async (): Promise<{ id: string } | null> => {
+export const getAuthUser = cache(async (): Promise<{ id: string; email: string | null } | null> => {
   const supabase = await createClient();
   try {
     const { data } = await supabase.auth.getClaims();
     const id = data?.claims?.sub;
-    return typeof id === "string" && id ? { id } : null;
+    const email = data?.claims?.email;
+    return typeof id === "string" && id
+      ? { id, email: typeof email === "string" ? email : null }
+      : null;
   } catch (err) {
     // getClaims() throws, rather than returning an error, for a few malformed
     // tokens (e.g. one already past its expiry). getUser() never threw, so
@@ -105,6 +111,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canEditSettings: canEditSettings(member),
     canDeleteSettings: canDeleteSettings(member),
     canUndeleteSettings: canUndeleteSettings(member),
+    seesFullUi: seesFullUi(user.email),
   };
 });
 
