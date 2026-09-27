@@ -14,6 +14,10 @@
 // element isn't on the page (a board-only button, a list with nothing in it
 // yet) is skipped, so tours cope with every account and every state.
 //
+// Longer walkthroughs can span pages (a step's `route`), open things on the
+// way (`click`, `dismiss`, `pick`), let people fill in what's highlighted
+// (`interactive`), and come in parts (`part`) — see the requirements tour.
+//
 // KEEP IT CURRENT alongside the guide: rename a button, rename it here too.
 // tests/unit/help-tours.test.ts fails when a step points at a target no
 // component carries, or when a step reaches people its section doesn't.
@@ -41,6 +45,26 @@ export interface TourStep {
   audience?: GuideAudience;
   // The element lives in the sidebar, so open the drawer on phones.
   sidebar?: boolean;
+  // The page this step is on, when it isn't the tour's `route`. Moving to the
+  // step goes there.
+  route?: string;
+  // Moving forward: click this `data-tour` element to bring the step's
+  // element into view (a tab, an "Add" button, a chip that opens a sheet),
+  // unless it's already showing.
+  click?: string;
+  // Moving forward: click this `data-tour` element first if it's on the page,
+  // e.g. to close a sheet a previous step opened.
+  dismiss?: string;
+  // Moving forward: if this `data-tour` drop-down is still on its first
+  // option ("All …"), choose the next one, so the step has something to show.
+  pick?: string;
+  // The highlighted element can be used while the callout shows (type in it,
+  // tick it, press it). The rest of the page stays off-limits.
+  interactive?: boolean;
+  // Starts a part of a longer tour ("Set it up"). The callout shows "Part 2
+  // of 3", and when a part's first step isn't on the page for this person,
+  // the whole part is skipped.
+  part?: string;
 }
 
 export interface GuideTour {
@@ -48,8 +72,10 @@ export interface GuideTour {
   // The guide section this tour walks through. The tour reaches the same
   // people the section does.
   sectionId: string;
+  // More guide sections that offer this tour ("Show me around").
+  alsoSections?: string[];
   title: string;
-  // The page the tour runs on. Starting it from anywhere else goes there
+  // The page the tour runs on (or starts on, when steps have their own). Starting it from anywhere else goes there
   // first.
   route: string;
   steps: TourStep[];
@@ -355,6 +381,141 @@ export const GUIDE_TOURS: GuideTour[] = [
       },
     ],
   },
+  {
+    id: "requirements",
+    sectionId: "player-requirements",
+    alsoSections: ["settings-requirements"],
+    title: "Requirements walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        title: "Collecting handbook signatures, fees and forms",
+        body: "Three parts: **set up** a requirement like the handbook signature, **check players off** as it comes in (with a scan), then **see how many are in** and who's still missing. You can fill things in as you go.",
+      },
+      // Part 1 — Settings → Requirements.
+      {
+        part: "Set it up",
+        target: "settings-tab-requirements",
+        title: "Settings → Requirements",
+        body: "Everything players have to hand in or pay is listed here. Board members need the **Settings: Edit** chip (a super-admin turns it on in **Settings → Members**).",
+      },
+      {
+        target: "requirements-add",
+        click: "settings-tab-requirements",
+        title: "Add requirement",
+        body: "Starts a new one. The **Handbook signature** may already be listed — tap the **pencil** on it to change it instead.",
+      },
+      {
+        target: "requirement-name",
+        click: "requirements-add",
+        interactive: true,
+        title: "Name",
+        body: "What the board sees on each player's chip, like **Handbook signature**. Type it in now if you're adding one.",
+      },
+      {
+        target: "requirement-kind",
+        interactive: true,
+        title: "Type",
+        body: "**Task / form** is marked **Done** — right for a signature. **Fee** is marked **Paid** and asks for an **Amount**.",
+      },
+      {
+        target: "requirement-due",
+        interactive: true,
+        title: "Due date",
+        body: "Optional. A reminder for the board, shown with the requirement.",
+      },
+      {
+        target: "requirement-applies",
+        interactive: true,
+        title: "Applies to",
+        body: "**All players** for the handbook. Pick **Only some teams** for something like one team's tournament fee, then tick the teams.",
+      },
+      {
+        target: "requirement-options",
+        interactive: true,
+        title: "Scans and Active",
+        body: "Leave **Offer scan upload** ticked so you can attach a photo of each signed page. Untick **Active** later to retire it without losing anyone's record.",
+      },
+      {
+        target: "requirement-save",
+        interactive: true,
+        title: "Save it",
+        body: "Tap **Add requirement** to save, or **Cancel** to leave things as they are. Then press **Next** and we'll head to the Directory.",
+      },
+      // Part 2 — checking players off in the Directory.
+      {
+        part: "Check players off",
+        route: "/portal/directory",
+        target: "requirement-chip",
+        title: "A chip on every player",
+        body: "Each player shows a chip for every requirement that applies to them. Red **Needs Handbook signature** means it's still missing; green with a ✓ means it's in.",
+      },
+      {
+        route: "/portal/directory",
+        target: "req-status",
+        click: "requirement-chip",
+        interactive: true,
+        title: "Done, Waived or Not yet",
+        body: "Tapping a chip opens this sheet. Pick **Done** (**Paid** for a fee) once you have it, or **Waived** to excuse the player.",
+      },
+      {
+        route: "/portal/directory",
+        target: "req-details",
+        interactive: true,
+        title: "Date and note",
+        body: "The date is today to start with. Add a **Note** if it helps — who handed it in, or a check number for a fee.",
+      },
+      {
+        route: "/portal/directory",
+        target: "req-scan",
+        interactive: true,
+        title: "Upload the signed page",
+        body: "Tap **Upload scan** and take a photo of the signed page right from your phone, or pick a PDF. Only the board can open it. **View scan** opens it later.",
+      },
+      {
+        route: "/portal/directory",
+        target: "req-save",
+        interactive: true,
+        title: "Save",
+        body: "Tap **Save** and the chip turns green (with a little page icon when there's a scan). Repeat for each player as signatures come in.",
+      },
+      // Part 3 — how many are in, how many are left.
+      {
+        part: "See who's missing",
+        route: "/portal/directory",
+        target: "directory-requirements",
+        dismiss: "req-cancel",
+        interactive: true,
+        title: "Pick the requirement",
+        body: "Choose **Handbook signature** from **All requirements**. The list narrows to the players it applies to.",
+      },
+      {
+        route: "/portal/directory",
+        target: "requirement-status",
+        pick: "requirement-filter",
+        interactive: true,
+        title: "Missing, Done, Waived",
+        body: "**Missing** shows who still owes it — the number is how many are left. **Done** (or **Paid**) and **Waived** show who's handled, and **All** shows everyone.",
+      },
+      {
+        route: "/portal/directory",
+        target: "requirement-summary",
+        title: "The running total",
+        body: "This line sums it up, like **Handbook signature: 28 of 40 done (2 waived)** — how many are in out of everyone it applies to.",
+      },
+      {
+        route: "/portal/directory",
+        target: "directory-teams",
+        title: "One team at a time",
+        body: "Tap a team to see who's missing on just that team — the counts follow along. Handy for handing a coach their list.",
+      },
+      {
+        route: "/portal/directory",
+        title: "That's the whole loop",
+        body: "Set it up once, check players off as things come in, and use **Missing** to chase the rest. Requirements start fresh each season with the new roster.",
+      },
+    ],
+  },
 ];
 
 export function canSeeTour(tour: GuideTour, viewer: GuideViewer | null | undefined): boolean {
@@ -373,9 +534,47 @@ export function getTour(id: string): GuideTour | undefined {
   return GUIDE_TOURS.find((t) => t.id === id);
 }
 
+// The page a step is on.
+export function stepRoute(tour: GuideTour, step: TourStep): string {
+  return step.route ?? tour.route;
+}
+
+// Where part `part` (1 = the first) starts in `steps`, or 0 if there's no such
+// part.
+export function partStartIndex(steps: TourStep[], part: number): number {
+  let n = 0;
+  for (let i = 0; i < steps.length; i++) {
+    if (steps[i].part && ++n === part) return i;
+  }
+  return 0;
+}
+
+// The part the step at `index` belongs to: its number, name and how many
+// parts there are. Null for tours (or opening steps) outside any part.
+export function partAt(steps: TourStep[], index: number): { number: number; name: string; of: number } | null {
+  const of = steps.filter((s) => s.part).length;
+  let number = 0;
+  let name: string | null = null;
+  for (let i = 0; i <= index && i < steps.length; i++) {
+    if (steps[i].part) {
+      number++;
+      name = steps[i].part!;
+    }
+  }
+  return name ? { number, name, of } : null;
+}
+
+// The next step after `index` that starts a part, or `steps.length`.
+export function nextPartIndex(steps: TourStep[], index: number): number {
+  for (let i = index + 1; i < steps.length; i++) if (steps[i].part) return i;
+  return steps.length;
+}
+
+export const REQUIREMENTS_TOUR_ID = "requirements";
+
 // The tour for a guide section, if it has one this viewer can take.
 export function tourForSection(sectionId: string, viewer: GuideViewer | null | undefined): GuideTour | null {
-  const tour = GUIDE_TOURS.find((t) => t.sectionId === sectionId);
+  const tour = GUIDE_TOURS.find((t) => t.sectionId === sectionId || t.alsoSections?.includes(sectionId));
   return tour && canSeeTour(tour, viewer) ? tour : null;
 }
 

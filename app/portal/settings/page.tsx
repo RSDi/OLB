@@ -152,6 +152,7 @@ export default function SettingsPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
+              data-tour={t.key === "requirements" ? "settings-tab-requirements" : undefined}
               style={{
                 padding: "8px 16px",
                 borderRadius: 8,

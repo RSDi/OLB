@@ -13,7 +13,7 @@ import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
 import { PortalTopBar } from "../components/PortalTopBar";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
-import { GuidedTour, TourContext } from "../components/GuidedTour";
+import { GuidedTour, TourContext, type StartTour } from "../components/GuidedTour";
 import { ScrollToTopButton } from "../components/ScrollToTopButton";
 import { guideSectionForPath } from "../../lib/help/guide";
 import {
@@ -75,12 +75,12 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
   // …and "Show me around" in that panel runs the page's guided tour
   // (lib/help/tours.ts). `key` restarts a tour that's started again.
   const pageTour = tourForPath(pathname, viewer);
-  const [tour, setTour] = useState<{ id: string; key: number } | null>(null);
+  const [tour, setTour] = useState<{ id: string; part?: number; key: number } | null>(null);
 
-  const startTour = useCallback((id: string) => {
+  const startTour = useCallback<StartTour>((id, opts) => {
     setInfoOpen(false);
     setSearchOpen(false);
-    setTour({ id, key: Date.now() });
+    setTour({ id, part: opts?.part, key: Date.now() });
   }, []);
   const tourControls = useMemo(() => ({ start: startTour }), [startTour]);
 
@@ -236,6 +236,7 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
           <GuidedTour
             key={tour.key}
             tourId={tour.id}
+            startPart={tour.part}
             viewer={viewer}
             onClose={() => setTour(null)}
             onSidebarStep={onTourSidebarStep}
