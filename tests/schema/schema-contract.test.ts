@@ -45,7 +45,7 @@ const skip = env ? false : "no Supabase env — schema probes skipped (unit test
 // here whenever a migration adds a column the code starts using.
 const CONTRACT: Record<string, string> = {
   members:
-    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at",
+    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests",
   maintenance_requests:
     "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at",
   request_votes: "id,ticket_id,voter_id,vote,note,created_at,updated_at",
@@ -79,7 +79,9 @@ const CONTRACT: Record<string, string> = {
   slack_archive_channel_members: "channel_id,member_id,created_at",
   olb_boards: "id,season,name",
   olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at",
-  olb_players: "id,board_id,team_id,full_name,dob,grade,sort_order,import_flag,updated_at",
+  olb_players:
+    "id,board_id,team_id,full_name,dob,grade,sort_order,import_flag,updated_at,age_group,new_to_program,address_line1,address_line2,city,state,postal_code,phone,email,registration_fee,payment_method,shirt_size,waiver_signed,waiver_signed_on,directory_optin,registered_at",
+  olb_player_parents: "player_id,member_id,relationship",
   olb_coaches: "id,board_id,team_id,name,role,sort_order,updated_at",
   olb_registrations:
     "id,board_id,first_name,last_name,dob,grade,parent_name,parent_email,parent_phone,extra,status,player_id,reviewed_by,reviewed_at,created_at",

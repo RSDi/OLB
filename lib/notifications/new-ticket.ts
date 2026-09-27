@@ -37,7 +37,7 @@ export async function sendNewTicketNotification({
     );
     return;
   }
-  const from = process.env.MAIL_FROM ?? "MCC Portal <onboarding@resend.dev>";
+  const from = process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
 
   const admin = createAdminClient();
 

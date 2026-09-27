@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
-    "import-directory": "tsx --env-file=.env.local scripts/import-directory.ts",
+    "import-registrations": "tsx --env-file=.env.local scripts/import-registrations.ts",
     "create-admin": "tsx --env-file=.env.local scripts/create-admin.ts",
     "slack-archive-backfill": "tsx --env-file=.env.local scripts/slack-archive-backfill.ts",
     "slack-archive-refresh-access": "tsx --env-file=.env.local scripts/slack-archive-refresh-access.ts",

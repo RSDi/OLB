@@ -58,14 +58,18 @@ playbooks/docs, volunteer teams, and global search.
    They're Super-admins, or Building Committee with `--role admin`. Re-running
    resets the password. Each person then picks their own at `/reset-password`.
 
-5. **(Optional) Import an existing directory**
+5. **Import the season's registrations**
 
    ```bash
-   npm run import-directory -- path/to/directory.xlsx --dry-run
+   npm run import-registrations -- path/to/registrations.xlsx --dry-run
    ```
 
-   Reads members + relationships from an Excel workbook. Drop `--dry-run` to
-   write. Requires `.env.local` with the service-role key.
+   Reads the "Season Registration" sheet: players land in the Team manager's
+   Unassigned pool (and the Directory) with their registration details, and
+   their parents become approved members who can sign up or sign in with their
+   registration email. Drop `--dry-run` to write; safe to re-run. Pass
+   `--season 2027-2028` for a later season's board. Requires `.env.local` with
+   the service-role key.
 
 6. **Run the dev server**
 
@@ -84,7 +88,7 @@ playbooks/docs, volunteer teams, and global search.
 | `npm run start` | Serve the production build |
 | `npm run type-check` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
-| `npm run import-directory` | One-shot Excel directory importer |
+| `npm run import-registrations` | Import players and parents from the registration spreadsheet (see step 5 above) |
 | `npm run create-admin` | Create admins who sign in with a password (see step 4 above) |
 | `npm run slack-app-manifest` | Print the Slack app manifest for this site (see the Slack section of `.env.example`) |
 

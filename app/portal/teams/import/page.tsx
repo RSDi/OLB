@@ -57,7 +57,8 @@ export default function ImportPage() {
       <h1 className="olb-h1" style={{ marginBottom: 6 }}>Import roster</h1>
       <p className="olb-sub" style={{ marginTop: 0 }}>
         Upload the season <strong>Teams .xlsx</strong>. You&apos;ll see a preview before anything is saved.
-        Importing replaces the current teams, players, and coaches for this season.
+        Importing replaces this season&apos;s teams and coaches and puts players on their new teams.
+        Registered players keep their details and parents; any the sheet leaves out go back to Unassigned.
       </p>
 
       <div className="olb-card olb-card--pad" style={{ marginTop: 12 }}>

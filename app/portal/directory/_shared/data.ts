@@ -78,37 +78,64 @@ export async function loadMembers(opts: {
   return (data as DirectoryMember[] | null) ?? [];
 }
 
-export async function loadRelationships(): Promise<DirectoryRelationship[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("member_relationships")
-    .select("member_id, related_member_id, relationship");
-  return (data as DirectoryRelationship[] | null) ?? [];
+// A player on the season board (the Team manager's olb_players) with the
+// parents linked to them (members rows).
+export interface DirectoryParent {
+  relationship: "father" | "mother" | "guardian";
+  member: {
+    id: string;
+    user_id: string | null;
+    status: "pending" | "approved" | "denied";
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    volunteer_interests: string | null;
+  } | null;
 }
 
-export interface VolunteerTeam {
+export interface DirectoryPlayer {
   id: string;
-  name: string;
+  full_name: string;
+  dob: string | null;
+  age_group: string | null;
+  team: { name: string; age_group: string | null } | null;
+  board: { season: string } | null;
+  new_to_program: boolean;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  phone: string | null;
+  email: string | null;
+  registration_fee: string | null;
+  payment_method: string | null;
+  shirt_size: string | null;
+  waiver_signed: boolean;
+  waiver_signed_on: string | null;
+  directory_optin: boolean;
+  parents: DirectoryParent[];
 }
 
-export async function loadVolunteerTeams(): Promise<VolunteerTeam[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("volunteer_teams")
-    .select("id, name")
-    .order("name", { ascending: true });
-  return (data as VolunteerTeam[] | null) ?? [];
-}
+const PLAYER_COLUMNS =
+  "id, full_name, dob, age_group, new_to_program, address_line1, address_line2, city, state, postal_code, phone, email, registration_fee, payment_method, shirt_size, waiver_signed, waiver_signed_on, directory_optin, " +
+  "team:olb_teams(name, age_group), board:olb_boards(season), " +
+  "parents:olb_player_parents(relationship, member:members(id, user_id, status, full_name, email, phone, volunteer_interests))";
 
-// member_id -> [team_id, ...] for filtering the directory by team.
-export async function loadMemberTeamMap(): Promise<Record<string, string[]>> {
+// Every player on the latest season's board ("2026-2027" style, so seasons
+// sort as text). RLS decides who's listed: staff see everyone, approved
+// members see the players whose family opted into the directory. Parents show
+// whether or not they've been approved for the portal yet (0091); a deleted
+// one comes back with member: null and is dropped.
+export async function loadPlayers(): Promise<DirectoryPlayer[]> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("member_volunteer_teams")
-    .select("member_id, team_id");
-  const map: Record<string, string[]> = {};
-  for (const row of (data as { member_id: string; team_id: string }[] | null) ?? []) {
-    (map[row.member_id] ??= []).push(row.team_id);
-  }
-  return map;
+    .from("olb_players")
+    .select(PLAYER_COLUMNS)
+    .order("full_name", { ascending: true });
+  const players = (data as unknown as DirectoryPlayer[] | null) ?? [];
+  const season = players.reduce((max, p) => ((p.board?.season ?? "") > max ? p.board!.season : max), "");
+  return players
+    .filter((p) => p.board?.season === season)
+    .map((p) => ({ ...p, parents: p.parents.filter((pa) => pa.member) }));
 }

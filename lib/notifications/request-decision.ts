@@ -28,7 +28,7 @@ export async function sendRequestDecisionNotification({
     console.warn("[notify] No recipient email for request decision — skipping");
     return;
   }
-  const from = process.env.MAIL_FROM ?? "MCC Portal <onboarding@resend.dev>";
+  const from = process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
   const hi = recipientName ? `Hi ${escapeHtml(recipientName.split(" ")[0])},` : "Hi,";
 
   const subject =

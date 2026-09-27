@@ -116,6 +116,9 @@ export const getPendingMembersCount = cache(async (): Promise<number> => {
   const { count } = await supabase
     .from("members")
     .select("id", { count: "exact", head: true })
-    .eq("status", "pending");
+    .eq("status", "pending")
+    // Only people who've signed in and asked. A pending row with no login is
+    // a registered parent who hasn't signed up yet.
+    .not("user_id", "is", null);
   return count ?? 0;
 });
