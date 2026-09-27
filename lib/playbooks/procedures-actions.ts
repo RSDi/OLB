@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireStaff } from "../auth/guards";
+import { requireApproved, requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { sendProcedureCompletionSlack } from "../notifications/slack";
@@ -114,11 +114,13 @@ export async function deleteProcedure(
 // Run-completion for a standalone procedure (from the playbook page). ALWAYS
 // logs a procedure_runs row (the history); posts a Slack FYI only when the
 // procedure has notify on + a channel. {person} is the runner's name.
+// Any approved member can run one; the run row goes in via the admin client,
+// so procedure_runs needs no member insert policy.
 export async function completeProcedure(
   procedureId: string,
   opts?: { eventId?: string },
 ): Promise<{ ok: true; posted: boolean } | { error: string }> {
-  const gate = await requireStaff();
+  const gate = await requireApproved();
   if ("error" in gate) return { error: gate.error };
   if (!UUID_RE.test(procedureId)) return { error: "Invalid procedure." };
 

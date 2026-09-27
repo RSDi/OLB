@@ -149,7 +149,7 @@ Want to fill an open spot? Let the club know and an admin will add you.`,
 - Each playbook is a reference page, and can include pictures and videos (tap a video card to play it).
 - Some playbooks also have **procedures** — checklists for a job you do the same way every time. Open the **Run** tab to see a procedure's steps.
 
-**Running a procedure (admins).** Open the playbook, press **▶ Start**, and tap each step as you do it. When every step is checked, press **Done** — it's logged in the procedure's **History**, and if the procedure is set up to, the team gets a heads-up in Slack (**Done — notify the team**).`,
+**Running a procedure.** Open the playbook, press **▶ Start**, and tap each step as you do it. When every step is checked, press **Done** — the run is logged with your name (admins see it in the procedure's **History**), and if the procedure is set up to, the team gets a heads-up in Slack (**Done — notify the team**).`,
   },
   {
     id: "slack-archive",

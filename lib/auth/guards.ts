@@ -60,7 +60,18 @@ export async function requireStaff(): Promise<GateResult> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };
   if (!isStaff(caller.member)) {
-    return { error: "Building committee access required." };
+    return { error: "Admin access required." };
+  }
+  return { userId: caller.userId };
+}
+
+// Any approved member (not pending/denied). For member-level actions like
+// completing a playbook procedure.
+export async function requireApproved(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (caller.member?.status !== "approved") {
+    return { error: "Your account needs to be approved first." };
   }
   return { userId: caller.userId };
 }
