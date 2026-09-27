@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { ageFromDob } from "../../../lib/teams/age";
 import type { DirectoryParent, DirectoryPlayer } from "./_shared/data";
-import { TeamBanner, TeamDot } from "./_shared/TeamBanner";
+import { JerseyNumber, TeamBanner, TeamDot } from "./_shared/TeamBanner";
 import type { OlbVolunteerRole } from "../../../lib/teams/types";
 import type { TeamWithStaff } from "../../../lib/teams/volunteer-data";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
@@ -429,6 +429,7 @@ function PlayerRow({
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {p.jersey_number != null && <JerseyNumber n={p.jersey_number} />}
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gw-fg)" }}>{p.full_name}</span>
           {p.team && <span className="rsd-chip rsd-chip-mute">{teamLabel(p.team)}</span>}
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}

@@ -28,6 +28,7 @@ export type OlbPlayer = {
   sort_order: number;
   import_flag: string | null;
   age_group: string | null; // from the registration spreadsheet (10U, 12U, …)
+  jersey_number: string | null;
 };
 
 export type OlbCoach = {

@@ -21,6 +21,10 @@ import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
 import { IntegrationsTab } from "./IntegrationsTab";
 
+// Staged rollout: the tabs released to everyone who can open Settings. The
+// rest stay with the accounts in lib/auth/feature-preview.ts.
+const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles"]);
+
 type Tab =
   | "members"
   | "areas"
@@ -117,35 +121,34 @@ export default function SettingsPage() {
     { key: "audit_log", label: "Audit Log", visible: true },
     { key: "deleted", label: "Deleted", visible: showDeleted },
   ];
+  const shownTabs = tabs.filter((t) => t.visible && (fullUi || RELEASED_TABS.has(t.key)));
 
   return (
     <>
-      {/* Outer tabs. Staged rollout: everyone else only gets Members, so
-          the tab bar is hidden for them. */}
-      {fullUi && (
+      {/* Outer tabs. Staged rollout: everyone else only gets the released
+          tabs, and no bar at all when that leaves just one. */}
+      {shownTabs.length > 1 && (
         <div style={{ display: "flex", gap: 2, marginBottom: 24, flexWrap: "wrap" }}>
-          {tabs
-            .filter((t) => t.visible)
-            .map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
-                  background: tab === t.key ? "var(--gw-bg-elev)" : "transparent",
-                  border: "1px solid",
-                  borderColor: tab === t.key ? "var(--gw-border)" : "transparent",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: tab === t.key ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-                  cursor: "pointer",
-                  transition: "all 120ms",
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
+          {shownTabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 8,
+                background: tab === t.key ? "var(--gw-bg-elev)" : "transparent",
+                border: "1px solid",
+                borderColor: tab === t.key ? "var(--gw-border)" : "transparent",
+                fontSize: 13,
+                fontWeight: 700,
+                color: tab === t.key ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+                cursor: "pointer",
+                transition: "all 120ms",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       )}
 

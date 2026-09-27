@@ -175,6 +175,35 @@ export function Avatar({ name, dark, size = 32 }: { name: string | null; dark?: 
   );
 }
 
+// A player's jersey number as a small dark tile.
+export function JerseyNumber({ n, size = 28 }: { n: string; size?: number }) {
+  return (
+    <span
+      aria-label={`Number ${n}`}
+      style={{
+        minWidth: size,
+        height: size,
+        padding: "0 6px",
+        boxSizing: "border-box",
+        flexShrink: 0,
+        borderRadius: 7,
+        background: "var(--gw-fg)",
+        color: "var(--rsd-accent-fill)",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "var(--rsd-display)",
+        fontSize: Math.round(size * 0.55),
+        fontWeight: 800,
+        lineHeight: 1,
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
+      {n}
+    </span>
+  );
+}
+
 export function TeamDot({ color, size = 10 }: { color: string | null; size?: number }) {
   return (
     <span

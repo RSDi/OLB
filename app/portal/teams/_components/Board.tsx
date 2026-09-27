@@ -105,7 +105,7 @@ export default function Board({ initial }: { initial: OlbBoardData }) {
   }
 
   // ── Edit / remove ─────────────────────────────────────────────
-  function savePlayer(id: string, fields: { full_name: string; dob: string | null; grade: string | null }) {
+  function savePlayer(id: string, fields: { full_name: string; dob: string | null; grade: string | null; jersey_number: string | null }) {
     const prev = players.find((p) => p.id === id);
     setPlayers((ps) => ps.map((p) => (p.id === id ? { ...p, ...fields, import_flag: null } : p)));
     setEditPlayer(null);

@@ -24,7 +24,7 @@ export async function moveCoach(coachId: string, toTeamId: string | null): Promi
 
 export async function updatePlayer(
   id: string,
-  fields: { full_name: string; dob: string | null; grade: string | null },
+  fields: { full_name: string; dob: string | null; grade: string | null; jersey_number: string | null },
 ): Promise<void> {
   await requireTeamManager();
   // Editing a player clears the import flag — the data has now been reviewed.
@@ -35,6 +35,7 @@ export async function updatePlayer(
       full_name: fields.full_name,
       dob: fields.dob,
       grade: fields.grade,
+      jersey_number: fields.jersey_number,
       import_flag: null,
       updated_at: new Date().toISOString(),
     })

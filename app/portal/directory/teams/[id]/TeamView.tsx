@@ -13,7 +13,7 @@ import type { OlbTeamVolunteer, OlbVolunteerRole } from "../../../../../lib/team
 import type { AssignablePerson, TeamWithStaff } from "../../../../../lib/teams/volunteer-data";
 import { roleSpots, teamColorHex, teamLabel, wantsRole } from "../../../../../lib/teams/volunteer-options";
 import type { DirectoryPlayer } from "../../_shared/data";
-import { Avatar, capStyle, TeamFacts } from "../../_shared/TeamBanner";
+import { Avatar, capStyle, JerseyNumber, TeamFacts } from "../../_shared/TeamBanner";
 
 function RoleIcon({ name }: { name: string }) {
   const n = name.toLowerCase();
@@ -298,7 +298,7 @@ export function TeamView({
                   borderTop: i === 0 ? "none" : "1px solid var(--gw-border)",
                 }}
               >
-                <Avatar name={p.full_name} size={28} />
+                {p.jersey_number != null ? <JerseyNumber n={p.jersey_number} /> : <Avatar name={p.full_name} size={28} />}
                 <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 13, fontWeight: 700 }}>{p.full_name}</span>
                   {p.parents.length > 0 && (
