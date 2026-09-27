@@ -89,7 +89,7 @@ export interface ReelNotesRecording {
   error: string | null;
   // Generic, portable parent link. The package stores and returns these but
   // never interprets them — the host decides what an entity "type" means
-  // (MCC uses 'task'). Both null for an unattached note.
+  // (OLB uses 'task'). Both null for an unattached note.
   linked_entity_type: string | null;
   linked_entity_id: string | null;
   created_at: string;

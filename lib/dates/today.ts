@@ -8,7 +8,7 @@
 // lexicographic order == chronological order. NEVER compare via
 // `new Date(due_on) < new Date()` — that injects time-of-day + UTC parsing bugs.
 
-// Millard Community Church is in Omaha, NE (Central Time).
+// Omaha Lightning Basketball is in Omaha, NE (Central Time).
 export const CHURCH_TZ = "America/Chicago";
 
 // Today's date in the church's timezone, as "YYYY-MM-DD". `en-CA` formats as

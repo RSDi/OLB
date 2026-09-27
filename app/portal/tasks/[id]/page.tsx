@@ -941,7 +941,7 @@ function RequestDetailsRows({ d }: { d: RequestDetails }) {
   if (d.audience) rows.push(["Open to", d.audience]);
   rows.push([
     "Requested by",
-    d.requesterKind === "outside" ? `Outside group${d.outsideOrg ? ` — ${d.outsideOrg}` : ""}` : "MCC",
+    d.requesterKind === "outside" ? `Outside group${d.outsideOrg ? ` — ${d.outsideOrg}` : ""}` : "OLB",
   ]);
   if (d.spaces?.length) rows.push(["Space(s)", d.spaces.join(", ")]);
   if (when) rows.push(["When", `${when}${d.recurring ? ` · recurring${d.recurrenceNote ? ` (${d.recurrenceNote})` : ""}` : ""}`]);

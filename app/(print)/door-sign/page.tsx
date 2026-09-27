@@ -56,7 +56,7 @@ export default async function NotHereSignPage() {
           letterSpacing: ".14em",
           textTransform: "uppercase",
         }}>
-          Millard Community Church
+          Omaha Lightning Basketball
         </div>
 
         <h1 style={{

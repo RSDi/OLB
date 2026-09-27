@@ -16,7 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "../../../../lib/supabase/admin";
 import { processTranscriptionCompleted, WEBHOOK_SECRET_HEADER } from "reelnotes/server";
-import { mccReelNotesAdapter } from "../../../../lib/reelnotes/adapter";
+import { olbReelNotesAdapter } from "../../../../lib/reelnotes/adapter";
 
 export const runtime = "nodejs";
 // Pipeline runs transcript fetch + Claude call + Resend email inline. Bump
@@ -71,6 +71,6 @@ export async function POST(req: NextRequest) {
   // the transcript from AssemblyAI and, on error, stores AssemblyAI's real
   // error message (e.g. the actual failure reason) instead of a generic one —
   // so failed recordings are debuggable and the UI can show why.
-  await processTranscriptionCompleted(recording.id, mccReelNotesAdapter());
+  await processTranscriptionCompleted(recording.id, olbReelNotesAdapter());
   return NextResponse.json({ ok: true });
 }

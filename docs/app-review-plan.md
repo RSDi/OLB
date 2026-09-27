@@ -1,4 +1,4 @@
-# MCC App Review — Plan & Roadmap
+# OLB App Review — Plan & Roadmap
 
 **Date:** June 11, 2026
 **Inputs:** Jeff's recorded vision walkthrough (Jun 11 meeting) + interview decisions (same day)

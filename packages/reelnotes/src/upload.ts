@@ -30,7 +30,7 @@ export const RECORDING_SELECT = `id, user_id, title, audio_blob_url, duration_se
 // Header AssemblyAI echoes back on the webhook call so the host's webhook route
 // can authenticate it. The value is arbitrary, but the upload submit (here) and
 // the webhook check must use the same name.
-export const WEBHOOK_SECRET_HEADER = "x-mcc-webhook-secret";
+export const WEBHOOK_SECRET_HEADER = "x-olb-webhook-secret";
 
 const AAI_UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
 const AAI_TRANSCRIPT_URL = "https://api.assemblyai.com/v2/transcript";

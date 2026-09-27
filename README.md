@@ -1,6 +1,6 @@
-# Millard Community Church — Member Portal
+# Omaha Lightning Basketball — Member Portal
 
-Internal portal for Millard Community Church: member directory, facilities &
+Internal portal for Omaha Lightning Basketball: member directory, facilities &
 maintenance ticketing, preventive maintenance (PM), events, supplies,
 playbooks/docs, volunteer teams, and global search.
 

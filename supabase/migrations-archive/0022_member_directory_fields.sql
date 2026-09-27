@@ -10,14 +10,14 @@
 --   deceased_at       date  — only set on directory_category='memorial' rows
 --   directory_category enum-as-text — regular / extended / memorial
 --   membership_status  enum-as-text — visiting / regular / moved / inactive
---   joined_at         date  — first attended MCC
+--   joined_at         date  — first attended OLB
 --   baptism_at        date
 --   wiffleball_opt_out boolean — for kids whose parents don't want them playing
 --
 -- directory_category is distinct from membership_status:
 --   directory_category = which directory section a row lives in (the sheet
 --   already partitions the world into Attend / Extended / Asleep)
---   membership_status = where this person stands as an MCC attender today
+--   membership_status = where this person stands as an OLB attender today
 --
 -- Notes are deliberately NOT on this table — they belong in a staff-only
 -- sub-table (0023) so the members_directory_select policy from 0020 doesn't

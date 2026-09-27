@@ -24,8 +24,8 @@ select * from (values
    '(555) 201-1100',
    'abcplumbing.example',
    '123 Maple Ave, Springfield, NE',
-   'MCC-4421',
-   'After-hours dispatcher answers 24/7. For non-emergency, schedule online and reference account MCC-4421.',
+   'OLB-4421',
+   'After-hours dispatcher answers 24/7. For non-emergency, schedule online and reference account OLB-4421.',
    'Ask for Dave for any job over $500. He''ll match other written bids.',
    array['preferred','emergency']
   ),
@@ -36,7 +36,7 @@ select * from (values
    '(555) 333-7100',
    'brightspark.example',
    '450 Industrial Pkwy, Omaha, NE',
-   'MCC-COMM-12',
+   'OLB-COMM-12',
    'For breaker replacements: order through the contractor portal, not email. Lead time 3-5 days.',
    'Field estimator: Marisol. Same-week visits if scheduled by Monday.',
    array['preferred']
@@ -60,7 +60,7 @@ select * from (values
    '(555) 808-9090',
    'comfortclimate.example',
    '12 Industrial Blvd, Lincoln, NE',
-   'MCC-HVAC-31',
+   'OLB-HVAC-31',
    'Annual contract pricing. Spring + Fall PM visits included. Call dispatcher and reference contract #31.',
    'For new install quotes, request engineering review. Add 2 weeks to lead time.',
    array['contract','preferred']

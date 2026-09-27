@@ -450,11 +450,11 @@ export function ReelNotes({
   // hosts that don't pass it keep the prior behavior.
   thingsEnabled?: boolean;
   // Whether to show the destructive Delete affordance. Defaults true; hosts can
-  // restrict it (MCC: super-admins only).
+  // restrict it (OLB: super-admins only).
   canDelete?: boolean;
   // Optional "this recording came from X" backlinks, keyed by recording id.
   // The host resolves a recording's generic parent link to a label + href
-  // (MCC: the task it was recorded on). The package just renders them.
+  // (OLB: the task it was recorded on). The package just renders them.
   sourceLinks?: Record<string, ReelNoteSourceLink>;
 }) {
   const supabase = useMemo(() => createBrowserClient(supabaseUrl, supabaseAnonKey), [supabaseUrl, supabaseAnonKey]);

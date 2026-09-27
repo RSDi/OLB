@@ -6,9 +6,9 @@ import { getActiveClosure } from "../../../lib/closures/data";
 import { CHURCH_ADDRESS, MEETING_TIMES } from "../schedule";
 
 export const metadata: Metadata = {
-  title: { absolute: "Meeting Times — Millard Community Church" },
+  title: { absolute: "Meeting Times — Omaha Lightning Basketball" },
   description:
-    "When and where Millard Community Church meets — and any changes to this week's schedule.",
+    "When and where Omaha Lightning Basketball meets — and any changes to this week's schedule.",
 };
 
 // This is the page behind the permanent QR code on the door sign — someone is

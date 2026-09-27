@@ -2,7 +2,7 @@
 --
 -- Renames the (previously unused) ministry_teams feature to volunteer_teams
 -- and is the schema half of wiring it into the app (settings management tab +
--- directory filter). "Volunteer" is the term MCC uses, not "ministry".
+-- directory filter). "Volunteer" is the term OLB uses, not "ministry".
 --
 -- Idempotent and safe regardless of history: if 0024 was applied we rename the
 -- existing tables/index; if it never ran we create the tables fresh. Either way
