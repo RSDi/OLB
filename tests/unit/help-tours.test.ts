@@ -9,9 +9,13 @@ import { join } from "node:path";
 import { GUIDE_SECTIONS, type GuideAudience, type GuideViewer } from "../../lib/help/guide.ts";
 import {
   GUIDE_TOURS,
+  REQUIREMENTS_TOUR_ID,
   WELCOME_TOUR_ID,
   WELCOME_TOUR_NEW_SINCE,
   autoStartsWelcomeTour,
+  nextPartIndex,
+  partAt,
+  partStartIndex,
   tourForPath,
   tourForSection,
   tourStepsFor,
@@ -24,7 +28,8 @@ const SUPER: GuideViewer = { role: "super_admin", status: "approved", isStaff: t
 const RANK: Record<GuideAudience, number> = { everyone: 0, staff: 1, super_admin: 2 };
 
 // Every tour anchor the app's components carry: `data-tour="x"` on an
-// element, or `tour: "x"` on a sidebar nav entry.
+// element, a quoted name inside `data-tour={…}`, or `tour: "x"` on a sidebar
+// nav entry.
 function tourAnchors(): Set<string> {
   const root = join(import.meta.dirname, "../../app");
   const found = new Set<string>();
@@ -35,6 +40,9 @@ function tourAnchors(): Set<string> {
       else if (name.endsWith(".tsx")) {
         const src = readFileSync(p, "utf8");
         for (const m of src.matchAll(/(?:data-tour=|\btour: )"([a-z0-9-]+)"/g)) found.add(m[1]);
+        for (const m of src.matchAll(/data-tour=\{([^}]*)\}/g)) {
+          for (const q of m[1].matchAll(/"([a-z0-9-]+)"/g)) found.add(q[1]);
+        }
       }
     }
   };
@@ -45,14 +53,17 @@ function tourAnchors(): Set<string> {
 test("tour ids are unique, one tour per section", () => {
   const ids = GUIDE_TOURS.map((t) => t.id);
   assert.equal(new Set(ids).size, ids.length);
-  const sections = GUIDE_TOURS.map((t) => t.sectionId);
+  const sections = GUIDE_TOURS.flatMap((t) => [t.sectionId, ...(t.alsoSections ?? [])]);
   assert.equal(new Set(sections).size, sections.length);
 });
 
 test("every tour belongs to a guide section and runs on a portal page", () => {
   for (const t of GUIDE_TOURS) {
-    assert.ok(GUIDE_SECTIONS.some((s) => s.id === t.sectionId), `${t.id}: no section "${t.sectionId}"`);
+    for (const id of [t.sectionId, ...(t.alsoSections ?? [])]) {
+      assert.ok(GUIDE_SECTIONS.some((s) => s.id === id), `${t.id}: no section "${id}"`);
+    }
     assert.match(t.route, /^\/portal(\/|$)/, t.id);
+    for (const s of t.steps) if (s.route) assert.match(s.route, /^\/portal(\/|$)/, `${t.id}: "${s.title}"`);
     assert.ok(t.steps.length > 0, `${t.id} has no steps`);
   }
   assert.ok(GUIDE_TOURS.some((t) => t.id === WELCOME_TOUR_ID));
@@ -67,10 +78,12 @@ test("every step has a title and some words", () => {
   }
 });
 
-test("every step points at an element a component marks with data-tour", () => {
+test("every step points at (and opens) elements a component marks with data-tour", () => {
   const anchors = tourAnchors();
   const missing = GUIDE_TOURS.flatMap((t) =>
-    t.steps.filter((s) => s.target && !anchors.has(s.target)).map((s) => `${t.id}: ${s.target}`)
+    t.steps.flatMap((s) =>
+      [s.target, s.click, s.dismiss, s.pick].filter((a): a is string => !!a && !anchors.has(a)).map((a) => `${t.id}: ${a}`)
+    )
   );
   assert.deepEqual(missing, [], "add data-tour to the element, or fix the step's target");
 });
@@ -102,8 +115,13 @@ test("admins don't get super-admin steps", () => {
 });
 
 test("each page tour is offered from its own page's ⓘ panel, and only there", () => {
-  for (const t of GUIDE_TOURS) {
-    if (t.id === WELCOME_TOUR_ID) continue;
+  // A page tour: its section is that page's "i" help. The welcome tour and
+  // walkthroughs across pages start from the guide instead.
+  const pageTours = GUIDE_TOURS.filter((t) =>
+    GUIDE_SECTIONS.find((s) => s.id === t.sectionId)?.routes?.includes(t.route)
+  );
+  assert.ok(pageTours.length >= 5);
+  for (const t of pageTours) {
     assert.equal(tourForPath(t.route, SUPER)?.id, t.id, `${t.route} should offer ${t.id}`);
   }
   // Inside a channel, the channel-list tour would point at nothing.
@@ -117,4 +135,35 @@ test("the welcome tour starts by itself only for accounts made since tours shipp
   assert.equal(autoStartsWelcomeTour("2025-08-01T12:00:00Z"), false);
   assert.equal(autoStartsWelcomeTour(null), false);
   assert.equal(autoStartsWelcomeTour("not a date"), false);
+});
+
+test("the requirements walkthrough: three parts, for the board, from both guide sections", () => {
+  assert.equal(tourForSection("player-requirements", ADMIN)?.id, REQUIREMENTS_TOUR_ID);
+  assert.equal(tourForSection("settings-requirements", ADMIN)?.id, REQUIREMENTS_TOUR_ID);
+  assert.equal(tourForSection("player-requirements", MEMBER), null);
+  const steps = tourStepsFor(GUIDE_TOURS.find((t) => t.id === REQUIREMENTS_TOUR_ID)!, ADMIN);
+  assert.deepEqual(
+    steps.filter((s) => s.part).map((s) => s.part),
+    ["Set it up", "Check players off", "See who's missing"]
+  );
+  // Part 1 is in Settings, parts 2 and 3 in the Directory.
+  const p2 = partStartIndex(steps, 2);
+  assert.ok(steps.slice(1, p2).every((s) => !s.route));
+  assert.ok(steps.slice(p2).every((s) => s.route === "/portal/directory"));
+});
+
+test("part helpers find, name and skip parts", () => {
+  const steps = [
+    { title: "Intro", body: "…" },
+    { title: "A1", body: "…", part: "A" },
+    { title: "A2", body: "…" },
+    { title: "B1", body: "…", part: "B" },
+  ];
+  assert.equal(partAt(steps, 0), null);
+  assert.deepEqual(partAt(steps, 2), { number: 1, name: "A", of: 2 });
+  assert.deepEqual(partAt(steps, 3), { number: 2, name: "B", of: 2 });
+  assert.equal(partStartIndex(steps, 2), 3);
+  assert.equal(partStartIndex(steps, 9), 0);
+  assert.equal(nextPartIndex(steps, 1), 3);
+  assert.equal(nextPartIndex(steps, 3), 4);
 });

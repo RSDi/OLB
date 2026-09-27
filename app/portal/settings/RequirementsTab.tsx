@@ -21,6 +21,8 @@ import {
 } from "../../../lib/requirements/types";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
 import { ErrorBox, IconBtn } from "./TeamsSettingsTab";
+import { useTour } from "../../components/GuidedTour";
+import { REQUIREMENTS_TOUR_ID } from "../../../lib/help/tours";
 
 interface TeamOption {
   id: string;
@@ -88,6 +90,7 @@ function toInput(r: Requirement): RequirementInput {
 // Super-admins and board members with the settings grants.
 export function RequirementsTab({ me }: { me: MemberLike }) {
   const router = useRouter();
+  const { start: startTour } = useTour();
   const canDelete = canDeleteSettings(me);
   const [rows, setRows] = useState<Requirement[]>([]);
   const [teams, setTeams] = useState<TeamOption[]>([]);
@@ -156,11 +159,18 @@ export function RequirementsTab({ me }: { me: MemberLike }) {
           What players need to hand in or pay — the handbook signature page, a tournament fee, a form. The board
           checks players off in the Directory and can filter it to see who&apos;s still missing each one.
         </div>
-        {!adding && (
-          <Pill variant="accent" size="sm" onClick={() => { setAdding(true); setError(null); }}>
-            <Icons.Plus width={14} height={14} /> Add requirement
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Pill variant="ghost" size="sm" onClick={() => startTour(REQUIREMENTS_TOUR_ID)}>
+            Show me how
           </Pill>
-        )}
+          {!adding && (
+            <span data-tour="requirements-add" style={{ display: "inline-flex" }}>
+              <Pill variant="accent" size="sm" onClick={() => { setAdding(true); setError(null); }}>
+                <Icons.Plus width={14} height={14} /> Add requirement
+              </Pill>
+            </span>
+          )}
+        </div>
       </div>
 
       {error && <ErrorBox text={error} />}
@@ -325,25 +335,29 @@ function RequirementForm({
   return (
     <form onSubmit={handleSubmit} className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-        <Input
-          label="Name *"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Handbook signature"
-          maxLength={REQUIREMENT_NAME_MAX}
-          help="What the board sees on each player, like Handbook signature or Tournament fee."
-          autoFocus
-          required
-        />
-        <Select
-          label="Type"
-          value={kind}
-          onChange={(e) => setKind(e.target.value as RequirementKind)}
-          help="A fee is marked Paid; anything else is marked Done."
-        >
-          <option value="task">Task / form</option>
-          <option value="fee">Fee</option>
-        </Select>
+        <div data-tour="requirement-name">
+          <Input
+            label="Name *"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Handbook signature"
+            maxLength={REQUIREMENT_NAME_MAX}
+            help="What the board sees on each player, like Handbook signature or Tournament fee."
+            autoFocus
+            required
+          />
+        </div>
+        <div data-tour="requirement-kind">
+          <Select
+            label="Type"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as RequirementKind)}
+            help="A fee is marked Paid; anything else is marked Done."
+          >
+            <option value="task">Task / form</option>
+            <option value="fee">Fee</option>
+          </Select>
+        </div>
         {kind === "fee" && (
           <Input
             label="Amount *"
@@ -354,13 +368,15 @@ function RequirementForm({
             required
           />
         )}
-        <Input
-          label="Due date"
-          type="date"
-          value={dueOn}
-          onChange={(e) => setDueOn(e.target.value)}
-          help="Optional. Shown to the board as a reminder."
-        />
+        <div data-tour="requirement-due">
+          <Input
+            label="Due date"
+            type="date"
+            value={dueOn}
+            onChange={(e) => setDueOn(e.target.value)}
+            help="Optional. Shown to the board as a reminder."
+          />
+        </div>
       </div>
       <Textarea
         label="Description"
@@ -370,7 +386,7 @@ function RequirementForm({
         rows={2}
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div data-tour="requirement-applies" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg)" }}>Applies to</span>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           <label style={checkLabel}>
@@ -397,7 +413,7 @@ function RequirementForm({
           ))}
       </div>
 
-      <div style={{ display: "flex", gap: "8px 20px", flexWrap: "wrap" }}>
+      <div data-tour="requirement-options" style={{ display: "flex", gap: "8px 20px", flexWrap: "wrap" }}>
         <label style={checkLabel}>
           <input type="checkbox" checked={allowFile} onChange={(e) => setAllowFile(e.target.checked)} />
           Offer scan upload
@@ -408,7 +424,7 @@ function RequirementForm({
         </label>
       </div>
 
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <div data-tour="requirement-save" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           Cancel
         </Pill>

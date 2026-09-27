@@ -5,15 +5,28 @@
 // `useTour().start(id)` to the User Guide and the "i" panel.
 //
 // The page underneath can't be clicked while a tour runs (so a stray tap
-// can't navigate away mid-tour). ← / → move between steps and Esc ends it.
+// can't navigate away mid-tour), except the highlighted element on an
+// `interactive` step. ← / → move between steps and Esc ends it. A step can
+// be on another page (the tour goes there) and can click something open
+// first; see TourStep in lib/help/tours.ts.
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Icons } from "./icons";
 import { MarkdownView } from "./MarkdownView";
-import { getTour, tourStepsFor } from "../../lib/help/tours";
+import {
+  getTour,
+  nextPartIndex,
+  partAt,
+  partStartIndex,
+  stepRoute,
+  tourStepsFor,
+} from "../../lib/help/tours";
 import type { GuideViewer } from "../../lib/help/guide";
 
-export const TourContext = createContext<{ start: (tourId: string) => void }>({ start: () => {} });
+// `part` starts a tour with parts at that part (1 = the first).
+export type StartTour = (tourId: string, opts?: { part?: number }) => void;
+
+export const TourContext = createContext<{ start: StartTour }>({ start: () => {} });
 
 export function useTour() {
   return useContext(TourContext);
@@ -45,6 +58,27 @@ function findTarget(target: string): HTMLElement | null {
   return null;
 }
 
+// Chooses the first real option of a drop-down still on its "All …" option,
+// the way picking it by hand would (React hears the change event).
+function pickFirstOption(el: HTMLElement) {
+  const select = el instanceof HTMLSelectElement ? el : el.querySelector("select");
+  if (!select || select.selectedIndex > 0 || select.options.length < 2) return;
+  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set?.call(select, select.options[1].value);
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+// A marked wrapper around a button clicks the button inside it.
+function press(el: HTMLElement) {
+  const inner = el.matches("button, a, [role=button]") ? el : el.querySelector<HTMLElement>("button, a, [role=button]");
+  (inner ?? el).click();
+}
+
+// Typing in a field on an interactive step shouldn't flip the tour's steps.
+function isEditable(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+}
+
 function sameRect(a: Rect | null, b: Rect | null): boolean {
   if (!a || !b) return a === b;
   return (
@@ -57,6 +91,8 @@ function sameRect(a: Rect | null, b: Rect | null): boolean {
 
 interface Props {
   tourId: string;
+  // Start at this part (1 = the first) of a tour with parts.
+  startPart?: number;
   viewer: GuideViewer | null;
   onClose: () => void;
   // The current step points into the sidebar (true) or not (false), so the
@@ -64,20 +100,22 @@ interface Props {
   onSidebarStep: (inSidebar: boolean) => void;
 }
 
-export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
+export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const tour = getTour(tourId);
   const steps = useMemo(() => (tour ? tourStepsFor(tour, viewer) : []), [tour, viewer]);
 
-  const [index, setIndex] = useState(0);
+  // Started at a later part: count from there, and Back stops there.
+  const [startIndex] = useState(() => (startPart ? partStartIndex(steps, startPart) : 0));
+  const [index, setIndex] = useState(startIndex);
   const [dir, setDir] = useState<1 | -1>(1);
   // The last step whose element was found. Until it matches `index` only the
   // dimmed backdrop shows.
   const [foundIndex, setFoundIndex] = useState<number | null>(null);
   // Steps skipped because their element isn't on the page, so the "3 of 9"
   // count doesn't promise steps that never come.
-  const [skipped, setSkipped] = useState<ReadonlySet<number>>(new Set());
+  const [skipped, setSkipped] = useState<ReadonlySet<number>>(() => new Set(Array.from({ length: startIndex }, (_, i) => i)));
   const [rect, setRect] = useState<Rect | null>(null);
   const [cardH, setCardH] = useState(200);
   // Only ever rendered after a click or an effect, so `window` is there.
@@ -89,27 +127,44 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
   const lastNavAt = useRef(0);
-  const startPath = useRef(pathname);
-  const arrived = useRef(false);
+  // The page and step route the routing effect last saw, and the page the
+  // tour is on its way to.
+  const seen = useRef<{ path: string; route: string } | null>(null);
+  const heading = useRef<string | null>(null);
 
   const step = steps[index];
-  const onRoute = !!tour && pathname === tour.route;
+  const route = tour && step ? stepRoute(tour, step) : null;
+  const onRoute = !!route && pathname === route;
   const visible = !!step && onRoute && (!step.target || foundIndex === index);
 
-  // Go to the tour's page first. Once there, leaving it (the browser's Back
-  // button) ends the tour rather than dragging people back, and so does
-  // landing somewhere else (a redirect) instead of on it.
+  // Go to each step's page. When the step moves to another page the tour
+  // takes people there; when the page changes under a step (the browser's
+  // Back button, a link, a redirect instead of the page asked for), the tour
+  // ends rather than dragging people back.
   useEffect(() => {
-    if (!tour || steps.length === 0) {
+    if (!tour || !route) {
       onClose();
       return;
     }
-    lastNavAt.current = Date.now();
-    if (onRoute) arrived.current = true;
-    else if (arrived.current || pathname !== startPath.current) onClose();
-    else router.push(tour.route);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs per page change only
-  }, [pathname]);
+    const was = seen.current;
+    seen.current = { path: pathname, route };
+    if (!was || was.path !== pathname) lastNavAt.current = Date.now();
+    if (pathname === route) {
+      heading.current = null;
+      return;
+    }
+    if (!was || was.route !== route) {
+      if (heading.current !== route) {
+        heading.current = route;
+        router.push(route);
+      }
+      return;
+    }
+    // Same step, same page as last time: an effect re-run while on the way.
+    if (heading.current === route && was.path === pathname) return;
+    onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs per page or step-page change only
+  }, [pathname, route]);
 
   useEffect(() => {
     onSidebarStep(!!step?.sidebar);
@@ -126,19 +181,35 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
   function go(delta: 1 | -1) {
     const next = index + delta;
     if (next >= steps.length) return finish();
-    if (next < 0) return;
+    if (next < startIndex) return;
     setDir(delta);
     setIndex(next);
   }
 
-  // Find the current step's element; skip the step if it never shows up.
+  // Find the current step's element, opening things on the way when moving
+  // forward; skip the step (or its whole part) if it never shows up.
   useEffect(() => {
     elRef.current = null;
-    if (!step?.target || !onRoute) return;
+    if (!step || !onRoute) return;
+    const forward = dir === 1;
+    if (forward && step.dismiss) {
+      const closer = findTarget(step.dismiss);
+      if (closer) press(closer);
+    }
+    if (!step.target) return;
     const target = step.target;
-    const deadline = Math.max(Date.now() + SETTLED_WAIT_MS, lastNavAt.current + AFTER_NAV_WAIT_MS);
+    let deadline = Math.max(Date.now() + SETTLED_WAIT_MS, lastNavAt.current + AFTER_NAV_WAIT_MS);
+    let clicked = false;
+    let picked = false;
     let timer: ReturnType<typeof setTimeout>;
     const look = () => {
+      if (forward && step.pick && !picked) {
+        const drop = findTarget(step.pick);
+        if (drop) {
+          pickFirstOption(drop);
+          picked = true;
+        }
+      }
       const el = findTarget(target);
       if (el) {
         elRef.current = el;
@@ -148,18 +219,39 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
         }
         setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
         setFoundIndex(index);
+        setSkipped((cur) => {
+          if (!cur.has(index)) return cur;
+          const out = new Set(cur);
+          out.delete(index);
+          return out;
+        });
         return;
+      }
+      if (forward && step.click && !clicked) {
+        const opener = findTarget(step.click);
+        if (opener) {
+          press(opener);
+          clicked = true;
+          deadline = Math.max(deadline, Date.now() + 1500);
+        }
       }
       if (Date.now() < deadline) {
         timer = setTimeout(look, 100);
         return;
       }
-      // Not on this page for this person: move on in the same direction. At
-      // the very start going back, there's nothing earlier, so go forward.
-      setSkipped((cur) => new Set(cur).add(index));
-      const next = index + dir;
+      // Not on this page for this person: move on in the same direction. A
+      // part whose first step is missing (a board member who can't edit
+      // Settings, say) is skipped whole. At the very start going back,
+      // there's nothing earlier, so go forward.
+      const next = forward && step.part ? nextPartIndex(steps, index) : index + dir;
+      setSkipped((cur) => {
+        const out = new Set(cur);
+        const end = forward && step.part ? next : index + 1;
+        for (let i = index; i < end; i++) out.add(i);
+        return out;
+      });
       if (next >= steps.length) finish();
-      else if (next < 0) {
+      else if (next < startIndex) {
         setDir(1);
         setIndex(index + 1);
       } else setIndex(next);
@@ -200,12 +292,14 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
     return () => ro.disconnect();
   }, [visible]);
 
+  // Ready for Enter / Space, except where people are meant to use the page.
   useEffect(() => {
-    if (visible) nextRef.current?.focus({ preventScroll: true });
-  }, [visible, index]);
+    if (visible && !step?.interactive) nextRef.current?.focus({ preventScroll: true });
+  }, [visible, index, step]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" && isEditable(e.target)) return;
       if (e.key === "Escape") {
         e.preventDefault();
         finish();
@@ -228,10 +322,15 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
   const position = index + 1 - [...skipped].filter((i) => i < index).length;
   const spot = visible && step.target && rect ? rect : null;
   const place = placeCard(spot, viewport.w, viewport.h, cardH);
+  const part = partAt(steps, index);
+  // On an interactive step only the ring's hole lets clicks through: four
+  // blockers cover the rest of the screen.
+  const hole = spot && step.interactive ? spot : null;
 
   return (
     // Covers the whole screen, so clicks never reach the page underneath.
-    <div style={{ position: "fixed", inset: 0, zIndex: 1500 }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1500, pointerEvents: hole ? "none" : "auto" }}>
+      {hole && <Blockers hole={hole} />}
       {spot ? (
         <div
           style={{
@@ -270,6 +369,7 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
             boxShadow: "var(--gw-shadow-3)",
             color: "var(--gw-fg)",
             animation: "gw-fade-in 160ms ease",
+            pointerEvents: "auto",
           }}
         >
           {place.arrow && (
@@ -321,6 +421,22 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
             </button>
           </div>
           <div style={{ padding: "6px 18px 0" }}>
+            {part && (
+              <div
+                style={{
+                  display: "inline-block",
+                  marginBottom: 6,
+                  padding: "2px 8px",
+                  borderRadius: 100,
+                  background: "var(--rsd-accent-fill)",
+                  color: "var(--rsd-accent-fill-on)",
+                  fontSize: 11,
+                  fontWeight: 800,
+                }}
+              >
+                Part {part.number} of {part.of} · {part.name}
+              </div>
+            )}
             <h2 id="gw-tour-title" style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "var(--gw-fg)" }}>
               {step.title}
             </h2>
@@ -361,7 +477,7 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
               <span />
             )}
             <div style={{ display: "flex", gap: 8 }}>
-              {index > 0 && (
+              {index > startIndex && (
                 <button type="button" onClick={() => go(-1)} className="gw-press" style={pillStyle(false)}>
                   Back
                 </button>
@@ -375,6 +491,24 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
         </div>
       )}
     </div>
+  );
+}
+
+// Four panels around the ring's hole that catch clicks, so only the
+// highlighted element can be used.
+function Blockers({ hole }: { hole: Rect }) {
+  const top = hole.top - SPOT_PAD;
+  const left = hole.left - SPOT_PAD;
+  const bottom = hole.top + hole.height + SPOT_PAD;
+  const right = hole.left + hole.width + SPOT_PAD;
+  const base: React.CSSProperties = { position: "fixed", pointerEvents: "auto" };
+  return (
+    <>
+      <div style={{ ...base, top: 0, left: 0, right: 0, height: Math.max(0, top) }} />
+      <div style={{ ...base, top: bottom, left: 0, right: 0, bottom: 0 }} />
+      <div style={{ ...base, top, left: 0, width: Math.max(0, left), height: bottom - top }} />
+      <div style={{ ...base, top, left: right, right: 0, height: bottom - top }} />
+    </>
   );
 }
 

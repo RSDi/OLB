@@ -346,7 +346,7 @@ Super-admins can **Delete** a contact.`,
     id: "player-requirements",
     title: "Player requirements",
     audience: "staff",
-    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "upload", "photo", "missing", "collected", "checklist", "forms"],
+    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
     body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, a tournament fee, a form. Only the board sees any of this.
 
 **On each player.** In the **Directory**, every player has a chip for each requirement that applies to them:
@@ -361,7 +361,9 @@ Super-admins can **Delete** a contact.`,
 
 **Who's still missing?** Pick a requirement from the **All requirements** drop-down above the list. **Missing** shows who still needs it, with counts for **Done** (or **Paid**), **Waived** and **All**. It works together with search and the team and age-group filters, and the line above the list shows how many are done.
 
-Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.`,
+Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.
+
+**Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title. **Show me how** beside the requirement drop-down in the Directory starts at checking players off.`,
   },
   {
     id: "settings-requirements",
@@ -377,7 +379,9 @@ Requirements start over each season, since each season has its own roster. The l
 - **Offer scan upload** lets the board attach a photo or PDF when they check a player off.
 - **Active** — untick it to retire a requirement. It leaves the Directory but keeps everyone's record, and you can turn it back on later.
 
-Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
+Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.
+
+**Show me how** at the top of the tab walks you through setting one up, then on to checking players off and seeing who's still missing.`,
   },
   {
     id: "settings-teams",

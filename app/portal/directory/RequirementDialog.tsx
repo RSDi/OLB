@@ -206,6 +206,7 @@ export function RequirementDialog({
         <div
           role="radiogroup"
           aria-label="Status"
+          data-tour="req-status"
           style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)", alignSelf: "flex-start" }}
         >
           {options.map((o) => (
@@ -235,22 +236,24 @@ export function RequirementDialog({
 
         {choice !== "missing" && (
           <>
-            <Input
-              label={choice === "waived" ? "Waived on" : `${done} on`}
-              type="date"
-              value={completedOn}
-              onChange={(e) => setCompletedOn(e.target.value)}
-            />
-            <Textarea
-              label="Note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={req.kind === "fee" ? "e.g. Check #1042, or Venmo" : "Optional"}
-              rows={2}
-            />
+            <div data-tour="req-details" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <Input
+                label={choice === "waived" ? "Waived on" : `${done} on`}
+                type="date"
+                value={completedOn}
+                onChange={(e) => setCompletedOn(e.target.value)}
+              />
+              <Textarea
+                label="Note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={req.kind === "fee" ? "e.g. Check #1042, or Venmo" : "Optional"}
+                rows={2}
+              />
+            </div>
 
             {showFiles && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div data-tour="req-scan" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <span style={{ ...capStyle, fontSize: 12, letterSpacing: "0.04em", fontWeight: 600 }}>Scan</span>
                 {keptFile && row?.file_path ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -307,10 +310,12 @@ export function RequirementDialog({
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: "auto" }}>
-          <Pill variant="ghost" size="sm" onClick={cancel} disabled={!!busy}>
-            Cancel
-          </Pill>
+        <div data-tour="req-save" style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: "auto" }}>
+          <span data-tour="req-cancel" style={{ display: "inline-flex" }}>
+            <Pill variant="ghost" size="sm" onClick={cancel} disabled={!!busy}>
+              Cancel
+            </Pill>
+          </span>
           <Pill variant="accent" size="sm" onClick={save} disabled={!!busy}>
             {busy === "save" ? "Saving…" : "Save"}
           </Pill>

@@ -18,6 +18,8 @@ import {
   type RequirementState,
 } from "../../../lib/requirements/logic";
 import { RequirementDialog } from "./RequirementDialog";
+import { useTour } from "../../components/GuidedTour";
+import { REQUIREMENTS_TOUR_ID } from "../../../lib/help/tours";
 
 const NO_GROUP = "No age group";
 
@@ -90,6 +92,7 @@ export function PlayersList({
   const [reqId, setReqId] = useState("all");
   const [reqShow, setReqShow] = useState<ReqShow>("missing");
   const [open, setOpen] = useState<{ player: DirectoryPlayer; requirement: Requirement } | null>(null);
+  const { start: startTour } = useTour();
 
   const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
   const pickedReq = requirements.find((r) => r.id === reqId) ?? null;
@@ -272,6 +275,7 @@ export function PlayersList({
               setReqShow("missing");
             }}
             aria-label="Filter by requirement"
+            data-tour="requirement-filter"
             className="rsd-chip"
             style={{ height: 34, padding: "0 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
           >
@@ -286,6 +290,7 @@ export function PlayersList({
             <div
               role="group"
               aria-label={`Show players by ${pickedReq.name}`}
+              data-tour="requirement-status"
               style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
             >
               <SegButton label={`Missing ${reqCounts.missing}`} active={reqShow === "missing"} onClick={() => setReqShow("missing")} />
@@ -300,6 +305,22 @@ export function PlayersList({
               <SegButton label="All" active={reqShow === "all"} onClick={() => setReqShow("all")} />
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => startTour(REQUIREMENTS_TOUR_ID, { part: 2 })}
+            style={{
+              marginLeft: "auto",
+              background: "none",
+              border: "none",
+              padding: "6px 2px",
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--gw-fg-muted)",
+              cursor: "pointer",
+            }}
+          >
+            Show me how
+          </button>
         </div>
       )}
 
@@ -307,7 +328,7 @@ export function PlayersList({
         <TeamBanner team={pickedTeam} roles={roles} playerCount={countByTeam.get(pickedTeam.id) ?? 0} />
       )}
 
-      <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+      <div data-tour="requirement-summary" style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
         {shown} {shown === 1 ? "player" : "players"}
         {season && ` · ${season} season`}
         {pickedReq &&
@@ -624,6 +645,7 @@ function RequirementChips({
             key={r.id}
             type="button"
             onClick={() => onOpen(r)}
+            data-tour="requirement-chip"
             className={`rsd-chip ${variant}`}
             title={title}
             style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
