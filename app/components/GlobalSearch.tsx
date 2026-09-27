@@ -117,7 +117,7 @@ export function GlobalSearch({ open, onClose }: Props) {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search members, requests, events, playbooks…"
+        placeholder="Search members, playbooks, Slack…"
         autoComplete="off"
         spellCheck={false}
         style={{

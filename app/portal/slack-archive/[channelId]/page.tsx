@@ -75,7 +75,7 @@ export default async function SlackArchiveChannelPage({
       {threads.length === 0 ? (
         <div className="rsd-card" style={{ textAlign: "center", padding: "40px 24px" }}>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            {channel.last_run_at ? "No messages archived yet." : "Not synced yet — run the backfill script or wait for the nightly cron."}
+            {channel.last_run_at ? "No messages archived yet." : "Not synced yet — messages show up after the nightly sync."}
           </div>
         </div>
       ) : (

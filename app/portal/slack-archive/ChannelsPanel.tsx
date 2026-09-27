@@ -217,7 +217,7 @@ function AddChannelForm({
           label="Label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="e.g. Building Committee"
+          placeholder="e.g. Coaches"
           autoFocus
           required
         />

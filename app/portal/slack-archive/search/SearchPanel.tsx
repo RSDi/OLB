@@ -119,7 +119,7 @@ export function SearchPanel({
           label="Search text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={'e.g. building shutdown, or "exact phrase"'}
+          placeholder={'e.g. tournament hotel, or "exact phrase"'}
         />
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
           {channels.length > 0 && (

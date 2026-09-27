@@ -304,7 +304,7 @@ function NotesPanel({ memberId, initialNotes }: { memberId: string; initialNotes
           Member notes
         </span>
         <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          Building committee only — the member can&apos;t see these
+          Admins only — the member can&apos;t see these
         </span>
       </div>
 
@@ -695,10 +695,10 @@ function EditForm({
       />
       <Input
         label="Nickname"
-        help='How your name appears on tasks, lists, and the phone tree — e.g. "Jeff" instead of your full legal name. Leave blank to use your first name.'
+        help='The short name people see for you around the portal — e.g. "Jeff" instead of your full legal name. Your full name still shows on your Directory page. Leave blank to use your first name.'
         value={nickname}
         onChange={(e) => setNickname(e.target.value)}
-        placeholder="e.g. Jeff — shown on tickets & lists (defaults to your first name)"
+        placeholder="e.g. Jeff (defaults to your first name)"
         disabled={pending}
       />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

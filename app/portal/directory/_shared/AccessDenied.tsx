@@ -6,8 +6,8 @@ export function AccessDenied() {
         Directory unavailable
       </div>
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-        The member directory is open to approved members. A super-admin needs to approve your
-        account first.
+        The member directory is open to approved members. Someone from the club needs to approve
+        your account first.
       </div>
     </div>
   );

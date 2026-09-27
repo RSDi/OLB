@@ -13,7 +13,7 @@ import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
 import { PortalTopBar } from "../components/PortalTopBar";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
-import { pageDocFor } from "../../lib/help/page-docs";
+import { guideSectionForPath } from "../../lib/help/guide";
 import type { TopbarSearchHandle } from "../components/TopbarSearch";
 import { portalFontVariables } from "./fonts";
 
@@ -42,6 +42,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/slack-archive/search":     { title: "Search archive", subtitle: "Slack Archive" },
   "/portal/slack-archive/exceptions": { title: "Exceptions",     subtitle: "Slack Archive" },
   "/portal/slack-archive/album":      { title: "Photo Album",    subtitle: "Slack Archive" },
+  "/portal/guide":       { title: "User Guide",   subtitle: "Help" },
 };
 
 interface Props {
@@ -57,7 +58,9 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
   const [infoOpen, setInfoOpen] = useState(false);
   const inlineSearchRef = useRef<TopbarSearchHandle>(null);
   const pathname = usePathname();
-  const pageDoc = pageDocFor(pathname);
+  // The top-bar "i" shows the User Guide section for this page, when the
+  // viewer can see one (lib/help/guide.ts).
+  const pageHelp = guideSectionForPath(pathname, viewer);
 
   // Cmd+K / Ctrl+K behavior depends on viewport: focus the inline topbar
   // input if it's mounted (large viewports), otherwise toggle the modal
@@ -145,7 +148,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
         onMenuClick={() => setMobileOpen(v => !v)}
         onSearchClick={() => setSearchOpen(true)}
         inlineSearchRef={inlineSearchRef}
-        onInfoClick={pageDoc ? () => setInfoOpen(true) : undefined}
+        onInfoClick={pageHelp ? () => setInfoOpen(true) : undefined}
       />
       {/* Mobile overlay */}
       {mobileOpen && (
@@ -160,7 +163,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
       )}
       <main>{children}</main>
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <InfoPanel doc={pageDoc} open={infoOpen} onClose={() => setInfoOpen(false)} />
+      <InfoPanel section={pageHelp} open={infoOpen} onClose={() => setInfoOpen(false)} />
     </div>
   );
 }
