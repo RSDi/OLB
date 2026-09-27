@@ -4,6 +4,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import { getViewer } from "../../../../lib/auth/viewer";
+import {
+  PLAYER_REQUIREMENT_COLUMNS,
+  REQUIREMENT_COLUMNS,
+  type PlayerRequirement,
+  type Requirement,
+} from "../../../../lib/requirements/types";
 
 export type DirectoryCategory = "regular" | "extended" | "memorial";
 
@@ -140,4 +146,42 @@ export async function loadPlayers(): Promise<DirectoryPlayer[]> {
   return players
     .filter((p) => p.board?.season === season)
     .map((p) => ({ ...p, parents: p.parents.filter((pa) => pa.member) }));
+}
+
+// Player requirements (0098) for the board: the active list, plus every
+// player's record against it with the name of whoever marked it. RLS returns
+// nothing to anyone else, and the page only asks for staff. Rows for other
+// seasons' players are dropped by the caller.
+export interface DirectoryRequirements {
+  requirements: Requirement[];
+  rows: PlayerRequirement[];
+}
+
+export async function loadRequirements(): Promise<DirectoryRequirements> {
+  const supabase = await createClient();
+  const { data: reqs } = await supabase
+    .from("olb_requirements")
+    .select(REQUIREMENT_COLUMNS)
+    .eq("active", true)
+    .is("deleted_at", null)
+    .order("sort_order")
+    .order("name");
+  const requirements = (reqs as Requirement[] | null) ?? [];
+  if (requirements.length === 0) return { requirements, rows: [] };
+
+  const { data } = await supabase
+    .from("olb_player_requirements")
+    .select(PLAYER_REQUIREMENT_COLUMNS)
+    .in("requirement_id", requirements.map((r) => r.id));
+  const rows = (data as PlayerRequirement[] | null) ?? [];
+
+  const markers = [...new Set(rows.map((r) => r.marked_by).filter((id): id is string => !!id))];
+  if (markers.length > 0) {
+    const { data: people } = await supabase.from("members").select("user_id, full_name").in("user_id", markers);
+    const names = new Map(
+      ((people as { user_id: string; full_name: string | null }[] | null) ?? []).map((m) => [m.user_id, m.full_name])
+    );
+    for (const r of rows) r.marked_by_name = r.marked_by ? names.get(r.marked_by) ?? null : null;
+  }
+  return { requirements, rows };
 }

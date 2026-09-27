@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
-import { isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
+import { canEditSettings, isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
 import { seesFullUi } from "../../../lib/auth/feature-preview";
 import { MembersTab } from "./MembersTab";
 import { AreasTab } from "./AreasTab";
@@ -21,11 +21,12 @@ import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
 import { IntegrationsTab } from "./IntegrationsTab";
 import { SidebarLinksTab } from "./SidebarLinksTab";
+import { RequirementsTab } from "./RequirementsTab";
 
 // Staged rollout: the tabs released to everyone who can open Settings, and
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
-const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "playbooks",
   "sidebar_links",
@@ -42,6 +43,7 @@ type Tab =
   | "supplies"
   | "teams"
   | "volunteer_roles"
+  | "requirements"
   | "event_categories"
   | "task_categories"
   | "playbooks"
@@ -121,6 +123,7 @@ export default function SettingsPage() {
     { key: "supplies", label: "Supplies", visible: true },
     { key: "teams", label: "Teams", visible: isSuperAdmin(me) },
     { key: "volunteer_roles", label: "Volunteer Roles", visible: isSuperAdmin(me) },
+    { key: "requirements", label: "Requirements", visible: canEditSettings(me) },
     { key: "event_categories", label: "Event Categories", visible: true },
     { key: "task_categories", label: "Task Categories", visible: true },
     { key: "playbooks", label: "Playbooks", visible: true },
@@ -178,6 +181,7 @@ export default function SettingsPage() {
       {tab === "supplies" && <SuppliesTab me={me} />}
       {tab === "teams" && isSuperAdmin(me) && <TeamsSettingsTab />}
       {tab === "volunteer_roles" && isSuperAdmin(me) && <VolunteerRolesTab />}
+      {tab === "requirements" && canEditSettings(me) && <RequirementsTab me={me} />}
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}

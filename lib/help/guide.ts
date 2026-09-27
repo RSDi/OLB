@@ -225,12 +225,15 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 | Member notes on profiles | | ✓ | ✓ |
 | External Contacts | | ✓ | ✓ |
 | Approve or deny access requests | | ✓ | ✓ |
+| Check players off on requirements (handbook signature, fees) | | ✓ | ✓ |
+| Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
 **Board extras around the portal**
 
 - The **Directory** shows every player — including families who asked not to be listed (marked **Not in directory**) — plus **No waiver**, fee and shirt details, and each parent's volunteer interests (**Can help**). **Not signed up** and **Awaiting approval** chips show which parents don't have access yet.
+- Each player also has a chip for every requirement, like the handbook signature — see *Player requirements* below.
 - Every profile has a **Member notes** panel only the board can see. Type a note and tap **Save notes**.`,
   },
   {
@@ -338,6 +341,43 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - A contact's page shows everything about them, with tap-to-call phone numbers, and **Used by** lists the playbooks it's attached to. Tap **Edit** to make changes.
 
 Super-admins can **Delete** a contact.`,
+  },
+  {
+    id: "player-requirements",
+    title: "Player requirements",
+    audience: "staff",
+    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "upload", "photo", "missing", "collected", "checklist", "forms"],
+    body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, a tournament fee, a form. Only the board sees any of this.
+
+**On each player.** In the **Directory**, every player has a chip for each requirement that applies to them:
+
+- A red **Needs Handbook signature** (or **Owes** for a fee) means it's still missing.
+- A green chip with a check means it's done or paid. A little page icon means a scan is attached.
+- A grey **waived** chip means you've excused them.
+
+**Checking a player off.** Tap the chip. Pick **Done** (**Paid** for a fee), **Waived** or **Not yet**, set the date, and add a **Note** if it helps (a check number, say). Then tap **Save**.
+
+**Scans.** When a requirement offers it, tap **Upload scan** to attach a photo or PDF of what you collected — you can take the picture right from your phone. **View scan** opens it; **Replace scan** and **Remove scan** do what they say. Scans are private to the board.
+
+**Who's still missing?** Pick a requirement from the **All requirements** drop-down above the list. **Missing** shows who still needs it, with counts for **Done** (or **Paid**), **Waived** and **All**. It works together with search and the team and age-group filters, and the line above the list shows how many are done.
+
+Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.`,
+  },
+  {
+    id: "settings-requirements",
+    title: "Settings: Requirements",
+    audience: "staff",
+    keywords: ["requirements", "settings", "handbook", "signature", "fee", "tournament fee", "amount", "due date", "applies to", "teams", "retire", "active", "scan upload"],
+    body: `Choose what players need to hand in or pay. Open **Settings → Requirements**. Super-admins can always use this tab. A board member can too once a super-admin turns on their **Settings: Edit** chip in **Settings → Members**.
+
+- **Add requirement** — give it a **Name** (what the board sees on each player, like Handbook signature) and a **Description** if it helps.
+- **Type** — **Task / form** is marked **Done**; **Fee** is marked **Paid** and asks for an **Amount**.
+- **Due date** is optional, a reminder for the board.
+- **Applies to** — **All players**, or **Only some teams** (a tournament fee for one team, say). Tick the teams it covers.
+- **Offer scan upload** lets the board attach a photo or PDF when they check a player off.
+- **Active** — untick it to retire a requirement. It leaves the Directory but keeps everyone's record, and you can turn it back on later.
+
+Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
   },
   {
     id: "settings-teams",
