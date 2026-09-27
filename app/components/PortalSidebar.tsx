@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icons } from "./icons";
 import { createClient } from "../../lib/supabase/client";
 import type { MemberRole, MemberStatus } from "../../lib/auth/permissions";
+import type { SidebarLink } from "../../lib/sidebar-links/url";
 
 interface NavItem {
   href: string;
@@ -35,12 +36,16 @@ const NAV: NavItem[] = [
   // Team manager (roster board, registrations, import): super-admin only.
   { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
   // Board can view Settings; editing is gated per grant inside.
+  // Rendered separately, pinned to the bottom of the nav (SETTINGS_HREF).
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true },
   // How-to for everything above; content in lib/help/guide.ts.
   { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/> },
 ];
+
+// Rendered on its own at the bottom of the nav, below the custom links.
+const SETTINGS_HREF = "/portal/settings";
 
 // Wordmark in the sidebar's brand block (Lightning theme).
 const BRAND = { name: "OLB", tagline: "MEMBER PORTAL" };
@@ -67,6 +72,8 @@ export interface SidebarViewer {
 interface PortalSidebarProps {
   viewer: SidebarViewer | null;
   pendingMembersCount: number;
+  // Custom links from Settings → Sidebar Links, shown under the nav.
+  links: SidebarLink[];
   collapsed: boolean;
   onToggleCollapse: () => void;
   mobileOpen?: boolean;
@@ -76,6 +83,7 @@ interface PortalSidebarProps {
 export function PortalSidebar({
   viewer,
   pendingMembersCount,
+  links,
   collapsed,
   onToggleCollapse,
   mobileOpen,
@@ -100,6 +108,10 @@ export function PortalSidebar({
       : item
   );
 
+  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi));
+  const settingsItem = visibleItems.find(item => item.href === SETTINGS_HREF);
+  const mainItems = visibleItems.filter(item => item !== settingsItem);
+
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
     setIsMobile(mq.matches);
@@ -112,6 +124,89 @@ export function PortalSidebar({
 
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+
+  const itemStyle = (active: boolean): React.CSSProperties => ({
+    display: "flex",
+    flexDirection: c ? "column" : "row",
+    alignItems: "center",
+    justifyContent: c ? "center" : "flex-start",
+    gap: c ? 3 : (isMobile ? 14 : 10),
+    padding: c ? "7px 2px" : (isMobile ? "14px 14px" : "9px 10px"),
+    borderRadius: isMobile ? 10 : 9,
+    // Inactive items leave background unset so the hover rule in
+    // globals.css (.rsd-nav-item) can apply.
+    background: active ? "var(--rsd-accent)" : undefined,
+    color: active ? "var(--rsd-accent-on)" : "var(--rsd-frame-fg-2)",
+    border: "1px solid",
+    borderColor: active ? "var(--rsd-accent)" : "transparent",
+    fontWeight: 700, fontSize: isMobile ? 15 : 13, lineHeight: 1,
+    textDecoration: "none",
+    transition: "background 150ms",
+    position: "relative",
+    minHeight: isMobile ? 48 : undefined,
+  });
+
+  const iconStyle = (active: boolean): React.CSSProperties => ({
+    display: "flex", flexShrink: 0,
+    color: active ? "var(--rsd-accent-on)" : "var(--rsd-frame-fg-3)",
+    position: "relative",
+    transform: isMobile ? "scale(1.15)" : undefined, transformOrigin: "center",
+  });
+
+  const collapsedLabelStyle: React.CSSProperties = { fontSize: 9, fontWeight: 700, letterSpacing: ".04em", opacity: 0.75 };
+
+  const renderNavItem = (item: NavItem) => {
+    const active = isActive(item.href, item.exact);
+    const isSettings = item.href === SETTINGS_HREF;
+    // No prefetch: every portal page is dynamic, so a prefetch only
+    // fetched the route's shape — but it still cost a request (and a
+    // Supabase auth check in middleware) per nav item on every page view.
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        prefetch={false}
+        aria-current={active ? "page" : undefined}
+        className="gw-press rsd-nav-item"
+        onClick={() => { if (isMobile) onNavigate?.(); }}
+        style={itemStyle(active)}
+      >
+        <span style={iconStyle(active)}>
+          {item.icon}
+          {isSettings && pendingCount > 0 && (
+            <span style={{
+              position: "absolute", top: -4, right: -4,
+              width: 14, height: 14, borderRadius: "50%",
+              background: "var(--rsd-error-fill)", color: "#fff",
+              fontSize: 9, fontWeight: 800,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              lineHeight: 1,
+            }}>
+              {pendingCount > 9 ? "9+" : pendingCount}
+            </span>
+          )}
+        </span>
+        {c ? (
+          <span style={collapsedLabelStyle}>
+            {item.label}
+          </span>
+        ) : (
+          <span style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            {item.label}
+            {isSettings && pendingCount > 0 && !c && (
+              <span style={{
+                background: "var(--rsd-error-fill)", color: "#fff",
+                fontSize: 10, fontWeight: 800, borderRadius: 100,
+                padding: "2px 6px", lineHeight: 1.4,
+              }}>
+                {pendingCount}
+              </span>
+            )}
+          </span>
+        )}
+      </Link>
+    );
+  };
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -161,77 +256,67 @@ export function PortalSidebar({
 
       {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
-        {navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi)).map(item => {
-          const active = isActive(item.href, item.exact);
-          const isSettings = item.href === "/portal/settings";
-          // No prefetch: every portal page is dynamic, so a prefetch only
-          // fetched the route's shape — but it still cost a request (and a
-          // Supabase auth check in middleware) per nav item on every page view.
-          return (
+        {mainItems.map(renderNavItem)}
+
+        {links.length > 0 && (
+          <div role="separator" style={{ height: 1, background: "var(--rsd-frame-line)", margin: "8px 4px" }} />
+        )}
+        {links.map(link => {
+          // Portal paths opened in the same tab behave like the items above;
+          // everything else is a plain link, in a new tab unless turned off.
+          const internal = link.url.startsWith("/") && !link.open_in_new_tab;
+          const active = internal && isActive(link.url);
+          const body = (
+            <>
+              <span style={iconStyle(active)}>
+                {link.open_in_new_tab
+                  ? <Icons.ExternalLink width={16} height={16}/>
+                  : <Icons.Link width={16} height={16}/>}
+              </span>
+              {c ? (
+                <span style={collapsedLabelStyle}>{link.label}</span>
+              ) : (
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+                  {link.label}
+                </span>
+              )}
+            </>
+          );
+          const onClick = () => { if (isMobile) onNavigate?.(); };
+          return internal ? (
             <Link
-              key={item.href}
-              href={item.href}
+              key={link.id}
+              href={link.url}
               prefetch={false}
               aria-current={active ? "page" : undefined}
               className="gw-press rsd-nav-item"
-              onClick={() => { if (isMobile) onNavigate?.(); }}
-              style={{
-                display: "flex",
-                flexDirection: c ? "column" : "row",
-                alignItems: "center",
-                justifyContent: c ? "center" : "flex-start",
-                gap: c ? 3 : (isMobile ? 14 : 10),
-                padding: c ? "7px 2px" : (isMobile ? "14px 14px" : "9px 10px"),
-                borderRadius: isMobile ? 10 : 9,
-                // Inactive items leave background unset so the hover rule in
-                // globals.css (.rsd-nav-item) can apply.
-                background: active ? "var(--rsd-accent)" : undefined,
-                color: active ? "var(--rsd-accent-on)" : "var(--rsd-frame-fg-2)",
-                border: "1px solid",
-                borderColor: active ? "var(--rsd-accent)" : "transparent",
-                fontWeight: 700, fontSize: isMobile ? 15 : 13, lineHeight: 1,
-                textDecoration: "none",
-                transition: "background 150ms",
-                position: "relative",
-                minHeight: isMobile ? 48 : undefined,
-              }}
+              onClick={onClick}
+              style={itemStyle(active)}
             >
-              <span style={{ display: "flex", flexShrink: 0, color: active ? "var(--rsd-accent-on)" : "var(--rsd-frame-fg-3)", position: "relative", transform: isMobile ? "scale(1.15)" : undefined, transformOrigin: "center" }}>
-                {item.icon}
-                {isSettings && pendingCount > 0 && (
-                  <span style={{
-                    position: "absolute", top: -4, right: -4,
-                    width: 14, height: 14, borderRadius: "50%",
-                    background: "var(--rsd-error-fill)", color: "#fff",
-                    fontSize: 9, fontWeight: 800,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    lineHeight: 1,
-                  }}>
-                    {pendingCount > 9 ? "9+" : pendingCount}
-                  </span>
-                )}
-              </span>
-              {c ? (
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".04em", opacity: 0.75 }}>
-                  {item.label}
-                </span>
-              ) : (
-                <span style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  {item.label}
-                  {isSettings && pendingCount > 0 && !c && (
-                    <span style={{
-                      background: "var(--rsd-error-fill)", color: "#fff",
-                      fontSize: 10, fontWeight: 800, borderRadius: 100,
-                      padding: "2px 6px", lineHeight: 1.4,
-                    }}>
-                      {pendingCount}
-                    </span>
-                  )}
-                </span>
-              )}
+              {body}
             </Link>
+          ) : (
+            <a
+              key={link.id}
+              href={link.url}
+              target={link.open_in_new_tab ? "_blank" : undefined}
+              rel={link.open_in_new_tab ? "noopener noreferrer" : undefined}
+              title={link.open_in_new_tab ? `${link.label} (opens in a new tab)` : undefined}
+              className="gw-press rsd-nav-item"
+              onClick={onClick}
+              style={itemStyle(false)}
+            >
+              {body}
+            </a>
           );
         })}
+
+        {/* Settings sits at the bottom, just above Collapse / Sign out. */}
+        {settingsItem && (
+          <div style={{ marginTop: "auto", paddingTop: 8, display: "flex", flexDirection: "column" }}>
+            {renderNavItem(settingsItem)}
+          </div>
+        )}
       </nav>
 
       {/* Bottom */}

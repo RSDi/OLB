@@ -20,10 +20,18 @@ import { ContactCategoriesTab } from "./ContactCategoriesTab";
 import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
 import { IntegrationsTab } from "./IntegrationsTab";
+import { SidebarLinksTab } from "./SidebarLinksTab";
 
-// Staged rollout: the tabs released to everyone who can open Settings. The
-// rest stay with the accounts in lib/auth/feature-preview.ts.
+// Staged rollout: the tabs released to everyone who can open Settings, and
+// the extra ones released to super-admins only. The rest stay with the
+// accounts in lib/auth/feature-preview.ts.
 const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles"]);
+const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
+  "playbooks",
+  "sidebar_links",
+  "contact_categories",
+  "audit_log",
+]);
 
 type Tab =
   | "members"
@@ -37,6 +45,7 @@ type Tab =
   | "event_categories"
   | "task_categories"
   | "playbooks"
+  | "sidebar_links"
   | "closures"
   | "contact_categories"
   | "integrations"
@@ -115,13 +124,20 @@ export default function SettingsPage() {
     { key: "event_categories", label: "Event Categories", visible: true },
     { key: "task_categories", label: "Task Categories", visible: true },
     { key: "playbooks", label: "Playbooks", visible: true },
+    { key: "sidebar_links", label: "Sidebar Links", visible: isSuperAdmin(me) },
     { key: "closures", label: "Closures", visible: true },
     { key: "contact_categories", label: "Contact Types", visible: true },
     { key: "integrations", label: "Integrations", visible: true },
     { key: "audit_log", label: "Audit Log", visible: true },
     { key: "deleted", label: "Deleted", visible: showDeleted },
   ];
-  const shownTabs = tabs.filter((t) => t.visible && (fullUi || RELEASED_TABS.has(t.key)));
+  const shownTabs = tabs.filter(
+    (t) =>
+      t.visible &&
+      (fullUi ||
+        RELEASED_TABS.has(t.key) ||
+        (isSuperAdmin(me) && SUPER_ADMIN_RELEASED_TABS.has(t.key)))
+  );
 
   return (
     <>
@@ -165,6 +181,7 @@ export default function SettingsPage() {
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}
+      {tab === "sidebar_links" && isSuperAdmin(me) && <SidebarLinksTab />}
       {tab === "closures" && <ClosuresTab me={me} />}
       {tab === "contact_categories" && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && <IntegrationsTab />}
