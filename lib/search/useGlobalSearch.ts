@@ -10,6 +10,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "../supabase/client";
+import { searchArchiveForGlobalSearch } from "../slack-archive/global-search";
 
 export type EntityType =
   | "member"
@@ -19,7 +20,8 @@ export type EntityType =
   | "pm_template"
   | "asset"
   | "event"
-  | "playbook";
+  | "playbook"
+  | "slack";
 
 export interface SearchHit {
   entity_type: EntityType;
@@ -33,7 +35,8 @@ export interface SearchHit {
 // Canonical group order. Members/Maintenance/Events/Playbooks sit on top
 // because they're the most common targets; PM internals trail. Contacts
 // sit right after members since they're the other "directory of people"
-// the global search surfaces.
+// the global search surfaces. Slack messages come last, as the broadest
+// matches.
 export const GROUP_ORDER: EntityType[] = [
   "member",
   "contact",
@@ -43,6 +46,7 @@ export const GROUP_ORDER: EntityType[] = [
   "pm_task",
   "pm_template",
   "asset",
+  "slack",
 ];
 
 export interface UseGlobalSearchResult {
@@ -70,16 +74,17 @@ export function useGlobalSearch(query: string, enabled: boolean): UseGlobalSearc
     const timer = setTimeout(async () => {
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
-          .rpc("search_global", { q: trimmed, max_total: 25 })
-          .abortSignal(controller.signal);
+        // The Slack archive has its own search function (migration 0092), run
+        // alongside; either one failing leaves the other's results showing.
+        const [records, slack] = await Promise.all([
+          supabase
+            .rpc("search_global", { q: trimmed, max_total: 25 })
+            .abortSignal(controller.signal),
+          searchArchiveForGlobalSearch(supabase, trimmed, controller.signal),
+        ]);
         if (controller.signal.aborted) return;
-        if (error) {
-          console.error("[useGlobalSearch] rpc error", error);
-          setResults([]);
-        } else {
-          setResults(((data ?? []) as SearchHit[]));
-        }
+        if (records.error) console.error("[useGlobalSearch] rpc error", records.error);
+        setResults([...((records.data ?? []) as SearchHit[]), ...slack]);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
