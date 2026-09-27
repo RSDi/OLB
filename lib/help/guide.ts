@@ -229,6 +229,7 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
+| Activity (who's using the portal) and **Preview as** | | | ✓ |
 
 **Board extras around the portal**
 
@@ -317,7 +318,36 @@ Tap the **trash** can to delete a category or a playbook.
 
 The most recent 100 changes are listed, newest first: new members, approvals, role changes, profile edits and removals. Nothing here can be edited.
 
+A change a super-admin made while using **Preview as** shows both names, like "by Jeff Malone (as Pat Smith)".
+
 **Show me how** at the top of the tab walks you through it, one step at a time.`,
+  },
+  {
+    id: "activity",
+    title: "Activity and Preview as",
+    audience: "super_admin",
+    routes: ["/portal/activity"],
+    keywords: ["activity", "usage", "stats", "statistics", "sign-ins", "logins", "last seen", "sessions", "page views", "who's using", "audit", "trail", "preview as", "view as", "impersonate", "see what they see", "exit preview"],
+    body: `Who's using the portal and how. Open **Activity** near the bottom of the sidebar.
+
+**At a glance.** The tiles count **Sign-ins · 7 days**, people **Active · 24 hours** and **Active · 7 days**, and **Previews · 30 days**. **People each day** charts how many members opened the portal each day for the last 30 days — hover over (or tap) a bar for that day's numbers. **Most visited pages** lists the pages people open most.
+
+**Members.** Everyone with a portal login, most recently seen first: their role, **Last sign-in**, **Last seen** (when, and the page they were on) and **Sessions · 30d**. Search by name or email, or tap **Seen in 30 days** or **Never signed in** to narrow the list.
+
+**Sessions.** Tap a member to see each time they signed in: when, how long, how many pages and on what device. Tap a session to see every page they opened, in order, with how long they stayed on each. A long gap shows as **idle**.
+
+**Preview as.** Tap **Preview as** on a member's row, then **Start preview**, to see the portal exactly as they do — the same pages, buttons and players. It's the quickest way to check what a parent or coach can see.
+
+- A yellow bar across the top reminds you who you're previewing. Tap **Exit preview** to go back to your own account.
+- **Anything you change during a preview really happens, as them** — so look, don't touch. The Audit Log credits those changes to you ("Jeff Malone (as Pat Smith)").
+- A preview ends by itself after 2 hours. **Sign out** during a preview ends it and signs you out.
+- Super-admins can't be previewed, and neither can people who haven't signed up, are waiting for approval, or have had their login revoked.
+
+**Previews** lists every preview — who previewed whom, when and for how long — and each one's pages show in that member's sessions, marked **Preview**. Previews don't count toward a member's own sign-ins or last seen.
+
+Activity is recorded from the day this page went live.
+
+**Show me how** at the top of the page walks you through it, one step at a time.`,
   },
   {
     id: "playbooks-editing",

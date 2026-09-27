@@ -6,6 +6,8 @@ import { Icons } from "./icons";
 import { createClient } from "../../lib/supabase/client";
 import type { MemberRole, MemberStatus } from "../../lib/auth/permissions";
 import type { SidebarLink } from "../../lib/sidebar-links/url";
+import { PREVIEW_EXIT_PATH } from "../../lib/activity/preview-cookie";
+import { recordSignOut } from "./ActivityBeacon";
 
 interface NavItem {
   href: string;
@@ -42,6 +44,8 @@ const NAV: NavItem[] = [
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true, tour: "nav-settings" },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
+  // Sign-ins, page views, usage and "Preview as": super-admin only.
+  { href: "/portal/activity", label: "Activity", icon: <Icons.Activity width={16} height={16}/>, superAdminOnly: true, tour: "nav-activity" },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
   // bottom of the nav, above Settings (BOTTOM_HREFS).
   { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/>, tour: "nav-guide" },
@@ -49,7 +53,7 @@ const NAV: NavItem[] = [
 
 // Pinned to the bottom of the nav, below the custom links, in this order.
 const SETTINGS_HREF = "/portal/settings";
-const BOTTOM_HREFS = ["/portal/guide", SETTINGS_HREF];
+const BOTTOM_HREFS = ["/portal/activity", "/portal/guide", SETTINGS_HREF];
 
 // Wordmark in the sidebar's brand block (Lightning theme).
 const BRAND = { name: "OLB", tagline: "MEMBER PORTAL" };
@@ -78,6 +82,8 @@ interface PortalSidebarProps {
   pendingMembersCount: number;
   // Custom links from Settings → Sidebar Links, shown under the nav.
   links: SidebarLink[];
+  // A super-admin's "Preview as" is in progress: Sign out ends it instead.
+  previewing?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
   mobileOpen?: boolean;
@@ -88,6 +94,7 @@ export function PortalSidebar({
   viewer,
   pendingMembersCount,
   links,
+  previewing = false,
   collapsed,
   onToggleCollapse,
   mobileOpen,
@@ -216,6 +223,13 @@ export function PortalSidebar({
   };
 
   async function handleSignOut() {
+    // During a "Preview as", signing out ends the preview on the server —
+    // a normal sign-out here would sign the member out of all their devices.
+    if (previewing) {
+      window.location.assign(`${PREVIEW_EXIT_PATH}?reason=logout`);
+      return;
+    }
+    await recordSignOut();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");

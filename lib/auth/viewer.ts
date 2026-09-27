@@ -49,14 +49,22 @@ export interface Viewer {
 // requests), so it costs no network call; with the legacy shared secret it
 // falls back to `getUser()`, exactly as before. The ReelNotes API routes,
 // which middleware doesn't cover, still make their own `getUser()` check.
-export const getAuthUser = cache(async (): Promise<{ id: string; email: string | null } | null> => {
+//
+// `sessionId` is the sign-in session (the token's `session_id` claim): the
+// activity trail groups events by it, and "Preview as" pins a preview to it.
+export const getAuthUser = cache(async (): Promise<{ id: string; email: string | null; sessionId: string | null } | null> => {
   const supabase = await createClient();
   try {
     const { data } = await supabase.auth.getClaims();
     const id = data?.claims?.sub;
     const email = data?.claims?.email;
+    const sessionId = data?.claims?.session_id;
     return typeof id === "string" && id
-      ? { id, email: typeof email === "string" ? email : null }
+      ? {
+          id,
+          email: typeof email === "string" ? email : null,
+          sessionId: typeof sessionId === "string" && sessionId ? sessionId : null,
+        }
       : null;
   } catch (err) {
     // getClaims() throws, rather than returning an error, for a few malformed

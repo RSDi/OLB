@@ -15,6 +15,8 @@ interface AuditRow {
   action: AuditAction;
   old_data: Record<string, unknown> | null;
   new_data: Record<string, unknown> | null;
+  // The super-admin behind a change made during a "Preview as" (0099).
+  impersonator_user_id?: string | null;
 }
 
 // Columns that change on every write and would just be noise in a diff.
@@ -38,11 +40,27 @@ export function AuditLogTab() {
       setLoading(false);
       return;
     }
-    const auditRows = (data as AuditRow[]) ?? [];
+    let auditRows = (data as AuditRow[]) ?? [];
+
+    // Who was previewing, for changes made during a "Preview as". A separate,
+    // best-effort query so the log still loads before migration 0099.
+    if (auditRows.length > 0) {
+      const { data: imp } = await supabase
+        .from("member_audit_log")
+        .select("id, impersonator_user_id")
+        .in("id", auditRows.map((r) => r.id))
+        .not("impersonator_user_id", "is", null);
+      const byId = new Map(
+        ((imp as { id: string; impersonator_user_id: string }[] | null) ?? []).map((r) => [r.id, r.impersonator_user_id])
+      );
+      auditRows = auditRows.map((r) => ({ ...r, impersonator_user_id: byId.get(r.id) ?? null }));
+    }
     setRows(auditRows);
 
-    // Resolve changed_by (an auth user id) to a member name.
-    const actorIds = [...new Set(auditRows.map((r) => r.changed_by).filter(Boolean))] as string[];
+    // Resolve changed_by and impersonator (auth user ids) to member names.
+    const actorIds = [
+      ...new Set(auditRows.flatMap((r) => [r.changed_by, r.impersonator_user_id]).filter(Boolean)),
+    ] as string[];
     if (actorIds.length > 0) {
       const { data: actors } = await supabase
         .from("members")
@@ -106,13 +124,21 @@ export function AuditLogTab() {
             <AuditEntry
               key={r.id}
               row={r}
-              actorName={r.changed_by ? actorNames[r.changed_by] ?? "Unknown" : "System"}
+              actorName={actorLabel(r, actorNames)}
             />
           ))}
         </div>
       )}
     </div>
   );
+}
+
+// "Pat Smith", or "Jeff Malone (as Pat Smith)" for a change made during a
+// "Preview as".
+function actorLabel(row: AuditRow, names: Record<string, string>): string {
+  const actor = row.changed_by ? names[row.changed_by] ?? "Unknown" : "System";
+  if (!row.impersonator_user_id) return actor;
+  return `${names[row.impersonator_user_id] ?? "A super-admin"} (as ${actor})`;
 }
 
 function AuditEntry({ row, actorName }: { row: AuditRow; actorName: string }) {

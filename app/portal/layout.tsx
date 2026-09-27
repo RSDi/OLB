@@ -13,6 +13,7 @@
 import type { Viewport } from "next";
 import { getPendingMembersCount, getViewer } from "../../lib/auth/viewer";
 import { getSidebarLinks } from "../../lib/sidebar-links/queries";
+import { getPreview } from "../../lib/activity/preview";
 import { PortalShell } from "./PortalShell";
 
 // The Lightning theme is light apart from the black sidebar: tint mobile
@@ -31,9 +32,11 @@ export default async function PortalLayout({
   // Any board member can action the approval queue (D1), so the whole
   // staff sees the pending badge.
   const viewer = await getViewer();
-  const [pendingMembersCount, sidebarLinks] = await Promise.all([
+  const [pendingMembersCount, sidebarLinks, preview] = await Promise.all([
     viewer?.isStaff ? getPendingMembersCount() : Promise.resolve(0),
     viewer ? getSidebarLinks() : Promise.resolve([]),
+    // A super-admin's "Preview as" in progress (banner + way back).
+    getPreview(),
   ]);
 
   return (
@@ -45,6 +48,15 @@ export default async function PortalLayout({
               status: viewer.status,
               isStaff: viewer.isStaff,
               seesFullUi: viewer.seesFullUi,
+            }
+          : null
+      }
+      preview={
+        preview
+          ? {
+              targetName: preview.targetName,
+              impersonatorName: preview.impersonatorName,
+              expiresAt: preview.expiresAt,
             }
           : null
       }

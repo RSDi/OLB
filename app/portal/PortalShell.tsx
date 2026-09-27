@@ -15,6 +15,8 @@ import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
 import { GuidedTour, TourContext, type StartTour } from "../components/GuidedTour";
 import { ScrollToTopButton } from "../components/ScrollToTopButton";
+import { ActivityBeacon } from "../components/ActivityBeacon";
+import { PreviewBanner, type PreviewInfo } from "../components/PreviewBanner";
 import { guideSectionForPath } from "../../lib/help/guide";
 import {
   WELCOME_TOUR_ID,
@@ -53,22 +55,26 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/slack-archive/exceptions": { title: "Exceptions",     subtitle: "Slack Archive" },
   "/portal/slack-archive/album":      { title: "Photo Album",    subtitle: "Slack Archive" },
   "/portal/guide":       { title: "User Guide",   subtitle: "Help" },
+  "/portal/activity":    { title: "Activity",     subtitle: "Super-admin" },
 };
 
 interface Props {
   viewer: SidebarViewer | null;
   pendingMembersCount: number;
   sidebarLinks: SidebarLink[];
+  // Set while a super-admin is previewing as this member.
+  preview: PreviewInfo | null;
   children: React.ReactNode;
 }
 
-export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, children }: Props) {
+export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview, children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const inlineSearchRef = useRef<TopbarSearchHandle>(null);
   const pathname = usePathname();
+  const previewing = preview !== null;
   // The top-bar "i" shows the User Guide section for this page, when the
   // viewer can see one (lib/help/guide.ts).
   const pageHelp = guideSectionForPath(pathname, viewer);
@@ -95,7 +101,9 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
   // accounts start it from the User Guide. Asking Supabase when the login was
   // made costs a call, so it's only asked until this browser remembers.
   useEffect(() => {
-    if (viewer?.status !== "approved" || pathname !== "/portal/directory") return;
+    // Not during a preview: it would read the member's account age, and it's
+    // the super-admin's browser.
+    if (viewer?.status !== "approved" || pathname !== "/portal/directory" || previewing) return;
     try {
       if (localStorage.getItem(WELCOME_TOUR_SEEN_KEY)) return;
     } catch {
@@ -120,7 +128,7 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [viewer?.status, pathname, startTour]);
+  }, [viewer?.status, pathname, startTour, previewing]);
 
   // Cmd+K / Ctrl+K behavior depends on viewport: focus the inline topbar
   // input if it's mounted (large viewports), otherwise toggle the modal
@@ -191,14 +199,17 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
 
   return (
     <TourContext.Provider value={tourControls}>
+      {preview && <PreviewBanner preview={preview} />}
+      <ActivityBeacon />
       <div
         data-theme="lightning"
-        className={`rsd-app ${portalFontVariables}${collapsed ? " sidebar-collapsed" : ""}`}
+        className={`rsd-app ${portalFontVariables}${collapsed ? " sidebar-collapsed" : ""}${previewing ? " rsd-previewing" : ""}`}
       >
         <PortalSidebar
           viewer={viewer}
           pendingMembersCount={pendingMembersCount}
           links={sidebarLinks}
+          previewing={previewing}
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed(v => !v)}
           mobileOpen={mobileOpen}
