@@ -175,6 +175,7 @@
 .olb-player:hover { border-color: var(--olb-stroke-2); box-shadow: var(--olb-shadow); }
 .olb-player:active { cursor: grabbing; }
 .olb-player__name { font-weight: 600; font-size: 13.5px; }
+.olb-player__num { font-weight: 800; margin-right: 6px; opacity: .6; font-variant-numeric: tabular-nums; }
 .olb-player__meta { font-size: 11.5px; color: var(--olb-muted); margin-top: 1px; }
 .olb-player__spacer { flex: 1; }
 .olb-player__flag { color: var(--olb-red); font-size: 14px; line-height: 1; }

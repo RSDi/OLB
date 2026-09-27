@@ -18,13 +18,16 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
   const data = await team;
   if (!data) notFound();
 
-  // Filling roles is super-admin only, and for now only shows for the
-  // staged-rollout accounts (lib/auth/feature-preview.ts).
+  // Filling roles is super-admin only (0092).
   const full = await getViewer();
-  const canManage = !!full?.isSuperAdmin && !!full?.seesFullUi;
+  const canManage = !!full?.isSuperAdmin;
   const people = canManage ? await loadAssignablePeople() : [];
 
-  const roster = (await players).filter((p) => p.team_id === id);
+  // By jersey number; players without one go last, by name.
+  const num = (n: string | null) => (n != null && /^\d+$/.test(n) ? Number(n) : Infinity);
+  const roster = (await players)
+    .filter((p) => p.team_id === id)
+    .sort((a, b) => num(a.jersey_number) - num(b.jersey_number) || a.full_name.localeCompare(b.full_name));
 
   return (
     <TeamView

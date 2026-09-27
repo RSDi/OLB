@@ -17,7 +17,10 @@ export function PlayerCardView({
   return (
     <div className={"olb-player" + (dragging ? " olb-dragging" : "") + (overlay ? " olb-overlay" : "")}>
       <div>
-        <div className="olb-player__name">{player.full_name}</div>
+        <div className="olb-player__name">
+          {player.jersey_number != null && <span className="olb-player__num">#{player.jersey_number}</span>}
+          {player.full_name}
+        </div>
         {meta && <div className="olb-player__meta">{meta}</div>}
       </div>
       <span className="olb-player__spacer" />

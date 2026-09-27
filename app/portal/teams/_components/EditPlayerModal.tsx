@@ -9,18 +9,24 @@ export default function EditPlayerModal({
   onClose,
 }: {
   player: OlbPlayer;
-  onSave: (fields: { full_name: string; dob: string | null; grade: string | null }) => void;
+  onSave: (fields: { full_name: string; dob: string | null; grade: string | null; jersey_number: string | null }) => void;
   onRemove: () => void;
   onClose: () => void;
 }) {
   const [fullName, setFullName] = useState(player.full_name);
   const [dob, setDob] = useState(player.dob ?? "");
   const [grade, setGrade] = useState(player.grade ?? "");
+  const [number, setNumber] = useState(player.jersey_number ?? "");
   const [confirmDel, setConfirmDel] = useState(false);
 
   function save() {
     if (!fullName.trim()) return;
-    onSave({ full_name: fullName.trim(), dob: dob || null, grade: grade.trim() || null });
+    onSave({
+      full_name: fullName.trim(),
+      dob: dob || null,
+      grade: grade.trim() || null,
+      jersey_number: number.trim() || null,
+    });
   }
 
   return (
@@ -43,6 +49,10 @@ export default function EditPlayerModal({
               <input className="olb-input" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="e.g. 7th / Sr." />
             </label>
           </div>
+          <label className="olb-field">
+            <span className="olb-label">Jersey number</span>
+            <input className="olb-input" value={number} onChange={(e) => setNumber(e.target.value)} inputMode="numeric" maxLength={3} placeholder="e.g. 23" />
+          </label>
         </div>
 
         <div className="olb-modal__actions">
