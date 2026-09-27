@@ -721,7 +721,7 @@ function ProcedureEditor({
       </div>
       <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span style={labelStyle}>Name</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Shutdown (End of service)" autoFocus style={fieldStyle} />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Gym close-up (after practice)" autoFocus style={fieldStyle} />
       </label>
       <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <span style={labelStyle}>Steps — one per line</span>
@@ -729,7 +729,7 @@ function ProcedureEditor({
           value={stepsText}
           onChange={(e) => setStepsText(e.target.value)}
           rows={6}
-          placeholder={"Turn off the lobby HVAC units\nTurn off the coffee maker\nShut off all the lights\nLock & check the front door"}
+          placeholder={"Rack the balls and put away the carts\nPick up water bottles and trash\nShut off all the lights\nLock & check the gym doors"}
           style={{ ...fieldStyle, lineHeight: 1.6, resize: "vertical", fontFamily: "inherit" }}
         />
       </label>

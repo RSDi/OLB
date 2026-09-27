@@ -151,7 +151,7 @@ export const TopbarSearch = forwardRef<TopbarSearchHandle>(function TopbarSearch
           placeholder="Search…"
           autoComplete="off"
           spellCheck={false}
-          aria-label="Search members, requests, events, playbooks"
+          aria-label="Search members, playbooks and Slack messages"
           style={{
             flex: 1,
             border: "none",

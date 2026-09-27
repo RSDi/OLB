@@ -41,8 +41,8 @@ export function GuideView({ sections, updated }: { sections: GuideSection[]; upd
       </h1>
       <p style={{ fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.55, margin: "0 0 20px" }}>
         How to get around the OLB member portal and get things done. You&apos;ll only see the parts
-        that apply to you. The <Icons.Info width={13} height={13} style={{ verticalAlign: "-2px" }} /> button
-        in the top bar of any page opens the section for that page.
+        that apply to you. The <strong>ⓘ</strong> button in the top bar of any page opens the
+        section for that page.
       </p>
 
       <label
@@ -112,10 +112,11 @@ export function GuideView({ sections, updated }: { sections: GuideSection[]; upd
           >
             Contents
           </div>
-          <ol
+          <ul
             style={{
               margin: 0,
-              paddingLeft: 20,
+              padding: 0,
+              listStyle: "none",
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
               columnGap: 24,
@@ -130,7 +131,7 @@ export function GuideView({ sections, updated }: { sections: GuideSection[]; upd
                 </a>
               </li>
             ))}
-          </ol>
+          </ul>
         </nav>
       ) : (
         <p style={{ fontSize: 14, color: "var(--gw-fg-muted)" }}>

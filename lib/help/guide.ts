@@ -43,7 +43,296 @@ export interface GuideViewer {
 
 export const GUIDE_UPDATED = "September 2026";
 
-export const GUIDE_SECTIONS: GuideSection[] = [];
+export const GUIDE_SECTIONS: GuideSection[] = [
+  // ─── Everyone ────────────────────────────────────────────────────────────
+  {
+    id: "getting-in",
+    title: "Signing in",
+    audience: "everyone",
+    keywords: ["login", "log in", "sign in", "password", "forgot", "reset", "code", "slack", "register", "request access", "pending", "approved", "denied", "account"],
+    body: `The member portal is for Omaha Lightning families, coaches and the board. Use the **Login** link at the bottom of the club website, or go straight to the login page.
+
+**Three ways to sign in**
+
+- **Continue with Slack** — the quickest. If you're in the club's Slack workspace, this gets you in right away, even if you're new.
+- **Email and password** — the account you created when you requested access.
+- **Email me a sign-in code** — no password needed. Enter your email, we email you a code, type it in and you're in. (If the email shows a sign-in button instead of a code, tapping the button works too.) Codes only work for email addresses that already have an account.
+
+**Forgot your password?** Tap **Forgot password?** next to the Password label. We'll email you a code; type it in, then choose a new password (at least 8 characters).
+
+**New here?** Tap **Request access**, then either use **Continue with Slack** or fill in your name, email and a password. If you're asked to confirm your email, click the link we send you.
+
+**Waiting for approval.** Unless you came in through the club's Slack, someone from the club reviews each new request. Until then you'll see **Request submitted** when you try to sign in. You'll get an email ("You're in — Omaha Lightning member portal") as soon as you're approved. If you see **Access not granted** and think it's a mistake, use the club's Contact page.
+
+**Registered a player?** If your email is on a player registration, your account is already set up for you — request access with that same email and you'll be linked to your family.`,
+  },
+  {
+    id: "getting-around",
+    title: "Getting around",
+    audience: "everyone",
+    keywords: ["navigation", "menu", "sidebar", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k"],
+    body: `**Home is the Directory.** After you sign in you land on the Directory of players and parents.
+
+**The sidebar** on the left has everything you can use — you only see the parts that apply to you:
+
+- **Directory** — players, parents, teams, coaches and volunteers.
+- **Playbooks** — how-to guides and step-by-step checklists.
+- **Slack Archive** — past messages, photos and files from the club's Slack.
+- **User Guide** — this page.
+- **Sign out** — at the bottom.
+
+Admins also see **External Contacts** and **Settings**.
+
+On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a phone, tap the **menu** button at the top left to open it.
+
+**Search.** The search box at the top of every page finds members, playbooks and Slack messages (and, for admins, external contacts). Press **⌘K** on a Mac or **Ctrl K** on Windows to jump to it from anywhere. Type at least 2 letters, use the arrow keys and **Enter** to open a result, and **Esc** to close. Your last few searches are remembered under **Recent**. To find a *player*, use the search box on the Directory page instead.
+
+**Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.`,
+  },
+  {
+    id: "directory",
+    title: "Directory",
+    audience: "everyone",
+    routes: ["/portal/directory"],
+    keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "profile", "family", "search"],
+    body: `This season's players and their parents, grouped by team.
+
+- **Search** by player, parent, email or phone number (type 3 or more digits to match a phone).
+- Tap a **team** chip to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed.
+- Coaches, other team leaders and admins can switch between **By team** and **By age group** (10U–18U).
+- Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.
+- Tap a parent's name to open their profile, and **Team page ›** to open a team's full page.
+
+**Who's listed.** Players appear when their family said yes to being in the directory on the registration form.
+
+**Profiles.** A member's profile shows their photo, phone, email and birthday, plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
+  },
+  {
+    id: "team-pages",
+    title: "Team pages",
+    audience: "everyone",
+    routes: ["/portal/directory/teams"],
+    keywords: ["team", "coach", "volunteer", "team parent", "scorekeeper", "roster", "jersey", "practice", "staff", "open spot"],
+    body: `Everything about one team in one place. Open it from **Team page** on the Directory.
+
+- **The header** shows the team's division, name, practice times and location, how many players it has, and how many volunteer spots are filled.
+- **Staff & volunteers** lists every job the team needs — coach, team parent, scorekeeper and so on — with the person doing it and their phone and email, or **Open spot** if nobody's signed up yet. **Leadership** marks the roles that lead the team.
+- **Roster** lists the players in jersey-number order, with their parents.
+
+Want to fill an open spot? Let the club know and an admin will add you.`,
+  },
+  {
+    id: "your-profile",
+    title: "Your profile",
+    audience: "everyone",
+    keywords: ["profile", "edit", "nickname", "photo", "avatar", "gravatar", "picture", "phone", "birthday", "name", "email change"],
+    body: `Keep your details current so other families and coaches can reach you.
+
+**Finding it.** Tap your own name — on the Directory under your player, on a team page, or by searching for yourself.
+
+**Editing it.** Tap **✎ Edit profile** to change your full name, **nickname**, phone and birthday, then **Save**.
+
+- Your **nickname** (e.g. "Jeff") is the short name people see around the portal. Leave it blank to use your first name.
+- Your **photo** comes from [Gravatar](https://gravatar.com) automatically — set one up for the email you sign in with and it shows up here. Or paste a link to a picture in **Avatar URL**.
+- Your email, and whether you have access, are managed by the club. Ask an admin if your email changes.`,
+  },
+
+  {
+    id: "playbooks",
+    title: "Playbooks",
+    audience: "everyone",
+    routes: ["/portal/docs"],
+    keywords: ["playbooks", "how to", "guide", "docs", "instructions", "procedure", "checklist", "steps", "run", "video"],
+    body: `Step-by-step guides for how we do things around the club.
+
+- Playbooks are listed newest-updated first. Tap one to open it — or search for it from the top bar.
+- Each playbook is a reference page, and can include pictures and videos (tap a video card to play it).
+- Some playbooks also have **procedures** — checklists for a job you do the same way every time. Open the **Run** tab to see a procedure's steps.
+
+**Running a procedure (admins).** Open the playbook, press **▶ Start**, and tap each step as you do it. When every step is checked, press **Done** — it's logged in the procedure's **History**, and if the procedure is set up to, the team gets a heads-up in Slack (**Done — notify the team**).`,
+  },
+  {
+    id: "slack-archive",
+    title: "Slack Archive",
+    audience: "everyone",
+    routes: ["/portal/slack-archive"],
+    keywords: ["slack", "archive", "messages", "channels", "threads", "history", "private", "jump to date", "filter", "link", "attachments", "files"],
+    body: `The full history of the club's Slack channels, updated every night — so nothing gets lost when Slack hides older messages.
+
+**Which channels you see.** Every public channel, plus the private channels you're a member of in Slack. That's matched by email, so your portal email needs to be the same one you use in Slack.
+
+**Reading a channel.** Pick a channel from the list (or switch with the drop-down at the top of a channel).
+
+- Messages are grouped by day, with each thread's replies tucked under the first message.
+- **Newest first / Oldest first** flips the order.
+- **Jump to date** opens a calendar — tap any highlighted day to go straight there.
+- **Filter** shows only the threads a certain person posted in.
+- Tap a photo, video or audio clip to preview it; other files open in a new tab.
+- The **link** icon on a message copies a direct link you can share.
+- **Photos →** opens the Photo Album for just that channel.`,
+  },
+  {
+    id: "slack-archive-search",
+    title: "Searching the Slack Archive",
+    audience: "everyone",
+    routes: ["/portal/slack-archive/search"],
+    keywords: ["slack", "search", "find", "message", "exact phrase", "quotes", "exclude", "user", "channel"],
+    body: `Find an old message. Open **Search archive →** from the Slack Archive.
+
+- Type words to find messages with all of them. Put **"an exact phrase"** in quotes, and put a minus in front of a word (**-hotel**) to leave it out.
+- Narrow it down with the **Channel** and **User** pickers — or leave the text empty and pick a person to see everything they've posted.
+- Results show the newest 200 matches. **Jump to message ↗** opens the message in its conversation.
+- **Clear all** starts over.
+
+Quick lookups work from the top-bar search too — Slack messages show up there under **Slack**.`,
+  },
+  {
+    id: "slack-archive-album",
+    title: "Photo Album",
+    audience: "everyone",
+    routes: ["/portal/slack-archive/album"],
+    keywords: ["photos", "pictures", "videos", "album", "gallery", "download", "month", "slideshow", "gif"],
+    body: `Every photo and video shared in the Slack channels you can see, arranged by month. Open it from the **Photo Album** card on the Slack Archive.
+
+- **Search** captions, people, channels or a month (e.g. "june 2024").
+- Show **All**, just **Photos** or just **Videos**, and narrow by **Channel** or **People**.
+- **Jump to month** skips straight to a month; **Newest first / Oldest first** flips the order.
+- Tap a photo to open it full-screen. Use the arrows (or ← and → keys) to move through them, **Show details** to see the caption and who posted it, **View in conversation** to see the Slack thread, and **Download original** to save it.
+- Your filters stay in the page address, so you can bookmark or share a filtered view.
+
+If the page has been open a long time and pictures stop loading, tap **Reload previews**.`,
+  },
+
+  // ─── Admins ──────────────────────────────────────────────────────────────
+  {
+    id: "admin-roles",
+    title: "Admin roles",
+    audience: "staff",
+    keywords: ["admin", "super-admin", "super admin", "building committee", "role", "permission", "access", "who can"],
+    body: `There are three kinds of account:
+
+| | Member | Admin | Super-admin |
+|---|---|---|---|
+| Directory, Playbooks, Slack Archive | ✓ | ✓ | ✓ |
+| See every player, fees, waivers and volunteer interests | | ✓ | ✓ |
+| Member notes on profiles | | ✓ | ✓ |
+| External Contacts | | ✓ | ✓ |
+| Approve or deny access requests | | ✓ | ✓ |
+| Add, edit and remove members; change roles | | | ✓ |
+| Set up teams and volunteer roles; assign volunteers | | | ✓ |
+
+In **Settings → Members**, the admin role is listed as **Building Committee**.
+
+**Admin extras around the portal**
+
+- The **Directory** shows every player — including families who asked not to be listed (marked **Not in directory**) — plus **No waiver**, fee and shirt details, and each parent's volunteer interests (**Can help**). **Not signed up** and **Awaiting approval** chips show which parents don't have access yet.
+- Every profile has a **Member notes** panel only admins can see. Type a note and tap **Save notes**.`,
+  },
+  {
+    id: "settings-members",
+    title: "Settings: Members",
+    audience: "staff",
+    routes: ["/portal/settings"],
+    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants"],
+    body: `Where new sign-ups are approved and member accounts are managed.
+
+**The red badge** on **Settings** in the sidebar counts access requests waiting for you.
+
+**Reviewing requests.** The **Pending** tab lists people who have signed up and asked for access.
+
+- **Approve** lets them in and emails them a sign-in link.
+- **Deny** turns them away. They'll see **Access not granted** if they try to sign in.
+- Changed your mind? On the **Denied** tab, **Approve** them or **Restore to pending**.
+- **Not signed up** lists parents from player registrations who haven't created a login yet. Approving one ahead of time lets them straight in when they sign up.
+- Use the search box to find someone by name or email; **Approved** lists everyone with access.
+
+**Super-admins can also:**
+
+- **+ Add member** — set someone up ahead of time. With an email, they finish by requesting access with that email. Leave the email blank to add a **directory-only** entry (a grandparent, say) who won't sign in.
+- **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
+- Change someone's **role** (Member / Building Committee / Super-admin) from the drop-down on the **Approved** tab.
+- **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
+- **Remove** a member (demote a super-admin first).
+
+Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,
+  },
+  {
+    id: "playbooks-editing",
+    title: "Writing playbooks",
+    audience: "staff",
+    routes: ["/portal/docs/new"],
+    keywords: ["new playbook", "edit", "write", "markdown", "image", "video", "upload", "procedure", "checklist", "slack", "notify", "history", "versions", "contacts", "attach", "delete"],
+    body: `Admins write and keep the playbooks up to date.
+
+**New playbook.** Tap **New Playbook**, give it a title, an optional category and short description (shown on the listing card), and write the steps. Use the toolbar for bold, lists, **Insert image** (or drag a picture in) and **Insert video** (a YouTube link or an uploaded clip). **Preview** shows how it'll look. Tap **Create**.
+
+**Editing.** Open a playbook and tap **Edit**, make your changes and **Save**. Every save keeps a copy — tap **History** to see earlier versions.
+
+**Procedures.** Under **Procedures**, tap **+ Add procedure**, name it and list the steps, one per line. Tick **Notify a Slack channel when this is completed** to post a message when someone finishes — add the channel's ID and a message (use \`{person}\` for the name of whoever ran it). The Slack bot has to be invited to that channel. Each procedure's **History** tab shows who ran it and when.
+
+**Contacts.** The **Contacts** box on a playbook links the vendors or facilities it involves — tap **+ Attach** and pick from External Contacts.
+
+Super-admins can **Delete playbook** from the bottom of its page.`,
+  },
+  {
+    id: "external-contacts",
+    title: "External Contacts",
+    audience: "staff",
+    routes: ["/portal/contacts"],
+    keywords: ["contacts", "vendors", "companies", "people", "photographer", "gym", "facility", "rent", "program", "account number", "billing", "tags", "phone", "email"],
+    body: `Everyone outside the club we work with — vendors, photographers, gyms we rent, other programs. Only admins can see it.
+
+- **Search** by name, email, phone, account number or type, and use the chips to show **Companies**, **People** or one **type**.
+- **+ New contact** — choose **Company** or **Person**, then fill in what you know: contact info, account and billing details, notes (like how to re-order or who to call for quotes) and tags.
+- Add the people you deal with at a company from its page with **+ Add person**, or pick their company under **Works at** when you add them.
+- A contact's page shows everything about them, with tap-to-call phone numbers, and **Used by** lists the playbooks it's attached to. Tap **Edit** to make changes.
+
+Super-admins can **Delete** a contact.`,
+  },
+  {
+    id: "settings-teams",
+    title: "Settings: Teams",
+    audience: "super_admin",
+    keywords: ["teams", "settings", "new team", "age group", "color", "colour", "division", "practice times", "practice location", "season", "delete team"],
+    body: `Set up this season's teams. Open **Settings → Teams**.
+
+- **+ New team** — give it a **Team name** (e.g. Gold), then pick an **Age group** (10U–18U) and **Team color**, and add the **Division**, **Practice times** and **Practice location**. Separate more than one practice time with a semicolon.
+- Tap the **pencil** to edit a team, or the **trash** can to delete one — its players go back to unassigned and its volunteer spots are cleared.
+- **Staff & volunteers →** opens the team's page in the Directory, where you assign coaches and volunteers.
+
+What you enter here shows on the team's Directory banner and team page.`,
+  },
+  {
+    id: "settings-volunteer-roles",
+    title: "Settings: Volunteer Roles",
+    audience: "super_admin",
+    keywords: ["volunteer", "roles", "coach", "team parent", "scorekeeper", "video", "photography", "spots", "leadership", "in directory", "assign", "registration answer"],
+    body: `The jobs every team can fill — coach, team parent, scorekeeper and so on. Open **Settings → Volunteer Roles**.
+
+- **+ Add role** — name it, say **What they do**, and set **Spots per team**.
+- **Registration answer** links the role to a volunteer option on the registration form, so people who ticked it are suggested first when you assign the role.
+- **Leadership** — people in these roles (coaches, for example) can switch the Directory to age groups, like admins can.
+- **In Directory** — shows the role on the team's banner when someone picks that team in the Directory. Every role always shows on the team's own page.
+- Use the arrows to reorder, the **−/+** to change spots, and the switches to turn Leadership and In Directory on or off. Changes save right away.
+
+**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.`,
+  },
+  {
+    id: "slack-archive-admin",
+    title: "Managing the Slack Archive",
+    audience: "super_admin",
+    routes: ["/portal/slack-archive/exceptions"],
+    keywords: ["slack", "add channel", "channel id", "sync", "sync now", "refresh access", "deactivate", "exceptions", "errors", "previews", "compress", "large files"],
+    body: `Super-admins choose which Slack channels are archived and keep an eye on the nightly sync.
+
+- **+ Add channel** — give it a label and its Slack channel ID (in Slack: open the channel → View channel details → the ID is at the bottom).
+- Each channel shows when it last synced and who can see it. **Deactivate** stops syncing a channel; its history stays browsable.
+- **Refresh access** re-checks private-channel membership with Slack right away (it also happens every night).
+- **Sync now** on a channel pulls in its newest messages without waiting for tonight — click again if it says there's more to catch up.
+- **View all exceptions →** lists channels whose sync failed, attachments that didn't download, and videos too big to store (with **Compress large files now**).
+- In the Photo Album, **Make previews now** creates any missing thumbnails.`,
+  },
+];
 
 export function guideAnchor(id: string): string {
   return `help-${id}`;
