@@ -1,7 +1,7 @@
 "use client";
-// Filterable client-side list of contacts. Free-text search across name,
-// nickname, email, phone, address, account number, plus category and kind
-// filters. Companies render with a folder vibe; people render with the
+// Filterable client-side list of external contacts. Free-text search across
+// name, nickname, email, phone, address, account number, plus type and kind
+// filters. Types are the contact_categories list, managed in Settings. Companies render with a folder vibe; people render with the
 // company they work at inline.
 
 import { useMemo, useState } from "react";
@@ -77,6 +77,13 @@ export function ContactsList({
     [contacts]
   );
   const personCount = contacts.length - companyCount;
+  const countByCategory = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of contacts) {
+      if (c.category_id) m.set(c.category_id, (m.get(c.category_id) ?? 0) + 1);
+    }
+    return m;
+  }, [contacts]);
 
   return (
     <>
@@ -91,10 +98,10 @@ export function ContactsList({
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
-            Contacts
+            External Contacts
           </h2>
           <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            Vendors, suppliers, and external folks the team works with.
+            Vendors, photographers, facilities we rent, other programs, and anyone else outside the team.
             {" "}
             <strong style={{ color: "var(--gw-fg)" }}>{companyCount}</strong> companies ·{" "}
             <strong style={{ color: "var(--gw-fg)" }}>{personCount}</strong> people.
@@ -140,7 +147,7 @@ export function ContactsList({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, email, phone, account #, category…"
+            placeholder="Search name, email, phone, account #, type…"
             style={{
               width: "100%",
               height: 40,
@@ -155,7 +162,7 @@ export function ContactsList({
           />
         </div>
 
-        {/* Kind + category filters */}
+        {/* Kind filter */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <FilterChip
             active={kind === "all"}
@@ -172,29 +179,26 @@ export function ContactsList({
             label="People"
             onClick={() => setKind("person")}
           />
-          <div style={{ width: 1, height: 20, background: "var(--gw-border)", margin: "0 6px" }} />
-          <select
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-            style={{
-              height: 34,
-              padding: "0 12px",
-              borderRadius: 100,
-              border: "1px solid var(--gw-border)",
-              background: "var(--gw-bg)",
-              color: "var(--gw-fg)",
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            <option value="all">All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
         </div>
+
+        {/* Type filter */}
+        {categories.length > 0 && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <FilterChip
+              active={categoryId === "all"}
+              label="All types"
+              onClick={() => setCategoryId("all")}
+            />
+            {categories.map((c) => (
+              <FilterChip
+                key={c.id}
+                active={categoryId === c.id}
+                label={`${c.name}${countByCategory.get(c.id) ? ` · ${countByCategory.get(c.id)}` : ""}`}
+                onClick={() => setCategoryId(c.id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -210,7 +214,7 @@ export function ContactsList({
           </div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
             {contacts.length === 0
-              ? "Start by adding a company (vendor), then attach people who work there."
+              ? "Start by adding a company (a uniform vendor, a gym we rent, another program), then attach the people you work with there."
               : "Try a different search or filter."}
           </div>
           {contacts.length === 0 && (

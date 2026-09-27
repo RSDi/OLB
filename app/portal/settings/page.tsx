@@ -109,7 +109,7 @@ export default function SettingsPage() {
     { key: "task_categories", label: "Task Categories", visible: true },
     { key: "playbooks", label: "Playbooks", visible: true },
     { key: "closures", label: "Closures", visible: true },
-    { key: "contact_categories", label: "Contact Categories", visible: true },
+    { key: "contact_categories", label: "Contact Types", visible: true },
     { key: "integrations", label: "Integrations", visible: true },
     { key: "audit_log", label: "Audit Log", visible: true },
     { key: "deleted", label: "Deleted", visible: showDeleted },
