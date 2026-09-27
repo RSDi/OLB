@@ -312,8 +312,8 @@ export default async function PortalMaintenancePage({
                     fontSize: 13,
                     fontWeight: 700,
                     textDecoration: "none",
-                    background: on ? "var(--rsd-accent)" : "transparent",
-                    color: on ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+                    background: on ? "var(--rsd-accent-fill)" : "transparent",
+                    color: on ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
                   }}
                 >
                   {l === "board" ? "Board" : "List"}
@@ -333,8 +333,8 @@ export default async function PortalMaintenancePage({
             gap: 8,
             padding: "10px 20px",
             borderRadius: 100,
-            background: "var(--rsd-accent)",
-            color: "var(--rsd-accent-on)",
+            background: "var(--rsd-accent-fill)",
+            color: "var(--rsd-accent-fill-on)",
             fontSize: 13,
             fontWeight: 700,
             textDecoration: "none",

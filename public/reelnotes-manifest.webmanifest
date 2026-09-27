@@ -6,8 +6,8 @@
   "scope": "/portal/reelnotes",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#F3F3EF",
+  "theme_color": "#FFFFFF",
   "icons": [
     {
       "src": "/reelnotes-icon.svg",

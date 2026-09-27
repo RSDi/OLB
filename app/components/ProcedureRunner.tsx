@@ -80,7 +80,7 @@ export function ProcedureRunner({
   return (
     <div
       className="rsd-card"
-      style={{ gap: 12, border: "1px solid var(--rsd-accent)", background: "var(--rsd-accent-bg)" }}
+      style={{ gap: 12, border: "1px solid var(--rsd-accent-line)", background: "var(--rsd-accent-bg)" }}
     >
       {!running ? (
         <>
@@ -91,7 +91,7 @@ export function ProcedureRunner({
             <button
               onClick={startRun}
               className="gw-press"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 100, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 18px", borderRadius: 100, background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}
             >
               <Icons.Play width={13} height={13} /> {startLabel ?? `Start ${title}`}
             </button>
@@ -114,7 +114,7 @@ export function ProcedureRunner({
                   className="gw-press"
                   style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", padding: "10px 12px", borderRadius: 10, background: "var(--gw-bg)", border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`, cursor: "pointer", width: "100%" }}
                 >
-                  <span style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: on ? "var(--rsd-accent)" : "transparent", border: `1.5px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`, color: "var(--rsd-accent-on)" }}>
+                  <span style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: on ? "var(--rsd-accent-fill)" : "transparent", border: `1.5px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`, color: "var(--rsd-accent-fill-on)" }}>
                     {on && <Icons.CheckCircle width={13} height={13} />}
                   </span>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--gw-fg)", textDecoration: on ? "line-through" : "none", opacity: on ? 0.7 : 1 }}>
@@ -128,7 +128,7 @@ export function ProcedureRunner({
             <button onClick={() => { setRunning(false); setChecked(new Set()); }} disabled={pending} style={{ padding: "9px 16px", borderRadius: 100, background: "var(--gw-bg-elev)", border: "1px solid var(--gw-border)", fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", cursor: "pointer" }}>
               Cancel
             </button>
-            <button onClick={finishRun} disabled={!allChecked || pending} className="gw-press" style={{ padding: "9px 18px", borderRadius: 100, background: allChecked ? "var(--rsd-accent)" : "var(--gw-bg-elev)", color: allChecked ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)", border: allChecked ? "none" : "1px solid var(--gw-border)", fontSize: 13, fontWeight: 700, cursor: allChecked && !pending ? "pointer" : "not-allowed" }}>
+            <button onClick={finishRun} disabled={!allChecked || pending} className="gw-press" style={{ padding: "9px 18px", borderRadius: 100, background: allChecked ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)", color: allChecked ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)", border: allChecked ? "none" : "1px solid var(--gw-border)", fontSize: 13, fontWeight: 700, cursor: allChecked && !pending ? "pointer" : "not-allowed" }}>
               {pending ? "Finishing…" : willNotify ? "Done — notify the team" : "Done"}
             </button>
           </div>

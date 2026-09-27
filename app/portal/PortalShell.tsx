@@ -77,7 +77,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
   }, []);
 
   // The Lightning theme is set on the shell below (so the first paint is
-  // already dark) and mirrored onto <html> while the portal is mounted, so
+  // already themed) and mirrored onto <html> while the portal is mounted, so
   // the page background and anything portaled to <body> pick it up too.
   useEffect(() => {
     const root = document.documentElement;
@@ -147,7 +147,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
           onClick={() => setMobileOpen(false)}
           style={{
             position: "fixed", inset: 0, zIndex: 1100,
-            background: "rgba(0,0,0,.6)",
+            background: "rgba(12,12,14,.45)",
             animation: "gw-fade-in 160ms ease",
           }}
         />

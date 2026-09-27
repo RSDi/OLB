@@ -260,7 +260,7 @@ export function RequestWizard({
             style={{
               height: "100%",
               width: `${progressPct}%`,
-              background: "var(--rsd-accent)",
+              background: "var(--rsd-accent-fill)",
               borderRadius: 100,
               transition: "width 220ms var(--gw-ease, ease)",
             }}
@@ -354,8 +354,8 @@ export function OptionCard({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: selected ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-            color: selected ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+            background: selected ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+            color: selected ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
           }}
         >
           {icon}
@@ -386,9 +386,9 @@ export function Chip({ selected, onClick, children }: { selected: boolean; onCli
         fontSize: 13,
         fontWeight: 700,
         cursor: "pointer",
-        background: selected ? "var(--rsd-accent)" : "var(--gw-bg)",
-        color: selected ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-        border: `1px solid ${selected ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+        background: selected ? "var(--rsd-accent-fill)" : "var(--gw-bg)",
+        color: selected ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
+        border: `1px solid ${selected ? "var(--rsd-accent-fill)" : "var(--gw-border)"}`,
       }}
     >
       {children}
@@ -424,9 +424,9 @@ export function CheckRow({ checked, onChange, label }: { checked: boolean; onCha
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: checked ? "var(--rsd-accent)" : "transparent",
+          background: checked ? "var(--rsd-accent-fill)" : "transparent",
           border: `1.5px solid ${checked ? "var(--rsd-accent)" : "var(--gw-border)"}`,
-          color: "var(--rsd-accent-on)",
+          color: "var(--rsd-accent-fill-on)",
         }}
       >
         {checked && <Icons.CheckCircle width={14} height={14} />}

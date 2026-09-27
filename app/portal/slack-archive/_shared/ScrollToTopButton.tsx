@@ -41,7 +41,7 @@ export function ScrollToTopButton() {
         bottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
         zIndex: 10,
         width: 42, height: 42, borderRadius: "50%",
-        background: "var(--rsd-accent)", color: "var(--rsd-accent-on)",
+        background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)",
         border: "none", cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
         boxShadow: "0 4px 16px rgba(0,0,0,.25)",

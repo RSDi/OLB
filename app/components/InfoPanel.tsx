@@ -52,7 +52,7 @@ export function InfoPanel({
         style={{
           width: "100%",
           maxWidth: 560,
-          background: "var(--gw-bg)",
+          background: "var(--gw-bg-elev)",
           border: "1px solid var(--gw-border)",
           borderRadius: 14,
           boxShadow: "var(--gw-shadow-3)",

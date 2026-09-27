@@ -234,8 +234,8 @@ export default async function PortalDashboard() {
             gap: 8,
             padding: "10px 20px",
             borderRadius: 100,
-            background: "var(--rsd-accent)",
-            color: "var(--rsd-accent-on)",
+            background: "var(--rsd-accent-fill)",
+            color: "var(--rsd-accent-fill-on)",
             fontSize: 13,
             fontWeight: 700,
             textDecoration: "none",
@@ -368,7 +368,8 @@ export default async function PortalDashboard() {
             </div>
             <Link
               href="/portal/tasks"
-              style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+              className="rsd-link"
+              style={{ fontSize: 12 }}
             >
               View all →
             </Link>
@@ -469,7 +470,8 @@ export default async function PortalDashboard() {
             </div>
             <Link
               href="/portal/events"
-              style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+              className="rsd-link"
+              style={{ fontSize: 12 }}
             >
               View all →
             </Link>
@@ -480,7 +482,7 @@ export default async function PortalDashboard() {
               {staff && (
                 <Link
                   href="/portal/events/new"
-                  style={{ color: "var(--rsd-accent)", fontWeight: 700, textDecoration: "none" }}
+                  className="rsd-link"
                 >
                   Add one →
                 </Link>
@@ -550,7 +552,8 @@ export default async function PortalDashboard() {
               </div>
               <Link
                 href="/portal/pm"
-                style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+                className="rsd-link"
+                style={{ fontSize: 12 }}
               >
                 View all →
               </Link>

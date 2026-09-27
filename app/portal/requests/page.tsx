@@ -18,21 +18,21 @@ const CARDS: RequestCard[] = [
     title: "Reserve a room or space",
     blurb: "A room, the kitchen, the gym, or the whole building — for a gathering, sports, party, wedding, or class.",
     icon: <Icons.Home width={22} height={22} />,
-    accent: { bg: "var(--rsd-accent)", color: "var(--rsd-accent-on)" },
+    accent: { bg: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)" },
   },
   {
     href: "/portal/requests/maintenance",
     title: "Report a problem",
     blurb: "Something's broken or needs fixing — or we should buy a piece of equipment.",
     icon: <Icons.Wrench width={22} height={22} />,
-    accent: { bg: "var(--rsd-accent)", color: "var(--rsd-accent-on)" },
+    accent: { bg: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)" },
   },
   {
     href: "/portal/requests/question",
     title: "Ask the committee",
     blurb: "A question or a suggestion for the building committee.",
     icon: <Icons.Info width={22} height={22} />,
-    accent: { bg: "var(--rsd-accent)", color: "var(--rsd-accent-on)" },
+    accent: { bg: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)" },
   },
 ];
 

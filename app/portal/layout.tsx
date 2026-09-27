@@ -13,11 +13,12 @@ import type { Viewport } from "next";
 import { getPendingMembersCount, getViewer } from "../../lib/auth/viewer";
 import { PortalShell } from "./PortalShell";
 
-// The portal is dark (the Lightning theme): tint mobile browser chrome to
-// match the black top bar, and tell the browser before any CSS loads.
+// The Lightning theme is light apart from the black sidebar: tint mobile
+// browser chrome to match the white top bar, and tell the browser before any
+// CSS loads.
 export const viewport: Viewport = {
-  themeColor: "#000000",
-  colorScheme: "dark",
+  themeColor: "#FFFFFF",
+  colorScheme: "light",
 };
 
 export default async function PortalLayout({

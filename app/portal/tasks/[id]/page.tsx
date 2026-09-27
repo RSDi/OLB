@@ -590,7 +590,7 @@ export default async function TicketDetailPage({
                 {shutdownProc.whenLabel ? ` · ${shutdownProc.whenLabel}` : ""}
               </div>
               {ticket.status === "done" ? (
-                <div className="rsd-card" style={{ border: "1px solid var(--rsd-accent)", background: "var(--rsd-accent-bg)", fontSize: 13.5, fontWeight: 700, color: "var(--gw-fg)" }}>
+                <div className="rsd-card" style={{ border: "1px solid var(--rsd-accent-line)", background: "var(--rsd-accent-bg)", fontSize: 13.5, fontWeight: 700, color: "var(--gw-fg)" }}>
                   ✓ Building shutdown complete.
                 </div>
               ) : (
@@ -859,7 +859,7 @@ function ProgressBar({ done, total }: { done: number; total: number }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <div style={{ flex: 1, height: 8, borderRadius: 100, background: "var(--gw-border)", overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: "var(--rsd-accent)", transition: "width 200ms" }} />
+        <div style={{ width: `${pct}%`, height: "100%", background: "var(--rsd-accent-fill)", transition: "width 200ms" }} />
       </div>
       <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", flexShrink: 0 }}>{pct}%</span>
     </div>

@@ -193,8 +193,8 @@ export function SummaryBullet({ bullet }: { bullet: ReelNotesSummaryBullet }) {
               flexShrink: 0,
               borderRadius: 6,
               border: "1px solid var(--gw-border)",
-              background: open ? "var(--rsd-accent)" : "var(--gw-bg)",
-              color: open ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+              background: open ? "var(--rsd-accent-fill)" : "var(--gw-bg)",
+              color: open ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
               cursor: "pointer",
             }}
           >
@@ -243,9 +243,9 @@ function readTabStyle(active: boolean): CSSProperties {
     borderRadius: 100,
     cursor: "pointer",
     border: "1px solid",
-    borderColor: active ? "var(--rsd-accent)" : "var(--gw-border)",
-    background: active ? "var(--rsd-accent)" : "transparent",
-    color: active ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
+    borderColor: active ? "var(--rsd-accent-fill)" : "var(--gw-border)",
+    background: active ? "var(--rsd-accent-fill)" : "transparent",
+    color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
   };
 }
 
@@ -817,8 +817,8 @@ export function ReelNotes({
                 gap: 8,
                 padding: isMobile ? "14px 20px" : "10px 18px",
                 borderRadius: 100,
-                background: "var(--rsd-accent)",
-                color: "var(--rsd-accent-on)",
+                background: "var(--rsd-accent-fill)",
+                color: "var(--rsd-accent-fill-on)",
                 border: "none",
                 fontSize: isMobile ? 15 : 13,
                 fontWeight: 700,
@@ -1050,8 +1050,8 @@ export function ReelNotes({
                     className="rsd-chip"
                     style={{
                       fontSize: 10,
-                      background: "var(--rsd-accent)",
-                      color: "var(--rsd-accent-on)",
+                      background: "var(--rsd-accent-fill)",
+                      color: "var(--rsd-accent-fill-on)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 3,
@@ -1359,7 +1359,7 @@ function SelectedDetail({
               <button
                 onClick={commitTitle}
                 className="gw-press"
-                style={{ padding: "5px 12px", borderRadius: 100, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+                style={{ padding: "5px 12px", borderRadius: 100, background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
               >
                 Save
               </button>
@@ -1464,8 +1464,8 @@ function SelectedDetail({
                 gap: 6,
                 padding: "6px 12px",
                 borderRadius: 100,
-                background: "var(--rsd-accent)",
-                color: "var(--rsd-accent-on)",
+                background: "var(--rsd-accent-fill)",
+                color: "var(--rsd-accent-fill-on)",
                 border: "none",
                 fontSize: 11,
                 fontWeight: 700,
@@ -1635,8 +1635,8 @@ function SelectedDetail({
                   gap: 6,
                   padding: "5px 10px",
                   borderRadius: 100,
-                  background: "var(--rsd-accent)",
-                  color: "var(--rsd-accent-on)",
+                  background: "var(--rsd-accent-fill)",
+                  color: "var(--rsd-accent-fill-on)",
                   border: "none",
                   fontSize: 11,
                   fontWeight: 700,
@@ -1916,8 +1916,8 @@ export function ActionRow({
             style={{
               padding: "5px 12px",
               borderRadius: 100,
-              background: "var(--rsd-accent)",
-              color: "var(--rsd-accent-on)",
+              background: "var(--rsd-accent-fill)",
+              color: "var(--rsd-accent-fill-on)",
               border: "none",
               fontSize: 11,
               fontWeight: 700,
@@ -1955,13 +1955,13 @@ export function ActionRow({
           height: 18,
           borderRadius: 5,
           border: "1.5px solid var(--gw-border)",
-          background: action.done ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
+          background: action.done ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
           cursor: "pointer",
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "var(--rsd-accent-on)",
+          color: "var(--rsd-accent-fill-on)",
         }}
       >
         {action.done && <Icons.CheckCircle width={12} height={12} />}
@@ -1988,7 +1988,7 @@ export function ActionRow({
             {owner && (
               <span
                 className="rsd-chip"
-                style={{ fontSize: 10, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", display: "inline-flex", alignItems: "center", gap: 3 }}
+                style={{ fontSize: 10, background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)", display: "inline-flex", alignItems: "center", gap: 3 }}
               >
                 <Icons.User width={9} height={9} />
                 {memberLabel(owner)}
@@ -2218,9 +2218,9 @@ function pickerToggleStyle(active: boolean): CSSProperties {
     padding: "3px 8px",
     borderRadius: 100,
     cursor: "pointer",
-    background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-    color: active ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
-    border: active ? "1px solid var(--rsd-accent)" : "1px solid var(--gw-border)",
+    background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+    color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
+    border: active ? "1px solid var(--rsd-accent-fill)" : "1px solid var(--gw-border)",
   };
 }
 
@@ -2272,8 +2272,8 @@ function AssigneePicker({
           height: 28,
           padding: ownerId ? 0 : "0 11px",
           borderRadius: 100,
-          background: ownerId ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-          color: ownerId ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+          background: ownerId ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+          color: ownerId ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
           border: "1px solid var(--gw-border)",
           fontSize: 11,
           fontWeight: 700,
@@ -2428,11 +2428,11 @@ function WatchMockup() {
             width: 56,
             height: 56,
             borderRadius: "50%",
-            background: "var(--rsd-accent)",
+            background: "var(--rsd-accent-fill)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "var(--rsd-accent-on)",
+            color: "var(--rsd-accent-fill-on)",
             boxShadow: "0 0 0 6px rgba(var(--rsd-accent-rgb), 0.18), 0 0 0 14px rgba(var(--rsd-accent-rgb), 0.08)",
           }}
         >
