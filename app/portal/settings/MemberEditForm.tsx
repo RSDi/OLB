@@ -162,7 +162,7 @@ export function MemberEditForm({
           disabled={pending}
         />
         <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          Shown on tickets and lists (the full name + middle name only appear in the directory). Defaults to the first name if blank.
+          The short name shown around the portal (the full name only appears on their Directory page). Defaults to the first name if blank.
         </span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

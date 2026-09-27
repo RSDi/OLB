@@ -38,6 +38,8 @@ const NAV: NavItem[] = [
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true },
+  // How-to for everything above; content in lib/help/guide.ts.
+  { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/> },
 ];
 
 // Wordmark in the sidebar's brand block (Lightning theme).

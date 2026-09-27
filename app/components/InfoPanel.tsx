@@ -1,18 +1,20 @@
 "use client";
-// The per-page help panel. Opened by the "i" button in the top bar; renders the
-// current page's doc (markdown). Mirrors the GlobalSearch modal: backdrop +
+// The per-page help panel. Opened by the "i" button in the top bar; shows the
+// User Guide section for the current page (markdown), with a link through to
+// the full guide at that section. Mirrors the GlobalSearch modal: backdrop +
 // centered card on desktop, full-screen sheet on mobile, Esc to close.
 import { useEffect } from "react";
+import Link from "next/link";
 import { Icons } from "./icons";
 import { MarkdownView } from "./MarkdownView";
-import type { PageDoc } from "../../lib/help/page-docs";
+import { guideHref, type GuideSection } from "../../lib/help/guide";
 
 export function InfoPanel({
-  doc,
+  section,
   open,
   onClose,
 }: {
-  doc: PageDoc | null;
+  section: GuideSection | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -25,7 +27,7 @@ export function InfoPanel({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open || !doc) return null;
+  if (!open || !section) return null;
 
   return (
     <div
@@ -47,7 +49,7 @@ export function InfoPanel({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`About ${doc.title}`}
+        aria-label={`About ${section.title}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
@@ -75,7 +77,7 @@ export function InfoPanel({
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
             <Icons.Info width={16} height={16} style={{ color: "var(--rsd-accent)", flexShrink: 0 }} />
-            <span style={{ fontSize: 15, fontWeight: 800, color: "var(--gw-fg)" }}>{doc.title}</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "var(--gw-fg)" }}>{section.title}</span>
           </div>
           <button
             onClick={onClose}
@@ -103,7 +105,41 @@ export function InfoPanel({
           className="rsd-markdown"
           style={{ padding: "16px 20px", overflowY: "auto", fontSize: 14, lineHeight: 1.65, color: "var(--gw-fg)" }}
         >
-          <MarkdownView>{doc.body}</MarkdownView>
+          <MarkdownView>{section.body}</MarkdownView>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+            padding: "12px 18px",
+            borderTop: "1px solid var(--gw-border)",
+            flexShrink: 0,
+          }}
+        >
+          <Link
+            href={guideHref(section.id)}
+            prefetch={false}
+            onClick={onClose}
+            className="gw-press"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 100,
+              background: "var(--rsd-accent)",
+              color: "var(--rsd-accent-on)",
+              border: "1px solid var(--rsd-accent)",
+              fontWeight: 700,
+              fontSize: 13,
+              textDecoration: "none",
+            }}
+          >
+            Open the User Guide
+            <Icons.ArrowRight width={14} height={14} />
+          </Link>
         </div>
       </div>
     </div>
