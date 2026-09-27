@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Icons } from "../../../components/icons";
+import { usePathname } from "next/navigation";
+import { Icons } from "./icons";
 
 const SHOW_AFTER_PX = 480;
 // `.rsd-app main` is the app shell's real scrolling container (see
@@ -10,13 +11,14 @@ const SHOW_AFTER_PX = 480;
 // handler target it directly rather than the usual window.scrollY.
 const SCROLLER_SELECTOR = ".rsd-app main";
 
-// Floating "back to top" button for this feature's long list pages (a
-// channel's full message history, search results, the exceptions list) —
-// appears once you've scrolled far enough for it to actually save a real
-// scroll. Shared across those pages since the behavior is identical, unlike
-// the rest of this feature's deliberately-duplicated-per-page convention.
+// Floating yellow "back to top" button, mounted once by the portal shell so
+// every portal page gets it. It only appears once you've scrolled far enough
+// for it to save a real scroll, so short pages never show it.
 export function ScrollToTopButton() {
   const [visible, setVisible] = useState(false);
+  // The scroller outlives client navigations, so re-check on each page
+  // change instead of trusting the last page's scroll position.
+  const pathname = usePathname();
 
   useEffect(() => {
     const scroller = document.querySelector(SCROLLER_SELECTOR);
@@ -25,7 +27,7 @@ export function ScrollToTopButton() {
     onScroll();
     scroller.addEventListener("scroll", onScroll, { passive: true });
     return () => scroller.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [pathname]);
 
   if (!visible) return null;
 

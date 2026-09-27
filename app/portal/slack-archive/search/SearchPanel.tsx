@@ -15,7 +15,6 @@ import { emojify } from "../../../../lib/slack-archive/emoji";
 import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
 import { FilterDropdown, type FilterDropdownItem } from "../_shared/FilterDropdown";
-import { ScrollToTopButton } from "../_shared/ScrollToTopButton";
 
 // Debounce for the live search — long enough that a fast typist doesn't
 // fire a request per keystroke, short enough to still feel instant once
@@ -227,7 +226,6 @@ export function SearchPanel({
           })}
         </div>
       )}
-      <ScrollToTopButton />
     </div>
   );
 }

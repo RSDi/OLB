@@ -14,6 +14,7 @@ import { PortalTopBar } from "../components/PortalTopBar";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
 import { GuidedTour, TourContext } from "../components/GuidedTour";
+import { ScrollToTopButton } from "../components/ScrollToTopButton";
 import { guideSectionForPath } from "../../lib/help/guide";
 import { WELCOME_TOUR_ID, WELCOME_TOUR_SEEN_KEY, tourForPath } from "../../lib/help/tours";
 import type { TopbarSearchHandle } from "../components/TopbarSearch";
@@ -199,6 +200,7 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
           />
         )}
         <main>{children}</main>
+        <ScrollToTopButton />
         <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
         <InfoPanel
           section={pageHelp}

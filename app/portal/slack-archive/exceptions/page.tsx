@@ -9,7 +9,6 @@ import { loadArchiveAdmin, loadArchiveChannels, loadAllFailedFiles } from "../..
 import { loadLatestCompressionRun } from "../../../../lib/slack-archive/compress-actions";
 import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
 import { CompressTriggerButton } from "./CompressTriggerButton";
-import { ScrollToTopButton } from "../_shared/ScrollToTopButton";
 
 export default async function SlackArchiveExceptionsPage() {
   await loadArchiveAdmin(); // managing the archive, not reading it — super admins only
@@ -140,7 +139,6 @@ export default async function SlackArchiveExceptionsPage() {
           })
         )}
       </Section>
-      <ScrollToTopButton />
     </div>
   );
 }
