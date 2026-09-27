@@ -1,4 +1,4 @@
-// Server-only. Emails the requester when the building committee approves or
+// Server-only. Emails the requester when the board approves or
 // declines their request. Mirrors new-ticket.ts in shape and graceful
 // degradation (no-ops if RESEND_API_KEY is missing or there's no recipient).
 
@@ -36,14 +36,14 @@ export async function sendRequestDecisionNotification({
       ? "Your request was approved"
       : "An update on your request";
 
-  // The committee's editable note is the message body. Fall back to a default
+  // The board's editable note is the message body. Fall back to a default
   // line if they left it blank (only possible on an approval).
   const lead =
     note && note.trim()
       ? escapeHtml(note).replace(/\n/g, "<br/>")
       : decision === "approved"
-        ? "Good news — the building committee approved your request."
-        : "After review, the building committee wasn't able to approve this request.";
+        ? "Good news — the board approved your request."
+        : "After review, the board wasn't able to approve this request.";
 
   const body = `
     <p>${hi}</p>

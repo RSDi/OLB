@@ -311,7 +311,7 @@ function NotesPanel({ memberId, initialNotes }: { memberId: string; initialNotes
       <Textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Notes for the building committee — follow-ups, context… (the member can't see these)"
+        placeholder="Notes for the board — follow-ups, context… (the member can't see these)"
         rows={4}
         disabled={pending}
       />

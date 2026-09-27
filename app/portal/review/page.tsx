@@ -58,7 +58,7 @@ export default async function ReviewQueuePage({
     .eq("review_status", status)
     .order("created_at", { ascending: false });
   let rows = (rowsRaw as unknown as ReviewRow[]) ?? [];
-  // Auto-approved repairs (no reviewed_at) aren't committee decisions — keep
+  // Auto-approved repairs (no reviewed_at) aren't board decisions — keep
   // them out of the Approved tab so it only shows what was actually reviewed.
   if (status === "approved") rows = rows.filter((r) => r.reviewed_at);
 
@@ -103,7 +103,7 @@ export default async function ReviewQueuePage({
     <>
       <TasksSectionNav active="review" isStaff={true} />
       <p style={{ margin: "0 0 4px", fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.6, maxWidth: 620 }}>
-        Requests from members waiting on the building committee. Open one to see the details, discuss in
+        Requests from members waiting on the board. Open one to see the details, discuss in
         the thread, weigh in with an advisory vote, then approve or decline it with a note to the requester.
       </p>
 

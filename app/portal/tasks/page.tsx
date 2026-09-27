@@ -135,9 +135,9 @@ export default async function PortalMaintenancePage({
     .is("parent_id", null)
     .order("created_at", { ascending: false });
 
-  // Keep requests still awaiting committee review out of the operational queue.
+  // Keep requests still awaiting board review out of the operational queue.
   // Staff see approved work only. A member sees all their own rows (RLS limits
-  // them to their own) — including declined ones, so the committee's decision
+  // them to their own) — including declined ones, so the board's decision
   // shows in their list instead of the request silently vanishing.
   if (staff) {
     query = query.eq("review_status", "approved");

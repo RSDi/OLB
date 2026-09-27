@@ -35,7 +35,7 @@ export function isSuperAdmin(m: MemberLike | null | undefined): boolean {
 }
 
 // --- Settings grants ---------------------------------------------------------
-// Building Committee members (role = admin) can VIEW Settings, but editing,
+// Board members (role = admin) can VIEW Settings, but editing,
 // deleting, and restoring each require a standing grant a super-admin gives
 // them. Super-admins implicitly hold every grant.
 
@@ -67,7 +67,7 @@ export const canPromoteToAdmin = isSuperAdmin;
 // --- Soft delete -------------------------------------------------------------
 // Soft-delete needs the delete grant; restore needs the undelete grant;
 // permanent purge stays super-only. The Deleted tab itself is super-admin-only
-// until an RLS follow-up lets committee members see soft-deleted rows.
+// until an RLS follow-up lets board members see soft-deleted rows.
 
 export const canSeeDeleted = isSuperAdmin;
 export const canSoftDelete = canDeleteSettings;

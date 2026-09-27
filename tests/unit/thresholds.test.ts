@@ -1,5 +1,5 @@
 // Unit tests for the two pure threshold rules: low-stock crossing (A3) and
-// the committee voting majority (A1 — keep in sync with cast_request_vote in
+// the board voting majority (A1 — keep in sync with cast_request_vote in
 // migration 0050).
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -27,11 +27,11 @@ test("restocking never fires", () => {
   assert.equal(crossedThreshold(1, 10, 2), false);
 });
 
-test("majority of the full 7-member committee is 4", () => {
+test("majority of the full 7-member board is 4", () => {
   assert.equal(majorityThreshold(7), 4);
 });
 
-test("majority math across committee sizes", () => {
+test("majority math across board sizes", () => {
   assert.equal(majorityThreshold(1), 1);
   assert.equal(majorityThreshold(2), 2);
   assert.equal(majorityThreshold(3), 2);
@@ -39,6 +39,6 @@ test("majority math across committee sizes", () => {
   assert.equal(majorityThreshold(6), 4);
 });
 
-test("an empty committee can't deadlock at zero", () => {
+test("an empty board can't deadlock at zero", () => {
   assert.equal(majorityThreshold(0), 1);
 });

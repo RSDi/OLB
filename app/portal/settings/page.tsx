@@ -74,7 +74,7 @@ export default function SettingsPage() {
       setMe(memberLike);
       setUserId(user.id);
       setFullUi(seesFullUi(user.email));
-      // All committee staff land on Members — any of them can work the
+      // All board staff land on Members — any of them can work the
       // approval queue (D1).
       setTab("members");
       setAuthChecked(true);
@@ -96,10 +96,10 @@ export default function SettingsPage() {
     );
   }
 
-  // Any committee member works the approval queue; role/edit/remove inside
+  // Any board member works the approval queue; role/edit/remove inside
   // the tab stay super-admin-only via canManage.
   const showMembers = isStaff(me);
-  // Deleted tab stays super-admin-only until the RLS follow-up lets committee
+  // Deleted tab stays super-admin-only until the RLS follow-up lets board
   // members with the undelete grant see + restore soft-deleted rows.
   const showDeleted = isSuperAdmin(me);
 

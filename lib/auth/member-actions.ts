@@ -13,7 +13,7 @@ export interface MemberActionResult {
   memberId?: string;
 }
 
-// Approve / deny / restore a membership request. Any committee member (staff)
+// Approve / deny / restore a membership request. Any board member (staff)
 // can do this — D1, backed by migration 0050's staff UPDATE policy + column
 // guard. Approval emails the member so they know they're in, if they've signed
 // in to ask.
@@ -33,7 +33,7 @@ export async function setMemberStatus(
     .eq("user_id", user.id)
     .maybeSingle();
   if (!isStaff((meRow as MemberLike | null) ?? null)) {
-    return { error: "Only building committee members can review access requests." };
+    return { error: "Only board members can review access requests." };
   }
 
   const { data: updated, error } = await supabase

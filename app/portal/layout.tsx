@@ -26,7 +26,7 @@ export default async function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Any committee member can action the approval queue (D1), so the whole
+  // Any board member can action the approval queue (D1), so the whole
   // staff sees the pending badge.
   const viewer = await getViewer();
   const pendingMembersCount = viewer?.isStaff

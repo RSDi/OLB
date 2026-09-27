@@ -89,7 +89,7 @@ export async function loadReelNotesRecordings(): Promise<ReelNotesRecording[]> {
 }
 
 // Approved, non-deleted directory members available to assign to an action
-// item. Not restricted to staff — committee members aren't necessarily admins.
+// item. Not restricted to staff — board members aren't necessarily admins.
 // Mirrors the approved-member loader in the Settings tabs, plus nickname.
 export async function loadAssignableMembers(): Promise<AssignableMember[]> {
   const supabase = await createClient();

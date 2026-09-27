@@ -55,7 +55,7 @@ playbooks/docs, volunteer teams, and global search.
    npm run create-admin -- --password 'temporary-password' you@example.com
    ```
 
-   They're Super-admins, or Building Committee with `--role admin`. Re-running
+   They're Super-admins, or Board members with `--role admin`. Re-running
    resets the password. Each person then picks their own at `/reset-password`.
 
 5. **Import the season's registrations**

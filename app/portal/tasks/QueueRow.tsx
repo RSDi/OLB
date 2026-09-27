@@ -175,7 +175,7 @@ export function QueueRow({
         ) : staff ? (
           <InlineStatusSelect ticketId={ticket.id} current={ticket.status} />
         ) : (
-          // For a member, lead with the committee's decision when one was
+          // For a member, lead with the board's decision when one was
           // actually made (reviewed_at set), then the work status.
           <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
             {ticket.reviewed_at && <span className="rsd-chip rsd-chip-accent">Approved</span>}

@@ -208,7 +208,7 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
     id: "admin-roles",
     title: "Admin roles",
     audience: "staff",
-    keywords: ["admin", "super-admin", "super admin", "building committee", "role", "permission", "access", "who can"],
+    keywords: ["admin", "super-admin", "super admin", "board", "building committee", "role", "permission", "access", "who can"],
     body: `There are three kinds of account:
 
 | | Member | Admin | Super-admin |
@@ -221,7 +221,7 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
-In **Settings → Members**, the admin role is listed as **Building Committee**.
+In **Settings → Members**, the admin role is listed as **Board**.
 
 **Admin extras around the portal**
 
@@ -250,7 +250,7 @@ In **Settings → Members**, the admin role is listed as **Building Committee**.
 
 - **+ Add member** — set someone up ahead of time. With an email, they finish by requesting access with that email. Leave the email blank to add a **directory-only** entry (a grandparent, say) who won't sign in.
 - **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
-- Change someone's **role** (Member / Building Committee / Super-admin) from the drop-down on the **Approved** tab.
+- Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - **Remove** a member (demote a super-admin first).
 

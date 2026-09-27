@@ -21,7 +21,7 @@ interface NavItem {
 
 // Slimmed nav (2026-06): "Make a Request" lives on the Dashboard; Review + PM
 // are tabs on Tasks & Projects; Contacts is linked from Directory. Settings is
-// staff-only (Building Committee + Super Admin). ReelNotes is no longer a
+// staff-only (Board + Super Admin). ReelNotes is no longer a
 // top-level item — it lives under Settings → Integrations.
 const NAV: NavItem[] = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true, previewOnly: true },
@@ -34,7 +34,7 @@ const NAV: NavItem[] = [
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
   // Team manager (roster board, registrations, import): super-admin only.
   { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
-  // Building Committee can view Settings; editing is gated per grant inside.
+  // Board can view Settings; editing is gated per grant inside.
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true },

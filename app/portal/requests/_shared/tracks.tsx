@@ -334,7 +334,7 @@ function reviewStep(
   return {
     key: "review",
     title: "Review & send",
-    hint: "Make sure this looks right, then send it to the committee.",
+    hint: "Make sure this looks right, then send it to the board.",
     terminal: true,
     body: ({ form, set }) => (
       <>
@@ -553,12 +553,12 @@ export const TRACKS: Record<string, TrackConfig> = {
   // Lean, space-implied flow. The member is logged in (identity + contact come
   // from their account) and chose the Gym, so neither is asked. Reuses the
   // building-use field keys (spaces/date/times/headcount/access) so the review
-  // queue, committee vote, and calendar auto-booking all work unchanged.
+  // queue, board vote, and calendar auto-booking all work unchanged.
   gym: {
     key: "gym",
     title: "Reserve the Gym",
     initial: { requesterKind: "member", spaces: ["Gym"], needs: [] },
-    successBody: "The building committee will review your gym request and follow up.",
+    successBody: "The board will review your gym request and follow up.",
     steps: [
       gymActivityStep,
       whenStep,
@@ -577,7 +577,7 @@ export const TRACKS: Record<string, TrackConfig> = {
     key: "building-use",
     title: "Building use",
     initial: { requesterKind: "member", spaces: [], needs: [] },
-    successBody: "The building committee will review your request and follow up.",
+    successBody: "The board will review your request and follow up.",
     steps: [
       subTypeStep,
       whoStep,
@@ -626,9 +626,9 @@ export const TRACKS: Record<string, TrackConfig> = {
   },
   question: {
     key: "question",
-    title: "Ask the committee",
+    title: "Ask the board",
     initial: {},
-    successBody: "The committee will read this and get back to you.",
+    successBody: "The board will read this and get back to you.",
     steps: [
       questionTopicStep,
       questionStep,

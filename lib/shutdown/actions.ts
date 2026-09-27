@@ -265,7 +265,7 @@ export async function optOutShutdown(taskId: string): Promise<ActionResult> {
 
   const isAssignee = caller.memberId !== null && caller.memberId === t.assigned_to;
   if (!caller.staff && !isAssignee) {
-    return { error: "Only the assignee or the building committee can do that." };
+    return { error: "Only the assignee or the board can do that." };
   }
 
   // Capture the former assignee's name for the cover request.
@@ -317,7 +317,7 @@ export async function completeShutdownTask(
 
   const isAssignee = caller.memberId !== null && caller.memberId === t.assigned_to;
   if (!caller.staff && !isAssignee) {
-    return { error: "Only the assignee or the building committee can complete this." };
+    return { error: "Only the assignee or the board can complete this." };
   }
   if (!t.event_id) return { error: "This task isn't linked to an event." };
 

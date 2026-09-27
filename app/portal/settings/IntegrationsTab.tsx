@@ -1,6 +1,6 @@
 "use client";
 // Settings → Integrations. ReelNotes lives here now (it used to be a top-level
-// sidebar item). Building Committee + Super Admin can open it; the page itself
+// sidebar item). Board + Super Admin can open it; the page itself
 // re-checks access (loadReelNotesViewer redirects non-staff).
 import Link from "next/link";
 import { Icons } from "../../components/icons";
