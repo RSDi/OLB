@@ -4,13 +4,15 @@
 // `lib/auth/viewer.ts`) so any nested server page that calls `getViewer()`
 // hits the cache instead of re-querying Supabase. Also fetches the
 // pending-approval count for super-admins so the sidebar badge can render
-// without a client round trip.
+// without a client round trip, and the custom sidebar links (Settings →
+// Sidebar Links).
 //
 // All UI state (collapse, mobile drawer, page title computation) lives in
 // the `PortalShell` client component below.
 
 import type { Viewport } from "next";
 import { getPendingMembersCount, getViewer } from "../../lib/auth/viewer";
+import { getSidebarLinks } from "../../lib/sidebar-links/queries";
 import { PortalShell } from "./PortalShell";
 
 // The Lightning theme is light apart from the black sidebar: tint mobile
@@ -29,9 +31,10 @@ export default async function PortalLayout({
   // Any committee member can action the approval queue (D1), so the whole
   // staff sees the pending badge.
   const viewer = await getViewer();
-  const pendingMembersCount = viewer?.isStaff
-    ? await getPendingMembersCount()
-    : 0;
+  const [pendingMembersCount, sidebarLinks] = await Promise.all([
+    viewer?.isStaff ? getPendingMembersCount() : Promise.resolve(0),
+    viewer ? getSidebarLinks() : Promise.resolve([]),
+  ]);
 
   return (
     <PortalShell
@@ -46,6 +49,7 @@ export default async function PortalLayout({
           : null
       }
       pendingMembersCount={pendingMembersCount}
+      sidebarLinks={sidebarLinks}
     >
       {children}
     </PortalShell>
