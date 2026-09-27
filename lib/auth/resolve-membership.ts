@@ -55,7 +55,7 @@ export async function resolveMembership({
       .maybeSingle();
 
     if (existing) {
-      await admin
+      const { error } = await admin
         .from("members")
         .update({
           status: "approved",
@@ -63,6 +63,9 @@ export async function resolveMembership({
           reviewed_at: new Date().toISOString(),
         })
         .eq("id", existing.id);
+      if (error) {
+        console.error(`[auth] ADMIN_EMAILS promotion of member ${existing.id} failed:`, error.message);
+      }
     } else {
       await admin.from("members").insert({
         user_id: user.id,
@@ -97,7 +100,7 @@ export async function resolveMembership({
       .maybeSingle();
 
     if (orphan) {
-      const { error: linkError } = await linkClient
+      const { error } = await linkClient
         .from("members")
         .update({
           user_id: user.id,
@@ -105,10 +108,8 @@ export async function resolveMembership({
           avatar_url: avatarUrl,
         })
         .eq("id", orphan.id);
-      // Unlinked, the row isn't theirs, so don't report its status as theirs.
-      if (linkError) {
-        console.error("[auth] linking pre-created member failed:", linkError.message);
-        return { status: "pending", role: "member" };
+      if (error) {
+        console.error(`[auth] linking pre-created member ${orphan.id} failed:`, error.message);
       }
       return {
         status: orphan.status as MemberStatus,
@@ -157,10 +158,13 @@ export async function resolveMembership({
   // A still-pending member who signs in via the site's Slack gets approved now.
   if (member.status === "pending" && isHomeSlack) {
     const admin = createAdminClient();
-    await admin
+    const { error } = await admin
       .from("members")
       .update({ status: "approved", reviewed_at: new Date().toISOString() })
       .eq("user_id", user.id);
+    if (error) {
+      console.error(`[auth] home-Slack approval of user ${user.id} failed:`, error.message);
+    }
     return { status: "approved", role: (member.role as MemberRole) ?? "member" };
   }
 

@@ -5,7 +5,7 @@
 // (users.info + email-to-member matching) are similar to what already
 // exists there. This feature is meant to be removable as a unit; sharing
 // code with the notification path would mean untangling that on the way
-// out. See supabase/migrations/0077_slack_archive.sql for the same
+// out. See supabase/migrations-archive/0077_slack_archive.sql for the same
 // isolation rationale applied to the schema.
 //
 // Reuses the existing SLACK_BOT_TOKEN (the same bot that posts outbound

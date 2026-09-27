@@ -10,12 +10,13 @@
  * an approved members row, Super-admin by default or Building Committee with
  * --role admin. Safe to re-run.
  *
- * The members column firewall (members_enforce_self_update_columns) lets only
- * a signed-in super-admin change an existing row's role, status or login link;
- * it rejects the service role. So someone who already has a member row (say
- * they signed up and are pending) is reported rather than promoted, and a
- * super-admin changes them under Settings → Members. Rows that were deleted or
- * had their login revoked are left alone.
+ * Someone who already has a member row (say they signed up and are pending, or
+ * a super-admin added them to the directory) gets that row approved, given the
+ * role and linked to their sign-in. That needs migration 0088, which lets the
+ * service role through the members column firewall
+ * (members_enforce_self_update_columns); without it the database rejects the
+ * change and the row is reported instead. Rows that were deleted or had their
+ * login revoked are left alone.
  *
  * Needs .env.local with NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
  * The password is a starting one: each person sets their own at

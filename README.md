@@ -38,8 +38,10 @@ playbooks/docs, volunteer teams, and global search.
    supabase db push
    ```
 
-   Migrations are idempotent and define every table plus its row-level security
-   (RLS) policies.
+   `0000_baseline.sql` creates the whole schema: every table plus its row-level
+   security (RLS) policies. Later migrations are idempotent. The migrations the
+   baseline replaced are kept for reference in `supabase/migrations-archive/`
+   and are never applied.
 
 4. **Bootstrap the first admin**
 
@@ -104,7 +106,10 @@ app/                  Routes (App Router)
     settings/         Admin tabs (areas, priorities, assignments, volunteer teams, …)
   api/cron/           Vercel cron (daily PM generation)
 lib/                  Server actions, Supabase clients, auth, notifications, search
-supabase/migrations/  Schema + RLS, applied in numeric order
+supabase/migrations/  Schema + RLS, applied in numeric order: 0000_baseline.sql
+                      (the whole schema), then newer migrations
+supabase/migrations-archive/
+                      Migrations the baseline replaced (reference only, never applied)
 ```
 
 ## Deployment
