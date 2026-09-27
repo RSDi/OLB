@@ -23,7 +23,6 @@ import {
 } from "../../../../lib/slack-archive/album";
 import { emojify } from "../../../../lib/slack-archive/emoji";
 import { FilterDropdown, type FilterDropdownItem } from "../_shared/FilterDropdown";
-import { ScrollToTopButton } from "../_shared/ScrollToTopButton";
 import { AlbumLightbox } from "./AlbumLightbox";
 import { MonthJump, type MonthJumpEntry } from "./MonthJump";
 
@@ -452,8 +451,6 @@ export function AlbumView({
           </button>
         </div>
       )}
-
-      <ScrollToTopButton />
 
       {isClient && viewerIndex >= 0 && (
         <AlbumLightbox

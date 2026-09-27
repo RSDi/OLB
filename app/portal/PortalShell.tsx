@@ -13,6 +13,7 @@ import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
 import { PortalTopBar } from "../components/PortalTopBar";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
+import { ScrollToTopButton } from "../components/ScrollToTopButton";
 import { guideSectionForPath } from "../../lib/help/guide";
 import type { TopbarSearchHandle } from "../components/TopbarSearch";
 import type { SidebarLink } from "../../lib/sidebar-links/url";
@@ -165,6 +166,7 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
         />
       )}
       <main>{children}</main>
+      <ScrollToTopButton />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <InfoPanel section={pageHelp} open={infoOpen} onClose={() => setInfoOpen(false)} />
     </div>
