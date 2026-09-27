@@ -175,6 +175,12 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.",
       },
       {
+        target: "directory-requirements",
+        title: "Requirements",
+        body: "Pick a requirement, like the handbook signature, to see who's **Missing** it. Tap the chip on a player to mark it **Done**, **Paid** or **Waived** and attach a scan.",
+        audience: "staff",
+      },
+      {
         target: "directory-parent",
         title: "Profiles",
         body: "Tap a parent's name to open their profile. On your own profile, **✎ Edit profile** changes your nickname, phone and birthday.",

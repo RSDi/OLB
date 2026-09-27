@@ -8,6 +8,16 @@ import { JerseyNumber, TeamBanner, TeamDot } from "./_shared/TeamBanner";
 import type { OlbVolunteerRole } from "../../../lib/teams/types";
 import type { TeamWithStaff } from "../../../lib/teams/volunteer-data";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
+import type { PlayerRequirement, Requirement } from "../../../lib/requirements/types";
+import {
+  doneWord,
+  indexRows,
+  requirementLabel,
+  rowKey,
+  stateFor,
+  type RequirementState,
+} from "../../../lib/requirements/logic";
+import { RequirementDialog } from "./RequirementDialog";
 
 const NO_GROUP = "No age group";
 
@@ -52,6 +62,8 @@ const RELATIONSHIP_LABEL: Record<DirectoryParent["relationship"], string> = {
 
 type View = "team" | "age";
 const NO_TEAM = "none";
+// The board's requirement filter: who's still missing it, who's handled it.
+type ReqShow = "missing" | "done" | "waived" | "all";
 
 export function PlayersList({
   players,
@@ -59,17 +71,28 @@ export function PlayersList({
   teams,
   roles,
   canViewAges,
+  requirements,
+  requirementRows,
 }: {
   players: DirectoryPlayer[];
   isStaff: boolean;
   teams: TeamWithStaff[];
   roles: OlbVolunteerRole[];
   canViewAges: boolean;
+  // Staff only (0098); empty for everyone else.
+  requirements: Requirement[];
+  requirementRows: PlayerRequirement[];
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("team");
   const [teamId, setTeamId] = useState("all");
   const [group, setGroup] = useState("all");
+  const [reqId, setReqId] = useState("all");
+  const [reqShow, setReqShow] = useState<ReqShow>("missing");
+  const [open, setOpen] = useState<{ player: DirectoryPlayer; requirement: Requirement } | null>(null);
+
+  const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
+  const pickedReq = requirements.find((r) => r.id === reqId) ?? null;
 
   const groupNames = useMemo(
     () =>
@@ -130,8 +153,29 @@ export function PlayersList({
     return out.filter((g) => g.players.length > 0 || (teamId !== "all" && g.team));
   }, [view, groupNames, group, matches, teams, teamId]);
 
+  // With a requirement picked: how the players in view stand on it, and the
+  // sections narrowed to the ones asked for. Players it doesn't apply to drop out.
+  const reqCounts = useMemo(() => {
+    const c: Record<RequirementState, number> = { done: 0, waived: 0, missing: 0, "n/a": 0 };
+    if (!pickedReq) return c;
+    for (const g of sections) for (const p of g.players) c[stateFor(p, pickedReq, rows)]++;
+    return c;
+  }, [sections, pickedReq, rows]);
+
+  const shownSections = useMemo(() => {
+    if (!pickedReq) return sections;
+    return sections.map((g) => ({
+      ...g,
+      players: g.players.filter((p) => {
+        const st = stateFor(p, pickedReq, rows);
+        return st !== "n/a" && (reqShow === "all" || st === reqShow);
+      }),
+    }));
+  }, [sections, pickedReq, rows, reqShow]);
+
   const pickedTeam = view === "team" && teamId !== "all" ? teams.find((t) => t.id === teamId) ?? null : null;
-  const shown = sections.reduce((n, g) => n + g.players.length, 0);
+  const shown = shownSections.reduce((n, g) => n + g.players.length, 0);
+  const reqTotal = reqCounts.done + reqCounts.waived + reqCounts.missing;
   const season = players[0]?.board?.season;
 
   return (
@@ -219,6 +263,46 @@ export function PlayersList({
         )}
       </div>
 
+      {isStaff && requirements.length > 0 && (
+        <div data-tour="directory-requirements" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <select
+            value={reqId}
+            onChange={(e) => {
+              setReqId(e.target.value);
+              setReqShow("missing");
+            }}
+            aria-label="Filter by requirement"
+            className="rsd-chip"
+            style={{ height: 34, padding: "0 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+          >
+            <option value="all">All requirements</option>
+            {requirements.map((r) => (
+              <option key={r.id} value={r.id}>
+                {requirementLabel(r)}
+              </option>
+            ))}
+          </select>
+          {pickedReq && (
+            <div
+              role="group"
+              aria-label={`Show players by ${pickedReq.name}`}
+              style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
+            >
+              <SegButton label={`Missing ${reqCounts.missing}`} active={reqShow === "missing"} onClick={() => setReqShow("missing")} />
+              <SegButton
+                label={`${doneWord(pickedReq.kind)} ${reqCounts.done}`}
+                active={reqShow === "done"}
+                onClick={() => setReqShow("done")}
+              />
+              {(reqCounts.waived > 0 || reqShow === "waived") && (
+                <SegButton label={`Waived ${reqCounts.waived}`} active={reqShow === "waived"} onClick={() => setReqShow("waived")} />
+              )}
+              <SegButton label="All" active={reqShow === "all"} onClick={() => setReqShow("all")} />
+            </div>
+          )}
+        </div>
+      )}
+
       {pickedTeam && (
         <TeamBanner team={pickedTeam} roles={roles} playerCount={countByTeam.get(pickedTeam.id) ?? 0} />
       )}
@@ -226,14 +310,27 @@ export function PlayersList({
       <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
         {shown} {shown === 1 ? "player" : "players"}
         {season && ` · ${season} season`}
+        {pickedReq &&
+          ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${pickedReq.kind === "fee" ? "paid" : "done"}` +
+            (reqCounts.waived > 0 ? ` (${reqCounts.waived} waived)` : "")}
       </div>
 
       {players.length === 0 ? (
         <Empty text="No players yet. Registrations show up here once they're imported." />
       ) : shown === 0 ? (
-        <Empty text={query ? "No matches." : "No players on this team yet."} />
+        <Empty
+          text={
+            pickedReq && reqShow === "missing" && reqTotal > 0
+              ? `Nobody here is missing ${pickedReq.name}.`
+              : pickedReq && reqShow !== "all" && reqTotal > 0
+                ? "No players match."
+                : query
+                  ? "No matches."
+                  : "No players on this team yet."
+          }
+        />
       ) : (
-        sections
+        shownSections
           .filter((g) => g.players.length > 0)
           .map((g) => (
             <section key={g.key} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -287,11 +384,23 @@ export function PlayersList({
                     player={p}
                     isStaff={isStaff}
                     border={i < g.players.length - 1}
+                    requirements={requirements}
+                    rows={rows}
+                    onOpenRequirement={(requirement) => setOpen({ player: p, requirement })}
                   />
                 ))}
               </div>
             </section>
           ))
+      )}
+
+      {open && (
+        <RequirementDialog
+          player={open.player}
+          requirement={open.requirement}
+          row={rows.get(rowKey(open.player.id, open.requirement.id)) ?? null}
+          onClose={() => setOpen(null)}
+        />
       )}
     </>
   );
@@ -404,10 +513,16 @@ function PlayerRow({
   player: p,
   isStaff,
   border,
+  requirements,
+  rows,
+  onOpenRequirement,
 }: {
   player: DirectoryPlayer;
   isStaff: boolean;
   border: boolean;
+  requirements: Requirement[];
+  rows: Map<string, PlayerRequirement>;
+  onOpenRequirement: (r: Requirement) => void;
 }) {
   const age = ageFromDob(p.dob);
   const born = formatDate(p.dob);
@@ -460,6 +575,9 @@ function PlayerRow({
           <ContactLine phone={p.phone} email={p.email} label="Player" />
         )}
         {isStaff && staffFacts.length > 0 && <div style={muted}>{staffFacts.join(" · ")}</div>}
+        {isStaff && requirements.length > 0 && (
+          <RequirementChips player={p} requirements={requirements} rows={rows} onOpen={onOpenRequirement} />
+        )}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
@@ -469,6 +587,53 @@ function PlayerRow({
           p.parents.map((pa) => <ParentBlock key={pa.member!.id} parent={pa} isStaff={isStaff} />)
         )}
       </div>
+    </div>
+  );
+}
+
+// One chip per requirement that applies to the player: done (or paid),
+// waived, or still needed. Tapping one opens the check-off.
+function RequirementChips({
+  player,
+  requirements,
+  rows,
+  onOpen,
+}: {
+  player: DirectoryPlayer;
+  requirements: Requirement[];
+  rows: Map<string, PlayerRequirement>;
+  onOpen: (r: Requirement) => void;
+}) {
+  const chips = requirements
+    .map((r) => ({ r, state: stateFor(player, r, rows), row: rows.get(rowKey(player.id, r.id)) }))
+    .filter((c) => c.state !== "n/a");
+  if (chips.length === 0) return null;
+  return (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+      {chips.map(({ r, state, row }) => {
+        const label = requirementLabel(r);
+        const variant = state === "done" ? "rsd-chip-success" : state === "waived" ? "rsd-chip-mute" : "rsd-chip-error";
+        const text =
+          state === "done" ? label : state === "waived" ? `${label} waived` : r.kind === "fee" ? `Owes ${label}` : `Needs ${label}`;
+        const title =
+          state === "missing"
+            ? `Mark ${r.name} for ${player.full_name}`
+            : `${state === "done" ? doneWord(r.kind) : "Waived"}${row?.note ? ` · ${row.note}` : ""}${row?.file_path ? " · Scan attached" : ""}`;
+        return (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => onOpen(r)}
+            className={`rsd-chip ${variant}`}
+            title={title}
+            style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
+          >
+            {state === "done" && <Icons.CheckCircle width={11} height={11} />}
+            {text}
+            {row?.file_path && <Icons.FileText width={11} height={11} />}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -87,6 +87,10 @@ const CONTRACT: Record<string, string> = {
     "id,board_id,first_name,last_name,dob,grade,parent_name,parent_email,parent_phone,extra,status,player_id,reviewed_by,reviewed_at,created_at",
   olb_import_batches: "id,board_id,filename,summary",
   sidebar_links: "id,label,url,open_in_new_tab,sort_order,created_by",
+  olb_requirements:
+    "id,name,description,kind,amount_cents,allow_file,due_on,team_ids,active,sort_order,created_by,created_at,updated_at,deleted_at",
+  olb_player_requirements:
+    "player_id,requirement_id,status,completed_on,note,file_path,file_name,marked_by,created_at,updated_at",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {
