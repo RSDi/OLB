@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { Input, Pill } from "../../components/ui";
+import { ShowMeHow } from "./ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createSidebarLink,
@@ -94,11 +95,16 @@ export function SidebarLinksTab() {
           Extra links everyone sees at the bottom of the sidebar — the season schedule, a sign-up
           form, the club store. Links open in a new browser tab unless you turn that off.
         </div>
-        {!adding && (
-          <Pill variant="accent" size="sm" onClick={() => { setAdding(true); setError(null); }}>
-            <Icons.Plus width={14} height={14} /> Add link
-          </Pill>
-        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <ShowMeHow tour="settings-sidebar-links" />
+          {!adding && (
+            <span data-tour="links-add" style={{ display: "inline-flex" }}>
+              <Pill variant="accent" size="sm" onClick={() => { setAdding(true); setError(null); }}>
+                <Icons.Plus width={14} height={14} /> Add link
+              </Pill>
+            </span>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -159,6 +165,7 @@ export function SidebarLinksTab() {
             ) : (
               <div
                 key={link.id}
+                data-tour="links-row"
                 className="rsd-card"
                 style={{
                   flexDirection: "row",
@@ -255,7 +262,7 @@ function LinkForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
+    <form onSubmit={handleSubmit} data-tour="links-form" className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
         <Input
           label="Label *"
@@ -281,7 +288,7 @@ function LinkForm({
         <input type="checkbox" checked={openInNewTab} onChange={(e) => setOpenInNewTab(e.target.checked)} />
         Open in a new browser tab
       </label>
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <div data-tour="links-save" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           Cancel
         </Pill>

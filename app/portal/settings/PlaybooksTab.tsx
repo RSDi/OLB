@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
+import { ShowMeHow } from "./ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createPlaybookCategory,
@@ -189,11 +190,16 @@ export function PlaybooksTab({ me }: { me: MemberLike }) {
               Drive the chip color and grouping on the playbooks list.
             </div>
           </div>
-          {!adding && (
-            <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
-              <Icons.Plus width={14} height={14} /> Add category
-            </Pill>
-          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <ShowMeHow tour="settings-playbooks" />
+            {!adding && (
+              <span data-tour="playbook-categories-add" style={{ display: "inline-flex" }}>
+                <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
+                  <Icons.Plus width={14} height={14} /> Add category
+                </Pill>
+              </span>
+            )}
+          </div>
         </div>
 
         {adding && (
@@ -250,7 +256,7 @@ export function PlaybooksTab({ me }: { me: MemberLike }) {
       </section>
 
       {/* ----- Playbooks list ----- */}
-      <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <section data-tour="playbooks-all" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800 }}>Playbooks</h3>
           <div
@@ -349,6 +355,7 @@ function CategoryRow({
 }) {
   return (
     <div
+      data-tour="playbook-categories-row"
       className="rsd-card"
       style={{
         flexDirection: "row",
@@ -416,7 +423,7 @@ function CategoryForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
+    <form onSubmit={handleSubmit} data-tour="playbook-categories-form" className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
         <Input
           label="Name *"
@@ -453,7 +460,7 @@ function CategoryForm({
         }}
       >
         <span className={`rsd-chip ${chipClass}`}>{name || "Preview"}</span>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div data-tour="playbook-categories-save" style={{ display: "flex", gap: 8 }}>
           <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
             Cancel
           </Pill>

@@ -262,7 +262,9 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - **Remove** a member (demote a super-admin first).
 
-Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,
+Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
     id: "settings-sidebar-links",
@@ -275,7 +277,9 @@ Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Dire
 - **Open in a new browser tab** is ticked to start with, so the portal stays open. Untick it for a link that should open in the same tab.
 - Use the arrows to change the order, the **pencil** to edit a link, and the **trash** can to remove it.
 
-Every signed-in member sees the links; only super-admins can change them.`,
+Every signed-in member sees the links; only super-admins can change them.
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
     id: "settings-playbooks",
@@ -287,7 +291,9 @@ Every signed-in member sees the links; only super-admins can change them.`,
 - **Categories** group playbooks and set the colour of their label. **Add category** to make one — give it a **Name**, a **Chip color** and a **Sort order** (lower numbers come first). Tap the **pencil** to change one.
 - **Playbooks** lists every playbook, newest-updated first. Tap one to open it and edit its content.
 
-Tap the **trash** can to delete a category or a playbook.`,
+Tap the **trash** can to delete a category or a playbook.
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
     id: "settings-contact-types",
@@ -298,7 +304,9 @@ Tap the **trash** can to delete a category or a playbook.`,
 
 - **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
 - Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
-- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.`,
+- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
     id: "settings-audit-log",
@@ -307,7 +315,9 @@ Tap the **trash** can to delete a category or a playbook.`,
     keywords: ["audit", "log", "history", "changes", "who changed", "member changes", "approved", "role change"],
     body: `A record of every change to a member's account — who made it, what changed and when. Open **Settings → Audit Log**.
 
-The most recent 100 changes are listed, newest first: new members, approvals, role changes, profile edits and removals. Nothing here can be edited.`,
+The most recent 100 changes are listed, newest first: new members, approvals, role changes, profile edits and removals. Nothing here can be edited.
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
     id: "playbooks-editing",
@@ -394,7 +404,9 @@ Use the arrows to change the order (it's the order of the chips in the Directory
 - Tap the **pencil** to edit a team, or the **trash** can to delete one — its players go back to unassigned and its volunteer spots are cleared.
 - **Staff & volunteers →** opens the team's page in the Directory, where you assign coaches and volunteers.
 
-What you enter here shows on the team's Directory banner and team page.`,
+What you enter here shows on the team's Directory banner and team page.
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
     id: "settings-volunteer-roles",
@@ -409,7 +421,9 @@ What you enter here shows on the team's Directory banner and team page.`,
 - **In Directory** — shows the role on the team's banner when someone picks that team in the Directory. Every role always shows on the team's own page.
 - Use the arrows to reorder, the **−/+** to change spots, and the switches to turn Leadership and In Directory on or off. Changes save right away.
 
-**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.`,
+**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
     id: "slack-archive-admin",

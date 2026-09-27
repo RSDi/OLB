@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
+import { ShowMeHow } from "./ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createVolunteerRole,
@@ -89,11 +90,16 @@ export function VolunteerRolesTab() {
           The jobs every team can fill. Set how many of each a team needs, then assign anyone (a parent,
           a coach&apos;s spouse, any member) from the team&apos;s page in the Directory.
         </div>
-        {!adding && (
-          <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
-            <Icons.Plus width={14} height={14} /> Add role
-          </Pill>
-        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <ShowMeHow tour="settings-volunteer-roles" />
+          {!adding && (
+            <span data-tour="roles-add" style={{ display: "inline-flex" }}>
+              <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
+                <Icons.Plus width={14} height={14} /> Add role
+              </Pill>
+            </span>
+          )}
+        </div>
       </div>
 
       {error && <ErrorBox text={error} />}
@@ -122,7 +128,7 @@ export function VolunteerRolesTab() {
                 <RoleForm initial={r} submitLabel="Save" onCancel={() => setEditingId(null)} onSubmit={(v) => save(r.id, v)} />
               </div>
             ) : (
-              <div key={r.id} style={{ ...grid, opacity: acting === r.id ? 0.5 : 1 }}>
+              <div key={r.id} data-tour="roles-row" style={{ ...grid, opacity: acting === r.id ? 0.5 : 1 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   <OrderBtn label={`Move ${r.name} up`} disabled={i === 0 || !!acting} onClick={() => run(r.id, () => moveVolunteerRole(r.id, "up"))}>
                     <Icons.ChevronUp width={13} height={13} />
@@ -235,7 +241,7 @@ function RoleForm({
   }
 
   return (
-    <form onSubmit={submit} className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
+    <form onSubmit={submit} data-tour="roles-form" className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         <Input label="Role name *" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Video" autoFocus required />
         <Input label="What they do" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Films games" />
@@ -264,7 +270,7 @@ function RoleForm({
           Show on the team&apos;s Directory banner
         </label>
       </div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <div data-tour="roles-save" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           Cancel
         </Pill>

@@ -21,7 +21,7 @@ import {
 } from "../../../lib/requirements/types";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
 import { ErrorBox, IconBtn } from "./TeamsSettingsTab";
-import { useTour } from "../../components/GuidedTour";
+import { ShowMeHow } from "./ShowMeHow";
 import { REQUIREMENTS_TOUR_ID } from "../../../lib/help/tours";
 
 interface TeamOption {
@@ -90,7 +90,6 @@ function toInput(r: Requirement): RequirementInput {
 // Super-admins and board members with the settings grants.
 export function RequirementsTab({ me }: { me: MemberLike }) {
   const router = useRouter();
-  const { start: startTour } = useTour();
   const canDelete = canDeleteSettings(me);
   const [rows, setRows] = useState<Requirement[]>([]);
   const [teams, setTeams] = useState<TeamOption[]>([]);
@@ -160,9 +159,7 @@ export function RequirementsTab({ me }: { me: MemberLike }) {
           checks players off in the Directory and can filter it to see who&apos;s still missing each one.
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Pill variant="ghost" size="sm" onClick={() => startTour(REQUIREMENTS_TOUR_ID)}>
-            Show me how
-          </Pill>
+          <ShowMeHow tour={REQUIREMENTS_TOUR_ID} />
           {!adding && (
             <span data-tour="requirements-add" style={{ display: "inline-flex" }}>
               <Pill variant="accent" size="sm" onClick={() => { setAdding(true); setError(null); }}>

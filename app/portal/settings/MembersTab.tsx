@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useTransition } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
+import { ShowMeHow } from "./ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import type { MemberRole, MemberStatus } from "../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../lib/members/display";
@@ -332,13 +333,16 @@ export function MembersTab({
             ? "Pre-create a member to seed a sign-in (they'll set their password via /register using the email you enter), or add them with no email as a directory entry for family relationships."
             : "Approve or deny access requests. New members are emailed when you approve them."}
         </div>
-        {canManage && !adding && (
-          <span data-tour="members-add" style={{ display: "inline-flex" }}>
-            <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
-              <Icons.Plus width={14} height={14} /> Add member
-            </Pill>
-          </span>
-        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <ShowMeHow tour="settings-members" />
+          {canManage && !adding && (
+            <span data-tour="members-add" style={{ display: "inline-flex" }}>
+              <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
+                <Icons.Plus width={14} height={14} /> Add member
+              </Pill>
+            </span>
+          )}
+        </div>
       </div>
 
       {adding && (
@@ -605,6 +609,7 @@ function MemberRow({
   const rowAvatar = resolveAvatarUrl(member);
   return (
     <div
+      data-tour="members-row"
       className="rsd-card"
       style={{
         flexDirection: "row",

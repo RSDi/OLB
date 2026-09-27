@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
 import { memberDisplayName } from "../../../lib/members/display";
+import { ShowMeHow } from "./ShowMeHow";
 
 type AuditAction = "insert" | "update" | "delete";
 
@@ -62,8 +63,11 @@ export function AuditLogTab() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 540 }}>
-        Every change to a member record — who changed what, and when. Most recent first (last 100 changes).
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 540 }}>
+          Every change to a member record — who changed what, and when. Most recent first (last 100 changes).
+        </div>
+        <ShowMeHow tour="settings-audit-log" />
       </div>
 
       {error && (
@@ -121,7 +125,7 @@ function AuditEntry({ row, actorName }: { row: AuditRow; actorName: string }) {
   const changes = diffFields(row.old_data, row.new_data, row.action);
 
   return (
-    <div className="rsd-card" style={{ padding: "14px 18px", gap: 10 }}>
+    <div data-tour="audit-entry" className="rsd-card" style={{ padding: "14px 18px", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <ActionChip action={row.action} />
         <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gw-fg)" }}>{subjectName}</span>
