@@ -98,7 +98,8 @@ export interface DirectoryPlayer {
   full_name: string;
   dob: string | null;
   age_group: string | null;
-  team: { name: string; age_group: string | null } | null;
+  team_id: string | null;
+  team: { id: string; name: string; age_group: string | null; color: string | null } | null;
   board: { season: string } | null;
   new_to_program: boolean;
   address_line1: string | null;
@@ -118,8 +119,8 @@ export interface DirectoryPlayer {
 }
 
 const PLAYER_COLUMNS =
-  "id, full_name, dob, age_group, new_to_program, address_line1, address_line2, city, state, postal_code, phone, email, registration_fee, payment_method, shirt_size, waiver_signed, waiver_signed_on, directory_optin, " +
-  "team:olb_teams(name, age_group), board:olb_boards(season), " +
+  "id, team_id, full_name, dob, age_group, new_to_program, address_line1, address_line2, city, state, postal_code, phone, email, registration_fee, payment_method, shirt_size, waiver_signed, waiver_signed_on, directory_optin, " +
+  "team:olb_teams(id, name, age_group, color), board:olb_boards(season), " +
   "parents:olb_player_parents(relationship, member:members(id, user_id, status, full_name, email, phone, volunteer_interests))";
 
 // Every player on the latest season's board ("2026-2027" style, so seasons

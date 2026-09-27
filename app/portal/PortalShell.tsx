@@ -107,6 +107,8 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
       ? { title: "Edit event", subtitle: "Calendar" }
       : pathname.startsWith("/portal/contacts/")
       ? { title: "Contact", subtitle: "External Contacts" }
+      : pathname.startsWith("/portal/directory/teams/")
+      ? { title: "Team", subtitle: "Directory" }
       : pathname.startsWith("/portal/directory/")
       ? { title: "Member", subtitle: "Directory" }
       : pathname.endsWith("/history") && pathname.startsWith("/portal/docs/")
