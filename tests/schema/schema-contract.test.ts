@@ -91,6 +91,17 @@ const CONTRACT: Record<string, string> = {
     "id,name,description,kind,amount_cents,allow_file,due_on,team_ids,active,sort_order,created_by,created_at,updated_at,deleted_at",
   olb_player_requirements:
     "player_id,requirement_id,status,completed_on,note,file_path,file_name,marked_by,created_at,updated_at",
+  // Activity page + "Preview as" (0099).
+  member_audit_log: "id,member_id,changed_by,changed_at,action,old_data,new_data,impersonator_user_id",
+  activity_events:
+    "id,sid,user_id,user_name,role,event_type,path,impersonator_user_id,impersonator_sid,meta,created_at",
+  member_previews:
+    "id,secret_hash,impersonator_user_id,impersonator_sid,target_user_id,target_member_id,target_session_id,started_at,expires_at,ended_at,end_reason",
+  activity_session_summary: "sid,user_id,started_at,last_event_at,page_views,is_preview,impersonator_user_id",
+  activity_user_summary: "user_id,last_login_at,last_seen_at,sessions_30d,page_views_30d",
+  activity_user_last_view: "user_id,last_seen_path",
+  activity_top_pages_30d: "page,views,people",
+  activity_daily_30d: "day,people,views",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {
