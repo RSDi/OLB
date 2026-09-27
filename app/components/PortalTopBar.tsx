@@ -55,6 +55,7 @@ export function PortalTopBar({
         onClick={onMenuClick}
         className="rsd-mob-menu gw-press"
         aria-label="Open navigation"
+        data-tour="menu-button"
         style={{
           width: 36,
           height: 36,
@@ -79,7 +80,7 @@ export function PortalTopBar({
           When there's no section (subtitle empty), title alone takes the
           large/bold treatment instead of being stranded as a small line
           with nothing above it. */}
-      <div style={{ flex: variant === "inline" ? "0 0 auto" : 1, minWidth: 0 }}>
+      <div data-tour="page-title" style={{ flex: variant === "inline" ? "0 0 auto" : 1, minWidth: 0 }}>
         <div
           style={{
             fontFamily: "var(--rsd-display)",
@@ -133,6 +134,7 @@ export function PortalTopBar({
             className="gw-press"
             aria-label="About this page"
             title="About this page"
+            data-tour="page-help"
             style={{
               width: 36,
               height: 36,
@@ -195,6 +197,7 @@ function PillTrigger({ onClick }: { onClick: () => void }) {
         onClick={onClick}
         className="gw-press"
         aria-label="Search"
+        data-tour="global-search"
         style={{
           width: 36,
           height: 36,
@@ -219,6 +222,7 @@ function PillTrigger({ onClick }: { onClick: () => void }) {
       className="gw-press"
       aria-label="Search (Ctrl K or Command K)"
       title="Search"
+      data-tour="global-search"
       style={{
         height: 36,
         padding: "0 8px 0 12px",

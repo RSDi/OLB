@@ -9,7 +9,8 @@
 // KEEP IT CURRENT: any change people can see (a new page, a renamed button, a
 // feature released from preview) updates the matching section here in the
 // same change, and bumps GUIDE_UPDATED. tests/unit/help-guide.test.ts fails
-// when a portal page has no section.
+// when a portal page has no section. The guided tours in ./tours.ts retell
+// sections step by step, pointed at the real buttons — keep them in step too.
 //
 // Written for parents, players' families and the board — plain, friendly, no
 // jargon. Bodies are markdown (rendered by MarkdownView). Safe to import from
@@ -70,7 +71,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     id: "getting-around",
     title: "Getting around",
     audience: "everyone",
-    keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k"],
+    keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k", "tour", "walkthrough", "show me around", "take the tour"],
     body: `**Home is the Directory.** After you sign in you land on the Directory of players and parents.
 
 **The sidebar** on the left has everything you can use — you only see the parts that apply to you:
@@ -89,7 +90,9 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 **Search.** The search box at the top of every page finds members, playbooks and Slack messages (and, for the board, external contacts). Press **⌘K** on a Mac or **Ctrl K** on Windows to jump to it from anywhere. Type at least 2 letters, use the arrow keys and **Enter** to open a result, and **Esc** to close. Your last few searches are remembered under **Recent**. To find a *player*, use the search box on the Directory page instead.
 
-**Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.`,
+**Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
+
+**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. The welcome tour starts by itself the first time you sign in; take it again any time with **Take the tour** at the top of this guide. For a tour of just one page, tap **ⓘ** on that page and then **Show me around**, or press **Show me around** next to a section's title below.`,
   },
   {
     id: "directory",
@@ -387,11 +390,15 @@ export function guideHref(id: string): string {
   return `/portal/guide#${guideAnchor(id)}`;
 }
 
-export function canSeeGuideSection(section: GuideSection, viewer: GuideViewer | null | undefined): boolean {
-  if (section.audience === "everyone") return true;
+export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | null | undefined): boolean {
+  if (audience === "everyone") return true;
   if (!viewer || viewer.status !== "approved") return false;
-  if (section.audience === "staff") return viewer.isStaff;
+  if (audience === "staff") return viewer.isStaff;
   return viewer.role === "super_admin";
+}
+
+export function canSeeGuideSection(section: GuideSection, viewer: GuideViewer | null | undefined): boolean {
+  return canSeeAudience(section.audience, viewer);
 }
 
 export function guideSectionsFor(viewer: GuideViewer | null | undefined): GuideSection[] {

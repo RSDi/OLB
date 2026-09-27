@@ -109,6 +109,7 @@ export function ContactsList({
         </div>
         <Link
           href="/portal/contacts/new"
+          data-tour="contacts-new"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -130,7 +131,7 @@ export function ContactsList({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {/* Search */}
-        <div style={{ position: "relative", maxWidth: 480 }}>
+        <div data-tour="contacts-search" style={{ position: "relative", maxWidth: 480 }}>
           <span
             style={{
               position: "absolute",
@@ -163,7 +164,7 @@ export function ContactsList({
         </div>
 
         {/* Kind filter */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <div data-tour="contacts-filters" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <FilterChip
             active={kind === "all"}
             label="All"

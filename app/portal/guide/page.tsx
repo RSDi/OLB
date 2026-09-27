@@ -4,9 +4,17 @@
 // that's already on the page.
 import { getViewer } from "../../../lib/auth/viewer";
 import { GUIDE_UPDATED, guideSectionsFor } from "../../../lib/help/guide";
+import { WELCOME_TOUR_ID, tourForSection } from "../../../lib/help/tours";
 import { GuideView } from "./GuideView";
 
 export default async function UserGuidePage() {
   const viewer = await getViewer();
-  return <GuideView sections={guideSectionsFor(viewer)} updated={GUIDE_UPDATED} />;
+  const sections = guideSectionsFor(viewer);
+  // Section id → the guided tour that walks through it (lib/help/tours.ts).
+  const tours: Record<string, string> = {};
+  for (const s of sections) {
+    const tour = tourForSection(s.id, viewer);
+    if (tour && tour.id !== WELCOME_TOUR_ID) tours[s.id] = tour.id;
+  }
+  return <GuideView sections={sections} tours={tours} updated={GUIDE_UPDATED} />;
 }

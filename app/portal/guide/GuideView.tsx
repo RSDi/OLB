@@ -1,12 +1,35 @@
 "use client";
 // Search box + table of contents + every guide section, in order. Search
-// matches a section's title, keywords and text.
+// matches a section's title, keywords and text. "Take the tour" and each
+// section's "Show me around" start a guided tour (lib/help/tours.ts).
 import { useMemo, useState } from "react";
 import { Icons } from "../../components/icons";
 import { MarkdownView } from "../../components/MarkdownView";
+import { useTour } from "../../components/GuidedTour";
 import { guideAnchor, type GuideSection } from "../../../lib/help/guide";
+import { WELCOME_TOUR_ID } from "../../../lib/help/tours";
 
-export function GuideView({ sections, updated }: { sections: GuideSection[]; updated: string }) {
+const tourButton: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  borderRadius: 100,
+  fontWeight: 700,
+  cursor: "pointer",
+  border: "1px solid",
+};
+
+export function GuideView({
+  sections,
+  tours,
+  updated,
+}: {
+  sections: GuideSection[];
+  // Section id → tour id, for sections with a guided tour.
+  tours: Record<string, string>;
+  updated: string;
+}) {
+  const { start } = useTour();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
 
@@ -44,6 +67,23 @@ export function GuideView({ sections, updated }: { sections: GuideSection[]; upd
         that apply to you. The <strong>ⓘ</strong> button in the top bar of any page opens the
         section for that page.
       </p>
+      <button
+        type="button"
+        onClick={() => start(WELCOME_TOUR_ID)}
+        className="gw-press"
+        style={{
+          ...tourButton,
+          padding: "10px 18px",
+          fontSize: 13,
+          background: "var(--rsd-accent)",
+          color: "var(--rsd-accent-on)",
+          borderColor: "var(--rsd-accent)",
+          margin: "0 0 20px",
+        }}
+      >
+        Take the tour
+        <Icons.ArrowRight width={14} height={14} />
+      </button>
 
       <label
         style={{
@@ -176,6 +216,24 @@ export function GuideView({ sections, updated }: { sections: GuideSection[]; upd
               >
                 {s.audience === "super_admin" ? "Super admins" : "Board"}
               </span>
+            )}
+            {tours[s.id] && (
+              <button
+                type="button"
+                onClick={() => start(tours[s.id])}
+                className="gw-press"
+                style={{
+                  ...tourButton,
+                  marginLeft: "auto",
+                  padding: "5px 12px",
+                  fontSize: 12,
+                  background: "transparent",
+                  color: "var(--gw-fg)",
+                  borderColor: "var(--gw-border)",
+                }}
+              >
+                Show me around
+              </button>
             )}
           </h2>
           <div className="rsd-markdown" style={{ fontSize: 14, lineHeight: 1.65 }}>

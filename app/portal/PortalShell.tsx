@@ -7,13 +7,15 @@
 // so the sidebar can render without its own client-side Supabase round
 // trip.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
 import { PortalTopBar } from "../components/PortalTopBar";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
+import { GuidedTour, TourContext } from "../components/GuidedTour";
 import { guideSectionForPath } from "../../lib/help/guide";
+import { WELCOME_TOUR_ID, WELCOME_TOUR_SEEN_KEY, tourForPath } from "../../lib/help/tours";
 import type { TopbarSearchHandle } from "../components/TopbarSearch";
 import type { SidebarLink } from "../../lib/sidebar-links/url";
 import { portalFontVariables } from "./fonts";
@@ -63,6 +65,37 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
   // The top-bar "i" shows the User Guide section for this page, when the
   // viewer can see one (lib/help/guide.ts).
   const pageHelp = guideSectionForPath(pathname, viewer);
+  // …and "Show me around" in that panel runs the page's guided tour
+  // (lib/help/tours.ts). `key` restarts a tour that's started again.
+  const pageTour = tourForPath(pathname, viewer);
+  const [tour, setTour] = useState<{ id: string; key: number } | null>(null);
+
+  const startTour = useCallback((id: string) => {
+    setInfoOpen(false);
+    setSearchOpen(false);
+    setTour({ id, key: Date.now() });
+  }, []);
+  const tourControls = useMemo(() => ({ start: startTour }), [startTour]);
+
+  // A tour step in the sidebar slides the drawer open on phones.
+  const onTourSidebarStep = useCallback((inSidebar: boolean) => {
+    const phone = window.matchMedia("(max-width: 767px)").matches;
+    setMobileOpen(inSidebar && phone);
+  }, []);
+
+  // The welcome tour starts by itself the first time an approved member
+  // lands on the Directory (home) in this browser.
+  useEffect(() => {
+    if (viewer?.status !== "approved" || pathname !== "/portal/directory") return;
+    try {
+      if (localStorage.getItem(WELCOME_TOUR_SEEN_KEY)) return;
+      localStorage.setItem(WELCOME_TOUR_SEEN_KEY, new Date().toISOString());
+    } catch {
+      return; // no storage → no way to remember, so don't nag every visit
+    }
+    const t = setTimeout(() => startTour(WELCOME_TOUR_ID), 600);
+    return () => clearTimeout(t);
+  }, [viewer?.status, pathname, startTour]);
 
   // Cmd+K / Ctrl+K behavior depends on viewport: focus the inline topbar
   // input if it's mounted (large viewports), otherwise toggle the modal
@@ -132,41 +165,57 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
       : meta;
 
   return (
-    <div
-      data-theme="lightning"
-      className={`rsd-app ${portalFontVariables}${collapsed ? " sidebar-collapsed" : ""}`}
-    >
-      <PortalSidebar
-        viewer={viewer}
-        pendingMembersCount={pendingMembersCount}
-        links={sidebarLinks}
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed(v => !v)}
-        mobileOpen={mobileOpen}
-        onNavigate={() => setMobileOpen(false)}
-      />
-      <PortalTopBar
-        title={topMeta.title}
-        subtitle={topMeta.subtitle}
-        onMenuClick={() => setMobileOpen(v => !v)}
-        onSearchClick={() => setSearchOpen(true)}
-        inlineSearchRef={inlineSearchRef}
-        onInfoClick={pageHelp ? () => setInfoOpen(true) : undefined}
-      />
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          onClick={() => setMobileOpen(false)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 1100,
-            background: "rgba(12,12,14,.45)",
-            animation: "gw-fade-in 160ms ease",
-          }}
+    <TourContext.Provider value={tourControls}>
+      <div
+        data-theme="lightning"
+        className={`rsd-app ${portalFontVariables}${collapsed ? " sidebar-collapsed" : ""}`}
+      >
+        <PortalSidebar
+          viewer={viewer}
+          pendingMembersCount={pendingMembersCount}
+          links={sidebarLinks}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed(v => !v)}
+          mobileOpen={mobileOpen}
+          onNavigate={() => setMobileOpen(false)}
         />
-      )}
-      <main>{children}</main>
-      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
-      <InfoPanel section={pageHelp} open={infoOpen} onClose={() => setInfoOpen(false)} />
-    </div>
+        <PortalTopBar
+          title={topMeta.title}
+          subtitle={topMeta.subtitle}
+          onMenuClick={() => setMobileOpen(v => !v)}
+          onSearchClick={() => setSearchOpen(true)}
+          inlineSearchRef={inlineSearchRef}
+          onInfoClick={pageHelp ? () => setInfoOpen(true) : undefined}
+        />
+        {/* Mobile overlay */}
+        {mobileOpen && (
+          <div
+            onClick={() => setMobileOpen(false)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 1100,
+              background: "rgba(12,12,14,.45)",
+              animation: "gw-fade-in 160ms ease",
+            }}
+          />
+        )}
+        <main>{children}</main>
+        <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+        <InfoPanel
+          section={pageHelp}
+          open={infoOpen}
+          onClose={() => setInfoOpen(false)}
+          onStartTour={pageTour ? () => startTour(pageTour.id) : undefined}
+        />
+        {tour && (
+          <GuidedTour
+            key={tour.key}
+            tourId={tour.id}
+            viewer={viewer}
+            onClose={() => setTour(null)}
+            onSidebarStep={onTourSidebarStep}
+          />
+        )}
+      </div>
+    </TourContext.Provider>
   );
 }
