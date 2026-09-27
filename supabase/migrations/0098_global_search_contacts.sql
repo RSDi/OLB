@@ -1,4 +1,4 @@
--- 0093_global_search_contacts.sql
+-- 0098_global_search_contacts.sql (was 0093_global_search_contacts.sql)
 --
 -- External Contacts in the portal's global search. The search box has a
 -- "Contacts" group ready (app/components/search/SearchPanel.tsx), but
@@ -32,8 +32,11 @@
 -- 0038 also added a trigram index on the concatenated fields. It isn't
 -- recreated: the per-column ilikes can't use it, and the list is short.
 --
--- Apply via the Supabase SQL editor. It needs only the baseline, so it can
--- go before or after 0092. Idempotent.
+-- Renumbered from 0093, which 0093_archive_global_search.sql already used
+-- (two files can't share a version). It replaces 0094's search_global, so it
+-- has to run after 0094; nothing after 0094 touches search_global.
+--
+-- Apply via the Supabase SQL editor, after 0094. Idempotent.
 
 create or replace function public.search_global(q text, max_total integer default 25)
 returns table (
@@ -82,7 +85,7 @@ as $$
         m.address    ilike '%' || q_norm.q || '%'
       )
   ),
-  -- ▼ ADDED in 0093: External Contacts. Staff-only through RLS.
+  -- ▼ ADDED in 0098: External Contacts. Staff-only through RLS.
   contact_hits as (
     select
       'contact'::text as entity_type,

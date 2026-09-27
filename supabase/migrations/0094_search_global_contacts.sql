@@ -15,6 +15,9 @@
 -- by RLS (contacts_select_staff), so members who aren't staff get no contact
 -- rows, the same as the staff-only External Contacts page.
 --
+-- Superseded by 0098_global_search_contacts.sql, which redefines
+-- search_global with a fuller contacts branch. Change that one, not this.
+--
 -- Apply via the Supabase SQL editor, after 0093. Idempotent.
 
 create or replace function public.search_global(q text, max_total integer default 25)
