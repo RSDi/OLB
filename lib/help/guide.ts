@@ -83,7 +83,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 
 Admins also see **External Contacts** and **Settings**.
 
-Below a thin line you may see extra links the board has added, like **Schedule**. Most open in a new browser tab, so the portal stays open where you left it.
+Below a thin line you may see extra links the club has added, like **Schedule**. Most open in a new browser tab, so the portal stays open where you left it.
 
 On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a phone, tap the **menu** button at the top left to open it.
 
@@ -261,7 +261,7 @@ Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Dire
   {
     id: "settings-sidebar-links",
     title: "Settings: Sidebar Links",
-    audience: "staff",
+    audience: "super_admin",
     keywords: ["sidebar", "links", "link", "schedule", "website", "url", "web address", "new tab", "menu", "shortcut", "reorder"],
     body: `Add your own links to the bottom of everyone's sidebar — the season schedule, a sign-up form, the club store. Open **Settings → Sidebar Links**.
 
@@ -269,24 +269,24 @@ Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Dire
 - **Open in a new browser tab** is ticked to start with, so the portal stays open. Untick it for a link that should open in the same tab.
 - Use the arrows to change the order, the **pencil** to edit a link, and the **trash** can to remove it.
 
-Every signed-in member sees the links. Adding and editing needs permission to edit settings; removing needs permission to delete them (super-admins can do both).`,
+Every signed-in member sees the links; only super-admins can change them.`,
   },
   {
     id: "settings-playbooks",
     title: "Settings: Playbooks",
-    audience: "staff",
+    audience: "super_admin",
     keywords: ["playbooks", "settings", "categories", "category", "chip", "color", "colour", "sort order", "delete playbook"],
     body: `Keep the playbook categories tidy and see every playbook in one list. Open **Settings → Playbooks**.
 
 - **Categories** group playbooks and set the colour of their label. **Add category** to make one — give it a **Name**, a **Chip color** and a **Sort order** (lower numbers come first). Tap the **pencil** to change one.
 - **Playbooks** lists every playbook, newest-updated first. Tap one to open it and edit its content.
 
-Super-admins also see a **trash** can to delete a category or a playbook.`,
+Tap the **trash** can to delete a category or a playbook.`,
   },
   {
     id: "settings-audit-log",
     title: "Settings: Audit Log",
-    audience: "staff",
+    audience: "super_admin",
     keywords: ["audit", "log", "history", "changes", "who changed", "member changes", "approved", "role change"],
     body: `A record of every change to a member's account — who made it, what changed and when. Open **Settings → Audit Log**.
 

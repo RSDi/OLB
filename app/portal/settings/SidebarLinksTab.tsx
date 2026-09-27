@@ -13,7 +13,6 @@ import {
   type SidebarLinkResult,
 } from "../../../lib/sidebar-links/actions";
 import { SIDEBAR_LINK_LABEL_MAX, type SidebarLink } from "../../../lib/sidebar-links/url";
-import { canDeleteSettings, canEditSettings, type MemberLike } from "../../../lib/auth/permissions";
 
 function fetchLinks() {
   return createClient()
@@ -24,8 +23,8 @@ function fetchLinks() {
 }
 
 // Settings → Sidebar Links: extra links everyone sees under the sidebar's
-// built-in items, like the season schedule.
-export function SidebarLinksTab({ me }: { me: MemberLike }) {
+// built-in items, like the season schedule. Super-admin only.
+export function SidebarLinksTab() {
   const router = useRouter();
   const [rows, setRows] = useState<SidebarLink[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +32,6 @@ export function SidebarLinksTab({ me }: { me: MemberLike }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const canEdit = canEditSettings(me);
-  const canDelete = canDeleteSettings(me);
 
   const apply = useCallback(({ data, error: loadError }: Awaited<ReturnType<typeof fetchLinks>>) => {
     if (loadError) setError(loadError.message);
@@ -98,7 +94,7 @@ export function SidebarLinksTab({ me }: { me: MemberLike }) {
           Extra links everyone sees at the bottom of the sidebar — the season schedule, a sign-up
           form, the club store. Links open in a new browser tab unless you turn that off.
         </div>
-        {canEdit && !adding && (
+        {!adding && (
           <Pill variant="accent" size="sm" onClick={() => { setAdding(true); setError(null); }}>
             <Icons.Plus width={14} height={14} /> Add link
           </Pill>
@@ -173,24 +169,22 @@ export function SidebarLinksTab({ me }: { me: MemberLike }) {
                   transition: "opacity 150ms",
                 }}
               >
-                {canEdit && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
-                    <OrderBtn
-                      label={`Move ${link.label} up`}
-                      disabled={i === 0 || !!acting}
-                      onClick={() => run(link.id, () => moveSidebarLink(link.id, "up"))}
-                    >
-                      <Icons.ChevronUp width={13} height={13} />
-                    </OrderBtn>
-                    <OrderBtn
-                      label={`Move ${link.label} down`}
-                      disabled={i === rows.length - 1 || !!acting}
-                      onClick={() => run(link.id, () => moveSidebarLink(link.id, "down"))}
-                    >
-                      <Icons.ChevronDown width={13} height={13} />
-                    </OrderBtn>
-                  </div>
-                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+                  <OrderBtn
+                    label={`Move ${link.label} up`}
+                    disabled={i === 0 || !!acting}
+                    onClick={() => run(link.id, () => moveSidebarLink(link.id, "up"))}
+                  >
+                    <Icons.ChevronUp width={13} height={13} />
+                  </OrderBtn>
+                  <OrderBtn
+                    label={`Move ${link.label} down`}
+                    disabled={i === rows.length - 1 || !!acting}
+                    onClick={() => run(link.id, () => moveSidebarLink(link.id, "down"))}
+                  >
+                    <Icons.ChevronDown width={13} height={13} />
+                  </OrderBtn>
+                </div>
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
                   <span style={{ fontSize: 14, fontWeight: 800 }}>{link.label}</span>
                   <a
@@ -212,27 +206,21 @@ export function SidebarLinksTab({ me }: { me: MemberLike }) {
                     {link.open_in_new_tab ? "Opens in a new tab" : "Opens in the same tab"}
                   </span>
                 </div>
-                {(canEdit || canDelete) && (
-                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                    {canEdit && (
-                      <IconBtn
-                        onClick={() => {
-                          setEditingId(link.id);
-                          setError(null);
-                        }}
-                        disabled={!!acting}
-                        title="Edit"
-                      >
-                        <Icons.Pencil width={14} height={14} />
-                      </IconBtn>
-                    )}
-                    {canDelete && (
-                      <IconBtn onClick={() => handleDelete(link)} disabled={!!acting} title="Delete" danger>
-                        <Icons.Trash width={14} height={14} />
-                      </IconBtn>
-                    )}
-                  </div>
-                )}
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <IconBtn
+                    onClick={() => {
+                      setEditingId(link.id);
+                      setError(null);
+                    }}
+                    disabled={!!acting}
+                    title="Edit"
+                  >
+                    <Icons.Pencil width={14} height={14} />
+                  </IconBtn>
+                  <IconBtn onClick={() => handleDelete(link)} disabled={!!acting} title="Delete" danger>
+                    <Icons.Trash width={14} height={14} />
+                  </IconBtn>
+                </div>
               </div>
             )
           )}

@@ -1,11 +1,9 @@
 "use server";
 
-// Settings → Sidebar Links. Adding, editing and reordering need the settings
-// edit grant; removing needs the delete grant (super-admins hold both). RLS
-// (migration 0096) lets staff write; these guards add the grant check.
+// Settings → Sidebar Links. Super-admin only, here and in RLS (migration 0096).
 
 import { revalidatePath } from "next/cache";
-import { requireSettingsDelete, requireSettingsEdit } from "../auth/guards";
+import { requireSuperAdmin } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import { normalizeSidebarUrl, SIDEBAR_LINK_LABEL_MAX, type SidebarLink } from "./url";
 
@@ -37,7 +35,7 @@ function refresh() {
 }
 
 export async function createSidebarLink(input: SidebarLinkInput): Promise<SidebarLinkResult> {
-  const gate = await requireSettingsEdit();
+  const gate = await requireSuperAdmin();
   if ("error" in gate) return { error: gate.error };
   const c = clean(input);
   if ("error" in c) return { error: c.error };
@@ -65,7 +63,7 @@ export async function createSidebarLink(input: SidebarLinkInput): Promise<Sideba
 }
 
 export async function updateSidebarLink(id: string, input: SidebarLinkInput): Promise<SidebarLinkResult> {
-  const gate = await requireSettingsEdit();
+  const gate = await requireSuperAdmin();
   if ("error" in gate) return { error: gate.error };
   const c = clean(input);
   if ("error" in c) return { error: c.error };
@@ -81,7 +79,7 @@ export async function updateSidebarLink(id: string, input: SidebarLinkInput): Pr
 }
 
 export async function deleteSidebarLink(id: string): Promise<SidebarLinkResult> {
-  const gate = await requireSettingsDelete();
+  const gate = await requireSuperAdmin();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase.from("sidebar_links").delete().eq("id", id);
@@ -93,7 +91,7 @@ export async function deleteSidebarLink(id: string): Promise<SidebarLinkResult> 
 // Swap a link with its neighbour. Renumbers the whole (short) list so ties
 // from hand-edited sort orders can't make a move a no-op.
 export async function moveSidebarLink(id: string, direction: "up" | "down"): Promise<SidebarLinkResult> {
-  const gate = await requireSettingsEdit();
+  const gate = await requireSuperAdmin();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { data, error } = await supabase

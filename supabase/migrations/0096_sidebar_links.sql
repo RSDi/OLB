@@ -7,8 +7,7 @@
 -- open_in_new_tab defaults on, so an outside site opens in its own tab.
 --
 -- Every approved member (and staff) can read them, since everyone sees the
--- sidebar. Staff write; the server actions additionally require the settings
--- edit / delete grants (lib/auth/guards.ts).
+-- sidebar. Only super-admins write.
 --
 -- Apply via the Supabase SQL editor, after 0095. Idempotent.
 
@@ -39,21 +38,16 @@ create policy "sidebar_links_select_approved" on public.sidebar_links
   for select to authenticated
   using ((select public.is_approved()) or (select public.is_staff()));
 
+-- Staff write policies from an earlier draft of this migration.
 drop policy if exists "sidebar_links_insert_staff" on public.sidebar_links;
-create policy "sidebar_links_insert_staff" on public.sidebar_links
-  for insert to authenticated
-  with check ((select public.is_staff()));
-
 drop policy if exists "sidebar_links_update_staff" on public.sidebar_links;
-create policy "sidebar_links_update_staff" on public.sidebar_links
-  for update to authenticated
-  using ((select public.is_staff()))
-  with check ((select public.is_staff()));
-
 drop policy if exists "sidebar_links_delete_staff" on public.sidebar_links;
-create policy "sidebar_links_delete_staff" on public.sidebar_links
-  for delete to authenticated
-  using ((select public.is_staff()));
+
+drop policy if exists "sidebar_links_super_all" on public.sidebar_links;
+create policy "sidebar_links_super_all" on public.sidebar_links
+  for all to authenticated
+  using ((select public.is_super_admin()))
+  with check ((select public.is_super_admin()));
 
 -- The first link: the season schedule.
 insert into public.sidebar_links (label, url, open_in_new_tab, sort_order)
