@@ -75,6 +75,9 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
   // The last step whose element was found. Until it matches `index` only the
   // dimmed backdrop shows.
   const [foundIndex, setFoundIndex] = useState<number | null>(null);
+  // Steps skipped because their element isn't on the page, so the "3 of 9"
+  // count doesn't promise steps that never come.
+  const [skipped, setSkipped] = useState<ReadonlySet<number>>(new Set());
   const [rect, setRect] = useState<Rect | null>(null);
   const [cardH, setCardH] = useState(200);
   // Only ever rendered after a click or an effect, so `window` is there.
@@ -86,7 +89,7 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
   const lastNavAt = useRef(0);
-  const pushed = useRef(false);
+  const startPath = useRef(pathname);
   const arrived = useRef(false);
 
   const step = steps[index];
@@ -103,11 +106,8 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
     }
     lastNavAt.current = Date.now();
     if (onRoute) arrived.current = true;
-    else if (arrived.current || pushed.current) onClose();
-    else {
-      pushed.current = true;
-      router.push(tour.route);
-    }
+    else if (arrived.current || pathname !== startPath.current) onClose();
+    else router.push(tour.route);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs per page change only
   }, [pathname]);
 
@@ -156,6 +156,7 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
       }
       // Not on this page for this person: move on in the same direction. At
       // the very start going back, there's nothing earlier, so go forward.
+      setSkipped((cur) => new Set(cur).add(index));
       const next = index + dir;
       if (next >= steps.length) finish();
       else if (next < 0) {
@@ -223,6 +224,8 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
   if (!tour || !step) return null;
 
   const isLast = index === steps.length - 1;
+  const total = steps.length - skipped.size;
+  const position = index + 1 - [...skipped].filter((i) => i < index).length;
   const spot = visible && step.target && rect ? rect : null;
   const place = placeCard(spot, viewport.w, viewport.h, cardH);
 
@@ -238,7 +241,9 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
             width: spot.width + SPOT_PAD * 2,
             height: spot.height + SPOT_PAD * 2,
             borderRadius: 10,
-            boxShadow: "0 0 0 2px var(--rsd-accent), 0 0 0 9999px rgba(12,12,14,.6)",
+            // Yellow ring with a dark edge: shows on the black sidebar and the
+            // white page alike.
+            boxShadow: "0 0 0 3px var(--rsd-accent-fill), 0 0 0 5px var(--rsd-accent), 0 0 0 9999px rgba(12,12,14,.6)",
             transition: "top 180ms ease, left 180ms ease, width 180ms ease, height 180ms ease",
             pointerEvents: "none",
           }}
@@ -291,7 +296,7 @@ export function GuidedTour({ tourId, viewer, onClose, onSidebarStep }: Props) {
                 color: "var(--gw-fg-muted)",
               }}
             >
-              {steps.length > 1 ? `${tour.title} · ${index + 1} of ${steps.length}` : tour.title}
+              {total > 1 ? `${tour.title} · ${position} of ${total}` : tour.title}
             </span>
             <button
               type="button"
