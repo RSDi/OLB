@@ -70,7 +70,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     id: "getting-around",
     title: "Getting around",
     audience: "everyone",
-    keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k"],
+    keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k", "scroll", "back to top", "jump to top"],
     body: `**Home is the Directory.** After you sign in you land on the Directory of players and parents.
 
 **The sidebar** on the left has everything you can use — you only see the parts that apply to you:
@@ -88,6 +88,8 @@ Below a thin line you may see extra links the club has added, like **Schedule**.
 On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a phone, tap the **menu** button at the top left to open it.
 
 **Search.** The search box at the top of every page finds members, playbooks and Slack messages (and, for the board, external contacts). Press **⌘K** on a Mac or **Ctrl K** on Windows to jump to it from anywhere. Type at least 2 letters, use the arrow keys and **Enter** to open a result, and **Esc** to close. Your last few searches are remembered under **Recent**. To find a *player*, use the search box on the Directory page instead.
+
+**Back to the top.** On a long page, once you scroll down a yellow round button with an up arrow appears in the bottom right corner. Tap it to jump back to the top of the page.
 
 **Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.`,
   },
