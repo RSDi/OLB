@@ -6,6 +6,7 @@ import { createClient } from "../../../lib/supabase/client";
 import type { MemberRole, MemberStatus } from "../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../lib/members/display";
 import { resolveAvatarUrl } from "../../../lib/members/avatar";
+import type { MemberEditSaveFields } from "../../../lib/members/edit-fields";
 import {
   createMember,
   addMemberRelationship,
@@ -199,18 +200,7 @@ export function MembersTab({
     setActing(null);
   }
 
-  async function saveMemberDetails(
-    id: string,
-    fields: {
-      full_name: string | null;
-      nickname: string | null;
-      avatar_url: string | null;
-      phone: string | null;
-      birthday: string | null;
-      email: string | null;
-      membership_status: string;
-    }
-  ) {
+  async function saveMemberDetails(id: string, fields: MemberEditSaveFields) {
     setActing(id);
     setError(null);
     const supabase = createClient();

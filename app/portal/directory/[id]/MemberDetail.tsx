@@ -19,6 +19,7 @@ import {
   type EditFormMember,
   type EditFormRelationship,
 } from "../../settings/MemberEditForm";
+import type { MemberEditSaveFields } from "../../../../lib/members/edit-fields";
 
 interface DetailMember {
   id: string;
@@ -35,6 +36,10 @@ interface DetailMember {
   directory_category: "regular" | "extended" | "memorial";
   deceased_at: string | null;
   status: string;
+  // Loaded for the super-admin editor, which would otherwise show a default
+  // status and login state instead of the real ones.
+  membership_status: string;
+  access_revoked_at: string | null;
 }
 
 interface Related {
@@ -87,13 +92,7 @@ export function MemberDetail({
   const [adminError, setAdminError] = useState<string | null>(null);
   const router = useRouter();
 
-  async function handleAdminSave(fields: {
-    full_name: string | null;
-    nickname: string | null;
-    avatar_url: string | null;
-    phone: string | null;
-    birthday: string | null;
-  }) {
+  async function handleAdminSave(fields: MemberEditSaveFields) {
     setAdminPending(true);
     setAdminError(null);
     const supabase = createClient();
