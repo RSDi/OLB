@@ -28,7 +28,7 @@
 --    The members column firewall lets only staff change status, and the SQL
 --    editor's postgres role isn't staff, so the update runs as service_role,
 --    which the firewall and guard_member_privilege_changes let through
---    (0088).
+--    (0088). set local ends at commit.
 --
 -- Apply via the Supabase SQL editor, after 0090. Idempotent.
 
@@ -53,7 +53,5 @@ update public.members m
    and m.deleted_at is null
    and m.role = 'member'
    and exists (select 1 from public.olb_player_parents pp where pp.member_id = m.id);
-
-reset role;
 
 commit;
