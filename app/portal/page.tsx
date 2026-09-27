@@ -5,6 +5,7 @@ import { KpiCard } from "../components/ui";
 import { createClient } from "../../lib/supabase/server";
 import { getAuthUser } from "../../lib/auth/viewer";
 import { isStaff, type MemberLike } from "../../lib/auth/permissions";
+import { seesFullUi } from "../../lib/auth/feature-preview";
 import { expandEventOccurrences } from "../../lib/events/occurrences";
 import { memberDisplayName, memberFirstName } from "../../lib/members/display";
 
@@ -29,6 +30,10 @@ export default async function PortalDashboard() {
   const supabase = await createClient();
   const user = await getAuthUser();
   if (!user) redirect("/login");
+  // Staged rollout: the Dashboard (and the request page members get in its
+  // place) is hidden from the nav for everyone else, so land them on the
+  // Directory instead of a page they can't navigate back to.
+  if (!seesFullUi(user.email)) redirect("/portal/directory");
 
   const { data: meRow } = await supabase
     .from("members")

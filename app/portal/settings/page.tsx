@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
+import { seesFullUi } from "../../../lib/auth/feature-preview";
 import { MembersTab } from "./MembersTab";
 import { AreasTab } from "./AreasTab";
 import { PrioritiesTab } from "./PrioritiesTab";
@@ -42,6 +43,7 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("areas");
   const [authChecked, setAuthChecked] = useState(false);
+  const [fullUi, setFullUi] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -65,6 +67,7 @@ export default function SettingsPage() {
       }
       setMe(memberLike);
       setUserId(user.id);
+      setFullUi(seesFullUi(user.email));
       // All committee staff land on Members — any of them can work the
       // approval queue (D1).
       setTab("members");
@@ -114,31 +117,34 @@ export default function SettingsPage() {
 
   return (
     <>
-      {/* Outer tabs */}
-      <div style={{ display: "flex", gap: 2, marginBottom: 24, flexWrap: "wrap" }}>
-        {tabs
-          .filter((t) => t.visible)
-          .map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 8,
-                background: tab === t.key ? "var(--gw-bg-elev)" : "transparent",
-                border: "1px solid",
-                borderColor: tab === t.key ? "var(--gw-border)" : "transparent",
-                fontSize: 13,
-                fontWeight: 700,
-                color: tab === t.key ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-                cursor: "pointer",
-                transition: "all 120ms",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-      </div>
+      {/* Outer tabs. Staged rollout: everyone else only gets Members, so
+          the tab bar is hidden for them. */}
+      {fullUi && (
+        <div style={{ display: "flex", gap: 2, marginBottom: 24, flexWrap: "wrap" }}>
+          {tabs
+            .filter((t) => t.visible)
+            .map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  background: tab === t.key ? "var(--gw-bg-elev)" : "transparent",
+                  border: "1px solid",
+                  borderColor: tab === t.key ? "var(--gw-border)" : "transparent",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: tab === t.key ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+                  cursor: "pointer",
+                  transition: "all 120ms",
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+        </div>
+      )}
 
       {tab === "members" && showMembers && (
         <MembersTab currentUserId={userId} canManage={isSuperAdmin(me)} />

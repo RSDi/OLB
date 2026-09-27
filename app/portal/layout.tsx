@@ -37,7 +37,12 @@ export default async function PortalLayout({
     <PortalShell
       viewer={
         viewer
-          ? { role: viewer.role, status: viewer.status, isStaff: viewer.isStaff }
+          ? {
+              role: viewer.role,
+              status: viewer.status,
+              isStaff: viewer.isStaff,
+              seesFullUi: viewer.seesFullUi,
+            }
           : null
       }
       pendingMembersCount={pendingMembersCount}
