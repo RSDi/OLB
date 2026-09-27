@@ -36,16 +36,18 @@ const NAV: NavItem[] = [
   // Team manager (roster board, registrations, import): super-admin only.
   { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
   // Board can view Settings; editing is gated per grant inside.
-  // Rendered separately, pinned to the bottom of the nav (SETTINGS_HREF).
+  // Pinned to the bottom of the nav (BOTTOM_HREFS).
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true },
-  // How-to for everything above; content in lib/help/guide.ts.
+  // How-to for everything above; content in lib/help/guide.ts. Pinned to the
+  // bottom of the nav, above Settings (BOTTOM_HREFS).
   { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/> },
 ];
 
-// Rendered on its own at the bottom of the nav, below the custom links.
+// Pinned to the bottom of the nav, below the custom links, in this order.
 const SETTINGS_HREF = "/portal/settings";
+const BOTTOM_HREFS = ["/portal/guide", SETTINGS_HREF];
 
 // Wordmark in the sidebar's brand block (Lightning theme).
 const BRAND = { name: "OLB", tagline: "MEMBER PORTAL" };
@@ -109,8 +111,10 @@ export function PortalSidebar({
   );
 
   const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi));
-  const settingsItem = visibleItems.find(item => item.href === SETTINGS_HREF);
-  const mainItems = visibleItems.filter(item => item !== settingsItem);
+  const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
+  const bottomItems = BOTTOM_HREFS
+    .map(href => visibleItems.find(item => item.href === href))
+    .filter((item): item is NavItem => !!item);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -311,10 +315,10 @@ export function PortalSidebar({
           );
         })}
 
-        {/* Settings sits at the bottom, just above Collapse / Sign out. */}
-        {settingsItem && (
-          <div style={{ marginTop: "auto", paddingTop: 8, display: "flex", flexDirection: "column" }}>
-            {renderNavItem(settingsItem)}
+        {/* User Guide and Settings sit at the bottom, just above Collapse / Sign out. */}
+        {bottomItems.length > 0 && (
+          <div style={{ marginTop: "auto", paddingTop: 8, display: "flex", flexDirection: "column", gap: 1 }}>
+            {bottomItems.map(renderNavItem)}
           </div>
         )}
       </nav>

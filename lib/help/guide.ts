@@ -78,10 +78,10 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **Directory** — players, parents, teams, coaches and volunteers.
 - **Playbooks** — how-to guides and step-by-step checklists.
 - **Slack Archive** — past messages, photos and files from the club's Slack.
-- **User Guide** — this page.
-- **Sign out** — at the bottom.
+- **User Guide** — this page, near the bottom of the sidebar.
+- **Sign out** — at the very bottom.
 
-Board members also see **External Contacts**, and **Settings** at the bottom of the sidebar, just above **Collapse**.
+Board members also see **External Contacts**, and **Settings** just below **User Guide**.
 
 Below a thin line you may see extra links the club has added, like **Schedule**. Most open in a new browser tab, so the portal stays open where you left it.
 
