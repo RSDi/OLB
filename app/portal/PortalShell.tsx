@@ -30,6 +30,8 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/pm/templates/new": { title: "New template", subtitle: "Facilities" },
   "/portal/events":      { title: "Events",       subtitle: "Calendar" },
   "/portal/directory":   { title: "Players & parents", subtitle: "Directory" },
+  "/portal/contacts":    { title: "External Contacts", subtitle: "" },
+  "/portal/contacts/new": { title: "New contact", subtitle: "External Contacts" },
   "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
   "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
   "/portal/teams":               { title: "Teams",         subtitle: "Team manager" },
@@ -103,6 +105,8 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
       ? { title: "PM Task", subtitle: "Facilities" }
       : pathname.startsWith("/portal/events/")
       ? { title: "Edit event", subtitle: "Calendar" }
+      : pathname.startsWith("/portal/contacts/")
+      ? { title: "Contact", subtitle: "External Contacts" }
       : pathname.startsWith("/portal/directory/")
       ? { title: "Member", subtitle: "Directory" }
       : pathname.endsWith("/history") && pathname.startsWith("/portal/docs/")

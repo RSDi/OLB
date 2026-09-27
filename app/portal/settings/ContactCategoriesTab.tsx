@@ -85,7 +85,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
   async function handleDelete(id: string, name: string) {
     if (
       !confirm(
-        `Move "${name}" to the deleted bin? Contacts in this category lose their grouping (they aren't deleted).`
+        `Move "${name}" to the deleted bin? Contacts of this type lose their grouping (they aren't deleted).`
       )
     ) {
       return;
@@ -110,12 +110,12 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
         }}
       >
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 540 }}>
-          Categories appear in the dropdown when creating a contact and on the contacts list filter.
-          Use them to group vendors by what they do (plumbing, electrical, IT, etc.).
+          Types appear when adding an external contact and as filters on the External Contacts
+          page. Use them to group who we work with (uniforms, photos, facilities, opponents, etc.).
         </div>
         {!adding && (
           <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
-            <Icons.Plus width={14} height={14} /> Add category
+            <Icons.Plus width={14} height={14} /> Add type
           </Pill>
         )}
       </div>
@@ -142,7 +142,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
 
       {adding && (
         <CategoryForm
-          submitLabel="Add category"
+          submitLabel="Add type"
           onCancel={() => {
             setAdding(false);
             setError(null);
@@ -165,7 +165,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
       ) : rows.length === 0 ? (
         <div className="rsd-card" style={{ textAlign: "center", padding: "40px 24px" }}>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            No contact categories yet.
+            No contact types yet.
           </div>
         </div>
       ) : (

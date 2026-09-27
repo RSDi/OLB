@@ -28,6 +28,9 @@ const NAV: NavItem[] = [
   { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/>, previewOnly: true },
   { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/>, previewOnly: true },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },
+  // Vendors, rented facilities, opposing programs. The page itself is
+  // staff-only, so the link is too.
+  { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, staffOnly: true },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
   // Team manager (roster board, registrations, import): super-admin only.
   { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true },

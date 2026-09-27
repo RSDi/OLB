@@ -109,7 +109,7 @@ export function PlayersList({
             }}
           >
             <Icons.Briefcase width={12} height={12} />
-            Vendor contacts
+            External contacts
             <Icons.ChevronRight width={12} height={12} />
           </Link>
         </div>

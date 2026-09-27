@@ -39,7 +39,7 @@ export default async function NewContactPage({
             New contact
           </h2>
           <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            Add a vendor company or someone who works there.
+            Add a company (a vendor, a facility, another program) or someone who works there.
           </p>
         </div>
         <Link

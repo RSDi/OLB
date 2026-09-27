@@ -170,7 +170,7 @@ export function ContactForm({
         </div>
         <div style={GRID_2}>
           <Select
-            label="Category"
+            label="Type"
             value={categoryId ?? ""}
             onChange={(e) => setCategoryId(e.target.value || null)}
           >
