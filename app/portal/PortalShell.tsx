@@ -37,7 +37,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/teams":               { title: "Teams",         subtitle: "Team manager" },
   "/portal/teams/registrations": { title: "Registrations", subtitle: "Team manager" },
   "/portal/teams/import":        { title: "Import roster", subtitle: "Team manager" },
-  "/portal/settings":    { title: "Settings",     subtitle: "Admin" },
+  "/portal/settings":    { title: "Settings",     subtitle: "Board" },
   "/portal/slack-archive":            { title: "Slack Archive", subtitle: "" },
   "/portal/slack-archive/search":     { title: "Search archive", subtitle: "Slack Archive" },
   "/portal/slack-archive/exceptions": { title: "Exceptions",     subtitle: "Slack Archive" },

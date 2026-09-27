@@ -304,7 +304,7 @@ function NotesPanel({ memberId, initialNotes }: { memberId: string; initialNotes
           Member notes
         </span>
         <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          Admins only — the member can&apos;t see these
+          Board only — the member can&apos;t see these
         </span>
       </div>
 

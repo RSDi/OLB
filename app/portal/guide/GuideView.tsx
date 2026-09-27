@@ -174,7 +174,7 @@ export function GuideView({ sections, updated }: { sections: GuideSection[]; upd
                   color: "var(--gw-fg-muted)",
                 }}
               >
-                {s.audience === "super_admin" ? "Super admins" : "Admins"}
+                {s.audience === "super_admin" ? "Super admins" : "Board"}
               </span>
             )}
           </h2>
