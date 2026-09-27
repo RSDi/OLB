@@ -1,7 +1,8 @@
 // Applies one player registration to the season board: finds or creates the
 // player, fills in their registration details, and links them to their
-// parents as members (pre-created approved, so a parent who signs up with
-// their registration email lands in the portal approved).
+// parents as members. New parents are pre-created pending with no login: when
+// one signs up with their registration email, the row becomes their access
+// request, and a super-admin approves it in Settings → Members.
 //
 // Shared by the spreadsheet import (scripts/import-registrations.ts, service
 // role) and the Team manager's Approve button (a super-admin's client). A
@@ -236,7 +237,7 @@ export async function applyRegistration(
     if (!member) {
       const { data, error } = await db
         .from("members")
-        .insert({ ...fromForm, email, status: "approved", role: "member" })
+        .insert({ ...fromForm, email, status: "pending", role: "member" })
         .select("id")
         .single();
       if (error || !data) {

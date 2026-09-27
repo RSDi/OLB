@@ -100,16 +100,29 @@ export async function resolveMembership({
       .maybeSingle();
 
     if (orphan) {
+      // A pending pre-created row (a parent from a player registration) isn't
+      // approved yet: signing in turns it into an access request, dated now,
+      // for a super-admin to review like any other.
+      const isRequest = orphan.status === "pending";
       const { error } = await linkClient
         .from("members")
         .update({
           user_id: user.id,
           full_name: orphan.full_name ?? fullName,
           avatar_url: avatarUrl,
+          ...(isRequest ? { requested_at: new Date().toISOString() } : {}),
         })
         .eq("id", orphan.id);
       if (error) {
         console.error(`[auth] linking pre-created member ${orphan.id} failed:`, error.message);
+      } else if (isRequest) {
+        const requestName = orphan.full_name ?? fullName;
+        sendAccessRequestNotification({ email: user.email, fullName: requestName }).catch(
+          (err) => console.error("[notify] access-request email failed:", err)
+        );
+        sendAccessRequestSlack({ email: user.email, fullName: requestName }).catch(
+          (err) => console.error("[notify] access-request slack failed:", err)
+        );
       }
       return {
         status: orphan.status as MemberStatus,

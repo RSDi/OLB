@@ -40,6 +40,18 @@ interface Member {
 
 type GrantKey = "can_edit_settings" | "can_delete_settings" | "can_undelete_settings";
 
+// Pending splits in two: people who signed in and asked (the approval queue),
+// and registered parents pre-created from a player registration who haven't
+// signed up yet. A super-admin can approve either; the first gets in on their
+// next sign-in, the second as soon as they sign up.
+type TabKey = MemberStatus | "invited";
+
+function inTab(m: Member, t: TabKey): boolean {
+  if (t === "invited") return m.status === "pending" && !m.user_id;
+  if (t === "pending") return m.status === "pending" && !!m.user_id;
+  return m.status === t;
+}
+
 interface Relationship {
   id: string;
   member_id: string;
@@ -70,7 +82,7 @@ export function MembersTab({
   const [members, setMembers] = useState<Member[]>([]);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<MemberStatus>("pending");
+  const [tab, setTab] = useState<TabKey>("pending");
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -280,11 +292,12 @@ export function MembersTab({
     setActing(null);
   }
 
-  const byStatus = (s: MemberStatus) => members.filter((m) => m.status === s);
+  const byStatus = (t: TabKey) => members.filter((m) => inTab(m, t));
   const counts = {
     pending: byStatus("pending").length,
     approved: byStatus("approved").length,
     denied: byStatus("denied").length,
+    invited: byStatus("invited").length,
   };
   const q = query.trim().toLowerCase();
   const visibleInTab = q
@@ -294,10 +307,11 @@ export function MembersTab({
       )
     : byStatus(tab);
 
-  const tabs: { key: MemberStatus; label: string }[] = [
+  const tabs: { key: TabKey; label: string }[] = [
     { key: "pending", label: "Pending" },
     { key: "approved", label: "Approved" },
     { key: "denied", label: "Denied" },
+    { key: "invited", label: "Not signed up" },
   ];
 
   return (
@@ -447,6 +461,8 @@ export function MembersTab({
               ? "No pending requests"
               : tab === "approved"
               ? "No approved members yet"
+              : tab === "invited"
+              ? "Every parent on a registration has signed up"
               : "No denied requests"}
           </div>
         </div>
@@ -500,7 +516,7 @@ export function MembersTab({
                 key={member.id}
                 member={member}
                 isSelf={member.user_id === currentUserId}
-                tab={tab}
+                tab={tab === "invited" ? "pending" : tab}
                 acting={acting === member.id}
                 canManage={canManage}
                 onApprove={() => setStatus(member.id, "approved")}

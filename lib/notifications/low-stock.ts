@@ -48,7 +48,7 @@ export async function sendLowStockNotification(info: LowStockInfo) {
     return;
   }
 
-  const from = process.env.MAIL_FROM ?? "MCC Portal <onboarding@resend.dev>";
+  const from = process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
   const vendorLine = info.vendorName
     ? `<p><strong>Reorder from:</strong> ${escapeHtml(info.vendorName)}${
         info.vendorPhone ? ` · ${escapeHtml(info.vendorPhone)}` : ""
