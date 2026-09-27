@@ -86,7 +86,7 @@ export function SearchPanel({
         {showHint && !showRecent && (
           <EmptyState
             primary="Type to search"
-            secondary="Members, maintenance, events, PM, playbooks, Slack — at least 2 characters."
+            secondary="Members, contacts, maintenance, events, PM, playbooks, Slack — at least 2 characters."
           />
         )}
         {showEmpty && (
