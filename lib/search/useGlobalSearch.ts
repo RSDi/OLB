@@ -74,7 +74,7 @@ export function useGlobalSearch(query: string, enabled: boolean): UseGlobalSearc
     const timer = setTimeout(async () => {
       try {
         const supabase = createClient();
-        // The Slack archive has its own search function (migration 0092), run
+        // The Slack archive has its own search function (migration 0093), run
         // alongside; either one failing leaves the other's results showing.
         const [records, slack] = await Promise.all([
           supabase

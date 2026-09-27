@@ -1,4 +1,4 @@
--- 0092_archive_global_search.sql
+-- 0093_archive_global_search.sql
 --
 -- Slack messages in the portal's global search. search_global (0000) is
 -- unchanged: the search box calls this function alongside it and shows the
@@ -26,7 +26,7 @@
 -- RLS into a security definer function would get the index back, at the
 -- cost of a second copy of who-can-see-what.
 --
--- Apply via the Supabase SQL editor, after 0091. Idempotent.
+-- Apply via the Supabase SQL editor, after 0092. Idempotent.
 
 create or replace function public.archive_search_global(p_query text, p_limit integer default 5)
 returns table (

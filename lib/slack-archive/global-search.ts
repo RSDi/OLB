@@ -1,7 +1,7 @@
 // Slack messages in the portal's global search: the "Slack" group under the
 // search box (lib/search/useGlobalSearch.ts). Part of the siloed Slack
 // archive: removing the archive means deleting this file, its one call in
-// useGlobalSearch, and the archive_search_global function (migration 0092).
+// useGlobalSearch, and the archive_search_global function (migration 0093).
 //
 // Runs in the browser as the signed-in user, so RLS limits the messages to
 // the channels that person can see (migration 0084).
@@ -31,7 +31,7 @@ const POSTED_ON = new Intl.DateTimeFormat("en-US", {
   timeZone: CHURCH_TZ,
 });
 
-// Never throws: if this fails (say, before migration 0092 is applied) the
+// Never throws: if this fails (say, before migration 0093 is applied) the
 // Slack group is just missing and the rest of the results still show.
 export async function searchArchiveForGlobalSearch(
   supabase: SupabaseClient,

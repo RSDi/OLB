@@ -1,4 +1,4 @@
--- 0093_search_global_contacts.sql
+-- 0094_search_global_contacts.sql
 --
 -- Puts External Contacts back in the portal's global search. The search box
 -- already has a group for them (lib/search/useGlobalSearch.ts), but the
@@ -15,7 +15,7 @@
 -- by RLS (contacts_select_staff), so members who aren't staff get no contact
 -- rows, the same as the staff-only External Contacts page.
 --
--- Apply via the Supabase SQL editor, after 0092. Idempotent.
+-- Apply via the Supabase SQL editor, after 0093. Idempotent.
 
 create or replace function public.search_global(q text, max_total integer default 25)
 returns table (entity_type text, id uuid, title text, subtitle text, href text, rank real)
@@ -56,7 +56,7 @@ as $$
         m.address    ilike '%' || q_norm.q || '%'
       )
   ),
-  -- ▼ ADDED in 0093: External Contacts (the contacts table). Staff-only by
+  -- ▼ ADDED in 0094: External Contacts (the contacts table). Staff-only by
   -- RLS, like the rest of that feature, so other callers get no contact rows.
   contact_hits as (
     select
