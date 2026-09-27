@@ -1,4 +1,4 @@
-// Server-only. Emails a member when the building committee approves their
+// Server-only. Emails a member when a super-admin approves their
 // access request — the "hey, you're in" the holding screen promises. Mirrors
 // request-decision.ts in shape and graceful degradation (no-ops if
 // RESEND_API_KEY is missing or there's no recipient).
@@ -21,12 +21,12 @@ export async function sendMembershipApprovedNotification({
     console.warn("[notify] No recipient email for membership approval — skipping");
     return;
   }
-  const from = process.env.MAIL_FROM ?? "MCC Portal <onboarding@resend.dev>";
+  const from = process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
   const hi = recipientName ? `Hi ${escapeHtml(recipientName.split(" ")[0])},` : "Hi,";
 
   const body = `
     <p>${hi}</p>
-    <p>Good news — your access to the Millard Community Church member portal has been <strong>approved</strong>.</p>
+    <p>Good news — your access to the Omaha Lightning Basketball member portal has been <strong>approved</strong>.</p>
     <p><a href="${siteUrl()}/login">Sign in to the portal</a> with the email and password you set up.</p>
     <p>If you have any trouble signing in, just reply to this email.</p>
   `;
@@ -34,7 +34,7 @@ export async function sendMembershipApprovedNotification({
   const res = await fetch(RESEND_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ from, to: [to], subject: "You're in — MCC member portal", html: body }),
+    body: JSON.stringify({ from, to: [to], subject: "You're in — Omaha Lightning member portal", html: body }),
   });
 
   if (!res.ok) {

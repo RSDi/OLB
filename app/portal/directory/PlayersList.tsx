@@ -316,6 +316,7 @@ function PlayerRow({
 
 function ParentBlock({ parent, isStaff }: { parent: DirectoryParent; isStaff: boolean }) {
   const m = parent.member!;
+  const name = m.full_name ?? m.email ?? "Unknown";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
@@ -331,15 +332,25 @@ function ParentBlock({ parent, isStaff }: { parent: DirectoryParent; isStaff: bo
         >
           {RELATIONSHIP_LABEL[parent.relationship]}
         </span>
-        <Link
-          href={`/portal/directory/${m.id}`}
-          prefetch={false}
-          style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
-        >
-          {m.full_name ?? m.email ?? "Unknown"}
-        </Link>
+        {/* A member's page is for approved members; staff can open anyone's. */}
+        {m.status === "approved" || isStaff ? (
+          <Link
+            href={`/portal/directory/${m.id}`}
+            prefetch={false}
+            style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
+          >
+            {name}
+          </Link>
+        ) : (
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>{name}</span>
+        )}
         {isStaff && !m.user_id && m.email && (
           <span className="rsd-chip rsd-chip-mute">Not signed up</span>
+        )}
+        {isStaff && m.user_id && m.status === "pending" && (
+          <Link href="/portal/settings" prefetch={false} style={{ textDecoration: "none" }}>
+            <span className="rsd-chip rsd-chip-warn">Awaiting approval</span>
+          </Link>
         )}
       </div>
       <div style={{ paddingLeft: 60 }}>

@@ -21,7 +21,7 @@ export async function sendAccessRequestNotification({
     return;
   }
   const from =
-    process.env.MAIL_FROM ?? "MCC Portal <onboarding@resend.dev>";
+    process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
 
   // Fetch super-admin emails. Only super-admins can approve/deny members
   // (per the Phase 1 permission matrix), so emailing anyone else would just

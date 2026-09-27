@@ -85,6 +85,7 @@ export interface DirectoryParent {
   member: {
     id: string;
     user_id: string | null;
+    status: "pending" | "approved" | "denied";
     full_name: string | null;
     email: string | null;
     phone: string | null;
@@ -119,13 +120,13 @@ export interface DirectoryPlayer {
 const PLAYER_COLUMNS =
   "id, full_name, dob, age_group, new_to_program, address_line1, address_line2, city, state, postal_code, phone, email, registration_fee, payment_method, shirt_size, waiver_signed, waiver_signed_on, directory_optin, " +
   "team:olb_teams(name, age_group), board:olb_boards(season), " +
-  "parents:olb_player_parents(relationship, member:members(id, user_id, full_name, email, phone, volunteer_interests))";
+  "parents:olb_player_parents(relationship, member:members(id, user_id, status, full_name, email, phone, volunteer_interests))";
 
 // Every player on the latest season's board ("2026-2027" style, so seasons
 // sort as text). RLS decides who's listed: staff see everyone, approved
-// members see the players whose family opted into the directory. A parent the
-// viewer can't see (not approved, or deleted) comes back with member: null
-// and is dropped.
+// members see the players whose family opted into the directory. Parents show
+// whether or not they've been approved for the portal yet (0091); a deleted
+// one comes back with member: null and is dropped.
 export async function loadPlayers(): Promise<DirectoryPlayer[]> {
   const supabase = await createClient();
   const { data } = await supabase

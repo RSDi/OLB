@@ -15,7 +15,8 @@ export interface MemberActionResult {
 
 // Approve / deny / restore a membership request. Any committee member (staff)
 // can do this — D1, backed by migration 0050's staff UPDATE policy + column
-// guard. Approval emails the member so they know they're in.
+// guard. Approval emails the member so they know they're in, if they've signed
+// in to ask.
 export async function setMemberStatus(
   memberId: string,
   status: MemberStatus,
@@ -39,12 +40,14 @@ export async function setMemberStatus(
     .from("members")
     .update({ status, reviewed_by: user.id, reviewed_at: new Date().toISOString() })
     .eq("id", memberId)
-    .select("id, email, full_name, status")
+    .select("id, user_id, email, full_name, status")
     .maybeSingle();
   if (error) return { error: error.message };
   if (!updated) return { error: "Member not found." };
 
-  if (status === "approved") {
+  // Only someone who signed in and asked gets the "you're in" email; a
+  // registered parent approved before they've signed up hears nothing.
+  if (status === "approved" && (updated as { user_id: string | null }).user_id) {
     sendMembershipApprovedNotification({
       to: (updated as { email: string | null }).email,
       recipientName: (updated as { full_name: string | null }).full_name,
