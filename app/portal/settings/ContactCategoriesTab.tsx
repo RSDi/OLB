@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill } from "../../components/ui";
+import { ShowMeHow } from "./ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createContactCategory,
@@ -113,11 +114,16 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
           Types appear when adding an external contact and as filters on the External Contacts
           page. Use them to group who we work with (uniforms, photos, facilities, opponents, etc.).
         </div>
-        {!adding && (
-          <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
-            <Icons.Plus width={14} height={14} /> Add type
-          </Pill>
-        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <ShowMeHow tour="settings-contact-types" />
+          {!adding && (
+            <span data-tour="contact-types-add" style={{ display: "inline-flex" }}>
+              <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
+                <Icons.Plus width={14} height={14} /> Add type
+              </Pill>
+            </span>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -217,6 +223,7 @@ function CategoryRow({
 }) {
   return (
     <div
+      data-tour="contact-types-row"
       className="rsd-card"
       style={{
         flexDirection: "row",
@@ -283,7 +290,7 @@ function CategoryForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
+    <form data-tour="contact-types-form" onSubmit={handleSubmit} className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
         <Input
           label="Name *"
@@ -306,7 +313,7 @@ function CategoryForm({
           onChange={(e) => setSortOrder(e.target.value)}
         />
       </div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <div data-tour="contact-types-save" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           Cancel
         </Pill>

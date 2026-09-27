@@ -114,25 +114,26 @@ export default function SettingsPage() {
   // members with the undelete grant see + restore soft-deleted rows.
   const showDeleted = isSuperAdmin(me);
 
-  const tabs: { key: Tab; label: string; visible: boolean }[] = [
-    { key: "members", label: "Members", visible: showMembers },
-    { key: "areas", label: "Areas", visible: true },
-    { key: "priorities", label: "Priorities", visible: true },
-    { key: "assets", label: "Assets", visible: true },
-    { key: "types", label: "Types", visible: true },
-    { key: "supplies", label: "Supplies", visible: true },
-    { key: "teams", label: "Teams", visible: isSuperAdmin(me) },
-    { key: "volunteer_roles", label: "Volunteer Roles", visible: isSuperAdmin(me) },
-    { key: "requirements", label: "Requirements", visible: canEditSettings(me) },
-    { key: "event_categories", label: "Event Categories", visible: true },
-    { key: "task_categories", label: "Task Categories", visible: true },
-    { key: "playbooks", label: "Playbooks", visible: true },
-    { key: "sidebar_links", label: "Sidebar Links", visible: isSuperAdmin(me) },
-    { key: "closures", label: "Closures", visible: true },
-    { key: "contact_categories", label: "Contact Types", visible: true },
-    { key: "integrations", label: "Integrations", visible: true },
-    { key: "audit_log", label: "Audit Log", visible: true },
-    { key: "deleted", label: "Deleted", visible: showDeleted },
+  // `tour`: the tab button's guided-tour anchor (lib/help/tours.ts).
+  const tabs: { key: Tab; label: string; visible: boolean; tour: string }[] = [
+    { key: "members", label: "Members", visible: showMembers, tour: "settings-tab-members" },
+    { key: "areas", label: "Areas", visible: true, tour: "settings-tab-areas" },
+    { key: "priorities", label: "Priorities", visible: true, tour: "settings-tab-priorities" },
+    { key: "assets", label: "Assets", visible: true, tour: "settings-tab-assets" },
+    { key: "types", label: "Types", visible: true, tour: "settings-tab-types" },
+    { key: "supplies", label: "Supplies", visible: true, tour: "settings-tab-supplies" },
+    { key: "teams", label: "Teams", visible: isSuperAdmin(me), tour: "settings-tab-teams" },
+    { key: "volunteer_roles", label: "Volunteer Roles", visible: isSuperAdmin(me), tour: "settings-tab-volunteer-roles" },
+    { key: "requirements", label: "Requirements", visible: canEditSettings(me), tour: "settings-tab-requirements" },
+    { key: "event_categories", label: "Event Categories", visible: true, tour: "settings-tab-event-categories" },
+    { key: "task_categories", label: "Task Categories", visible: true, tour: "settings-tab-task-categories" },
+    { key: "playbooks", label: "Playbooks", visible: true, tour: "settings-tab-playbooks" },
+    { key: "sidebar_links", label: "Sidebar Links", visible: isSuperAdmin(me), tour: "settings-tab-sidebar-links" },
+    { key: "closures", label: "Closures", visible: true, tour: "settings-tab-closures" },
+    { key: "contact_categories", label: "Contact Types", visible: true, tour: "settings-tab-contact-categories" },
+    { key: "integrations", label: "Integrations", visible: true, tour: "settings-tab-integrations" },
+    { key: "audit_log", label: "Audit Log", visible: true, tour: "settings-tab-audit-log" },
+    { key: "deleted", label: "Deleted", visible: showDeleted, tour: "settings-tab-deleted" },
   ];
   const shownTabs = tabs.filter(
     (t) =>
@@ -152,7 +153,7 @@ export default function SettingsPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              data-tour={t.key === "requirements" ? "settings-tab-requirements" : undefined}
+              data-tour={t.tour}
               style={{
                 padding: "8px 16px",
                 borderRadius: 8,

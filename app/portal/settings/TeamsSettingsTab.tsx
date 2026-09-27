@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { Input, Pill } from "../../components/ui";
+import { ShowMeHow } from "./ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import { createTeam, deleteTeam, updateTeamSettings } from "../../../lib/teams/volunteer-actions";
 import type { TeamSettingsInput } from "../../../lib/teams/types";
@@ -117,11 +118,16 @@ export function TeamsSettingsTab() {
           </Link>
           ; coaches and volunteers are assigned on each team&apos;s page in the Directory.
         </div>
-        {!adding && season && (
-          <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
-            <Icons.Plus width={14} height={14} /> New team
-          </Pill>
-        )}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <ShowMeHow tour="settings-teams" />
+          {!adding && season && (
+            <span data-tour="teams-add" style={{ display: "inline-flex" }}>
+              <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
+                <Icons.Plus width={14} height={14} /> New team
+              </Pill>
+            </span>
+          )}
+        </div>
       </div>
 
       {error && <ErrorBox text={error} />}
@@ -150,6 +156,7 @@ export function TeamsSettingsTab() {
             ) : (
               <div
                 key={t.id}
+                data-tour="teams-row"
                 className="rsd-card"
                 style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: "12px 18px", flexWrap: "wrap" }}
               >
@@ -238,7 +245,7 @@ function TeamForm({
   }
 
   return (
-    <form onSubmit={submit} className="rsd-card" style={{ gap: 16, padding: "18px 20px" }}>
+    <form onSubmit={submit} data-tour="teams-form" className="rsd-card" style={{ gap: 16, padding: "18px 20px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
         <Input label="Team name *" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Gold" autoFocus required />
         <fieldset style={{ border: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -303,7 +310,7 @@ function TeamForm({
         />
         <Input label="Practice location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. North Gym" />
       </div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <div data-tour="teams-save" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           Cancel
         </Pill>
