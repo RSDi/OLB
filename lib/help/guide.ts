@@ -284,6 +284,17 @@ Every signed-in member sees the links; only super-admins can change them.`,
 Tap the **trash** can to delete a category or a playbook.`,
   },
   {
+    id: "settings-contact-types",
+    title: "Settings: Contact Types",
+    audience: "super_admin",
+    keywords: ["contact types", "types", "categories", "external contacts", "vendors", "group", "filter", "slug", "sort order"],
+    body: `The types used to group External Contacts — uniforms, photos, facilities, opponents and so on. Open **Settings → Contact Types**.
+
+- **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
+- Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
+- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.`,
+  },
+  {
     id: "settings-audit-log",
     title: "Settings: Audit Log",
     audience: "super_admin",

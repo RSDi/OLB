@@ -26,7 +26,12 @@ import { SidebarLinksTab } from "./SidebarLinksTab";
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
 const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles"]);
-const SUPER_ADMIN_RELEASED_TABS = new Set<string>(["playbooks", "sidebar_links", "audit_log"]);
+const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
+  "playbooks",
+  "sidebar_links",
+  "contact_categories",
+  "audit_log",
+]);
 
 type Tab =
   | "members"
