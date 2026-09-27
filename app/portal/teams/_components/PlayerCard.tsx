@@ -13,7 +13,7 @@ export function PlayerCardView({
   dragging?: boolean;
   overlay?: boolean;
 }) {
-  const meta = [ageLabel(player.dob), player.grade].filter(Boolean).join(" · ");
+  const meta = [player.age_group, ageLabel(player.dob), player.grade].filter(Boolean).join(" · ");
   return (
     <div className={"olb-player" + (dragging ? " olb-dragging" : "") + (overlay ? " olb-overlay" : "")}>
       <div>

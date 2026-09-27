@@ -2,14 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import { getViewer } from "../../../../lib/auth/viewer";
 import { loadMembers, type DirectoryRelationship } from "../_shared/data";
-import { computeHouseholds, findBirthFamilyFor, findFamilyFor } from "../_shared/households";
-import { lastNameLower } from "../_shared/format";
 import { MemberDetail } from "./MemberDetail";
-
-function capitalize(s: string): string {
-  if (!s) return s;
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 interface DetailMember {
   id: string;
@@ -48,14 +41,19 @@ export default async function MemberDetailPage({
       .eq("id", id)
       .maybeSingle(),
     // Every approved member, memorials included, so a relationship chip can
-    // still name a spouse or parent who has passed. The family lookup and the
-    // editor below use the non-memorial subset.
+    // still name a spouse or parent who has passed. The relationship editor
+    // below uses the non-memorial subset.
     loadMembers({ includeMemorials: true }),
     // With ids: the admin editor's remove buttons need them. One read serves
-    // this member's own links, the family lookup, and the editor.
+    // this member's own links and the editor.
     supabase
       .from("member_relationships")
       .select("id, member_id, related_member_id, relationship"),
+    // The players this member is a parent of.
+    supabase
+      .from("olb_player_parents")
+      .select("player:olb_players(id, full_name, age_group, team:olb_teams(name), board:olb_boards(season))")
+      .eq("member_id", id),
   ]);
 
   // Same per-request cached lookup the portal layout already made, so this
@@ -66,7 +64,7 @@ export default async function MemberDetailPage({
     redirect("/portal/directory");
   }
 
-  const [[{ data: memberRow }, everyone, { data: relRows }], notesRes] = await Promise.all([
+  const [[{ data: memberRow }, everyone, { data: relRows }, { data: playerRows }], notesRes] = await Promise.all([
     batch,
     // Staff-only private notes (RLS returns nothing for non-staff viewers).
     viewer.isStaff
@@ -87,30 +85,30 @@ export default async function MemberDetailPage({
   const nameById = new Map(everyone.map((m) => [m.id, m.full_name ?? m.email ?? "Unknown"]));
   const visibleRels = rels.filter((r) => nameById.has(r.related_member_id));
 
-  // Resolve this member's family from the directory proper (no memorials).
   const allMembers = everyone.filter((m) => m.directory_category !== "memorial");
-  const households = computeHouseholds(allMembers, allRels);
-  const familyHousehold = findFamilyFor(households, id);
-  const family = familyHousehold
-    ? {
-        headId: familyHousehold.heads[0].id,
-        name: capitalize(lastNameLower(familyHousehold.heads[0])) || "Family",
-      }
-    : null;
 
-  // Maiden / birth family — only shown when it's a different household than
-  // the current family (e.g. a married woman keeps her maiden surname here).
-  const parentIds = rels
-    .filter((r) => r.relationship === "parent")
-    .map((r) => r.related_member_id);
-  const birthHousehold = findBirthFamilyFor(households, parentIds);
-  const birthFamily =
-    birthHousehold && birthHousehold.key !== familyHousehold?.key
-      ? {
-          headId: birthHousehold.heads[0].id,
-          name: capitalize(lastNameLower(birthHousehold.heads[0])) || "Family",
-        }
-      : null;
+  // One chip per player, from their latest season.
+  type PlayerRow = {
+    player: {
+      id: string;
+      full_name: string;
+      age_group: string | null;
+      team: { name: string } | null;
+      board: { season: string } | null;
+    } | null;
+  };
+  const latestByName = new Map<string, NonNullable<PlayerRow["player"]>>();
+  for (const { player } of (playerRows as PlayerRow[] | null) ?? []) {
+    if (!player) continue;
+    const key = player.full_name.toLowerCase();
+    const seen = latestByName.get(key);
+    if (!seen || (player.board?.season ?? "") > (seen.board?.season ?? "")) latestByName.set(key, player);
+  }
+  const players = [...latestByName.values()].map((pl) => ({
+    id: pl.id,
+    name: pl.full_name,
+    team: pl.team?.name ?? pl.age_group,
+  }));
 
   // The inline admin editor (super-admins only) needs every member and every
   // relationship for its pickers. Everyone else gets empty lists rather than
@@ -139,8 +137,7 @@ export default async function MemberDetailPage({
         relatedName: nameById.get(r.related_member_id) ?? "Unknown",
         relationship: r.relationship,
       }))}
-      family={family}
-      birthFamily={birthFamily}
+      players={players}
       allMembers={editMembers}
       allRelationships={editRelationships}
       isSelf={member.user_id === viewer.userId}
