@@ -21,15 +21,15 @@ interface EntityMeta {
 }
 
 export const ENTITY_META: Record<EntityType, EntityMeta> = {
-  member:      { groupLabel: "Members",       icon: Icons.Users },
-  contact:     { groupLabel: "Contacts",      icon: Icons.Briefcase },
-  maintenance: { groupLabel: "Maintenance",   icon: Icons.Wrench },
-  pm_task:     { groupLabel: "PM tasks",      icon: Icons.Clock },
-  pm_template: { groupLabel: "PM templates",  icon: Icons.Clock },
-  asset:       { groupLabel: "Assets",        icon: Icons.Wrench },
-  event:       { groupLabel: "Events",        icon: Icons.Calendar },
-  playbook:    { groupLabel: "Playbooks",     icon: Icons.BookOpen },
-  slack:       { groupLabel: "Slack",         icon: Icons.MessageSquare },
+  member:      { groupLabel: "Members",           icon: Icons.Users },
+  contact:     { groupLabel: "External Contacts", icon: Icons.Briefcase },
+  maintenance: { groupLabel: "Maintenance",       icon: Icons.Wrench },
+  pm_task:     { groupLabel: "PM tasks",          icon: Icons.Clock },
+  pm_template: { groupLabel: "PM templates",      icon: Icons.Clock },
+  asset:       { groupLabel: "Assets",            icon: Icons.Wrench },
+  event:       { groupLabel: "Events",            icon: Icons.Calendar },
+  playbook:    { groupLabel: "Playbooks",         icon: Icons.BookOpen },
+  slack:       { groupLabel: "Slack",             icon: Icons.MessageSquare },
 };
 
 interface PanelProps {
@@ -86,7 +86,7 @@ export function SearchPanel({
         {showHint && !showRecent && (
           <EmptyState
             primary="Type to search"
-            secondary="Members, maintenance, events, PM, playbooks, Slack — at least 2 characters."
+            secondary="Members, contacts, maintenance, events, PM, playbooks, Slack — at least 2 characters."
           />
         )}
         {showEmpty && (

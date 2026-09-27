@@ -34,7 +34,7 @@ export function messageSnippet(text: string, query: string, maxLength = 140): st
     .replace(/\s+/g, " ")
     .trim();
 
-  // Words match the start of a word, with stemming (migration 0092), so the
+  // Words match the start of a word, with stemming (migration 0093), so the
   // whole word typed may not appear ("coaches" also finds "coaching"): fall
   // back to its first four letters.
   const lower = plain.toLowerCase();
