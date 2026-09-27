@@ -64,11 +64,12 @@ playbooks/docs, volunteer teams, and global search.
    npm run import-registrations -- path/to/registrations.xlsx --dry-run
    ```
 
-   Reads the "Season Registration" sheet: players go into the Directory, and
+   Reads the "Season Registration" sheet: players land in the Team manager's
+   Unassigned pool (and the Directory) with their registration details, and
    their parents become approved members who can sign up or sign in with their
    registration email. Drop `--dry-run` to write; safe to re-run. Pass
-   `--season 2027-28` for a later season. Requires `.env.local` with the
-   service-role key.
+   `--season 2027-2028` for a later season's board. Requires `.env.local` with
+   the service-role key.
 
 6. **Run the dev server**
 

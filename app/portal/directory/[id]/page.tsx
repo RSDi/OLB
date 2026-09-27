@@ -49,10 +49,10 @@ export default async function MemberDetailPage({
     supabase
       .from("member_relationships")
       .select("id, member_id, related_member_id, relationship"),
-    // The players this member is a parent of, latest season first.
+    // The players this member is a parent of.
     supabase
-      .from("player_parents")
-      .select("player:players(id, first_name, last_name, team, season)")
+      .from("olb_player_parents")
+      .select("player:olb_players(id, full_name, age_group, team:olb_teams(name), board:olb_boards(season))")
       .eq("member_id", id),
   ]);
 
@@ -88,18 +88,26 @@ export default async function MemberDetailPage({
   const allMembers = everyone.filter((m) => m.directory_category !== "memorial");
 
   // One chip per player, from their latest season.
-  type PlayerRow = { player: { id: string; first_name: string; last_name: string; team: string | null; season: string } | null };
+  type PlayerRow = {
+    player: {
+      id: string;
+      full_name: string;
+      age_group: string | null;
+      team: { name: string } | null;
+      board: { season: string } | null;
+    } | null;
+  };
   const latestByName = new Map<string, NonNullable<PlayerRow["player"]>>();
   for (const { player } of (playerRows as PlayerRow[] | null) ?? []) {
     if (!player) continue;
-    const key = `${player.first_name} ${player.last_name}`.toLowerCase();
+    const key = player.full_name.toLowerCase();
     const seen = latestByName.get(key);
-    if (!seen || player.season > seen.season) latestByName.set(key, player);
+    if (!seen || (player.board?.season ?? "") > (seen.board?.season ?? "")) latestByName.set(key, player);
   }
   const players = [...latestByName.values()].map((pl) => ({
     id: pl.id,
-    name: `${pl.first_name} ${pl.last_name}`,
-    team: pl.team,
+    name: pl.full_name,
+    team: pl.team?.name ?? pl.age_group,
   }));
 
   // The inline admin editor (super-admins only) needs every member and every

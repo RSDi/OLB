@@ -78,7 +78,8 @@ export async function loadMembers(opts: {
   return (data as DirectoryMember[] | null) ?? [];
 }
 
-// A registered player with the parents linked to them (members rows).
+// A player on the season board (the Team manager's olb_players) with the
+// parents linked to them (members rows).
 export interface DirectoryParent {
   relationship: "father" | "mother" | "guardian";
   member: {
@@ -93,11 +94,11 @@ export interface DirectoryParent {
 
 export interface DirectoryPlayer {
   id: string;
-  season: string;
-  team: string | null;
-  first_name: string;
-  last_name: string;
-  birthdate: string | null;
+  full_name: string;
+  dob: string | null;
+  age_group: string | null;
+  team: { name: string; age_group: string | null } | null;
+  board: { season: string } | null;
   new_to_program: boolean;
   address_line1: string | null;
   address_line2: string | null;
@@ -111,26 +112,29 @@ export interface DirectoryPlayer {
   shirt_size: string | null;
   waiver_signed: boolean;
   waiver_signed_on: string | null;
+  directory_optin: boolean;
   parents: DirectoryParent[];
 }
 
 const PLAYER_COLUMNS =
-  "id, season, team, first_name, last_name, birthdate, new_to_program, address_line1, address_line2, city, state, postal_code, phone, email, registration_fee, payment_method, shirt_size, waiver_signed, waiver_signed_on, " +
-  "parents:player_parents(relationship, member:members(id, user_id, full_name, email, phone, volunteer_interests))";
+  "id, full_name, dob, age_group, new_to_program, address_line1, address_line2, city, state, postal_code, phone, email, registration_fee, payment_method, shirt_size, waiver_signed, waiver_signed_on, directory_optin, " +
+  "team:olb_teams(name, age_group), board:olb_boards(season), " +
+  "parents:olb_player_parents(relationship, member:members(id, user_id, full_name, email, phone, volunteer_interests))";
 
-// Every player in the latest season on file (seasons are "2026-27" style, so
-// they sort as text). A parent the viewer can't see (not approved, or
-// deleted) comes back with member: null and is dropped.
+// Every player on the latest season's board ("2026-2027" style, so seasons
+// sort as text). RLS decides who's listed: staff see everyone, approved
+// members see the players whose family opted into the directory. A parent the
+// viewer can't see (not approved, or deleted) comes back with member: null
+// and is dropped.
 export async function loadPlayers(): Promise<DirectoryPlayer[]> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("players")
+    .from("olb_players")
     .select(PLAYER_COLUMNS)
-    .order("last_name", { ascending: true })
-    .order("first_name", { ascending: true });
+    .order("full_name", { ascending: true });
   const players = (data as unknown as DirectoryPlayer[] | null) ?? [];
-  const season = players.reduce((max, p) => (p.season > max ? p.season : max), "");
+  const season = players.reduce((max, p) => ((p.board?.season ?? "") > max ? p.board!.season : max), "");
   return players
-    .filter((p) => p.season === season)
+    .filter((p) => p.board?.season === season)
     .map((p) => ({ ...p, parents: p.parents.filter((pa) => pa.member) }));
 }

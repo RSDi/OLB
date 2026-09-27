@@ -2,6 +2,7 @@
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { requireTeamManager } from "./guard";
+import { applyRegistration, cleanName, type RegistrationRecord } from "./apply-registration";
 
 type RegistrationInput = {
   athlete_first: string;
@@ -97,7 +98,59 @@ export async function createRegistration(input: RegistrationInput, honeypot: str
   return null;
 }
 
-// Approve → create an Unassigned player linked back to the registration.
+// The public form's answers (olb_registrations.extra, as createRegistration
+// saves it) as a registration to apply to the board.
+type Extra = {
+  first_season?: boolean | null;
+  address?: { line1?: string; line2?: string; city?: string; state?: string; zip?: string };
+  athlete_phone?: string | null;
+  athlete_email?: string | null;
+  directory_optin?: boolean;
+  father?: ParentAnswers;
+  mother?: ParentAnswers;
+  waiver_agreed?: boolean;
+  signature_date?: string | null;
+  fee_tier?: string;
+  payment_option?: string;
+};
+type ParentAnswers = { first?: string; last?: string; email?: string; phone?: string; volunteer?: string[]; volunteer_other?: string };
+
+function toRecord(reg: { first_name: string; last_name: string; dob: string | null; extra: Extra | null }): RegistrationRecord {
+  const x = reg.extra ?? {};
+  const blank = (s: string | null | undefined) => s?.trim() || null;
+  const parent = (relationship: "father" | "mother", p?: ParentAnswers) => ({
+    relationship,
+    fullName: cleanName(p?.first, p?.last),
+    email: blank(p?.email),
+    phone: blank(p?.phone),
+    volunteerInterests: [...(p?.volunteer ?? []), p?.volunteer_other?.trim()].filter(Boolean).join(", ") || null,
+  });
+  return {
+    firstName: reg.first_name,
+    lastName: reg.last_name,
+    dob: reg.dob,
+    ageGroup: null,
+    newToProgram: x.first_season === true,
+    addressLine1: blank(x.address?.line1),
+    addressLine2: blank(x.address?.line2),
+    city: blank(x.address?.city),
+    state: blank(x.address?.state),
+    postalCode: blank(x.address?.zip),
+    phone: blank(x.athlete_phone),
+    email: blank(x.athlete_email),
+    registrationFee: blank(x.fee_tier),
+    paymentMethod: blank(x.payment_option),
+    shirtSize: null,
+    waiverSigned: x.waiver_agreed === true,
+    waiverSignedOn: x.signature_date || null,
+    directoryOptin: x.directory_optin !== false,
+    parents: [parent("father", x.father), parent("mother", x.mother)],
+  };
+}
+
+// Approve → apply the registration to the board: an Unassigned player (or the
+// matching one already there) with the form's details, linked to the parents
+// as members so they can sign in. Linked back to the registration.
 export async function approveRegistration(id: string): Promise<void> {
   const userId = await requireTeamManager();
   const db = await createClient();
@@ -105,17 +158,12 @@ export async function approveRegistration(id: string): Promise<void> {
   if (!reg) throw new Error("Registration not found.");
   if (reg.status === "approved") return;
 
-  const full_name = `${reg.first_name} ${reg.last_name}`.trim();
-  const { data: player, error: pe } = await db
-    .from("olb_players")
-    .insert({ board_id: reg.board_id, team_id: null, full_name, dob: reg.dob, grade: reg.grade })
-    .select("id")
-    .single();
-  if (pe || !player) throw new Error(pe?.message ?? "Could not create player.");
+  const { playerId, notes } = await applyRegistration(db, reg.board_id, toRecord(reg));
+  for (const note of notes) console.warn(`[teams] registration ${id}: ${note}`);
 
   const { error } = await db
     .from("olb_registrations")
-    .update({ status: "approved", reviewed_by: userId, reviewed_at: new Date().toISOString(), player_id: player.id })
+    .update({ status: "approved", reviewed_by: userId, reviewed_at: new Date().toISOString(), player_id: playerId })
     .eq("id", id);
   if (error) throw new Error(error.message);
 }

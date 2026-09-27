@@ -2,23 +2,25 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
+import { ageFromDob } from "../../../lib/teams/age";
 import type { DirectoryParent, DirectoryPlayer } from "./_shared/data";
 
-const NO_TEAM = "No team";
+const NO_GROUP = "No age group";
 
-// "10U" → 10, so teams sort youngest first; anything else goes last.
-function teamOrder(team: string): number {
-  const n = parseInt(team, 10);
+// "10U" → 10, so age groups sort youngest first; anything else goes last.
+function groupOrder(group: string): number {
+  const n = parseInt(group, 10);
   return Number.isNaN(n) ? Infinity : n;
 }
 
-function ageToday(birthdate: string | null): number | null {
-  if (!birthdate) return null;
-  const [y, m, d] = birthdate.split("-").map(Number);
-  const now = new Date();
-  let age = now.getFullYear() - y;
-  if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) age--;
-  return age;
+function ageGroup(p: DirectoryPlayer): string {
+  return p.age_group ?? p.team?.age_group ?? NO_GROUP;
+}
+
+// Sort key: last name, then the rest.
+function sortName(p: DirectoryPlayer): string {
+  const words = p.full_name.trim().toLowerCase().split(/\s+/);
+  return `${words[words.length - 1]} ${words.join(" ")}`;
 }
 
 function formatDate(iso: string | null): string | null {
@@ -52,12 +54,12 @@ export function PlayersList({
   isStaff: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [team, setTeam] = useState("all");
+  const [group, setGroup] = useState("all");
 
-  const teams = useMemo(
+  const groupNames = useMemo(
     () =>
-      [...new Set(players.map((p) => p.team ?? NO_TEAM))].sort(
-        (a, b) => teamOrder(a) - teamOrder(b) || a.localeCompare(b)
+      [...new Set(players.map(ageGroup))].sort(
+        (a, b) => groupOrder(a) - groupOrder(b) || a.localeCompare(b)
       ),
     [players]
   );
@@ -66,10 +68,11 @@ export function PlayersList({
     const q = query.trim().toLowerCase();
     const digits = q.replace(/\D/g, "");
     const matches = players.filter((p) => {
-      if (team !== "all" && (p.team ?? NO_TEAM) !== team) return false;
+      if (group !== "all" && ageGroup(p) !== group) return false;
       if (!q) return true;
       const people = [
-        `${p.first_name} ${p.last_name}`,
+        p.full_name,
+        p.team?.name,
         p.email,
         ...p.parents.flatMap((pa) => [pa.member?.full_name, pa.member?.email]),
       ];
@@ -79,13 +82,14 @@ export function PlayersList({
         ph?.replace(/\D/g, "").includes(digits)
       );
     });
-    return teams
-      .map((t) => ({ team: t, players: matches.filter((p) => (p.team ?? NO_TEAM) === t) }))
+    matches.sort((a, b) => sortName(a).localeCompare(sortName(b)));
+    return groupNames
+      .map((g) => ({ group: g, players: matches.filter((p) => ageGroup(p) === g) }))
       .filter((g) => g.players.length > 0);
-  }, [players, teams, query, team]);
+  }, [players, groupNames, query, group]);
 
   const shown = groups.reduce((n, g) => n + g.players.length, 0);
-  const season = players[0]?.season;
+  const season = players[0]?.board?.season;
 
   return (
     <>
@@ -144,11 +148,11 @@ export function PlayersList({
             }}
           />
         </div>
-        {teams.length > 1 && (
+        {groupNames.length > 1 && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <FilterTab label="All teams" active={team === "all"} onClick={() => setTeam("all")} />
-            {teams.map((t) => (
-              <FilterTab key={t} label={t} active={team === t} onClick={() => setTeam(t)} />
+            <FilterTab label="All ages" active={group === "all"} onClick={() => setGroup("all")} />
+            {groupNames.map((g) => (
+              <FilterTab key={g} label={g} active={group === g} onClick={() => setGroup(g)} />
             ))}
           </div>
         )}
@@ -165,7 +169,7 @@ export function PlayersList({
         <Empty text="No matches." />
       ) : (
         groups.map((g) => (
-          <section key={g.team} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <section key={g.group} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <h2
               style={{
                 margin: 0,
@@ -179,7 +183,7 @@ export function PlayersList({
                 gap: 8,
               }}
             >
-              {g.team}
+              {g.group}
               <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: 0 }}>
                 {g.players.length}
               </span>
@@ -248,8 +252,8 @@ function PlayerRow({
   isStaff: boolean;
   border: boolean;
 }) {
-  const age = ageToday(p.birthdate);
-  const born = formatDate(p.birthdate);
+  const age = ageFromDob(p.dob);
+  const born = formatDate(p.dob);
   const addr = address(p);
   const staffFacts = [
     p.registration_fee && `Fee: ${p.registration_fee}`,
@@ -270,11 +274,15 @@ function PlayerRow({
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gw-fg)" }}>
-            {p.first_name} {p.last_name}
-          </span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gw-fg)" }}>{p.full_name}</span>
+          {p.team && <span className="rsd-chip rsd-chip-mute">{p.team.name}</span>}
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
+          {isStaff && !p.directory_optin && (
+            <span className="rsd-chip rsd-chip-mute" title="The family said no to the directory; only staff see this player">
+              Not in directory
+            </span>
+          )}
         </div>
         {(age != null || born) && (
           <div style={muted}>
