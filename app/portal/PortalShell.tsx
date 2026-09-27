@@ -16,7 +16,13 @@ import { InfoPanel } from "../components/InfoPanel";
 import { GuidedTour, TourContext } from "../components/GuidedTour";
 import { ScrollToTopButton } from "../components/ScrollToTopButton";
 import { guideSectionForPath } from "../../lib/help/guide";
-import { WELCOME_TOUR_ID, WELCOME_TOUR_SEEN_KEY, tourForPath } from "../../lib/help/tours";
+import {
+  WELCOME_TOUR_ID,
+  WELCOME_TOUR_SEEN_KEY,
+  autoStartsWelcomeTour,
+  tourForPath,
+} from "../../lib/help/tours";
+import { createClient } from "../../lib/supabase/client";
 import type { TopbarSearchHandle } from "../components/TopbarSearch";
 import type { SidebarLink } from "../../lib/sidebar-links/url";
 import { portalFontVariables } from "./fonts";
@@ -84,18 +90,36 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, childre
     setMobileOpen(inSidebar && phone);
   }, []);
 
-  // The welcome tour starts by itself the first time an approved member
-  // lands on the Directory (home) in this browser.
+  // The welcome tour starts by itself the first time an approved member with
+  // a new account lands on the Directory (home) in this browser. Existing
+  // accounts start it from the User Guide. Asking Supabase when the login was
+  // made costs a call, so it's only asked until this browser remembers.
   useEffect(() => {
     if (viewer?.status !== "approved" || pathname !== "/portal/directory") return;
     try {
       if (localStorage.getItem(WELCOME_TOUR_SEEN_KEY)) return;
-      localStorage.setItem(WELCOME_TOUR_SEEN_KEY, new Date().toISOString());
     } catch {
       return; // no storage → no way to remember, so don't nag every visit
     }
-    const t = setTimeout(() => startTour(WELCOME_TOUR_ID), 600);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    createClient()
+      .auth.getUser()
+      .then(({ data, error }) => {
+        if (cancelled || error || !data.user) return;
+        try {
+          localStorage.setItem(WELCOME_TOUR_SEEN_KEY, new Date().toISOString());
+        } catch {
+          return;
+        }
+        if (autoStartsWelcomeTour(data.user.created_at)) {
+          timer = setTimeout(() => startTour(WELCOME_TOUR_ID), 600);
+        }
+      });
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [viewer?.status, pathname, startTour]);
 
   // Cmd+K / Ctrl+K behavior depends on viewport: focus the inline topbar

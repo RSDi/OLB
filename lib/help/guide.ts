@@ -94,7 +94,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 **Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
 
-**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. The welcome tour starts by itself the first time you sign in; take it again any time with **Take the tour** at the top of this guide. For a tour of just one page, tap **ⓘ** on that page and then **Show me around**, or press **Show me around** next to a section's title below.`,
+**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, tap **ⓘ** on that page and then **Show me around**, or press **Show me around** next to a section's title below.`,
   },
   {
     id: "directory",

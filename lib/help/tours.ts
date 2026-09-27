@@ -7,7 +7,8 @@
 //   - "Take the tour" at the top of the User Guide, and "Show me around" on a
 //     guide section that has one.
 //   - "Show me around" in the top-bar "i" panel, for the page you're on.
-//   - The welcome tour starts by itself the first time someone signs in.
+//   - The welcome tour starts by itself for new accounts only (see
+//     autoStartsWelcomeTour); everyone else starts it from the User Guide.
 //
 // A step points at the element marked `data-tour="<target>"`. A step whose
 // element isn't on the page (a board-only button, a list with nothing in it
@@ -382,7 +383,19 @@ export function tourForPath(pathname: string, viewer: GuideViewer | null | undef
   return tour && tour.route === pathname ? tour : null;
 }
 
-// Remembers, per browser, that someone has seen the welcome tour so it only
-// starts by itself once.
 export const WELCOME_TOUR_ID = "welcome";
+// Remembers, per browser, that the welcome tour has been offered (or ruled
+// out for an existing account) so the check runs once.
 export const WELCOME_TOUR_SEEN_KEY = "olb-welcome-tour-seen";
+// The day tours shipped. Logins created from here on are "new" and get the
+// welcome tour by itself; people who already had an account start it from
+// "Take the tour" in the User Guide instead of being interrupted.
+export const WELCOME_TOUR_NEW_SINCE = "2026-09-27T00:00:00Z";
+
+// Whether the welcome tour starts by itself for a login created at
+// `accountCreatedAt` (Supabase's auth user created_at).
+export function autoStartsWelcomeTour(accountCreatedAt: string | null | undefined): boolean {
+  if (!accountCreatedAt) return false;
+  const created = Date.parse(accountCreatedAt);
+  return !Number.isNaN(created) && created >= Date.parse(WELCOME_TOUR_NEW_SINCE);
+}

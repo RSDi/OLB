@@ -10,6 +10,8 @@ import { GUIDE_SECTIONS, type GuideAudience, type GuideViewer } from "../../lib/
 import {
   GUIDE_TOURS,
   WELCOME_TOUR_ID,
+  WELCOME_TOUR_NEW_SINCE,
+  autoStartsWelcomeTour,
   tourForPath,
   tourForSection,
   tourStepsFor,
@@ -107,4 +109,12 @@ test("each page tour is offered from its own page's ⓘ panel, and only there", 
   // Inside a channel, the channel-list tour would point at nothing.
   assert.equal(tourForPath("/portal/slack-archive/C0123", MEMBER), null);
   assert.equal(tourForPath("/portal/guide", MEMBER), null);
+});
+
+test("the welcome tour starts by itself only for accounts made since tours shipped", () => {
+  assert.equal(autoStartsWelcomeTour(WELCOME_TOUR_NEW_SINCE), true);
+  assert.equal(autoStartsWelcomeTour("2027-01-15T09:30:00.123456+00:00"), true);
+  assert.equal(autoStartsWelcomeTour("2025-08-01T12:00:00Z"), false);
+  assert.equal(autoStartsWelcomeTour(null), false);
+  assert.equal(autoStartsWelcomeTour("not a date"), false);
 });
