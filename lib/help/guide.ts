@@ -81,7 +81,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **User Guide** — this page.
 - **Sign out** — at the bottom.
 
-Admins also see **External Contacts** and **Settings**.
+Admins also see **External Contacts**, and **Settings** at the bottom of the sidebar, just above **Collapse**.
 
 Below a thin line you may see extra links the club has added, like **Schedule**. Most open in a new browser tab, so the portal stays open where you left it.
 
