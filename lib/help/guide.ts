@@ -81,7 +81,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **User Guide** — this page.
 - **Sign out** — at the bottom.
 
-Admins also see **External Contacts** and **Settings**.
+Admins also see **External Contacts**, and **Settings** at the bottom of the sidebar, just above **Collapse**.
 
 Below a thin line you may see extra links the club has added, like **Schedule**. Most open in a new browser tab, so the portal stays open where you left it.
 
@@ -282,6 +282,17 @@ Every signed-in member sees the links; only super-admins can change them.`,
 - **Playbooks** lists every playbook, newest-updated first. Tap one to open it and edit its content.
 
 Tap the **trash** can to delete a category or a playbook.`,
+  },
+  {
+    id: "settings-contact-types",
+    title: "Settings: Contact Types",
+    audience: "super_admin",
+    keywords: ["contact types", "types", "categories", "external contacts", "vendors", "group", "filter", "slug", "sort order"],
+    body: `The types used to group External Contacts — uniforms, photos, facilities, opponents and so on. Open **Settings → Contact Types**.
+
+- **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
+- Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
+- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.`,
   },
   {
     id: "settings-audit-log",
