@@ -10,7 +10,8 @@ import { PrioritiesTab } from "./PrioritiesTab";
 import { AssetsTab } from "./AssetsTab";
 import { TypesTab } from "./TypesTab";
 import { SuppliesTab } from "./SuppliesTab";
-import { VolunteerTeamsTab } from "./VolunteerTeamsTab";
+import { TeamsSettingsTab } from "./TeamsSettingsTab";
+import { VolunteerRolesTab } from "./VolunteerRolesTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
 import { TaskCategoriesTab } from "./TaskCategoriesTab";
 import { PlaybooksTab } from "./PlaybooksTab";
@@ -27,7 +28,8 @@ type Tab =
   | "assets"
   | "types"
   | "supplies"
-  | "volunteer_teams"
+  | "teams"
+  | "volunteer_roles"
   | "event_categories"
   | "task_categories"
   | "playbooks"
@@ -104,7 +106,8 @@ export default function SettingsPage() {
     { key: "assets", label: "Assets", visible: true },
     { key: "types", label: "Types", visible: true },
     { key: "supplies", label: "Supplies", visible: true },
-    { key: "volunteer_teams", label: "Teams", visible: true },
+    { key: "teams", label: "Teams", visible: isSuperAdmin(me) },
+    { key: "volunteer_roles", label: "Volunteer Roles", visible: isSuperAdmin(me) },
     { key: "event_categories", label: "Event Categories", visible: true },
     { key: "task_categories", label: "Task Categories", visible: true },
     { key: "playbooks", label: "Playbooks", visible: true },
@@ -154,7 +157,8 @@ export default function SettingsPage() {
       {tab === "assets" && <AssetsTab me={me} />}
       {tab === "types" && <TypesTab me={me} />}
       {tab === "supplies" && <SuppliesTab me={me} />}
-      {tab === "volunteer_teams" && <VolunteerTeamsTab me={me} />}
+      {tab === "teams" && isSuperAdmin(me) && <TeamsSettingsTab />}
+      {tab === "volunteer_roles" && isSuperAdmin(me) && <VolunteerRolesTab />}
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}

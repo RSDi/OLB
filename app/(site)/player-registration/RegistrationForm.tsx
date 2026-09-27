@@ -2,18 +2,9 @@
 import { useState } from "react";
 import { createRegistration } from "../../../lib/teams/registration-actions";
 import SignaturePad from "./SignaturePad";
+import { VOLUNTEER_OPTIONS } from "../../../lib/teams/volunteer-options";
 
-const VOLUNTEER = [
-  "Coach/ Assistant Coach",
-  "Team Parent (1 per Team)",
-  "Team Scorekeeper/ Clock (1 or 2 per team)",
-  "Game Videography (1 per team)",
-  "Game Photography/ End of Season Slideshow (1 per team)",
-  "Social Media Manager",
-  "Fundraising",
-  "Admissions/ Concessions",
-  "Board Member",
-];
+const VOLUNTEER = VOLUNTEER_OPTIONS;
 const FEE_TIERS = ["8u-12u - $375.00", "14u - $400.00", "16u-18u - $525.00"];
 
 const US_STATES: [string, string][] = [

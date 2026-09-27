@@ -4,6 +4,10 @@ import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { ageFromDob } from "../../../lib/teams/age";
 import type { DirectoryParent, DirectoryPlayer } from "./_shared/data";
+import { TeamBanner, TeamDot } from "./_shared/TeamBanner";
+import type { OlbVolunteerRole } from "../../../lib/teams/types";
+import type { TeamWithStaff } from "../../../lib/teams/volunteer-data";
+import { teamLabel } from "../../../lib/teams/volunteer-options";
 
 const NO_GROUP = "No age group";
 
@@ -46,14 +50,25 @@ const RELATIONSHIP_LABEL: Record<DirectoryParent["relationship"], string> = {
   guardian: "Guardian",
 };
 
+type View = "team" | "age";
+const NO_TEAM = "none";
+
 export function PlayersList({
   players,
   isStaff,
+  teams,
+  roles,
+  canViewAges,
 }: {
   players: DirectoryPlayer[];
   isStaff: boolean;
+  teams: TeamWithStaff[];
+  roles: OlbVolunteerRole[];
+  canViewAges: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<View>("team");
+  const [teamId, setTeamId] = useState("all");
   const [group, setGroup] = useState("all");
 
   const groupNames = useMemo(
@@ -64,11 +79,19 @@ export function PlayersList({
     [players]
   );
 
-  const groups = useMemo(() => {
+  const countByTeam = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of players) {
+      const k = p.team_id ?? NO_TEAM;
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return m;
+  }, [players]);
+
+  const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     const digits = q.replace(/\D/g, "");
-    const matches = players.filter((p) => {
-      if (group !== "all" && ageGroup(p) !== group) return false;
+    const list = players.filter((p) => {
       if (!q) return true;
       const people = [
         p.full_name,
@@ -82,13 +105,33 @@ export function PlayersList({
         ph?.replace(/\D/g, "").includes(digits)
       );
     });
-    matches.sort((a, b) => sortName(a).localeCompare(sortName(b)));
-    return groupNames
-      .map((g) => ({ group: g, players: matches.filter((p) => ageGroup(p) === g) }))
-      .filter((g) => g.players.length > 0);
-  }, [players, groupNames, query, group]);
+    return list.sort((a, b) => sortName(a).localeCompare(sortName(b)));
+  }, [players, query]);
 
-  const shown = groups.reduce((n, g) => n + g.players.length, 0);
+  // Sections to render: one per age group, or one per team (a single team
+  // when one is picked), plus players not on a team yet.
+  const sections = useMemo(() => {
+    if (view === "age") {
+      return groupNames
+        .filter((g) => group === "all" || g === group)
+        .map((g) => ({ key: g, title: g, team: null as TeamWithStaff | null, players: matches.filter((p) => ageGroup(p) === g) }))
+        .filter((g) => g.players.length > 0);
+    }
+    const picked = teamId === "all" ? teams : teams.filter((t) => t.id === teamId);
+    const out = picked.map((t) => ({
+      key: t.id,
+      title: teamLabel(t),
+      team: t as TeamWithStaff | null,
+      players: matches.filter((p) => p.team_id === t.id),
+    }));
+    if (teamId === "all" || teamId === NO_TEAM) {
+      out.push({ key: NO_TEAM, title: "Not on a team yet", team: null, players: matches.filter((p) => !p.team_id) });
+    }
+    return out.filter((g) => g.players.length > 0 || (teamId !== "all" && g.team));
+  }, [view, groupNames, group, matches, teams, teamId]);
+
+  const pickedTeam = view === "team" && teamId !== "all" ? teams.find((t) => t.id === teamId) ?? null : null;
+  const shown = sections.reduce((n, g) => n + g.players.length, 0);
   const season = players[0]?.board?.season;
 
   return (
@@ -115,48 +158,91 @@ export function PlayersList({
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ position: "relative", maxWidth: 480 }}>
-          <span
-            style={{
-              position: "absolute",
-              left: 12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--gw-fg-muted)",
-              display: "flex",
-            }}
-          >
-            <Icons.Search width={14} height={14} />
-          </span>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search players, parents, emails, or phones"
-            aria-label="Search the directory"
-            style={{
-              width: "100%",
-              height: 40,
-              padding: "0 12px 0 36px",
-              borderRadius: 10,
-              border: "1px solid var(--gw-border)",
-              background: "var(--gw-bg)",
-              color: "var(--gw-fg)",
-              fontSize: 13,
-              fontWeight: 500,
-            }}
-          />
-        </div>
-        {groupNames.length > 1 && (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <FilterTab label="All ages" active={group === "all"} onClick={() => setGroup("all")} />
-            {groupNames.map((g) => (
-              <FilterTab key={g} label={g} active={group === g} onClick={() => setGroup(g)} />
-            ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ position: "relative", flex: "1 1 320px", maxWidth: 480 }}>
+            <span
+              style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--gw-fg-muted)",
+                display: "flex",
+              }}
+            >
+              <Icons.Search width={14} height={14} />
+            </span>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search players, parents, emails, or phones"
+              aria-label="Search the directory"
+              style={{
+                width: "100%",
+                height: 40,
+                padding: "0 12px 0 36px",
+                borderRadius: 10,
+                border: "1px solid var(--gw-border)",
+                background: "var(--gw-bg)",
+                color: "var(--gw-fg)",
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            />
           </div>
+          {canViewAges && (
+            <div
+              role="group"
+              aria-label="Group the directory"
+              style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
+            >
+              <SegButton label="By team" active={view === "team"} onClick={() => setView("team")} />
+              <SegButton label="By age group" active={view === "age"} onClick={() => setView("age")} />
+            </div>
+          )}
+        </div>
+
+        {view === "team" ? (
+          teams.length > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <TeamChip label="All teams" active={teamId === "all"} onClick={() => setTeamId("all")} />
+              {teams.map((t) => (
+                <TeamChip
+                  key={t.id}
+                  label={teamLabel(t)}
+                  color={t.color}
+                  count={countByTeam.get(t.id) ?? 0}
+                  active={teamId === t.id}
+                  onClick={() => setTeamId(t.id)}
+                />
+              ))}
+              {(countByTeam.get(NO_TEAM) ?? 0) > 0 && (
+                <TeamChip
+                  label="No team yet"
+                  count={countByTeam.get(NO_TEAM) ?? 0}
+                  active={teamId === NO_TEAM}
+                  onClick={() => setTeamId(NO_TEAM)}
+                />
+              )}
+            </div>
+          )
+        ) : (
+          groupNames.length > 1 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <FilterTab label="All ages" active={group === "all"} onClick={() => setGroup("all")} />
+              {groupNames.map((g) => (
+                <FilterTab key={g} label={g} active={group === g} onClick={() => setGroup(g)} />
+              ))}
+            </div>
+          )
         )}
       </div>
+
+      {pickedTeam && (
+        <TeamBanner team={pickedTeam} roles={roles} playerCount={countByTeam.get(pickedTeam.id) ?? 0} />
+      )}
 
       <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
         {shown} {shown === 1 ? "player" : "players"}
@@ -165,43 +251,134 @@ export function PlayersList({
 
       {players.length === 0 ? (
         <Empty text="No players yet. Registrations show up here once they're imported." />
-      ) : groups.length === 0 ? (
-        <Empty text="No matches." />
+      ) : shown === 0 ? (
+        <Empty text={query ? "No matches." : "No players on this team yet."} />
       ) : (
-        groups.map((g) => (
-          <section key={g.group} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: 13,
-                fontWeight: 800,
-                letterSpacing: ".06em",
-                textTransform: "uppercase",
-                color: "var(--gw-fg)",
-                display: "flex",
-                alignItems: "baseline",
-                gap: 8,
-              }}
-            >
-              {g.group}
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: 0 }}>
-                {g.players.length}
-              </span>
-            </h2>
-            <div className="rsd-card" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
-              {g.players.map((p, i) => (
-                <PlayerRow
-                  key={p.id}
-                  player={p}
-                  isStaff={isStaff}
-                  border={i < g.players.length - 1}
-                />
-              ))}
-            </div>
-          </section>
-        ))
+        sections
+          .filter((g) => g.players.length > 0)
+          .map((g) => (
+            <section key={g.key} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {!pickedTeam && (
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    fontWeight: 800,
+                    letterSpacing: ".06em",
+                    textTransform: "uppercase",
+                    color: "var(--gw-fg)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  {g.team && <TeamDot color={g.team.color} />}
+                  {g.title}
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: 0 }}>
+                    {g.players.length}
+                  </span>
+                  {g.team && (
+                    <Link
+                      href={`/portal/directory/teams/${g.team.id}`}
+                      prefetch={false}
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        letterSpacing: 0,
+                        textTransform: "none",
+                        color: "var(--gw-fg-muted)",
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      Team page
+                      <Icons.ChevronRight width={12} height={12} />
+                    </Link>
+                  )}
+                </h2>
+              )}
+              <div className="rsd-card" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
+                {g.players.map((p, i) => (
+                  <PlayerRow
+                    key={p.id}
+                    player={p}
+                    isStaff={isStaff}
+                    border={i < g.players.length - 1}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
       )}
     </>
+  );
+}
+
+function TeamChip({
+  label,
+  color,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  color?: string | null;
+  count?: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        height: 34,
+        padding: "0 14px",
+        borderRadius: 100,
+        background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+        color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
+        border: "1px solid",
+        borderColor: active ? "var(--rsd-accent-fill)" : "var(--gw-border)",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+      }}
+    >
+      {color !== undefined && <TeamDot color={color} />}
+      {label}
+      {count !== undefined && <span style={{ fontWeight: 600, opacity: 0.65 }}>{count}</span>}
+    </button>
+  );
+}
+
+function SegButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      style={{
+        height: 32,
+        padding: "0 14px",
+        borderRadius: 8,
+        border: "none",
+        background: active ? "var(--gw-bg-elev)" : "transparent",
+        boxShadow: active ? "0 1px 2px rgba(0,0,0,.08)" : "none",
+        color: active ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -275,7 +452,7 @@ function PlayerRow({
       <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gw-fg)" }}>{p.full_name}</span>
-          {p.team && <span className="rsd-chip rsd-chip-mute">{p.team.name}</span>}
+          {p.team && <span className="rsd-chip rsd-chip-mute">{teamLabel(p.team)}</span>}
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
           {isStaff && !p.directory_optin && (
