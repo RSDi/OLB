@@ -1,39 +1,31 @@
--- 0093_global_search_contacts.sql
+-- 0096_search_global_contacts_ranking.sql
 --
--- External Contacts in the portal's global search. The search box has a
--- "Contacts" group ready (app/components/search/SearchPanel.tsx), but
--- search_global never returned a contact: the archived MCC migration
--- 0038_search_contacts.sql added them, but its version isn't the one in the
--- baseline (0000) this database was built from. This is the baseline's
--- search_global with a contact_hits CTE added; every other group is
--- unchanged.
+-- Reworks the External Contacts group that 0094 added to search_global;
+-- the rest of the function is unchanged (the baseline's, word for word).
+-- This was written in parallel with 0094 as 0093_global_search_contacts.sql,
+-- which collided with 0093_archive_global_search.sql, so it's renumbered
+-- here. Production already runs it: it was applied by hand as 0093.
 --
--- A contact matches on what the External Contacts page's own search box
--- matches: name, nickname, email, phone, mobile phone, address, account
--- number, type (its contact_categories row), company (the parent contact of
--- a person) and tags. The hit shows the name, with nickname · type · company
--- · email · phone (or mobile) under it, and opens /portal/contacts/<id>.
+-- What changes in contact_hits:
+--   - Ranking. Still trigram similarity, but of the best single field, the
+--     way the maintenance hits do it, instead of one string of every field.
+--     Contacts have many optional fields, and with one string a complete
+--     record ranks below a sparse one ("Acme Uniforms" fell out of the top
+--     five for "acme" in testing). The company isn't ranked on, so searching
+--     a company's name lists it before the people who work there.
+--   - The company (a person's parent contact) is matched too, as on the
+--     External Contacts page's own search box.
+--   - A deleted type or company neither matches nor shows. The deleted_at
+--     filters on the joins matter because contacts_select_staff lets staff
+--     read deleted rows.
+--   - The nickname leads the subtitle, as for members: nickname · type ·
+--     company · email · phone (or mobile).
 --
--- Ranked by trigram similarity like every group, the way the maintenance
--- hits do it: the best single field, not one string of every field as for
--- members. Contacts have many optional fields, and with one string a
--- complete record ranks below a sparse one. The company isn't ranked on, so
--- searching a company's name lists it before the people who work there.
--- Five at most, like every group.
+-- Still security invoker, so RLS keeps contacts to staff. Five at most, like
+-- every group.
 --
--- Deleted contacts are left out, and a deleted type or company neither
--- matches nor shows, as on the contacts page.
---
--- Security invoker, as before, so RLS decides who gets the group: contacts
--- and contact_categories are readable by staff only (0000), so everyone else
--- gets no contact rows. contacts_select_staff also lets staff read deleted
--- rows, hence the deleted_at filters here.
---
--- 0038 also added a trigram index on the concatenated fields. It isn't
--- recreated: the per-column ilikes can't use it, and the list is short.
---
--- Apply via the Supabase SQL editor. It needs only the baseline, so it can
--- go before or after 0092. Idempotent.
+-- Already applied to production (as 0093). Otherwise apply via the Supabase
+-- SQL editor, after 0095. Idempotent.
 
 create or replace function public.search_global(q text, max_total integer default 25)
 returns table (
@@ -82,7 +74,7 @@ as $$
         m.address    ilike '%' || q_norm.q || '%'
       )
   ),
-  -- ▼ ADDED in 0093: External Contacts. Staff-only through RLS.
+  -- ▼ CHANGED in 0096 (added in 0094): External Contacts. Staff-only through RLS.
   contact_hits as (
     select
       'contact'::text as entity_type,
