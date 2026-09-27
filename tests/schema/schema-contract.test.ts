@@ -148,3 +148,18 @@ test("rpc: search_global exists", { skip }, async () => {
   });
   assert.equal(res.status, 200, await res.text().then((t) => t.slice(0, 200)));
 });
+
+// Migration 0092. The search box runs it next to search_global and just
+// leaves the Slack group out if it's missing, so nothing else shows the gap.
+test("rpc: archive_search_global exists", { skip }, async () => {
+  const res = await fetch(`${env!.url}/rest/v1/rpc/archive_search_global`, {
+    method: "POST",
+    headers: {
+      apikey: env!.key,
+      Authorization: `Bearer ${env!.key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_query: "zz-schema-probe", p_limit: 1 }),
+  });
+  assert.equal(res.status, 200, await res.text().then((t) => t.slice(0, 200)));
+});

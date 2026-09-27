@@ -29,6 +29,7 @@ export const ENTITY_META: Record<EntityType, EntityMeta> = {
   asset:       { groupLabel: "Assets",        icon: Icons.Wrench },
   event:       { groupLabel: "Events",        icon: Icons.Calendar },
   playbook:    { groupLabel: "Playbooks",     icon: Icons.BookOpen },
+  slack:       { groupLabel: "Slack",         icon: Icons.MessageSquare },
 };
 
 interface PanelProps {
@@ -85,7 +86,7 @@ export function SearchPanel({
         {showHint && !showRecent && (
           <EmptyState
             primary="Type to search"
-            secondary="Members, maintenance, events, PM, playbooks — at least 2 characters."
+            secondary="Members, maintenance, events, PM, playbooks, Slack — at least 2 characters."
           />
         )}
         {showEmpty && (
