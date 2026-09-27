@@ -88,6 +88,7 @@ export default async function PortalPlaybooksPage() {
         {staff && (
           <Link
             href="/portal/docs/new"
+            data-tour="playbooks-new"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -140,6 +141,7 @@ export default async function PortalPlaybooksPage() {
               <Link
                 key={doc.id}
                 href={`/portal/docs/${doc.id}`}
+                data-tour="playbooks-card"
                 className="rsd-card gw-press"
                 style={{
                   cursor: "pointer",

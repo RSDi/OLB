@@ -114,13 +114,15 @@ export function SearchPanel({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div className="rsd-slack-sticky-bar" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <Input
-          label="Search text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={'e.g. tournament hotel, or "exact phrase"'}
-        />
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+        <div data-tour="archive-search-text">
+          <Input
+            label="Search text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={'e.g. tournament hotel, or "exact phrase"'}
+          />
+        </div>
+        <div data-tour="archive-search-filters" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
           {channels.length > 0 && (
             <FilterDropdown
               label="Channel"

@@ -333,9 +333,11 @@ export function MembersTab({
             : "Approve or deny access requests. New members are emailed when you approve them."}
         </div>
         {canManage && !adding && (
-          <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
-            <Icons.Plus width={14} height={14} /> Add member
-          </Pill>
+          <span data-tour="members-add" style={{ display: "inline-flex" }}>
+            <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
+              <Icons.Plus width={14} height={14} /> Add member
+            </Pill>
+          </span>
         )}
       </div>
 
@@ -352,7 +354,7 @@ export function MembersTab({
       )}
 
       {/* Search */}
-      <div style={{ position: "relative", marginBottom: 14 }}>
+      <div data-tour="members-search" style={{ position: "relative", marginBottom: 14 }}>
         <span
           style={{
             position: "absolute",
@@ -385,7 +387,7 @@ export function MembersTab({
       </div>
 
       {/* Status sub-tabs */}
-      <div style={{ display: "flex", gap: 2, marginBottom: 20 }}>
+      <div data-tour="members-status" style={{ display: "flex", gap: 2, marginBottom: 20 }}>
         {tabs.map((t) => (
           <button
             key={t.key}

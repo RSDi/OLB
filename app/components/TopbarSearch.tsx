@@ -113,6 +113,7 @@ export const TopbarSearch = forwardRef<TopbarSearchHandle>(function TopbarSearch
   return (
     <div
       ref={wrapperRef}
+      data-tour="global-search"
       style={{
         position: "relative",
         flex: 1,

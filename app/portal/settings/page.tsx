@@ -144,7 +144,7 @@ export default function SettingsPage() {
       {/* Outer tabs. Staged rollout: everyone else only gets the released
           tabs, and no bar at all when that leaves just one. */}
       {shownTabs.length > 1 && (
-        <div style={{ display: "flex", gap: 2, marginBottom: 24, flexWrap: "wrap" }}>
+        <div data-tour="settings-tabs" style={{ display: "flex", gap: 2, marginBottom: 24, flexWrap: "wrap" }}>
           {shownTabs.map((t) => (
             <button
               key={t.key}

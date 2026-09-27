@@ -1,7 +1,8 @@
 "use client";
 // The per-page help panel. Opened by the "i" button in the top bar; shows the
 // User Guide section for the current page (markdown), with a link through to
-// the full guide at that section. Mirrors the GlobalSearch modal: backdrop +
+// the full guide at that section, and "Show me around" when the page has a
+// guided tour (lib/help/tours.ts). Mirrors the GlobalSearch modal: backdrop +
 // centered card on desktop, full-screen sheet on mobile, Esc to close.
 import { useEffect } from "react";
 import Link from "next/link";
@@ -13,10 +14,13 @@ export function InfoPanel({
   section,
   open,
   onClose,
+  onStartTour,
 }: {
   section: GuideSection | null;
   open: boolean;
   onClose: () => void;
+  // Starts this page's guided tour; absent when it has none.
+  onStartTour?: () => void;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -116,8 +120,31 @@ export function InfoPanel({
             padding: "12px 18px",
             borderTop: "1px solid var(--gw-border)",
             flexShrink: 0,
+            flexWrap: "wrap",
           }}
         >
+          {onStartTour && (
+            <button
+              type="button"
+              onClick={onStartTour}
+              className="gw-press"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 14px",
+                borderRadius: 100,
+                background: "transparent",
+                color: "var(--gw-fg)",
+                border: "1px solid var(--gw-border)",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              Show me around
+            </button>
+          )}
           <Link
             href={guideHref(section.id)}
             prefetch={false}

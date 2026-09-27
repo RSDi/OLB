@@ -59,7 +59,7 @@ export function ChannelsPanel({ channels, isAdmin }: { channels: ArchiveChannel[
             each channel follows Slack: private channels only show up for their members,
             re-checked every night — or right away with Refresh access.
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div data-tour="archive-admin" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Pill variant="ghost" size="sm" onClick={handleRefreshAccess} disabled={pending}>
               {pending ? "Working…" : "Refresh access"}
             </Pill>
@@ -152,6 +152,7 @@ function ChannelRow({
   return (
     <div
       className="rsd-card"
+      data-tour="archive-channel"
       style={{
         flexDirection: "row", alignItems: "center", gap: 14,
         padding: "12px 18px", opacity: channel.active ? 1 : 0.55,

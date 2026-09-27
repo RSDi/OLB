@@ -326,7 +326,7 @@ export function AlbumView({
       </header>
 
       <div ref={toolbarRef} className="rsd-slack-sticky-bar rsd-album-toolbar">
-        <div className="rsd-album-search">
+        <div className="rsd-album-search" data-tour="album-search">
           <Icons.Search width={16} height={16} />
           <input
             type="search"
@@ -342,7 +342,7 @@ export function AlbumView({
             </button>
           )}
         </div>
-        <div className="rsd-album-controls">
+        <div className="rsd-album-controls" data-tour="album-controls">
           <div className="rsd-seg" role="group" aria-label="Show">
             {([
               [null, "All", kindCounts.image + kindCounts.video],
@@ -511,6 +511,7 @@ const AlbumTile = memo(function AlbumTile({
       id={tileDomId(item.id)}
       className="rsd-album-tile"
       data-kind={item.kind}
+      data-tour="album-tile"
       onClick={() => onOpen(item.id)}
       aria-label={`${kindWord} by ${item.author}, ${date}${caption}`}
     >

@@ -138,7 +138,7 @@ export function PlayersList({
     <>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ position: "relative", flex: "1 1 320px", maxWidth: 480 }}>
+          <div data-tour="directory-search" style={{ position: "relative", flex: "1 1 320px", maxWidth: 480 }}>
             <span
               style={{
                 position: "absolute",
@@ -174,6 +174,7 @@ export function PlayersList({
             <div
               role="group"
               aria-label="Group the directory"
+              data-tour="directory-view"
               style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
             >
               <SegButton label="By team" active={view === "team"} onClick={() => setView("team")} />
@@ -184,7 +185,7 @@ export function PlayersList({
 
         {view === "team" ? (
           teams.length > 0 && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <div data-tour="directory-teams" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <TeamChip label="All teams" active={teamId === "all"} onClick={() => setTeamId("all")} />
               {teams.map((t) => (
                 <TeamChip
@@ -259,6 +260,7 @@ export function PlayersList({
                     <Link
                       href={`/portal/directory/teams/${g.team.id}`}
                       prefetch={false}
+                      data-tour="directory-team-page"
                       style={{
                         marginLeft: "auto",
                         fontSize: 12,
@@ -419,6 +421,7 @@ function PlayerRow({
   return (
     <div
       id={`player-${p.id}`}
+      data-tour="directory-player"
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
@@ -493,6 +496,7 @@ function ParentBlock({ parent, isStaff }: { parent: DirectoryParent; isStaff: bo
           <Link
             href={`/portal/directory/${m.id}`}
             prefetch={false}
+            data-tour="directory-parent"
             style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
           >
             {name}

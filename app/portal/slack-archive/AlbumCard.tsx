@@ -11,7 +11,7 @@ const COVER_TILES = 4;
 
 export function AlbumCard() {
   return (
-    <Link href="/portal/slack-archive/album" className={`rsd-card rsd-album-card ${albumFontVariables}`}>
+    <Link href="/portal/slack-archive/album" data-tour="archive-album" className={`rsd-card rsd-album-card ${albumFontVariables}`}>
       <Suspense fallback={<AlbumCover tiles={[]} />}>
         <LoadedAlbumCover />
       </Suspense>

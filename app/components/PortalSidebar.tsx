@@ -18,6 +18,8 @@ interface NavItem {
   approvedOnly?: boolean;
   // Staged rollout: only shown to accounts in lib/auth/feature-preview.ts.
   previewOnly?: boolean;
+  // Guided-tour anchor (lib/help/tours.ts).
+  tour?: string;
 }
 
 // Slimmed nav (2026-06): "Make a Request" lives on the Dashboard; Review + PM
@@ -28,21 +30,21 @@ const NAV: NavItem[] = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true, previewOnly: true },
   { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/>, previewOnly: true },
   { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/>, previewOnly: true },
-  { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/> },
+  { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/>, tour: "nav-directory" },
   // Vendors, rented facilities, opposing programs. The page itself is
   // staff-only, so the link is too.
-  { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, staffOnly: true },
-  { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/> },
+  { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, staffOnly: true, tour: "nav-contacts" },
+  { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/>, tour: "nav-playbooks" },
   // Team manager (roster board, registrations, import): super-admin only.
   { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
   // Board can view Settings; editing is gated per grant inside.
   // Pinned to the bottom of the nav (BOTTOM_HREFS).
-  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true },
+  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true, tour: "nav-settings" },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
-  { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true },
+  { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
   // bottom of the nav, above Settings (BOTTOM_HREFS).
-  { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/> },
+  { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/>, tour: "nav-guide" },
 ];
 
 // Pinned to the bottom of the nav, below the custom links, in this order.
@@ -171,6 +173,7 @@ export function PortalSidebar({
         href={item.href}
         prefetch={false}
         aria-current={active ? "page" : undefined}
+        data-tour={item.tour}
         className="gw-press rsd-nav-item"
         onClick={() => { if (isMobile) onNavigate?.(); }}
         style={itemStyle(active)}
@@ -259,61 +262,65 @@ export function PortalSidebar({
       </Link>
 
       {/* Nav */}
-      <nav style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
+      <nav data-tour="sidebar-nav" style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
         {mainItems.map(renderNavItem)}
 
         {links.length > 0 && (
-          <div role="separator" style={{ height: 1, background: "var(--rsd-frame-line)", margin: "8px 4px" }} />
+          <>
+            <div role="separator" style={{ height: 1, background: "var(--rsd-frame-line)", margin: "8px 4px" }} />
+            <div data-tour="sidebar-links" style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {links.map(link => {
+                // Portal paths opened in the same tab behave like the items above;
+                // everything else is a plain link, in a new tab unless turned off.
+                const internal = link.url.startsWith("/") && !link.open_in_new_tab;
+                const active = internal && isActive(link.url);
+                const body = (
+                  <>
+                    <span style={iconStyle(active)}>
+                      {link.open_in_new_tab
+                        ? <Icons.ExternalLink width={16} height={16}/>
+                        : <Icons.Link width={16} height={16}/>}
+                    </span>
+                    {c ? (
+                      <span style={collapsedLabelStyle}>{link.label}</span>
+                    ) : (
+                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+                        {link.label}
+                      </span>
+                    )}
+                  </>
+                );
+                const onClick = () => { if (isMobile) onNavigate?.(); };
+                return internal ? (
+                  <Link
+                    key={link.id}
+                    href={link.url}
+                    prefetch={false}
+                    aria-current={active ? "page" : undefined}
+                    className="gw-press rsd-nav-item"
+                    onClick={onClick}
+                    style={itemStyle(active)}
+                  >
+                    {body}
+                  </Link>
+                ) : (
+                  <a
+                    key={link.id}
+                    href={link.url}
+                    target={link.open_in_new_tab ? "_blank" : undefined}
+                    rel={link.open_in_new_tab ? "noopener noreferrer" : undefined}
+                    title={link.open_in_new_tab ? `${link.label} (opens in a new tab)` : undefined}
+                    className="gw-press rsd-nav-item"
+                    onClick={onClick}
+                    style={itemStyle(false)}
+                  >
+                    {body}
+                  </a>
+                );
+              })}
+            </div>
+          </>
         )}
-        {links.map(link => {
-          // Portal paths opened in the same tab behave like the items above;
-          // everything else is a plain link, in a new tab unless turned off.
-          const internal = link.url.startsWith("/") && !link.open_in_new_tab;
-          const active = internal && isActive(link.url);
-          const body = (
-            <>
-              <span style={iconStyle(active)}>
-                {link.open_in_new_tab
-                  ? <Icons.ExternalLink width={16} height={16}/>
-                  : <Icons.Link width={16} height={16}/>}
-              </span>
-              {c ? (
-                <span style={collapsedLabelStyle}>{link.label}</span>
-              ) : (
-                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
-                  {link.label}
-                </span>
-              )}
-            </>
-          );
-          const onClick = () => { if (isMobile) onNavigate?.(); };
-          return internal ? (
-            <Link
-              key={link.id}
-              href={link.url}
-              prefetch={false}
-              aria-current={active ? "page" : undefined}
-              className="gw-press rsd-nav-item"
-              onClick={onClick}
-              style={itemStyle(active)}
-            >
-              {body}
-            </Link>
-          ) : (
-            <a
-              key={link.id}
-              href={link.url}
-              target={link.open_in_new_tab ? "_blank" : undefined}
-              rel={link.open_in_new_tab ? "noopener noreferrer" : undefined}
-              title={link.open_in_new_tab ? `${link.label} (opens in a new tab)` : undefined}
-              className="gw-press rsd-nav-item"
-              onClick={onClick}
-              style={itemStyle(false)}
-            >
-              {body}
-            </a>
-          );
-        })}
 
         {/* User Guide and Settings sit at the bottom, just above Collapse / Sign out. */}
         {bottomItems.length > 0 && (
@@ -328,6 +335,7 @@ export function PortalSidebar({
         {!isMobile && (
           <button
             onClick={onToggleCollapse}
+            data-tour="sidebar-collapse"
             className="gw-press"
             title={c ? "Expand sidebar" : "Collapse sidebar"}
             style={{

@@ -28,6 +28,7 @@ export default async function SlackArchivePage() {
         <div style={{ display: "flex", gap: 16 }}>
           <Link
             href="/portal/slack-archive/search"
+            data-tour="archive-search"
             className="rsd-link"
             style={{ fontSize: 12.5 }}
           >
@@ -36,6 +37,7 @@ export default async function SlackArchivePage() {
           {isAdmin && (
             <Link
               href="/portal/slack-archive/exceptions"
+              data-tour="archive-exceptions"
               className="rsd-link"
               style={{ fontSize: 12.5 }}
             >
