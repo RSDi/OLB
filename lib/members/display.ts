@@ -3,8 +3,7 @@
 // A member's name is a single `full_name` string ("Jeffrey Wayne Malone") plus
 // an optional `nickname`. Everywhere EXCEPT the directory we show a short name:
 // (nickname || first name) + last name — the middle name is never shown. The
-// directory pages keep the full legal name + middle (they use their own
-// displayName in app/portal/directory/_shared/format.ts).
+// directory's member page keeps the full legal name + middle.
 //
 // first = first whitespace token, last = last token. This nails the common
 // "First Middle Last" case; compound surnames (Van Dyke) / suffixes (Jr.) are

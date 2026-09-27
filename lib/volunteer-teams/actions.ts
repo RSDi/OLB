@@ -15,7 +15,6 @@ export interface ActionResult {
 // and revalidate the pages that read this data.
 function revalidate() {
   revalidatePath("/portal/settings");
-  revalidatePath("/portal/directory/all");
 }
 
 export async function createTeam(name: string, description?: string): Promise<ActionResult> {

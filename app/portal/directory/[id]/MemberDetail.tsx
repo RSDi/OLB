@@ -63,8 +63,7 @@ function formatFullDate(iso: string | null): string | null {
 export function MemberDetail({
   member,
   relationships,
-  family,
-  birthFamily,
+  players,
   allMembers,
   allRelationships,
   isSelf,
@@ -74,8 +73,7 @@ export function MemberDetail({
 }: {
   member: DetailMember;
   relationships: Related[];
-  family: { headId: string; name: string } | null;
-  birthFamily: { headId: string; name: string } | null;
+  players: { id: string; name: string; team: string | null }[];
   allMembers: EditFormMember[];
   allRelationships: EditFormRelationship[];
   isSelf: boolean;
@@ -243,17 +241,9 @@ export function MemberDetail({
             onEdit={() => setEditing(true)}
           />
 
-          {(family || spouse || parents.length > 0 || children.length > 0) && (
+          {(players.length > 0 || spouse || parents.length > 0 || children.length > 0) && (
             <div className="rsd-card" style={{ padding: "16px 20px", gap: 14 }}>
-              {family && (
-                <FamilyRow
-                  families={
-                    birthFamily
-                      ? [family, { ...birthFamily, label: "Birth" }]
-                      : [family]
-                  }
-                />
-              )}
+              {players.length > 0 && <PlayersRow players={players} />}
               {spouse && (
                 <RelationRow label="Spouse" people={[spouse]} />
               )}
@@ -563,11 +553,7 @@ function ContactField({
   );
 }
 
-function FamilyRow({
-  families,
-}: {
-  families: { headId: string; name: string; label?: string }[];
-}) {
+function PlayersRow({ players }: { players: { id: string; name: string; team: string | null }[] }) {
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
       <span
@@ -580,46 +566,30 @@ function FamilyRow({
           minWidth: 80,
         }}
       >
-        Family
+        {players.length === 1 ? "Player" : "Players"}
       </span>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "baseline" }}>
-        {families.map((f) => (
-          <span
-            key={f.headId}
-            style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {players.map((p) => (
+          <Link
+            key={p.id}
+            href={`/portal/directory#player-${p.id}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "4px 12px",
+              borderRadius: 100,
+              background: "var(--rsd-accent-bg)",
+              color: "var(--rsd-accent)",
+              border: "1px solid var(--rsd-accent-line)",
+              fontSize: 12,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
           >
-            {f.label && (
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: "var(--gw-fg-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: ".06em",
-                }}
-              >
-                {f.label}
-              </span>
-            )}
-            <Link
-              href={`/portal/directory/family/${f.headId}`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "4px 12px",
-                borderRadius: 100,
-                background: "var(--rsd-accent-bg)",
-                color: "var(--rsd-accent)",
-                border: "1px solid var(--rsd-accent-line)",
-                fontSize: 12,
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
-            >
-              {f.name}
-            </Link>
-          </span>
+            {p.name}
+            {p.team && <span style={{ opacity: 0.75 }}>{p.team}</span>}
+          </Link>
         ))}
       </div>
     </div>

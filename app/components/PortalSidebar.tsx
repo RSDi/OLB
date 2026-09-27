@@ -18,7 +18,7 @@ interface NavItem {
 }
 
 // Slimmed nav (2026-06): "Make a Request" lives on the Dashboard; Review + PM
-// are tabs on Tasks & Projects; Contacts is a card on Directory. Settings is
+// are tabs on Tasks & Projects; Contacts is linked from Directory. Settings is
 // staff-only (Building Committee + Super Admin). ReelNotes is no longer a
 // top-level item — it lives under Settings → Integrations.
 const NAV: NavItem[] = [

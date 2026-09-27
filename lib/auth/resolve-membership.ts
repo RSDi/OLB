@@ -97,7 +97,7 @@ export async function resolveMembership({
       .maybeSingle();
 
     if (orphan) {
-      await linkClient
+      const { error: linkError } = await linkClient
         .from("members")
         .update({
           user_id: user.id,
@@ -105,6 +105,11 @@ export async function resolveMembership({
           avatar_url: avatarUrl,
         })
         .eq("id", orphan.id);
+      // Unlinked, the row isn't theirs, so don't report its status as theirs.
+      if (linkError) {
+        console.error("[auth] linking pre-created member failed:", linkError.message);
+        return { status: "pending", role: "member" };
+      }
       return {
         status: orphan.status as MemberStatus,
         role: (orphan.role as MemberRole) ?? "member",
