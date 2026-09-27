@@ -15,7 +15,7 @@ export const SIDEBAR_LINK_LABEL_MAX = 40;
 // Turns what someone typed into an address the sidebar can link to, or null
 // when it isn't one. Accepts full http(s) addresses, bare domains
 // ("schedule.example.com" → "https://schedule.example.com") and portal paths
-// ("/portal/docs"). Mirrors the url check in migration 0096.
+// ("/portal/docs"). Mirrors the url check in migration 0097.
 export function normalizeSidebarUrl(raw: string): string | null {
   const s = raw.trim();
   if (!s || /\s/.test(s)) return null;

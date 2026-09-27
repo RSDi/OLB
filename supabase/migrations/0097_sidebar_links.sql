@@ -1,4 +1,4 @@
--- 0096_sidebar_links.sql
+-- 0097_sidebar_links.sql
 --
 -- Custom links in the portal sidebar, managed from Settings → Sidebar Links:
 -- a label plus a web address (e.g. "Schedule" →
@@ -9,7 +9,7 @@
 -- Every approved member (and staff) can read them, since everyone sees the
 -- sidebar. Only super-admins write.
 --
--- Apply via the Supabase SQL editor, after 0095. Idempotent.
+-- Apply via the Supabase SQL editor, after 0096. Idempotent.
 
 begin;
 

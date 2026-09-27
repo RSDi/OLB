@@ -1,6 +1,6 @@
 "use server";
 
-// Settings → Sidebar Links. Super-admin only, here and in RLS (migration 0096).
+// Settings → Sidebar Links. Super-admin only, here and in RLS (migration 0097).
 
 import { revalidatePath } from "next/cache";
 import { requireSuperAdmin } from "../auth/guards";
