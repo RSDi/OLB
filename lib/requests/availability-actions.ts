@@ -7,7 +7,7 @@
 // which is exactly the calendar everyone already sees on /portal/events.
 //
 // Pending requests deliberately do NOT block here: they're competing requests,
-// not confirmed bookings, and the committee still gets the conflict flag.
+// not confirmed bookings, and the board still gets the conflict flag.
 
 import { createClient } from "../supabase/server";
 import { spacesFromLocation, timeFromTimestamp, dateFromTimestamp } from "./conflicts";

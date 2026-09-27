@@ -21,7 +21,7 @@ import { portalFontVariables } from "./fonts";
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
   "/portal/requests": { title: "Make a Request", subtitle: "" },
-  "/portal/review": { title: "Review queue", subtitle: "Building committee" },
+  "/portal/review": { title: "Review queue", subtitle: "Board" },
   "/portal/tasks": { title: "Opportunities",  subtitle: "" },
   "/portal/tasks/new": { title: "New task", subtitle: "" },
   "/portal/events/new": { title: "New event", subtitle: "Calendar" },
@@ -38,7 +38,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/teams":               { title: "Teams",         subtitle: "Team manager" },
   "/portal/teams/registrations": { title: "Registrations", subtitle: "Team manager" },
   "/portal/teams/import":        { title: "Import roster", subtitle: "Team manager" },
-  "/portal/settings":    { title: "Settings",     subtitle: "Admin" },
+  "/portal/settings":    { title: "Settings",     subtitle: "Board" },
   "/portal/slack-archive":            { title: "Slack Archive", subtitle: "" },
   "/portal/slack-archive/search":     { title: "Search archive", subtitle: "Slack Archive" },
   "/portal/slack-archive/exceptions": { title: "Exceptions",     subtitle: "Slack Archive" },

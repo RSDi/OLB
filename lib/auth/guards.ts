@@ -60,7 +60,7 @@ export async function requireStaff(): Promise<GateResult> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };
   if (!isStaff(caller.member)) {
-    return { error: "Building committee access required." };
+    return { error: "Board access required." };
   }
   return { userId: caller.userId };
 }
@@ -74,7 +74,7 @@ export async function requireSuperAdmin(): Promise<GateResult> {
   return { userId: caller.userId };
 }
 
-// Settings grants (0057). A super-admin always passes; a committee member needs
+// Settings grants (0057). A super-admin always passes; a board member needs
 // the matching grant. Use these in settings create/update, soft-delete, and
 // restore actions respectively.
 export async function requireSettingsEdit(): Promise<GateResult> {

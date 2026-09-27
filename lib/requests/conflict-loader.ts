@@ -87,7 +87,7 @@ export async function loadConflictsForTicket(
   try {
     // Events are filtered to the date span; pending requests are loaded wholesale
     // (a recurring one can clash on a date its details.date column doesn't name),
-    // then expanded + matched in memory. The pending pool is committee-sized.
+    // then expanded + matched in memory. The pending pool is board-sized.
     const [{ data: events }, { data: reqs }] = await Promise.all([
       supabase
         .from("events")

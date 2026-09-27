@@ -75,7 +75,7 @@ export function MembersTab({
   canManage,
 }: {
   currentUserId: string;
-  // Super-admins manage roles, edit details, and remove members; committee
+  // Super-admins manage roles, edit details, and remove members; board
   // admins (canManage=false) work the approve/deny queue only.
   canManage: boolean;
 }) {
@@ -133,7 +133,7 @@ export function MembersTab({
     setActing(id);
     setError(null);
     const supabase = createClient();
-    // Settings grants only apply to Building Committee (admin). Clear them when
+    // Settings grants only apply to Board (admin). Clear them when
     // moving to any other group, so they don't linger on a plain member or
     // reappear if the person is later re-promoted. (Super-admins hold every
     // grant implicitly, so they don't need the flags.)
@@ -166,13 +166,13 @@ export function MembersTab({
       )
         return;
     } else if (member.role === "super_admin") {
-      const to = role === "admin" ? "Building Committee" : "Member";
+      const to = role === "admin" ? "Board" : "Member";
       if (!confirm(`Remove Super-admin from ${memberDisplayName(member)} and set them to ${to}?`)) return;
     }
     await setRole(member.id, role);
   }
 
-  // Toggle a settings grant on a committee member. RLS allows only super-admins
+  // Toggle a settings grant on a board member. RLS allows only super-admins
   // to update member rows (same path as setRole), so this is super-admin only.
   async function setGrant(id: string, key: GrantKey, value: boolean) {
     setActing(id);
@@ -567,7 +567,7 @@ function RoleSelect({
       }}
     >
       <option value="member">Member</option>
-      <option value="admin">Building Committee</option>
+      <option value="admin">Board</option>
       <option value="super_admin">Super-admin</option>
     </select>
   );
@@ -645,7 +645,7 @@ function MemberRow({
           {member.role === "super_admin" && (
             <span className="rsd-chip rsd-chip-accent">Super-admin</span>
           )}
-          {member.role === "admin" && <span className="rsd-chip rsd-chip-mute">Building Committee</span>}
+          {member.role === "admin" && <span className="rsd-chip rsd-chip-mute">Board</span>}
           {isSelf && <span className="rsd-chip rsd-chip-mute">You</span>}
           {member.access_revoked_at ? (
             <span className="rsd-chip rsd-chip-warn">No login</span>
@@ -717,7 +717,7 @@ function MemberRow({
             )}
           </>
         )}
-        {/* Settings grants — what this committee member may change in Settings. */}
+        {/* Settings grants — what this board member may change in Settings. */}
         {tab === "approved" && canManage && member.role === "admin" && (
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "flex-end", marginTop: 2 }}>
             <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
@@ -783,7 +783,7 @@ function ActionBtn({
   );
 }
 
-// A grant toggle for a committee member — green when held, outline when not.
+// A grant toggle for a board member — green when held, outline when not.
 function GrantChip({
   label,
   on,
@@ -908,7 +908,7 @@ function AddMemberForm({
           disabled={pending}
         >
           <option value="member">Member</option>
-          <option value="admin">Building Committee</option>
+          <option value="admin">Board</option>
           <option value="super_admin">Super-admin</option>
         </Select>
         <Select

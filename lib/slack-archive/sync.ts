@@ -11,7 +11,7 @@
 // watermark untouched and redoes the same range next time.
 //
 // The watermark only catches messages POSTED after it — it says nothing
-// about older threads getting new replies (a very normal way a committee
+// about older threads getting new replies (a very normal way a busy
 // channel keeps evolving). refreshKnownThreads() closes that gap by
 // re-checking every thread this channel has ever seen, using each thread's
 // own latest-known-reply ts as its cursor, so it stays cheap (Slack returns

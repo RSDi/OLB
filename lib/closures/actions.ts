@@ -6,7 +6,7 @@ import { createClient } from "../supabase/server";
 
 // Closures use requireStaff() rather than requireSettingsEdit() on purpose:
 // whether the church is meeting is an operational call every building
-// committee member should be able to make, unlike the reference data the
+// board member should be able to make, unlike the reference data the
 // settings grants (0057) protect.
 
 export interface ClosureActionResult {

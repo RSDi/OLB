@@ -71,7 +71,7 @@ export async function createTicket(formData: FormData): Promise<CreateTicketResu
       description: trimmedDescription,
       parent_id: cleanParentId,
       // A sub-task is a breakdown of already-accepted work, so it skips the
-      // committee review queue and lands in the work queue directly.
+      // board review queue and lands in the work queue directly.
       ...(cleanParentId ? { review_status: "approved" } : {}),
     })
     .select("id")
@@ -644,7 +644,7 @@ export async function renameTask(taskId: string, title: string): Promise<ActionR
 // ─── Member requests (friendly intake wizards) ───────────────────
 // One action for every intake track. Reuses the task table: use-a-space,
 // event, class, question, and equipment *purchases* land as
-// review_status='pending_review' (committee review queue); simple repairs go
+// review_status='pending_review' (board review queue); simple repairs go
 // straight to the work queue as 'approved'. Structured answers live in the
 // details jsonb (details.kind = the track key); description is the readable
 // summary shown in queues.
@@ -725,7 +725,7 @@ export async function createRequest(
   if (!category) return { error: "No task category is configured." };
 
   // Simple repairs go straight to the work queue; everything else (bookings,
-  // events, classes, questions, purchases) needs committee review.
+  // events, classes, questions, purchases) needs board review.
   const isRepair = trackKey === "maintenance" && d.maintType === "repair";
   const reviewStatus = isRepair ? "approved" : "pending_review";
 
@@ -795,7 +795,7 @@ function buildRequestDescription(trackKey: string, d: Record<string, unknown>): 
     const time = [d.startTime, d.endTime].filter(Boolean).join("–");
     if (d.recurring && resolveRequestDates(d).length > 1) {
       const dates = resolveRequestDates(d);
-      // Per-day hours → list each day's window so the committee can see them.
+      // Per-day hours → list each day's window so the board can see them.
       if (d.sameHours === false) {
         const parts = resolveOccurrences(d).map(
           (o) => `${formatDateLabel(o.date)} ${o.start && o.end ? `${o.start}–${o.end}` : "time TBD"}`,
@@ -862,7 +862,7 @@ function buildRequestDescription(trackKey: string, d: Record<string, unknown>): 
 // ─── Public building-use request (church website, no login) ──────
 // The public site form posts here. Visitors aren't signed in, so we use the
 // service-role admin client to resolve lookups + insert, and capture their
-// contact info in details. Lands in the same committee review queue as portal
+// contact info in details. Lands in the same board review queue as portal
 // requests (review_status='pending_review', details.kind set), unifying the
 // pipeline so the old standalone building_requests table is no longer needed.
 
@@ -1002,9 +1002,9 @@ export async function createPublicBuildingRequest(
   return { success: true, ticketId: inserted.id };
 }
 
-// ─── Committee review decisions ──────────────────────────────────
-// Decisions are made by committee vote (cast_request_vote RPC, migration
-// 0050): simple majority of the current committee, instant. A "no" requires
+// ─── Board review decisions ──────────────────────────────────
+// Decisions are made by board vote (cast_request_vote RPC, migration
+// 0050): simple majority of the current board, instant. A "no" requires
 // a note. The RPC flips review_status atomically; this layer fires the
 // requester notification when a vote lands the decision.
 
@@ -1064,7 +1064,7 @@ async function notifyDecision(
 
 // A4: an approved building-use request becomes a calendar event so the
 // booking is visible to everyone. Best-effort — a request without a usable
-// date (e.g. multi-day/recurring plans) is skipped and the committee adds the
+// date (e.g. multi-day/recurring plans) is skipped and the board adds the
 // event by hand. Same datetime-local string format the events form submits.
 async function createEventFromApprovedRequest(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -1148,7 +1148,7 @@ export async function castRequestVote(
   return { yes: result.yes, no: result.no };
 }
 
-// Manual committee decision: any one building-committee member approves or
+// Manual board decision: any one board member approves or
 // declines a request with a note that's emailed to the requester. Replaces the
 // old auto-decide-on-majority. The status change is audited by the
 // task_review_log trigger; approvals also create the calendar event (A4).

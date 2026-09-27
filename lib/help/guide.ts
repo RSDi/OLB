@@ -17,7 +17,7 @@
 
 import type { MemberRole, MemberStatus } from "../auth/permissions";
 
-// Who a section is for. "staff" = board admins and super-admins; the guide
+// Who a section is for. "staff" = board members and super-admins; the guide
 // hides a section from anyone it doesn't apply to.
 export type GuideAudience = "everyone" | "staff" | "super_admin";
 
@@ -81,13 +81,13 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **User Guide** — this page.
 - **Sign out** — at the bottom.
 
-Admins also see **External Contacts**, and **Settings** at the bottom of the sidebar, just above **Collapse**.
+Board members also see **External Contacts**, and **Settings** at the bottom of the sidebar, just above **Collapse**.
 
 Below a thin line you may see extra links the club has added, like **Schedule**. Most open in a new browser tab, so the portal stays open where you left it.
 
 On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a phone, tap the **menu** button at the top left to open it.
 
-**Search.** The search box at the top of every page finds members, playbooks and Slack messages (and, for admins, external contacts). Press **⌘K** on a Mac or **Ctrl K** on Windows to jump to it from anywhere. Type at least 2 letters, use the arrow keys and **Enter** to open a result, and **Esc** to close. Your last few searches are remembered under **Recent**. To find a *player*, use the search box on the Directory page instead.
+**Search.** The search box at the top of every page finds members, playbooks and Slack messages (and, for the board, external contacts). Press **⌘K** on a Mac or **Ctrl K** on Windows to jump to it from anywhere. Type at least 2 letters, use the arrow keys and **Enter** to open a result, and **Esc** to close. Your last few searches are remembered under **Recent**. To find a *player*, use the search box on the Directory page instead.
 
 **Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.`,
   },
@@ -101,7 +101,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 - **Search** by player, parent, email or phone number (type 3 or more digits to match a phone).
 - Tap a **team** chip to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed.
-- Coaches, other team leaders and admins can switch between **By team** and **By age group** (10U–18U).
+- Coaches, other team leaders and board members can switch between **By team** and **By age group** (10U–18U).
 - Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.
 - Tap a parent's name to open their profile, and **Team page ›** to open a team's full page.
 
@@ -121,7 +121,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 - **Staff & volunteers** lists every job the team needs — coach, team parent, scorekeeper and so on — with the person doing it and their phone and email, or **Open spot** if nobody's signed up yet. **Leadership** marks the roles that lead the team.
 - **Roster** lists the players in jersey-number order, with their parents.
 
-Want to fill an open spot? Let the club know and an admin will add you.`,
+Want to fill an open spot? Let the club know and the board will add you.`,
   },
   {
     id: "your-profile",
@@ -136,7 +136,7 @@ Want to fill an open spot? Let the club know and an admin will add you.`,
 
 - Your **nickname** (e.g. "Jeff") is the short name people see around the portal. Leave it blank to use your first name.
 - Your **photo** comes from [Gravatar](https://gravatar.com) automatically — set one up for the email you sign in with and it shows up here. Or paste a link to a picture in **Avatar URL**.
-- Your email, and whether you have access, are managed by the club. Ask an admin if your email changes.`,
+- Your email, and whether you have access, are managed by the club. Ask a board member if your email changes.`,
   },
 
   {
@@ -151,7 +151,7 @@ Want to fill an open spot? Let the club know and an admin will add you.`,
 - Each playbook is a reference page, and can include pictures and videos (tap a video card to play it).
 - Some playbooks also have **procedures** — checklists for a job you do the same way every time. Open the **Run** tab to see a procedure's steps.
 
-**Running a procedure (admins).** Open the playbook, press **▶ Start**, and tap each step as you do it. When every step is checked, press **Done** — it's logged in the procedure's **History**, and if the procedure is set up to, the team gets a heads-up in Slack (**Done — notify the team**).`,
+**Running a procedure (board).** Open the playbook, press **▶ Start**, and tap each step as you do it. When every step is checked, press **Done** — it's logged in the procedure's **History**, and if the procedure is set up to, the team gets a heads-up in Slack (**Done — notify the team**).`,
   },
   {
     id: "slack-archive",
@@ -205,15 +205,15 @@ Quick lookups work from the top-bar search too — Slack messages show up there 
 If the page has been open a long time and pictures stop loading, tap **Reload previews**.`,
   },
 
-  // ─── Admins ──────────────────────────────────────────────────────────────
+  // ─── Board ───────────────────────────────────────────────────────────────
   {
     id: "admin-roles",
-    title: "Admin roles",
+    title: "Board roles",
     audience: "staff",
-    keywords: ["admin", "super-admin", "super admin", "building committee", "role", "permission", "access", "who can"],
+    keywords: ["admin", "super-admin", "super admin", "board", "building committee", "role", "permission", "access", "who can"],
     body: `There are three kinds of account:
 
-| | Member | Admin | Super-admin |
+| | Member | Board | Super-admin |
 |---|---|---|---|
 | Directory, Playbooks, Slack Archive | ✓ | ✓ | ✓ |
 | See every player, fees, waivers and volunteer interests | | ✓ | ✓ |
@@ -223,12 +223,10 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
-In **Settings → Members**, the admin role is listed as **Building Committee**.
-
-**Admin extras around the portal**
+**Board extras around the portal**
 
 - The **Directory** shows every player — including families who asked not to be listed (marked **Not in directory**) — plus **No waiver**, fee and shirt details, and each parent's volunteer interests (**Can help**). **Not signed up** and **Awaiting approval** chips show which parents don't have access yet.
-- Every profile has a **Member notes** panel only admins can see. Type a note and tap **Save notes**.`,
+- Every profile has a **Member notes** panel only the board can see. Type a note and tap **Save notes**.`,
   },
   {
     id: "settings-members",
@@ -252,7 +250,7 @@ In **Settings → Members**, the admin role is listed as **Building Committee**.
 
 - **+ Add member** — set someone up ahead of time. With an email, they finish by requesting access with that email. Leave the email blank to add a **directory-only** entry (a grandparent, say) who won't sign in.
 - **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
-- Change someone's **role** (Member / Building Committee / Super-admin) from the drop-down on the **Approved** tab.
+- Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - **Remove** a member (demote a super-admin first).
 
@@ -309,7 +307,7 @@ The most recent 100 changes are listed, newest first: new members, approvals, ro
     audience: "staff",
     routes: ["/portal/docs/new"],
     keywords: ["new playbook", "edit", "write", "markdown", "image", "video", "upload", "procedure", "checklist", "slack", "notify", "history", "versions", "contacts", "attach", "delete"],
-    body: `Admins write and keep the playbooks up to date.
+    body: `The board writes and keeps the playbooks up to date.
 
 **New playbook.** Tap **New Playbook**, give it a title, an optional category and short description (shown on the listing card), and write the steps. Use the toolbar for bold, lists, **Insert image** (or drag a picture in) and **Insert video** (a YouTube link or an uploaded clip). **Preview** shows how it'll look. Tap **Create**.
 
@@ -327,7 +325,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     audience: "staff",
     routes: ["/portal/contacts"],
     keywords: ["contacts", "vendors", "companies", "people", "photographer", "gym", "facility", "rent", "program", "account number", "billing", "tags", "phone", "email"],
-    body: `Everyone outside the club we work with — vendors, photographers, gyms we rent, other programs. Only admins can see it.
+    body: `Everyone outside the club we work with — vendors, photographers, gyms we rent, other programs. Only the board can see it.
 
 - **Search** by name, email, phone, account number or type, and use the chips to show **Companies**, **People** or one **type**.
 - **+ New contact** — choose **Company** or **Person**, then fill in what you know: contact info, account and billing details, notes (like how to re-order or who to call for quotes) and tags.
@@ -358,7 +356,7 @@ What you enter here shows on the team's Directory banner and team page.`,
 
 - **+ Add role** — name it, say **What they do**, and set **Spots per team**.
 - **Registration answer** links the role to a volunteer option on the registration form, so people who ticked it are suggested first when you assign the role.
-- **Leadership** — people in these roles (coaches, for example) can switch the Directory to age groups, like admins can.
+- **Leadership** — people in these roles (coaches, for example) can switch the Directory to age groups, like the board can.
 - **In Directory** — shows the role on the team's banner when someone picks that team in the Directory. Every role always shows on the team's own page.
 - Use the arrows to reorder, the **−/+** to change spots, and the switches to turn Leadership and In Directory on or off. Changes save right away.
 

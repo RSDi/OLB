@@ -367,7 +367,7 @@ export default async function TicketDetailPage({
     priorityOptions = prioRows ?? [];
   }
 
-  // Committee votes (staff, while pending). Gracefully empty until migration
+  // Board votes (staff, while pending). Gracefully empty until migration
   // 0050 (request_votes) is applied — a missing table just yields no rows.
   let voteRows: { voter_id: string; vote: "yes" | "no"; note: string | null }[] = [];
   if (staff && ticket.review_status === "pending_review") {
@@ -392,7 +392,7 @@ export default async function TicketDetailPage({
   const staffNameByUserId: Record<string, string> = {};
   for (const s of eligibleVoters) staffNameByUserId[s.user_id as string] = memberDisplayName(s);
   const votesForPanel = voteRows.map((v) => ({
-    voterName: staffNameByUserId[v.voter_id] ?? "Committee member",
+    voterName: staffNameByUserId[v.voter_id] ?? "Board member",
     vote: v.vote,
     note: v.note,
     isMe: v.voter_id === user.id,
@@ -403,7 +403,7 @@ export default async function TicketDetailPage({
     .map((s) => memberFirstName(s));
   const myVote = voteRows.find((v) => v.voter_id === user.id)?.vote ?? null;
 
-  // Committee decision history (staff). Gracefully empty until migration 0048
+  // Board decision history (staff). Gracefully empty until migration 0048
   // (task_review_log) is applied — a missing table just yields no rows.
   let reviewLog: {
     id: string;
@@ -761,7 +761,7 @@ export default async function TicketDetailPage({
                 ))}
               </div>
               <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
-                Not a hard block — just a heads-up for the committee.
+                Not a hard block — just a heads-up for the board.
               </div>
             </div>
           )}
@@ -769,7 +769,7 @@ export default async function TicketDetailPage({
           {staff && ticket.review_status === "pending_review" && (
             <div className="rsd-card" style={{ gap: 12 }}>
               <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
-                Committee decision
+                Board decision
               </h3>
               <DecisionChecklist />
               <VotePanel
@@ -893,7 +893,7 @@ function reviewChip(ticket: Ticket) {
   const s = ticket.review_status;
   if (s === "pending_review") return <span className="rsd-chip rsd-chip-warn">Pending review</span>;
   if (s === "declined") return <span className="rsd-chip rsd-chip-error">Declined</span>;
-  // Only show "Approved" when the committee actually reviewed it (reviewed_at
+  // Only show "Approved" when the board actually reviewed it (reviewed_at
   // set) — auto-approved repairs and plain tasks show no review chip.
   if (s === "approved" && ticket.reviewed_at) return <span className="rsd-chip rsd-chip-success">Approved</span>;
   return null;

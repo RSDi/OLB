@@ -29,8 +29,8 @@ const CARDS: RequestCard[] = [
   },
   {
     href: "/portal/requests/question",
-    title: "Ask the committee",
-    blurb: "A question or a suggestion for the building committee.",
+    title: "Ask the board",
+    blurb: "A question or a suggestion for the board.",
     icon: <Icons.Info width={22} height={22} />,
     accent: { bg: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)" },
   },
@@ -58,7 +58,7 @@ export default async function RequestsLandingPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 640 }}>
         <h2 style={{ margin: 0, fontFamily: "var(--rsd-display)", fontSize: "calc(22px * var(--rsd-display-scale))", fontWeight: 800, letterSpacing: ".02em", textTransform: "uppercase", lineHeight: 1.1, color: "var(--gw-fg)" }}>What do you need?</h2>
         <p style={{ margin: 0, fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.6 }}>
-          Pick one below and we&rsquo;ll walk you through a few quick questions. The building committee
+          Pick one below and we&rsquo;ll walk you through a few quick questions. The board
           reviews every request and follows up.
         </p>
       </div>

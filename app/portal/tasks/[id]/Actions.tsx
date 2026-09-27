@@ -497,7 +497,7 @@ function ErrorLine({ message }: { message: string }) {
   );
 }
 
-// Committee review (migrations 0050 + 0074): members cast advisory yes/no votes
+// Board review (migrations 0050 + 0074): members cast advisory yes/no votes
 // (a "no" needs a reason), then any one member finalizes with a manual Approve
 // or Decline + a note that's emailed to the requester. Shown while pending_review.
 export interface VoteRow {
@@ -549,7 +549,7 @@ export function VotePanel({
     setError(null);
     setDeciding(decision);
     setDecisionNote(
-      decision === "approved" ? "Good news — the building committee approved your request." : "",
+      decision === "approved" ? "Good news — the board approved your request." : "",
     );
   }
 
@@ -677,7 +677,7 @@ export function VotePanel({
           </div>
         </div>
       )}
-      {/* Manual decision — any one committee member finalizes. */}
+      {/* Manual decision — any one board member finalizes. */}
       <div style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
           Finalize decision

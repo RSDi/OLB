@@ -67,7 +67,7 @@ export default async function PortalDashboard() {
     (countRows as unknown as { status: RecentTicket["status"]; priority: { severity: number } | null }[]) ?? []
   );
 
-  // Building-committee KPI: requests waiting on a review vote. Staff-only;
+  // Board KPI: requests waiting on a review vote. Staff-only;
   // mirrors the Review queue's "Needs review" count.
   let reviewCount = 0;
   if (staff) {

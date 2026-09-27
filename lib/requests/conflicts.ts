@@ -8,7 +8,7 @@
 // `date T time`, written the same way the request captures it, so no timezone
 // math is needed). A candidate with no times is treated as all-day and
 // conflicts with any same-day booking of that space (better to over-warn — the
-// committee decides; it's a soft flag, never a block).
+// board decides; it's a soft flag, never a block).
 
 export interface ConflictCandidate {
   id: string;

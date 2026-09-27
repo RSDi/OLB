@@ -120,7 +120,7 @@ test("rpc: cast_request_vote exists (rejects non-staff)", { skip }, async () => 
   // Service-role has no auth.uid() → is_staff() is false → the staff check
   // raises. PGRST202 would mean the function itself is missing.
   assert.ok(!body.includes("PGRST202"), `cast_request_vote missing: ${body.slice(0, 200)}`);
-  assert.ok(body.includes("committee"), `unexpected response: ${body.slice(0, 200)}`);
+  assert.ok(body.includes("board"), `unexpected response: ${body.slice(0, 200)}`);
 });
 
 test("rpc: decrement_supply exists", { skip }, async () => {

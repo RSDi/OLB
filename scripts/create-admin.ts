@@ -7,7 +7,7 @@
  *
  * For each email: makes sure there's a confirmed Supabase Auth account with
  * that password (an existing account gets its password reset), then gives it
- * an approved members row, Super-admin by default or Building Committee with
+ * an approved members row, Super-admin by default or a Board member with
  * --role admin. Safe to re-run.
  *
  * Someone who already has a member row (say they signed up and are pending, or
@@ -34,7 +34,7 @@ const USAGE =
 // As Settings → Members names them.
 const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
   super_admin: "Super-admin",
-  admin: "Building Committee",
+  admin: "Board",
 };
 
 type AdminClient = ReturnType<typeof createAdminClient>;
