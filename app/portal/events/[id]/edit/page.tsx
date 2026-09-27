@@ -205,9 +205,9 @@ export default async function EditEventPage({
 
       {shutdownProc && ev.recurring && (
         <div style={{ marginTop: 16 }}>
-          <div className="rsd-card" style={{ border: "1px solid var(--rsd-accent)", background: "var(--rsd-accent-bg)", fontSize: 13, lineHeight: 1.6, color: "var(--gw-fg)" }}>
+          <div className="rsd-card" style={{ border: "1px solid var(--rsd-accent-line)", background: "var(--rsd-accent-bg)", fontSize: 13, lineHeight: 1.6, color: "var(--gw-fg)" }}>
             <strong>Repeats weekly.</strong> A shutdown task is generated for each occurrence and lands in the{" "}
-            <Link href="/portal/tasks" style={{ color: "var(--rsd-accent)", fontWeight: 700 }}>Tasks queue</Link>
+            <Link href="/portal/tasks" className="rsd-link">Tasks queue</Link>
             {" "}to assign to a team member.
           </div>
         </div>

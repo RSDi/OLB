@@ -34,7 +34,7 @@ export function Pill({ children, variant = "light", size = "md", onClick, style,
   const v = variant === "dark"
     ? { background: "var(--gw-ink)", color: "#fff", borderColor: "var(--gw-stroke-dark)" }
     : variant === "accent"
-    ? { background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", borderColor: "var(--rsd-accent)" }
+    ? { background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)", borderColor: "var(--rsd-accent-fill)" }
     : variant === "ghost"
     ? { background: "transparent", color: "var(--gw-fg)", borderColor: "var(--gw-border)" }
     : { background: "var(--gw-bg-elev)", color: "var(--gw-fg)", borderColor: "var(--gw-border)" };

@@ -163,8 +163,8 @@ export function BookingCalendar({
                 style={{
                   ...cell,
                   cursor: disabled ? "not-allowed" : "pointer",
-                  background: selected ? "var(--rsd-accent)" : "transparent",
-                  color: selected ? "var(--rsd-accent-on)" : past ? "var(--gw-fg-muted)" : "var(--gw-fg)",
+                  background: selected ? "var(--rsd-accent-fill)" : "transparent",
+                  color: selected ? "var(--rsd-accent-fill-on)" : past ? "var(--gw-fg-muted)" : "var(--gw-fg)",
                   opacity: past ? 0.3 : fullyBooked ? 0.4 : 1,
                   textDecoration: fullyBooked ? "line-through" : "none",
                   border: !selected && date === todayStr ? "1px solid var(--rsd-accent)" : "1px solid transparent",
@@ -272,9 +272,9 @@ const slotBtn: React.CSSProperties = {
 };
 const chip = (selected: boolean): React.CSSProperties => ({
   padding: "9px 14px", borderRadius: 100, fontSize: 13, fontWeight: 700, cursor: "pointer",
-  background: selected ? "var(--rsd-accent)" : "var(--gw-bg)",
-  color: selected ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-  border: `1px solid ${selected ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+  background: selected ? "var(--rsd-accent-fill)" : "var(--gw-bg)",
+  color: selected ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
+  border: `1px solid ${selected ? "var(--rsd-accent-fill)" : "var(--gw-border)"}`,
 });
 const selectStyle: React.CSSProperties = {
   padding: "7px 8px", borderRadius: 8, border: "1px solid var(--gw-border)",

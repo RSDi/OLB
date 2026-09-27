@@ -275,7 +275,7 @@ export default async function PmInstanceDetailPage({
               value={
                 <Link
                   href={`/portal/pm/templates/${inst.template_id}/edit`}
-                  style={{ color: "var(--rsd-accent)", fontWeight: 700, textDecoration: "none" }}
+                  className="rsd-link"
                 >
                   View →
                 </Link>

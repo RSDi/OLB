@@ -208,7 +208,7 @@ export function PlaybookDetail({
                 {" · "}
                 <Link
                   href={`/portal/docs/${data.id}/history`}
-                  style={{ color: "var(--rsd-accent)", textDecoration: "none", fontWeight: 700 }}
+                  className="rsd-link"
                 >
                   {data.version_count} version{data.version_count === 1 ? "" : "s"}
                 </Link>
@@ -247,8 +247,8 @@ export function PlaybookDetail({
                 gap: 6,
                 padding: "8px 14px",
                 borderRadius: 100,
-                background: "var(--rsd-accent)",
-                color: "var(--rsd-accent-on)",
+                background: "var(--rsd-accent-fill)",
+                color: "var(--rsd-accent-fill-on)",
                 border: "none",
                 fontSize: 12,
                 fontWeight: 700,
@@ -294,8 +294,8 @@ export function PlaybookDetail({
                 gap: 6,
                 padding: "8px 14px",
                 borderRadius: 100,
-                background: "var(--rsd-accent)",
-                color: "var(--rsd-accent-on)",
+                background: "var(--rsd-accent-fill)",
+                color: "var(--rsd-accent-fill-on)",
                 border: "none",
                 fontSize: 12,
                 fontWeight: 700,
@@ -525,7 +525,7 @@ function ProceduresSection({
             type="button"
             onClick={() => setAdding(true)}
             className="gw-press"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 100, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 100, background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
           >
             <Icons.Plus width={12} height={12} /> Add procedure
           </button>
@@ -757,7 +757,7 @@ function ProcedureEditor({
         <button type="button" onClick={onDone} disabled={pending} className="gw-press" style={{ padding: "8px 14px", borderRadius: 100, background: "var(--gw-bg)", color: "var(--gw-fg)", border: "1px solid var(--gw-border)", fontSize: 12, fontWeight: 700, cursor: pending ? "not-allowed" : "pointer" }}>
           Cancel
         </button>
-        <button type="button" onClick={save} disabled={pending} className="gw-press" style={{ padding: "8px 14px", borderRadius: 100, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", border: "none", fontSize: 12, fontWeight: 700, cursor: pending ? "not-allowed" : "pointer" }}>
+        <button type="button" onClick={save} disabled={pending} className="gw-press" style={{ padding: "8px 14px", borderRadius: 100, background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)", border: "none", fontSize: 12, fontWeight: 700, cursor: pending ? "not-allowed" : "pointer" }}>
           {pending ? "Saving…" : procedure ? "Save procedure" : "Add procedure"}
         </button>
       </div>

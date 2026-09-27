@@ -270,8 +270,8 @@ export function DateTimePicker({
                   className="gw-press"
                   style={{
                     ...cell,
-                    background: selected ? "var(--rsd-accent)" : "transparent",
-                    color: selected ? "var(--rsd-accent-on)" : "var(--gw-fg)",
+                    background: selected ? "var(--rsd-accent-fill)" : "transparent",
+                    color: selected ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
                     border: !selected && isToday ? "1px solid var(--rsd-accent)" : "1px solid transparent",
                   }}
                 >
@@ -328,7 +328,7 @@ export function DateTimePicker({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              style={{ padding: "7px 16px", borderRadius: 100, background: "var(--rsd-accent)", color: "var(--rsd-accent-on)", border: "none", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+              style={{ padding: "7px 16px", borderRadius: 100, background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)", border: "none", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
             >
               Done
             </button>

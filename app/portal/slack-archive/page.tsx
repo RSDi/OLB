@@ -28,14 +28,16 @@ export default async function SlackArchivePage() {
         <div style={{ display: "flex", gap: 16 }}>
           <Link
             href="/portal/slack-archive/search"
-            style={{ fontSize: 12.5, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+            className="rsd-link"
+            style={{ fontSize: 12.5 }}
           >
             Search archive →
           </Link>
           {isAdmin && (
             <Link
               href="/portal/slack-archive/exceptions"
-              style={{ fontSize: 12.5, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+              className="rsd-link"
+              style={{ fontSize: 12.5 }}
             >
               View all exceptions →
             </Link>

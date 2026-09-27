@@ -222,7 +222,7 @@ export function GlobalSearch({ open, onClose }: Props) {
           width: "100%",
           maxWidth: 640,
           maxHeight: "70vh",
-          background: "var(--gw-bg)",
+          background: "var(--gw-bg-elev)",
           border: "1px solid var(--gw-border)",
           borderRadius: 14,
           boxShadow: "0 24px 64px rgba(0,0,0,.35)",

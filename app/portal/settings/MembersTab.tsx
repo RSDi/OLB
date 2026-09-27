@@ -790,9 +790,9 @@ function GrantChip({
         fontSize: 11.5,
         fontWeight: 700,
         cursor: disabled ? "not-allowed" : "pointer",
-        background: on ? "var(--rsd-accent)" : "var(--gw-bg)",
-        color: on ? "var(--rsd-accent-on)" : "var(--gw-fg-muted)",
-        border: `1px solid ${on ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+        background: on ? "var(--rsd-accent-fill)" : "var(--gw-bg)",
+        color: on ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
+        border: `1px solid ${on ? "var(--rsd-accent-fill)" : "var(--gw-border)"}`,
         whiteSpace: "nowrap",
       }}
     >

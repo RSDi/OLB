@@ -456,8 +456,8 @@ function VideoPanel({
           style={{
             padding: "8px 14px",
             borderRadius: 100,
-            background: "var(--rsd-accent)",
-            color: "var(--rsd-accent-on)",
+            background: "var(--rsd-accent-fill)",
+            color: "var(--rsd-accent-fill-on)",
             border: "none",
             fontSize: 12,
             fontWeight: 700,

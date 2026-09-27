@@ -48,14 +48,16 @@ export default async function SlackArchiveChannelPage({
         <div style={{ display: "flex", gap: 16 }}>
           <Link
             href={`/portal/slack-archive/album?channel=${encodeURIComponent(slackChannelId)}`}
-            style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+            className="rsd-link"
+            style={{ fontSize: 12 }}
           >
             Photos →
           </Link>
           {viewer.isSuperAdmin && (
             <Link
               href="/portal/slack-archive/exceptions"
-              style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}
+              className="rsd-link"
+              style={{ fontSize: 12 }}
             >
               View exceptions →
             </Link>

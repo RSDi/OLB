@@ -161,7 +161,7 @@ function ResultRow({
         padding: "10px 18px",
         textDecoration: "none",
         color: "var(--gw-fg)",
-        background: focused ? "var(--gw-bg-elev)" : "transparent",
+        background: focused ? "var(--gw-bg)" : "transparent",
         borderLeft: focused
           ? "3px solid var(--rsd-accent)"
           : "3px solid transparent",
@@ -176,7 +176,7 @@ function ResultRow({
           width: 28,
           height: 28,
           borderRadius: 8,
-          background: "var(--gw-bg-elev)",
+          background: "var(--gw-bg)",
           color: "var(--gw-fg-muted)",
           flexShrink: 0,
         }}
@@ -375,7 +375,7 @@ export function highlight(text: string, query: string): React.ReactNode {
       <mark
         key={key++}
         style={{
-          background: "color-mix(in srgb, var(--rsd-accent) 22%, transparent)",
+          background: "color-mix(in srgb, var(--rsd-accent-fill) 40%, transparent)",
           color: "inherit",
           padding: "0 1px",
           borderRadius: 2,

@@ -89,9 +89,9 @@ export function FilterDropdown({
         className="gw-press"
         style={{
           fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 100,
-          background: active ? "var(--rsd-accent)" : "var(--gw-bg-elev)",
-          color: active ? "var(--rsd-accent-on)" : "var(--gw-fg)",
-          border: `1px solid ${active ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+          background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+          color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
+          border: `1px solid ${active ? "var(--rsd-accent-fill)" : "var(--gw-border)"}`,
           cursor: "pointer",
         }}
       >

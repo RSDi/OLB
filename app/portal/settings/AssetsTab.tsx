@@ -482,9 +482,9 @@ function TypeField({
             style={{
               padding: "0 14px",
               borderRadius: 8,
-              background: "var(--rsd-accent)",
-              color: "var(--rsd-accent-on)",
-              border: "1px solid var(--rsd-accent)",
+              background: "var(--rsd-accent-fill)",
+              color: "var(--rsd-accent-fill-on)",
+              border: "1px solid var(--rsd-accent-fill)",
               fontSize: 13,
               fontWeight: 700,
               cursor: !draft.trim() ? "not-allowed" : "pointer",
