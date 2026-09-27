@@ -20,10 +20,18 @@ import { ContactCategoriesTab } from "./ContactCategoriesTab";
 import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
 import { IntegrationsTab } from "./IntegrationsTab";
+import { SidebarLinksTab } from "./SidebarLinksTab";
 
 // Staged rollout: the tabs released to everyone who can open Settings. The
 // rest stay with the accounts in lib/auth/feature-preview.ts.
-const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles"]);
+const RELEASED_TABS = new Set<string>([
+  "members",
+  "teams",
+  "volunteer_roles",
+  "playbooks",
+  "sidebar_links",
+  "audit_log",
+]);
 
 type Tab =
   | "members"
@@ -37,6 +45,7 @@ type Tab =
   | "event_categories"
   | "task_categories"
   | "playbooks"
+  | "sidebar_links"
   | "closures"
   | "contact_categories"
   | "integrations"
@@ -115,6 +124,7 @@ export default function SettingsPage() {
     { key: "event_categories", label: "Event Categories", visible: true },
     { key: "task_categories", label: "Task Categories", visible: true },
     { key: "playbooks", label: "Playbooks", visible: true },
+    { key: "sidebar_links", label: "Sidebar Links", visible: true },
     { key: "closures", label: "Closures", visible: true },
     { key: "contact_categories", label: "Contact Types", visible: true },
     { key: "integrations", label: "Integrations", visible: true },
@@ -165,6 +175,7 @@ export default function SettingsPage() {
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}
+      {tab === "sidebar_links" && <SidebarLinksTab me={me} />}
       {tab === "closures" && <ClosuresTab me={me} />}
       {tab === "contact_categories" && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && <IntegrationsTab />}

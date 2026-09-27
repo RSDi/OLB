@@ -15,6 +15,7 @@ import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
 import { guideSectionForPath } from "../../lib/help/guide";
 import type { TopbarSearchHandle } from "../components/TopbarSearch";
+import type { SidebarLink } from "../../lib/sidebar-links/url";
 import { portalFontVariables } from "./fonts";
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
@@ -48,10 +49,11 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
 interface Props {
   viewer: SidebarViewer | null;
   pendingMembersCount: number;
+  sidebarLinks: SidebarLink[];
   children: React.ReactNode;
 }
 
-export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
+export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -137,6 +139,7 @@ export function PortalShell({ viewer, pendingMembersCount, children }: Props) {
       <PortalSidebar
         viewer={viewer}
         pendingMembersCount={pendingMembersCount}
+        links={sidebarLinks}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed(v => !v)}
         mobileOpen={mobileOpen}
