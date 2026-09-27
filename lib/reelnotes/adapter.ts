@@ -1,4 +1,4 @@
-// MCC's implementation of the ReelNotes host seam. This is the ONLY place that
+// OLB's implementation of the ReelNotes host seam. This is the ONLY place that
 // ties the portable reelnotes package to this app: Supabase clients, the
 // signed-in viewer, runtime config from env, the directory (member matching),
 // and the task-mirror hook (post a finished recording's summary onto its
@@ -21,7 +21,7 @@ function baseUrl(): string {
   return "http://localhost:3000";
 }
 
-export function mccReelNotesAdapter(): ReelNotesAdapter {
+export function olbReelNotesAdapter(): ReelNotesAdapter {
   return {
     config: {
       aiModel: "anthropic/claude-haiku-4-5",
@@ -68,7 +68,7 @@ export function mccReelNotesAdapter(): ReelNotesAdapter {
 
     // B3: mirror the finished recording's summary onto its linked task's
     // comment thread, so the notes land where the work is. The generic link
-    // arrives on the context; MCC only mirrors notes attached to a task.
+    // arrives on the context; OLB only mirrors notes attached to a task.
     async onRecordingReady(ctx: ReadyRecordingContext) {
       if (ctx.linkedEntityType !== "task" || !ctx.linkedEntityId) return;
       const linkedTicketId = ctx.linkedEntityId;

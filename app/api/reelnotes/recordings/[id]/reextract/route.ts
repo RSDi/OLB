@@ -13,7 +13,7 @@ import { createClient } from "../../../../../../lib/supabase/server";
 import { createAdminClient } from "../../../../../../lib/supabase/admin";
 import { getViewer } from "../../../../../../lib/auth/viewer";
 import { processTranscriptionCompleted } from "reelnotes/server";
-import { mccReelNotesAdapter } from "../../../../../../lib/reelnotes/adapter";
+import { olbReelNotesAdapter } from "../../../../../../lib/reelnotes/adapter";
 
 export const runtime = "nodejs";
 // LLM call + email is typically <10s; cap generously.
@@ -71,7 +71,7 @@ export async function POST(
 
   // Run the pipeline inline. With AI Gateway latency this is ~5s, fine to
   // await — the user clicked a button and the UI shows a loading state.
-  await processTranscriptionCompleted(id, mccReelNotesAdapter(), { force: true });
+  await processTranscriptionCompleted(id, olbReelNotesAdapter(), { force: true });
 
   const { data: refreshed } = await admin
     .from("reel_notes_recordings")

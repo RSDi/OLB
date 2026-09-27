@@ -365,7 +365,7 @@ export async function processTranscriptionCompleted(
       if (summaryErr) console.error("Summary write failed (non-fatal)", summaryErr.message);
     }
 
-    // 5.5 Hand the finished recording to the host (optional). MCC uses this to
+    // 5.5 Hand the finished recording to the host (optional). OLB uses this to
     // mirror the summary onto a linked task's comment thread. Best-effort.
     if (adapter.onRecordingReady) {
       try {

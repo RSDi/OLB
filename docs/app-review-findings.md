@@ -1,4 +1,4 @@
-# MCC App Review — Findings
+# OLB App Review — Findings
 
 Companion to [app-review-plan.md](app-review-plan.md). One section per review track.
 
@@ -21,7 +21,7 @@ Companion to [app-review-plan.md](app-review-plan.md). One section per review tr
 | U5 | **P2** | **Birthdays opens at January — in June.** "Who has birthdays this month" (the stated use case) requires scrolling through five months. Default to the current month. |
 | U6 | **P2** | Member dashboard/queue KPIs say "0 Open" directly above the request the member just submitted (pending-review isn't counted). Mixed signal — count it or label it. |
 | U7 | **P3** | Vocabulary drift: nav says "Make a Request" and "Tasks & Projects", the dashboard button says "New maintenance request", and "View my requests" lands on a page titled "Tasks & Projects". Pick one word for the member-facing concept. |
-| U8 | **P3** | Wizard review step shows "REQUESTED BY: MCC" (the affiliation choice, not the person) and raw ISO dates ("2026-07-18"). Show "Pat Walkthrough (member) · 402-555-0142" and "July 18, 2026". |
+| U8 | **P3** | Wizard review step shows "REQUESTED BY: OLB" (the affiliation choice, not the person) and raw ISO dates ("2026-07-18"). Show "Pat Walkthrough (member) · 402-555-0142" and "July 18, 2026". |
 | U9 | **P3** | Birthdays: "turns 0" for infants; imported name casing ("McQUINN"). |
 | U10 | **P3** | Email confirmation is a third hurdle before committee review (confirm email → wait for approval → sign in). Committee approval is already the gate — consider disabling Supabase email confirmation to cut signup drop-off. |
 | U11 | **P3** | Dave's Idea page copy promises routing to "Things, Reminders, Notion, Slack, HubSpot" — well ahead of what's wired. Trim to what works today. |

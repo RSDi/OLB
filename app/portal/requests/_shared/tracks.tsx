@@ -28,7 +28,7 @@ const weekdayOf = (s: string): number | null => {
   return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getDay() : null;
 };
 const reqBy = (f: RequestForm) =>
-  f.requesterKind === "outside" ? `Outside group${str(f.outsideOrg) ? ` — ${str(f.outsideOrg)}` : ""}` : "MCC";
+  f.requesterKind === "outside" ? `Outside group${str(f.outsideOrg) ? ` — ${str(f.outsideOrg)}` : ""}` : "OLB";
 const whenStr = (f: RequestForm) => {
   const time = [f.startTime, f.endTime].filter(Boolean).join("–");
   if (f.recurring) {
@@ -92,7 +92,7 @@ const whoStep: WizardStep = {
           selected={form.requesterKind === "member"}
           onClick={() => set("requesterKind", "member")}
           icon={<Icons.Home width={20} height={20} />}
-          label="I'm part of MCC"
+          label="I'm part of OLB"
           blurb="A member, regular attender, or ministry of the church"
         />
         <OptionCard

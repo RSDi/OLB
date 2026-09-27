@@ -1,4 +1,4 @@
-// Server-side loaders for /portal/reelnotes — MCC host glue over the reelnotes
+// Server-side loaders for /portal/reelnotes — OLB host glue over the reelnotes
 // package. The shared types live in the package; they're re-exported here so
 // existing call sites can keep importing from one place during the extraction.
 //

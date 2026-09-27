@@ -61,7 +61,7 @@ Two cross-cutting patterns:
 **Walkthrough** — one question per screen, progress bar (`.rsd-prog` + slide
 animations already in `globals.css`). Shared spine, from the real `wizardFields`:
 
-1. *(auto)* "You're signed in as <name> — for you/MCC, or an outside group?"
+1. *(auto)* "You're signed in as <name> — for you/OLB, or an outside group?"
    → outside unlocks fee/insurance/host-contact later
 2. The track's "what" (occasion / activity / what's broken / your question)
 3. **Where** — tap the space(s): Gym, Kitchen, Dining, Room 201, offices, Nursery, Outdoors (multi-select for events)

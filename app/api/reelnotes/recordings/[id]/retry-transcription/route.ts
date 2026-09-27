@@ -12,7 +12,7 @@ import { createClient } from "../../../../../../lib/supabase/server";
 import { createAdminClient } from "../../../../../../lib/supabase/admin";
 import { getViewer } from "../../../../../../lib/auth/viewer";
 import { retryTranscription, RECORDING_SELECT } from "reelnotes/server";
-import { mccReelNotesAdapter } from "../../../../../../lib/reelnotes/adapter";
+import { olbReelNotesAdapter } from "../../../../../../lib/reelnotes/adapter";
 
 export const runtime = "nodejs";
 // Re-upload to AssemblyAI + job submit are two sequential POSTs; 60s is ample.
@@ -46,7 +46,7 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const result = await retryTranscription(mccReelNotesAdapter(), id);
+  const result = await retryTranscription(olbReelNotesAdapter(), id);
   if (!result.ok) {
     return NextResponse.json({ error: result.error ?? "Retry failed" }, { status: 400 });
   }

@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Icons } from "../icons";
 import type { EntityType, SearchHit } from "../../../lib/search/useGlobalSearch";
 
-const RECENT_KEY = "mcc-search-recent";
+const RECENT_KEY = "olb-search-recent";
 const RECENT_MAX = 5;
 
 interface EntityMeta {

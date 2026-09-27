@@ -9,9 +9,9 @@
 --    so they travel with the ReelNotes package when it's extracted. Requires
 --    audio_blob_url to be nullable and 'typed' to be an allowed source.
 --
--- 2. GENERIC PARENT LINK. Replaces the MCC-specific linked_ticket_id (FK ->
+-- 2. GENERIC PARENT LINK. Replaces the OLB-specific linked_ticket_id (FK ->
 --    maintenance_requests) with a portable (linked_entity_type, linked_entity_id)
---    pair the host interprets. MCC writes ('task', <ticket id>). This removes the
+--    pair the host interprets. OLB writes ('task', <ticket id>). This removes the
 --    only app-specific FK from the recordings table, which is the portability win
 --    ReelNotes wants before extraction. Trade-off: no FK cascade, so a *hard*-
 --    deleted task leaves a dangling linked_entity_id (tasks are soft-deleted in
@@ -74,7 +74,7 @@ create policy "reel_notes_recordings_select_staff_linked" on public.reel_notes_r
   for select to authenticated
   using (linked_entity_id is not null and deleted_at is null and public.is_staff());
 
--- Drop the old MCC-specific column, its index, and FK (carried by the column).
+-- Drop the old OLB-specific column, its index, and FK (carried by the column).
 drop index if exists public.daves_idea_recordings_linked_ticket_idx;
 alter table public.reel_notes_recordings
   drop column if exists linked_ticket_id;

@@ -18,7 +18,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getViewer } from "../../../../lib/auth/viewer";
-import { mccReelNotesAdapter } from "../../../../lib/reelnotes/adapter";
+import { olbReelNotesAdapter } from "../../../../lib/reelnotes/adapter";
 import { handleUpload, type UploadResult } from "reelnotes/server";
 
 export const runtime = "nodejs";
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   const mimeType = String(form.get("mime_type") || audio.type || "audio/webm");
 
   // Host-specific: optional generic parent link — the note attaches to an
-  // entity (MCC uses 'task') and onRecordingReady mirrors its summary there.
+  // entity (OLB uses 'task') and onRecordingReady mirrors its summary there.
   // Only known entity types and a valid uuid are accepted; bogus values drop.
   const entityType = String(form.get("linked_entity_type") || "");
   const entityIdRaw = String(form.get("linked_entity_id") || "");
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       ? { linked_entity_type: "task", linked_entity_id: entityIdRaw }
       : undefined;
 
-  const result: UploadResult = await handleUpload(mccReelNotesAdapter(), {
+  const result: UploadResult = await handleUpload(olbReelNotesAdapter(), {
     audio,
     durationSec,
     source,
