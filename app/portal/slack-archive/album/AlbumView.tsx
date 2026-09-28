@@ -25,6 +25,7 @@ import { emojify } from "../../../../lib/slack-archive/emoji";
 import { FilterDropdown, type FilterDropdownItem } from "../_shared/FilterDropdown";
 import { AlbumLightbox } from "./AlbumLightbox";
 import { MonthJump, type MonthJumpEntry } from "./MonthJump";
+import { ShowMeHow } from "../../../components/ShowMeHow";
 
 const SHORT_DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: CHURCH_TZ });
 const URL_SYNC_DELAY_MS = 300;
@@ -320,7 +321,10 @@ export function AlbumView({
   return (
     <div className="rsd-album" style={{ "--album-toolbar-h": `${toolbarHeight}px` } as React.CSSProperties}>
       <header className="rsd-album-head">
-        <h1 className="rsd-album-title">Photo Album</h1>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <h1 className="rsd-album-title">Photo Album</h1>
+          <ShowMeHow tour="slack-archive-album" />
+        </div>
         {summary && <p className="rsd-album-summary">{summary}</p>}
         {notice}
       </header>

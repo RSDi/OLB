@@ -161,7 +161,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "page-help",
         title: "Help on every page",
-        body: "Tap **ⓘ** to read about the page you're on. Most pages also have **Show me around** there, a tour like this one for just that page, and the Directory, Playbooks and Settings have a **Show me how** button for it.",
+        body: "Tap **ⓘ** to read about the page you're on. Most pages also have **Show me around** there, a tour like this one for just that page, and the Directory, Playbooks, Slack Archive and Settings have a **Show me how** button for it.",
       },
       {
         title: "You're all set",

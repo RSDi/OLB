@@ -105,7 +105,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 **Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
 
-**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, press **Show me how** at the top of the Directory, Playbooks or any Settings tab, tap **ⓘ** on a page and then **Show me around**, or press **Show me around** next to a section's title below.`,
+**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, press **Show me how** at the top of the Directory, Playbooks, the Slack Archive or any Settings tab, tap **ⓘ** on a page and then **Show me around**, or press **Show me around** next to a section's title below.`,
   },
   {
     id: "directory",
@@ -254,7 +254,9 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - **Filter** shows only the threads a certain person posted in.
 - Tap a photo, video or audio clip to preview it; other files open in a new tab. Files linked from outside Slack, like Google Docs, show a ↗ and open where they're kept.
 - The **link** icon on a message copies a direct link you can share.
-- **Photos →** opens the Photo Album for just that channel.`,
+- **Photos →** opens the Photo Album for just that channel.
+
+**Show me how** at the top of the page walks you through the Slack Archive, one step at a time.`,
   },
   {
     id: "slack-archive-search",
@@ -270,7 +272,9 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - Results show the newest 200 matches. **Jump to message ↗** opens the message in its conversation.
 - **Clear all** starts over.
 
-Quick lookups work from the top-bar search too — Slack messages show up there under **Slack**.`,
+Quick lookups work from the top-bar search too — Slack messages show up there under **Slack**.
+
+**Show me how** at the top of the page walks you through searching.`,
   },
   {
     id: "slack-archive-album",
@@ -287,7 +291,9 @@ Quick lookups work from the top-bar search too — Slack messages show up there 
 - Tap a photo to open it full-screen. Use the arrows (or ← and → keys) to move through them, **Show details** to see the caption and who posted it, **View in conversation** to see the Slack thread, and **Download original** to save it.
 - Your filters stay in the page address, so you can bookmark or share a filtered view.
 
-If the page has been open a long time and pictures stop loading, tap **Reload previews**.`,
+If the page has been open a long time and pictures stop loading, tap **Reload previews**.
+
+**Show me how** at the top of the album walks you through it.`,
   },
   {
     id: "slack-archive-admin",

@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { loadArchiveViewer, loadArchiveChannels } from "../../../lib/slack-archive/data";
 import { AlbumCard } from "./AlbumCard";
+import { ShowMeHow } from "../../components/ShowMeHow";
 import { ChannelsPanel } from "./ChannelsPanel";
 
 // Server Actions inherit their page's maxDuration — the Refresh access button
@@ -25,7 +26,7 @@ export default async function SlackArchivePage() {
         <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)", marginBottom: 4 }}>
           Slack Archive
         </h1>
-        <div style={{ display: "flex", gap: 16 }}>
+        <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <Link
             href="/portal/slack-archive/search"
             data-tour="archive-search"
@@ -44,6 +45,7 @@ export default async function SlackArchivePage() {
               View all exceptions →
             </Link>
           )}
+          <ShowMeHow tour="slack-archive" />
         </div>
       </div>
       <p style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, marginBottom: 24 }}>
