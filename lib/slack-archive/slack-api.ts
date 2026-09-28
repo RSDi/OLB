@@ -32,7 +32,14 @@ export interface SlackFile {
   // Set when Slack sends a placeholder instead of the file, which then has
   // only an id: "tombstone" (deleted in Slack) or "hidden_by_limit" (hidden
   // by the workspace's plan; the free plan hides anything older than 90 days).
+  // "external" marks a file kept outside Slack, as is_external does.
   mode?: string;
+  // A file whose master copy lives outside Slack, like a Google Doc added
+  // through the Google Drive app: url_private then points at that service,
+  // not at Slack, and external_url is the file's own link.
+  is_external?: boolean;
+  external_type?: string; // e.g. "gdrive"
+  external_url?: string;
 }
 
 export interface SlackMessage {

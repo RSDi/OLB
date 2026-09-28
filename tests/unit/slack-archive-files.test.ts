@@ -97,3 +97,64 @@ test("downloadAndStoreSlackFile labels Slack's placeholders without downloading 
   const external = await downloadAndStoreSlackFile(admin, { id: "F3", name: "doc", mimetype: "", size: 0 }, "C1", "1.1", "token");
   assert.equal(external.error, "No downloadable URL provided by Slack for this file type.");
 });
+
+// What Slack sends for a Google Doc added through the Google Drive app.
+function googleDoc(id: string): SlackFile {
+  return {
+    id,
+    name: "9-14-26 Lightning Board Meeting",
+    mimetype: "application/vnd.google-apps.document",
+    size: 0,
+    mode: "external",
+    is_external: true,
+    external_type: "gdrive",
+    external_url: "https://docs.google.com/document/d/abc/edit",
+    url_private: "https://docs.google.com/document/d/abc/edit?usp=drivesdk",
+    permalink: `https://example.slack.com/files/U1/${id}/doc`,
+  };
+}
+
+test("downloadAndStoreSlackFile saves a Google Doc as a link, without fetching it", async (t) => {
+  const fetchMock = t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("fetch must not be called");
+  });
+  const admin = {} as never; // no upload either
+
+  const doc = await downloadAndStoreSlackFile(admin, googleDoc("F5"), "C1", "1.1", "token");
+  assert.equal(fetchMock.mock.callCount(), 0);
+  assert.equal(doc.external, true);
+  assert.equal(doc.error, null);
+  assert.equal(doc.storage_path, null);
+  assert.equal(doc.permalink, "https://docs.google.com/document/d/abc/edit");
+});
+
+test("downloadAndStoreSlackFile never sends the token to a URL that isn't Slack's", async (t) => {
+  const fetchMock = t.mock.method(globalThis, "fetch", async () => {
+    throw new Error("fetch must not be called");
+  });
+  const file: SlackFile = { id: "F6", name: "brief.pdf", mimetype: "application/pdf", size: 10, url_private: "https://files.example.com/brief.pdf" };
+
+  const linked = await downloadAndStoreSlackFile({} as never, file, "C1", "1.1", "token");
+  assert.equal(fetchMock.mock.callCount(), 0);
+  assert.equal(linked.external, true);
+  assert.equal(linked.error, null);
+  assert.equal(linked.permalink, "https://files.example.com/brief.pdf");
+});
+
+test("downloadAndStoreSlackFile still downloads Slack-hosted files with the token", async (t) => {
+  const fetchMock = t.mock.method(globalThis, "fetch", async () => new Response(new Uint8Array([1, 2, 3])));
+  const uploads: string[] = [];
+  const admin = {
+    storage: { from: () => ({ upload: async (path: string) => (uploads.push(path), { error: null }) }) },
+  } as never;
+
+  const photo = await downloadAndStoreSlackFile(admin, slackFile("F7", "roof.jpg"), "C1", "1.1", "xoxb-token");
+  assert.equal(fetchMock.mock.callCount(), 1);
+  const [url, init] = fetchMock.mock.calls[0].arguments as [string, RequestInit];
+  assert.equal(url, "https://files.slack.com/F7");
+  assert.deepEqual(init.headers, { Authorization: "Bearer xoxb-token" });
+  assert.equal(photo.error, null);
+  assert.equal(photo.external, undefined);
+  assert.equal(photo.storage_path, "C1/1.1/F7-roof.jpg");
+  assert.deepEqual(uploads, ["C1/1.1/F7-roof.jpg"]);
+});
