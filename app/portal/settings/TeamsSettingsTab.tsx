@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { Input, Pill } from "../../components/ui";
-import { ShowMeHow } from "./ShowMeHow";
+import { ShowMeHow } from "../../components/ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import { createTeam, deleteTeam, updateTeamSettings } from "../../../lib/teams/volunteer-actions";
 import type { TeamSettingsInput } from "../../../lib/teams/types";

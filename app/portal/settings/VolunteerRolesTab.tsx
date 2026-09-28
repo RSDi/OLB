@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
-import { ShowMeHow } from "./ShowMeHow";
+import { ShowMeHow } from "../../components/ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createVolunteerRole,

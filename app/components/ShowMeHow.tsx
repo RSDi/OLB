@@ -1,8 +1,8 @@
 "use client";
-// "Show me how" at the top of a Settings tab: starts that tab's guided
+// "Show me how" at the top of a page or Settings tab: starts its guided
 // walkthrough (lib/help/tours.ts).
-import { Pill } from "../../components/ui";
-import { useTour } from "../../components/GuidedTour";
+import { Pill } from "./ui";
+import { useTour } from "./GuidedTour";
 
 export function ShowMeHow({ tour }: { tour: string }) {
   const { start } = useTour();

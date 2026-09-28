@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KpiCard } from "../../components/ui";
-import { ShowMeHow } from "../settings/ShowMeHow";
+import { ShowMeHow } from "../../components/ShowMeHow";
 import { PreviewButton } from "./PreviewButton";
 import type { ActivityOverview as Overview, RosterMember } from "../../../lib/activity/queries";
 import { previewBlocker } from "../../../lib/activity/preview-rules";

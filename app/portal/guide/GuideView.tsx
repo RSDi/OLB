@@ -19,6 +19,17 @@ const tourButton: React.CSSProperties = {
   border: "1px solid",
 };
 
+// Consecutive sections that share a group, in order.
+function groupRuns(sections: GuideSection[]): { group: string; sections: GuideSection[] }[] {
+  const runs: { group: string; sections: GuideSection[] }[] = [];
+  for (const s of sections) {
+    const last = runs[runs.length - 1];
+    if (last && last.group === s.group) last.sections.push(s);
+    else runs.push({ group: s.group, sections: [s] });
+  }
+  return runs;
+}
+
 export function GuideView({
   sections,
   tours,
@@ -152,26 +163,36 @@ export function GuideView({
           >
             Contents
           </div>
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: "none",
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-              columnGap: 24,
-              rowGap: 4,
-              fontSize: 14,
-            }}
-          >
-            {shown.map((s) => (
-              <li key={s.id}>
-                <a href={`#${guideAnchor(s.id)}`} style={{ color: "var(--gw-fg)", fontWeight: 600 }}>
-                  {s.title}
-                </a>
-              </li>
+          {/* One block per group (the sidebar item it belongs to), in guide
+              order, reading down each column; a block never splits. */}
+          <div style={{ columns: "220px 3", columnGap: 24, fontSize: 14 }}>
+            {groupRuns(shown).map((g) => (
+              <div key={g.sections[0].id} style={{ breakInside: "avoid", paddingBottom: 12 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: ".04em",
+                    textTransform: "uppercase",
+                    color: "var(--gw-fg-muted)",
+                    marginBottom: 4,
+                  }}
+                >
+                  {g.group}
+                </div>
+                <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
+                  {g.sections.map((s) => (
+                    <li key={s.id}>
+                      <a href={`#${guideAnchor(s.id)}`} style={{ color: "var(--gw-fg)", fontWeight: 600 }}>
+                        {/* "Settings: Members" reads as "Members" under Settings. */}
+                        {s.title.startsWith(`${g.group}: `) ? s.title.slice(g.group.length + 2) : s.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         </nav>
       ) : (
         <p style={{ fontSize: 14, color: "var(--gw-fg-muted)" }}>

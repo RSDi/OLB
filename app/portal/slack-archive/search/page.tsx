@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { loadArchiveViewer, loadArchiveAuthors, loadArchiveChannels } from "../../../../lib/slack-archive/data";
 import { SearchPanel } from "./SearchPanel";
+import { ShowMeHow } from "../../../components/ShowMeHow";
 
 export default async function SlackArchiveSearchPage() {
   await loadArchiveViewer();
@@ -20,9 +21,12 @@ export default async function SlackArchiveSearchPage() {
       >
         ← All channels
       </Link>
-      <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)", margin: "4px 0 24px" }}>
-        Search Archive
-      </h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "4px 0 24px" }}>
+        <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--gw-fg)", margin: 0 }}>
+          Search Archive
+        </h1>
+        <ShowMeHow tour="slack-archive-search" />
+      </div>
       {authorsError && (
         <div
           style={{

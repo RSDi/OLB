@@ -161,11 +161,11 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "page-help",
         title: "Help on every page",
-        body: "Tap **ⓘ** to read about the page you're on. Most pages also have **Show me around**, a tour like this one for just that page.",
+        body: "Tap **ⓘ** to read about the page you're on. Most pages also have **Show me around** there, a tour like this one for just that page, and the Directory, Playbooks, Slack Archive and Settings have a **Show me how** button for it.",
       },
       {
         title: "You're all set",
-        body: "Want a closer look at a page? Open it, tap **ⓘ**, then **Show me around**. Or open the **User Guide** and pick a section.",
+        body: "Want a closer look at a page? Press **Show me how** at the top of it, or tap **ⓘ** and then **Show me around**. Or open the **User Guide** and pick a section.",
       },
     ],
   },
@@ -239,6 +239,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "playbooks-card",
         title: "Open a playbook",
         body: "Newest-updated first. Tap one to open it. Some have **procedures**, checklists for a job you do the same way every time, on the **Run** tab.",
+      },
+      {
+        target: "global-search",
+        title: "Looking for one?",
+        body: "Search from the top bar: playbooks show up with members and Slack messages as you type.",
       },
     ],
   },

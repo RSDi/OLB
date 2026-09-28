@@ -19,6 +19,7 @@ import {
 } from "../../../lib/requirements/logic";
 import { RequirementDialog } from "./RequirementDialog";
 import { useTour } from "../../components/GuidedTour";
+import { ShowMeHow } from "../../components/ShowMeHow";
 import { REQUIREMENTS_TOUR_ID } from "../../../lib/help/tours";
 
 const NO_GROUP = "No age group";
@@ -217,17 +218,20 @@ export function PlayersList({
               }}
             />
           </div>
-          {canViewAges && (
-            <div
-              role="group"
-              aria-label="Group the directory"
-              data-tour="directory-view"
-              style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
-            >
-              <SegButton label="By team" active={view === "team"} onClick={() => setView("team")} />
-              <SegButton label="By age group" active={view === "age"} onClick={() => setView("age")} />
-            </div>
-          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {canViewAges && (
+              <div
+                role="group"
+                aria-label="Group the directory"
+                data-tour="directory-view"
+                style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
+              >
+                <SegButton label="By team" active={view === "team"} onClick={() => setView("team")} />
+                <SegButton label="By age group" active={view === "age"} onClick={() => setView("age")} />
+              </div>
+            )}
+            <ShowMeHow tour="directory" />
+          </div>
         </div>
 
         {view === "team" ? (
@@ -319,7 +323,7 @@ export function PlayersList({
               cursor: "pointer",
             }}
           >
-            Show me how
+            How requirements work
           </button>
         </div>
       )}
