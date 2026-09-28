@@ -105,7 +105,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 **Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
 
-**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, press **Show me how** at the top of the Directory, Playbooks, the Slack Archive or any Settings tab, tap **ⓘ** on a page and then **Show me around**, or press **Show me around** next to a section's title below.`,
+**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, press **Show me how** at the top of the Directory, External Contacts, Playbooks, the Slack Archive or any Settings tab, tap **ⓘ** on a page and then **Show me around**, or press **Show me around** next to a section's title below.`,
   },
   {
     id: "directory",
@@ -197,7 +197,9 @@ Requirements start over each season, since each season has its own roster. The l
 - Add the people you deal with at a company from its page with **+ Add person**, or pick their company under **Works at** when you add them.
 - A contact's page shows everything about them, with tap-to-call phone numbers, and **Used by** lists the playbooks it's attached to. Tap **Edit** to make changes.
 
-Super-admins can **Delete** a contact.`,
+Super-admins can **Delete** a contact.
+
+**Show me how** at the top of the page walks you through it, one step at a time.`,
   },
   {
     id: "playbooks",

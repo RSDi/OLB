@@ -161,7 +161,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "page-help",
         title: "Help on every page",
-        body: "Tap **ⓘ** to read about the page you're on. Most pages also have **Show me around** there, a tour like this one for just that page, and the Directory, Playbooks, Slack Archive and Settings have a **Show me how** button for it.",
+        body: "Tap **ⓘ** to read about the page you're on. Most pages also have **Show me around** there, a tour like this one for just that page, and the Directory, External Contacts, Playbooks, Slack Archive and Settings have a **Show me how** button for it.",
       },
       {
         title: "You're all set",
@@ -353,6 +353,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "contacts-filters",
         title: "Filter",
         body: "Show just **Companies**, just **People**, or one type of contact.",
+      },
+      {
+        target: "contacts-card",
+        title: "Open a contact",
+        body: "A contact's page has everything about them, with tap-to-call numbers. **Used by** lists the playbooks it's attached to, and **Edit** makes changes. At a company, **+ Add person** adds the people you deal with there.",
       },
     ],
   },

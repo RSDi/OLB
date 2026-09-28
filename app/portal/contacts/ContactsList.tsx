@@ -10,6 +10,7 @@ import { Icons } from "../../components/icons";
 import { Pill } from "../../components/ui";
 import type { Contact, ContactCategory, ContactKind } from "./_shared/data";
 import { composeSubtitle, displayName } from "./_shared/format";
+import { ShowMeHow } from "../../components/ShowMeHow";
 
 type KindFilter = "all" | ContactKind;
 
@@ -107,26 +108,29 @@ export function ContactsList({
             <strong style={{ color: "var(--gw-fg)" }}>{personCount}</strong> people.
           </p>
         </div>
-        <Link
-          href="/portal/contacts/new"
-          data-tour="contacts-new"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 18px",
-            borderRadius: 100,
-            background: "var(--rsd-accent-fill)",
-            color: "var(--rsd-accent-fill-on)",
-            border: "1px solid var(--rsd-accent-fill)",
-            fontSize: 13,
-            fontWeight: 700,
-            textDecoration: "none",
-          }}
-        >
-          <Icons.Plus width={14} height={14} />
-          New contact
-        </Link>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <ShowMeHow tour="external-contacts" />
+          <Link
+            href="/portal/contacts/new"
+            data-tour="contacts-new"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 18px",
+              borderRadius: 100,
+              background: "var(--rsd-accent-fill)",
+              color: "var(--rsd-accent-fill-on)",
+              border: "1px solid var(--rsd-accent-fill)",
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            <Icons.Plus width={14} height={14} />
+            New contact
+          </Link>
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -246,6 +250,7 @@ export function ContactsList({
               <Link
                 key={c.id}
                 href={`/portal/contacts/${c.id}`}
+                data-tour="contacts-card"
                 className="rsd-card"
                 style={{
                   flexDirection: "row",
