@@ -97,7 +97,14 @@ export async function loadActivityOverview(): Promise<ActivityOverview> {
 
   // The summary views arrive with migration 0099; before it's applied, show
   // the members with no activity rather than an error page.
-  const error = summaryRes.error ? "The activity trail isn't set up yet (migration 0099)." : null;
+  // Missing relation (42P01) or not in PostgREST's schema cache (PGRST205):
+  // 0099 isn't applied. Anything else, show what the database said.
+  const failed = [summaryRes, lastViewRes, topRes, dailyRes, previewsRes].find((r) => r.error)?.error;
+  const error = !failed
+    ? null
+    : failed.code === "42P01" || failed.code === "PGRST205"
+    ? "The activity trail isn't set up yet — migration 0099 hasn't been applied to this database."
+    : `Couldn't load activity: ${failed.message}${failed.code ? ` (${failed.code})` : ""}`;
 
   const summary = new Map<string, { last_login_at: string | null; last_seen_at: string | null; sessions_30d: number; page_views_30d: number }>();
   for (const r of (summaryRes.data as { user_id: string; last_login_at: string | null; last_seen_at: string | null; sessions_30d: number; page_views_30d: number }[]) ?? []) {
