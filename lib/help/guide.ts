@@ -174,7 +174,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 - **Newest first / Oldest first** flips the order.
 - **Jump to date** opens a calendar — tap any highlighted day to go straight there.
 - **Filter** shows only the threads a certain person posted in.
-- Tap a photo, video or audio clip to preview it; other files open in a new tab.
+- Tap a photo, video or audio clip to preview it; other files open in a new tab. Files linked from outside Slack, like Google Docs, show a ↗ and open where they're kept.
 - The **link** icon on a message copies a direct link you can share.
 - **Photos →** opens the Photo Album for just that channel.`,
   },
