@@ -7,6 +7,7 @@ import { cookies, headers } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { requireSuperAdmin } from "../../../lib/auth/guards";
 import { getAuthUser } from "../../../lib/auth/viewer";
+import { seesFullUi } from "../../../lib/auth/feature-preview";
 import { createAdminClient } from "../../../lib/supabase/admin";
 import { memberDisplayName } from "../../../lib/members/display";
 import { logActivity, memberLabel } from "../../../lib/activity/log";
@@ -25,6 +26,8 @@ export async function startPreview(memberId: string): Promise<{ error: string } 
   if (await getPreview()) return { error: "You're already previewing someone. Exit that preview first." };
   const me = await getAuthUser();
   if (!me) return { error: "You must be signed in." };
+  // Staged rollout, like the Activity page itself.
+  if (!seesFullUi(me.email)) return { error: "Preview as isn't available on your account yet." };
 
   const admin = createAdminClient();
   const { data } = await admin
