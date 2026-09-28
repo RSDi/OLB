@@ -94,7 +94,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 **Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
 
-**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, tap **ⓘ** on that page and then **Show me around**, or press **Show me around** next to a section's title below.`,
+**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, press **Show me how** at the top of the Directory, Playbooks or any Settings tab, tap **ⓘ** on a page and then **Show me around**, or press **Show me around** next to a section's title below.`,
   },
   {
     id: "directory",
@@ -112,7 +112,9 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 **Who's listed.** Players appear when their family said yes to being in the directory on the registration form.
 
-**Profiles.** A member's profile shows their photo, phone, email and birthday, plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
+**Profiles.** A member's profile shows their photo, phone, email and birthday, plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.
+
+**Show me how** at the top of the page walks you through the Directory, one step at a time.`,
   },
   {
     id: "team-pages",
@@ -156,7 +158,9 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 - Each playbook is a reference page, and can include pictures and videos (tap a video card to play it).
 - Some playbooks also have **procedures** — checklists for a job you do the same way every time. Open the **Run** tab to see a procedure's steps.
 
-**Running a procedure (board).** Open the playbook, press **▶ Start**, and tap each step as you do it. When every step is checked, press **Done** — it's logged in the procedure's **History**, and if the procedure is set up to, the team gets a heads-up in Slack (**Done — notify the team**).`,
+**Running a procedure (board).** Open the playbook, press **▶ Start**, and tap each step as you do it. When every step is checked, press **Done** — it's logged in the procedure's **History**, and if the procedure is set up to, the team gets a heads-up in Slack (**Done — notify the team**).
+
+**Show me how** at the top of the page walks you through the Playbooks page, one step at a time.`,
   },
   {
     id: "slack-archive",
@@ -373,7 +377,7 @@ Super-admins can **Delete** a contact.`,
 
 Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.
 
-**Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title. **Show me how** beside the requirement drop-down in the Directory starts at checking players off.`,
+**Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title. **How requirements work** beside the requirement drop-down in the Directory starts at checking players off.`,
   },
   {
     id: "settings-requirements",

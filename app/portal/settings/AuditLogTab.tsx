@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
 import { memberDisplayName } from "../../../lib/members/display";
-import { ShowMeHow } from "./ShowMeHow";
+import { ShowMeHow } from "../../components/ShowMeHow";
 
 type AuditAction = "insert" | "update" | "delete";
 

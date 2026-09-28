@@ -21,7 +21,7 @@ import {
 } from "../../../lib/requirements/types";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
 import { ErrorBox, IconBtn } from "./TeamsSettingsTab";
-import { ShowMeHow } from "./ShowMeHow";
+import { ShowMeHow } from "../../components/ShowMeHow";
 import { REQUIREMENTS_TOUR_ID } from "../../../lib/help/tours";
 
 interface TeamOption {

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useTransition } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
-import { ShowMeHow } from "./ShowMeHow";
+import { ShowMeHow } from "../../components/ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import type { MemberRole, MemberStatus } from "../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../lib/members/display";
