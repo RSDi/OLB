@@ -44,8 +44,9 @@ const NAV: NavItem[] = [
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true, tour: "nav-settings" },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
-  // Sign-ins, page views, usage and "Preview as": super-admin only.
-  { href: "/portal/activity", label: "Activity", icon: <Icons.Activity width={16} height={16}/>, superAdminOnly: true, tour: "nav-activity" },
+  // Sign-ins, page views, usage and "Preview as": super-admin only, and
+  // still in staged rollout (lib/auth/feature-preview.ts).
+  { href: "/portal/activity", label: "Activity", icon: <Icons.Activity width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
   // bottom of the nav, above Settings (BOTTOM_HREFS).
   { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/>, tour: "nav-guide" },

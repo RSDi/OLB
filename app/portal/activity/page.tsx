@@ -26,8 +26,10 @@ export default async function ActivityPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  // Super-admins on the staged-rollout list (lib/auth/feature-preview.ts)
+  // only, for now.
   const viewer = await getViewer();
-  if (!viewer?.isSuperAdmin) redirect("/portal/directory");
+  if (!viewer?.isSuperAdmin || !viewer.seesFullUi) redirect("/portal/directory");
 
   const params = await searchParams;
   const userId = one(params.u);

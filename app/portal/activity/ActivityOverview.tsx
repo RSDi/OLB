@@ -7,7 +7,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KpiCard } from "../../components/ui";
-import { ShowMeHow } from "../settings/ShowMeHow";
 import { PreviewButton } from "./PreviewButton";
 import type { ActivityOverview as Overview, RosterMember } from "../../../lib/activity/queries";
 import { previewBlocker } from "../../../lib/activity/preview-rules";
@@ -419,7 +418,6 @@ export function ActivityOverview({ data, viewerUserId }: { data: Overview; viewe
           Who&apos;s using the portal and how — sign-ins, sessions and the pages people open. Use{" "}
           <strong>Preview as</strong> to see the portal exactly as a member does.
         </div>
-        <ShowMeHow tour="activity" />
       </div>
       {data.error && (
         <div
