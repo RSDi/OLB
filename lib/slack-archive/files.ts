@@ -27,6 +27,21 @@ export interface ArchivedFile {
   // There's nothing to download and nothing anyone can fix, so the
   // exceptions page counts these rather than listing them.
   deleted_in_slack?: boolean;
+  // A link to a file kept outside Slack (a Google Doc, say): permalink is the
+  // file's own URL. There's no copy to keep, so this isn't an error either.
+  external?: boolean;
+}
+
+// Hosts Slack serves url_private from. The bot token is only ever sent to
+// these, never to another service a file link happens to point at.
+function isSlackHosted(url: string): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return false;
+  }
+  return ["slack.com", "slack-edge.com", "slack-gov.com"].some((d) => host === d || host.endsWith(`.${d}`));
 }
 
 // Supabase Storage keys are S3-compatible and reject some characters Slack
@@ -77,6 +92,15 @@ export async function downloadAndStoreSlackFile(
     permalink: file.permalink ?? null,
     error: null,
   };
+
+  // A file kept outside Slack (a Google Doc added through the Google Drive
+  // app, say) is saved as a link to it. Its url_private points at that
+  // service, which turns away Slack's token (HTTP 401), and a live document
+  // has no copy to keep anyway. The same goes for any url_private that isn't
+  // on Slack: the token must not go there.
+  if (file.is_external || file.mode === "external" || (file.url_private && !isSlackHosted(file.url_private))) {
+    return { ...base, permalink: file.external_url ?? file.url_private ?? file.permalink ?? null, external: true };
+  }
 
   // No url_private means nothing to download: a placeholder for a file
   // Slack deleted or is hiding (see SlackFile.mode), or one of the external/

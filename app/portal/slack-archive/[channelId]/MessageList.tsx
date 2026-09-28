@@ -239,9 +239,12 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
               borderRadius: 8, padding: "4px 10px", textDecoration: "none",
               cursor: "pointer", font: "inherit",
             };
-            const kind = previewKind(f);
+            // A file kept outside Slack (a Google Doc, say) is only a link to
+            // it, so it opens there rather than in the preview overlay.
+            const kind = f.external ? null : previewKind(f);
             const icon = f.error
               ? <Icons.AlertCircle width={13} height={13} />
+              : f.external ? <Icons.ExternalLink width={13} height={13} />
               : kind === "video" ? <Icons.Video width={13} height={13} />
               : kind === "image" ? <Icons.Image width={13} height={13} />
               : kind === "audio" ? <Icons.Music width={13} height={13} />
