@@ -38,7 +38,7 @@ const NAV: NavItem[] = [
   { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, staffOnly: true, tour: "nav-contacts" },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/>, tour: "nav-playbooks" },
   // Team manager (roster board, registrations, import): super-admin only.
-  { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
+  { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true, tour: "nav-activity" },
   // Board can view Settings; editing is gated per grant inside.
   // Pinned to the bottom of the nav (BOTTOM_HREFS).
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true, tour: "nav-settings" },
