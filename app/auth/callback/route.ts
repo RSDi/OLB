@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
 import { resolveMembership } from "../../../lib/auth/resolve-membership";
+import { logSignIn } from "../../../lib/activity/log";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -42,6 +43,8 @@ export async function GET(request: Request) {
     await supabase.auth.signOut();
     return NextResponse.redirect(`${origin}/login?status=${status}`);
   }
+
+  await logSignIn(supabase, user.id, code ? "oauth" : "email_link", request.headers.get("user-agent"));
 
   return NextResponse.redirect(`${origin}/portal`);
 }

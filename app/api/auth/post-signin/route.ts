@@ -10,8 +10,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase/server";
 import { resolveMembership } from "../../../../lib/auth/resolve-membership";
+import { logSignIn } from "../../../../lib/activity/log";
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,5 +23,8 @@ export async function POST() {
   }
 
   const result = await resolveMembership({ supabase, user });
+  if (result.status === "approved") {
+    await logSignIn(supabase, user.id, "portal", request.headers.get("user-agent"));
+  }
   return NextResponse.json(result);
 }

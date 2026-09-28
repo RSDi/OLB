@@ -602,6 +602,51 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "activity",
+    sectionId: "activity",
+    title: "Activity walkthrough",
+    route: "/portal/activity",
+    steps: [
+      {
+        target: "nav-activity",
+        sidebar: true,
+        title: "Activity",
+        body: "Who's using the portal and how: sign-ins, sessions and the pages people open. Only super-admins see it.",
+      },
+      {
+        target: "activity-kpis",
+        title: "At a glance",
+        body: "Sign-ins this week, how many people were active today and this week, and how many previews there have been this month.",
+      },
+      {
+        target: "activity-daily",
+        title: "People each day",
+        body: "How many members opened the portal each day for the last 30 days. Hover over or tap a bar for that day's numbers.",
+      },
+      {
+        target: "activity-members",
+        title: "Members",
+        body: "Everyone with a login, most recently seen first: last sign-in, last seen and the page they were on. Tap a row to see each time they signed in, and every page they opened.",
+      },
+      {
+        target: "activity-search",
+        interactive: true,
+        title: "Find someone",
+        body: "Search by name or email.",
+      },
+      {
+        target: "activity-preview",
+        title: "Preview as",
+        body: "See the portal exactly as this member does. A yellow bar shows while you're previewing; **Exit preview** takes you back. Anything you change during a preview really happens, as them.",
+      },
+      {
+        target: "activity-previews",
+        title: "Every preview, recorded",
+        body: "Who previewed whom, when and for how long. Tap one to see the pages opened during it.",
+      },
+    ],
+  },
+  {
     id: "requirements",
     sectionId: "player-requirements",
     alsoSections: ["settings-requirements"],

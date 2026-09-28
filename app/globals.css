@@ -297,10 +297,16 @@ main::-webkit-scrollbar-track { background: transparent; }
   box-shadow: var(--gw-shadow-1);
 }
 
+/* "Preview as" banner (app/components/PreviewBanner.tsx) sits above the app
+   grid, so the grid gives up its height. */
+:root { --rsd-preview-h: 42px; }
+.rsd-app.rsd-previewing { height: calc(100vh - var(--rsd-preview-h)); height: calc(100dvh - var(--rsd-preview-h)); }
+
 /* Mobile */
 .rsd-mob-menu { display: none; }
 
 @media (max-width: 768px) {
+  .rsd-preview-until { display: none; }
   .rsd-app {
     grid-template-columns: 1fr !important;
     grid-template-rows: 56px 1fr !important;
