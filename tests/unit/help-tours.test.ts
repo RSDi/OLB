@@ -122,7 +122,9 @@ test("each page tour is offered from its own page's ⓘ panel, and only there", 
   );
   assert.ok(pageTours.length >= 5);
   for (const t of pageTours) {
-    assert.equal(tourForPath(t.route, SUPER)?.id, t.id, `${t.route} should offer ${t.id}`);
+    // Checked as an account on the staged-rollout list, which sees every
+    // section (preview ones included).
+    assert.equal(tourForPath(t.route, { ...SUPER, seesFullUi: true })?.id, t.id, `${t.route} should offer ${t.id}`);
   }
   // Inside a channel, the channel-list tour would point at nothing.
   assert.equal(tourForPath("/portal/slack-archive/C0123", MEMBER), null);
@@ -166,4 +168,9 @@ test("part helpers find, name and skip parts", () => {
   assert.equal(partStartIndex(steps, 9), 0);
   assert.equal(nextPartIndex(steps, 1), 3);
   assert.equal(nextPartIndex(steps, 3), 4);
+});
+
+test("a preview section's tour only reaches accounts on the staged-rollout list", () => {
+  assert.equal(tourForSection("activity", SUPER), null);
+  assert.equal(tourForSection("activity", { ...SUPER, seesFullUi: true })?.id, "activity");
 });

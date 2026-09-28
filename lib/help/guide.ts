@@ -31,6 +31,9 @@ export interface GuideSection {
   // Portal pages this section is the "i" help for. A page uses the section
   // with the longest matching route (exact, or a parent of the path).
   routes?: string[];
+  // A feature still in staged rollout (lib/auth/feature-preview.ts): the
+  // section shows only to the accounts that can use it, on top of `audience`.
+  preview?: boolean;
   body: string;
 }
 
@@ -40,6 +43,8 @@ export interface GuideViewer {
   role: MemberRole;
   status: MemberStatus;
   isStaff: boolean;
+  // On the staged-rollout list: also sees `preview` sections.
+  seesFullUi?: boolean;
 }
 
 export const GUIDE_UPDATED = "September 2026";
@@ -324,6 +329,36 @@ The most recent 100 changes are listed, newest first: new members, approvals, ro
 **Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
+    id: "activity",
+    title: "Activity and Preview as",
+    audience: "super_admin",
+    // Staged rollout: only the accounts that can open Activity read this.
+    preview: true,
+    routes: ["/portal/activity"],
+    keywords: ["activity", "usage", "stats", "statistics", "sign-ins", "logins", "last seen", "sessions", "page views", "who's using", "audit", "trail", "preview as", "view as", "impersonate", "see what they see", "exit preview"],
+    body: `Who's using the portal and how. Open **Activity** near the bottom of the sidebar. Only you can see it for now — not other super-admins.
+
+**At a glance.** The tiles count **Sign-ins · 7 days**, people **Active · 24 hours** and **Active · 7 days**, and **Previews · 30 days**. **People each day** charts how many members opened the portal each day for the last 30 days — hover over (or tap) a bar for that day's numbers. **Most visited pages** lists the pages people open most.
+
+**Members.** Everyone with a portal login, most recently seen first: their role, **Last sign-in**, **Last seen** (when, and the page they were on) and **Sessions · 30d**. Search by name or email, or tap **Seen in 30 days** or **Never signed in** to narrow the list.
+
+**Sessions.** Tap a member to see each time they signed in: when, how long, how many pages and on what device. Tap a session to see every page they opened, in order, with how long they stayed on each. A long gap shows as **idle**.
+
+**Preview as.** Tap **Preview as** on a member's row, then **Start preview**, to see the portal exactly as they do — the same pages, buttons and players. It's the quickest way to check what a parent or coach can see.
+
+- A yellow bar across the top reminds you who you're previewing. Tap **Exit preview** to go back to your own account.
+- **Anything you change during a preview really happens, as them** — so look, don't touch. The Audit Log credits those changes to you ("Jeff Malone (as Pat Smith)").
+- A preview ends by itself after 2 hours. **Sign out** during a preview ends it and signs you out.
+- You can preview anyone with a portal login, other super-admins included — but not yourself, or people who haven't signed up, are waiting for approval, or have had their login revoked.
+- While you're previewing, Activity is hidden (you're seeing exactly what they see) and you can't start another preview until you exit.
+
+**Previews** lists every preview — who previewed whom, when and for how long — and each one's pages show in that member's sessions, marked **Preview**. Previews don't count toward a member's own sign-ins or last seen.
+
+Activity is recorded from the day this page went live.
+
+**Show me how** at the top of the page walks you through it, one step at a time.`,
+  },
+  {
     id: "playbooks-editing",
     title: "Writing playbooks",
     audience: "staff",
@@ -462,6 +497,7 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
 }
 
 export function canSeeGuideSection(section: GuideSection, viewer: GuideViewer | null | undefined): boolean {
+  if (section.preview && !viewer?.seesFullUi) return false;
   return canSeeAudience(section.audience, viewer);
 }
 

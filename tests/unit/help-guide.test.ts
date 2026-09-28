@@ -107,3 +107,18 @@ test("a page's help is its most specific section", () => {
   assert.equal(guideSectionForPath("/portal/docs/abc/history", MEMBER)?.id, "playbooks");
   assert.equal(guideSectionForPath("/portal/guide", MEMBER), null);
 });
+
+test("preview sections only reach accounts on the staged-rollout list", () => {
+  const preview = GUIDE_SECTIONS.filter((s) => s.preview);
+  assert.ok(preview.some((s) => s.id === "activity"), "Activity's section is flagged preview");
+  const jeff: GuideViewer = { ...SUPER, seesFullUi: true };
+  for (const s of preview) {
+    // Another super-admin (Rachel) doesn't get it — in the guide or behind the "i".
+    assert.ok(!guideSectionsFor(SUPER).includes(s), `${s.id} leaks to super-admins off the list`);
+    // Being on the list doesn't widen a section past its audience.
+    if (s.audience === "super_admin") assert.ok(!guideSectionsFor({ ...ADMIN, seesFullUi: true }).includes(s));
+    assert.ok(guideSectionsFor(jeff).includes(s), `${s.id} should show on the list`);
+  }
+  assert.equal(guideSectionForPath("/portal/activity", SUPER), null);
+  assert.equal(guideSectionForPath("/portal/activity", jeff)?.id, "activity");
+});
