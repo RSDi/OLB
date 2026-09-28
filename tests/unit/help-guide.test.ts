@@ -4,7 +4,7 @@
 // here until it gets a section (or is listed as still in preview below).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import {
   GUIDE_SECTIONS,
@@ -121,4 +121,43 @@ test("preview sections only reach accounts on the staged-rollout list", () => {
   }
   assert.equal(guideSectionForPath("/portal/activity", SUPER), null);
   assert.equal(guideSectionForPath("/portal/activity", jeff)?.id, "activity");
+});
+
+// The guide reads in sidebar order, with every Settings section together in
+// the order of the Settings tabs, so the Contents list matches the portal.
+test("sections follow the sidebar, and Settings follows its tabs", () => {
+  const src = (f: string) => readFileSync(join(import.meta.dirname, "../..", f), "utf8");
+  const ids = GUIDE_SECTIONS.map((s) => s.id);
+
+  // Sidebar: the nav in file order, with the pinned bottom items last.
+  const sidebar = src("app/components/PortalSidebar.tsx");
+  const nav = [...sidebar.matchAll(/\{ href: "(\/portal[^"]*)"/g)].map((m) => m[1]);
+  const bottom = [...(sidebar.match(/BOTTOM_HREFS = \[([^\]]*)\]/)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  const pages = [...nav.filter((h) => !bottom.includes(h) && h !== "/portal/settings"), ...bottom.filter((h) => h.startsWith("/"))];
+  const firstFor = pages
+    .map((href) => ids.indexOf(GUIDE_SECTIONS.find((s) => s.routes?.includes(href))?.id ?? ""))
+    .filter((i) => i >= 0);
+  assert.deepEqual(firstFor, [...firstFor].sort((a, b) => a - b), "page sections should follow the sidebar");
+
+  // Settings: its sections sit together at the end, in tab order.
+  const settings = GUIDE_SECTIONS.filter((s) => s.title.startsWith("Settings: "));
+  const start = ids.indexOf(settings[0].id);
+  assert.deepEqual(ids.slice(start, start + settings.length), settings.map((s) => s.id), "Settings sections sit together");
+  assert.equal(start + settings.length, ids.length, "Settings comes last, like in the sidebar");
+  const tabs = [...src("app/portal/settings/page.tsx").matchAll(/\{ key: "[a-z_]+", label: "([^"]+)"/g)].map((m) => m[1]);
+  const tabOf = (s: { title: string }) => tabs.indexOf(s.title.slice("Settings: ".length));
+  assert.ok(settings.every((s) => tabOf(s) >= 0), "every Settings section names a tab");
+  assert.deepEqual(settings.map(tabOf), settings.map(tabOf).sort((a, b) => a - b), "Settings sections follow the tabs");
+});
+
+test("each Contents group's sections sit together", () => {
+  const seen: string[] = [];
+  for (const s of GUIDE_SECTIONS) {
+    assert.ok(s.group.trim(), `${s.id} needs a group`);
+    if (seen[seen.length - 1] !== s.group) {
+      assert.ok(!seen.includes(s.group), `${s.id}: the ${s.group} sections should be together`);
+      seen.push(s.group);
+    }
+  }
+  assert.equal(seen[seen.length - 1], "Settings");
 });

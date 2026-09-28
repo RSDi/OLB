@@ -8,7 +8,9 @@
 //
 // KEEP IT CURRENT: any change people can see (a new page, a renamed button, a
 // feature released from preview) updates the matching section here in the
-// same change, and bumps GUIDE_UPDATED. tests/unit/help-guide.test.ts fails
+// same change, and bumps GUIDE_UPDATED. Sections follow the sidebar (Directory,
+// External Contacts, Playbooks, Slack Archive, Activity, then Settings with
+// its sections in the order of its tabs), each page's how-to beside it. tests/unit/help-guide.test.ts fails
 // when a portal page has no section. The guided tours in ./tours.ts retell
 // sections step by step, pointed at the real buttons — keep them in step too.
 //
@@ -25,6 +27,9 @@ export type GuideAudience = "everyone" | "staff" | "super_admin";
 export interface GuideSection {
   id: string; // anchor: #help-<id>
   title: string;
+  // The heading it's listed under in the guide's Contents: the sidebar item
+  // it belongs to ("Directory", "Settings"), or "Getting started".
+  group: string;
   audience: GuideAudience;
   // Extra words for the guide's search box (the title and body are searched too).
   keywords: string[];
@@ -50,10 +55,10 @@ export interface GuideViewer {
 export const GUIDE_UPDATED = "September 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
-  // ─── Everyone ────────────────────────────────────────────────────────────
   {
     id: "getting-in",
     title: "Signing in",
+    group: "Getting started",
     audience: "everyone",
     keywords: ["login", "log in", "sign in", "password", "forgot", "reset", "code", "slack", "register", "request access", "pending", "approved", "denied", "account"],
     body: `The member portal is for Omaha Lightning families, coaches and the board. Use the **Login** link at the bottom of the club website, or go straight to the login page.
@@ -75,6 +80,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   {
     id: "getting-around",
     title: "Getting around",
+    group: "Getting started",
     audience: "everyone",
     keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k", "scroll", "back to top", "jump to top", "tour", "walkthrough", "show me around", "take the tour"],
     body: `**Home is the Directory.** After you sign in you land on the Directory of players and parents.
@@ -104,6 +110,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
   {
     id: "directory",
     title: "Directory",
+    group: "Directory",
     audience: "everyone",
     routes: ["/portal/directory"],
     keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "profile", "family", "search"],
@@ -124,6 +131,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
   {
     id: "team-pages",
     title: "Team pages",
+    group: "Directory",
     audience: "everyone",
     routes: ["/portal/directory/teams"],
     keywords: ["team", "coach", "volunteer", "team parent", "scorekeeper", "roster", "jersey", "practice", "staff", "open spot"],
@@ -138,6 +146,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
   {
     id: "your-profile",
     title: "Your profile",
+    group: "Directory",
     audience: "everyone",
     keywords: ["profile", "edit", "nickname", "photo", "avatar", "gravatar", "picture", "phone", "birthday", "name", "email change"],
     body: `Keep your details current so other families and coaches can reach you.
@@ -150,10 +159,50 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 - Your **photo** comes from [Gravatar](https://gravatar.com) automatically — set one up for the email you sign in with and it shows up here. Or paste a link to a picture in **Avatar URL**.
 - Your email, and whether you have access, are managed by the club. Ask a board member if your email changes.`,
   },
+  {
+    id: "player-requirements",
+    title: "Player requirements",
+    group: "Directory",
+    audience: "staff",
+    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
+    body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, a tournament fee, a form. Only the board sees any of this.
 
+**On each player.** In the **Directory**, every player has a chip for each requirement that applies to them:
+
+- A red **Needs Handbook signature** (or **Owes** for a fee) means it's still missing.
+- A green chip with a check means it's done or paid. A little page icon means a scan is attached.
+- A grey **waived** chip means you've excused them.
+
+**Checking a player off.** Tap the chip. Pick **Done** (**Paid** for a fee), **Waived** or **Not yet**, set the date, and add a **Note** if it helps (a check number, say). Then tap **Save**.
+
+**Scans.** When a requirement offers it, tap **Upload scan** to attach a photo or PDF of what you collected — you can take the picture right from your phone. **View scan** opens it; **Replace scan** and **Remove scan** do what they say. Scans are private to the board.
+
+**Who's still missing?** Pick a requirement from the **All requirements** drop-down above the list. **Missing** shows who still needs it, with counts for **Done** (or **Paid**), **Waived** and **All**. It works together with search and the team and age-group filters, and the line above the list shows how many are done.
+
+Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.
+
+**Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title. **How requirements work** beside the requirement drop-down in the Directory starts at checking players off.`,
+  },
+  {
+    id: "external-contacts",
+    title: "External Contacts",
+    group: "External Contacts",
+    audience: "staff",
+    routes: ["/portal/contacts"],
+    keywords: ["contacts", "vendors", "companies", "people", "photographer", "gym", "facility", "rent", "program", "account number", "billing", "tags", "phone", "email"],
+    body: `Everyone outside the club we work with — vendors, photographers, gyms we rent, other programs. Only the board can see it.
+
+- **Search** by name, email, phone, account number or type, and use the chips to show **Companies**, **People** or one **type**.
+- **+ New contact** — choose **Company** or **Person**, then fill in what you know: contact info, account and billing details, notes (like how to re-order or who to call for quotes) and tags.
+- Add the people you deal with at a company from its page with **+ Add person**, or pick their company under **Works at** when you add them.
+- A contact's page shows everything about them, with tap-to-call phone numbers, and **Used by** lists the playbooks it's attached to. Tap **Edit** to make changes.
+
+Super-admins can **Delete** a contact.`,
+  },
   {
     id: "playbooks",
     title: "Playbooks",
+    group: "Playbooks",
     audience: "everyone",
     routes: ["/portal/docs"],
     keywords: ["playbooks", "how to", "guide", "docs", "instructions", "procedure", "checklist", "steps", "run", "video"],
@@ -168,8 +217,28 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 **Show me how** at the top of the page walks you through the Playbooks page, one step at a time.`,
   },
   {
+    id: "playbooks-editing",
+    title: "Writing playbooks",
+    group: "Playbooks",
+    audience: "staff",
+    routes: ["/portal/docs/new"],
+    keywords: ["new playbook", "edit", "write", "markdown", "image", "video", "upload", "procedure", "checklist", "slack", "notify", "history", "versions", "contacts", "attach", "delete"],
+    body: `The board writes and keeps the playbooks up to date.
+
+**New playbook.** Tap **New Playbook**, give it a title, an optional category and short description (shown on the listing card), and write the steps. Use the toolbar for bold, lists, **Insert image** (or drag a picture in) and **Insert video** (a YouTube link or an uploaded clip). **Preview** shows how it'll look. Tap **Create**.
+
+**Editing.** Open a playbook and tap **Edit**, make your changes and **Save**. Every save keeps a copy — tap **History** to see earlier versions.
+
+**Procedures.** Under **Procedures**, tap **+ Add procedure**, name it and list the steps, one per line. Tick **Notify a Slack channel when this is completed** to post a message when someone finishes — add the channel's ID and a message (use \`{person}\` for the name of whoever ran it). The Slack bot has to be invited to that channel. Each procedure's **History** tab shows who ran it and when.
+
+**Contacts.** The **Contacts** box on a playbook links the vendors or facilities it involves — tap **+ Attach** and pick from External Contacts.
+
+Super-admins can **Delete playbook** from the bottom of its page.`,
+  },
+  {
     id: "slack-archive",
     title: "Slack Archive",
+    group: "Slack Archive",
     audience: "everyone",
     routes: ["/portal/slack-archive"],
     keywords: ["slack", "archive", "messages", "channels", "threads", "history", "private", "jump to date", "filter", "link", "attachments", "files"],
@@ -190,6 +259,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
   {
     id: "slack-archive-search",
     title: "Searching the Slack Archive",
+    group: "Slack Archive",
     audience: "everyone",
     routes: ["/portal/slack-archive/search"],
     keywords: ["slack", "search", "find", "message", "exact phrase", "quotes", "exclude", "user", "channel"],
@@ -205,6 +275,7 @@ Quick lookups work from the top-bar search too — Slack messages show up there 
   {
     id: "slack-archive-album",
     title: "Photo Album",
+    group: "Slack Archive",
     audience: "everyone",
     routes: ["/portal/slack-archive/album"],
     keywords: ["photos", "pictures", "videos", "album", "gallery", "download", "month", "slideshow", "gif"],
@@ -218,119 +289,26 @@ Quick lookups work from the top-bar search too — Slack messages show up there 
 
 If the page has been open a long time and pictures stop loading, tap **Reload previews**.`,
   },
-
-  // ─── Board ───────────────────────────────────────────────────────────────
   {
-    id: "admin-roles",
-    title: "Board roles",
-    audience: "staff",
-    keywords: ["admin", "super-admin", "super admin", "board", "building committee", "role", "permission", "access", "who can"],
-    body: `There are three kinds of account:
-
-| | Member | Board | Super-admin |
-|---|---|---|---|
-| Directory, Playbooks, Slack Archive | ✓ | ✓ | ✓ |
-| See every player, fees, waivers and volunteer interests | | ✓ | ✓ |
-| Member notes on profiles | | ✓ | ✓ |
-| External Contacts | | ✓ | ✓ |
-| Approve or deny access requests | | ✓ | ✓ |
-| Check players off on requirements (handbook signature, fees) | | ✓ | ✓ |
-| Set up requirements in Settings | | With **Settings: Edit** | ✓ |
-| Add, edit and remove members; change roles | | | ✓ |
-| Set up teams and volunteer roles; assign volunteers | | | ✓ |
-
-**Board extras around the portal**
-
-- The **Directory** shows every player — including families who asked not to be listed (marked **Not in directory**) — plus **No waiver**, fee and shirt details, and each parent's volunteer interests (**Can help**). **Not signed up** and **Awaiting approval** chips show which parents don't have access yet.
-- Each player also has a chip for every requirement, like the handbook signature — see *Player requirements* below.
-- Every profile has a **Member notes** panel only the board can see. Type a note and tap **Save notes**.`,
-  },
-  {
-    id: "settings-members",
-    title: "Settings: Members",
-    audience: "staff",
-    routes: ["/portal/settings"],
-    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants"],
-    body: `Where new sign-ups are approved and member accounts are managed.
-
-**The red badge** on **Settings** in the sidebar counts access requests waiting for you.
-
-**Reviewing requests.** The **Pending** tab lists people who have signed up and asked for access.
-
-- **Approve** lets them in and emails them a sign-in link.
-- **Deny** turns them away. They'll see **Access not granted** if they try to sign in.
-- Changed your mind? On the **Denied** tab, **Approve** them or **Restore to pending**.
-- **Not signed up** lists parents from player registrations who haven't created a login yet. Approving one ahead of time lets them straight in when they sign up.
-- Use the search box to find someone by name or email; **Approved** lists everyone with access.
-
-**Super-admins can also:**
-
-- **+ Add member** — set someone up ahead of time. With an email, they finish by requesting access with that email. Leave the email blank to add a **directory-only** entry (a grandparent, say) who won't sign in.
-- **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
-- Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
-- **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
-- **Remove** a member (demote a super-admin first).
-
-Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
-  },
-  {
-    id: "settings-sidebar-links",
-    title: "Settings: Sidebar Links",
+    id: "slack-archive-admin",
+    title: "Managing the Slack Archive",
+    group: "Slack Archive",
     audience: "super_admin",
-    keywords: ["sidebar", "links", "link", "schedule", "website", "url", "web address", "new tab", "menu", "shortcut", "reorder"],
-    body: `Add your own links to the bottom of everyone's sidebar — the season schedule, a sign-up form, the club store. Open **Settings → Sidebar Links**.
+    routes: ["/portal/slack-archive/exceptions"],
+    keywords: ["slack", "add channel", "channel id", "sync", "sync now", "refresh access", "deactivate", "exceptions", "errors", "previews", "compress", "large files"],
+    body: `Super-admins choose which Slack channels are archived and keep an eye on the nightly sync.
 
-- **Add link** — type a **Label** (the name people see, like Schedule) and the **Link** (a web address like https://schedule.omahalightningbasketball.com/, or a portal page like /portal/docs). Tap **Add link**.
-- **Open in a new browser tab** is ticked to start with, so the portal stays open. Untick it for a link that should open in the same tab.
-- Use the arrows to change the order, the **pencil** to edit a link, and the **trash** can to remove it.
-
-Every signed-in member sees the links; only super-admins can change them.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
-  },
-  {
-    id: "settings-playbooks",
-    title: "Settings: Playbooks",
-    audience: "super_admin",
-    keywords: ["playbooks", "settings", "categories", "category", "chip", "color", "colour", "sort order", "delete playbook"],
-    body: `Keep the playbook categories tidy and see every playbook in one list. Open **Settings → Playbooks**.
-
-- **Categories** group playbooks and set the colour of their label. **Add category** to make one — give it a **Name**, a **Chip color** and a **Sort order** (lower numbers come first). Tap the **pencil** to change one.
-- **Playbooks** lists every playbook, newest-updated first. Tap one to open it and edit its content.
-
-Tap the **trash** can to delete a category or a playbook.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
-  },
-  {
-    id: "settings-contact-types",
-    title: "Settings: Contact Types",
-    audience: "super_admin",
-    keywords: ["contact types", "types", "categories", "external contacts", "vendors", "group", "filter", "slug", "sort order"],
-    body: `The types used to group External Contacts — uniforms, photos, facilities, opponents and so on. Open **Settings → Contact Types**.
-
-- **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
-- Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
-- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
-  },
-  {
-    id: "settings-audit-log",
-    title: "Settings: Audit Log",
-    audience: "super_admin",
-    keywords: ["audit", "log", "history", "changes", "who changed", "member changes", "approved", "role change"],
-    body: `A record of every change to a member's account — who made it, what changed and when. Open **Settings → Audit Log**.
-
-The most recent 100 changes are listed, newest first: new members, approvals, role changes, profile edits and removals. Nothing here can be edited.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
+- **+ Add channel** — give it a label and its Slack channel ID (in Slack: open the channel → View channel details → the ID is at the bottom).
+- Each channel shows when it last synced and who can see it. **Deactivate** stops syncing a channel; its history stays browsable.
+- **Refresh access** re-checks private-channel membership with Slack right away (it also happens every night).
+- **Sync now** on a channel pulls in its newest messages without waiting for tonight — click again if it says there's more to catch up.
+- **View all exceptions →** lists channels whose sync failed, attachments that didn't download, and videos too big to store (with **Compress large files now**).
+- In the Photo Album, **Make previews now** creates any missing thumbnails.`,
   },
   {
     id: "activity",
     title: "Activity and Preview as",
+    group: "Activity",
     audience: "super_admin",
     // Staged rollout: only the accounts that can open Activity read this.
     preview: true,
@@ -359,64 +337,100 @@ Activity is recorded from the day this page went live.
 **Show me how** at the top of the page walks you through it, one step at a time.`,
   },
   {
-    id: "playbooks-editing",
-    title: "Writing playbooks",
+    id: "admin-roles",
+    title: "Board roles",
+    group: "Settings",
     audience: "staff",
-    routes: ["/portal/docs/new"],
-    keywords: ["new playbook", "edit", "write", "markdown", "image", "video", "upload", "procedure", "checklist", "slack", "notify", "history", "versions", "contacts", "attach", "delete"],
-    body: `The board writes and keeps the playbooks up to date.
+    keywords: ["admin", "super-admin", "super admin", "board", "building committee", "role", "permission", "access", "who can"],
+    body: `There are three kinds of account:
 
-**New playbook.** Tap **New Playbook**, give it a title, an optional category and short description (shown on the listing card), and write the steps. Use the toolbar for bold, lists, **Insert image** (or drag a picture in) and **Insert video** (a YouTube link or an uploaded clip). **Preview** shows how it'll look. Tap **Create**.
+| | Member | Board | Super-admin |
+|---|---|---|---|
+| Directory, Playbooks, Slack Archive | ✓ | ✓ | ✓ |
+| See every player, fees, waivers and volunteer interests | | ✓ | ✓ |
+| Member notes on profiles | | ✓ | ✓ |
+| External Contacts | | ✓ | ✓ |
+| Approve or deny access requests | | ✓ | ✓ |
+| Check players off on requirements (handbook signature, fees) | | ✓ | ✓ |
+| Set up requirements in Settings | | With **Settings: Edit** | ✓ |
+| Add, edit and remove members; change roles | | | ✓ |
+| Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
-**Editing.** Open a playbook and tap **Edit**, make your changes and **Save**. Every save keeps a copy — tap **History** to see earlier versions.
+**Board extras around the portal**
 
-**Procedures.** Under **Procedures**, tap **+ Add procedure**, name it and list the steps, one per line. Tick **Notify a Slack channel when this is completed** to post a message when someone finishes — add the channel's ID and a message (use \`{person}\` for the name of whoever ran it). The Slack bot has to be invited to that channel. Each procedure's **History** tab shows who ran it and when.
-
-**Contacts.** The **Contacts** box on a playbook links the vendors or facilities it involves — tap **+ Attach** and pick from External Contacts.
-
-Super-admins can **Delete playbook** from the bottom of its page.`,
+- The **Directory** shows every player — including families who asked not to be listed (marked **Not in directory**) — plus **No waiver**, fee and shirt details, and each parent's volunteer interests (**Can help**). **Not signed up** and **Awaiting approval** chips show which parents don't have access yet.
+- Each player also has a chip for every requirement, like the handbook signature — see *Player requirements*, with the Directory sections.
+- Every profile has a **Member notes** panel only the board can see. Type a note and tap **Save notes**.`,
   },
   {
-    id: "external-contacts",
-    title: "External Contacts",
+    id: "settings-members",
+    title: "Settings: Members",
+    group: "Settings",
     audience: "staff",
-    routes: ["/portal/contacts"],
-    keywords: ["contacts", "vendors", "companies", "people", "photographer", "gym", "facility", "rent", "program", "account number", "billing", "tags", "phone", "email"],
-    body: `Everyone outside the club we work with — vendors, photographers, gyms we rent, other programs. Only the board can see it.
+    routes: ["/portal/settings"],
+    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants"],
+    body: `Where new sign-ups are approved and member accounts are managed.
 
-- **Search** by name, email, phone, account number or type, and use the chips to show **Companies**, **People** or one **type**.
-- **+ New contact** — choose **Company** or **Person**, then fill in what you know: contact info, account and billing details, notes (like how to re-order or who to call for quotes) and tags.
-- Add the people you deal with at a company from its page with **+ Add person**, or pick their company under **Works at** when you add them.
-- A contact's page shows everything about them, with tap-to-call phone numbers, and **Used by** lists the playbooks it's attached to. Tap **Edit** to make changes.
+**The red badge** on **Settings** in the sidebar counts access requests waiting for you.
 
-Super-admins can **Delete** a contact.`,
+**Reviewing requests.** The **Pending** tab lists people who have signed up and asked for access.
+
+- **Approve** lets them in and emails them a sign-in link.
+- **Deny** turns them away. They'll see **Access not granted** if they try to sign in.
+- Changed your mind? On the **Denied** tab, **Approve** them or **Restore to pending**.
+- **Not signed up** lists parents from player registrations who haven't created a login yet. Approving one ahead of time lets them straight in when they sign up.
+- Use the search box to find someone by name or email; **Approved** lists everyone with access.
+
+**Super-admins can also:**
+
+- **+ Add member** — set someone up ahead of time. With an email, they finish by requesting access with that email. Leave the email blank to add a **directory-only** entry (a grandparent, say) who won't sign in.
+- **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
+- Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
+- **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
+- **Remove** a member (demote a super-admin first).
+
+Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
-    id: "player-requirements",
-    title: "Player requirements",
-    audience: "staff",
-    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
-    body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, a tournament fee, a form. Only the board sees any of this.
+    id: "settings-teams",
+    title: "Settings: Teams",
+    group: "Settings",
+    audience: "super_admin",
+    keywords: ["teams", "settings", "new team", "age group", "color", "colour", "division", "practice times", "practice location", "season", "delete team"],
+    body: `Set up this season's teams. Open **Settings → Teams**.
 
-**On each player.** In the **Directory**, every player has a chip for each requirement that applies to them:
+- **+ New team** — give it a **Team name** (e.g. Gold), then pick an **Age group** (10U–18U) and **Team color**, and add the **Division**, **Practice times** and **Practice location**. Separate more than one practice time with a semicolon.
+- Tap the **pencil** to edit a team, or the **trash** can to delete one — its players go back to unassigned and its volunteer spots are cleared.
+- **Staff & volunteers →** opens the team's page in the Directory, where you assign coaches and volunteers.
 
-- A red **Needs Handbook signature** (or **Owes** for a fee) means it's still missing.
-- A green chip with a check means it's done or paid. A little page icon means a scan is attached.
-- A grey **waived** chip means you've excused them.
+What you enter here shows on the team's Directory banner and team page.
 
-**Checking a player off.** Tap the chip. Pick **Done** (**Paid** for a fee), **Waived** or **Not yet**, set the date, and add a **Note** if it helps (a check number, say). Then tap **Save**.
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
+  },
+  {
+    id: "settings-volunteer-roles",
+    title: "Settings: Volunteer Roles",
+    group: "Settings",
+    audience: "super_admin",
+    keywords: ["volunteer", "roles", "coach", "team parent", "scorekeeper", "video", "photography", "spots", "leadership", "in directory", "assign", "registration answer"],
+    body: `The jobs every team can fill — coach, team parent, scorekeeper and so on. Open **Settings → Volunteer Roles**.
 
-**Scans.** When a requirement offers it, tap **Upload scan** to attach a photo or PDF of what you collected — you can take the picture right from your phone. **View scan** opens it; **Replace scan** and **Remove scan** do what they say. Scans are private to the board.
+- **+ Add role** — name it, say **What they do**, and set **Spots per team**.
+- **Registration answer** links the role to a volunteer option on the registration form, so people who ticked it are suggested first when you assign the role.
+- **Leadership** — people in these roles (coaches, for example) can switch the Directory to age groups, like the board can.
+- **In Directory** — shows the role on the team's banner when someone picks that team in the Directory. Every role always shows on the team's own page.
+- Use the arrows to reorder, the **−/+** to change spots, and the switches to turn Leadership and In Directory on or off. Changes save right away.
 
-**Who's still missing?** Pick a requirement from the **All requirements** drop-down above the list. **Missing** shows who still needs it, with counts for **Done** (or **Paid**), **Waived** and **All**. It works together with search and the team and age-group filters, and the line above the list shows how many are done.
+**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.
 
-Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.
-
-**Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title. **How requirements work** beside the requirement drop-down in the Directory starts at checking players off.`,
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
     id: "settings-requirements",
     title: "Settings: Requirements",
+    group: "Settings",
     audience: "staff",
     keywords: ["requirements", "settings", "handbook", "signature", "fee", "tournament fee", "amount", "due date", "applies to", "teams", "retire", "active", "scan upload"],
     body: `Choose what players need to hand in or pay. Open **Settings → Requirements**. Super-admins can always use this tab. A board member can too once a super-admin turns on their **Settings: Edit** chip in **Settings → Members**.
@@ -433,51 +447,61 @@ Use the arrows to change the order (it's the order of the chips in the Directory
 **Show me how** at the top of the tab walks you through setting one up, then on to checking players off and seeing who's still missing.`,
   },
   {
-    id: "settings-teams",
-    title: "Settings: Teams",
+    id: "settings-playbooks",
+    title: "Settings: Playbooks",
+    group: "Settings",
     audience: "super_admin",
-    keywords: ["teams", "settings", "new team", "age group", "color", "colour", "division", "practice times", "practice location", "season", "delete team"],
-    body: `Set up this season's teams. Open **Settings → Teams**.
+    keywords: ["playbooks", "settings", "categories", "category", "chip", "color", "colour", "sort order", "delete playbook"],
+    body: `Keep the playbook categories tidy and see every playbook in one list. Open **Settings → Playbooks**.
 
-- **+ New team** — give it a **Team name** (e.g. Gold), then pick an **Age group** (10U–18U) and **Team color**, and add the **Division**, **Practice times** and **Practice location**. Separate more than one practice time with a semicolon.
-- Tap the **pencil** to edit a team, or the **trash** can to delete one — its players go back to unassigned and its volunteer spots are cleared.
-- **Staff & volunteers →** opens the team's page in the Directory, where you assign coaches and volunteers.
+- **Categories** group playbooks and set the colour of their label. **Add category** to make one — give it a **Name**, a **Chip color** and a **Sort order** (lower numbers come first). Tap the **pencil** to change one.
+- **Playbooks** lists every playbook, newest-updated first. Tap one to open it and edit its content.
 
-What you enter here shows on the team's Directory banner and team page.
+Tap the **trash** can to delete a category or a playbook.
 
 **Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
-    id: "settings-volunteer-roles",
-    title: "Settings: Volunteer Roles",
+    id: "settings-sidebar-links",
+    title: "Settings: Sidebar Links",
+    group: "Settings",
     audience: "super_admin",
-    keywords: ["volunteer", "roles", "coach", "team parent", "scorekeeper", "video", "photography", "spots", "leadership", "in directory", "assign", "registration answer"],
-    body: `The jobs every team can fill — coach, team parent, scorekeeper and so on. Open **Settings → Volunteer Roles**.
+    keywords: ["sidebar", "links", "link", "schedule", "website", "url", "web address", "new tab", "menu", "shortcut", "reorder"],
+    body: `Add your own links to the bottom of everyone's sidebar — the season schedule, a sign-up form, the club store. Open **Settings → Sidebar Links**.
 
-- **+ Add role** — name it, say **What they do**, and set **Spots per team**.
-- **Registration answer** links the role to a volunteer option on the registration form, so people who ticked it are suggested first when you assign the role.
-- **Leadership** — people in these roles (coaches, for example) can switch the Directory to age groups, like the board can.
-- **In Directory** — shows the role on the team's banner when someone picks that team in the Directory. Every role always shows on the team's own page.
-- Use the arrows to reorder, the **−/+** to change spots, and the switches to turn Leadership and In Directory on or off. Changes save right away.
+- **Add link** — type a **Label** (the name people see, like Schedule) and the **Link** (a web address like https://schedule.omahalightningbasketball.com/, or a portal page like /portal/docs). Tap **Add link**.
+- **Open in a new browser tab** is ticked to start with, so the portal stays open. Untick it for a link that should open in the same tab.
+- Use the arrows to change the order, the **pencil** to edit a link, and the **trash** can to remove it.
 
-**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.
+Every signed-in member sees the links; only super-admins can change them.
 
 **Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
   {
-    id: "slack-archive-admin",
-    title: "Managing the Slack Archive",
+    id: "settings-contact-types",
+    title: "Settings: Contact Types",
+    group: "Settings",
     audience: "super_admin",
-    routes: ["/portal/slack-archive/exceptions"],
-    keywords: ["slack", "add channel", "channel id", "sync", "sync now", "refresh access", "deactivate", "exceptions", "errors", "previews", "compress", "large files"],
-    body: `Super-admins choose which Slack channels are archived and keep an eye on the nightly sync.
+    keywords: ["contact types", "types", "categories", "external contacts", "vendors", "group", "filter", "slug", "sort order"],
+    body: `The types used to group External Contacts — uniforms, photos, facilities, opponents and so on. Open **Settings → Contact Types**.
 
-- **+ Add channel** — give it a label and its Slack channel ID (in Slack: open the channel → View channel details → the ID is at the bottom).
-- Each channel shows when it last synced and who can see it. **Deactivate** stops syncing a channel; its history stays browsable.
-- **Refresh access** re-checks private-channel membership with Slack right away (it also happens every night).
-- **Sync now** on a channel pulls in its newest messages without waiting for tonight — click again if it says there's more to catch up.
-- **View all exceptions →** lists channels whose sync failed, attachments that didn't download, and videos too big to store (with **Compress large files now**).
-- In the Photo Album, **Make previews now** creates any missing thumbnails.`,
+- **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
+- Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
+- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
+  },
+  {
+    id: "settings-audit-log",
+    title: "Settings: Audit Log",
+    group: "Settings",
+    audience: "super_admin",
+    keywords: ["audit", "log", "history", "changes", "who changed", "member changes", "approved", "role change"],
+    body: `A record of every change to a member's account — who made it, what changed and when. Open **Settings → Audit Log**.
+
+The most recent 100 changes are listed, newest first: new members, approvals, role changes, profile edits and removals. Nothing here can be edited.
+
+**Show me how** at the top of the tab walks you through it, one step at a time.`,
   },
 ];
 
