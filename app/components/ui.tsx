@@ -120,34 +120,45 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   help?: string;
+  // For a search box: shows a ClearSearchButton while `value` has text.
+  onClear?: () => void;
 }
-export function Input({ label, error, help, style, ...props }: InputProps) {
+export function Input({ label, error, help, onClear, style, ...props }: InputProps) {
+  const input = (
+    <input
+      {...props}
+      style={{
+        height: 42, padding: onClear ? "0 40px 0 14px" : "0 14px",
+        border: `1px solid ${error ? "var(--gw-error)" : "var(--gw-border)"}`,
+        borderRadius: 8, fontSize: 14,
+        color: "var(--gw-fg)", background: "var(--gw-bg)",
+        outline: "none", width: "100%",
+        transition: "border-color 120ms",
+        ...style,
+      }}
+      onFocus={e => { e.currentTarget.style.borderColor = "var(--rsd-accent)"; if (props.onFocus) props.onFocus(e); }}
+      onBlur={e => { e.currentTarget.style.borderColor = error ? "var(--gw-error)" : "var(--gw-border)"; if (props.onBlur) props.onBlur(e); }}
+    />
+  );
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {label && <FieldLabel label={label} help={help} />}
-      <input
-        {...props}
-        style={{
-          height: 42, padding: "0 14px",
-          border: `1px solid ${error ? "var(--gw-error)" : "var(--gw-border)"}`,
-          borderRadius: 8, fontSize: 14,
-          color: "var(--gw-fg)", background: "var(--gw-bg)",
-          outline: "none", width: "100%",
-          transition: "border-color 120ms",
-          ...style,
-        }}
-        onFocus={e => { e.currentTarget.style.borderColor = "var(--rsd-accent)"; if (props.onFocus) props.onFocus(e); }}
-        onBlur={e => { e.currentTarget.style.borderColor = error ? "var(--gw-error)" : "var(--gw-border)"; if (props.onBlur) props.onBlur(e); }}
-      />
+      {onClear ? (
+        <div style={{ position: "relative" }}>
+          {input}
+          {props.value ? <ClearSearchButton onClear={onClear} /> : null}
+        </div>
+      ) : input}
       {error && <span style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 500 }}>{error}</span>}
     </label>
   );
 }
 
 // ─── Clear-search button ────────────────────────────────────────
-// The × at the right end of a page search box. Render it while the box has
-// text, inside the input's `position: relative` wrapper, and give the input
-// 40px of right padding so text doesn't run under it. Phones draw no clear
+// The × at the right end of a page search box (Input's `onClear` adds it for
+// you). Render it while the box has text, inside the input's
+// `position: relative` wrapper, and give the input 40px of right padding so
+// text doesn't run under it. Phones draw no clear
 // button of their own, and globals.css hides the one desktop browsers add.
 export function ClearSearchButton({ onClear }: { onClear: () => void }) {
   return (
