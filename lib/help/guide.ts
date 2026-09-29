@@ -105,7 +105,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 **Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
 
-**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, press **Show me how** at the top of the Directory, External Contacts, Playbooks, the Slack Archive or any Settings tab, tap **ⓘ** on a page and then **Show me around**, or press **Show me around** next to a section's title below.`,
+**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, tap **ⓘ** on that page and then **Show me around** (in Settings, it's for the tab you're on), or press **Show me around** next to a section's title below.`,
   },
   {
     id: "directory",
@@ -124,9 +124,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 **Who's listed.** Players appear when their family said yes to being in the directory on the registration form.
 
-**Profiles.** A member's profile shows their photo, phone, email and birthday, plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.
-
-**Show me how** at the top of the page walks you through the Directory, one step at a time.`,
+**Profiles.** A member's profile shows their photo, phone, email and birthday, plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
   },
   {
     id: "team-pages",
@@ -181,7 +179,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.
 
-**Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title. **How requirements work** beside the requirement drop-down in the Directory starts at checking players off.`,
+**Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title, or tap **ⓘ** on **Settings → Requirements** and then **Show me around**.`,
   },
   {
     id: "external-contacts",
@@ -197,9 +195,7 @@ Requirements start over each season, since each season has its own roster. The l
 - Add the people you deal with at a company from its page with **+ Add person**, or pick their company under **Works at** when you add them.
 - A contact's page shows everything about them, with tap-to-call phone numbers, and **Used by** lists the playbooks it's attached to. Tap **Edit** to make changes.
 
-Super-admins can **Delete** a contact.
-
-**Show me how** at the top of the page walks you through it, one step at a time.`,
+Super-admins can **Delete** a contact.`,
   },
   {
     id: "playbooks",
@@ -214,9 +210,7 @@ Super-admins can **Delete** a contact.
 - Each playbook is a reference page, and can include pictures and videos (tap a video card to play it).
 - Some playbooks also have **procedures** — checklists for a job you do the same way every time. Open the **Run** tab to see a procedure's steps.
 
-**Running a procedure (board).** Open the playbook, press **▶ Start**, and tap each step as you do it. When every step is checked, press **Done** — it's logged in the procedure's **History**, and if the procedure is set up to, the team gets a heads-up in Slack (**Done — notify the team**).
-
-**Show me how** at the top of the page walks you through the Playbooks page, one step at a time.`,
+**Running a procedure (board).** Open the playbook, press **▶ Start**, and tap each step as you do it. When every step is checked, press **Done** — it's logged in the procedure's **History**, and if the procedure is set up to, the team gets a heads-up in Slack (**Done — notify the team**).`,
   },
   {
     id: "playbooks-editing",
@@ -256,9 +250,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - **Filter** shows only the threads a certain person posted in.
 - Tap a photo, video or audio clip to preview it; other files open in a new tab. Files linked from outside Slack, like Google Docs, show a ↗ and open where they're kept.
 - The **link** icon on a message copies a direct link you can share.
-- **Photos →** opens the Photo Album for just that channel.
-
-**Show me how** at the top of the page walks you through the Slack Archive, one step at a time.`,
+- **Photos →** opens the Photo Album for just that channel.`,
   },
   {
     id: "slack-archive-search",
@@ -274,9 +266,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - Results show the newest 200 matches. **Jump to message ↗** opens the message in its conversation.
 - **Clear all** starts over.
 
-Quick lookups work from the top-bar search too — Slack messages show up there under **Slack**.
-
-**Show me how** at the top of the page walks you through searching.`,
+Quick lookups work from the top-bar search too — Slack messages show up there under **Slack**.`,
   },
   {
     id: "slack-archive-album",
@@ -293,9 +283,7 @@ Quick lookups work from the top-bar search too — Slack messages show up there 
 - Tap a photo to open it full-screen. Use the arrows (or ← and → keys) to move through them, **Show details** to see the caption and who posted it, **View in conversation** to see the Slack thread, and **Download original** to save it.
 - Your filters stay in the page address, so you can bookmark or share a filtered view.
 
-If the page has been open a long time and pictures stop loading, tap **Reload previews**.
-
-**Show me how** at the top of the album walks you through it.`,
+If the page has been open a long time and pictures stop loading, tap **Reload previews**.`,
   },
   {
     id: "slack-archive-admin",
@@ -340,9 +328,7 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 
 **Previews** lists every preview — who previewed whom, when and for how long — and each one's pages show in that member's sessions, marked **Preview**. Previews don't count toward a member's own sign-ins or last seen.
 
-Activity is recorded from the day this page went live.
-
-**Show me how** at the top of the page walks you through it, one step at a time.`,
+Activity is recorded from the day this page went live.`,
   },
   {
     id: "admin-roles",
@@ -397,9 +383,7 @@ Activity is recorded from the day this page went live.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - **Remove** a member (demote a super-admin first).
 
-Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
+Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,
   },
   {
     id: "settings-teams",
@@ -413,9 +397,7 @@ Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Dire
 - Tap the **pencil** to edit a team, or the **trash** can to delete one — its players go back to unassigned and its volunteer spots are cleared.
 - **Staff & volunteers →** opens the team's page in the Directory, where you assign coaches and volunteers.
 
-What you enter here shows on the team's Directory banner and team page.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
+What you enter here shows on the team's Directory banner and team page.`,
   },
   {
     id: "settings-volunteer-roles",
@@ -431,9 +413,7 @@ What you enter here shows on the team's Directory banner and team page.
 - **In Directory** — shows the role on the team's banner when someone picks that team in the Directory. Every role always shows on the team's own page.
 - Use the arrows to reorder, the **−/+** to change spots, and the switches to turn Leadership and In Directory on or off. Changes save right away.
 
-**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
+**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.`,
   },
   {
     id: "settings-requirements",
@@ -450,9 +430,7 @@ What you enter here shows on the team's Directory banner and team page.
 - **Offer scan upload** lets the board attach a photo or PDF when they check a player off.
 - **Active** — untick it to retire a requirement. It leaves the Directory but keeps everyone's record, and you can turn it back on later.
 
-Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.
-
-**Show me how** at the top of the tab walks you through setting one up, then on to checking players off and seeing who's still missing.`,
+Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
   },
   {
     id: "settings-playbooks",
@@ -465,9 +443,7 @@ Use the arrows to change the order (it's the order of the chips in the Directory
 - **Categories** group playbooks and set the colour of their label. **Add category** to make one — give it a **Name**, a **Chip color** and a **Sort order** (lower numbers come first). Tap the **pencil** to change one.
 - **Playbooks** lists every playbook, newest-updated first. Tap one to open it and edit its content.
 
-Tap the **trash** can to delete a category or a playbook.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
+Tap the **trash** can to delete a category or a playbook.`,
   },
   {
     id: "settings-sidebar-links",
@@ -481,9 +457,7 @@ Tap the **trash** can to delete a category or a playbook.
 - **Open in a new browser tab** is ticked to start with, so the portal stays open. Untick it for a link that should open in the same tab.
 - Use the arrows to change the order, the **pencil** to edit a link, and the **trash** can to remove it.
 
-Every signed-in member sees the links; only super-admins can change them.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
+Every signed-in member sees the links; only super-admins can change them.`,
   },
   {
     id: "settings-contact-types",
@@ -495,9 +469,7 @@ Every signed-in member sees the links; only super-admins can change them.
 
 - **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
 - Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
-- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
+- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.`,
   },
   {
     id: "settings-audit-log",
@@ -507,9 +479,7 @@ Every signed-in member sees the links; only super-admins can change them.
     keywords: ["audit", "log", "history", "changes", "who changed", "member changes", "approved", "role change"],
     body: `A record of every change to a member's account — who made it, what changed and when. Open **Settings → Audit Log**.
 
-The most recent 100 changes are listed, newest first: new members, approvals, role changes, profile edits and removals. Nothing here can be edited.
-
-**Show me how** at the top of the tab walks you through it, one step at a time.`,
+The most recent 100 changes are listed, newest first: new members, approvals, role changes, profile edits and removals. Nothing here can be edited.`,
   },
 ];
 
@@ -539,6 +509,21 @@ export function guideSectionsFor(viewer: GuideViewer | null | undefined): GuideS
 
 // The "i" help for a page: the visible section with the most specific route
 // that is the path itself or one of its parents. Null → no "i" button.
+// The "i" help for a page that has views of its own under one address
+// (Settings' tabs): the section the open view names, when the viewer can see
+// it, else the page's own section.
+export function guideSectionForPage(
+  pathname: string,
+  viewer: GuideViewer | null | undefined,
+  sectionId?: string | null
+): GuideSection | null {
+  if (sectionId) {
+    const s = GUIDE_SECTIONS.find((x) => x.id === sectionId);
+    if (s && canSeeGuideSection(s, viewer)) return s;
+  }
+  return guideSectionForPath(pathname, viewer);
+}
+
 export function guideSectionForPath(
   pathname: string,
   viewer: GuideViewer | null | undefined

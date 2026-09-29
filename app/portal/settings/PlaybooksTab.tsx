@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
-import { ShowMeHow } from "../../components/ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createPlaybookCategory,
@@ -191,7 +190,6 @@ export function PlaybooksTab({ me }: { me: MemberLike }) {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <ShowMeHow tour="settings-playbooks" />
             {!adding && (
               <span data-tour="playbook-categories-add" style={{ display: "inline-flex" }}>
                 <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>

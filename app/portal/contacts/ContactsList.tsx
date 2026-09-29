@@ -10,7 +10,6 @@ import { Icons } from "../../components/icons";
 import { Pill } from "../../components/ui";
 import type { Contact, ContactCategory, ContactKind } from "./_shared/data";
 import { composeSubtitle, displayName } from "./_shared/format";
-import { ShowMeHow } from "../../components/ShowMeHow";
 
 type KindFilter = "all" | ContactKind;
 
@@ -109,7 +108,6 @@ export function ContactsList({
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <ShowMeHow tour="external-contacts" />
           <Link
             href="/portal/contacts/new"
             data-tour="contacts-new"

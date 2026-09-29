@@ -6,7 +6,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill } from "../../components/ui";
-import { ShowMeHow } from "../../components/ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createContactCategory,
@@ -115,7 +114,6 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
           page. Use them to group who we work with (uniforms, photos, facilities, opponents, etc.).
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <ShowMeHow tour="settings-contact-types" />
           {!adding && (
             <span data-tour="contact-types-add" style={{ display: "inline-flex" }}>
               <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>

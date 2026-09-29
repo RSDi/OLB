@@ -7,7 +7,6 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { Input, Pill } from "../../components/ui";
-import { ShowMeHow } from "../../components/ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import { createTeam, deleteTeam, updateTeamSettings } from "../../../lib/teams/volunteer-actions";
 import type { TeamSettingsInput } from "../../../lib/teams/types";
@@ -119,7 +118,6 @@ export function TeamsSettingsTab() {
           ; coaches and volunteers are assigned on each team&apos;s page in the Directory.
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <ShowMeHow tour="settings-teams" />
           {!adding && season && (
             <span data-tour="teams-add" style={{ display: "inline-flex" }}>
               <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>

@@ -18,9 +18,6 @@ import {
   type RequirementState,
 } from "../../../lib/requirements/logic";
 import { RequirementDialog } from "./RequirementDialog";
-import { useTour } from "../../components/GuidedTour";
-import { ShowMeHow } from "../../components/ShowMeHow";
-import { REQUIREMENTS_TOUR_ID } from "../../../lib/help/tours";
 
 const NO_GROUP = "No age group";
 
@@ -93,7 +90,6 @@ export function PlayersList({
   const [reqId, setReqId] = useState("all");
   const [reqShow, setReqShow] = useState<ReqShow>("missing");
   const [open, setOpen] = useState<{ player: DirectoryPlayer; requirement: Requirement } | null>(null);
-  const { start: startTour } = useTour();
 
   const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
   const pickedReq = requirements.find((r) => r.id === reqId) ?? null;
@@ -230,7 +226,6 @@ export function PlayersList({
                 <SegButton label="By age group" active={view === "age"} onClick={() => setView("age")} />
               </div>
             )}
-            <ShowMeHow tour="directory" />
           </div>
         </div>
 
@@ -309,22 +304,6 @@ export function PlayersList({
               <SegButton label="All" active={reqShow === "all"} onClick={() => setReqShow("all")} />
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => startTour(REQUIREMENTS_TOUR_ID, { part: 2 })}
-            style={{
-              marginLeft: "auto",
-              background: "none",
-              border: "none",
-              padding: "6px 2px",
-              fontSize: 12,
-              fontWeight: 700,
-              color: "var(--gw-fg-muted)",
-              cursor: "pointer",
-            }}
-          >
-            How requirements work
-          </button>
         </div>
       )}
 

@@ -22,6 +22,7 @@ import { DeletedTab } from "./DeletedTab";
 import { IntegrationsTab } from "./IntegrationsTab";
 import { SidebarLinksTab } from "./SidebarLinksTab";
 import { RequirementsTab } from "./RequirementsTab";
+import { usePageHelp } from "../../components/PageHelp";
 
 // Staged rollout: the tabs released to everyone who can open Settings, and
 // the extra ones released to super-admins only. The rest stay with the
@@ -33,6 +34,19 @@ const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "contact_categories",
   "audit_log",
 ]);
+
+// The User Guide section for each tab, so the top-bar "i" (and its "Show me
+// around") match the open tab. Tabs without one fall back to Members.
+const TAB_HELP: Partial<Record<Tab, string>> = {
+  members: "settings-members",
+  teams: "settings-teams",
+  volunteer_roles: "settings-volunteer-roles",
+  requirements: "settings-requirements",
+  playbooks: "settings-playbooks",
+  sidebar_links: "settings-sidebar-links",
+  contact_categories: "settings-contact-types",
+  audit_log: "settings-audit-log",
+};
 
 type Tab =
   | "members"
@@ -59,6 +73,7 @@ export default function SettingsPage() {
   const [me, setMe] = useState<MemberLike | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("areas");
+  usePageHelp(TAB_HELP[tab] ?? null);
   const [authChecked, setAuthChecked] = useState(false);
   const [fullUi, setFullUi] = useState(false);
 
