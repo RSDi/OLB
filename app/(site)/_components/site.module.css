@@ -894,6 +894,8 @@ textarea.input {
 
 .headerCta {
   margin-left: 2vw;
+  padding-left: 1.6rem;
+  padding-right: 1.6rem;
   border-color: var(--accent);
   background: #000;
   color: var(--accent);
@@ -902,8 +904,9 @@ textarea.input {
 }
 
 /* Member Log In: the outlined partner to Contact Us, filling with yellow on
-   hover. Below 1440px only its icon shows, so the navigation stays on one line
-   on laptop screens; the hidden label is still read by screen readers. */
+   hover. Below 1440px only its icon shows and the header spacing tightens a
+   little, so the navigation still fits on one line on a 1280px laptop; the
+   hidden label is still read by screen readers. */
 .headerLogin {
   gap: 0.5em;
   margin-left: 2vw;
@@ -934,10 +937,20 @@ textarea.input {
 }
 
 @media screen and (max-width: 1439px) {
+  .navItem:not(:last-child) {
+    margin-right: 1vw;
+  }
+
   .headerLogin {
     gap: 0;
-    padding-left: 1.2rem;
-    padding-right: 1.2rem;
+    margin-left: 1.3vw;
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+
+  .headerLogin svg {
+    width: 1.5em;
+    height: 1.5em;
   }
 
   .headerLoginText {
