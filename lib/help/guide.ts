@@ -252,6 +252,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 
 - Messages are grouped by day, with each thread's replies tucked under the first message.
 - Messages look the way they do in Slack: bold, italics, line breaks, bullet lists, quotes and code.
+- A mention of a private channel shows as #private-channel, except in that channel's own messages.
 - **Newest first / Oldest first** flips the order.
 - **Jump to date** opens a calendar — tap any highlighted day to go straight there.
 - **Filter** shows only the threads a certain person posted in.
@@ -304,7 +305,7 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 - **+ Add channel** — give it a label and its Slack channel ID (in Slack: open the channel → View channel details → the ID is at the bottom).
 - Each channel shows when it last synced and who can see it. **Deactivate** stops syncing a channel; its history stays browsable.
 - **Refresh access** re-checks private-channel membership with Slack right away (it also happens every night).
-- **Sync now** on a channel pulls in its newest messages without waiting for tonight — click again if it says there's more to catch up.
+- **Sync now** on a channel pulls in its newest messages without waiting for tonight — click again if it says there's more to catch up. It also fills in channel names that older messages are missing (every sync does), and says how many it fixed.
 - **View all exceptions →** lists channels whose sync failed, attachments that didn't download, and videos too big to store (with **Compress large files now**).
 - In the Photo Album, **Make previews now** creates any missing thumbnails.`,
   },

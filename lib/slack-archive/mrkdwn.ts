@@ -326,9 +326,10 @@ function tokenize(s: string): Token[] {
 
 // [label](url), as sync writes a Slack link with a label. The label can't
 // span lines and the URL must be a web or mail link; anything else is left
-// as typed. Neither part runs past another "[" (sync escapes brackets in
-// the labels it writes), so a line full of unmatched "[" is read once, not
-// once per bracket.
+// as typed. A label doesn't run past another "[" (sync escapes brackets in
+// the labels it writes) and a URL doesn't run past another "](", so a line
+// full of unmatched brackets is read once, not once per bracket. A URL can
+// hold brackets, as in "?player[age]=12".
 function readLink(s: string, start: number): { label: string; href: string; end: number } | null {
   let i = start + 1;
   let label = "";
@@ -346,7 +347,7 @@ function readLink(s: string, start: number): { label: string; href: string; end:
   i += 2;
   const hrefStart = i;
   let parens = 0;
-  while (i < s.length && !SPACE.test(s[i]) && s[i] !== "[") {
+  while (i < s.length && !SPACE.test(s[i]) && !(s[i] === "]" && s[i + 1] === "(")) {
     if (s[i] === "(") parens++;
     else if (s[i] === ")") {
       if (parens === 0) break;

@@ -96,13 +96,6 @@ export async function resolveMentions(text: string, lookups: MentionLookups, inC
 // regex syntax: what the repair's query filters on.
 export const UNNAMED_CHANNEL_MENTION_SQL = "<#[A-Z0-9]+[|]?>";
 
-// Before names were looked up, <#C123> was saved as "#channel" and <#C123|>
-// as a bare "#".
-const NO_NAME = /<#[A-Z0-9]+>/;
-const EMPTY_NAME = /<#[A-Z0-9]+\|>/;
-const SAVED_AS_CHANNEL = /#channel(?![\p{L}\p{N}_-])/u;
-const SAVED_AS_BARE = /#(?![\p{L}\p{N}_\\-])/u;
-
 const SOMEONE = /@someone(?![\p{L}\p{N}_])/gu;
 const countSomeone = (t: string) => t.match(SOMEONE)?.length ?? 0;
 
@@ -135,13 +128,23 @@ export async function repairedMessageText(
   return text;
 }
 
+// Before names were looked up, <#C123> was saved as "#channel" and <#C123|>
+// as a bare "#"; a lookup that fails now saves either as "#channel".
+const UNNAMED = /<#[A-Z0-9]+\|?>/;
+const EMPTY_NAME = /<#[A-Z0-9]+\|>/;
+const SAVED_AS_CHANNEL = /#channel(?![\p{L}\p{N}_\\-])/gu;
+const SAVED_AS_BARE = /#(?![\p{L}\p{N}_\\-])/gu;
+const TOKEN = /<[^<>]+>/g;
+const count = (re: RegExp, text: string) => text.match(re)?.length ?? 0;
+
 // Whether a saved message may still show a channel mention without its
-// name: its original text has one, and its saved text still reads the way
-// that kind was saved. Text that already shows the names needs no Slack
-// call to rule out.
+// name: its original text has one, and its saved text has more "#channel"
+// (or, for <#C123|>, more bare "#") than the words around the mentions do,
+// so a "#channel" or "# of players" someone typed doesn't count. Text that
+// already shows the names needs no Slack call to rule out.
 export function mayNeedChannelNames(rawText: string, messageText: string): boolean {
-  return (
-    (NO_NAME.test(rawText) && SAVED_AS_CHANNEL.test(messageText)) ||
-    (EMPTY_NAME.test(rawText) && SAVED_AS_BARE.test(messageText))
-  );
+  if (!UNNAMED.test(rawText)) return false;
+  const typed = rawText.replace(TOKEN, "");
+  if (count(SAVED_AS_CHANNEL, messageText) > count(SAVED_AS_CHANNEL, typed)) return true;
+  return EMPTY_NAME.test(rawText) && count(SAVED_AS_BARE, messageText) > count(SAVED_AS_BARE, typed);
 }

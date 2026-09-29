@@ -64,6 +64,9 @@ test("spots saved text that still reads the old way", () => {
   assert.equal(mayNeedChannelNames("Join <#C0ROSTERS> now", "Join #channel now"), true);
   assert.equal(mayNeedChannelNames("Join <#C0ROSTERS|> now", "Join # now"), true);
   assert.equal(mayNeedChannelNames("Join <#C0ROSTERS>", "Join #channel"), true);
+  // An empty-name mention whose lookup failed was saved as "#channel".
+  assert.equal(mayNeedChannelNames("Join <#C0ROSTERS|> now", "Join #channel now"), true);
+  assert.equal(mayNeedChannelNames("Send the # of players to <#C0ROSTERS|>", "Send the # of players to #"), true);
 });
 
 test("leaves alone text that already has the name, or never had an unnamed mention", () => {
@@ -73,6 +76,9 @@ test("leaves alone text that already has the name, or never had an unnamed menti
   assert.equal(mayNeedChannelNames("Join <#C0ROSTERS> now", "Join #channel-updates now"), false);
   assert.equal(mayNeedChannelNames("Join <#C0GENERAL|general>", "Join #channel"), false);
   assert.equal(mayNeedChannelNames("We're #1", "We're #1"), false);
+  assert.equal(mayNeedChannelNames("Send the # of players to <#C0ROSTERS|>", "Send the # of players to #rosters"), false);
+  assert.equal(mayNeedChannelNames("Say #channel in <#C0ROSTERS>", "Say #channel in #rosters"), false);
+  assert.equal(mayNeedChannelNames("Join <#C0ROSTERS>", "Join #channel\\_updates"), false);
 });
 
 test("a repair rewrites saved text with the channel's name", async () => {

@@ -347,11 +347,11 @@ async function refreshKnownThreads(
 // already shows the name are skipped without a Slack call.
 //
 // It never makes a message read worse (see repairedMessageText), and the
-// write only lands if the saved text is still what was read, so a sync
-// saving a newer edit of the message at the same time wins. It stops a few
-// seconds before the deadline, and the nightly cron runs it only after
-// every channel's new messages and thread replies (see
-// syncAllActiveChannels).
+// write only lands if the row hasn't changed since it was read (updated_at,
+// which every write bumps), so a sync saving a newer edit of the message at
+// the same time wins. It stops a few seconds before the deadline, and the
+// nightly cron runs it only after every channel's new messages and thread
+// replies (see syncAllActiveChannels).
 const CHANNEL_NAME_REPAIR_PAGE = 100;
 const CHANNEL_NAME_REPAIR_BATCH = 25;
 const CHANNEL_NAME_REPAIR_MARGIN_MS = 5_000;
@@ -367,7 +367,7 @@ async function repairChannelNames(
   for (let from = 0; Date.now() < stopAt; from += CHANNEL_NAME_REPAIR_PAGE) {
     const { data, error } = await admin
       .from("slack_archive_messages")
-      .select("id, message_text, raw_text:raw->>text")
+      .select("id, message_text, updated_at, raw_text:raw->>text")
       .eq("channel_id", channelId)
       .filter("raw->>text", "match", UNNAMED_CHANNEL_MENTION_SQL)
       .order("ts", { ascending: true })
@@ -376,7 +376,7 @@ async function repairChannelNames(
       console.warn(`[slack-archive] channel name repair query failed for ${channelId}:`, error.message);
       return;
     }
-    const rows = (data ?? []) as { id: string; message_text: string; raw_text: string | null }[];
+    const rows = (data ?? []) as RepairRow[];
     const due = rows.filter((r) => r.raw_text && mayNeedChannelNames(r.raw_text, r.message_text));
     for (let i = 0; i < due.length; i += CHANNEL_NAME_REPAIR_BATCH) {
       if (Date.now() >= stopAt) return;
@@ -388,10 +388,17 @@ async function repairChannelNames(
   }
 }
 
+interface RepairRow {
+  id: string;
+  message_text: string;
+  updated_at: string;
+  raw_text: string | null;
+}
+
 async function repairChannelNamesInRow(
   admin: SupabaseClient,
   channelId: string,
-  row: { id: string; message_text: string; raw_text: string | null },
+  row: RepairRow,
   resolver: AuthorResolver,
   summary: ChannelSyncSummary,
 ): Promise<void> {
@@ -402,7 +409,7 @@ async function repairChannelNamesInRow(
     .from("slack_archive_messages")
     .update({ message_text: text })
     .eq("id", row.id)
-    .eq("message_text", row.message_text)
+    .eq("updated_at", row.updated_at)
     .select("id");
   if (error) console.warn(`[slack-archive] channel name repair failed for ${row.id}:`, error.message);
   else if (data && data.length > 0) summary.channel_names_fixed = (summary.channel_names_fixed ?? 0) + 1;

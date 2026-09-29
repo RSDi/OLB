@@ -79,6 +79,13 @@ test("bare links, minus the punctuation after them", () => {
   assert.equal(show("*https://example.com/b*"), "<b><a https://example.com/b>https://example.com/b</a></b>");
 });
 
+test("a link's URL can hold brackets", () => {
+  assert.equal(
+    show("[Registration form](https://club.example.org/register?player[age]=12&player[team]=16U) today"),
+    "<a https://club.example.org/register?player[age]=12&player[team]=16U>Registration form</a> today",
+  );
+});
+
 test("only web and mail links are links", () => {
   assert.equal(show("[x](javascript:alert(1))"), "[x](javascript:alert(1))");
 });
@@ -142,6 +149,9 @@ test("long crafted messages parse quickly", () => {
     "[".repeat(n),
     "[a ".repeat(n / 3),
     "[a](".repeat(n / 4),
+    "[a](x(".repeat(n / 6),
+    "[a](https://x[".repeat(n / 15),
+    "](".repeat(n / 2),
     "Pasted: " + " ".repeat(n) + "end",
     " *a".repeat(n / 6) + " a_".repeat(n / 6),
     "a.".repeat(n / 2) + "@",
