@@ -2,6 +2,7 @@
 import type { ReactNode, CSSProperties } from "react";
 import Link from "next/link";
 import { HelpTip } from "./HelpTip";
+import { Icons } from "./icons";
 
 // Label row shared by the form inputs below: the uppercase field label plus an
 // optional ⓘ tooltip (rendered when a `help` string is passed).
@@ -140,6 +141,27 @@ export function Input({ label, error, help, style, ...props }: InputProps) {
       />
       {error && <span style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 500 }}>{error}</span>}
     </label>
+  );
+}
+
+// ─── Clear-search button ────────────────────────────────────────
+// The × at the right end of a page search box. Render it while the box has
+// text, inside the input's `position: relative` wrapper, and give the input
+// 40px of right padding so text doesn't run under it. Phones draw no clear
+// button of their own, and globals.css hides the one desktop browsers add.
+export function ClearSearchButton({ onClear }: { onClear: () => void }) {
+  return (
+    <button
+      type="button"
+      className="rsd-search-clear"
+      aria-label="Clear search"
+      onClick={e => {
+        onClear();
+        e.currentTarget.parentElement?.querySelector("input")?.focus();
+      }}
+    >
+      <Icons.X width={14} height={14} />
+    </button>
   );
 }
 

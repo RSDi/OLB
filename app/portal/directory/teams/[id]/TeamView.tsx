@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../../components/icons";
+import { ClearSearchButton } from "../../../../components/ui";
 import { assignVolunteer, removeVolunteer } from "../../../../../lib/teams/volunteer-actions";
 import type { OlbTeamVolunteer, OlbVolunteerRole } from "../../../../../lib/teams/types";
 import type { AssignablePerson, TeamWithStaff } from "../../../../../lib/teams/volunteer-data";
@@ -485,24 +486,28 @@ function Picker({
           </button>
         </div>
 
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search anyone by name, email or phone"
-          aria-label="Search members"
-          autoFocus
-          style={{
-            height: 40,
-            padding: "0 14px",
-            borderRadius: 10,
-            border: "1px solid var(--gw-border)",
-            background: "var(--gw-bg)",
-            color: "var(--gw-fg)",
-            fontSize: 13,
-            fontWeight: 500,
-          }}
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search anyone by name, email or phone"
+            aria-label="Search members"
+            autoFocus
+            style={{
+              width: "100%",
+              height: 40,
+              padding: "0 40px 0 14px",
+              borderRadius: 10,
+              border: "1px solid var(--gw-border)",
+              background: "var(--gw-bg)",
+              color: "var(--gw-fg)",
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          />
+          {query && <ClearSearchButton onClear={() => setQuery("")} />}
+        </div>
 
         {error && (
           <div role="alert" style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-error)" }}>

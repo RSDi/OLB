@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { KpiCard } from "../../components/ui";
+import { ClearSearchButton, KpiCard } from "../../components/ui";
 import { PreviewButton } from "./PreviewButton";
 import type { ActivityOverview as Overview, RosterMember } from "../../../lib/activity/queries";
 import { previewBlocker } from "../../../lib/activity/preview-rules";
@@ -166,22 +166,25 @@ function Roster({ members, viewerUserId, now }: { members: RosterMember[]; viewe
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Members</h2>
           <div style={muted}>Everyone with a portal login. Tap a row to see their sessions.</div>
         </div>
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search name or email"
-          aria-label="Search members"
-          data-tour="activity-search"
-          style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            border: "1px solid var(--gw-border)",
-            background: "var(--gw-bg)",
-            fontSize: 13,
-            minWidth: 220,
-          }}
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search name or email"
+            aria-label="Search members"
+            data-tour="activity-search"
+            style={{
+              padding: "8px 40px 8px 12px",
+              borderRadius: 10,
+              border: "1px solid var(--gw-border)",
+              background: "var(--gw-bg)",
+              fontSize: 13,
+              minWidth: 220,
+            }}
+          />
+          {q && <ClearSearchButton onClear={() => setQ("")} />}
+        </div>
       </div>
       <div role="tablist" aria-label="Show" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {(

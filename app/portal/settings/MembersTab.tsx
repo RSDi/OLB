@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useTransition } from "react";
 import { Icons } from "../../components/icons";
-import { Input, Pill, Select } from "../../components/ui";
+import { ClearSearchButton, Input, Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
 import type { MemberRole, MemberStatus } from "../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../lib/members/display";
@@ -377,7 +377,7 @@ export function MembersTab({
           style={{
             width: "100%",
             height: 36,
-            padding: "0 12px 0 36px",
+            padding: "0 40px 0 36px",
             borderRadius: 10,
             border: "1px solid var(--gw-border)",
             background: "var(--gw-bg)",
@@ -386,6 +386,7 @@ export function MembersTab({
             fontWeight: 500,
           }}
         />
+        {query && <ClearSearchButton onClear={() => setQuery("")} />}
       </div>
 
       {/* Status sub-tabs */}
