@@ -1,19 +1,21 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import logo from "../_images/logo-wordmark.png";
-import { ArrowIcon, FacebookIcon, InstagramIcon } from "./icons";
+import { ArrowIcon, FacebookIcon, InstagramIcon, PersonIcon } from "./icons";
 import { FACEBOOK_URL, INSTAGRAM_URL, NAV, isFolder, type NavLink } from "./links";
 import styles from "./site.module.css";
 import { cx } from "./util";
 
 // The Squarespace header: logo left, navigation with hover folders, social
-// icons and a Contact Us button. Below 800px it becomes a burger that opens a
-// full-screen menu where folders slide in as their own panel.
+// icons and a Contact Us button, plus a member Log In button beside it. Below
+// 800px it becomes a burger that opens a full-screen menu where folders slide
+// in as their own panel, and Log In shrinks to an icon in the top-right corner.
 export function Header() {
   const pathname = usePathname();
+  const login = useLogin();
   const [menuOpen, setMenuOpen] = useState(false);
   const [folder, setFolder] = useState<string | null>(null);
 
@@ -99,12 +101,18 @@ export function Header() {
 
         <div className={styles.headerActions}>
           <SocialLinks className={styles.headerSocial} />
+          <Link href={login.href} className={cx(styles.button, styles.headerLogin)}>
+            <PersonIcon />
+            <span className={styles.headerLoginText}>{login.label}</span>
+          </Link>
           <Link href="/contact" className={cx(styles.button, styles.headerCta)}>
             Contact Us
           </Link>
         </div>
 
-        <span className={styles.burgerSpacer} aria-hidden="true" />
+        <Link href={login.href} className={styles.headerLoginIcon} aria-label={login.label} onClick={closeMenu}>
+          <PersonIcon />
+        </Link>
       </div>
 
       <div id="site-menu" className={styles.menu} inert={!menuOpen}>
@@ -129,6 +137,9 @@ export function Header() {
             </div>
             <SocialLinks className={styles.menuSocial} />
             <div className={styles.menuCtaWrap}>
+              <Link href={login.href} className={cx(styles.button, styles.menuLogin)} onClick={closeMenu}>
+                {login.label}
+              </Link>
               <Link href="/contact" className={cx(styles.button, styles.menuCta)} onClick={closeMenu}>
                 Contact Us
               </Link>
@@ -159,6 +170,23 @@ export function Header() {
       </div>
     </header>
   );
+}
+
+// Members who are already signed in get "Portal" instead of "Log In". Supabase
+// keeps the session in a cookie the page can read, so no request is needed.
+// The first paint always says Log In (the server can't know), and a stale
+// cookie does no harm: /portal sends signed-out visitors to /login, and /login
+// sends signed-in members to /portal.
+const SESSION_COOKIE = /(?:^|;\s*)sb-[^=;]+-auth-token(?:\.\d+)?=/;
+const subscribeNever = () => () => {};
+
+function useLogin() {
+  const signedIn = useSyncExternalStore(
+    subscribeNever,
+    () => SESSION_COOKIE.test(document.cookie),
+    () => false,
+  );
+  return signedIn ? { href: "/portal", label: "Portal" } : { href: "/login", label: "Log In" };
 }
 
 function NavAnchor({ link, className, onClick }: { link: NavLink; className: string; onClick?: () => void }) {

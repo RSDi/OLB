@@ -894,11 +894,69 @@ textarea.input {
 
 .headerCta {
   margin-left: 2vw;
+  padding-left: 1.6rem;
+  padding-right: 1.6rem;
   border-color: var(--accent);
   background: #000;
   color: var(--accent);
   font-size: var(--fs-small);
   white-space: nowrap;
+}
+
+/* Member Log In: the outlined partner to Contact Us, filling with yellow on
+   hover. Below 1440px only its icon shows and the header spacing tightens a
+   little, so the navigation still fits on one line on a 1280px laptop; the
+   hidden label is still read by screen readers. */
+.headerLogin {
+  gap: 0.5em;
+  margin-left: 2vw;
+  padding-left: 1.6rem;
+  padding-right: 1.6rem;
+  border-color: #000;
+  background: transparent;
+  color: #000;
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  transition: opacity 0.1s linear, background-color 0.1s linear;
+}
+
+.headerLogin:hover {
+  background: var(--accent);
+  opacity: 1;
+}
+
+.headerLogin svg {
+  flex-shrink: 0;
+  width: 1.25em;
+  height: 1.25em;
+  stroke-width: 1.75;
+}
+
+.headerLogin + .headerCta {
+  margin-left: 12px;
+}
+
+@media screen and (max-width: 1439px) {
+  .navItem:not(:last-child) {
+    margin-right: 1vw;
+  }
+
+  .headerLogin {
+    gap: 0;
+    margin-left: 1.3vw;
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+
+  .headerLogin svg {
+    width: 1.5em;
+    height: 1.5em;
+  }
+
+  .headerLoginText {
+    max-width: 0;
+    overflow: hidden;
+  }
 }
 
 .burger {
@@ -936,10 +994,22 @@ textarea.input {
 .headerOpen .burgerLine:first-child { transform: rotate(45deg); }
 .headerOpen .burgerLine:last-child { transform: rotate(-45deg); }
 
-.burgerSpacer {
+/* On phones Log In is just the icon, in the top-right corner opposite the
+   burger, so the logo stays centered between them. */
+.headerLoginIcon {
   display: none;
-  width: 50px;
   flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 37px;
+  color: inherit;
+}
+
+.headerLoginIcon svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.1;
 }
 
 @media screen and (max-width: 799px), screen and (pointer: coarse) and (max-width: 1024px) {
@@ -947,7 +1017,7 @@ textarea.input {
   .nav,
   .headerActions { display: none; }
   .burger,
-  .burgerSpacer { display: flex; }
+  .headerLoginIcon { display: flex; }
   .logoLink {
     flex: 1;
     display: flex;
@@ -994,7 +1064,7 @@ textarea.input {
 }
 
 /* Each panel fills the menu; the top level also carries the social icons and
-   Contact Us button, so they slide away when a folder opens. */
+   the Log In and Contact Us buttons, so they slide away when a folder opens. */
 .menuPanel {
   position: absolute;
   inset: 0;
@@ -1094,6 +1164,11 @@ textarea.input {
 }
 
 .menuCtaWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 4vw 6vw 6vw;
   transform: translateY(100%);
   transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1103,14 +1178,21 @@ textarea.input {
   transform: translateY(0);
 }
 
-.menuCta {
-  display: inline-block;
+.menuCta,
+.menuLogin {
   min-width: 210px;
-  margin: 4vw 6vw 6vw;
   border-color: #000;
+  font-size: 1.2rem;
+}
+
+.menuCta {
   background: #000;
   color: var(--accent);
-  font-size: 1.2rem;
+}
+
+.menuLogin {
+  background: transparent;
+  color: #000;
 }
 
 /* ── Footer ─────────────────────────────────────────────────────────────── */
