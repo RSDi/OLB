@@ -208,6 +208,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.",
       },
       {
+        target: "directory-player-link",
+        title: "Player pages",
+        body: "Tap a player's name for their own page: everything on the card, links to their parents and brothers and sisters, and, for the Treasurer and the player's own parents, their payments.",
+      },
+      {
         target: "directory-requirements",
         title: "Requirements",
         body: "Pick a requirement, like the handbook signature, to see who's **Missing** it. Tap the chip on a player to mark it **Done**, **Paid** or **Waived** and attach a scan.",
@@ -279,6 +284,12 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "payments-filter",
         title: "Who owes",
         body: "**Owes** lists the families with money due. **Paid up** and **All** show the rest. The search box finds a family by player, parent or phone.",
+      },
+      {
+        target: "payments-parent-link",
+        click: "payments-family",
+        title: "Their pages",
+        body: "In an open family, a parent's name opens their profile and a player's name opens their player page.",
       },
       {
         target: "payments-actions",

@@ -1,5 +1,6 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { ClearSearchButton, KpiCard, Pill } from "../../components/ui";
@@ -29,17 +30,22 @@ type Open = { kind: "payment"; account: Account } | { kind: ChargeKind; account:
 
 // The Treasurer's view: the season's totals, every family's balance, and
 // recording what comes in.
-export function TreasurerView({ data }: { data: PaymentsData }) {
+export function TreasurerView({ data, openPlayerId = null }: { data: PaymentsData; openPlayerId?: string | null }) {
   const router = useRouter();
+  const accounts = useMemo(() => buildAccounts(data.players, data.charges, data.payments), [data]);
+  // "Open in Payments" from a player page lands here with that family open.
+  const linked = openPlayerId ? accounts.find((a) => a.players.some((p) => p.id === openPlayerId))?.key ?? null : null;
   const [query, setQuery] = useState("");
-  const [show, setShow] = useState<Show>("owes");
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [show, setShow] = useState<Show>(linked ? "all" : "owes");
+  const [expanded, setExpanded] = useState<string | null>(linked);
   const [open, setOpen] = useState<Open>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const accounts = useMemo(() => buildAccounts(data.players, data.charges, data.payments), [data]);
+  useEffect(() => {
+    if (linked) document.getElementById(`family-${linked}`)?.scrollIntoView({ block: "start" });
+  }, [linked]);
   // The open account, rebuilt from fresh data after a save.
   const openAccount = open ? accounts.find((a) => a.key === open.account.key) ?? open.account : null;
   const season = sumTotals(accounts);
@@ -319,7 +325,7 @@ function FamilyRow({
   const parents = a.parents.map((pa) => pa.full_name).filter(Boolean).join(" & ");
 
   return (
-    <div style={{ borderBottom: border ? "1px solid var(--gw-border)" : "none" }}>
+    <div id={`family-${a.key}`} style={{ borderBottom: border ? "1px solid var(--gw-border)" : "none", scrollMarginTop: 16 }}>
       <button
         type="button"
         onClick={onToggle}
@@ -370,7 +376,14 @@ function FamilyRow({
             <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", display: "flex", flexDirection: "column", gap: 2 }}>
               {a.parents.map((pa) => (
                 <span key={pa.id}>
-                  {[pa.full_name, pa.email, pa.phone].filter(Boolean).join(" · ")}
+                  <Link
+                    href={`/portal/directory/${pa.id}`}
+                    data-tour="payments-parent-link"
+                    style={{ color: "var(--gw-fg)", fontWeight: 700, textDecoration: "none" }}
+                  >
+                    {pa.full_name ?? pa.email ?? "Parent"}
+                  </Link>
+                  {[pa.email, pa.phone].filter(Boolean).map((x) => ` · ${x}`).join("")}
                 </span>
               ))}
             </div>

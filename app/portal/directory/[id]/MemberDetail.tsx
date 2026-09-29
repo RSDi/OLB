@@ -572,7 +572,7 @@ function PlayersRow({ players }: { players: { id: string; name: string; team: st
         {players.map((p) => (
           <Link
             key={p.id}
-            href={`/portal/directory#player-${p.id}`}
+            href={`/portal/directory/players/${p.id}`}
             style={{
               display: "inline-flex",
               alignItems: "center",

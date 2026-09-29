@@ -124,7 +124,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 - Tap a **team** chip to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed.
 - Coaches, other team leaders and board members can switch between **By team** and **By age group** (10U–18U).
 - Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.
-- Tap a parent's name to open their profile, and **Team page ›** to open a team's full page.
+- Tap a player's name to open their player page, a parent's name to open their profile, and **Team page ›** to open a team's full page.
 
 **Who's listed.** Players appear when their family said yes to being in the directory on the registration form. If your family said no, you still see your own players, marked **Not in directory**; other families don't.
 
@@ -144,6 +144,23 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 - **Roster** lists the players in jersey-number order, with their parents.
 
 Want to fill an open spot? Let the club know and the board will add you.`,
+  },
+  {
+    id: "player-pages",
+    title: "Player pages",
+    group: "Directory",
+    audience: "everyone",
+    routes: ["/portal/directory/players"],
+    keywords: ["player", "player page", "kid", "child", "son", "siblings", "brother", "sister", "parents", "mom", "dad", "balance", "payments", "fees"],
+    body: `Everything about one player in one place. Open it by tapping a player's name in the Directory, on a team page, on a parent's profile, or on the Payments page.
+
+- **The top** shows their jersey number, team (tap it to open the team page), age and birthday, address, and the player's own phone and email. A **New** chip means it's their first season with us.
+- **Parents** lists each parent with their phone and email. Tap a parent's name to open their profile. **Siblings** links to their brothers' and sisters' pages.
+- **Payments** shows what the family owes and has paid, with each charge and payment. You see it for your own kids once the Treasurer has opened balances to families, and the Treasurer sees it for everyone.
+
+**For the board.** The top also shows the registration fee, how the family said they'd pay, shirt size and waiver, plus a chip for each requirement. Tap a chip to check it off, the same as in the Directory.
+
+**For the Treasurer.** **Record payment**, **Add a charge** and **Take off an amount** work right on the player page, for the whole family. **Open in Payments ›** jumps to the family on the Payments page.`,
   },
   {
     id: "your-profile",
@@ -252,7 +269,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 
 **The totals** across the top: **Charged** (fees, uniforms and so on), **Taken off** (players the club covers and scholarships), **Paid**, and **Still owed**, with how many families owe.
 
-**Families.** Brothers and sisters who share a parent are one family, with one balance. Each row shows the kids, the parents, and a chip: **Owes $…**, **Paid up**, or **Credit $…** when they've paid more than they owe. Use **Owes**, **Paid up** and **All** to filter, and the search box to find a family by player, parent, email or phone. Tap a family to open it.
+**Families.** Brothers and sisters who share a parent are one family, with one balance. Each row shows the kids, the parents, and a chip: **Owes $…**, **Paid up**, or **Credit $…** when they've paid more than they owe. Use **Owes**, **Paid up** and **All** to filter, and the search box to find a family by player, parent, email or phone. Tap a family to open it. In an open family, a parent's name opens their profile and a player's name opens their player page.
 
 **Registration fees.** When registered players don't have their fee yet, a bar says how many. Tap **Add registration fees** to charge each one the fee for their tier on the registration ($375 for 8u–12u, $400 for 14u, $525 for 16u–18u). It's safe to tap again: nobody is charged twice. A player whose registration has no tier is listed so you can add theirs by hand. Registrations approved from now on get their fee automatically.
 
@@ -279,7 +296,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     body: `**Payments** in the sidebar shows what your family owes for the season and what you've paid. It appears once the Treasurer has your balance ready.
 
 - The big number at the top is what's **due**, or **Paid in full** once you're square.
-- **Charges and credits** lists each fee for each of your kids, like the registration fee or a uniform, and anything taken off.
+- **Charges and credits** lists each fee for each of your kids, like the registration fee or a uniform, and anything taken off. Tap a player's name to open their player page, which shows the same balance.
 - **Payments** lists what the Treasurer has recorded from you, with the date and how you paid.
 
 **To pay,** Venmo the club and put your player's name in the note, or pay by check. A payment shows here once the Treasurer records it, so it may take a few days. Questions about your balance? Email the club at the address on the page.`,

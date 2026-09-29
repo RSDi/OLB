@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { voidCharge, voidPayment } from "../../../lib/finances/actions";
 import { formatAmount, groupPayments, methodLabel, type Account } from "../../../lib/finances/logic";
@@ -42,7 +43,7 @@ export function AccountDetail({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Each kid's standing */}
+      {/* Each kid's standing; the name opens their player page. */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {account.players.map((p) => {
           const t = account.byPlayer.get(p.id)!;
@@ -59,7 +60,13 @@ export function AccountDetail({
                 background: "var(--gw-bg)",
               }}
             >
-              <span style={{ fontSize: 13, fontWeight: 700 }}>{p.full_name}</span>
+              <Link
+                href={`/portal/directory/players/${p.id}`}
+                data-tour="payments-player-link"
+                style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
+              >
+                {p.full_name}
+              </Link>
               <BalanceChip totals={t} />
             </div>
           );
