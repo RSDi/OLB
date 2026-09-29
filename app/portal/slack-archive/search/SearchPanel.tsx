@@ -119,6 +119,7 @@ export function SearchPanel({
             label="Search text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onClear={() => setQuery("")}
             placeholder={'e.g. tournament hotel, or "exact phrase"'}
           />
         </div>

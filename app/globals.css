@@ -130,6 +130,31 @@
 /* Base */
 html, body { height: 100%; margin: 0; }
 * { box-sizing: border-box; }
+
+/* Search boxes draw their own × (ClearSearchButton in ui.tsx; the album and
+   guide have theirs), since phones don't show the browser's. Hide the one
+   desktop Chrome and Safari add so there aren't two. */
+input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; }
+.rsd-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--gw-fg-muted);
+  cursor: pointer;
+}
+.rsd-search-clear:hover { background: var(--gw-bg-elev); color: var(--gw-fg); }
+.rsd-search-clear:focus-visible { outline: 2px solid var(--rsd-accent); outline-offset: 1px; }
+
 body {
   background: var(--gw-bg);
   color: var(--gw-fg);
@@ -853,7 +878,6 @@ main::-webkit-scrollbar-track { background: transparent; }
   appearance: none;
   transition: border-color 120ms;
 }
-.rsd-album-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .rsd-album-search input::placeholder { color: var(--gw-fg-muted); }
 .rsd-album-search input:focus { border-color: var(--rsd-accent); }
 .rsd-album-search-clear {

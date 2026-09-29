@@ -99,7 +99,7 @@ Below a thin line you may see extra links the club has added, like **Schedule**.
 
 On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a phone, tap the **menu** button at the top left to open it.
 
-**Search.** The search box at the top of every page finds members, playbooks and Slack messages (and, for the board, external contacts). Press **⌘K** on a Mac or **Ctrl K** on Windows to jump to it from anywhere. Type at least 2 letters, use the arrow keys and **Enter** to open a result, and **Esc** to close. Your last few searches are remembered under **Recent**. To find a *player*, use the search box on the Directory page instead.
+**Search.** The search box at the top of every page finds members, playbooks and Slack messages (and, for the board, external contacts). Press **⌘K** on a Mac or **Ctrl K** on Windows to jump to it from anywhere. Type at least 2 letters, use the arrow keys and **Enter** to open a result, and **Esc** to close. Tap the **×** inside the box to clear what you typed and start over. Your last few searches are remembered under **Recent**. To find a *player*, use the search box on the Directory page instead. That one, and the other search boxes on a page, have the same **×**.
 
 **Back to the top.** On a long page, once you scroll down a yellow round button with an up arrow appears in the bottom right corner. Tap it to jump back to the top of the page.
 

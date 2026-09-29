@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
+import { ClearSearchButton } from "../../components/ui";
 import { ageFromDob } from "../../../lib/teams/age";
 import type { DirectoryParent, DirectoryPlayer } from "./_shared/data";
 import { JerseyNumber, TeamBanner, TeamDot } from "./_shared/TeamBanner";
@@ -204,7 +205,7 @@ export function PlayersList({
               style={{
                 width: "100%",
                 height: 40,
-                padding: "0 12px 0 36px",
+                padding: "0 40px 0 36px",
                 borderRadius: 10,
                 border: "1px solid var(--gw-border)",
                 background: "var(--gw-bg)",
@@ -213,6 +214,7 @@ export function PlayersList({
                 fontWeight: 500,
               }}
             />
+            {query && <ClearSearchButton onClear={() => setQuery("")} />}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {canViewAges && (

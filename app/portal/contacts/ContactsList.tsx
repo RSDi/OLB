@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
-import { Pill } from "../../components/ui";
+import { ClearSearchButton, Pill } from "../../components/ui";
 import type { Contact, ContactCategory, ContactKind } from "./_shared/data";
 import { composeSubtitle, displayName } from "./_shared/format";
 
@@ -154,7 +154,7 @@ export function ContactsList({
             style={{
               width: "100%",
               height: 40,
-              padding: "0 12px 0 36px",
+              padding: "0 40px 0 36px",
               borderRadius: 10,
               border: "1px solid var(--gw-border)",
               background: "var(--gw-bg)",
@@ -163,6 +163,7 @@ export function ContactsList({
               fontWeight: 500,
             }}
           />
+          {query && <ClearSearchButton onClear={() => setQuery("")} />}
         </div>
 
         {/* Kind filter */}

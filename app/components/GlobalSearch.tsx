@@ -132,6 +132,34 @@ export function GlobalSearch({ open, onClose }: Props) {
           minWidth: 0,
         }}
       />
+      {/* Round and filled so it doesn't read as the square close button
+          beside it on phones, where both are an ×. */}
+      {query && (
+        <button
+          type="button"
+          onClick={() => {
+            setQuery("");
+            inputRef.current?.focus();
+          }}
+          aria-label="Clear search"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 28,
+            height: 28,
+            borderRadius: 100,
+            border: "none",
+            background: "var(--gw-border)",
+            color: "var(--gw-fg-muted)",
+            cursor: "pointer",
+            flexShrink: 0,
+            padding: 0,
+          }}
+        >
+          <Icons.X width={12} height={12} />
+        </button>
+      )}
       <button
         onClick={onClose}
         aria-label="Close search"

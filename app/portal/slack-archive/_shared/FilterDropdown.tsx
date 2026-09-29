@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icons } from "../../../components/icons";
-import { Pill } from "../../../components/ui";
+import { ClearSearchButton, Pill } from "../../../components/ui";
 
 // Shared searchable multi-select popover for the search page's channel/user
 // filters and the channel page's author filter — the one component this
@@ -123,18 +123,21 @@ export function FilterDropdown({
             </div>
           ) : (
             <>
-              <input
-                autoFocus
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={searchPlaceholder}
-                style={{
-                  width: "100%", height: 34, padding: "0 10px", marginBottom: 10,
-                  border: "1px solid var(--gw-border)", borderRadius: 8, fontSize: 13,
-                  color: "var(--gw-fg)", background: "var(--gw-bg)", outline: "none",
-                }}
-              />
+              <div style={{ position: "relative", marginBottom: 10 }}>
+                <input
+                  autoFocus
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  style={{
+                    width: "100%", height: 34, padding: "0 40px 0 10px",
+                    border: "1px solid var(--gw-border)", borderRadius: 8, fontSize: 13,
+                    color: "var(--gw-fg)", background: "var(--gw-bg)", outline: "none",
+                  }}
+                />
+                {searchTerm && <ClearSearchButton onClear={() => setSearchTerm("")} />}
+              </div>
 
               {selectedItems.length > 0 && (
                 <>
