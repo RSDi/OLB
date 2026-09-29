@@ -164,7 +164,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     title: "Player requirements",
     group: "Directory",
     audience: "staff",
-    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
+    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "scanner", "camera", "pdf", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
     body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, a tournament fee, a form. Only the board sees any of this.
 
 **On each player.** In the **Directory**, every player has a chip for each requirement that applies to them:
@@ -175,7 +175,13 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **Checking a player off.** Tap the chip. Pick **Done** (**Paid** for a fee), **Waived** or **Not yet**, set the date, and add a **Note** if it helps (a check number, say). Then tap **Save**.
 
-**Scans.** When a requirement offers it, tap **Upload scan** to attach a photo or PDF of what you collected — you can take the picture right from your phone. **View scan** opens it; **Replace scan** and **Remove scan** do what they say. Scans are private to the board.
+**Scans.** When a requirement offers it, you can attach a copy of what you collected. Scans are private to the board.
+
+- **Scan with camera** works like the scanner built into your phone. Point the camera at the page; when the yellow outline finds it, tap the round button. Drag the corners if they're off, then tap **Keep scan**. The page comes out straight and cleaned up. Pick **Color**, **Grayscale**, **B&W** or **Photo** (the picture as taken), tap **Add page** for more pages, then **Attach scan** to save them all as one PDF. **Photo** next to the round button scans a picture you already took.
+- **Upload scan** attaches a photo or PDF you already have.
+- **View scan** opens it; **Replace scan** and **Remove scan** do what they say.
+
+If the camera won't open, allow it for this site in your browser's settings, or tap **Use a photo instead**.
 
 **Who's still missing?** Pick a requirement from the **All requirements** drop-down above the list. **Missing** shows who still needs it, with counts for **Done** (or **Paid**), **Waived** and **All**. It works together with search and the team and age-group filters, and the line above the list shows how many are done.
 
@@ -447,7 +453,7 @@ What you enter here shows on the team's Directory banner and team page.
 - **Type** — **Task / form** is marked **Done**; **Fee** is marked **Paid** and asks for an **Amount**.
 - **Due date** is optional, a reminder for the board.
 - **Applies to** — **All players**, or **Only some teams** (a tournament fee for one team, say). Tick the teams it covers.
-- **Offer scan upload** lets the board attach a photo or PDF when they check a player off.
+- **Offer scan upload** lets the board attach a copy when they check a player off: scanned with the phone's camera, or a photo or PDF.
 - **Active** — untick it to retire a requirement. It leaves the Directory but keeps everyone's record, and you can turn it back on later.
 
 Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.

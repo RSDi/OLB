@@ -709,7 +709,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "requirement-options",
         interactive: true,
         title: "Scans and Active",
-        body: "Leave **Offer scan upload** ticked so you can attach a photo of each signed page. Untick **Active** later to retire it without losing anyone's record.",
+        body: "Leave **Offer scan upload** ticked so you can attach a scan of each signed page. Untick **Active** later to retire it without losing anyone's record.",
       },
       {
         target: "requirement-save",
@@ -744,8 +744,8 @@ export const GUIDE_TOURS: GuideTour[] = [
         route: "/portal/directory",
         target: "req-scan",
         interactive: true,
-        title: "Upload the signed page",
-        body: "Tap **Upload scan** and take a photo of the signed page right from your phone, or pick a PDF. Only the board can open it. **View scan** opens it later.",
+        title: "Scan the signed page",
+        body: "Tap **Scan with camera** and point your phone at the signed page. It finds the edges, straightens the page and saves a clean PDF. Or tap **Upload scan** for a photo or PDF you already have. Only the board can open it. **View scan** opens it later.",
       },
       {
         route: "/portal/directory",
