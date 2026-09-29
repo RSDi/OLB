@@ -746,7 +746,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "req-scan",
         interactive: true,
         title: "Scan the signed page",
-        body: "Tap **Scan with camera** and hold your phone over the signed page. Once the page holds still it takes the picture by itself, straightens it and saves a clean PDF. Or tap **Upload scan** for a photo or PDF you already have. Only the board can open it. **View scan** opens it later.",
+        body: "Tap **Scan with camera** and hold your phone over the signed page. Once the page holds still it takes the picture by itself, straightens it and saves a clean PDF. Or tap **Upload scan** for a photo or PDF you already have (a photo gets straightened too). Only the board can open it. **View scan** opens it later.",
       },
       {
         route: "/portal/directory",

@@ -176,7 +176,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 **Scans.** When a requirement offers it, you can attach a copy of what you collected. Scans are private to the board.
 
 - **Scan with camera** works like the scanner built into your phone. Point the camera at the page and hold still: once the yellow outline finds it, the ring around the round button fills and it takes the picture by itself. Tap the round button to take it sooner, or tap **Auto** to turn that off and always tap it yourself (your phone remembers). Drag the corners if they're off, then tap **Keep scan**. The page comes out straight and cleaned up. Pick **Color**, **Grayscale**, **B&W** or **Photo** (the picture as taken), tap **Add page** for more pages (it waits until you turn to the next page), then **Attach scan** to save them all as one PDF. **Photo** next to the round button scans a picture you already took.
-- **Upload scan** attaches a photo or PDF you already have.
+- **Upload scan** attaches a photo or PDF you already have. A photo opens in the scanner first, so you can drag the corners and pick a look the same way, or tap **Upload as is** to attach it untouched.
 - **View scan** opens it; **Replace scan** and **Remove scan** do what they say.
 
 If the camera won't open, allow it for this site in your browser's settings, or tap **Use a photo instead**.

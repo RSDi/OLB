@@ -59,7 +59,8 @@ export function RequirementDialog({
   const [upload, setUpload] = useState<{ path: string; name: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
+  // The scanner is open: from Scan with camera, or with a photo from Upload scan.
+  const [scanning, setScanning] = useState<{ photo?: File } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const done = doneWord(req.kind);
@@ -74,8 +75,20 @@ export function RequirementDialog({
     onClose();
   }
 
-  async function pickFile(file: File | undefined) {
+  // A photo from Upload scan opens in the scanner first, to straighten and
+  // clean up (or send as it is from there); a PDF goes straight up.
+  function pickFile(file: File | undefined) {
     if (!file) return;
+    if (file.type.startsWith("image/")) {
+      if (fileInput.current) fileInput.current.value = "";
+      setError(null);
+      setScanning({ photo: file });
+      return;
+    }
+    void uploadFile(file);
+  }
+
+  async function uploadFile(file: File) {
     setError(null);
     setBusy("upload");
     const result = await uploadRequirementFile(player.id, req.id, file);
@@ -290,7 +303,7 @@ export function RequirementDialog({
                       onChange={(e) => pickFile(e.target.files?.[0])}
                       style={{ display: "none" }}
                     />
-                    <Pill variant="light" size="sm" onClick={() => setScanning(true)} disabled={!!busy}>
+                    <Pill variant="light" size="sm" onClick={() => setScanning({})} disabled={!!busy}>
                       <Icons.Camera width={14} height={14} />
                       Scan with camera
                     </Pill>
@@ -307,10 +320,15 @@ export function RequirementDialog({
                   <DocumentScanner
                     fileName={`${req.name} - ${player.full_name}.pdf`}
                     maxBytes={REQUIREMENT_FILE_MAX_BYTES}
-                    onCancel={() => setScanning(false)}
+                    photo={scanning.photo}
+                    onCancel={() => setScanning(null)}
                     onDone={(file) => {
-                      setScanning(false);
-                      void pickFile(file);
+                      setScanning(null);
+                      void uploadFile(file);
+                    }}
+                    onPhotoUnreadable={(file) => {
+                      setScanning(null);
+                      void uploadFile(file);
                     }}
                   />
                 )}

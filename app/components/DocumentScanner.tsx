@@ -610,12 +610,17 @@ const LOUPE_ZOOM = 3;
 function CornerEditor({
   photo,
   initial,
-  onRetake,
+  backLabel,
+  onBack,
+  onAsIs,
   onKeep,
 }: {
   photo: HTMLCanvasElement;
   initial: Quad;
-  onRetake: () => void;
+  backLabel: string;
+  onBack: () => void;
+  // For a photo from Upload scan: attach it untouched instead.
+  onAsIs?: () => void;
   onKeep: (quad: Quad) => void;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -738,10 +743,14 @@ function CornerEditor({
   return (
     <>
       <div style={barStyle}>
-        <ScanButton onClick={onRetake}>Retake</ScanButton>
-        <span style={{ fontSize: 13, fontWeight: 600, color: valid ? MUTED : "#F87171", textAlign: "right" }}>
-          {valid ? "Drag the corners to fit the page" : "The corners are crossed — drag them back"}
-        </span>
+        <ScanButton onClick={onBack}>{backLabel}</ScanButton>
+        {onAsIs ? (
+          <ScanButton onClick={onAsIs}>Upload as is</ScanButton>
+        ) : (
+          <span style={{ fontSize: 13, fontWeight: 600, color: valid ? MUTED : "#F87171", textAlign: "right" }}>
+            {valid ? "Drag the corners to fit the page" : "The corners are crossed — drag them back"}
+          </span>
+        )}
       </div>
 
       <div ref={stageRef} style={{ position: "relative", flex: 1, minHeight: 0, touchAction: "none" }}>
@@ -846,21 +855,33 @@ function saveAuto(on: boolean) {
   }
 }
 
-type Step = { kind: "camera" } | { kind: "corners"; photo: HTMLCanvasElement; quad: Quad } | { kind: "review" };
+type Step =
+  | { kind: "opening" }
+  | { kind: "camera" }
+  // `original` is the file from Upload scan, when the photo came from there.
+  | { kind: "corners"; photo: HTMLCanvasElement; quad: Quad; original?: File }
+  | { kind: "review" };
 
 export function DocumentScanner({
   fileName,
   maxBytes,
   onDone,
   onCancel,
+  photo,
+  onPhotoUnreadable,
 }: {
   // What the finished PDF is called, e.g. "Handbook signature - Wiley Fisher.pdf".
   fileName: string;
   maxBytes: number;
+  // The finished PDF, or with "Upload as is", the photo it started from.
   onDone: (file: File) => void;
   onCancel: () => void;
+  // Start from this photo (picked with Upload scan) instead of the camera.
+  photo?: File;
+  // This browser can't open `photo` (an iPhone HEIC photo in Chrome, say).
+  onPhotoUnreadable?: (file: File) => void;
 }) {
-  const [step, setStep] = useState<Step>({ kind: "camera" });
+  const [step, setStep] = useState<Step>(photo ? { kind: "opening" } : { kind: "camera" });
   const [pages, setPages] = useState<ScanPage[]>([]);
   const [filter, setFilter] = useState<ScanFilter>("color");
   const [auto, setAuto] = useState(readAuto);
@@ -896,11 +917,30 @@ export function DocumentScanner({
     onCancel();
   }
 
-  function gotPhoto(photo: HTMLCanvasElement, seen: Quad | null) {
+  function gotPhoto(photo: HTMLCanvasElement, seen: Quad | null, original?: File) {
     const quad =
       lookForPage(photo, photo.width, photo.height, PHOTO_DETECT_SIDE)?.quad ?? seen ?? fullFrame(photo.width, photo.height);
-    setStep({ kind: "corners", photo, quad });
+    setStep({ kind: "corners", photo, quad, original });
   }
+
+  // Open the photo from Upload scan, once. One this browser can't read goes
+  // back to be uploaded as it is.
+  useEffect(() => {
+    if (!photo) return;
+    let cancelled = false;
+    photoFromFile(photo).then(
+      (c) => {
+        if (cancelled) release(c);
+        else gotPhoto(c, null, photo);
+      },
+      () => {
+        if (!cancelled) onPhotoUnreadable?.(photo);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [photo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function keep(photo: HTMLCanvasElement, quad: Quad) {
     setWorking("Straightening the page…");
@@ -996,6 +1036,12 @@ export function DocumentScanner({
         overscrollBehavior: "contain",
       }}
     >
+      {step.kind === "opening" && (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: 14, fontWeight: 600 }}>
+          Opening the photo…
+        </div>
+      )}
+
       {step.kind === "camera" && (
         <CameraView
           backLabel={pages.length ? "Back" : "Cancel"}
@@ -1014,10 +1060,22 @@ export function DocumentScanner({
         <CornerEditor
           photo={step.photo}
           initial={step.quad}
-          onRetake={() => {
+          // A photo from Upload scan (always the first page) has nothing to
+          // retake: Cancel backs out of the scanner.
+          backLabel={step.original ? "Cancel" : "Retake"}
+          onBack={() => {
             release(step.photo);
-            setStep({ kind: "camera" });
+            if (step.original) onCancel();
+            else setStep({ kind: "camera" });
           }}
+          onAsIs={
+            step.original
+              ? () => {
+                  release(step.photo);
+                  onDone(step.original!);
+                }
+              : undefined
+          }
           onKeep={(quad) => keep(step.photo, quad)}
         />
       )}
