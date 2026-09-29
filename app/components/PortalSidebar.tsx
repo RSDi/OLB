@@ -20,6 +20,8 @@ interface NavItem {
   approvedOnly?: boolean;
   // Staged rollout: only shown to accounts in lib/auth/feature-preview.ts.
   previewOnly?: boolean;
+  // Payments: finance managers, and parents once their balance is open.
+  paymentsOnly?: boolean;
   // Guided-tour anchor (lib/help/tours.ts).
   tour?: string;
 }
@@ -37,6 +39,9 @@ const NAV: NavItem[] = [
   // staff-only, so the link is too.
   { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, staffOnly: true, tour: "nav-contacts" },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/>, tour: "nav-playbooks" },
+  // Every family's balance for the Treasurer (the Payments grant); a parent's
+  // own balance once the Treasurer turns that on.
+  { href: "/portal/payments", label: "Payments", icon: <Icons.Give width={16} height={16}/>, paymentsOnly: true, tour: "nav-payments" },
   // Team manager (roster board, registrations, import): super-admin only.
   { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true, tour: "nav-activity" },
   // Board can view Settings; editing is gated per grant inside.
@@ -76,6 +81,10 @@ export interface SidebarViewer {
   status: MemberStatus;
   isStaff: boolean;
   seesFullUi: boolean;
+  // The Payments grant (0101): every family's balance.
+  canManageFinances?: boolean;
+  // Shows the Payments item: a finance manager, or a parent whose balance is open.
+  seesPayments?: boolean;
 }
 
 interface PortalSidebarProps {
@@ -120,7 +129,8 @@ export function PortalSidebar({
       : item
   );
 
-  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi));
+  const seesPayments = viewer?.seesPayments ?? false;
+  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments));
   const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
   const bottomItems = BOTTOM_HREFS
     .map(href => visibleItems.find(item => item.href === href))

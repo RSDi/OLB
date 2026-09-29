@@ -32,13 +32,14 @@ interface Member {
   can_edit_settings: boolean;
   can_delete_settings: boolean;
   can_undelete_settings: boolean;
+  can_manage_finances: boolean;
   membership_status: string;
   access_revoked_at: string | null;
   requested_at: string;
   reviewed_at: string | null;
 }
 
-type GrantKey = "can_edit_settings" | "can_delete_settings" | "can_undelete_settings";
+type GrantKey = "can_edit_settings" | "can_delete_settings" | "can_undelete_settings" | "can_manage_finances";
 
 // Pending splits in two: people who signed in and asked (the approval queue),
 // and registered parents pre-created from a player registration who haven't
@@ -98,7 +99,7 @@ export function MembersTab({
       supabase
         .from("members")
         .select(
-          "id, user_id, email, full_name, nickname, avatar_url, phone, birthday, status, role, can_edit_settings, can_delete_settings, can_undelete_settings, membership_status, access_revoked_at, requested_at, reviewed_at"
+          "id, user_id, email, full_name, nickname, avatar_url, phone, birthday, status, role, can_edit_settings, can_delete_settings, can_undelete_settings, can_manage_finances, membership_status, access_revoked_at, requested_at, reviewed_at"
         )
         .is("deleted_at", null)
         .order("requested_at", { ascending: false }),
@@ -734,6 +735,22 @@ function MemberRow({
             <GrantChip label="Undelete" on={member.can_undelete_settings} disabled={acting} onClick={() => onSetGrant("can_undelete_settings", !member.can_undelete_settings)} />
           </div>
         )}
+        {/* Payments grant — any approved member, board or not (the Treasurer
+            first). Super-admins always have it. */}
+        {tab === "approved" && canManage && member.role !== "super_admin" && (
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "flex-end", marginTop: 2 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+              Money:
+            </span>
+            <GrantChip
+              label="Payments"
+              title={member.can_manage_finances ? "Can see every family's balance and record payments — tap to revoke" : "Tap to let them see every family's balance and record payments"}
+              on={member.can_manage_finances}
+              disabled={acting}
+              onClick={() => onSetGrant("can_manage_finances", !member.can_manage_finances)}
+            />
+          </div>
+        )}
         {tab === "denied" && (
           <>
             <ActionBtn onClick={onApprove} disabled={acting} color="var(--rsd-accent)" bgColor="var(--rsd-accent-bg)">
@@ -792,11 +809,13 @@ function ActionBtn({
 // A grant toggle for a board member — green when held, outline when not.
 function GrantChip({
   label,
+  title,
   on,
   disabled,
   onClick,
 }: {
   label: string;
+  title?: string;
   on: boolean;
   disabled: boolean;
   onClick: () => void;
@@ -805,7 +824,7 @@ function GrantChip({
     <button
       onClick={onClick}
       disabled={disabled}
-      title={on ? `Can ${label.toLowerCase()} — tap to revoke` : `Tap to allow ${label.toLowerCase()}`}
+      title={title ?? (on ? `Can ${label.toLowerCase()} — tap to revoke` : `Tap to allow ${label.toLowerCase()}`)}
       style={{
         padding: "5px 11px",
         borderRadius: 100,

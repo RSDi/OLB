@@ -3,6 +3,8 @@ import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { requireTeamManager } from "./guard";
 import { applyRegistration, cleanName, type RegistrationRecord } from "./apply-registration";
+import { registrationFeeCents, registrationTier } from "../finances/logic";
+import { centralToday } from "../finances/data";
 
 type RegistrationInput = {
   athlete_first: string;
@@ -51,7 +53,13 @@ type RegistrationInput = {
 export async function createRegistration(input: RegistrationInput, honeypot: string): Promise<string | null> {
   if (honeypot && honeypot.trim()) return null; // bot
   if (!input.athlete_first?.trim() || !input.athlete_last?.trim()) return "Athlete first and last name are required.";
-  if (!input.waiver_agreed || !input.signature_name?.trim()) return "Please type your name to sign the Accident Waiver.";
+  if (!input.waiver_agreed) return "Please check the box agreeing to the Accident Waiver.";
+  // The form signs by drawing (the default) or by typing a name.
+  const signed =
+    input.signature_mode === "draw"
+      ? /^data:image\/png;base64,/.test(input.signature_image ?? "")
+      : !!input.signature_name?.trim();
+  if (!signed) return "Please sign the Accident Waiver — draw your signature or type your full name.";
   if (!input.fee_tier) return "Please select a registration fee.";
   if (!input.payment_option) return "Please choose a payment option.";
 
@@ -166,6 +174,42 @@ export async function approveRegistration(id: string): Promise<void> {
     .update({ status: "approved", reviewed_by: userId, reviewed_at: new Date().toISOString(), player_id: playerId })
     .eq("id", id);
   if (error) throw new Error(error.message);
+
+  await chargeRegistrationFee(db, reg.board_id, playerId, (reg.extra as Extra | null)?.fee_tier ?? null, userId);
+}
+
+// Puts the registration fee on the new player's Payments account (0101), once.
+// Best-effort: the approval stands if this fails, and the Treasurer's
+// "Add registration fees" catches anyone missed.
+async function chargeRegistrationFee(
+  db: Awaited<ReturnType<typeof createClient>>,
+  boardId: string,
+  playerId: string,
+  feeTier: string | null,
+  userId: string,
+) {
+  const cents = registrationFeeCents(feeTier);
+  if (cents == null || cents <= 0) return;
+  const { data: existing, error: findErr } = await db
+    .from("olb_charges")
+    .select("id")
+    .eq("player_id", playerId)
+    .eq("category", "registration")
+    .is("voided_at", null)
+    .limit(1);
+  if (findErr || (existing ?? []).length > 0) return;
+  const tier = registrationTier(feeTier);
+  const { error } = await db.from("olb_charges").insert({
+    board_id: boardId,
+    player_id: playerId,
+    kind: "charge",
+    category: "registration",
+    description: tier ? `Registration fee (${tier})` : "Registration fee",
+    amount_cents: cents,
+    entry_date: centralToday(),
+    created_by: userId,
+  });
+  if (error) console.warn(`[teams] registration fee for player ${playerId}: ${error.message}`);
 }
 
 export async function rejectRegistration(id: string): Promise<void> {

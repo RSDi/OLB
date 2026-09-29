@@ -46,6 +46,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/contacts":    { title: "External Contacts", subtitle: "" },
   "/portal/contacts/new": { title: "New contact", subtitle: "External Contacts" },
   "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
+  "/portal/payments":    { title: "Payments",     subtitle: "" },
   "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
   "/portal/teams":               { title: "Teams",         subtitle: "Team manager" },
   "/portal/teams/registrations": { title: "Registrations", subtitle: "Team manager" },

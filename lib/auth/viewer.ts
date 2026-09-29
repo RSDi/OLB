@@ -18,6 +18,7 @@ import {
   canEditSettings,
   canDeleteSettings,
   canUndeleteSettings,
+  canManageFinances,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -34,6 +35,8 @@ export interface Viewer {
   canEditSettings: boolean;
   canDeleteSettings: boolean;
   canUndeleteSettings: boolean;
+  // Payments grant (0101): every family's balance, and recording payments.
+  canManageFinances: boolean;
   // Staged rollout: sees the nav items and Settings tabs still in preview.
   seesFullUi: boolean;
 }
@@ -85,7 +88,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   // best-effort query, in parallel on the same user_id so they cost no extra
   // round trip. If the columns aren't there yet that query errors → grants
   // default false (view-only), which is the safe default.
-  const [{ data }, { data: g }] = await Promise.all([
+  const [{ data }, { data: g }, { data: f }] = await Promise.all([
     supabase
       .from("members")
       .select("id, role, status")
@@ -94,6 +97,12 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     supabase
       .from("members")
       .select("can_edit_settings, can_delete_settings, can_undelete_settings")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    // The Payments grant (0101), best-effort the same way.
+    supabase
+      .from("members")
+      .select("can_manage_finances")
       .eq("user_id", user.id)
       .maybeSingle(),
   ]);
@@ -107,6 +116,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     can_edit_settings: !!grants.can_edit_settings,
     can_delete_settings: !!grants.can_delete_settings,
     can_undelete_settings: !!grants.can_undelete_settings,
+    can_manage_finances: !!(f as Partial<MemberLike> | null)?.can_manage_finances,
   };
 
   return {
@@ -119,6 +129,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canEditSettings: canEditSettings(member),
     canDeleteSettings: canDeleteSettings(member),
     canUndeleteSettings: canUndeleteSettings(member),
+    canManageFinances: canManageFinances(member),
     seesFullUi: seesFullUi(user.email),
   };
 });

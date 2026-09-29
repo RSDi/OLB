@@ -45,7 +45,7 @@ const skip = env ? false : "no Supabase env — schema probes skipped (unit test
 // here whenever a migration adds a column the code starts using.
 const CONTRACT: Record<string, string> = {
   members:
-    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests",
+    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances",
   maintenance_requests:
     "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at",
   request_votes: "id,ticket_id,voter_id,vote,note,created_at,updated_at",
@@ -77,7 +77,7 @@ const CONTRACT: Record<string, string> = {
     "id,recording_id,text,routed_to,done,sort_order,priority,owner_member_id,supporter_member_ids,suggested_assignee_name,suggested_member_id,suggested_supporter_names,transcript_ms,anchor_quote,task_id,dismissed",
   slack_archive_channels: "id,slack_channel_id,label,active,added_by,created_at,is_private,access_checked_at,access_error",
   slack_archive_channel_members: "channel_id,member_id,created_at",
-  olb_boards: "id,season,name",
+  olb_boards: "id,season,name,parent_balances_visible",
   olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at",
   olb_players:
     "id,board_id,team_id,full_name,dob,grade,sort_order,import_flag,updated_at,age_group,new_to_program,address_line1,address_line2,city,state,postal_code,phone,email,registration_fee,payment_method,shirt_size,waiver_signed,waiver_signed_on,directory_optin,registered_at",
@@ -91,6 +91,10 @@ const CONTRACT: Record<string, string> = {
     "id,name,description,kind,amount_cents,allow_file,due_on,team_ids,active,sort_order,created_by,created_at,updated_at,deleted_at",
   olb_player_requirements:
     "player_id,requirement_id,status,completed_on,note,file_path,file_name,marked_by,created_at,updated_at",
+  olb_charges:
+    "id,board_id,player_id,kind,category,description,amount_cents,entry_date,note,created_by,created_at,voided_at,voided_by",
+  olb_payments:
+    "id,board_id,group_id,player_id,amount_cents,paid_on,method,reference,note,recorded_by,created_at,voided_at,voided_by",
   // Activity page + "Preview as" (0099).
   member_audit_log: "id,member_id,changed_by,changed_at,action,old_data,new_data,impersonator_user_id",
   activity_events:

@@ -20,9 +20,10 @@
 
 import type { MemberRole, MemberStatus } from "../auth/permissions";
 
-// Who a section is for. "staff" = board members and super-admins; the guide
+// Who a section is for. "staff" = board members and super-admins; "finance" =
+// anyone with the Payments grant (super-admins always have it). The guide
 // hides a section from anyone it doesn't apply to.
-export type GuideAudience = "everyone" | "staff" | "super_admin";
+export type GuideAudience = "everyone" | "staff" | "finance" | "super_admin";
 
 export interface GuideSection {
   id: string; // anchor: #help-<id>
@@ -50,6 +51,8 @@ export interface GuideViewer {
   isStaff: boolean;
   // On the staged-rollout list: also sees `preview` sections.
   seesFullUi?: boolean;
+  // Holds the Payments grant: sees the "finance" sections.
+  canManageFinances?: boolean;
 }
 
 export const GUIDE_UPDATED = "September 2026";
@@ -89,6 +92,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 
 - **Directory** — players, parents, teams, coaches and volunteers.
 - **Playbooks** — how-to guides and step-by-step checklists.
+- **Payments** — what you owe for the season and what you've paid. It appears once the Treasurer has your family's balance ready.
 - **Slack Archive** — past messages, photos and files from the club's Slack.
 - **User Guide** — this page, near the bottom of the sidebar.
 - **Sign out** — at the very bottom.
@@ -122,7 +126,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 - Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.
 - Tap a parent's name to open their profile, and **Team page ›** to open a team's full page.
 
-**Who's listed.** Players appear when their family said yes to being in the directory on the registration form.
+**Who's listed.** Players appear when their family said yes to being in the directory on the registration form. If your family said no, you still see your own players, marked **Not in directory**; other families don't.
 
 **Profiles.** A member's profile shows their photo, phone, email and birthday, plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
   },
@@ -236,6 +240,49 @@ Super-admins can **Delete** a contact.`,
 **Contacts.** The **Contacts** box on a playbook links the vendors or facilities it involves — tap **+ Attach** and pick from External Contacts.
 
 Super-admins can **Delete playbook** from the bottom of its page.`,
+  },
+  {
+    id: "payments",
+    title: "Payments: recording what families pay",
+    group: "Payments",
+    audience: "finance",
+    routes: ["/portal/payments"],
+    keywords: ["payments", "treasurer", "fees", "registration fee", "owes", "owed", "balance", "paid", "venmo", "check", "cash", "uniform", "tournament", "covered", "hardship", "scholarship", "credit", "refund", "void", "spreadsheet", "csv", "download", "export"],
+    body: `The season's money, one family at a time. You see this if you have the **Payments** permission (a super-admin turns it on in Settings → Members).
+
+**The totals** across the top: **Charged** (fees, uniforms and so on), **Taken off** (players the club covers and scholarships), **Paid**, and **Still owed**, with how many families owe.
+
+**Families.** Brothers and sisters who share a parent are one family, with one balance. Each row shows the kids, the parents, and a chip: **Owes $…**, **Paid up**, or **Credit $…** when they've paid more than they owe. Use **Owes**, **Paid up** and **All** to filter, and the search box to find a family by player, parent, email or phone. Tap a family to open it.
+
+**Registration fees.** When registered players don't have their fee yet, a bar says how many. Tap **Add registration fees** to charge each one the fee for their tier on the registration ($375 for 8u–12u, $400 for 14u, $525 for 16u–18u). It's safe to tap again: nobody is charged twice. A player whose registration has no tier is listed so you can add theirs by hand. Registrations approved from now on get their fee automatically.
+
+**In an open family:**
+
+- **Record payment** — enter the **Amount**, the date it was **Paid on**, **How they paid** (Venmo, check, cash, card), and a **Check number** or **Reference** so you can match it later. One Venmo for three kids is one payment: it's split for you, paying off each kid in turn. Tap **Change the split** to set each kid's share yourself.
+- **Add a charge** — a **Uniform**, a **Tournament**, a **Refund paid out**, or **Other**. Tick the kids it's for; each gets the full amount.
+- **Take off an amount** — **Covered by the club** (a hardship the board voted on), a **Scholarship**, or an **Adjustment** to fix a mistake. Put the date of the board vote in the **Note**.
+- **Void** — nothing is ever deleted. Voiding crosses a line out and takes it off the balance. Enter it again if it was wrong. **Show voided** brings voided lines back into view.
+
+**Families can see** each line's description and note, so write them for the family.
+
+**Parents can see their balance** is off to start with, so you can enter the season's payments first. Switch it **On** and every family sees their own balance under **Payments** in their sidebar, with how to pay. Nobody sees another family's.
+
+**Download spreadsheet** saves every charge, credit and payment as a CSV file for Excel or Google Sheets. Charges are positive; credits and payments are negative, so the Amount column adds up to what's still owed.`,
+  },
+  {
+    id: "your-balance",
+    title: "Your balance",
+    group: "Payments",
+    audience: "everyone",
+    routes: ["/portal/payments"],
+    keywords: ["payments", "balance", "owe", "fees", "registration fee", "paid", "venmo", "check", "pay", "receipt", "uniform"],
+    body: `**Payments** in the sidebar shows what your family owes for the season and what you've paid. It appears once the Treasurer has your balance ready.
+
+- The big number at the top is what's **due**, or **Paid in full** once you're square.
+- **Charges and credits** lists each fee for each of your kids, like the registration fee or a uniform, and anything taken off.
+- **Payments** lists what the Treasurer has recorded from you, with the date and how you paid.
+
+**To pay,** Venmo the club and put your player's name in the note, or pay by check. A payment shows here once the Treasurer records it, so it may take a few days. Questions about your balance? Email the club at the address on the page.`,
   },
   {
     id: "slack-archive",
@@ -355,6 +402,7 @@ Activity is recorded from the day this page went live.`,
 | Approve or deny access requests | | ✓ | ✓ |
 | Check players off on requirements (handbook signature, fees) | | ✓ | ✓ |
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
+| Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
@@ -370,7 +418,7 @@ Activity is recorded from the day this page went live.`,
     group: "Settings",
     audience: "staff",
     routes: ["/portal/settings"],
-    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants"],
+    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer"],
     body: `Where new sign-ups are approved and member accounts are managed.
 
 **The red badge** on **Settings** in the sidebar counts access requests waiting for you.
@@ -389,6 +437,7 @@ Activity is recorded from the day this page went live.`,
 - **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
 - Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
+- Turn on **Payments** (next to **Money:** on the **Approved** tab) to let someone see every family's balance and record payments — the Treasurer, and anyone helping them. It works for members and board alike. Tap it again to take it away.
 - **Remove** a member (demote a super-admin first).
 
 Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,
@@ -503,6 +552,7 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
   if (audience === "everyone") return true;
   if (!viewer || viewer.status !== "approved") return false;
   if (audience === "staff") return viewer.isStaff;
+  if (audience === "finance") return viewer.role === "super_admin" || !!viewer.canManageFinances;
   return viewer.role === "super_admin";
 }
 
