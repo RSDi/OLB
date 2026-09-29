@@ -103,10 +103,54 @@ test("Markdown-only syntax stays as typed", () => {
 
 test("@channel, @here and @everyone are marked", () => {
   assert.equal(show("Rosters are up! @channel"), "Rosters are up! <@>@channel</@>");
-  assert.equal(show("*@here* but not me@here.com"), "<b><@>@here</@></b> but not me@here.com");
+  assert.equal(show("*@here* but not me@here.com"), "<b><@>@here</@></b> but not <a mailto:me@here.com>me@here.com</a>");
 });
 
 test("leading and trailing blank lines are dropped, and Windows line breaks read as one", () => {
   assert.equal(show("\n\nHi\r\nthere\n\n"), "Hi\nthere");
   assert.deepEqual(parseSlackText("   \n"), []);
+});
+
+test("email addresses are mail links, as in Slack", () => {
+  assert.equal(
+    show("Questions? Email coach.jones_2@club.org.\nOr first_last@x.co"),
+    "Questions? Email <a mailto:coach.jones_2@club.org>coach.jones_2@club.org</a>.\nOr <a mailto:first_last@x.co>first_last@x.co</a>",
+  );
+  assert.equal(show("*board@club.org*"), "<b><a mailto:board@club.org>board@club.org</a></b>");
+  assert.equal(show("Score 3@2.5, ask @Jeff or team@2pm"), "Score 3@2.5, ask @Jeff or team@2pm");
+});
+
+test("a bare link leaves off a closing bracket or curly quote around it", () => {
+  assert.equal(show("Form [due Fri: https://forms.gle/abc123]"), "Form [due Fri: <a https://forms.gle/abc123>https://forms.gle/abc123</a>]");
+  assert.equal(show("“https://x.com/a”"), "“<a https://x.com/a>https://x.com/a</a>”");
+  assert.equal(show("https://en.wikipedia.org/wiki/Foo_(bar)"), "<a https://en.wikipedia.org/wiki/Foo_(bar)>https://en.wikipedia.org/wiki/Foo_(bar)</a>");
+  assert.equal(show("https:///nothing"), "https:///nothing");
+});
+
+test("a bullet written with a text-style selector is still a list item", () => {
+  assert.equal(show("        \u25AA\uFE0E three"), "    [\u25AA\uFE0E] three");
+});
+
+// Slack allows 40,000 characters in a message. These used to take seconds
+// to minutes each, and the channel page renders every message on the server.
+test("long crafted messages parse quickly", () => {
+  const n = 40000;
+  const inputs = [
+    "https://x.com/" + ")".repeat(n),
+    "https:///".repeat(100) + ")".repeat(3000),
+    "https:///".repeat(4000) + ")".repeat(4000),
+    "[".repeat(n),
+    "[a ".repeat(n / 3),
+    "[a](".repeat(n / 4),
+    "Pasted: " + " ".repeat(n) + "end",
+    " *a".repeat(n / 6) + " a_".repeat(n / 6),
+    "a.".repeat(n / 2) + "@",
+    "x@a".repeat(n / 3),
+  ];
+  for (const input of inputs) {
+    const started = performance.now();
+    parseSlackText(input);
+    const ms = performance.now() - started;
+    assert.ok(ms < 1000, `${JSON.stringify(input.slice(0, 20))}… took ${Math.round(ms)} ms`);
+  }
 });

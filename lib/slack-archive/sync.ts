@@ -41,7 +41,13 @@ import {
   type SlackReaction,
 } from "./slack-api";
 import { archiveMessageFiles, downloadAndStoreSlackFile, type ArchivedFile } from "./files";
-import { mayNeedChannelNames, resolveMentions, UNNAMED_CHANNEL_MENTION_SQL, type MentionLookups } from "./mentions";
+import {
+  mayNeedChannelNames,
+  repairedMessageText,
+  resolveMentions,
+  UNNAMED_CHANNEL_MENTION_SQL,
+  type MentionLookups,
+} from "./mentions";
 
 export interface ChannelSyncSummary {
   channel: string;
@@ -217,7 +223,7 @@ async function persistMessage(
     resolver.resolve(msg),
     loadSavedFiles(admin, channelId, msg.ts).then((saved) => archiveMessageFiles(saved, msg.files ?? [], download)),
     resolveReactions(msg.reactions, resolver),
-    resolveMentions(msg.text ?? "", resolver),
+    resolveMentions(msg.text ?? "", resolver, channelId),
   ]);
 
   const { error } = await admin.from("slack_archive_messages").upsert(
@@ -336,11 +342,19 @@ async function refreshKnownThreads(
 // used to save those as "#channel" (or a bare "#"). This rewrites the saved
 // text of such messages from their original text (kept in `raw`) now that
 // names are looked up, including messages Slack no longer returns, which a
-// full re-walk can't reach. Runs on every sync but costs little once done:
-// the query finds only messages whose original text has an unnamed mention,
-// and those whose saved text already shows the name are skipped without a
-// Slack call. A lookup that failed leaves "#channel" to try again next time.
-const CHANNEL_NAME_REPAIR_PAGE = 500;
+// full re-walk can't reach. Cheap once done: the query finds only messages
+// whose original text has an unnamed mention, and those whose saved text
+// already shows the name are skipped without a Slack call.
+//
+// It never makes a message read worse (see repairedMessageText), and the
+// write only lands if the saved text is still what was read, so a sync
+// saving a newer edit of the message at the same time wins. It stops a few
+// seconds before the deadline, and the nightly cron runs it only after
+// every channel's new messages and thread replies (see
+// syncAllActiveChannels).
+const CHANNEL_NAME_REPAIR_PAGE = 100;
+const CHANNEL_NAME_REPAIR_BATCH = 25;
+const CHANNEL_NAME_REPAIR_MARGIN_MS = 5_000;
 
 async function repairChannelNames(
   admin: SupabaseClient,
@@ -349,7 +363,8 @@ async function repairChannelNames(
   summary: ChannelSyncSummary,
   deadlineAt: number,
 ): Promise<void> {
-  for (let from = 0; Date.now() < deadlineAt; from += CHANNEL_NAME_REPAIR_PAGE) {
+  const stopAt = deadlineAt - CHANNEL_NAME_REPAIR_MARGIN_MS;
+  for (let from = 0; Date.now() < stopAt; from += CHANNEL_NAME_REPAIR_PAGE) {
     const { data, error } = await admin
       .from("slack_archive_messages")
       .select("id, message_text, raw_text:raw->>text")
@@ -361,20 +376,36 @@ async function repairChannelNames(
       console.warn(`[slack-archive] channel name repair query failed for ${channelId}:`, error.message);
       return;
     }
-    const rows = (data ?? []) as { id: string; message_text: string | null; raw_text: string | null }[];
-    await Promise.all(
-      rows
-        .filter((r) => r.raw_text && mayNeedChannelNames(r.raw_text, r.message_text ?? ""))
-        .map(async (r) => {
-          const text = await resolveMentions(r.raw_text!, resolver);
-          if (text === r.message_text) return;
-          const { error: updateErr } = await admin.from("slack_archive_messages").update({ message_text: text }).eq("id", r.id);
-          if (updateErr) console.warn(`[slack-archive] channel name repair failed for ${r.id}:`, updateErr.message);
-          else summary.channel_names_fixed = (summary.channel_names_fixed ?? 0) + 1;
-        }),
-    );
+    const rows = (data ?? []) as { id: string; message_text: string; raw_text: string | null }[];
+    const due = rows.filter((r) => r.raw_text && mayNeedChannelNames(r.raw_text, r.message_text));
+    for (let i = 0; i < due.length; i += CHANNEL_NAME_REPAIR_BATCH) {
+      if (Date.now() >= stopAt) return;
+      await Promise.all(
+        due.slice(i, i + CHANNEL_NAME_REPAIR_BATCH).map((r) => repairChannelNamesInRow(admin, channelId, r, resolver, summary)),
+      );
+    }
     if (rows.length < CHANNEL_NAME_REPAIR_PAGE) return;
   }
+}
+
+async function repairChannelNamesInRow(
+  admin: SupabaseClient,
+  channelId: string,
+  row: { id: string; message_text: string; raw_text: string | null },
+  resolver: AuthorResolver,
+  summary: ChannelSyncSummary,
+): Promise<void> {
+  const text = await repairedMessageText(row.raw_text ?? "", row.message_text, resolver, channelId);
+  if (text === null) return;
+
+  const { data, error } = await admin
+    .from("slack_archive_messages")
+    .update({ message_text: text })
+    .eq("id", row.id)
+    .eq("message_text", row.message_text)
+    .select("id");
+  if (error) console.warn(`[slack-archive] channel name repair failed for ${row.id}:`, error.message);
+  else if (data && data.length > 0) summary.channel_names_fixed = (summary.channel_names_fixed ?? 0) + 1;
 }
 
 // Mirrors one channel's Slack privacy and (for private channels) Slack
@@ -527,11 +558,6 @@ export async function syncArchiveChannel(
       await refreshKnownThreads(admin, channelId, token, resolver, summary, deadlineAt);
     }
 
-    // Best-effort too, and only after this run's own messages are in.
-    await repairChannelNames(admin, channelId, resolver, summary, deadlineAt).catch((err) =>
-      console.warn(`[slack-archive] channel name repair failed for ${channelId}:`, err),
-    );
-
     const { error: stateErr } = await admin.from("slack_archive_sync_state").upsert(
       {
         channel_id: channelId,
@@ -554,6 +580,15 @@ export async function syncArchiveChannel(
         last_error: message,
       },
       { onConflict: "channel_id" },
+    );
+  }
+
+  // Best-effort, like the thread refresh, and whatever the walk's outcome:
+  // it only needs channel names from Slack. The nightly cron runs it as a
+  // pass of its own instead (see syncAllActiveChannels).
+  if (opts.refreshThreads !== false) {
+    await repairChannelNames(admin, channelId, resolver, summary, deadlineAt).catch((err) =>
+      console.warn(`[slack-archive] channel name repair failed for ${channelId}:`, err),
     );
   }
 
@@ -625,7 +660,7 @@ function skippedSummary(channelId: string): ChannelSyncSummary {
 //
 // Cron mode (`windowMs` given — a fixed rolling lookback, ignoring each
 // channel's stored watermark so a corrupted/stuck one can never leave a
-// channel silently frozen) runs in two passes so one slow channel can't
+// channel silently frozen) runs in passes so one slow channel can't
 // starve the rest, which is exactly what used to happen: one shared 50s
 // budget, channels always in registration order, and the first channel's
 // thread refresh alone (150+ Slack calls against a ~50/min rate limit) ate
@@ -633,13 +668,16 @@ function skippedSummary(channelId: string): ChannelSyncSummary {
 //   1. New messages for EVERY channel first — cheap (a 24h window is a page
 //      or two each) and the part that actually matters nightly.
 //   2. Thread-reply refresh with whatever budget is left, best-effort.
-// Both passes start from a position that rotates daily, so even a pass
+//   3. Channel names for saved messages that lack them (repairChannelNames),
+//      also best-effort and last: a no-op on most nights.
+// Every pass starts from a position that rotates daily, so even a pass
 // that can't finish gives a different channel first dibs each night
 // instead of the same tail channels always losing out.
 //
 // Backfill mode (`windowMs` omitted) is unchanged: each channel does its
-// normal from-the-watermark-or-full-history pull, thread refresh included,
-// in registry order — a local process has no time budget to ration.
+// normal from-the-watermark-or-full-history pull, thread refresh and
+// channel-name repair included, in registry order — a local process has no
+// time budget to ration.
 export async function syncAllActiveChannels(opts: { deadlineMs?: number; windowMs?: number } = {}): Promise<ArchiveSyncSummary> {
   const token = process.env.SLACK_BOT_TOKEN;
   const admin = createAdminClient();
@@ -693,6 +731,15 @@ export async function syncAllActiveChannels(opts: { deadlineMs?: number; windowM
     // fail once more per thread here — skip it rather than flood its errors.
     if (!s.done || s.errors.length > 0) continue;
     await refreshKnownThreads(admin, channelId, token, resolver, s, deadlineAt);
+  }
+
+  // 3. With whatever is left, saved messages still missing channel names.
+  // Includes channels whose sync failed: this needs only the names.
+  for (const channelId of channels) {
+    if (Date.now() >= deadlineAt) break;
+    await repairChannelNames(admin, channelId, resolver, byChannel.get(channelId)!, deadlineAt).catch((err) =>
+      console.warn(`[slack-archive] channel name repair failed for ${channelId}:`, err),
+    );
   }
 
   // Report in registry order regardless of tonight's rotation, so the cron
