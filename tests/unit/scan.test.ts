@@ -17,6 +17,7 @@ import {
   type RgbaImage,
 } from "../../lib/scan/geometry.ts";
 import { newSteadyTracker, pageFingerprint, samePage, steadyFor } from "../../lib/scan/autocapture.ts";
+import { jpegName, looksLikeHeic } from "../../lib/scan/heic.ts";
 import { convexHull, detectDocument, largestQuad, otsuThreshold, toGray } from "../../lib/scan/detect.ts";
 import { applyScanFilter } from "../../lib/scan/enhance.ts";
 import { buildPdf, jpegInfo } from "../../lib/scan/pdf.ts";
@@ -390,4 +391,21 @@ test("knows the page it just scanned from the next one", () => {
   const signature = pageFingerprint(framed(w, h, at, signaturePage), at);
   assert.equal(samePage(signature, pageFingerprint(framed(w, h, moved, signaturePage, 1.1), moved)), true);
   assert.equal(samePage(signature, pageFingerprint(framed(w, h, moved, textPage), moved)), false);
+});
+
+test("spots iPhone photos by type, or by name when the type is missing", () => {
+  assert.equal(looksLikeHeic({ name: "IMG_4821.HEIC", type: "image/heic" }), true);
+  assert.equal(looksLikeHeic({ name: "photo", type: "image/heif" }), true);
+  assert.equal(looksLikeHeic({ name: "burst", type: "image/heic-sequence" }), true);
+  // Windows often doesn't know the type.
+  assert.equal(looksLikeHeic({ name: "IMG_4821.heic", type: "" }), true);
+  assert.equal(looksLikeHeic({ name: "scan.HEIF", type: "" }), true);
+  assert.equal(looksLikeHeic({ name: "IMG_4821.jpg", type: "image/jpeg" }), false);
+  assert.equal(looksLikeHeic({ name: "heic-notes.pdf", type: "application/pdf" }), false);
+});
+
+test("names the JPEG after the iPhone photo", () => {
+  assert.equal(jpegName("IMG_4821.HEIC"), "IMG_4821.jpg");
+  assert.equal(jpegName("signed page.heif"), "signed page.jpg");
+  assert.equal(jpegName(".heic"), "Photo.jpg");
 });

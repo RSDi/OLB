@@ -11,6 +11,7 @@ import {
   type MarkPlayerRequirementInput,
 } from "../../../lib/requirements/actions";
 import { doneWord, formatAmount } from "../../../lib/requirements/logic";
+import { looksLikeHeic } from "../../../lib/scan/heic";
 import type { PlayerRequirement, PlayerRequirementStatus, Requirement } from "../../../lib/requirements/types";
 import {
   REQUIREMENT_FILE_ACCEPT,
@@ -79,7 +80,7 @@ export function RequirementDialog({
   // clean up (or send as it is from there); a PDF goes straight up.
   function pickFile(file: File | undefined) {
     if (!file) return;
-    if (file.type.startsWith("image/")) {
+    if (file.type.startsWith("image/") || looksLikeHeic(file)) {
       if (fileInput.current) fileInput.current.value = "";
       setError(null);
       setScanning({ photo: file });

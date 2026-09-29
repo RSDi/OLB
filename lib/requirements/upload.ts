@@ -1,4 +1,5 @@
 import { createClient } from "../supabase/client";
+import { looksLikeHeic } from "../scan/heic";
 import { REQUIREMENT_FILES_BUCKET } from "./types";
 
 // Client-side uploader for scans of what a player handed in (a photo of the
@@ -7,7 +8,8 @@ import { REQUIREMENT_FILES_BUCKET } from "./types";
 // <player>/<requirement>/ so the server actions can check a path belongs to
 // the record it's saved on.
 
-export const REQUIREMENT_FILE_ACCEPT = "image/*,application/pdf";
+// iPhone photos by name too: Windows often doesn't know HEIC as an image.
+export const REQUIREMENT_FILE_ACCEPT = "image/*,application/pdf,.heic,.heif";
 export const REQUIREMENT_FILE_MAX_BYTES = 10 * 1024 * 1024;
 
 const MIME_EXT: Record<string, string> = {
@@ -31,7 +33,8 @@ export async function uploadRequirementFile(
   requirementId: string,
   file: File
 ): Promise<{ path?: string; error?: string }> {
-  if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+  const type = file.type || (looksLikeHeic(file) ? "image/heic" : "");
+  if (!type.startsWith("image/") && type !== "application/pdf") {
     return { error: "Upload a photo or a PDF." };
   }
   if (file.size > REQUIREMENT_FILE_MAX_BYTES) return { error: "That file is over 10 MB." };
@@ -39,7 +42,7 @@ export async function uploadRequirementFile(
   const path = `${playerId}/${requirementId}/${crypto.randomUUID()}.${extFromFile(file)}`;
   const { error } = await createClient()
     .storage.from(REQUIREMENT_FILES_BUCKET)
-    .upload(path, file, { upsert: false, contentType: file.type || undefined });
+    .upload(path, file, { upsert: false, contentType: type });
   if (error) return { error: error.message };
   return { path };
 }

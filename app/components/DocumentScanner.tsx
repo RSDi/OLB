@@ -14,6 +14,7 @@ import {
 } from "../../lib/scan/autocapture";
 import { detectDocument, toGray } from "../../lib/scan/detect";
 import { SCAN_FILTERS, applyScanFilter, type ScanFilter } from "../../lib/scan/enhance";
+import { heicToJpeg, jpegName, looksLikeHeic } from "../../lib/scan/heic";
 import {
   fullFrame,
   isConvexQuad,
@@ -44,6 +45,8 @@ const LINE = "rgba(255,255,255,.22)";
 const PAGE_MAX_SIDE = 2200;
 // A photo is shrunk to this before anything else; plenty for PAGE_MAX_SIDE.
 const PHOTO_MAX_SIDE = 3264;
+// An iPhone photo sent with "Upload as is" goes up as a JPEG this size at most.
+const AS_IS_MAX_SIDE = 4096;
 // Frames are shrunk to this to look for the page: live, and once taken.
 const LIVE_DETECT_SIDE = 320;
 const PHOTO_DETECT_SIDE = 640;
@@ -127,21 +130,44 @@ async function withLook(flat: RgbaImage, filter: ScanFilter): Promise<Blob> {
   return blob;
 }
 
-// A picked or taken photo, as a canvas no bigger than PHOTO_MAX_SIDE. The
-// browser turns it the right way up as it decodes it.
-async function photoFromFile(file: File): Promise<HTMLCanvasElement> {
-  const url = URL.createObjectURL(file);
+async function decodeImage(blob: Blob): Promise<HTMLImageElement> {
+  const url = URL.createObjectURL(blob);
   try {
     const img = new Image();
     img.src = url;
     await img.decode();
-    const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
-    const c = canvasOf(Math.round(img.naturalWidth * scale), Math.round(img.naturalHeight * scale));
-    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-    return c;
+    return img;
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+// A picked or taken photo, as a canvas no bigger than maxSide. The browser
+// turns it the right way up as it decodes it. An iPhone (HEIC) photo the
+// browser can't open itself is converted to JPEG first.
+async function photoFromFile(file: File, maxSide = PHOTO_MAX_SIDE): Promise<HTMLCanvasElement> {
+  let img: HTMLImageElement;
+  try {
+    img = await decodeImage(file);
+  } catch (e) {
+    if (!looksLikeHeic(file)) throw e;
+    img = await decodeImage(await heicToJpeg(file));
+  }
+  const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = canvasOf(Math.round(img.naturalWidth * scale), Math.round(img.naturalHeight * scale));
+  c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+  return c;
+}
+
+// "Upload as is" sends the photo untouched, except an iPhone (HEIC) photo,
+// which goes as a JPEG so every browser can show it later.
+async function asIs(original: File): Promise<File> {
+  if (!looksLikeHeic(original)) return original;
+  const c = await photoFromFile(original, AS_IS_MAX_SIDE);
+  const blob = await new Promise<Blob | null>((resolve) => c.toBlob(resolve, "image/jpeg", 0.92));
+  release(c);
+  if (!blob) throw new Error("Couldn't convert the photo.");
+  return new File([blob], jpegName(original.name), { type: "image/jpeg" });
 }
 
 function cameraProblem(e: unknown): string {
@@ -240,6 +266,7 @@ function CameraView({
   const [seen, setSeen] = useState<Quad | null>(null);
   const [wait, setWait] = useState<AutoWait>(null);
   const [held, setHeld] = useState(0); // 0 to 1: how far Auto is to taking it
+  const [opening, setOpening] = useState(false); // a picked photo is on its way in
   const seenRef = useRef<Quad | null>(null);
   // The detection loop reads these, so it needn't restart when they change.
   const autoRef = useRef(auto);
@@ -248,8 +275,8 @@ function CameraView({
   // The photo picker is open (on iPhone it slides up over a still-running camera).
   const pickingRef = useRef(false);
   useEffect(() => {
-    // Not behind an error message, either.
-    autoRef.current = auto && !problem;
+    // Not behind an error message or while a picked photo opens, either.
+    autoRef.current = auto && !problem && !opening;
     lastPrintRef.current = lastPrint;
     shootRef.current = shoot;
   });
@@ -376,10 +403,13 @@ function CameraView({
 
   async function pickPhoto(file: File | undefined) {
     if (!file) return;
+    setOpening(true);
     try {
       onPhoto(await photoFromFile(file), null);
     } catch {
       setProblem("Couldn't open that photo. Try another.");
+    } finally {
+      setOpening(false);
     }
   }
 
@@ -488,9 +518,26 @@ function CameraView({
             </div>
           </div>
         )}
-        {!live && !problem && (
+        {!live && !problem && !opening && (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: 14, fontWeight: 600 }}>
             Opening the camera…
+          </div>
+        )}
+        {opening && (
+          <div
+            aria-live="polite"
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(11,11,12,.72)",
+              fontSize: 15,
+              fontWeight: 700,
+            }}
+          >
+            Opening the photo…
           </div>
         )}
       </div>
@@ -498,7 +545,7 @@ function CameraView({
       <input
         ref={photoInput}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         onChange={(e) => {
           pickingRef.current = false;
           void pickPhoto(e.target.files?.[0]);
@@ -1070,9 +1117,18 @@ export function DocumentScanner({
           }}
           onAsIs={
             step.original
-              ? () => {
+              ? async () => {
+                  const original = step.original!;
+                  setWorking("Saving the photo…");
+                  let file = original;
+                  try {
+                    file = await asIs(original);
+                  } catch {
+                    // Can't convert it here: it goes up as it came.
+                  }
+                  setWorking(null);
                   release(step.photo);
-                  onDone(step.original!);
+                  onDone(file);
                 }
               : undefined
           }
