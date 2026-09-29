@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
 import { createClient } from "../../../lib/supabase/client";
 import { memberDisplayName } from "../../../lib/members/display";
-import { ShowMeHow } from "../../components/ShowMeHow";
 
 type AuditAction = "insert" | "update" | "delete";
 
@@ -85,7 +84,6 @@ export function AuditLogTab() {
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 540 }}>
           Every change to a member record — who changed what, and when. Most recent first (last 100 changes).
         </div>
-        <ShowMeHow tour="settings-audit-log" />
       </div>
 
       {error && (

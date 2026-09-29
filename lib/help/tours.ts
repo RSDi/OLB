@@ -6,7 +6,8 @@
 // Where tours start:
 //   - "Take the tour" at the top of the User Guide, and "Show me around" on a
 //     guide section that has one.
-//   - "Show me around" in the top-bar "i" panel, for the page you're on.
+//   - "Show me around" in the top-bar "i" panel, for the page you're on (on
+//     Settings, the open tab: see usePageHelp in app/components/PageHelp.tsx).
 //   - The welcome tour starts by itself for new accounts only (see
 //     autoStartsWelcomeTour); everyone else starts it from the User Guide.
 //
@@ -28,7 +29,7 @@ import {
   GUIDE_SECTIONS,
   canSeeAudience,
   canSeeGuideSection,
-  guideSectionForPath,
+  guideSectionForPage,
   type GuideAudience,
   type GuideViewer,
 } from "./guide.ts"; // explicit extension so node --test can load this file
@@ -161,11 +162,11 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "page-help",
         title: "Help on every page",
-        body: "Tap **ⓘ** to read about the page you're on. Most pages also have **Show me around** there, a tour like this one for just that page, and the Directory, External Contacts, Playbooks, Slack Archive and Settings have a **Show me how** button for it.",
+        body: "Tap **ⓘ** to read about the page you're on. Most pages also have **Show me around** there, a tour like this one for just that page. In Settings, it follows the tab you're on.",
       },
       {
         title: "You're all set",
-        body: "Want a closer look at a page? Press **Show me how** at the top of it, or tap **ⓘ** and then **Show me around**. Or open the **User Guide** and pick a section.",
+        body: "Want a closer look at a page? Tap **ⓘ** and then **Show me around**. Or open the **User Guide** and pick a section.",
       },
     ],
   },
@@ -371,7 +372,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "settings-tabs",
         audience: "super_admin",
         title: "Settings tabs",
-        body: "Members, Teams, Volunteer Roles, Requirements, Playbooks, Sidebar Links, Contact Types and the Audit Log each have their own tab, and each has **Show me how** for a walkthrough like this one.",
+        body: "Members, Teams, Volunteer Roles, Requirements, Playbooks, Sidebar Links, Contact Types and the Audit Log each have their own tab. Tap **ⓘ** on any tab, then **Show me around**, for a walkthrough of that tab.",
       },
       {
         target: "members-status",
@@ -856,8 +857,14 @@ export function tourForSection(sectionId: string, viewer: GuideViewer | null | u
 // The "Show me around" tour for a page: the tour of the page's "i" section,
 // when the tour runs on this very page (a tour of the channel list is no use
 // inside a channel).
-export function tourForPath(pathname: string, viewer: GuideViewer | null | undefined): GuideTour | null {
-  const section = guideSectionForPath(pathname, viewer);
+// `sectionId`: the open view's section on a page with views of its own (a
+// Settings tab), as for guideSectionForPage.
+export function tourForPath(
+  pathname: string,
+  viewer: GuideViewer | null | undefined,
+  sectionId?: string | null
+): GuideTour | null {
+  const section = guideSectionForPage(pathname, viewer, sectionId);
   if (!section) return null;
   const tour = tourForSection(section.id, viewer);
   return tour && tour.route === pathname ? tour : null;

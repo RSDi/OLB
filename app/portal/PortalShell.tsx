@@ -17,7 +17,8 @@ import { GuidedTour, TourContext, type StartTour } from "../components/GuidedTou
 import { ScrollToTopButton } from "../components/ScrollToTopButton";
 import { ActivityBeacon } from "../components/ActivityBeacon";
 import { PreviewBanner, type PreviewInfo } from "../components/PreviewBanner";
-import { guideSectionForPath } from "../../lib/help/guide";
+import { PageHelpContext } from "../components/PageHelp";
+import { guideSectionForPage } from "../../lib/help/guide";
 import {
   WELCOME_TOUR_ID,
   WELCOME_TOUR_SEEN_KEY,
@@ -76,11 +77,13 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
   const pathname = usePathname();
   const previewing = preview !== null;
   // The top-bar "i" shows the User Guide section for this page, when the
-  // viewer can see one (lib/help/guide.ts).
-  const pageHelp = guideSectionForPath(pathname, viewer);
-  // …and "Show me around" in that panel runs the page's guided tour
+  // viewer can see one (lib/help/guide.ts), or for the open view on a page
+  // with views of its own, like a Settings tab (usePageHelp).
+  const [viewSection, setViewSection] = useState<string | null>(null);
+  const pageHelp = guideSectionForPage(pathname, viewer, viewSection);
+  // …and "Show me around" in that panel runs its guided tour
   // (lib/help/tours.ts). `key` restarts a tour that's started again.
-  const pageTour = tourForPath(pathname, viewer);
+  const pageTour = tourForPath(pathname, viewer, viewSection);
   const [tour, setTour] = useState<{ id: string; part?: number; key: number } | null>(null);
 
   const startTour = useCallback<StartTour>((id, opts) => {
@@ -198,62 +201,64 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       : meta;
 
   return (
-    <TourContext.Provider value={tourControls}>
-      {preview && <PreviewBanner preview={preview} />}
-      <ActivityBeacon />
-      <div
-        data-theme="lightning"
-        className={`rsd-app ${portalFontVariables}${collapsed ? " sidebar-collapsed" : ""}${previewing ? " rsd-previewing" : ""}`}
-      >
-        <PortalSidebar
-          viewer={viewer}
-          pendingMembersCount={pendingMembersCount}
-          links={sidebarLinks}
-          previewing={previewing}
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed(v => !v)}
-          mobileOpen={mobileOpen}
-          onNavigate={() => setMobileOpen(false)}
-        />
-        <PortalTopBar
-          title={topMeta.title}
-          subtitle={topMeta.subtitle}
-          onMenuClick={() => setMobileOpen(v => !v)}
-          onSearchClick={() => setSearchOpen(true)}
-          inlineSearchRef={inlineSearchRef}
-          onInfoClick={pageHelp ? () => setInfoOpen(true) : undefined}
-        />
-        {/* Mobile overlay */}
-        {mobileOpen && (
-          <div
-            onClick={() => setMobileOpen(false)}
-            style={{
-              position: "fixed", inset: 0, zIndex: 1100,
-              background: "rgba(12,12,14,.45)",
-              animation: "gw-fade-in 160ms ease",
-            }}
-          />
-        )}
-        <main>{children}</main>
-        <ScrollToTopButton />
-        <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
-        <InfoPanel
-          section={pageHelp}
-          open={infoOpen}
-          onClose={() => setInfoOpen(false)}
-          onStartTour={pageTour ? () => startTour(pageTour.id) : undefined}
-        />
-        {tour && (
-          <GuidedTour
-            key={tour.key}
-            tourId={tour.id}
-            startPart={tour.part}
+    <PageHelpContext.Provider value={setViewSection}>
+      <TourContext.Provider value={tourControls}>
+        {preview && <PreviewBanner preview={preview} />}
+        <ActivityBeacon />
+        <div
+          data-theme="lightning"
+          className={`rsd-app ${portalFontVariables}${collapsed ? " sidebar-collapsed" : ""}${previewing ? " rsd-previewing" : ""}`}
+        >
+          <PortalSidebar
             viewer={viewer}
-            onClose={() => setTour(null)}
-            onSidebarStep={onTourSidebarStep}
+            pendingMembersCount={pendingMembersCount}
+            links={sidebarLinks}
+            previewing={previewing}
+            collapsed={collapsed}
+            onToggleCollapse={() => setCollapsed(v => !v)}
+            mobileOpen={mobileOpen}
+            onNavigate={() => setMobileOpen(false)}
           />
-        )}
-      </div>
-    </TourContext.Provider>
+          <PortalTopBar
+            title={topMeta.title}
+            subtitle={topMeta.subtitle}
+            onMenuClick={() => setMobileOpen(v => !v)}
+            onSearchClick={() => setSearchOpen(true)}
+            inlineSearchRef={inlineSearchRef}
+            onInfoClick={pageHelp ? () => setInfoOpen(true) : undefined}
+          />
+          {/* Mobile overlay */}
+          {mobileOpen && (
+            <div
+              onClick={() => setMobileOpen(false)}
+              style={{
+                position: "fixed", inset: 0, zIndex: 1100,
+                background: "rgba(12,12,14,.45)",
+                animation: "gw-fade-in 160ms ease",
+              }}
+            />
+          )}
+          <main>{children}</main>
+          <ScrollToTopButton />
+          <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+          <InfoPanel
+            section={pageHelp}
+            open={infoOpen}
+            onClose={() => setInfoOpen(false)}
+            onStartTour={pageTour ? () => startTour(pageTour.id) : undefined}
+          />
+          {tour && (
+            <GuidedTour
+              key={tour.key}
+              tourId={tour.id}
+              startPart={tour.part}
+              viewer={viewer}
+              onClose={() => setTour(null)}
+              onSidebarStep={onTourSidebarStep}
+            />
+          )}
+        </div>
+      </TourContext.Provider>
+    </PageHelpContext.Provider>
   );
 }

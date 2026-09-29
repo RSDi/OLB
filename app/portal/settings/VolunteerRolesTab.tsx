@@ -6,7 +6,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
-import { ShowMeHow } from "../../components/ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createVolunteerRole,
@@ -91,7 +90,6 @@ export function VolunteerRolesTab() {
           a coach&apos;s spouse, any member) from the team&apos;s page in the Directory.
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <ShowMeHow tour="settings-volunteer-roles" />
           {!adding && (
             <span data-tour="roles-add" style={{ display: "inline-flex" }}>
               <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>

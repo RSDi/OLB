@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Icons } from "../../components/icons";
-import { ShowMeHow } from "../../components/ShowMeHow";
 import { createClient } from "../../../lib/supabase/server";
 import { getAuthUser } from "../../../lib/auth/viewer";
 import { isStaff, type MemberLike } from "../../../lib/auth/permissions";
@@ -86,7 +85,6 @@ export default async function PortalPlaybooksPage() {
           gap: 12,
         }}
       >
-        <ShowMeHow tour="playbooks" />
         {staff && (
           <Link
             href="/portal/docs/new"

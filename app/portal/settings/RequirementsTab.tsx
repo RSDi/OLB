@@ -21,8 +21,6 @@ import {
 } from "../../../lib/requirements/types";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
 import { ErrorBox, IconBtn } from "./TeamsSettingsTab";
-import { ShowMeHow } from "../../components/ShowMeHow";
-import { REQUIREMENTS_TOUR_ID } from "../../../lib/help/tours";
 
 interface TeamOption {
   id: string;
@@ -159,7 +157,6 @@ export function RequirementsTab({ me }: { me: MemberLike }) {
           checks players off in the Directory and can filter it to see who&apos;s still missing each one.
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <ShowMeHow tour={REQUIREMENTS_TOUR_ID} />
           {!adding && (
             <span data-tour="requirements-add" style={{ display: "inline-flex" }}>
               <Pill variant="accent" size="sm" onClick={() => { setAdding(true); setError(null); }}>

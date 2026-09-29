@@ -174,3 +174,18 @@ test("a preview section's tour only reaches accounts on the staged-rollout list"
   assert.equal(tourForSection("activity", SUPER), null);
   assert.equal(tourForSection("activity", { ...SUPER, seesFullUi: true })?.id, "activity");
 });
+
+test("on Settings the ⓘ panel offers the open tab's walkthrough", () => {
+  assert.equal(tourForPath("/portal/settings", SUPER, "settings-teams")?.id, "settings-teams");
+  assert.equal(tourForPath("/portal/settings", SUPER, "settings-audit-log")?.id, "settings-audit-log");
+  assert.equal(tourForPath("/portal/settings", ADMIN, "settings-requirements")?.id, REQUIREMENTS_TOUR_ID);
+  // A tab the viewer can't have falls back to the page's own help.
+  assert.equal(tourForPath("/portal/settings", ADMIN, "settings-teams")?.id, "settings-members");
+  assert.equal(tourForPath("/portal/settings", SUPER, null)?.id, "settings-members");
+  // Every Settings tab the page maps names a real section with a walkthrough.
+  const src = readFileSync(join(import.meta.dirname, "../../app/portal/settings/page.tsx"), "utf8");
+  const map = src.match(/const TAB_HELP[^=]*= \{([^}]*)\}/)?.[1] ?? "";
+  const ids = [...map.matchAll(/: "([a-z0-9-]+)"/g)].map((m) => m[1]);
+  assert.ok(ids.length >= 8);
+  for (const id of ids) assert.ok(tourForSection(id, SUPER), `${id} should have a walkthrough`);
+});

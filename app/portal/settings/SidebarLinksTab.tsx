@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { Input, Pill } from "../../components/ui";
-import { ShowMeHow } from "../../components/ShowMeHow";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createSidebarLink,
@@ -96,7 +95,6 @@ export function SidebarLinksTab() {
           form, the club store. Links open in a new browser tab unless you turn that off.
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <ShowMeHow tour="settings-sidebar-links" />
           {!adding && (
             <span data-tour="links-add" style={{ display: "inline-flex" }}>
               <Pill variant="accent" size="sm" onClick={() => { setAdding(true); setError(null); }}>
