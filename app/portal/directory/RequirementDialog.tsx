@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import { DocumentScanner } from "../../components/DocumentScanner";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Textarea } from "../../components/ui";
 import {
@@ -11,7 +12,11 @@ import {
 } from "../../../lib/requirements/actions";
 import { doneWord, formatAmount } from "../../../lib/requirements/logic";
 import type { PlayerRequirement, PlayerRequirementStatus, Requirement } from "../../../lib/requirements/types";
-import { REQUIREMENT_FILE_ACCEPT, uploadRequirementFile } from "../../../lib/requirements/upload";
+import {
+  REQUIREMENT_FILE_ACCEPT,
+  REQUIREMENT_FILE_MAX_BYTES,
+  uploadRequirementFile,
+} from "../../../lib/requirements/upload";
 
 type Choice = PlayerRequirementStatus | "missing";
 
@@ -54,6 +59,7 @@ export function RequirementDialog({
   const [upload, setUpload] = useState<{ path: string; name: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const done = doneWord(req.kind);
@@ -144,7 +150,7 @@ export function RequirementDialog({
       aria-modal="true"
       aria-label={`${req.name} for ${player.full_name}`}
       onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) cancel();
+        if (e.target === e.currentTarget && !busy && !scanning) cancel();
       }}
       style={{
         position: "fixed",
@@ -276,7 +282,7 @@ export function RequirementDialog({
                   <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>The scan is removed when you save.</span>
                 ) : null}
                 {req.allow_file && (
-                  <div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <input
                       ref={fileInput}
                       type="file"
@@ -284,13 +290,30 @@ export function RequirementDialog({
                       onChange={(e) => pickFile(e.target.files?.[0])}
                       style={{ display: "none" }}
                     />
+                    <Pill variant="light" size="sm" onClick={() => setScanning(true)} disabled={!!busy}>
+                      <Icons.Camera width={14} height={14} />
+                      Scan with camera
+                    </Pill>
                     <Pill variant="ghost" size="sm" onClick={() => fileInput.current?.click()} disabled={!!busy}>
                       <Icons.Image width={14} height={14} />
                       {busy === "upload" ? "Uploading…" : keptFile || upload ? "Replace scan" : "Upload scan"}
                     </Pill>
                   </div>
                 )}
-                <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>A photo or PDF, up to 10 MB. Only the board can open it.</span>
+                <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
+                  Scan the page with your camera, or upload a photo or PDF, up to 10 MB. Only the board can open it.
+                </span>
+                {scanning && (
+                  <DocumentScanner
+                    fileName={`${req.name} - ${player.full_name}.pdf`}
+                    maxBytes={REQUIREMENT_FILE_MAX_BYTES}
+                    onCancel={() => setScanning(false)}
+                    onDone={(file) => {
+                      setScanning(false);
+                      void pickFile(file);
+                    }}
+                  />
+                )}
               </div>
             )}
           </>
