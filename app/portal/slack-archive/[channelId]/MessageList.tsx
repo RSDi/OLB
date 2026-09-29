@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { Icons } from "../../../components/icons";
-import { MarkdownView } from "../../../components/MarkdownView";
 import { Pill } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import type { ArchiveMessage, ArchiveThread } from "../../../../lib/slack-archive/data";
 import type { ArchivedFile } from "../../../../lib/slack-archive/files";
-import { emojify, resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";
+import { resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";
 import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
 import { DateJumpCalendar } from "./DateJumpCalendar";
 import { FilePreviewModal, type PreviewKind } from "./FilePreviewModal";
 import { FilterDropdown } from "../_shared/FilterDropdown";
+import { SlackText } from "../_shared/SlackText";
 
 function isVideoFile(f: ArchivedFile): boolean {
   return (f.mimetype ?? "").startsWith("video/") || /\.(mp4|mov|webm|m4v|ogv)$/i.test(f.name || "");
@@ -35,22 +35,6 @@ interface DayGroup {
   dateKey: string; // YYYY-MM-DD in CHURCH_TZ — stable id for sorting/jump-anchors
   label: string;   // "Saturday, February 24, 2024" — display only
   threads: ArchiveThread[];
-}
-
-// Most Slack messages are one short plain-text line — running the full
-// react-markdown + remark-gfm + rehype-raw + rehype-sanitize pipeline on
-// every single one adds up fast on a channel with hundreds/thousands of
-// messages. Skip it (and render as plain text) unless the message actually
-// contains something Markdown would do anything with; newlines route
-// through Markdown too since a plain white-space:pre-wrap div renders
-// multi-paragraph text slightly differently than proper paragraph tags.
-// A bare URL with no other markdown syntax and no newline (a single-line
-// "just a link" message) also needs to route through Markdown — remark-gfm
-// autolinks it, but only messages that reach MarkdownView in the first
-// place get that treatment.
-const MARKDOWN_SYNTAX = /[*_~`[\]()#>]|\n|https?:\/\//;
-function needsMarkdown(text: string): boolean {
-  return MARKDOWN_SYNTAX.test(text);
 }
 
 // en-CA formats as ISO (YYYY-MM-DD), matching the convention lib/dates/today.ts
@@ -221,11 +205,7 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
       </div>
       {messageText && (
         <div className="rsd-slack-msg-text" style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5 }}>
-          {needsMarkdown(messageText) ? (
-            <MarkdownView>{emojify(messageText)}</MarkdownView>
-          ) : (
-            <div style={{ whiteSpace: "pre-wrap" }}>{emojify(messageText)}</div>
-          )}
+          <SlackText text={messageText} />
         </div>
       )}
       {message.files.length > 0 && (
