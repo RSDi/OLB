@@ -31,14 +31,17 @@ import { createAdminClient } from "../supabase/admin";
 import {
   fetchChannelIsPrivate,
   fetchChannelMemberIds,
+  fetchChannelName,
   fetchConversationsHistory,
   fetchConversationsReplies,
   fetchSlackUserInfo,
+  type ChannelNameLookup,
   type SlackFile,
   type SlackMessage,
   type SlackReaction,
 } from "./slack-api";
 import { archiveMessageFiles, downloadAndStoreSlackFile, type ArchivedFile } from "./files";
+import { mayNeedChannelNames, resolveMentions, UNNAMED_CHANNEL_MENTION_SQL, type MentionLookups } from "./mentions";
 
 export interface ChannelSyncSummary {
   channel: string;
@@ -47,6 +50,9 @@ export interface ChannelSyncSummary {
   files_stored: number;
   errors: string[];
   done: boolean;
+  // Saved messages whose channel mentions got their names this run (see
+  // repairChannelNames).
+  channel_names_fixed?: number;
   // Why the privacy/membership check failed, if it did. Kept apart from
   // `errors` on purpose: a failed access check leaves the last confirmed
   // access in place (fail closed) and doesn't make the message sync itself
@@ -71,8 +77,9 @@ interface AuthorInfo {
 // concurrent resolve() calls for the same not-yet-seen user — expected now
 // that messages within a page process in parallel — share one lookup
 // instead of racing duplicate ones.
-class AuthorResolver {
+class AuthorResolver implements MentionLookups {
   private cache = new Map<string, Promise<AuthorInfo>>();
+  private channelNames = new Map<string, Promise<ChannelNameLookup>>();
   constructor(
     private admin: SupabaseClient,
     private token: string,
@@ -96,6 +103,17 @@ class AuthorResolver {
     const promise = this.lookup(userId);
     this.cache.set(userId, promise);
     return promise;
+  }
+
+  // For channel mentions Slack sent without the channel's name; cached the
+  // same way, so each channel costs one conversations.info call per run.
+  resolveChannelName(channelId: string): Promise<ChannelNameLookup> {
+    let found = this.channelNames.get(channelId);
+    if (!found) {
+      found = fetchChannelName(channelId, this.token);
+      this.channelNames.set(channelId, found);
+    }
+    return found;
   }
 
   private async lookup(userId: string): Promise<AuthorInfo> {
@@ -160,59 +178,6 @@ async function resolveReactions(
       ),
     })),
   );
-}
-
-// Names get spliced into message_text, which SlackText renders with Slack's
-// formatting rules (lib/slack-archive/mrkdwn.ts) — escape characters that
-// would otherwise be misparsed (e.g. a literal underscore in "David_Orrick"
-// reading as italics).
-function escapeMarkdown(s: string): string {
-  return s.replace(/([_*`[\]])/g, "\\$1");
-}
-
-// Slack's mrkdwn encodes @-mentions, #-channel mentions, @here/@channel/
-// @everyone, user-group mentions, and links as <...> tokens. Resolves each
-// to readable text (mentions via the same cached AuthorResolver used for
-// authors/reactions — no extra API calls for anyone already seen this run)
-// or real Markdown (links), so raw Slack wire syntax never leaks into the
-// archive. Dedupes tokens first and resolves concurrently, then does one
-// synchronous replace pass — String.replace has no async replacer, and a
-// naive per-token replace in a loop would only touch the first occurrence
-// of a mention repeated in the same message.
-async function resolveMentions(text: string, resolver: AuthorResolver): Promise<string> {
-  const tokens = [...new Set([...text.matchAll(/<([^<>]+)>/g)].map((m) => m[0]))];
-  if (tokens.length === 0) return text;
-
-  const entries = await Promise.all(
-    tokens.map(async (full): Promise<[string, string]> => {
-      const inner = full.slice(1, -1);
-      const pipeIdx = inner.indexOf("|");
-      const head = pipeIdx === -1 ? inner : inner.slice(0, pipeIdx);
-      const label = pipeIdx === -1 ? undefined : inner.slice(pipeIdx + 1);
-
-      if (head.startsWith("@")) {
-        const info = await resolver.resolveUserId(head.slice(1));
-        return [full, `@${escapeMarkdown(info.author_name ?? label ?? "someone")}`];
-      }
-      if (head.startsWith("#")) return [full, `#${escapeMarkdown(label ?? "channel")}`];
-      if (head === "!here") return [full, "@here"];
-      if (head === "!channel") return [full, "@channel"];
-      if (head === "!everyone") return [full, "@everyone"];
-      if (head.startsWith("!subteam^")) {
-        // Slack's subteam label already includes the leading "@" (unlike
-        // channel/user fallback labels, which don't) — avoid doubling it.
-        const teamLabel = label ?? "@team";
-        return [full, escapeMarkdown(teamLabel.startsWith("@") ? teamLabel : `@${teamLabel}`)];
-      }
-      if (head.startsWith("http://") || head.startsWith("https://")) {
-        return [full, label ? `[${escapeMarkdown(label)}](${head})` : head];
-      }
-      return [full, label ?? head]; // unrecognized token — best-effort, strip the brackets
-    }),
-  );
-
-  const replacements = new Map(entries);
-  return text.replace(/<([^<>]+)>/g, (full) => replacements.get(full) ?? full);
 }
 
 // The files already archived for a message; none yet if it's new. Throws
@@ -367,6 +332,51 @@ async function refreshKnownThreads(
   }
 }
 
+// Slack often sends a channel mention without the channel's name, and sync
+// used to save those as "#channel" (or a bare "#"). This rewrites the saved
+// text of such messages from their original text (kept in `raw`) now that
+// names are looked up, including messages Slack no longer returns, which a
+// full re-walk can't reach. Runs on every sync but costs little once done:
+// the query finds only messages whose original text has an unnamed mention,
+// and those whose saved text already shows the name are skipped without a
+// Slack call. A lookup that failed leaves "#channel" to try again next time.
+const CHANNEL_NAME_REPAIR_PAGE = 500;
+
+async function repairChannelNames(
+  admin: SupabaseClient,
+  channelId: string,
+  resolver: AuthorResolver,
+  summary: ChannelSyncSummary,
+  deadlineAt: number,
+): Promise<void> {
+  for (let from = 0; Date.now() < deadlineAt; from += CHANNEL_NAME_REPAIR_PAGE) {
+    const { data, error } = await admin
+      .from("slack_archive_messages")
+      .select("id, message_text, raw_text:raw->>text")
+      .eq("channel_id", channelId)
+      .filter("raw->>text", "match", UNNAMED_CHANNEL_MENTION_SQL)
+      .order("ts", { ascending: true })
+      .range(from, from + CHANNEL_NAME_REPAIR_PAGE - 1);
+    if (error) {
+      console.warn(`[slack-archive] channel name repair query failed for ${channelId}:`, error.message);
+      return;
+    }
+    const rows = (data ?? []) as { id: string; message_text: string | null; raw_text: string | null }[];
+    await Promise.all(
+      rows
+        .filter((r) => r.raw_text && mayNeedChannelNames(r.raw_text, r.message_text ?? ""))
+        .map(async (r) => {
+          const text = await resolveMentions(r.raw_text!, resolver);
+          if (text === r.message_text) return;
+          const { error: updateErr } = await admin.from("slack_archive_messages").update({ message_text: text }).eq("id", r.id);
+          if (updateErr) console.warn(`[slack-archive] channel name repair failed for ${r.id}:`, updateErr.message);
+          else summary.channel_names_fixed = (summary.channel_names_fixed ?? 0) + 1;
+        }),
+    );
+    if (rows.length < CHANNEL_NAME_REPAIR_PAGE) return;
+  }
+}
+
 // Mirrors one channel's Slack privacy and (for private channels) Slack
 // membership into slack_archive_channels / slack_archive_channel_members —
 // what migration 0084's RLS reads to decide who can see the channel's
@@ -516,6 +526,11 @@ export async function syncArchiveChannel(
     if (opts.refreshThreads !== false && watermark !== undefined) {
       await refreshKnownThreads(admin, channelId, token, resolver, summary, deadlineAt);
     }
+
+    // Best-effort too, and only after this run's own messages are in.
+    await repairChannelNames(admin, channelId, resolver, summary, deadlineAt).catch((err) =>
+      console.warn(`[slack-archive] channel name repair failed for ${channelId}:`, err),
+    );
 
     const { error: stateErr } = await admin.from("slack_archive_sync_state").upsert(
       {

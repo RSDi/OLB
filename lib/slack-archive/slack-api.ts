@@ -63,7 +63,7 @@ interface SlackApiResponse {
   messages?: SlackMessage[];
   has_more?: boolean;
   response_metadata?: { next_cursor?: string };
-  channel?: { id: string; is_private?: boolean; is_archived?: boolean };
+  channel?: { id: string; name?: string; is_private?: boolean; is_archived?: boolean };
   members?: string[];
 }
 
@@ -155,6 +155,23 @@ export async function fetchChannelIsPrivate(channel: string, token: string): Pro
   const body = await slackApiCall("conversations.info", { channel }, token);
   if (!body.ok || !body.channel) throw new Error(`conversations.info failed: ${body.error ?? "no channel in response"}`);
   return Boolean(body.channel.is_private);
+}
+
+// A channel's current name, for a channel mention Slack sent without one.
+// `hidden` when Slack says there's no such channel, which is what the bot
+// gets for a private channel it isn't in (or one since deleted); `failed`
+// for anything else (a missing scope, a network error), worth retrying.
+export type ChannelNameLookup = { name: string } | { hidden: true } | { failed: string };
+
+export async function fetchChannelName(channel: string, token: string): Promise<ChannelNameLookup> {
+  try {
+    const body = await slackApiCall("conversations.info", { channel }, token);
+    if (body.ok && body.channel?.name) return { name: body.channel.name };
+    if (body.error === "channel_not_found") return { hidden: true };
+    return { failed: body.error ?? "no channel name in response" };
+  } catch (err) {
+    return { failed: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function fetchChannelMemberIds(channel: string, token: string): Promise<string[]> {

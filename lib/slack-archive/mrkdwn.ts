@@ -4,7 +4,7 @@
 // message_text is Slack's own `text` for the message: its mrkdwn, with the
 // <...> tokens sync resolves swapped for names, [label](url) links, and
 // backslash escapes in the names and labels it inserts (see
-// resolveMentions in sync.ts). Pass it here after decodeSlackEntities.
+// lib/slack-archive/mentions.ts). Pass it here after decodeSlackEntities.
 //
 // It used to go through the Markdown renderer, which reads Slack's markup
 // differently: *bold* came out italic, single line breaks ran lines
