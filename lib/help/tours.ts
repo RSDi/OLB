@@ -112,6 +112,12 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "How-to guides and step-by-step checklists for how we do things around the club.",
       },
       {
+        target: "nav-payments",
+        sidebar: true,
+        title: "Payments",
+        body: "What your family owes for the season and what you've paid. It shows up once the Treasurer has your balance ready.",
+      },
+      {
         target: "nav-slack-archive",
         sidebar: true,
         title: "Slack Archive",
@@ -245,6 +251,40 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "global-search",
         title: "Looking for one?",
         body: "Search from the top bar: playbooks show up with members and Slack messages as you type.",
+      },
+    ],
+  },
+  {
+    id: "payments",
+    sectionId: "payments",
+    title: "Payments tour",
+    route: "/portal/payments",
+    steps: [
+      {
+        target: "payments-totals",
+        title: "The season at a glance",
+        body: "What's been charged, taken off, paid, and what's **Still owed** across every family.",
+      },
+      {
+        target: "payments-parents",
+        title: "What parents see",
+        body: "Off to start with, so you can enter payments first. Switch it **On** and each family sees their own balance under **Payments**.",
+      },
+      {
+        target: "payments-fees",
+        title: "Registration fees",
+        body: "**Add registration fees** charges each registered player the fee for their tier. Tap it again any time: nobody is charged twice.",
+      },
+      {
+        target: "payments-filter",
+        title: "Who owes",
+        body: "**Owes** lists the families with money due. **Paid up** and **All** show the rest. The search box finds a family by player, parent or phone.",
+      },
+      {
+        target: "payments-actions",
+        click: "payments-family",
+        title: "One family",
+        body: "Tap a family to open it. **Record payment** for a Venmo or check, **Add a charge** for a uniform or tournament, and **Take off an amount** for a player the club covers.",
       },
     ],
   },

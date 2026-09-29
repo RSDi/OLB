@@ -16,6 +16,7 @@ import {
   canEditSettings,
   canDeleteSettings,
   canUndeleteSettings,
+  canManageFinances,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -36,13 +37,17 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
     .maybeSingle();
   if (!data) return { userId: user.id, member: null };
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
-  // Settings grants (0057), best-effort so the guards work pre-migration
-  // (grants default false → no settings access, the safe default).
-  const { data: g } = await supabase
-    .from("members")
-    .select("can_edit_settings, can_delete_settings, can_undelete_settings")
-    .eq("id", row.id)
-    .maybeSingle();
+  // Settings grants (0057) and the Payments grant (0101), best-effort so the
+  // guards work pre-migration (grants default false → no access, the safe
+  // default). Separate queries, so a missing 0101 column can't hide 0057's.
+  const [{ data: g }, { data: f }] = await Promise.all([
+    supabase
+      .from("members")
+      .select("can_edit_settings, can_delete_settings, can_undelete_settings")
+      .eq("id", row.id)
+      .maybeSingle(),
+    supabase.from("members").select("can_manage_finances").eq("id", row.id).maybeSingle(),
+  ]);
   const grants = (g as Partial<MemberLike> | null) ?? {};
   return {
     userId: user.id,
@@ -52,6 +57,7 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
       can_edit_settings: !!grants.can_edit_settings,
       can_delete_settings: !!grants.can_delete_settings,
       can_undelete_settings: !!grants.can_undelete_settings,
+      can_manage_finances: !!(f as Partial<MemberLike> | null)?.can_manage_finances,
     },
   };
 }
@@ -100,6 +106,16 @@ export async function requireSettingsUndelete(): Promise<GateResult> {
   if (!caller) return { error: "You must be signed in." };
   if (!canUndeleteSettings(caller.member)) {
     return { error: "You don't have permission to restore items." };
+  }
+  return { userId: caller.userId };
+}
+
+// Payments (0101): the Treasurer and anyone else with the Payments grant.
+export async function requireFinances(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canManageFinances(caller.member)) {
+    return { error: "You don't have permission to manage payments." };
   }
   return { userId: caller.userId };
 }

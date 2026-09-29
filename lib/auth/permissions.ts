@@ -16,6 +16,9 @@ export interface MemberLike {
   can_edit_settings?: boolean;
   can_delete_settings?: boolean;
   can_undelete_settings?: boolean;
+  // Payments grant (migration 0101): the Treasurer and whoever else a
+  // super-admin enables. Any approved member can hold it, board or not.
+  can_manage_finances?: boolean;
 }
 
 interface TicketLike {
@@ -50,6 +53,15 @@ export function canDeleteSettings(m: MemberLike | null | undefined): boolean {
 export function canUndeleteSettings(m: MemberLike | null | undefined): boolean {
   if (isSuperAdmin(m)) return true;
   return isStaff(m) && !!m?.can_undelete_settings;
+}
+
+// --- Payments ----------------------------------------------------------------
+// Seeing every family's balance and recording charges and payments. Mirrors
+// public.can_manage_finances() (0101).
+
+export function canManageFinances(m: MemberLike | null | undefined): boolean {
+  if (!m || m.status !== "approved") return false;
+  return m.role === "super_admin" || !!m.can_manage_finances;
 }
 
 // Add/rename settings items needs the edit grant; (was: any staff).

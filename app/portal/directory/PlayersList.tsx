@@ -559,8 +559,13 @@ function PlayerRow({
           {p.team && <span className="rsd-chip rsd-chip-mute">{teamLabel(p.team)}</span>}
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
-          {isStaff && !p.directory_optin && (
-            <span className="rsd-chip rsd-chip-mute" title="The family said no to the directory; only staff see this player">
+          {/* Only people who can see an opted-out player get it at all: the
+              board, the Treasurer, and the player's own parents (0101). */}
+          {!p.directory_optin && (
+            <span
+              className="rsd-chip rsd-chip-mute"
+              title={isStaff ? "The family said no to the directory; only staff see this player" : "The family said no to the directory; other families don't see this player"}
+            >
               Not in directory
             </span>
           )}
