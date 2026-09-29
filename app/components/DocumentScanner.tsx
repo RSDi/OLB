@@ -2,6 +2,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icons } from "./icons";
+import {
+  AUTO_HOLD_MS,
+  AUTO_MIN_FILL,
+  AUTO_SETTLE_MS,
+  AUTO_STEADY_SHIFT,
+  newSteadyTracker,
+  pageFingerprint,
+  samePage,
+  steadyFor,
+} from "../../lib/scan/autocapture";
 import { detectDocument, toGray } from "../../lib/scan/detect";
 import { SCAN_FILTERS, applyScanFilter, type ScanFilter } from "../../lib/scan/enhance";
 import {
@@ -9,6 +19,7 @@ import {
   isConvexQuad,
   outputSize,
   pageAspect,
+  quadArea,
   warpPerspective,
   type Point,
   type Quad,
@@ -17,7 +28,8 @@ import {
 import { buildPdf } from "../../lib/scan/pdf";
 
 // A document scanner like the ones built into iPhone and Android: a live
-// camera that outlines the page it sees, corners you can drag onto the
+// camera that outlines the page it sees (and, with Auto on, takes the
+// picture by itself once the page holds still), corners you can drag onto the
 // page, the page laid flat and cleaned up (Color, Grayscale, B&W or the
 // Photo as taken), and as many pages as needed saved as one PDF. Everything
 // happens in the browser; the parent gets the finished PDF to upload.
@@ -37,12 +49,15 @@ const LIVE_DETECT_SIDE = 320;
 const PHOTO_DETECT_SIDE = 640;
 const JPEG_QUALITY = 0.82;
 export const SCAN_MAX_PAGES = 10;
+// Whether Auto is on, remembered on this device (on unless turned off).
+const AUTO_KEY = "olb-scanner-auto";
 
 interface ScanPage {
   id: number;
   flat: RgbaImage; // the straightened page, before any look
   jpeg: Blob; // with the chosen look
   url: string;
+  print: Float32Array; // pageFingerprint(), so Auto doesn't shoot it again
 }
 
 function canvasOf(width: number, height: number): HTMLCanvasElement {
@@ -62,15 +77,14 @@ function nextPaint(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 }
 
-// Looks for the page in a shrunk copy of `source`; corners come back at
-// `source`'s own size.
-function findPage(
+// A copy of `source` shrunk to fit in maxSide.
+function shrink(
   source: CanvasImageSource,
   width: number,
   height: number,
   maxSide: number,
   scratch?: HTMLCanvasElement
-): Quad | null {
+): ImageData | null {
   const scale = Math.min(1, maxSide / Math.max(width, height));
   const w = Math.max(1, Math.round(width * scale));
   const h = Math.max(1, Math.round(height * scale));
@@ -80,10 +94,26 @@ function findPage(
   const ctx = c.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
   ctx.drawImage(source, 0, 0, w, h);
-  const quad = detectDocument(toGray(ctx.getImageData(0, 0, w, h).data, w, h), w, h);
+  const img = ctx.getImageData(0, 0, w, h);
   if (!scratch) release(c);
-  if (!quad) return null;
-  return quad.map((p) => ({ x: (p.x / w) * width, y: (p.y / h) * height })) as Quad;
+  return img;
+}
+
+// Looks for the page in a shrunk copy of `source`. `quad` is at `source`'s
+// own size, `small` at the copy's (`img`).
+function lookForPage(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+  maxSide: number,
+  scratch?: HTMLCanvasElement
+): { img: ImageData; small: Quad; quad: Quad } | null {
+  const img = shrink(source, width, height, maxSide, scratch);
+  if (!img) return null;
+  const small = detectDocument(toGray(img.data, img.width, img.height), img.width, img.height);
+  if (!small) return null;
+  const quad = small.map((p) => ({ x: (p.x / img.width) * width, y: (p.y / img.height) * height })) as Quad;
+  return { img, small, quad };
 }
 
 async function withLook(flat: RgbaImage, filter: ScanFilter): Promise<Blob> {
@@ -179,14 +209,27 @@ const barStyle: React.CSSProperties = {
 
 // ─── Camera ─────────────────────────────────────────────────────
 
+// What Auto is waiting on, for the hint at the top.
+type AutoWait = "closer" | "next" | "hold" | null;
+
+const RING_R = 40;
+const RING = 2 * Math.PI * RING_R;
+
 function CameraView({
   backLabel,
   onBack,
   onPhoto,
+  auto,
+  onAutoChange,
+  lastPrint,
 }: {
   backLabel: string;
   onBack: () => void;
   onPhoto: (photo: HTMLCanvasElement, seen: Quad | null) => void;
+  auto: boolean;
+  onAutoChange: (on: boolean) => void;
+  // The page scanned last, which Auto won't take again.
+  lastPrint: Float32Array | null;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const photoInput = useRef<HTMLInputElement>(null);
@@ -195,7 +238,29 @@ function CameraView({
   const [problem, setProblem] = useState<string | null>(null);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [seen, setSeen] = useState<Quad | null>(null);
+  const [wait, setWait] = useState<AutoWait>(null);
+  const [held, setHeld] = useState(0); // 0 to 1: how far Auto is to taking it
   const seenRef = useRef<Quad | null>(null);
+  // The detection loop reads these, so it needn't restart when they change.
+  const autoRef = useRef(auto);
+  const lastPrintRef = useRef(lastPrint);
+  const shootRef = useRef<() => void>(() => {});
+  // The photo picker is open (on iPhone it slides up over a still-running camera).
+  const pickingRef = useRef(false);
+  useEffect(() => {
+    // Not behind an error message, either.
+    autoRef.current = auto && !problem;
+    lastPrintRef.current = lastPrint;
+    shootRef.current = shoot;
+  });
+  useEffect(() => {
+    const input = photoInput.current;
+    const done = () => {
+      pickingRef.current = false;
+    };
+    input?.addEventListener("cancel", done);
+    return () => input?.removeEventListener("cancel", done);
+  }, []);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -234,9 +299,14 @@ function CameraView({
 
   // Outline the page a few times a second, smoothing the corners so the
   // outline doesn't shake, and dropping it once the page has been gone a bit.
+  // With Auto on, take the picture once the page has held still long enough:
+  // close enough to read, not the page just scanned, and not while the
+  // photo picker (or another app) has the screen.
   useEffect(() => {
     if (!live) return;
     const scratch = canvasOf(1, 1);
+    const tracker = newSteadyTracker();
+    const readyAt = performance.now() + AUTO_SETTLE_MS;
     let raf = 0;
     let last = 0;
     let misses = 0;
@@ -246,7 +316,32 @@ function CameraView({
       last = t;
       const v = videoRef.current;
       if (!v || !v.videoWidth || v.readyState < 2) return;
-      const found = findPage(v, v.videoWidth, v.videoHeight, LIVE_DETECT_SIDE, scratch);
+      const look = lookForPage(v, v.videoWidth, v.videoHeight, LIVE_DETECT_SIDE, scratch);
+      const found = look?.quad ?? null;
+
+      let waiting: AutoWait = null;
+      let steady = 0;
+      if (autoRef.current && look && t >= readyAt && !pickingRef.current && document.hasFocus()) {
+        const close = quadArea(look.quad) >= v.videoWidth * v.videoHeight * AUTO_MIN_FILL;
+        const fresh = !lastPrintRef.current || !samePage(pageFingerprint(look.img, look.small), lastPrintRef.current);
+        if (close && fresh) {
+          steady = steadyFor(tracker, look.quad, t, Math.max(v.videoWidth, v.videoHeight) * AUTO_STEADY_SHIFT);
+          waiting = "hold";
+        } else {
+          steadyFor(tracker, null, t, 0);
+          waiting = close ? "next" : "closer";
+        }
+      } else {
+        steadyFor(tracker, null, t, 0);
+      }
+      setWait(waiting);
+      setHeld(Math.min(1, steady / AUTO_HOLD_MS));
+      if (steady >= AUTO_HOLD_MS) {
+        cancelAnimationFrame(raf);
+        shootRef.current();
+        return;
+      }
+
       const prev = seenRef.current;
       if (found) {
         misses = 0;
@@ -288,6 +383,24 @@ function CameraView({
     }
   }
 
+  function toggleAuto() {
+    setHeld(0);
+    setWait(null);
+    onAutoChange(!auto);
+  }
+
+  const hint = problem
+    ? ""
+    : !seen
+      ? "Point the camera at the page"
+      : !auto
+        ? "Page found — tap the button"
+        : wait === "closer"
+          ? "Move closer to the page"
+          : wait === "next"
+            ? "Turn to the next page"
+            : "Hold still…";
+
   const trackSize = () => {
     const v = videoRef.current;
     if (v?.videoWidth) setSize({ w: v.videoWidth, h: v.videoHeight });
@@ -298,7 +411,7 @@ function CameraView({
       <div style={barStyle}>
         <ScanButton onClick={onBack}>{backLabel}</ScanButton>
         <span style={{ fontSize: 13, fontWeight: 600, color: MUTED, textAlign: "right" }}>
-          {problem ? "" : seen ? "Page found — tap the button" : "Point the camera at the page"}
+          {hint}
         </span>
       </div>
 
@@ -354,7 +467,13 @@ function CameraView({
             <Icons.Camera width={36} height={36} style={{ color: MUTED }} />
             <span style={{ fontSize: 15, fontWeight: 600, maxWidth: 340, lineHeight: 1.45 }}>{problem}</span>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-              <ScanButton primary onClick={() => photoInput.current?.click()}>
+              <ScanButton
+                primary
+                onClick={() => {
+                  pickingRef.current = true;
+                  photoInput.current?.click();
+                }}
+              >
                 <Icons.Image width={16} height={16} />
                 Use a photo instead
               </ScanButton>
@@ -381,6 +500,7 @@ function CameraView({
         type="file"
         accept="image/*"
         onChange={(e) => {
+          pickingRef.current = false;
           void pickPhoto(e.target.files?.[0]);
           e.target.value = "";
         }}
@@ -397,32 +517,85 @@ function CameraView({
       >
         <span>
           {!problem && (
-            <ScanButton onClick={() => photoInput.current?.click()} label="Scan a photo you already have">
+            <ScanButton
+              onClick={() => {
+                pickingRef.current = true;
+                photoInput.current?.click();
+              }}
+              label="Scan a photo you already have"
+            >
               <Icons.Image width={16} height={16} />
               Photo
             </ScanButton>
           )}
         </span>
-        <button
-          type="button"
-          aria-label="Take the scan"
-          onClick={shoot}
-          disabled={!live}
-          hidden={!!problem}
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: "50%",
-            border: `4px solid ${seen ? ACCENT : "#fff"}`,
-            padding: 4,
-            background: "transparent",
-            opacity: live ? 1 : 0.35,
-            cursor: live ? "pointer" : "default",
-          }}
-        >
-          <span style={{ display: "block", width: "100%", height: "100%", borderRadius: "50%", background: "#fff" }} />
-        </button>
-        <span />
+        <span style={{ position: "relative", display: problem ? "none" : "inline-flex", padding: 6 }}>
+          <button
+            type="button"
+            aria-label="Take the scan"
+            onClick={shoot}
+            disabled={!live}
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              border: `4px solid ${seen ? ACCENT : "#fff"}`,
+              padding: 4,
+              background: "transparent",
+              opacity: live ? 1 : 0.35,
+              cursor: live ? "pointer" : "default",
+            }}
+          >
+            <span style={{ display: "block", width: "100%", height: "100%", borderRadius: "50%", background: "#fff" }} />
+          </button>
+          {/* Fills while Auto waits for the page to hold still. */}
+          {auto && held > 0 && (
+            <svg
+              width={84}
+              height={84}
+              viewBox="0 0 84 84"
+              aria-hidden="true"
+              style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none" }}
+            >
+              <circle
+                cx={42}
+                cy={42}
+                r={RING_R}
+                fill="none"
+                stroke={ACCENT}
+                strokeWidth={4}
+                strokeLinecap="round"
+                strokeDasharray={RING}
+                strokeDashoffset={RING * (1 - held)}
+                style={{ transition: "stroke-dashoffset 160ms linear" }}
+              />
+            </svg>
+          )}
+        </span>
+        <span style={{ display: "flex", justifyContent: "flex-end" }}>
+          {!problem && (
+            <button
+              type="button"
+              aria-pressed={auto}
+              onClick={toggleAuto}
+              title={auto ? "Takes the picture once the page holds still" : "Tap the round button to take the picture"}
+              className="gw-press"
+              style={{
+                height: 40,
+                padding: "0 16px",
+                borderRadius: 100,
+                border: `1px solid ${auto ? ACCENT : LINE}`,
+                background: auto ? "rgba(255,209,0,.14)" : "rgba(255,255,255,.06)",
+                color: auto ? ACCENT : MUTED,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Auto
+            </button>
+          )}
+        </span>
       </div>
     </>
   );
@@ -656,6 +829,23 @@ function CornerEditor({
 
 // ─── The scanner ────────────────────────────────────────────────
 
+// Storage can be off (private browsing), so Auto just falls back to on.
+function readAuto(): boolean {
+  try {
+    return localStorage.getItem(AUTO_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function saveAuto(on: boolean) {
+  try {
+    localStorage.setItem(AUTO_KEY, on ? "on" : "off");
+  } catch {
+    // Not remembered; it still applies until the scanner closes.
+  }
+}
+
 type Step = { kind: "camera" } | { kind: "corners"; photo: HTMLCanvasElement; quad: Quad } | { kind: "review" };
 
 export function DocumentScanner({
@@ -673,6 +863,7 @@ export function DocumentScanner({
   const [step, setStep] = useState<Step>({ kind: "camera" });
   const [pages, setPages] = useState<ScanPage[]>([]);
   const [filter, setFilter] = useState<ScanFilter>("color");
+  const [auto, setAuto] = useState(readAuto);
   const [working, setWorking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const nextId = useRef(1);
@@ -706,7 +897,8 @@ export function DocumentScanner({
   }
 
   function gotPhoto(photo: HTMLCanvasElement, seen: Quad | null) {
-    const quad = findPage(photo, photo.width, photo.height, PHOTO_DETECT_SIDE) ?? seen ?? fullFrame(photo.width, photo.height);
+    const quad =
+      lookForPage(photo, photo.width, photo.height, PHOTO_DETECT_SIDE)?.quad ?? seen ?? fullFrame(photo.width, photo.height);
     setStep({ kind: "corners", photo, quad });
   }
 
@@ -718,8 +910,12 @@ export function DocumentScanner({
       const src = photo.getContext("2d")!.getImageData(0, 0, photo.width, photo.height);
       const { width, height } = outputSize(quad, PAGE_MAX_SIDE, pageAspect(quad, photo.width, photo.height));
       const flat = warpPerspective(src, quad, width, height);
+      // Fingerprinted the way the live camera sees pages, to compare with it.
+      const small = shrink(photo, photo.width, photo.height, LIVE_DETECT_SIDE)!;
+      const s = small.width / photo.width;
+      const print = pageFingerprint(small, quad.map((p) => ({ x: p.x * s, y: p.y * s })) as Quad);
       const jpeg = await withLook(flat, filter);
-      setPages((ps) => [...ps, { id: nextId.current++, flat, jpeg, url: URL.createObjectURL(jpeg) }]);
+      setPages((ps) => [...ps, { id: nextId.current++, flat, jpeg, url: URL.createObjectURL(jpeg), print }]);
       setStep({ kind: "review" });
     } catch {
       setError("Couldn't straighten that one. Try again.");
@@ -805,6 +1001,12 @@ export function DocumentScanner({
           backLabel={pages.length ? "Back" : "Cancel"}
           onBack={pages.length ? () => setStep({ kind: "review" }) : close}
           onPhoto={gotPhoto}
+          auto={auto}
+          onAutoChange={(on) => {
+            setAuto(on);
+            saveAuto(on);
+          }}
+          lastPrint={pages[pages.length - 1]?.print ?? null}
         />
       )}
 

@@ -1,6 +1,6 @@
 // The document scanner's image work (lib/scan): putting corners in order,
-// finding the page in a frame, laying it flat, cleaning it up, and bundling
-// the pages into a PDF.
+// finding the page in a frame, laying it flat, cleaning it up, bundling the
+// pages into a PDF, and knowing when to take the picture by itself.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -14,7 +14,9 @@ import {
   warpPerspective,
   type Point,
   type Quad,
+  type RgbaImage,
 } from "../../lib/scan/geometry.ts";
+import { newSteadyTracker, pageFingerprint, samePage, steadyFor } from "../../lib/scan/autocapture.ts";
 import { convexHull, detectDocument, largestQuad, otsuThreshold, toGray } from "../../lib/scan/detect.ts";
 import { applyScanFilter } from "../../lib/scan/enhance.ts";
 import { buildPdf, jpegInfo } from "../../lib/scan/pdf.ts";
@@ -322,4 +324,70 @@ test("bundles pages into a PDF whose index points at every object", () => {
     assert.ok(text.startsWith("\nendstream", start + Number(m[1])), "stream length");
   }
   assert.throws(() => buildPdf([]));
+});
+
+// ─── Auto-capture ───────────────────────────────────────────────
+
+// A frame with a page at `page` whose writing is `ink(u, v)` (u, v from 0 to
+// 1 across and down the page), under light of the given brightness.
+function framed(width: number, height: number, page: Quad, ink: (u: number, v: number) => boolean, light = 1): RgbaImage {
+  const toPage = homography(page, fullFrame(1, 1));
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const { x: u, y: v } = applyHomography(toPage, { x: x + 0.5, y: y + 0.5 });
+      const onPage = u >= 0 && u <= 1 && v >= 0 && v <= 1;
+      const g = onPage ? (ink(u, v) ? 45 : 225) : 80;
+      data[i] = data[i + 1] = data[i + 2] = g * light;
+      data[i + 3] = 255;
+    }
+  }
+  return { data, width, height };
+}
+
+// Handbook-ish pages: two of lines of text all the way down (set a little
+// differently), and a short page with a heading, a paragraph and two
+// signature lines.
+const textPage = (u: number, v: number) =>
+  u > 0.1 && u < 0.9 && v > 0.08 && v < 0.92 && v * 40 - Math.floor(v * 40) < 0.35 && u < 0.9 - (Math.floor(v * 40) % 3) * 0.15;
+const otherTextPage = (u: number, v: number) =>
+  u > 0.12 && u < 0.88 && v > 0.1 && v < 0.9 && v * 38 - Math.floor(v * 38) < 0.35 && u < 0.88 - (Math.floor(v * 38) % 4) * 0.12;
+const signaturePage = (u: number, v: number) =>
+  (v > 0.08 && v < 0.13 && u > 0.1 && u < 0.6) ||
+  (v > 0.2 && v < 0.45 && u > 0.1 && u < 0.9 && v * 30 - Math.floor(v * 30) < 0.35) ||
+  (v > 0.8 && v < 0.81 && ((u > 0.1 && u < 0.45) || (u > 0.55 && u < 0.9)));
+
+test("counts how long the page has held still", () => {
+  const t = newSteadyTracker();
+  const q = fullFrame(100, 100);
+  const nudge = (d: number) => q.map((p) => ({ x: p.x + d, y: p.y })) as Quad;
+  assert.equal(steadyFor(t, q, 1000, 5), 0);
+  assert.equal(steadyFor(t, nudge(2), 1200, 5), 200);
+  // Small wobbles add up against where it came to rest, not the last frame.
+  assert.equal(steadyFor(t, nudge(4), 1400, 5), 400);
+  assert.equal(steadyFor(t, nudge(6), 1600, 5), 0);
+  assert.equal(steadyFor(t, nudge(6), 1900, 5), 300);
+  assert.equal(steadyFor(t, null, 2000, 5), 0);
+  assert.equal(steadyFor(t, nudge(6), 2100, 5), 0);
+});
+
+test("knows the page it just scanned from the next one", () => {
+  const w = 320;
+  const h = 240;
+  const at: Quad = [
+    { x: 100, y: 30 },
+    { x: 240, y: 42 },
+    { x: 228, y: 220 },
+    { x: 84, y: 206 },
+  ];
+  // The same page held a little differently, in dimmer light.
+  const moved = at.map((p, i) => ({ x: p.x + [3, -2, 2, -3][i], y: p.y + [2, 3, -2, -2][i] })) as Quad;
+  const scanned = pageFingerprint(framed(w, h, at, textPage), at);
+  assert.equal(samePage(scanned, pageFingerprint(framed(w, h, moved, textPage, 0.8), moved)), true);
+  assert.equal(samePage(scanned, pageFingerprint(framed(w, h, moved, otherTextPage), moved)), false);
+  assert.equal(samePage(scanned, pageFingerprint(framed(w, h, moved, signaturePage), moved)), false);
+  const signature = pageFingerprint(framed(w, h, at, signaturePage), at);
+  assert.equal(samePage(signature, pageFingerprint(framed(w, h, moved, signaturePage, 1.1), moved)), true);
+  assert.equal(samePage(signature, pageFingerprint(framed(w, h, moved, textPage), moved)), false);
 });
