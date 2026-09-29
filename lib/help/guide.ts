@@ -251,6 +251,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 **Reading a channel.** Pick a channel from the list (or switch with the drop-down at the top of a channel).
 
 - Messages are grouped by day, with each thread's replies tucked under the first message.
+- Messages look the way they do in Slack: bold, italics, line breaks, bullet lists, quotes and code.
 - **Newest first / Oldest first** flips the order.
 - **Jump to date** opens a calendar — tap any highlighted day to go straight there.
 - **Filter** shows only the threads a certain person posted in.

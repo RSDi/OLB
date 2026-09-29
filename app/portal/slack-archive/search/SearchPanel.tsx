@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../../components/icons";
-import { MarkdownView } from "../../../components/MarkdownView";
 import { Input } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import {
@@ -11,10 +10,10 @@ import {
   runArchiveChannelCounts,
   runArchiveSearch,
 } from "../../../../lib/slack-archive/search-actions";
-import { emojify } from "../../../../lib/slack-archive/emoji";
 import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
 import { FilterDropdown, type FilterDropdownItem } from "../_shared/FilterDropdown";
+import { SlackText } from "../_shared/SlackText";
 
 // Debounce for the live search — long enough that a fast typist doesn't
 // fire a request per keystroke, short enough to still feel instant once
@@ -214,7 +213,7 @@ export function SearchPanel({
                 </div>
                 {r.messageText && (
                   <div className="rsd-slack-msg-text" style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5, marginTop: 4 }}>
-                    <MarkdownView>{emojify(decodeSlackEntities(r.messageText))}</MarkdownView>
+                    <SlackText text={decodeSlackEntities(r.messageText)} />
                   </div>
                 )}
                 <div style={{ marginTop: 6, fontSize: 12.5 }}>

@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icons } from "../../../components/icons";
-import { MarkdownView } from "../../../components/MarkdownView";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import { albumMediaHref, type AlbumItem } from "../../../../lib/slack-archive/album";
 import { emojify } from "../../../../lib/slack-archive/emoji";
+import { SlackText } from "../_shared/SlackText";
 import { albumFontVariables } from "./fonts";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-US", {
@@ -16,10 +16,6 @@ const LONG_DATE = new Intl.DateTimeFormat("en-US", {
 const SHORT_DATE = new Intl.DateTimeFormat("en-US", {
   month: "short", day: "numeric", year: "numeric", timeZone: CHURCH_TZ,
 });
-
-// Same heuristic as the channel page's MessageList: only run the Markdown
-// pipeline when the text has something Markdown would act on.
-const MARKDOWN_SYNTAX = /[*_~`[\]()#>]|\n|https?:\/\//;
 
 const SWIPE_MIN_PX = 50;
 
@@ -130,7 +126,6 @@ export function AlbumLightbox({
   const downloadHref = albumMediaHref(item.path, { download: item.name });
   const siblings = item.siblingIds.map((id) => itemsById.get(id)).filter((s): s is AlbumItem => Boolean(s));
   const postedAt = new Date(item.postedAt);
-  const text = item.text ? emojify(item.text) : "";
 
   function handleFullError() {
     if (!item.hasThumb && item.thumbUrl && !viaRoute) setViaRouteId(item.id);
@@ -338,9 +333,9 @@ export function AlbumLightbox({
             </div>
           </div>
 
-          {text && (
+          {item.text && (
             <div className="rsd-lightbox-caption">
-              {MARKDOWN_SYNTAX.test(text) ? <MarkdownView>{text}</MarkdownView> : <p>{text}</p>}
+              <SlackText text={item.text} />
             </div>
           )}
 

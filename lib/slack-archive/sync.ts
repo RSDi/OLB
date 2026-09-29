@@ -162,9 +162,10 @@ async function resolveReactions(
   );
 }
 
-// Names get spliced into message_text, which MarkdownView renders as
-// Markdown — escape characters that would otherwise be misparsed (e.g. a
-// literal underscore in "David_Orrick" reading as italics).
+// Names get spliced into message_text, which SlackText renders with Slack's
+// formatting rules (lib/slack-archive/mrkdwn.ts) — escape characters that
+// would otherwise be misparsed (e.g. a literal underscore in "David_Orrick"
+// reading as italics).
 function escapeMarkdown(s: string): string {
   return s.replace(/([_*`[\]])/g, "\\$1");
 }

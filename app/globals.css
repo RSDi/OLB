@@ -695,6 +695,40 @@ main::-webkit-scrollbar-track { background: transparent; }
   text-decoration: underline;
 }
 
+/* Message text as Slack lays it out (SlackText): one row per line, with
+   spaces and blank lines kept; list items hang their wrapped lines after
+   the bullet. */
+.rsd-slack-text .rsd-slack-line { white-space: pre-wrap; }
+.rsd-slack-text .rsd-slack-item { display: flex; gap: .45em; white-space: pre-wrap; }
+.rsd-slack-text .rsd-slack-bullet { flex: none; min-width: .7em; }
+.rsd-slack-text strong { font-weight: 700; }
+.rsd-slack-text .rsd-slack-quote {
+  margin: 2px 0;
+  padding-left: 12px;
+  border-left: 4px solid var(--gw-border);
+}
+.rsd-slack-text .rsd-slack-code,
+.rsd-slack-text .rsd-slack-pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: var(--gw-bg-elev);
+  border: 1px solid var(--gw-border);
+}
+.rsd-slack-text .rsd-slack-code { font-size: .86em; padding: 1px 4px; border-radius: 4px; }
+.rsd-slack-text .rsd-slack-pre {
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+/* @channel, @here, @everyone: Slack's yellow highlight. */
+.rsd-slack-text .rsd-slack-broadcast {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: rgba(242, 199, 68, .4);
+}
+
 /* ── Slack Channel Archive: sticky filter/toolbar bars ───────────────────
    `.rsd-app main` (this file, "Portal app shell") is the actual scrolling
    container and carries its own padding (`var(--rsd-pad)`, overridden to a
@@ -1344,6 +1378,9 @@ main::-webkit-scrollbar-track { background: transparent; }
 .rsd-lightbox-caption p:last-child { margin-bottom: 0; }
 .rsd-lightbox-caption a { color: var(--rsd-accent-soft); text-decoration: underline; text-underline-offset: 2px; }
 .rsd-lightbox-caption code { padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, .08); font-size: .88em; }
+.rsd-lightbox-caption .rsd-slack-code,
+.rsd-lightbox-caption .rsd-slack-pre { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .12); }
+.rsd-lightbox-caption .rsd-slack-quote { border-left-color: rgba(255, 255, 255, .25); }
 .rsd-lightbox-subhead { margin-bottom: 8px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, .55); }
 .rsd-lightbox-thread blockquote {
   margin: 0;
