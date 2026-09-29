@@ -301,7 +301,9 @@ export function TeamView({
               >
                 {p.jersey_number != null ? <JerseyNumber n={p.jersey_number} /> : <Avatar name={p.full_name} size={28} />}
                 <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>{p.full_name}</span>
+                  <Link href={`/portal/directory/players/${p.id}`} prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}>
+                    {p.full_name}
+                  </Link>
                   {p.parents.length > 0 && (
                     <span style={{ fontSize: 11, fontWeight: 500, color: "var(--gw-fg-muted)" }}>
                       {p.parents.map((pa) => pa.member?.full_name).filter(Boolean).join(" & ")}

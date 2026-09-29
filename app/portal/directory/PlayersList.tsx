@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { ClearSearchButton } from "../../components/ui";
 import { ageFromDob } from "../../../lib/teams/age";
-import type { DirectoryParent, DirectoryPlayer } from "./_shared/data";
+import type { DirectoryPlayer } from "./_shared/data";
 import { JerseyNumber, TeamBanner, TeamDot } from "./_shared/TeamBanner";
 import type { OlbVolunteerRole } from "../../../lib/teams/types";
 import type { TeamWithStaff } from "../../../lib/teams/volunteer-data";
@@ -19,6 +19,7 @@ import {
   type RequirementState,
 } from "../../../lib/requirements/logic";
 import { RequirementDialog } from "./RequirementDialog";
+import { ContactLine, ParentBlock, RequirementChips, formatDate, muted, playerAddress } from "./_shared/PlayerParts";
 
 const NO_GROUP = "No age group";
 
@@ -37,29 +38,6 @@ function sortName(p: DirectoryPlayer): string {
   const words = p.full_name.trim().toLowerCase().split(/\s+/);
   return `${words[words.length - 1]} ${words.join(" ")}`;
 }
-
-function formatDate(iso: string | null): string | null {
-  if (!iso) return null;
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function address(p: DirectoryPlayer): string | null {
-  const cityLine = [p.city, [p.state, p.postal_code].filter(Boolean).join(" ")]
-    .filter(Boolean)
-    .join(", ");
-  return [p.address_line1, p.address_line2, cityLine].filter(Boolean).join(", ") || null;
-}
-
-const RELATIONSHIP_LABEL: Record<DirectoryParent["relationship"], string> = {
-  father: "Father",
-  mother: "Mother",
-  guardian: "Guardian",
-};
 
 type View = "team" | "age";
 const NO_TEAM = "none";
@@ -508,13 +486,6 @@ function FilterTab({ label, active, onClick }: { label: string; active: boolean;
   );
 }
 
-const muted: React.CSSProperties = { fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 };
-const contactLink: React.CSSProperties = {
-  color: "var(--gw-fg)",
-  textDecoration: "none",
-  overflowWrap: "anywhere",
-};
-
 function PlayerRow({
   player: p,
   isStaff,
@@ -532,7 +503,7 @@ function PlayerRow({
 }) {
   const age = ageFromDob(p.dob);
   const born = formatDate(p.dob);
-  const addr = address(p);
+  const addr = playerAddress(p);
   const staffFacts = [
     p.registration_fee && `Fee: ${p.registration_fee}`,
     // The form's chosen payment option, not a confirmed payment.
@@ -555,7 +526,14 @@ function PlayerRow({
       <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {p.jersey_number != null && <JerseyNumber n={p.jersey_number} />}
-          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--gw-fg)" }}>{p.full_name}</span>
+          <Link
+            href={`/portal/directory/players/${p.id}`}
+            prefetch={false}
+            data-tour="directory-player-link"
+            style={{ fontSize: 15, fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
+          >
+            {p.full_name}
+          </Link>
           {p.team && <span className="rsd-chip rsd-chip-mute">{teamLabel(p.team)}</span>}
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
@@ -599,131 +577,6 @@ function PlayerRow({
           p.parents.map((pa) => <ParentBlock key={pa.member!.id} parent={pa} isStaff={isStaff} />)
         )}
       </div>
-    </div>
-  );
-}
-
-// One chip per requirement that applies to the player: done (or paid),
-// waived, or still needed. Tapping one opens the check-off.
-function RequirementChips({
-  player,
-  requirements,
-  rows,
-  onOpen,
-}: {
-  player: DirectoryPlayer;
-  requirements: Requirement[];
-  rows: Map<string, PlayerRequirement>;
-  onOpen: (r: Requirement) => void;
-}) {
-  const chips = requirements
-    .map((r) => ({ r, state: stateFor(player, r, rows), row: rows.get(rowKey(player.id, r.id)) }))
-    .filter((c) => c.state !== "n/a");
-  if (chips.length === 0) return null;
-  return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
-      {chips.map(({ r, state, row }) => {
-        const label = requirementLabel(r);
-        const variant = state === "done" ? "rsd-chip-success" : state === "waived" ? "rsd-chip-mute" : "rsd-chip-error";
-        const text =
-          state === "done" ? label : state === "waived" ? `${label} waived` : r.kind === "fee" ? `Owes ${label}` : `Needs ${label}`;
-        const title =
-          state === "missing"
-            ? `Mark ${r.name} for ${player.full_name}`
-            : `${state === "done" ? doneWord(r.kind) : "Waived"}${row?.note ? ` · ${row.note}` : ""}${row?.file_path ? " · Scan attached" : ""}`;
-        return (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => onOpen(r)}
-            data-tour="requirement-chip"
-            className={`rsd-chip ${variant}`}
-            title={title}
-            style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
-          >
-            {state === "done" && <Icons.CheckCircle width={11} height={11} />}
-            {text}
-            {row?.file_path && <Icons.FileText width={11} height={11} />}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function ParentBlock({ parent, isStaff }: { parent: DirectoryParent; isStaff: boolean }) {
-  const m = parent.member!;
-  const name = m.full_name ?? m.email ?? "Unknown";
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            color: "var(--gw-fg-muted)",
-            textTransform: "uppercase",
-            letterSpacing: ".06em",
-            minWidth: 52,
-          }}
-        >
-          {RELATIONSHIP_LABEL[parent.relationship]}
-        </span>
-        {/* A member's page is for approved members; staff can open anyone's. */}
-        {m.status === "approved" || isStaff ? (
-          <Link
-            href={`/portal/directory/${m.id}`}
-            prefetch={false}
-            data-tour="directory-parent"
-            style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
-          >
-            {name}
-          </Link>
-        ) : (
-          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>{name}</span>
-        )}
-        {isStaff && !m.user_id && m.email && (
-          <span className="rsd-chip rsd-chip-mute">Not signed up</span>
-        )}
-        {isStaff && m.user_id && m.status === "pending" && (
-          <Link href="/portal/settings" prefetch={false} style={{ textDecoration: "none" }}>
-            <span className="rsd-chip rsd-chip-warn">Awaiting approval</span>
-          </Link>
-        )}
-      </div>
-      <div style={{ paddingLeft: 60 }}>
-        <ContactLine phone={m.phone} email={m.email} />
-        {isStaff && m.volunteer_interests && (
-          <div style={{ ...muted, marginTop: 2 }}>Can help: {m.volunteer_interests}</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ContactLine({
-  phone,
-  email,
-  label,
-}: {
-  phone: string | null;
-  email: string | null;
-  label?: string;
-}) {
-  if (!phone && !email) return null;
-  return (
-    <div style={{ ...muted, display: "flex", gap: "2px 12px", flexWrap: "wrap" }}>
-      {label && <span>{label}:</span>}
-      {phone && (
-        <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} style={contactLink}>
-          {phone}
-        </a>
-      )}
-      {email && (
-        <a href={`mailto:${email}`} style={contactLink}>
-          {email}
-        </a>
-      )}
     </div>
   );
 }

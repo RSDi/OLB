@@ -7,14 +7,16 @@ import { TreasurerView } from "./TreasurerView";
 // Payments (migration 0101). Anyone with the Payments grant (the Treasurer;
 // super-admins always) sees every family and records what comes in. A parent
 // sees their own family's balance, once the Treasurer has turned that on.
-export default async function PaymentsPage() {
+export default async function PaymentsPage({ searchParams }: { searchParams: Promise<{ family?: string }> }) {
+  // ?family=<player id>: open that player's family (from a player page).
+  const { family } = await searchParams;
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
 
   if (viewer.canManageFinances) {
     const data = await loadPaymentsData();
     if (!data) return <Notice title="No season yet" body="Payments start once this season's roster is set up." />;
-    return <TreasurerView data={data} />;
+    return <TreasurerView data={data} openPlayerId={family ?? null} />;
   }
 
   if (viewer.status !== "approved") {

@@ -184,6 +184,8 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       ? { title: "Contact", subtitle: "External Contacts" }
       : pathname.startsWith("/portal/directory/teams/")
       ? { title: "Team", subtitle: "Directory" }
+      : pathname.startsWith("/portal/directory/players/")
+      ? { title: "Player", subtitle: "Directory" }
       : pathname.startsWith("/portal/directory/")
       ? { title: "Member", subtitle: "Directory" }
       : pathname.endsWith("/history") && pathname.startsWith("/portal/docs/")
