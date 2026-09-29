@@ -535,7 +535,8 @@ function PlayerRow({
   const addr = address(p);
   const staffFacts = [
     p.registration_fee && `Fee: ${p.registration_fee}`,
-    p.payment_method && `Paid by ${p.payment_method}`,
+    // The form's chosen payment option, not a confirmed payment.
+    p.payment_method && `Paying by ${p.payment_method}`,
     p.shirt_size && `Shirt: ${p.shirt_size}`,
   ].filter(Boolean);
 

@@ -51,7 +51,13 @@ type RegistrationInput = {
 export async function createRegistration(input: RegistrationInput, honeypot: string): Promise<string | null> {
   if (honeypot && honeypot.trim()) return null; // bot
   if (!input.athlete_first?.trim() || !input.athlete_last?.trim()) return "Athlete first and last name are required.";
-  if (!input.waiver_agreed || !input.signature_name?.trim()) return "Please type your name to sign the Accident Waiver.";
+  if (!input.waiver_agreed) return "Please check the box agreeing to the Accident Waiver.";
+  // The form signs by drawing (the default) or by typing a name.
+  const signed =
+    input.signature_mode === "draw"
+      ? /^data:image\/png;base64,/.test(input.signature_image ?? "")
+      : !!input.signature_name?.trim();
+  if (!signed) return "Please sign the Accident Waiver — draw your signature or type your full name.";
   if (!input.fee_tier) return "Please select a registration fee.";
   if (!input.payment_option) return "Please choose a payment option.";
 
