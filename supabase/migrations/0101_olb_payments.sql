@@ -97,7 +97,7 @@ begin
   end if;
 
   return new;
-end;
+end
 $$;
 
 -- ─── Whose players are mine ─────────────────────────────────────────────────
@@ -152,7 +152,7 @@ begin
     raise exception 'Only the Treasurer can change this';
   end if;
   update public.olb_boards set parent_balances_visible = p_visible where id = p_board_id;
-end;
+end
 $$;
 
 revoke all on function public.set_parent_balances_visible(uuid, boolean) from public, anon;
