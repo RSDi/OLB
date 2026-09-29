@@ -50,6 +50,24 @@ export function ArrowIcon({ className }: { className?: string }) {
   );
 }
 
+// Head and shoulders, for the header's member login. Stroke width comes from CSS.
+export function PersonIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20.5c0-4.1 3.6-6.5 8-6.5s8 2.4 8 6.5" />
+    </svg>
+  );
+}
+
 export function AlertIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
