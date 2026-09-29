@@ -23,6 +23,7 @@ export function SyncNowButton({ slackChannelId }: { slackChannelId: string }) {
       const s = res.summary!;
       const parts = [`${s.new_or_updated} message${s.new_or_updated === 1 ? "" : "s"} synced`];
       if (s.files_stored > 0) parts.push(`${s.files_stored} file${s.files_stored === 1 ? "" : "s"} stored`);
+      if (s.channel_names_fixed) parts.push(`channel names fixed in ${s.channel_names_fixed} message${s.channel_names_fixed === 1 ? "" : "s"}`);
       if (!s.done) parts.push("more to catch up — click again");
       // Messages synced fine, but who-can-see-this couldn't be confirmed —
       // access stays as it last was (see refreshChannelAccess in sync.ts).
