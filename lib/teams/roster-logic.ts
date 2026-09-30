@@ -25,6 +25,8 @@ export type RegistrationExtra = {
   fee_tier?: string;
   donation_interest?: boolean;
   payment_option?: string;
+  // The email whose code the family typed back before sending (0103).
+  email_confirmed?: string | null;
 };
 
 export type RegistrationParentAnswers = {

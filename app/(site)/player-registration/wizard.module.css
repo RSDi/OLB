@@ -1,0 +1,471 @@
+/* The step-by-step registration: one question at a time, in the club's
+   black and gold. Lives inside .olb-root, so it uses the --olb-* tokens. */
+
+.wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 28px 18px 72px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--olb-muted);
+}
+
+.linkBtn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--olb-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.linkBtn:hover {
+  color: var(--olb-ink);
+}
+
+.progress {
+  height: 4px;
+  border-radius: 4px;
+  background: var(--olb-stroke);
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+.progressFill {
+  height: 100%;
+  background: var(--olb-gold);
+  border-radius: 4px;
+  transition: width 0.35s var(--olb-ease);
+}
+
+.card {
+  background: var(--olb-surface);
+  border: 1px solid var(--olb-stroke);
+  border-radius: 20px;
+  box-shadow: var(--olb-shadow);
+  padding: 30px 28px 26px;
+  animation: stepIn 0.32s var(--olb-ease);
+}
+
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+  .progressFill {
+    transition: none;
+  }
+}
+
+.question {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--olb-ink);
+  outline: none;
+}
+
+.lead {
+  margin: 10px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--olb-muted);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.row3 {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--olb-muted);
+}
+.field input,
+.field select {
+  height: 48px;
+  font-size: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+/* Big tappable answers. */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
+  padding: 14px 18px;
+  border: 1.5px solid var(--olb-stroke-2);
+  border-radius: 14px;
+  background: var(--olb-surface);
+  color: var(--olb-ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s var(--olb-ease), background 0.12s var(--olb-ease), transform 0.08s var(--olb-ease);
+}
+.choice:hover {
+  border-color: var(--olb-gold-deep);
+}
+.choice:active {
+  transform: scale(0.99);
+}
+.choice[aria-pressed="true"],
+.choice[aria-checked="true"] {
+  border-color: var(--olb-gold-deep);
+  background: var(--olb-gold-bg);
+}
+.choiceSub {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--olb-muted);
+}
+.tick {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--olb-stroke-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--olb-black);
+}
+.tick svg {
+  opacity: 0;
+}
+.choice[aria-checked="true"] .tick,
+.choice[aria-pressed="true"] .tick {
+  background: var(--olb-gold);
+  border-color: var(--olb-gold);
+}
+.choice[aria-checked="true"] .tick svg,
+.choice[aria-pressed="true"] .tick svg {
+  opacity: 1;
+}
+
+/* One small yes/no per player, when a question covers several. */
+.kidRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--olb-stroke);
+}
+.kidRow:last-child {
+  border-bottom: none;
+}
+.kidName {
+  font-size: 16px;
+  font-weight: 700;
+}
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  border-radius: 12px;
+  background: var(--olb-surface-2);
+  border: 1px solid var(--olb-stroke);
+}
+.seg button {
+  min-width: 64px;
+  height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--olb-muted);
+  cursor: pointer;
+}
+.seg button[aria-pressed="true"] {
+  background: var(--olb-black);
+  color: #fff;
+}
+
+/* What we have on file, to look over. */
+.summary {
+  border: 1px solid var(--olb-stroke);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: var(--olb-surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.summaryHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.summaryTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--olb-ink);
+}
+.summaryLine {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--olb-muted);
+  overflow-wrap: anywhere;
+}
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--olb-faint);
+  margin-top: 6px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--olb-stroke-2);
+  background: var(--olb-surface);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--olb-ink);
+  cursor: pointer;
+  text-align: left;
+}
+.chip[aria-pressed="true"] {
+  border-color: var(--olb-gold-deep);
+  background: var(--olb-gold-bg);
+}
+
+.codeInput {
+  height: 64px !important;
+  font-size: 30px !important;
+  letter-spacing: 0.4em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--olb-muted);
+  background: var(--olb-surface-2);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.warn {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #7a4b00;
+  background: var(--olb-gold-bg);
+  border: 1px solid rgba(217, 173, 0, 0.45);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 12px;
+  border-top: 2px solid var(--olb-ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+.big {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 26px;
+}
+.primary {
+  white-space: nowrap;
+  height: 50px;
+  padding: 0 26px;
+  border: none;
+  border-radius: 999px;
+  background: var(--olb-gold);
+  color: var(--olb-black);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s var(--olb-ease);
+}
+.primary:hover:not(:disabled) {
+  background: var(--olb-gold-deep);
+}
+.primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.secondary {
+  white-space: nowrap;
+  height: 50px;
+  padding: 0 20px;
+  border: 1.5px solid var(--olb-stroke-2);
+  border-radius: 999px;
+  background: var(--olb-surface);
+  color: var(--olb-ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.back {
+  margin-right: auto;
+  border: none;
+  background: none;
+  padding: 0 4px;
+  height: 50px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--olb-muted);
+  cursor: pointer;
+}
+.back:hover {
+  color: var(--olb-ink);
+}
+
+.waiver {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--olb-stroke);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--olb-surface-2);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--olb-muted);
+}
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.check input {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--olb-black);
+}
+
+.error {
+  margin-top: 16px;
+}
+
+.done {
+  text-align: center;
+}
+.doneMark {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--olb-gold);
+  color: var(--olb-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 560px) {
+  .wrap {
+    padding: 18px 14px 56px;
+  }
+  .card {
+    padding: 24px 18px 20px;
+    border-radius: 16px;
+  }
+  .question {
+    font-size: 23px;
+  }
+  .row2,
+  .row3 {
+    grid-template-columns: 1fr;
+  }
+  .actions .primary {
+    flex: 1 1 100%;
+  }
+  .actions .secondary {
+    flex: 1 1 auto;
+  }
+}

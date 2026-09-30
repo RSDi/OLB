@@ -1,27 +1,33 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Signature capture with two modes (matching Cognito): Draw (canvas) or Type.
+// Coming back to a signature already drawn (a step back in the wizard, or a
+// switch to the full form) shows it, with Sign again to redo it.
 export default function SignaturePad({
   mode,
   typedName,
+  image = "",
   onMode,
   onTyped,
   onDraw,
 }: {
   mode: "draw" | "type";
   typedName: string;
+  image?: string;
   onMode: (m: "draw" | "type") => void;
   onTyped: (v: string) => void;
   onDraw: (dataUrl: string) => void;
 }) {
+  const [preview, setPreview] = useState(!!image);
+  const showPad = mode === "draw" && !(preview && image);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
   const inked = useRef(false);
 
   useEffect(() => {
-    if (mode !== "draw") return;
+    if (!showPad) return;
     const c = canvasRef.current;
     if (!c) return;
     const dpr = window.devicePixelRatio || 1;
@@ -36,7 +42,7 @@ export default function SignaturePad({
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#0a0a0a";
     inked.current = false;
-  }, [mode]);
+  }, [showPad]);
 
   function point(e: React.PointerEvent) {
     const rect = canvasRef.current!.getBoundingClientRect();
@@ -90,6 +96,27 @@ export default function SignaturePad({
           placeholder="Type your full name"
           style={{ marginTop: 8, fontFamily: '"Segoe Script", "Brush Script MT", cursive', fontSize: 22 }}
         />
+      ) : !showPad ? (
+        <div style={{ marginTop: 8 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- a data: URL of the drawn signature */}
+          <img
+            src={image}
+            alt="Your signature"
+            className="olb-sigcanvas"
+            style={{ width: "100%", height: 130, objectFit: "contain" }}
+          />
+          <button
+            type="button"
+            className="olb-btn olb-btn--ghost olb-btn--sm"
+            onClick={() => {
+              setPreview(false);
+              onDraw("");
+            }}
+            style={{ marginTop: 6 }}
+          >
+            Sign again
+          </button>
+        </div>
       ) : (
         <div style={{ marginTop: 8 }}>
           <canvas

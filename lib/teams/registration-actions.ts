@@ -5,55 +5,140 @@ import { createAdminClient } from "../supabase/admin";
 import { requireRegistrations } from "../auth/guards";
 import { applyRegistration, cleanName, type RegistrationRecord } from "./apply-registration";
 import type { RegistrationExtra as Extra, RegistrationParentAnswers } from "./roster-logic";
+import { MAX_PLAYERS, REGISTRATION_SEASON, looksLikeEmail, type FamilyPrefill, type RegistrationInput } from "./registration-form";
+import { CODE_MINUTES, CODES_PER_HOUR, VERIFIED_HOURS, checkCode, hashCode, newCode, type CodeRow } from "./registration-codes";
+import { findFamily } from "./registration-prefill";
+import { sendRegistrationCode } from "../notifications/registration-code";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { centralToday } from "../finances/data";
 
-type RegistrationInput = {
-  athlete_first: string;
-  athlete_last: string;
-  athlete_dob: string | null;
-  first_season: boolean | null;
-  address_line1: string;
-  address_line2: string;
-  city: string;
-  state: string;
-  zip: string;
-  athlete_phone: string;
-  athlete_email: string;
-  homeschool_affirm: boolean | null;
-  directory_optin: boolean;
-  needs_uniform: boolean | null;
-  needs_grays: boolean | null;
-  father_first: string;
-  father_last: string;
-  father_email: string;
-  father_phone: string;
-  father_volunteer: string[];
-  father_volunteer_other: string;
-  mother_first: string;
-  mother_last: string;
-  mother_email: string;
-  mother_phone: string;
-  mother_volunteer: string[];
-  mother_volunteer_other: string;
-  waiver_agreed: boolean;
-  printed_name: string;
-  signature_mode: string;
-  signature_name: string;
-  signature_image: string;
-  signature_date: string | null;
-  fee_tier: string;
-  donation_interest: boolean;
-  payment_option: string;
-};
+// ─── The public form ────────────────────────────────────────────────────────
+//
+// PUBLIC — no auth. The honeypot, validation and the code limits guard the
+// open endpoints. Everything writes with the service role: the olb_ tables
+// have no anon policies, so visitors only reach them through these actions.
 
-// PUBLIC — no auth. Honeypot + validation guard the open endpoint. The full
-// submission is stored in olb_registrations.extra (jsonb); core columns are
-// populated for the Directory's New registrations page and Approve. Writes with the service
-// role: the olb_ tables have no anon policies, so visitors can't read or
-// write them directly — only through this action.
-export async function createRegistration(input: RegistrationInput, honeypot: string): Promise<string | null> {
+// Step one: email a code to check the address (0103). The answer is the same
+// whether or not the email is on file, so the form can't be used to find
+// out who's registered. `sent: false` means we couldn't email it; the form
+// then carries on without filling anything in.
+export async function startRegistrationEmail(
+  rawEmail: string,
+  honeypot: string,
+): Promise<{ sent: boolean; error?: string }> {
+  if (honeypot && honeypot.trim()) return { sent: true }; // bot
+  const email = rawEmail.trim().toLowerCase();
+  if (!looksLikeEmail(email)) return { sent: false, error: "That email doesn't look right. Check it for typos." };
+
+  const db = createAdminClient();
+  const hourAgo = new Date(Date.now() - 3600_000).toISOString();
+  const { count } = await db
+    .from("olb_registration_codes")
+    .select("id", { count: "exact", head: true })
+    .eq("email", email)
+    .gte("created_at", hourAgo);
+  if ((count ?? 0) >= CODES_PER_HOUR) {
+    return { sent: false, error: "We've sent a few codes to that email already. Check your inbox, or try again in an hour." };
+  }
+
+  const id = crypto.randomUUID();
+  const code = newCode();
+  const { error } = await db.from("olb_registration_codes").insert({
+    id,
+    email,
+    code_hash: hashCode(id, code),
+    expires_at: new Date(Date.now() + CODE_MINUTES * 60_000).toISOString(),
+  });
+  if (error) return { sent: false };
+  const sent = await sendRegistrationCode({ to: email, code });
+  if (!sent) await db.from("olb_registration_codes").delete().eq("id", id);
+  // Codes older than a day are no use to anyone.
+  await db.from("olb_registration_codes").delete().lt("created_at", new Date(Date.now() - 86_400_000).toISOString());
+  return { sent };
+}
+
+// Step two: the code typed back. On a match, what we already know about the
+// family (null for a new family).
+export async function verifyRegistrationEmail(
+  rawEmail: string,
+  typed: string,
+): Promise<{ ok: true; family: FamilyPrefill | null } | { ok: false; error: string }> {
+  const email = rawEmail.trim().toLowerCase();
+  const db = createAdminClient();
+  const { data } = await db
+    .from("olb_registration_codes")
+    .select("id, code_hash, attempts, expires_at, verified_at")
+    .eq("email", email)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const row = data as CodeRow | null;
+  const result = checkCode(row, typed);
+  if (result === "expired") return { ok: false, error: "That code has expired. Tap Send a new code." };
+  if (result === "locked") return { ok: false, error: "Too many tries with that code. Tap Send a new code." };
+  // Every try uses up one of the code's attempts before it counts, and only
+  // one try can claim each attempt, so a burst of guesses at once still gets
+  // just five.
+  const { data: claimed } = await db
+    .from("olb_registration_codes")
+    .update({ attempts: row!.attempts + 1 })
+    .eq("id", row!.id)
+    .eq("attempts", row!.attempts)
+    .is("verified_at", null)
+    .select("id");
+  if (!claimed?.length) return { ok: false, error: "That didn't go through. Try the code again." };
+  if (result === "wrong") return { ok: false, error: "That code doesn't match. Check the email we sent and try again." };
+  await db.from("olb_registration_codes").update({ verified_at: new Date().toISOString() }).eq("id", row!.id);
+  const family = await findFamily(db, email);
+  return { ok: true, family };
+}
+
+// Step three: one registration per player, saved together. The full
+// submission goes in olb_registrations.extra (jsonb); the core columns feed
+// the Directory's New registrations page and Approve. `verifiedEmail` marks
+// the rows "email confirmed" when its code was typed back in the last few
+// hours.
+export async function createRegistrations(
+  inputs: RegistrationInput[],
+  honeypot: string,
+  verifiedEmail: string | null,
+): Promise<string | null> {
   if (honeypot && honeypot.trim()) return null; // bot
+  if (!Array.isArray(inputs) || inputs.length === 0) return "Add a player to register.";
+  if (inputs.length > MAX_PLAYERS) return `Please register up to ${MAX_PLAYERS} players at a time.`;
+  for (const input of inputs) {
+    const problem = inputProblem(input);
+    if (problem) return inputs.length > 1 && input.athlete_first?.trim() ? `${input.athlete_first.trim()}: ${problem}` : problem;
+  }
+
+  const db = createAdminClient();
+  const { data: board } = await db.from("olb_boards").select("id").eq("season", REGISTRATION_SEASON).maybeSingle();
+  if (!board) return "Registration isn't open yet — please check back soon.";
+
+  let confirmed: string | null = null;
+  const checked = verifiedEmail?.trim().toLowerCase();
+  if (checked) {
+    const { data: code } = await db
+      .from("olb_registration_codes")
+      .select("id")
+      .eq("email", checked)
+      .gte("verified_at", new Date(Date.now() - VERIFIED_HOURS * 3600_000).toISOString())
+      .limit(1)
+      .maybeSingle();
+    if (code) confirmed = checked;
+  }
+
+  // Marked confirmed only where that email is one of the registration's own.
+  const onIt = (input: RegistrationInput) =>
+    confirmed && [input.father_email, input.mother_email, input.athlete_email].some((e) => e?.trim().toLowerCase() === confirmed)
+      ? confirmed
+      : null;
+  const { error } = await db.from("olb_registrations").insert(inputs.map((input) => toRow(board.id, input, onIt(input))));
+  if (error) return "Something went wrong saving your registration. Please try again.";
+  return null;
+}
+
+function inputProblem(input: RegistrationInput): string | null {
   if (!input.athlete_first?.trim() || !input.athlete_last?.trim()) return "Athlete first and last name are required.";
   if (!input.waiver_agreed) return "Please check the box agreeing to the Accident Waiver.";
   // The form signs by drawing (the default) or by typing a name.
@@ -64,17 +149,15 @@ export async function createRegistration(input: RegistrationInput, honeypot: str
   if (!signed) return "Please sign the Accident Waiver — draw your signature or type your full name.";
   if (!input.fee_tier) return "Please select a registration fee.";
   if (!input.payment_option) return "Please choose a payment option.";
+  return null;
+}
 
-  const db = createAdminClient();
-  const { data: board } = await db.from("olb_boards").select("id").eq("season", "2026-2027").maybeSingle();
-  if (!board) return "Registration isn't open yet — please check back soon.";
-
+function toRow(boardId: string, input: RegistrationInput, confirmedEmail: string | null) {
   const fatherName = [input.father_first, input.father_last].map((s) => s?.trim()).filter(Boolean).join(" ");
   const motherName = [input.mother_first, input.mother_last].map((s) => s?.trim()).filter(Boolean).join(" ");
   const naless = (s: string) => (s && s.trim().toUpperCase() !== "N/A" ? s.trim() : "");
-
-  const { error } = await db.from("olb_registrations").insert({
-    board_id: board.id,
+  return {
+    board_id: boardId,
     first_name: input.athlete_first.trim(),
     last_name: input.athlete_last.trim(),
     dob: input.athlete_dob || null,
@@ -97,15 +180,14 @@ export async function createRegistration(input: RegistrationInput, honeypot: str
       printed_name: input.printed_name?.trim() || null,
       signature_mode: input.signature_mode,
       signature_name: input.signature_name.trim(),
-      signature_image: input.signature_image || null,
+      signature_image: input.signature_mode === "draw" ? input.signature_image || null : null,
       signature_date: input.signature_date || null,
       fee_tier: input.fee_tier,
       donation_interest: input.donation_interest,
       payment_option: input.payment_option,
+      email_confirmed: confirmedEmail,
     },
-  });
-  if (error) return "Something went wrong saving your registration. Please try again.";
-  return null;
+  };
 }
 
 // The public form's answers (olb_registrations.extra) as a registration to
