@@ -303,7 +303,7 @@ Requirements start over each season, since each season has its own roster. The l
 
 **Seasons.** Use the arrows, or the season buttons, to move between seasons. **Compare with** puts another season's same weekend beside each row, so you can see what we did a year ago. **Season** changes the notes and the columns: add, rename, reorder or hide one, or link it to its team in the Directory. The board can also **Start 2027–28 from 2026–27** there (the same weekends a year on, with the teams that came now on the fence), or add a **+ New season**.
 
-**Import spreadsheet** (the board) reads the planning spreadsheet's "HS Schedule - 26-27" tabs along with its Contacts tab: each season's weekends, games, colors and notes, the teams named in each event (the ones after "Potentials" or "Possibly" go on the fence) and the scores. The preview lists what it found for every weekend before anything is saved; a season that's already here is only replaced if you tick **Replace**.
+**Import spreadsheet** (the board, only while the HS Schedule has no seasons yet) reads the planning spreadsheet's "HS Schedule - 26-27" tabs along with its Contacts tab: each season's weekends, games, colors and notes, the teams named in each event (the ones after "Potentials" or "Possibly" go on the fence) and the scores. The preview lists what it found for every weekend before anything is saved; a season that's already here is only replaced if you tick **Replace**.
 
 **Walk me through it.** Press **Show me around** next to this section's title, or tap **ⓘ** on the HS Schedule and then **Show me around**.`,
   },

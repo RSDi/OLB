@@ -535,12 +535,6 @@ export const GUIDE_TOURS: GuideTour[] = [
         title: "Add a weekend",
         body: "Its dates, event, place, trip, status, notes and facility; then its games and teams.",
       },
-      {
-        target: "schedule-import",
-        title: "Import the spreadsheet",
-        body: "Brings in the planning spreadsheet's HS Schedule tabs with its contacts. You see what it found for every weekend first.",
-        audience: "staff",
-      },
     ],
   },
   {
