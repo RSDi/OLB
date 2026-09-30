@@ -6,6 +6,7 @@ import { getAuthUser } from "../../../../../lib/auth/viewer";
 import { isStaff, isSuperAdmin, type MemberLike } from "../../../../../lib/auth/permissions";
 import { memberDisplayName } from "../../../../../lib/members/display";
 import { EventForm, type EventInitialValues } from "../../EventForm";
+import { toZonedDatetimeLocal } from "../../../../../lib/dates/zoned";
 import { ShutdownAssignment } from "../../ShutdownAssignment";
 import { ProcedureRunner } from "../../../../components/ProcedureRunner";
 import { loadRunnableProcedures } from "../../../../../lib/playbooks/procedures-data";
@@ -153,8 +154,8 @@ export default async function EditEventPage({
     id: ev.id,
     title: ev.title,
     description: ev.description ?? "",
-    startAt: toDatetimeLocal(ev.start_at),
-    endAt: ev.end_at ? toDatetimeLocal(ev.end_at) : "",
+    startAt: toZonedDatetimeLocal(new Date(ev.start_at)),
+    endAt: ev.end_at ? toZonedDatetimeLocal(new Date(ev.end_at)) : "",
     location: ev.location ?? "",
     areaId: ev.area_id ?? "",
     categoryId: ev.category_id ?? "",
@@ -245,12 +246,4 @@ export default async function EditEventPage({
       </div>
     </>
   );
-}
-
-// Format an ISO timestamp into the local-time string that
-// <input type="datetime-local"> expects ("YYYY-MM-DDTHH:mm").
-function toDatetimeLocal(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

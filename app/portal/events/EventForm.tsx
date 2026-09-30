@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../components/ui";
 import { DateTimePicker } from "../../components/DateTimePicker";
+import { fromZonedDatetimeLocal } from "../../../lib/dates/zoned";
 import {
   createEvent,
   updateEvent,
@@ -31,7 +32,7 @@ export interface EventInitialValues {
   id?: string;
   title: string;
   description: string;
-  startAt: string; // "YYYY-MM-DDTHH:mm" for <input type=datetime-local>
+  startAt: string; // "YYYY-MM-DDTHH:mm" in Central time, for <input type=datetime-local>
   endAt: string;
   location: string;
   areaId: string;
@@ -171,8 +172,9 @@ export function EventForm({
       const input = {
         title: title.trim(),
         description: description.trim() || null,
-        startAt: new Date(startAt).toISOString(),
-        endAt: endAt ? new Date(endAt).toISOString() : null,
+        // The fields hold Central wall-clock times, whatever the browser's timezone.
+        startAt: fromZonedDatetimeLocal(startAt).toISOString(),
+        endAt: endAt ? fromZonedDatetimeLocal(endAt).toISOString() : null,
         location: location.trim() || null,
         areaId: areaId || null,
         categoryId: categoryId || null,
