@@ -131,7 +131,12 @@ export function TemplateEditor({
       {GROUPS.map((month) => {
         const g = byGroup.get(month)!;
         return (
-          <div key={month ?? "year"} className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
+          <div
+            key={month ?? "year"}
+            data-tour={month != null ? "planning-template-month" : undefined}
+            className="rsd-card"
+            style={{ gap: 0, padding: 0, overflow: "hidden" }}
+          >
             <div
               style={{
                 display: "flex",
@@ -146,7 +151,7 @@ export function TemplateEditor({
               <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
                 {month == null ? "Duties that run all season (for reference, not sent to Review)" : `${g.tasks.length} tasks`}
               </span>
-              <span style={{ marginLeft: "auto" }}>
+              <span data-tour="planning-template-add" style={{ marginLeft: "auto" }}>
                 <Pill size="sm" variant="ghost" disabled={pending} onClick={() => setEditing({ adding: { month, kind: "task" } })}>
                   <Icons.Plus width={12} height={12} /> Task
                 </Pill>
@@ -195,7 +200,7 @@ export function TemplateEditor({
             )}
 
             {month != null && (
-              <div style={{ background: "var(--rsd-accent-bg)", borderTop: "1px solid var(--gw-border)" }}>
+              <div data-tour="planning-template-agenda" style={{ background: "var(--rsd-accent-bg)", borderTop: "1px solid var(--gw-border)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px" }}>
                   <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--gw-fg-muted)" }}>
                     Board meeting agenda
@@ -296,7 +301,7 @@ function TemplateRow({
           </div>
         )}
       </div>
-      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+      <div data-tour="planning-template-edit" style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <IconButton title="Edit" onClick={onEdit} disabled={disabled}>
           <Icons.Pencil width={14} height={14} />
         </IconButton>

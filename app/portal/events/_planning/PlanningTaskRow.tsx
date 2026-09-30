@@ -36,6 +36,7 @@ export function PlanningTaskRow({ task, compact = false }: { task: PlanningTask;
 
   return (
     <div
+      data-tour="planning-task"
       style={{
         display: "flex",
         gap: compact ? 8 : 12,

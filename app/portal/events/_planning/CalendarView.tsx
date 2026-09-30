@@ -193,7 +193,7 @@ function MonthSection({
   const done = block.tasks.filter((t) => t.status === "done").length;
   const hasEvents = block.events.length > 0 || block.series.length > 0;
   return (
-    <section id={`m-${block.key}`} style={{ scrollMarginTop: 80 }}>
+    <section id={`m-${block.key}`} data-tour="planning-month" style={{ scrollMarginTop: 80 }}>
       <div style={monthHeaderStyle}>
         {rel && <span style={{ color: "var(--rsd-accent)" }}>{rel} ·</span>}
         <span>{monthLabel(block.key)}</span>

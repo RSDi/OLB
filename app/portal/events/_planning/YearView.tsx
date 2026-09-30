@@ -82,7 +82,7 @@ export async function YearView({
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div data-tour="planning-season" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <Link
           href={planningHref({ view: "year", season: season - 1, role })}
           className="gw-press"
@@ -143,7 +143,7 @@ export async function YearView({
         </Link>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 12 }}>
+      <div data-tour="planning-year-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 12 }}>
         {blocks.map((b) => (
           <MonthCard
             key={b.key}

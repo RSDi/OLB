@@ -26,11 +26,16 @@ import {
 import { MigrationNotice } from "../../_planning/nav";
 import { MeetingForm } from "./MeetingForm";
 
+const THIS_MONTH = "this-month";
+
 // One month's board meeting (Planning → a month's "Board meeting" row).
 // Every month has one; the row is saved the first time someone presses Save.
+// /portal/events/meetings/this-month is always the current month's, a fixed
+// address for bookmarks and the Planning guided tour (lib/help/tours.ts).
 export default async function MeetingPage({ params }: { params: Promise<{ month: string }> }) {
   const { month: raw } = await params;
-  const month = parseMonthParam(raw);
+  const current = monthKeyOf(churchToday());
+  const month = raw === THIS_MONTH ? current : parseMonthParam(raw);
   if (!month) notFound();
 
   const viewer = await getViewer();
@@ -39,7 +44,6 @@ export default async function MeetingPage({ params }: { params: Promise<{ month:
 
   const supabase = await createClient();
   const season = seasonOfMonth(month);
-  const current = monthKeyOf(churchToday());
   const [meetings, tpl, rolesRes, kept] = await Promise.all([
     loadMeetings(supabase, month, month),
     loadPlanningTemplates(supabase),

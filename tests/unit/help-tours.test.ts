@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { GUIDE_SECTIONS, type GuideAudience, type GuideViewer } from "../../lib/help/guide.ts";
 import {
   GUIDE_TOURS,
+  PLANNING_TOUR_ID,
   REQUIREMENTS_TOUR_ID,
   WELCOME_TOUR_ID,
   WELCOME_TOUR_NEW_SINCE,
@@ -154,6 +155,28 @@ test("the requirements walkthrough: three parts, for the board, from both guide 
   const p2 = partStartIndex(steps, 2);
   assert.ok(steps.slice(1, p2).every((s) => !s.route));
   assert.ok(steps.slice(p2).every((s) => s.route === "/portal/directory"));
+});
+
+test("the Planning walkthrough: five parts, only for the preview account, from both guide sections", () => {
+  const jeff: GuideViewer = { ...SUPER, seesFullUi: true };
+  assert.equal(tourForSection("planning", jeff)?.id, PLANNING_TOUR_ID);
+  assert.equal(tourForSection("settings-planning-roles", jeff)?.id, PLANNING_TOUR_ID);
+  // Planning is in staged rollout: another super-admin (Rachel) doesn't get it yet.
+  assert.equal(tourForSection("planning", SUPER), null);
+  assert.equal(tourForPath("/portal/events", jeff)?.id, PLANNING_TOUR_ID);
+  assert.equal(tourForPath("/portal/events", ADMIN), null);
+  const steps = tourStepsFor(GUIDE_TOURS.find((t) => t.id === PLANNING_TOUR_ID)!, jeff);
+  assert.deepEqual(
+    steps.filter((s) => s.part).map((s) => s.part),
+    ["The calendar", "Review a season", "The template", "Board meetings", "Who holds each role"]
+  );
+  // The meeting part goes to this month's meeting, a fixed address; the tabs
+  // are switched by clicking them, since they share /portal/events.
+  const p4 = partStartIndex(steps, 4);
+  const p5 = partStartIndex(steps, 5);
+  assert.ok(steps.slice(p4, p5).every((s) => s.route === "/portal/events/meetings/this-month"));
+  assert.ok(steps.slice(p5, -1).every((s) => s.route === "/portal/settings"));
+  assert.ok(steps.slice(0, p4).every((s) => !s.route));
 });
 
 test("part helpers find, name and skip parts", () => {

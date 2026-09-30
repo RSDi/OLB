@@ -72,7 +72,7 @@ export async function ReviewView({
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 2, flexWrap: "wrap", borderBottom: "1px solid var(--gw-border)" }}>
+      <div data-tour="planning-review-show" style={{ display: "flex", gap: 2, flexWrap: "wrap", borderBottom: "1px solid var(--gw-border)" }}>
         {SHOW.map((s) => {
           const on = s.key === show;
           return (
@@ -122,7 +122,7 @@ export async function ReviewView({
         </div>
       )}
 
-      <div className="rsd-card" style={{ gap: 12, padding: "16px 20px" }}>
+      <div data-tour="planning-season-sender" className="rsd-card" style={{ gap: 12, padding: "16px 20px" }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700 }}>Start a season from the template</div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.6, marginTop: 4, maxWidth: 640 }}>

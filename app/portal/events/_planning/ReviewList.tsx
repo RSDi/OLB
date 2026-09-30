@@ -65,7 +65,7 @@ export function ReviewList({ tasks, show }: { tasks: PlanningTask[]; show: Revie
               {m.items.length} {m.items.length === 1 ? "task" : "tasks"}
             </span>
             {show === "pending" && m.items.length > 1 && (
-              <span style={{ marginLeft: "auto" }}>
+              <span data-tour="planning-keep-all" style={{ marginLeft: "auto" }}>
                 <Pill size="sm" variant="ghost" disabled={pending} onClick={() => decide(m.items.map((t) => t.id), "keep")}>
                   Keep all {m.items.length}
                 </Pill>
@@ -99,7 +99,7 @@ export function ReviewList({ tasks, show }: { tasks: PlanningTask[]; show: Revie
                   </div>
                 )}
               </div>
-              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <div data-tour="planning-review-decide" style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                 {show !== "kept" && (
                   <Pill size="sm" variant="accent" disabled={pending} onClick={() => decide([t.id], "keep")}>
                     Keep

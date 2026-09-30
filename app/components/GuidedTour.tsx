@@ -232,7 +232,9 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
         if (opener) {
           press(opener);
           clicked = true;
-          deadline = Math.max(deadline, Date.now() + 1500);
+          // A click can load a view from the server (a Planning tab is its
+          // own address), so give it as long as a page change.
+          deadline = Math.max(deadline, Date.now() + AFTER_NAV_WAIT_MS);
         }
       }
       if (Date.now() < deadline) {
