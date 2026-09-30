@@ -1,12 +1,13 @@
 "use server";
 
 // Server actions for contacts CRUD + contact_links join management.
-// All mutations require staff (delete is super-admin only); RLS enforces
-// this server-side so even if the UI gate is bypassed the DB rejects the
-// write.
+// Mutations require staff (delete is super-admin only), except that the
+// travel coordinator (0110) adds and edits the hotels and places to eat; RLS
+// enforces this server-side so even if the UI gate is bypassed the DB
+// rejects the write.
 
 import { revalidatePath } from "next/cache";
-import { requireStaff } from "../auth/guards";
+import { requireContactEditor, requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import { differsFrom, restorePatch } from "./history";
 
@@ -103,15 +104,32 @@ function missingColumn(error: { message?: string; code?: string } | null): boole
   return !!error && (error.code === "42703" || error.code === "PGRST204" || /column/i.test(error.message ?? ""));
 }
 
+// The travel coordinator (0110) keeps the hotels and places to eat: a
+// contact of a travel type, or a person at one. RLS enforces it; this says so
+// plainly instead of a policy error.
+async function travelOnly(supabase: Awaited<ReturnType<typeof createClient>>, input: ContactInput): Promise<string | null> {
+  const { data } = await supabase.rpc("contact_is_travel", {
+    p_category_id: input.categoryId ?? null,
+    p_parent_contact_id: input.kind === "person" ? input.parentContactId ?? null : null,
+  });
+  return data === true
+    ? null
+    : "You can add and change hotels and places to eat: give it the Hotels or Food type, or put a person under a hotel or restaurant.";
+}
+
 export async function createContact(
   input: ContactInput
 ): Promise<ContactActionResult> {
-  const gate = await requireStaff();
+  const gate = await requireContactEditor();
   if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
   const supabase = await createClient();
+  if (!gate.isStaff) {
+    const travel = await travelOnly(supabase, input);
+    if (travel) return { error: travel };
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -146,12 +164,16 @@ export async function updateContact(
   input: ContactInput,
   openedAt?: string
 ): Promise<ContactActionResult> {
-  const gate = await requireStaff();
+  const gate = await requireContactEditor();
   if ("error" in gate) return { error: gate.error };
   const err = validate(input);
   if (err) return { error: err };
 
   const supabase = await createClient();
+  if (!gate.isStaff) {
+    const travel = await travelOnly(supabase, input);
+    if (travel) return { error: travel };
+  }
   const save = (row: Record<string, unknown>) => {
     let q = supabase.from("contacts").update(row).eq("id", contactId);
     if (openedAt) q = q.eq("updated_at", openedAt);

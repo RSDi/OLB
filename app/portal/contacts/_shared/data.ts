@@ -2,9 +2,10 @@
 // Mirrors the convention used by /portal/directory/_shared/data.ts.
 //
 // Visibility: RLS decides. The board reads every contact; a coach reads the
-// contact types shared with coaches (0109) and nothing else; anyone else
-// reads nothing. loadContactsViewer() is the access guard that sends
-// everyone else to /portal before they see anything.
+// contact types shared with coaches (0109); the travel coordinator reads and
+// edits the travel types (0110); anyone else reads nothing.
+// loadContactsViewer() is the access guard that sends everyone else to
+// /portal before they see anything.
 
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
@@ -75,25 +76,33 @@ export interface ContactsViewer {
   userId: string;
   isStaff: boolean;
   isSuperAdmin: boolean;
+  // Reads the types shared with coaches.
+  isCoach: boolean;
+  // The travel coordinator: adds and edits the hotels and places to eat.
+  canManageTravel: boolean;
 }
 
-// Access guard. The board uses all of /portal/contacts; coaches read the
-// list and the contacts' pages (`board: true` pages, the ones that change
-// contacts or show their history, send them back to the list). Everyone
-// else goes back to /portal (RLS would return zero rows anyway, but this
-// short-circuits rendering).
-export async function loadContactsViewer(opts?: { board?: boolean }): Promise<ContactsViewer> {
+// Access guard. The board uses all of /portal/contacts. Coaches read the
+// list and the contacts' pages; the travel coordinator also adds and edits
+// the hotels and places to eat (`edit: true` pages). `board: true` pages
+// (history) are the board's. Anyone sent away from a page they can't use
+// goes back to the list; everyone else goes back to /portal (RLS would
+// return zero rows anyway, but this short-circuits rendering).
+export async function loadContactsViewer(opts?: { edit?: boolean; board?: boolean }): Promise<ContactsViewer> {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
+  const isCoach = await viewerIsCoach(viewer);
   if (!viewer.isStaff) {
-    if (!(await viewerIsCoach(viewer))) redirect("/portal");
-    if (opts?.board) redirect("/portal/contacts");
+    if (!isCoach && !viewer.canManageTravel) redirect("/portal");
+    if (opts?.board || (opts?.edit && !viewer.canManageTravel)) redirect("/portal/contacts");
   }
   return {
     memberId: viewer.memberId,
     userId: viewer.userId,
     isStaff: viewer.isStaff,
     isSuperAdmin: viewer.isSuperAdmin,
+    isCoach,
+    canManageTravel: viewer.canManageTravel,
   };
 }
 

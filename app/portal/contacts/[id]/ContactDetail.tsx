@@ -32,14 +32,17 @@ interface Props {
   links: ResolvedLink[];
   // For a program or facility: its weekends on the HS Schedule.
   history: ContactScheduleRow[];
-  // The board: edit, add people, History. Coaches only read (0109).
+  // Edit and add people: the board, and the travel coordinator on a hotel or
+  // place to eat (0110). Coaches only read (0109).
   canEdit: boolean;
+  // Its History: the board.
+  canHistory: boolean;
   canDelete: boolean;
   // The latest change in its history (the board).
   lastChange: LastContactChange | null;
 }
 
-export function ContactDetail({ contact, people, company, coworkers, links, history, canEdit, canDelete, lastChange }: Props) {
+export function ContactDetail({ contact, people, company, coworkers, links, history, canEdit, canHistory, canDelete, lastChange }: Props) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -321,11 +324,13 @@ export function ContactDetail({ contact, people, company, coworkers, links, hist
                   <Icons.Pencil width={14} height={14} /> Edit
                 </Pill>
               </Link>
-              <Link href={`/portal/contacts/${contact.id}/history`} data-tour="contact-history" style={{ textDecoration: "none" }}>
-                <Pill variant="ghost" size="md" style={{ width: "100%", justifyContent: "center" }}>
-                  <Icons.Clock width={14} height={14} /> History
-                </Pill>
-              </Link>
+              {canHistory && (
+                <Link href={`/portal/contacts/${contact.id}/history`} data-tour="contact-history" style={{ textDecoration: "none" }}>
+                  <Pill variant="ghost" size="md" style={{ width: "100%", justifyContent: "center" }}>
+                    <Icons.Clock width={14} height={14} /> History
+                  </Pill>
+                </Link>
+              )}
               {canDelete && (
                 <Pill
                   variant="ghost"

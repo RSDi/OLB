@@ -21,15 +21,22 @@ export interface ContactCategoryInput {
   // "Coaches can see": coaches read the contacts of this type (0109). Left
   // as it is when undefined.
   sharedWithCoaches?: boolean;
+  // Travel: hotels or places to eat (0110), or null for neither. Left as it
+  // is when undefined.
+  travelKind?: "hotel" | "food" | null;
 }
 
-// Before migration 0109 there's no shared_with_coaches column: save the rest.
+// Before migrations 0109 and 0110 there are no shared_with_coaches and
+// travel_kind columns: save the rest.
 function missingSharing(error: { message?: string } | null): boolean {
-  return !!error && /shared_with_coaches/.test(error.message ?? "");
+  return !!error && /shared_with_coaches|travel_kind/.test(error.message ?? "");
 }
 
 function sharing(input: ContactCategoryInput) {
-  return input.sharedWithCoaches === undefined ? {} : { shared_with_coaches: input.sharedWithCoaches };
+  return {
+    ...(input.sharedWithCoaches === undefined ? {} : { shared_with_coaches: input.sharedWithCoaches }),
+    ...(input.travelKind === undefined ? {} : { travel_kind: input.travelKind }),
+  };
 }
 
 function slugify(name: string): string {

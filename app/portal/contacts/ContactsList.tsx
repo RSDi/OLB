@@ -26,12 +26,19 @@ export function ContactsList({
   contacts,
   categories,
   canEdit,
+  canAdd = canEdit,
+  readsAs = { coach: false, travel: false },
 }: {
   contacts: Contact[];
   categories: ContactCategory[];
-  // The board: adds and edits. Coaches only read the types shared with them
-  // (RLS, 0109).
+  // The board: adds, edits and sees history. Coaches only read the types
+  // shared with them (RLS, 0109).
   canEdit: boolean;
+  // Adds contacts: the board, and the travel coordinator for the hotels and
+  // places to eat (0110).
+  canAdd?: boolean;
+  // Off the board: what the list holds for them, for the line under the title.
+  readsAs?: { coach: boolean; travel: boolean };
 }) {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<KindFilter>("all");
@@ -120,21 +127,21 @@ export function ContactsList({
             External Contacts
           </h2>
           <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            {canEdit
-              ? "Vendors, photographers, facilities we rent, other programs, and anyone else outside the team."
-              : "The programs, gyms and referees the board shares with coaches."}{" "}
+            {canEdit ? "Vendors, photographers, facilities we rent, other programs, and anyone else outside the team." : listLine(readsAs)}{" "}
             <strong style={{ color: "var(--gw-fg)" }}>{companyCount}</strong> companies ·{" "}
             <strong style={{ color: "var(--gw-fg)" }}>{personCount}</strong> people.
           </p>
         </div>
-        {canEdit && (
+        {canAdd && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <Link href="/portal/contacts/changes" data-tour="contacts-changes" style={{ textDecoration: "none" }}>
-              <Pill variant="ghost" size="md">
-                <Icons.Clock width={14} height={14} />
-                Recent changes
-              </Pill>
-            </Link>
+            {canEdit && (
+              <Link href="/portal/contacts/changes" data-tour="contacts-changes" style={{ textDecoration: "none" }}>
+                <Pill variant="ghost" size="md">
+                  <Icons.Clock width={14} height={14} />
+                  Recent changes
+                </Pill>
+              </Link>
+            )}
             <Link
               href="/portal/contacts/new"
               data-tour="contacts-new"
@@ -244,7 +251,9 @@ export function ContactsList({
               ? "Try a different search or filter."
               : canEdit
                 ? "Start by adding a company (a uniform vendor, a gym we rent, another program), then attach the people you work with there."
-                : "Nothing is shared with coaches yet. The board picks which types coaches see."}
+                : canAdd
+                  ? "No hotels or places to eat yet. Add one with New contact, as a Hotels or Food company."
+                  : "Nothing is shared with coaches yet. The board picks which types coaches see."}
           </div>
           {contacts.length === 0 && canEdit && (
             <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
@@ -520,4 +529,14 @@ function KindBadge({ kind }: { kind: ContactKind }) {
       {isCompany ? <Icons.Home width={16} height={16} /> : <Icons.User width={16} height={16} />}
     </div>
   );
+}
+
+// Under the title, for someone off the board: what they can see here.
+function listLine(readsAs: { coach: boolean; travel: boolean }): string {
+  const parts = [
+    readsAs.coach ? "the programs, gyms and referees the board shares with coaches" : null,
+    readsAs.travel ? "the hotels and places to eat you keep for the team's travel" : null,
+  ].filter(Boolean) as string[];
+  const line = parts.join(", and ") || "the contacts the board shares with you";
+  return `${line.charAt(0).toUpperCase()}${line.slice(1)}.`;
 }
