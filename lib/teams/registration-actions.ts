@@ -49,7 +49,10 @@ export async function startRegistrationEmail(
     code_hash: hashCode(id, code),
     expires_at: new Date(Date.now() + CODE_MINUTES * 60_000).toISOString(),
   });
-  if (error) return { sent: false };
+  if (error) {
+    console.error(`[registrations] saving a registration code failed: ${error.message}`);
+    return { sent: false };
+  }
   const sent = await sendRegistrationCode({ to: email, code });
   if (!sent) await db.from("olb_registration_codes").delete().eq("id", id);
   // Codes older than a day are no use to anyone.
