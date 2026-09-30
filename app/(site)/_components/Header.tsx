@@ -172,11 +172,11 @@ export function Header() {
   );
 }
 
-// Members who are already signed in get "Portal" instead of "Log In". Supabase
-// keeps the session in a cookie the page can read, so no request is needed.
-// The first paint always says Log In (the server can't know), and a stale
-// cookie does no harm: /portal sends signed-out visitors to /login, and /login
-// sends signed-in members to /portal.
+// The button always says Login. Members who are already signed in go straight
+// to /portal: Supabase keeps the session in a cookie the page can read, so no
+// request is needed. The first paint always points at /login (the server can't
+// know), and a stale cookie does no harm: /portal sends signed-out visitors to
+// /login, and /login sends signed-in members to /portal.
 const SESSION_COOKIE = /(?:^|;\s*)sb-[^=;]+-auth-token(?:\.\d+)?=/;
 const subscribeNever = () => () => {};
 
@@ -186,7 +186,7 @@ function useLogin() {
     () => SESSION_COOKIE.test(document.cookie),
     () => false,
   );
-  return signedIn ? { href: "/portal", label: "Portal" } : { href: "/login", label: "Log In" };
+  return { href: signedIn ? "/portal" : "/login", label: "Login" };
 }
 
 function NavAnchor({ link, className, onClick }: { link: NavLink; className: string; onClick?: () => void }) {
