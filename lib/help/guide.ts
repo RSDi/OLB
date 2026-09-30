@@ -322,7 +322,7 @@ Requirements start over each season, since each season has its own roster. The l
 - **Edit** a contact from its page. If someone else saved it after you opened it, your save stops and says so, so nobody's changes are lost.
 - **History** on a contact's page lists every change to it, newest first: who made it, when, and each field before and after, including what the spreadsheet import added or filled in. **Restore this version** puts an earlier version back; that's saved as a new change, so it can be undone the same way. **Recent changes**, at the top of External Contacts, lists the latest changes to every contact.
 - **Used by** on a contact's page lists the playbooks it's attached to.
-- Choose which types coaches see in **Settings → Contact Types** (**Coaches can see**). Coaches see everything on those contacts, notes included, so keep anything just for the board on another type.
+- Which types coaches see is set by a super-admin in **Settings → Contact Types** (**Coaches can see**). Coaches see everything on those contacts, notes included, so keep anything just for the board on another type.
 
 **Import spreadsheet** (the board) reads the Contacts tab of the HS planning spreadsheet. The Tier I and Tier 2 teams become **Programs** (tagged **nchc** and **ndii**), the gyms **Facilities** and the refs **Referees**, each with its people, their roles, emails and phones, and the teams' colors from the NDII table. You see all of it first; press **Import** to add it. Contacts you already have are only filled in, never overwritten, so importing a newer copy later is safe. If it finds a company you might already have (UBT and UBT Sports Complex, say), pick **Same as …** to fill that one in instead of adding another.
 
@@ -528,7 +528,7 @@ Activity is recorded from the day this page went live.`,
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
-**Coaches** (a member in a leadership volunteer role on a team, like Head coach) also plan the **HS Schedule** with the board, and read the External Contacts types the board shares with them (**Settings → Contact Types**, **Coaches can see**), without changing them.
+**Coaches** (a member in a leadership volunteer role on a team, like Head coach) also plan the **HS Schedule** with the board, and read the External Contacts types shared with them (a super-admin ticks **Coaches can see** in **Settings → Contact Types**), without changing them.
 
 **Board extras around the portal**
 
