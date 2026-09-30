@@ -20,13 +20,18 @@ import {
   levelPlays,
   formatWeekendDates,
   levelTotals,
+  matchesWeekendFilters,
   matchingWeekends,
   monthHeading,
   monthKey,
   nextWeekendDates,
+  opponentKey,
   recordLabel,
   sortWeekends,
   summarizeCell,
+  weekendFacts,
+  weekendFilterCounts,
+  type WeekendFilter,
 } from "../../../../lib/hs-schedule/logic";
 import { seasonLabel } from "../../../../lib/planning/season";
 import type {
@@ -98,6 +103,8 @@ export function ScheduleView({
     dispatch({ type: "reset", state: fromServer(schedule) });
   }
   const [showHidden, setShowHidden] = useState(false);
+  // The chips above the grid: show only the weekends that match any of them.
+  const [filters, setFilters] = useState<ReadonlySet<WeekendFilter>>(() => new Set());
   const [cell, setCell] = useState<CellTarget | null>(null);
   const [sheet, setSheet] = useState<SheetState>(null);
   const [error, setError] = useState<string | null>(null);
@@ -107,9 +114,33 @@ export function ScheduleView({
   const contacts = useMemo(() => new Map<string, HsContactRef>(schedule.contacts.map((c) => [c.id, c])), [schedule.contacts]);
   const levels = useMemo(() => [...state.levels].sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label)), [state.levels]);
   const hiddenCount = levels.filter((l) => l.hidden).length;
-  const shownLevels = levels.filter((l) => showHidden || !l.hidden);
+  const shownLevels = useMemo(() => levels.filter((l) => showHidden || !l.hidden), [levels, showHidden]);
   const weekends = useMemo(() => sortWeekends(state.weekends), [state.weekends]);
-  const totals = useMemo(() => levelTotals(levels, weekends, state.games, state.opponents), [levels, weekends, state.games, state.opponents]);
+  const facts = useMemo(
+    () => weekendFacts(weekends, state.games, state.opponents, new Set(shownLevels.map((l) => l.id))),
+    [weekends, state.games, state.opponents, shownLevels]
+  );
+  const filterCounts = useMemo(() => weekendFilterCounts(weekends, facts), [weekends, facts]);
+  // A weekend whose card is open stays put while it's edited, even once it
+  // no longer matches.
+  const openWeekendId = cell?.weekend.id ?? null;
+  const shownWeekends = useMemo(
+    () => weekends.filter((w) => w.id === openWeekendId || matchesWeekendFilters(w, filters, facts)),
+    [weekends, filters, facts, openWeekendId]
+  );
+  const filtering = filters.size > 0;
+  const totals = useMemo(
+    () => levelTotals(levels, shownWeekends, state.games, state.opponents),
+    [levels, shownWeekends, state.games, state.opponents]
+  );
+  const totalLabel = filtering ? `Total for these ${shownWeekends.length} weekend${shownWeekends.length === 1 ? "" : "s"}` : "Total games";
+  const toggleFilter = (f: WeekendFilter) =>
+    setFilters((cur) => {
+      const next = new Set(cur);
+      if (next.has(f)) next.delete(f);
+      else next.add(f);
+      return next;
+    });
   const gamesAt = useCallback(
     (w: string, l: string) => state.games.find((g) => g.weekend_id === w && g.level_id === l),
     [state.games]
@@ -176,14 +207,14 @@ export function ScheduleView({
 
   const byMonth = useMemo(() => {
     const out: { key: string; heading: string; rows: HsWeekend[] }[] = [];
-    for (const w of weekends) {
+    for (const w of shownWeekends) {
       const k = monthKey(w.starts_on);
       const last = out[out.length - 1];
       if (last && last.key === k) last.rows.push(w);
       else out.push({ key: k, heading: monthHeading(w.starts_on), rows: [w] });
     }
     return out;
-  }, [weekends]);
+  }, [shownWeekends]);
 
   const comparing = compare ? seasonLabel(compare.season) : null;
   const sheetWeekend = sheet?.kind === "weekend" && sheet.id ? weekends.find((w) => w.id === sheet.id) ?? null : null;
@@ -261,20 +292,16 @@ export function ScheduleView({
         </div>
       </div>
 
-      {/* ─── Title, key and view options ─── */}
+      {/* ─── The key, which filters the weekends, and view options ─── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }} data-tour="schedule-legend">
-          <span style={{ fontSize: 13, fontWeight: 700, marginRight: 4 }}>{season.title}</span>
-          {WEEKEND_STATUSES.filter((s) => s.legend).map((s) => (
-            <StatusChip key={s.value} status={s.value} small />
-          ))}
-          <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
-            <UnsureSample /> not sure yet
-          </span>
-          <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
-            <FenceDot /> teams on the fence
-          </span>
-        </div>
+        <WeekendFilters
+          filters={filters}
+          counts={filterCounts}
+          total={weekends.length}
+          shown={shownWeekends.length}
+          onToggle={toggleFilter}
+          onClear={() => setFilters(new Set())}
+        />
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {hiddenCount > 0 && (
             <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
@@ -326,6 +353,13 @@ export function ScheduleView({
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
             Add the season&apos;s weekends one at a time, or import them from the planning spreadsheet.
           </div>
+        </div>
+      ) : shownWeekends.length === 0 ? (
+        <div className="rsd-card" style={{ textAlign: "center", padding: "32px 24px", gap: 10, alignItems: "center" }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>No weekends match</div>
+          <Pill variant="ghost" size="sm" onClick={() => setFilters(new Set())}>
+            Show every weekend
+          </Pill>
         </div>
       ) : (
         <>
@@ -381,7 +415,7 @@ export function ScheduleView({
               <tfoot>
                 <tr>
                   <td colSpan={3 + (comparing ? 1 : 0)} style={{ ...footCell, textAlign: "right" }}>
-                    Total games
+                    {totalLabel}
                   </td>
                   {shownLevels.map((l) => {
                     const t = totals.get(l.id)!;
@@ -422,7 +456,7 @@ export function ScheduleView({
               </div>
             ))}
             <div className="rsd-card" style={{ gap: 8, padding: 14 }}>
-              <div style={monthLabel}>Total games</div>
+              <div style={monthLabel}>{totalLabel}</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {shownLevels.map((l) => {
                   const t = totals.get(l.id)!;
@@ -531,7 +565,7 @@ function teamLine(opps: HsOpponent[], contacts: Map<string, HsContactRef>): { na
   let fence = 0;
   const fenceSeen = new Set<string>();
   for (const o of opps) {
-    const key = o.contact_id ?? o.name.toLowerCase();
+    const key = opponentKey(o);
     const name = (o.contact_id && contacts.get(o.contact_id)?.name) || o.name;
     if (o.status === "confirmed" && !seen.has(key)) {
       seen.add(key);
@@ -539,7 +573,7 @@ function teamLine(opps: HsOpponent[], contacts: Map<string, HsContactRef>): { na
     }
   }
   for (const o of opps) {
-    const key = o.contact_id ?? o.name.toLowerCase();
+    const key = opponentKey(o);
     if (o.status === "tentative" && !seen.has(key) && !fenceSeen.has(key)) {
       fenceSeen.add(key);
       fence++;
@@ -862,6 +896,128 @@ function SeasonArrow({ href, label, children }: { href: string | null; label: st
     <span aria-label={label} style={style}>
       {children}
     </span>
+  );
+}
+
+// The key above the grid, which is also its filter: tap a color (or "not
+// sure yet", "on the fence") to show just those weekends — what still needs
+// work, what's waiting, what's good to go. Tap more to add them; All shows
+// every weekend again.
+function WeekendFilters({
+  filters,
+  counts,
+  total,
+  shown,
+  onToggle,
+  onClear,
+}: {
+  filters: ReadonlySet<WeekendFilter>;
+  counts: Map<WeekendFilter, number>;
+  total: number;
+  shown: number;
+  onToggle: (f: WeekendFilter) => void;
+  onClear: () => void;
+}) {
+  const neutral = { bar: "var(--gw-border)", tint: "var(--gw-bg-elev)", ink: "var(--gw-fg)" };
+  // The spreadsheet's four colors always (they're the key); Planned, Off and
+  // Canceled when the season has any, so every weekend has a chip.
+  const statuses = WEEKEND_STATUSES.filter((s) => s.legend || (counts.get(s.value) ?? 0) > 0 || filters.has(s.value));
+  return (
+    <div role="group" aria-label="Show weekends" data-tour="schedule-legend" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+      <FilterChip label="All" count={total} active={filters.size === 0} tone={neutral} onClick={onClear} />
+      {statuses.map((s) => (
+        <FilterChip
+          key={s.value}
+          label={s.label}
+          count={counts.get(s.value) ?? 0}
+          active={filters.has(s.value)}
+          tone={s.value === "planned" ? neutral : STATUS_STYLE[s.value]}
+          mark={
+            <span
+              aria-hidden
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 4,
+                flexShrink: 0,
+                boxSizing: "border-box",
+                ...(s.value === "planned" ? { border: "1.5px solid var(--gw-fg-muted)" } : { background: STATUS_STYLE[s.value].bar }),
+              }}
+            />
+          }
+          onClick={() => onToggle(s.value)}
+        />
+      ))}
+      <FilterChip
+        label="Not sure yet"
+        count={counts.get("unsure") ?? 0}
+        active={filters.has("unsure")}
+        tone={neutral}
+        mark={<UnsureSample />}
+        onClick={() => onToggle("unsure")}
+      />
+      <FilterChip
+        label="Teams on the fence"
+        count={counts.get("fence") ?? 0}
+        active={filters.has("fence")}
+        tone={neutral}
+        mark={<FenceDot />}
+        onClick={() => onToggle("fence")}
+      />
+      {filters.size > 0 && (
+        <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }} aria-live="polite">
+          {shown} of {total} weekends
+        </span>
+      )}
+    </div>
+  );
+}
+
+function FilterChip({
+  label,
+  count,
+  active,
+  tone,
+  mark,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  tone: { bar: string; tint: string; ink: string };
+  mark?: React.ReactNode;
+  onClick: () => void;
+}) {
+  const empty = count === 0 && !active;
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      disabled={empty}
+      onClick={onClick}
+      title={empty ? "No weekends this season" : undefined}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        minHeight: 30,
+        padding: "4px 11px",
+        borderRadius: 100,
+        border: `1px solid ${tone.bar}`,
+        background: tone.tint,
+        color: tone.ink,
+        boxShadow: active ? `0 0 0 2px ${tone.ink}` : "none",
+        fontSize: 12,
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+        cursor: empty ? "default" : "pointer",
+        opacity: empty ? 0.45 : 1,
+      }}
+    >
+      {active ? <Icons.Check width={12} height={12} /> : mark}
+      {label}
+      <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 800, opacity: 0.7 }}>{count}</span>
+    </button>
   );
 }
 

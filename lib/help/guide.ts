@@ -286,10 +286,12 @@ Requirements start over each season, since each season has its own roster. The l
     group: "HS Schedule",
     audience: "coaches",
     routes: ["/portal/schedule"],
-    keywords: ["schedule", "hs schedule", "high school", "season", "weekend", "tournament", "games", "varsity", "jv", "14u", "opponents", "teams coming", "on the fence", "maybe", "confirmed", "not coming", "facility", "secured", "trip", "overnight", "notes", "scores", "results", "record", "compare", "last season", "columns", "import", "spreadsheet", "coaches"],
+    keywords: ["schedule", "hs schedule", "high school", "season", "weekend", "tournament", "games", "varsity", "jv", "14u", "opponents", "teams coming", "on the fence", "maybe", "confirmed", "not coming", "facility", "secured", "trip", "overnight", "notes", "scores", "results", "record", "compare", "last season", "columns", "import", "spreadsheet", "coaches", "filter", "needs work", "good to go", "waiting", "to do"],
     body: `The high school season weekend by weekend, laid out like the planning spreadsheet's "HS Schedule" tab, for the coaches and the board. Every season has its own schedule, and the earlier ones stay to look back on.
 
 **The grid.** A row per weekend, grouped by month: the dates and days, **Where** and the trip, the **Event**, a column for each of our teams (V, JV1, JV2, 14U A…) with its games, and **Notes** (the venue and game times). The event's color says how it stands, as in the spreadsheet: **Tentative** (red), **Need to secure facility** (yellow), **Final details in process** (pale yellow) and **Facility secured** (green); off and open weekends are grey. Under the event are the teams coming and how many are on the fence. **Total games** at the bottom adds up each team's games, with the record for a season that has scores.
+
+**Show just some weekends.** The colors above the schedule are filters too, each with how many weekends it has. Tap **Tentative** or **Need to secure facility** to see what still needs work, **Final details in process** for what's waiting, or **Facility secured** for what's good to go. **Not sure yet** shows the weekends with a **3?**, and **Teams on the fence** the ones with a maybe. Tap more than one to see them together, and **All** to see every weekend again. While you're filtering, the total at the bottom adds up just the weekends showing.
 
 **Who's coming.** Hover over a team's count (tap it on a phone) to see its games and the teams coming: **Coming**, **On the fence** and **Not coming**, each linked to its program in External Contacts. A **3?** with a dashed line means the games aren't settled yet; a small amber dot means a team is on the fence.
 
@@ -297,7 +299,7 @@ Requirements start over each season, since each season has its own roster. The l
 
 **A weekend's details.** Tap the event, or **Weekend details** on the card, to change its dates, **Where**, **Trip**, **Status**, **Notes**, **Facility** and **Details**, set every team's games at once and see every team coming. **Add weekend** adds one; **Delete** removes one.
 
-**Seasons.** Use the arrows, or the season buttons, to move between seasons. **Compare with** puts another season's same weekend beside each row, so you can see what we did a year ago. **Season** changes the title, the notes and the columns: add, rename, reorder or hide one, or link it to its team in the Directory. The board can also **Start 2027–28 from 2026–27** there (the same weekends a year on, with the teams that came now on the fence), or add a **+ New season**.
+**Seasons.** Use the arrows, or the season buttons, to move between seasons. **Compare with** puts another season's same weekend beside each row, so you can see what we did a year ago. **Season** changes the notes and the columns: add, rename, reorder or hide one, or link it to its team in the Directory. The board can also **Start 2027–28 from 2026–27** there (the same weekends a year on, with the teams that came now on the fence), or add a **+ New season**.
 
 **Import spreadsheet** (the board) reads the planning spreadsheet's "HS Schedule - 26-27" tabs along with its Contacts tab: each season's weekends, games, colors and notes, the teams named in each event (the ones after "Potentials" or "Possibly" go on the fence) and the scores. The preview lists what it found for every weekend before anything is saved; a season that's already here is only replaced if you tick **Replace**.
 

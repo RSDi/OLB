@@ -285,13 +285,11 @@ export async function moveLevel(id: string, direction: -1 | 1): Promise<Result<n
 
 // ─── Seasons ────────────────────────────────────────────────────────────────
 
-export async function updateSeason(id: string, input: { title: string; notes: string | null }): Promise<Result<null>> {
+export async function updateSeason(id: string, input: { notes: string | null }): Promise<Result<null>> {
   const gate = await requireHsPlanner();
   if ("error" in gate) return { error: gate.error };
-  const title = text(input.title, 120);
-  if (!title) return { error: "Give the schedule a title." };
   const supabase = await createClient();
-  const { error } = await supabase.from("hs_seasons").update({ title, notes: longText(input.notes, 4000) }).eq("id", id);
+  const { error } = await supabase.from("hs_seasons").update({ notes: longText(input.notes, 4000) }).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/portal/schedule");
   return { data: null };
