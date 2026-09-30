@@ -1,9 +1,13 @@
 // Expands recurring events into concrete dated occurrences for the calendar/
 // list views. Date resolution lives in lib/events/recurrence.ts (shared with
-// the shutdown generator); here we just turn each date into a start/end instant
-// by whole-day-shifting the anchor — preserving wall-clock time and duration.
+// the shutdown generator); here each date gets the event's Central wall-clock
+// start time and its duration. Everything is worked out in the club's timezone
+// (lib/dates/zoned.ts), not the server's: stepping the first start forward in
+// whole UTC days turned a 6:00 PM practice into 5:00 PM once daylight saving
+// ended, and put evening events (already tomorrow in UTC) on the day before.
 
-import { eventOccurrenceDates, type EventRecurrence } from "./recurrence";
+import { eventOccurrenceDates, type EventRecurrence } from "./recurrence.ts"; // explicit extension so node --test can load this file
+import { zonedParts, zonedTimeToUtc } from "../dates/zoned.ts";
 
 export type EventRecurrenceFields = EventRecurrence & {
   end_at: string | null;
@@ -16,27 +20,16 @@ export interface EventOccurrence<T> {
   recurringInstance: boolean;
 }
 
-const DAY_MS = 86400000;
-
-function ymdLocal(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function parseLocalMs(s: string): number {
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d).getTime();
-}
-
 // Expand events into occurrences. Non-recurring events pass through as a single
 // occurrence (their anchor); the caller applies the upcoming/past split.
-// Recurring events are bounded to [window.from, window.to].
+// Recurring events are bounded to the Central dates of [window.from, window.to].
 export function expandEventOccurrences<T extends EventRecurrenceFields>(
   events: T[],
   window: { from: Date; to: Date }
 ): EventOccurrence<T>[] {
   const out: EventOccurrence<T>[] = [];
-  const fromStr = ymdLocal(window.from);
-  const toStr = ymdLocal(window.to);
+  const fromStr = zonedParts(window.from).ymd;
+  const toStr = zonedParts(window.to).ymd;
 
   for (const ev of events) {
     if (!ev.recurring) {
@@ -44,19 +37,16 @@ export function expandEventOccurrences<T extends EventRecurrenceFields>(
       continue;
     }
 
-    const dates = eventOccurrenceDates(ev, fromStr, toStr);
     const anchor = new Date(ev.start_at);
-    const anchorMs = anchor.getTime();
-    const anchorDayMs = parseLocalMs(ymdLocal(anchor));
-    const endMs = ev.end_at ? new Date(ev.end_at).getTime() : null;
+    const wall = zonedParts(anchor);
+    const durationMs = ev.end_at ? new Date(ev.end_at).getTime() - anchor.getTime() : null;
 
-    for (const ds of dates) {
-      const diffDays = Math.round((parseLocalMs(ds) - anchorDayMs) / DAY_MS);
-      const shift = diffDays * DAY_MS;
+    for (const ds of eventOccurrenceDates(ev, fromStr, toStr)) {
+      const start = zonedTimeToUtc(ds, wall);
       out.push({
         event: ev,
-        startAt: new Date(anchorMs + shift).toISOString(),
-        endAt: endMs != null ? new Date(endMs + shift).toISOString() : null,
+        startAt: start.toISOString(),
+        endAt: durationMs != null ? new Date(start.getTime() + durationMs).toISOString() : null,
         recurringInstance: true,
       });
     }
