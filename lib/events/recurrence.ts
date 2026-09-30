@@ -7,6 +7,8 @@
 //              recur_monthly_weekday (0-6)
 //   - recur_until (inclusive end) + recur_except (skip dates)
 
+import { zonedParts } from "../dates/zoned.ts"; // explicit extension so node --test can load this file
+
 export interface EventRecurrence {
   start_at: string;
   recurring?: boolean | null;
@@ -66,7 +68,9 @@ export function monthlyOccurrence(year: number, month0: number, week: number, we
 export function eventOccurrenceDates(ev: EventRecurrence, fromStr: string, toStr: string): string[] {
   if (!ev.recurring) return [];
 
-  const anchorDateStr = ymdLocal(new Date(ev.start_at));
+  // The first occurrence's date where the club is, not in the server's
+  // timezone: a 7:30 PM Monday start is already Tuesday in UTC.
+  const anchorDateStr = zonedParts(new Date(ev.start_at)).ymd;
   const start = fromStr > anchorDateStr ? fromStr : anchorDateStr;
   const until = ev.recur_until && ev.recur_until < toStr ? ev.recur_until : toStr;
   if (start > until) return [];
