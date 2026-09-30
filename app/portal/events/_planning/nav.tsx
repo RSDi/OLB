@@ -55,23 +55,25 @@ export function PlanningTabs({
   role: string | null;
   pendingCount: number;
 }) {
-  const tabs: { key: PlanningView; label: string }[] = [
-    { key: "upcoming", label: "Upcoming" },
-    { key: "past", label: "Past" },
-    { key: "all", label: "All" },
+  // `tour`: the tab's guided-tour anchor (lib/help/tours.ts).
+  const tabs: { key: PlanningView; label: string; tour: string }[] = [
+    { key: "upcoming", label: "Upcoming", tour: "planning-tab-upcoming" },
+    { key: "past", label: "Past", tour: "planning-tab-past" },
+    { key: "all", label: "All", tour: "planning-tab-all" },
     ...(planner
       ? ([
-          { key: "year", label: "Year" },
-          { key: "review", label: "Review" },
-          { key: "template", label: "Template" },
+          { key: "year", label: "Year", tour: "planning-tab-year" },
+          { key: "review", label: "Review", tour: "planning-tab-review" },
+          { key: "template", label: "Template", tour: "planning-tab-template" },
         ] as const)
       : []),
   ];
   return (
-    <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+    <div data-tour="planning-tabs" style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
       {tabs.map((t) => (
         <Link
           key={t.key}
+          data-tour={t.tour}
           href={planningHref({ view: t.key, role: t.key === "template" ? null : role })}
           style={tabStyle(view === t.key)}
           aria-current={view === t.key ? "page" : undefined}
@@ -121,7 +123,7 @@ export function RoleFilter({
     color: on ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
   });
   return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }} aria-label="Show tasks for">
+    <div data-tour="planning-roles" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }} aria-label="Show tasks for">
       <Link href={hrefFor(null)} style={pill(active === null)}>
         Everyone
       </Link>

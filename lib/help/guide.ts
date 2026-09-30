@@ -149,7 +149,9 @@ Tap **Search home** to start over. To share a search, copy the page's address: i
 
 **Template.** The year month by month: each role's tasks and each month's board meeting topics. **+ Task** and **+ Topic** add one; the pencil edits it (title, notes, month, role, and a **Playbook** to link) and the trash can removes it. Changes shape the next season you send to Review, not the ones already sent.
 
-**Board meetings.** Tap a month's **Board meeting** to open it. Set the **Meeting date** and whether it's **Planned**, **Held** or **No meeting**, edit the **Agenda** (the first draft comes from that month's topics in the template) and write the **Minutes**. Below are the month's tasks, and any from earlier in the season that aren't done, each with **+ Add a note from this meeting**, so what the board decided stays with the task and shows on its page. Press **Save meeting** when you're done.`,
+**Board meetings.** Tap a month's **Board meeting** to open it. Set the **Meeting date** and whether it's **Planned**, **Held** or **No meeting**, edit the **Agenda** (the first draft comes from that month's topics in the template) and write the **Minutes**. Below are the month's tasks, and any from earlier in the season that aren't done, each with **+ Add a note from this meeting**, so what the board decided stays with the task and shows on its page. Press **Save meeting** when you're done.
+
+**Walk me through it.** For a guided tour of all of this, press **Show me around** next to this section's title, or tap **ⓘ** on Planning and then **Show me around**.`,
   },
   {
     id: "directory",

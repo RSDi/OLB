@@ -124,9 +124,11 @@ export function PlanningRolesTab() {
           role at a time. Name who holds a role and the tasks the board keeps for it are assigned to them.
         </div>
         {!adding && (
-          <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
-            <Icons.Plus width={14} height={14} /> Add role
-          </Pill>
+          <span data-tour="planning-roles-add">
+            <Pill variant="accent" size="sm" onClick={() => setAdding(true)}>
+              <Icons.Plus width={14} height={14} /> Add role
+            </Pill>
+          </span>
         )}
       </div>
 
@@ -170,7 +172,7 @@ export function PlanningRolesTab() {
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>No roles yet.</div>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div data-tour="planning-roles-list" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {roles.map((r) =>
             editingId === r.id ? (
               <RoleForm

@@ -38,6 +38,7 @@ export function MeetingRow({
   return (
     <Link
       href={meetingHref(month)}
+      data-tour="planning-meeting"
       className="gw-press"
       style={{
         display: "flex",

@@ -99,6 +99,7 @@ export function MeetingForm({
               />
             ) : (
               <button
+                data-tour="meeting-task-note"
                 type="button"
                 onClick={() => setOpen((p) => new Set(p).add(t.id))}
                 style={{
@@ -122,7 +123,7 @@ export function MeetingForm({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 72 }}>
-      <div className="rsd-card" style={{ gap: 14, padding: "16px 20px" }}>
+      <div data-tour="meeting-when" className="rsd-card" style={{ gap: 14, padding: "16px 20px" }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div style={{ width: 200 }}>
             <Input label="Meeting date" type="date" value={meetsOn} onChange={(e) => setMeetsOn(e.target.value)} />
@@ -163,7 +164,7 @@ export function MeetingForm({
         </div>
       </div>
 
-      <div className="rsd-card" style={{ gap: 10, padding: "16px 20px" }}>
+      <div data-tour="meeting-agenda" className="rsd-card" style={{ gap: 10, padding: "16px 20px" }}>
         <div>
           <h3 style={cardTitle}>Agenda</h3>
           <div style={cardHint}>
@@ -175,7 +176,7 @@ export function MeetingForm({
         <MarkdownEditor value={agenda} onChange={setAgenda} rows={8} placeholder={"- Topic one\n- Topic two"} />
       </div>
 
-      <div className="rsd-card" style={{ gap: 10, padding: "16px 20px" }}>
+      <div data-tour="meeting-minutes" className="rsd-card" style={{ gap: 10, padding: "16px 20px" }}>
         <div>
           <h3 style={cardTitle}>Minutes</h3>
           <div style={cardHint}>Who was there, what was discussed, what was decided. Notes on a single task go with that task below.</div>
@@ -183,7 +184,7 @@ export function MeetingForm({
         <MarkdownEditor value={minutes} onChange={setMinutes} rows={14} placeholder={"Present: …\n\nDecisions: …"} />
       </div>
 
-      <div className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
+      <div data-tour="meeting-tasks" className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px" }}>
           <h3 style={cardTitle}>This month&apos;s tasks</h3>
           <div style={cardHint}>
@@ -210,6 +211,7 @@ export function MeetingForm({
       )}
 
       <div
+        data-tour="meeting-save"
         style={{
           position: "sticky",
           // Clear of the scroll-to-top button in the corner.

@@ -888,6 +888,155 @@ export const GUIDE_TOURS: GuideTour[] = [
       },
     ],
   },
+  {
+    id: "planning",
+    sectionId: "planning",
+    alsoSections: ["settings-planning-roles"],
+    title: "Planning walkthrough",
+    route: "/portal/events",
+    steps: [
+      {
+        title: "The board's year, in one place",
+        body: "Five parts: the **calendar**, **Review** (choosing this season's tasks), the **Template** they come from, the monthly **board meeting**, and **who holds each role**. Anything that isn't there yet, like a task before you've kept one, is skipped.",
+      },
+      // Part 1 — the calendar tabs.
+      {
+        part: "The calendar",
+        target: "planning-tabs",
+        title: "Planning's tabs",
+        body: "**Upcoming** starts with this month, **Past** starts with last month and goes back, and **All** is everything. **Year**, **Review** and **Template** are the board's.",
+      },
+      {
+        target: "planning-month",
+        click: "planning-tab-upcoming",
+        title: "A month at a time",
+        body: "Each month shows its board meeting, its events, and the tasks the board kept for it under **To do**. A practice that repeats is one line, with how many times it meets that month.",
+      },
+      {
+        target: "planning-meeting",
+        title: "The month's board meeting",
+        body: "Every month has one. Tap it for the date, agenda and minutes. We'll open this month's in part 4.",
+      },
+      {
+        target: "planning-task",
+        title: "A task",
+        body: "Tap the circle to mark it done, or tap the task to assign it, comment or add to-dos. The book chip opens the playbook that explains how.",
+      },
+      {
+        target: "planning-roles",
+        title: "One role at a time",
+        body: "Show just the President's tasks, the Athletic Director's, and so on. **Everyone** shows them all again.",
+      },
+      {
+        target: "planning-season",
+        click: "planning-tab-year",
+        title: "Year",
+        body: "One season on a page, August through July. The arrows step back to last season or ahead to the next.",
+      },
+      {
+        target: "planning-year-grid",
+        title: "A card per month",
+        body: "Each month's meeting, its tasks (with how many are done) and its events. The year-round duties are listed underneath.",
+      },
+      // Part 2 — keeping or tossing a season's tasks.
+      {
+        part: "Review a season",
+        target: "planning-review-show",
+        click: "planning-tab-review",
+        title: "Review",
+        body: "Each season starts as a copy of the Template. **Needs review** is what's waiting; **Kept** and **Tossed** are what the board decided.",
+      },
+      {
+        target: "planning-review-decide",
+        title: "Keep or Toss",
+        body: "**Keep** puts a task on the calendar and in Opportunities, assigned to whoever holds its role. **Toss** leaves it out this season. **Back to Review** undoes either.",
+      },
+      {
+        target: "planning-keep-all",
+        title: "Keep all",
+        body: "Takes a whole month's tasks as they are.",
+      },
+      {
+        target: "planning-season-sender",
+        title: "Start a season",
+        body: "**Send … to Review** copies every monthly task in the Template into the season you pick. Pressing it again only adds new template items, and never brings back what you tossed.",
+      },
+      // Part 3 — the yearly template.
+      {
+        part: "The template",
+        target: "planning-template-month",
+        click: "planning-tab-template",
+        title: "The Template",
+        body: "The year month by month: each role's tasks, starting from the President and AD timeline. Changes here shape the next season you send to Review.",
+      },
+      {
+        target: "planning-template-add",
+        title: "+ Task",
+        body: "Adds a task to a month, or to **Year-round** for duties that run all season.",
+      },
+      {
+        target: "planning-template-edit",
+        title: "Edit or remove",
+        body: "The pencil changes the title, notes, month, role and **Playbook** link. The trash can removes it. Seasons already sent keep their copy.",
+      },
+      {
+        target: "planning-template-agenda",
+        title: "Board meeting topics",
+        body: "Standing topics for that month's meeting. **+ Topic** adds one. They become the first draft of the month's agenda.",
+      },
+      // Part 4 — this month's board meeting (a fixed address for the current month).
+      {
+        part: "Board meetings",
+        route: "/portal/events/meetings/this-month",
+        target: "meeting-when",
+        title: "This month's board meeting",
+        body: "Set the **Meeting date**, and mark it **Held** afterwards, or **No meeting** for a month without one.",
+      },
+      {
+        route: "/portal/events/meetings/this-month",
+        target: "meeting-agenda",
+        title: "Agenda",
+        body: "Drafted from this month's topics in the Template. Edit it freely.",
+      },
+      {
+        route: "/portal/events/meetings/this-month",
+        target: "meeting-minutes",
+        title: "Minutes",
+        body: "Who was there, what was discussed and what was decided.",
+      },
+      {
+        route: "/portal/events/meetings/this-month",
+        target: "meeting-task-note",
+        title: "A note on each task",
+        body: "Tap **+ Add a note from this meeting** under a task. The note also shows on the task's own page, so the decision stays with the task.",
+      },
+      {
+        route: "/portal/events/meetings/this-month",
+        target: "meeting-save",
+        title: "Save meeting",
+        body: "Saves the date, agenda, minutes and notes together.",
+      },
+      // Part 5 — Settings → Planning Roles.
+      {
+        part: "Who holds each role",
+        route: "/portal/settings",
+        target: "planning-roles-list",
+        click: "settings-tab-planning-roles",
+        title: "Settings → Planning Roles",
+        body: "**Held by** is who has each role this season. When the board keeps a task, it's assigned to that person.",
+      },
+      {
+        route: "/portal/settings",
+        target: "planning-roles-add",
+        title: "Add role",
+        body: "Add another role if you need one. The pencil edits a role, for example when a new President takes over.",
+      },
+      {
+        title: "That's Planning",
+        body: "Take this tour again with **Show me around** in the **ⓘ** panel on Planning, or from the **User Guide**.",
+      },
+    ],
+  },
 ];
 
 export function canSeeTour(tour: GuideTour, viewer: GuideViewer | null | undefined): boolean {
@@ -943,6 +1092,7 @@ export function nextPartIndex(steps: TourStep[], index: number): number {
 }
 
 export const REQUIREMENTS_TOUR_ID = "requirements";
+export const PLANNING_TOUR_ID = "planning";
 
 // The tour for a guide section, if it has one this viewer can take.
 export function tourForSection(sectionId: string, viewer: GuideViewer | null | undefined): GuideTour | null {
