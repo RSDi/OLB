@@ -2,6 +2,8 @@
 // declines their request. Mirrors new-ticket.ts in shape and graceful
 // degradation (no-ops if RESEND_API_KEY is missing or there's no recipient).
 
+import { mailFrom, mailReplyTo } from "./mail";
+
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export async function sendRequestDecisionNotification({
@@ -28,7 +30,7 @@ export async function sendRequestDecisionNotification({
     console.warn("[notify] No recipient email for request decision — skipping");
     return;
   }
-  const from = process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
+  const from = mailFrom("OLB Portal");
   const hi = recipientName ? `Hi ${escapeHtml(recipientName.split(" ")[0])},` : "Hi,";
 
   const subject =
@@ -57,7 +59,7 @@ export async function sendRequestDecisionNotification({
   const res = await fetch(RESEND_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ from, to: [to], subject, html: body }),
+    body: JSON.stringify({ from, to: [to], reply_to: mailReplyTo(), subject, html: body }),
   });
 
   if (!res.ok) {

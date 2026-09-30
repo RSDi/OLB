@@ -3,6 +3,7 @@
 // visitor is told rather than losing the message.
 
 import type { ContactMessage } from "../contact/message";
+import { mailFrom } from "./mail.ts"; // explicit extension so node --test can load this file
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -12,7 +13,7 @@ export async function sendContactMessageEmail(m: ContactMessage, to: string): Pr
     console.warn("[notify] RESEND_API_KEY not set — can't deliver contact-form message");
     return false;
   }
-  const from = process.env.MAIL_FROM || "Omaha Lightning Basketball <onboarding@resend.dev>";
+  const from = mailFrom();
   const name = `${m.fname} ${m.lname}`;
 
   const html = `

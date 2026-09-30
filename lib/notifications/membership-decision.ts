@@ -3,6 +3,8 @@
 // request-decision.ts in shape and graceful degradation (no-ops if
 // RESEND_API_KEY is missing or there's no recipient).
 
+import { mailFrom, mailReplyTo } from "./mail";
+
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export async function sendMembershipApprovedNotification({
@@ -21,7 +23,7 @@ export async function sendMembershipApprovedNotification({
     console.warn("[notify] No recipient email for membership approval — skipping");
     return;
   }
-  const from = process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
+  const from = mailFrom("OLB Portal");
   const hi = recipientName ? `Hi ${escapeHtml(recipientName.split(" ")[0])},` : "Hi,";
 
   const body = `
@@ -34,7 +36,7 @@ export async function sendMembershipApprovedNotification({
   const res = await fetch(RESEND_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ from, to: [to], subject: "You're in — Omaha Lightning member portal", html: body }),
+    body: JSON.stringify({ from, to: [to], reply_to: mailReplyTo(), subject: "You're in — Omaha Lightning member portal", html: body }),
   });
 
   if (!res.ok) {

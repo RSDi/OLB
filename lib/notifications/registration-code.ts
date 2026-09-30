@@ -3,6 +3,8 @@
 // when it can't send (no RESEND_API_KEY, or Resend refused), so the form
 // carries on without it.
 
+import { mailFrom, mailReplyTo } from "./mail";
+
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 export async function sendRegistrationCode({ to, code }: { to: string; code: string }): Promise<boolean> {
@@ -11,8 +13,7 @@ export async function sendRegistrationCode({ to, code }: { to: string; code: str
     console.warn("[notify] RESEND_API_KEY not set — skipping registration code email");
     return false;
   }
-  // A blank MAIL_FROM counts as unset, as it does for the Contact form.
-  const from = process.env.MAIL_FROM?.trim() || "Omaha Lightning Basketball <onboarding@resend.dev>";
+  const from = mailFrom();
   const body = `
     <p>Here's your code for Omaha Lightning Basketball registration:</p>
     <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:16px 0">${code}</p>
@@ -25,6 +26,7 @@ export async function sendRegistrationCode({ to, code }: { to: string; code: str
     body: JSON.stringify({
       from,
       to: [to],
+      reply_to: mailReplyTo(),
       subject: `${code} is your Omaha Lightning registration code`,
       html: body,
       text: `Your Omaha Lightning Basketball registration code is ${code}. It works for 10 minutes.`,
