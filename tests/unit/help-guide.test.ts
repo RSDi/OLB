@@ -94,6 +94,21 @@ test("admins see admin sections but not super-admin ones", () => {
   assert.ok(guideSectionsFor(SUPER).some((s) => s.audience === "super_admin"));
 });
 
+test("coaches see the coaches' sections, other members don't", () => {
+  const COACH: GuideViewer = { ...MEMBER, isCoach: true };
+  const forCoach = guideSectionsFor(COACH);
+  assert.ok(forCoach.some((s) => s.id === "hs-schedule"));
+  assert.ok(forCoach.some((s) => s.id === "external-contacts"));
+  assert.ok(forCoach.every((s) => s.audience === "everyone" || s.audience === "coaches"));
+  assert.equal(guideSectionForPath("/portal/schedule", COACH)?.id, "hs-schedule");
+  assert.equal(guideSectionForPath("/portal/contacts/abc", COACH)?.id, "external-contacts");
+  assert.ok(!guideSectionsFor(MEMBER).some((s) => s.audience === "coaches"));
+  assert.equal(guideSectionForPath("/portal/schedule", MEMBER), null);
+  // The board reads them too; a pending coach doesn't.
+  assert.ok(guideSectionsFor(ADMIN).some((s) => s.id === "hs-schedule"));
+  assert.ok(!guideSectionsFor({ ...COACH, status: "pending" }).some((s) => s.audience === "coaches"));
+});
+
 test("a pending account is treated as a member", () => {
   const pendingAdmin: GuideViewer = { role: "admin", status: "pending", isStaff: false };
   assert.ok(guideSectionsFor(pendingAdmin).every((s) => s.audience === "everyone"));

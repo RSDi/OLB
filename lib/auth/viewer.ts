@@ -146,6 +146,23 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   };
 });
 
+// A coach: an approved member in a leadership volunteer role (Head coach,
+// Assistant coach…) on a team (is_coach(), migration 0108). Coaches plan the
+// HS Schedule and read the External Contacts types the board shares with
+// them (0109). Asked at most once per request, and never for the board, who
+// see all of that anyway, or for accounts not approved yet: for them it's
+// false.
+export const getIsCoach = cache(async (): Promise<boolean> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("is_coach");
+  return !error && data === true;
+});
+
+export async function viewerIsCoach(viewer: Viewer | null): Promise<boolean> {
+  if (!viewer || viewer.isStaff || viewer.status !== "approved") return false;
+  return getIsCoach();
+}
+
 // Pending-approval count drives the badge on the Settings nav item. Only
 // super-admins can action the queue, so the layout only requests this when
 // the viewer qualifies.

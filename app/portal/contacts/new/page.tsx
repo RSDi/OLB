@@ -12,7 +12,7 @@ export default async function NewContactPage({
 }: {
   searchParams: Promise<{ kind?: string; parent?: string }>;
 }) {
-  await loadContactsViewer();
+  await loadContactsViewer({ board: true });
   const { kind, parent } = await searchParams;
 
   const [categories, companies] = await Promise.all([

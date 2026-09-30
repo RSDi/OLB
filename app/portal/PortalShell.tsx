@@ -44,7 +44,9 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/events":      { title: "Calendar",     subtitle: "Planning" },
   "/portal/directory":   { title: "Players & parents", subtitle: "Directory" },
   "/portal/contacts":    { title: "External Contacts", subtitle: "" },
+  "/portal/schedule":    { title: "HS Schedule",  subtitle: "" },
   "/portal/contacts/new": { title: "New contact", subtitle: "External Contacts" },
+  "/portal/contacts/changes": { title: "Recent changes", subtitle: "External Contacts" },
   "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
   "/portal/payments":    { title: "Payments",     subtitle: "" },
   "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
@@ -183,6 +185,8 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       ? { title: "Board meeting", subtitle: "Planning" }
       : pathname.startsWith("/portal/events/")
       ? { title: "Edit event", subtitle: "Planning" }
+      : pathname.startsWith("/portal/contacts/") && pathname.endsWith("/history")
+      ? { title: "Contact history", subtitle: "External Contacts" }
       : pathname.startsWith("/portal/contacts/")
       ? { title: "Contact", subtitle: "External Contacts" }
       : pathname.startsWith("/portal/directory/teams/")

@@ -63,9 +63,11 @@ const CONTRACT: Record<string, string> = {
   pm_templates: "id,title,description,area_id,priority_id,schedule_kind,schedule_value,steps,asset_type,active,deleted_at",
   pm_instances: "id,template_id,title,status,scheduled_for,step_checks,notes,completed_at,completed_by,deleted_at",
   pm_instance_assets: "id,instance_id,asset_id,step_checks,notes,status,completed_at,completed_by",
-  contacts: "id,name,phone,email,deleted_at",
+  contacts:
+    "id,kind,parent_contact_id,category_id,name,nickname,email,phone,mobile_phone,notes,tags,deleted_at,title,city,state,alt_email,team_colors,aliases",
   contact_links: "id,contact_id,entity_type,entity_id",
-  contact_categories: "id,name,slug,sort_order",
+  contact_categories: "id,name,slug,sort_order,shared_with_coaches",
+  contact_versions: "id,contact_id,action,changes,snapshot,source,changed_by,impersonator_user_id,changed_at",
   playbooks: "id,title,category_id,excerpt,body_md,created_by,updated_by,deleted_at,steps,wizard_slack_channel,wizard_completion_message",
   playbook_categories: "id,name,deleted_at",
   member_relationships: "id,member_id,related_member_id,relationship",
@@ -114,6 +116,14 @@ const CONTRACT: Record<string, string> = {
   // Meeting history (0105).
   planning_meeting_versions: "id,meeting_id,revision,meets_on,status,agenda_md,minutes_md,changed_by,changed_at",
   planning_meeting_note_versions: "id,meeting_id,task_id,note_md,changed_by,changed_at",
+  // HS Schedule (0108).
+  hs_seasons: "id,season,title,notes,imported_from,imported_at,created_by,created_at,updated_at",
+  hs_levels: "id,season_id,label,name,team_id,hidden,sort_order,created_at,updated_at",
+  hs_weekends:
+    "id,season_id,starts_on,ends_on,event,details,location,trip,status,notes,facility_contact_id,sort_order,created_by,updated_by,created_at,updated_at",
+  hs_weekend_games: "weekend_id,level_id,games,unsure,note,updated_by,updated_at",
+  hs_opponents:
+    "id,weekend_id,level_id,contact_id,name,status,our_score,their_score,note,sort_order,created_by,updated_by,created_at,updated_at",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {

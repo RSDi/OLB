@@ -15,16 +15,31 @@ import type {
   ContactWithRefs,
   ResolvedLink,
 } from "../_shared/data";
-import { externalHref, telHref } from "../_shared/format";
+import { displayName, externalHref, telHref } from "../_shared/format";
+import { placeLabel } from "../_shared/group";
+import type { ContactScheduleRow } from "../../../../lib/hs-schedule/data";
+import type { LastContactChange } from "../../../../lib/contacts/history-data";
+import { formatWhen } from "../../../../lib/contacts/history";
+import { formatWeekendDates, weekendStatusLabel } from "../../../../lib/hs-schedule/logic";
+import { seasonLabel } from "../../../../lib/planning/season";
 
 interface Props {
   contact: ContactWithRefs;
   people: Contact[];
+  // For a person: their company, and the others who work there.
+  company: ContactWithRefs | null;
+  coworkers: Contact[];
   links: ResolvedLink[];
+  // For a program or facility: its weekends on the HS Schedule.
+  history: ContactScheduleRow[];
+  // The board: edit, add people, History. Coaches only read (0109).
+  canEdit: boolean;
   canDelete: boolean;
+  // The latest change in its history (the board).
+  lastChange: LastContactChange | null;
 }
 
-export function ContactDetail({ contact, people, links, canDelete }: Props) {
+export function ContactDetail({ contact, people, company, coworkers, links, history, canEdit, canDelete, lastChange }: Props) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,9 +84,17 @@ export function ContactDetail({ contact, people, links, canDelete }: Props) {
             <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>
               {contact.name}
             </h2>
+            {(contact.nickname || contact.aliases.length > 0) && (
+              <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 2 }}>
+                Also known as {[contact.nickname, ...contact.aliases].filter(Boolean).join(", ")}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4, flexWrap: "wrap" }}>
               {contact.category && (
                 <span className="rsd-chip rsd-chip-mute">{contact.category.name}</span>
+              )}
+              {contact.title && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg)" }}>{contact.title}</span>
               )}
               {contact.parent && (
                 <Link
@@ -86,9 +109,15 @@ export function ContactDetail({ contact, people, links, canDelete }: Props) {
                     textDecoration: "none",
                   }}
                 >
-                  at {contact.parent.name}
+                  at {company ? displayName(company) : contact.parent.name}
                   <Icons.ArrowRight width={11} height={11} />
                 </Link>
+              )}
+              {isCompany && placeLabel(contact) && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
+                  <Icons.MapPin width={11} height={11} />
+                  {placeLabel(contact)}
+                </span>
               )}
               {contact.tags?.map((t) => (
                 <span key={t} className="rsd-chip rsd-chip-accent" style={{ fontSize: 10 }}>
@@ -153,6 +182,22 @@ export function ContactDetail({ contact, people, links, canDelete }: Props) {
                 href={externalHref(contact.website)}
                 external
               />
+              {contact.alt_email && (
+                <ContactRow
+                  icon={<Icons.Mail width={14} height={14} />}
+                  label="Other email"
+                  value={contact.alt_email}
+                  href={`mailto:${contact.alt_email}`}
+                />
+              )}
+              {contact.team_colors && (
+                <ContactRow
+                  icon={<Icons.Sparkles width={14} height={14} />}
+                  label="Team colors"
+                  value={contact.team_colors}
+                  href={null}
+                />
+              )}
             </div>
             {contact.address && (
               <ContactRow
@@ -164,6 +209,9 @@ export function ContactDetail({ contact, people, links, canDelete }: Props) {
               />
             )}
           </div>
+
+          {/* A person's company, and who else works there */}
+          {company && <WorksAtCard company={company} coworkers={coworkers} />}
 
           {/* Account & billing */}
           {(contact.account_number ||
@@ -193,18 +241,20 @@ export function ContactDetail({ contact, people, links, canDelete }: Props) {
                 <h3 style={SECTION_TITLE}>
                   People at this company ({people.length})
                 </h3>
-                <Link
-                  href={`/portal/contacts/new?kind=person&parent=${contact.id}`}
-                  style={{ textDecoration: "none" }}
-                >
-                  <Pill variant="ghost" size="sm">
-                    <Icons.Plus width={12} height={12} /> Add person
-                  </Pill>
-                </Link>
+                {canEdit && (
+                  <Link
+                    href={`/portal/contacts/new?kind=person&parent=${contact.id}`}
+                    style={{ textDecoration: "none" }}
+                  >
+                    <Pill variant="ghost" size="sm">
+                      <Icons.Plus width={12} height={12} /> Add person
+                    </Pill>
+                  </Link>
+                )}
               </div>
               {people.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, padding: "8px 0" }}>
-                  No people linked yet. Add a sales rep, account manager, or specific contact.
+                  {canEdit ? "No people linked yet. Add a sales rep, account manager, or specific contact." : "No people listed here."}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column" }}>
@@ -224,10 +274,15 @@ export function ContactDetail({ contact, people, links, canDelete }: Props) {
                     >
                       <Icons.User width={14} height={14} style={{ color: "var(--gw-fg-muted)" }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700 }}>{child.name}</div>
-                        {(child.email || child.phone) && (
-                          <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-                            {[child.email, child.phone].filter(Boolean).join(" · ")}
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>
+                          {child.name}
+                          {child.title && (
+                            <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}> · {child.title}</span>
+                          )}
+                        </div>
+                        {(child.email || child.phone || child.mobile_phone) && (
+                          <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500, overflowWrap: "anywhere" }}>
+                            {[child.email, child.phone, child.mobile_phone].filter(Boolean).join(" · ")}
                           </div>
                         )}
                       </div>
@@ -238,6 +293,9 @@ export function ContactDetail({ contact, people, links, canDelete }: Props) {
               )}
             </div>
           )}
+
+          {/* The HS Schedule: every weekend a program came to or a facility hosted */}
+          {isCompany && history.length > 0 && <ScheduleHistory rows={history} />}
 
           {/* Linked entities */}
           {links.length > 0 && (
@@ -255,43 +313,61 @@ export function ContactDetail({ contact, people, links, canDelete }: Props) {
 
         {/* Side column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 20 }}>
-          <div className="rsd-card" style={{ gap: 12 }}>
-            <h3 style={SECTION_TITLE}>Actions</h3>
-            <Link href={`/portal/contacts/${contact.id}/edit`} style={{ textDecoration: "none" }}>
-              <Pill variant="light" size="md" style={{ width: "100%", justifyContent: "center" }}>
-                <Icons.Pencil width={14} height={14} /> Edit
-              </Pill>
-            </Link>
-            {canDelete && (
-              <Pill
-                variant="ghost"
-                size="md"
-                onClick={handleDelete}
-                disabled={deleting}
-                style={{
-                  width: "100%",
-                  justifyContent: "center",
-                  color: "var(--gw-error)",
-                  borderColor: "rgba(229,62,62,.25)",
-                }}
-              >
-                <Icons.Trash width={14} height={14} />
-                {deleting ? "Deleting…" : "Delete"}
-              </Pill>
-            )}
-            {error && (
-              <div style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600 }}>
-                {error}
-              </div>
-            )}
-          </div>
+          {canEdit && (
+            <div className="rsd-card" style={{ gap: 12 }}>
+              <h3 style={SECTION_TITLE}>Actions</h3>
+              <Link href={`/portal/contacts/${contact.id}/edit`} style={{ textDecoration: "none" }}>
+                <Pill variant="light" size="md" style={{ width: "100%", justifyContent: "center" }}>
+                  <Icons.Pencil width={14} height={14} /> Edit
+                </Pill>
+              </Link>
+              <Link href={`/portal/contacts/${contact.id}/history`} data-tour="contact-history" style={{ textDecoration: "none" }}>
+                <Pill variant="ghost" size="md" style={{ width: "100%", justifyContent: "center" }}>
+                  <Icons.Clock width={14} height={14} /> History
+                </Pill>
+              </Link>
+              {canDelete && (
+                <Pill
+                  variant="ghost"
+                  size="md"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    color: "var(--gw-error)",
+                    borderColor: "rgba(229,62,62,.25)",
+                  }}
+                >
+                  <Icons.Trash width={14} height={14} />
+                  {deleting ? "Deleting…" : "Delete"}
+                </Pill>
+              )}
+              {error && (
+                <div style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600 }}>
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="rsd-card" style={{ gap: 12 }}>
             <h3 style={SECTION_TITLE}>Meta</h3>
             <Field label="Kind" value={isCompany ? "Company" : "Person"} />
             <Field label="Created" value={formatDate(contact.created_at)} />
-            {contact.updated_at !== contact.created_at && (
-              <Field label="Updated" value={formatDate(contact.updated_at)} />
+            {lastChange ? (
+              <Field
+                label="Last changed"
+                value={
+                  <>
+                    {formatWhen(lastChange.at)}
+                    {lastChange.by && <> by {lastChange.by}</>}
+                    {lastChange.source === "import" && <> (Import spreadsheet)</>}
+                  </>
+                }
+              />
+            ) : (
+              contact.updated_at !== contact.created_at && <Field label="Updated" value={formatDate(contact.updated_at)} />
             )}
           </div>
         </div>
@@ -533,4 +609,138 @@ function formatDate(iso: string): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+// A person's company, the way its own page starts, and the others there.
+function WorksAtCard({ company, coworkers }: { company: ContactWithRefs; coworkers: Contact[] }) {
+  const facts = [
+    company.category?.name,
+    placeLabel(company),
+    company.phone,
+    company.email,
+  ].filter(Boolean) as string[];
+  return (
+    <div className="rsd-card" style={{ gap: 12 }}>
+      <h3 style={SECTION_TITLE}>Works at</h3>
+      <Link
+        href={`/portal/contacts/${company.id}`}
+        style={{ display: "flex", gap: 12, alignItems: "center", textDecoration: "none", color: "inherit" }}
+      >
+        <KindBadge isCompany />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>
+            {displayName(company)}
+            {displayName(company) !== company.name && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)" }}> {company.name}</span>
+            )}
+          </div>
+          {facts.length > 0 && (
+            <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, overflowWrap: "anywhere" }}>
+              {facts.join(" · ")}
+            </div>
+          )}
+          {company.team_colors && (
+            <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>Colors: {company.team_colors}</div>
+          )}
+        </div>
+        <Icons.ChevronRight width={14} height={14} />
+      </Link>
+      {coworkers.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, borderTop: "1px solid var(--gw-border)", paddingTop: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+            Also at {displayName(company)} ({coworkers.length})
+          </span>
+          {coworkers.map((p) => (
+            <Link
+              key={p.id}
+              href={`/portal/contacts/${p.id}`}
+              style={{ display: "flex", gap: 10, alignItems: "center", padding: "6px 0", textDecoration: "none", color: "inherit" }}
+            >
+              <Icons.User width={13} height={13} style={{ color: "var(--gw-fg-muted)" }} />
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700 }}>
+                {p.name}
+                {p.title && <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}> · {p.title}</span>}
+              </span>
+              <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>{p.phone ?? p.email ?? ""}</span>
+              <Icons.ChevronRight width={12} height={12} />
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// "On the HS Schedule": newest season first, each weekend with our teams,
+// whether they came (or were on the fence) and the scores.
+function ScheduleHistory({ rows }: { rows: ContactScheduleRow[] }) {
+  const seasons = [...new Set(rows.map((r) => r.season))];
+  return (
+    <div className="rsd-card" style={{ gap: 12 }} data-tour="contact-schedule-history">
+      <h3 style={SECTION_TITLE}>On the HS Schedule ({rows.length})</h3>
+      {seasons.map((season) => (
+        <div key={season} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+            {seasonLabel(season)}
+          </span>
+          {rows
+            .filter((r) => r.season === season)
+            .map((r) => (
+              <Link
+                key={`${r.weekendId}-${r.as}`}
+                href={`/portal/schedule?season=${season}#w-${r.weekendId}`}
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "baseline",
+                  flexWrap: "wrap",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  background: "var(--gw-bg)",
+                  border: "1px solid var(--gw-border)",
+                  textDecoration: "none",
+                  color: "inherit",
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 700, minWidth: 84, fontVariantNumeric: "tabular-nums" }}>
+                  {formatWeekendDates(r.starts_on, r.ends_on)}
+                </span>
+                <span style={{ flex: 1, minWidth: 140, fontSize: 13, fontWeight: 600 }}>
+                  {r.event || "—"}
+                  {r.status === "canceled" && (
+                    <span style={{ color: "var(--gw-fg-muted)", fontWeight: 500 }}> · {weekendStatusLabel(r.status)}</span>
+                  )}
+                </span>
+                {r.as === "facility" ? (
+                  <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>
+                    Venue
+                  </span>
+                ) : (
+                  <>
+                    {r.levels.length > 0 && (
+                      <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{r.levels.join(", ")}</span>
+                    )}
+                    {r.teamStatus === "tentative" && (
+                      <span className="rsd-chip rsd-chip-warn" style={{ fontSize: 10 }}>
+                        On the fence
+                      </span>
+                    )}
+                    {r.teamStatus === "declined" && (
+                      <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>
+                        Not coming
+                      </span>
+                    )}
+                    {r.results.map((x) => (
+                      <span key={x} className={`rsd-chip ${/: W|^W/.test(x) ? "rsd-chip-success" : "rsd-chip-mute"}`} style={{ fontSize: 10 }}>
+                        {x}
+                      </span>
+                    ))}
+                  </>
+                )}
+              </Link>
+            ))}
+        </div>
+      ))}
+    </div>
+  );
 }

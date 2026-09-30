@@ -18,6 +18,18 @@ export interface ContactCategoryInput {
   name: string;
   slug?: string | null;
   sortOrder: number;
+  // "Coaches can see": coaches read the contacts of this type (0109). Left
+  // as it is when undefined.
+  sharedWithCoaches?: boolean;
+}
+
+// Before migration 0109 there's no shared_with_coaches column: save the rest.
+function missingSharing(error: { message?: string } | null): boolean {
+  return !!error && /shared_with_coaches/.test(error.message ?? "");
+}
+
+function sharing(input: ContactCategoryInput) {
+  return input.sharedWithCoaches === undefined ? {} : { shared_with_coaches: input.sharedWithCoaches };
 }
 
 function slugify(name: string): string {
@@ -42,15 +54,19 @@ export async function createContactCategory(
   if (err) return { error: err };
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const row = {
+    name: input.name.trim(),
+    slug: input.slug?.trim() || slugify(input.name),
+    sort_order: input.sortOrder,
+  };
+  let { data, error } = await supabase
     .from("contact_categories")
-    .insert({
-      name: input.name.trim(),
-      slug: input.slug?.trim() || slugify(input.name),
-      sort_order: input.sortOrder,
-    })
+    .insert({ ...row, ...sharing(input) })
     .select("id")
     .single();
+  if (missingSharing(error)) {
+    ({ data, error } = await supabase.from("contact_categories").insert(row).select("id").single());
+  }
 
   if (error || !data) {
     return { error: error?.message ?? "Failed to create category." };
@@ -71,14 +87,18 @@ export async function updateContactCategory(
   if (err) return { error: err };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const row = {
+    name: input.name.trim(),
+    slug: input.slug?.trim() || slugify(input.name),
+    sort_order: input.sortOrder,
+  };
+  let { error } = await supabase
     .from("contact_categories")
-    .update({
-      name: input.name.trim(),
-      slug: input.slug?.trim() || slugify(input.name),
-      sort_order: input.sortOrder,
-    })
+    .update({ ...row, ...sharing(input) })
     .eq("id", categoryId);
+  if (missingSharing(error)) {
+    ({ error } = await supabase.from("contact_categories").update(row).eq("id", categoryId));
+  }
   if (error) return { error: error.message };
 
   revalidatePath("/portal/settings");

@@ -20,6 +20,8 @@ interface ContactCategory {
   name: string;
   slug: string | null;
   sort_order: number;
+  // Coaches can read its contacts (0109).
+  shared_with_coaches?: boolean;
 }
 
 export function ContactCategoriesTab({ me }: { me: MemberLike }) {
@@ -29,19 +31,27 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // "Coaches can see" needs migration 0109; until then it isn't offered.
+  const [sharing, setSharing] = useState(true);
 
   const canDelete = isSuperAdmin(me);
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const { data, error: loadError } = await supabase
-      .from("contact_categories")
-      .select("id, name, slug, sort_order")
-      .is("deleted_at", null)
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true });
+    const run = (columns: string) =>
+      supabase
+        .from("contact_categories")
+        .select(columns)
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true });
+    let { data, error: loadError } = await run("id, name, slug, sort_order, shared_with_coaches");
+    if (loadError && /shared_with_coaches/.test(loadError.message)) {
+      setSharing(false);
+      ({ data, error: loadError } = await run("id, name, slug, sort_order"));
+    }
     if (loadError) setError(loadError.message);
-    else setRows((data as ContactCategory[]) ?? []);
+    else setRows((data as unknown as ContactCategory[]) ?? []);
     setLoading(false);
   }, []);
 
@@ -55,6 +65,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
       name: values.name,
       slug: values.slug,
       sortOrder: values.sortOrder,
+      sharedWithCoaches: sharing ? values.shared : undefined,
     });
     if (result.error) {
       setError(result.error);
@@ -71,6 +82,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
       name: values.name,
       slug: values.slug,
       sortOrder: values.sortOrder,
+      sharedWithCoaches: sharing ? values.shared : undefined,
     });
     if (result.error) {
       setError(result.error);
@@ -112,6 +124,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 540 }}>
           Types appear when adding an external contact and as filters on the External Contacts
           page. Use them to group who we work with (uniforms, photos, facilities, opponents, etc.).
+          {sharing && " Coaches can read the contacts of the types marked Coaches can see."}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {!adding && (
@@ -147,6 +160,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
       {adding && (
         <CategoryForm
           submitLabel="Add type"
+          sharing={sharing}
           onCancel={() => {
             setAdding(false);
             setError(null);
@@ -178,8 +192,9 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
             editingId === c.id ? (
               <CategoryForm
                 key={c.id}
-                initial={{ name: c.name, slug: c.slug ?? "", sortOrder: c.sort_order }}
+                initial={{ name: c.name, slug: c.slug ?? "", sortOrder: c.sort_order, shared: !!c.shared_with_coaches }}
                 submitLabel="Save"
+                sharing={sharing}
                 onCancel={() => {
                   setEditingId(null);
                   setError(null);
@@ -233,6 +248,11 @@ function CategoryRow({
       }}
     >
       <span className="rsd-chip rsd-chip-mute">{category.name}</span>
+      {category.shared_with_coaches && (
+        <span className="rsd-chip rsd-chip-accent" style={{ fontSize: 10 }} title="Coaches can read the contacts of this type">
+          Coaches can see
+        </span>
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
           {category.slug ? `Slug: ${category.slug} · ` : ""}Sort order: {category.sort_order}
@@ -256,23 +276,28 @@ interface CategoryFormValues {
   name: string;
   slug: string;
   sortOrder: number;
+  shared: boolean;
 }
 
 function CategoryForm({
   initial,
   submitLabel,
+  sharing,
   onSubmit,
   onCancel,
 }: {
   initial?: CategoryFormValues;
   submitLabel: string;
+  // Offer "Coaches can see" (migration 0109 is in).
+  sharing: boolean;
   onSubmit: (values: CategoryFormValues) => void | Promise<void>;
   onCancel: () => void;
 }) {
-  const start: CategoryFormValues = initial ?? { name: "", slug: "", sortOrder: 100 };
+  const start: CategoryFormValues = initial ?? { name: "", slug: "", sortOrder: 100, shared: false };
   const [name, setName] = useState(start.name);
   const [slug, setSlug] = useState(start.slug);
   const [sortOrder, setSortOrder] = useState(String(start.sortOrder));
+  const [shared, setShared] = useState(start.shared);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -283,6 +308,7 @@ function CategoryForm({
       name: name.trim(),
       slug: slug.trim(),
       sortOrder: Number(sortOrder) || 100,
+      shared,
     });
     setPending(false);
   }
@@ -311,6 +337,18 @@ function CategoryForm({
           onChange={(e) => setSortOrder(e.target.value)}
         />
       </div>
+      {sharing && (
+        <label style={{ display: "inline-flex", alignItems: "flex-start", gap: 8, fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>
+          <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} style={{ marginTop: 3 }} />
+          <span>
+            Coaches can see
+            <span style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)" }}>
+              Coaches can read these contacts, and the people at them, everything on them notes included. They can&apos;t
+              change them.
+            </span>
+          </span>
+        </label>
+      )}
       <div data-tour="contact-types-save" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           Cancel

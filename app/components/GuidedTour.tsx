@@ -331,7 +331,9 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
 
   return (
     // Covers the whole screen, so clicks never reach the page underneath.
-    <div style={{ position: "fixed", inset: 0, zIndex: 1500, pointerEvents: hole ? "none" : "auto" }}>
+    // data-guided-tour: open cards on the page (the HS Schedule's) don't
+    // take a click on the tour for a click outside them.
+    <div data-guided-tour="" style={{ position: "fixed", inset: 0, zIndex: 1500, pointerEvents: hole ? "none" : "auto" }}>
       {hole && <Blockers hole={hole} />}
       {spot ? (
         <div

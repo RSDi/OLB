@@ -72,4 +72,6 @@ export const Icons = {
   MessageSquare: ico(<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>),
   Activity:   ico(<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>),
   Eye:        ico(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></>),
+  // A basketball: the HS Schedule.
+  Ball:       ico(<><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2v20"/><path d="M5 5c3.5 3.5 3.5 10.5 0 14"/><path d="M19 5c-3.5 3.5-3.5 10.5 0 14"/></>),
 };

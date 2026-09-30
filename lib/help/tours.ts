@@ -434,12 +434,13 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "page-title",
         title: "External Contacts",
-        body: "Everyone outside the club we work with. Only the board can see it.",
+        body: "Everyone outside the club we work with. Coaches see the programs, gyms and referees; the board sees and edits everything.",
       },
       {
         target: "contacts-new",
         title: "New contact",
         body: "Add a **Company** or a **Person**: contact info, account and billing details, notes and tags.",
+        audience: "staff",
       },
       {
         target: "contacts-search",
@@ -449,12 +450,91 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "contacts-filters",
         title: "Filter",
-        body: "Show just **Companies**, just **People**, or one type of contact.",
+        body: "Show just **Companies**, just **People**, one type of contact, or one tag (**nchc**, **ndii**…).",
       },
       {
         target: "contacts-card",
-        title: "Open a contact",
-        body: "A contact's page has everything about them, with tap-to-call numbers. **Used by** lists the playbooks it's attached to, and **Edit** makes changes. At a company, **+ Add person** adds the people you deal with there.",
+        title: "Companies and their people",
+        body: "Each company shows the people who work there under it, with their role, email and phone. Tap either to open it: a person's page shows **Works at**, their company and everyone else there; at a company, **+ Add person** adds someone.",
+      },
+      {
+        target: "contacts-import",
+        title: "Import the spreadsheet",
+        body: "Reads the HS planning spreadsheet's Contacts tab: programs, gyms and refs with their people. You see everything before it's saved, and contacts you already have are only filled in.",
+        audience: "staff",
+      },
+      {
+        target: "contacts-changes",
+        title: "Recent changes",
+        body: "Every change to a contact, newest first: who made it, when, and what it said before. Each contact's own **History** can put an earlier version back.",
+        audience: "staff",
+      },
+    ],
+  },
+  {
+    id: "hs-schedule",
+    sectionId: "hs-schedule",
+    title: "HS Schedule tour",
+    route: "/portal/schedule",
+    steps: [
+      {
+        target: "schedule-seasons",
+        title: "One season at a time",
+        body: "The arrows and the season buttons move between seasons; the earlier ones stay to look back on.",
+      },
+      {
+        target: "schedule-legend",
+        title: "The colors",
+        body: "As in the spreadsheet: **Tentative**, **Need to secure facility**, **Final details in process** and **Facility secured**. A dashed **3?** isn't settled; an amber dot means a team is on the fence.",
+      },
+      {
+        target: "schedule-grid",
+        title: "A row per weekend",
+        body: "The dates, where and the trip, the event with the teams coming, a column per team of ours with its games, and the notes.",
+      },
+      {
+        target: "schedule-cell",
+        title: "Who's coming",
+        body: "Hover over a team's count (tap it on a phone) to see its games and the teams coming, confirmed or on the fence, each linked to its program.",
+      },
+      {
+        target: "schedule-popover",
+        click: "schedule-cell",
+        title: "The team's card",
+        body: "**Coming**, **On the fence** and **Not coming**. **Weekend details** opens the whole weekend.",
+      },
+      {
+        target: "schedule-popover-games",
+        click: "schedule-popover-edit",
+        title: "Edit right here",
+        body: "**−** and **+** set the games; **Not sure yet** marks them unsettled. Everything saves as you go.",
+      },
+      {
+        target: "schedule-popover-add",
+        title: "Add a team, or settle one",
+        body: "Type a program the way coaches write it (DMW, So Metro) and pick it. Each team gets **Yes**, **Maybe** or **No**, and **All our teams** or just this one.",
+      },
+      {
+        target: "schedule-compare",
+        dismiss: "schedule-popover-done",
+        title: "Compare with another season",
+        body: "Puts that season's same weekend beside each row: what we did a year ago, at a glance.",
+      },
+      {
+        target: "schedule-season-settings",
+        title: "Season settings",
+        body: "The title, notes and columns (add, rename, reorder or hide one). The board can start next season from this one here.",
+      },
+      {
+        target: "schedule-add-weekend",
+        title: "Add a weekend",
+        body: "Its dates, event, place, trip, status, notes and facility; then its games and teams.",
+      },
+      {
+        target: "schedule-import",
+        title: "Import the spreadsheet",
+        body: "Brings in the planning spreadsheet's HS Schedule tabs with its contacts. You see what it found for every weekend first.",
+        audience: "staff",
       },
     ],
   },
@@ -679,7 +759,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         click: "contact-types-add",
         interactive: true,
         title: "The type's details",
-        body: "Give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.",
+        body: "Give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name. Tick **Coaches can see** to let the coaches read its contacts.",
       },
       {
         target: "contact-types-save",
