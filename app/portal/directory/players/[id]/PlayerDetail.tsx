@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../../../components/icons";
+import { MapLink } from "../../../../components/MapLink";
 import { Pill } from "../../../../components/ui";
 import { ageFromDob } from "../../../../../lib/teams/age";
 import { teamLabel } from "../../../../../lib/teams/volunteer-options";
@@ -113,10 +114,11 @@ export function PlayerDetail({
         </div>
         {facts.length > 0 && <div style={{ ...muted, fontSize: 13 }}>{facts.join(" · ")}</div>}
         {addr && (
-          <div style={{ ...muted, fontSize: 13, display: "flex", gap: 6, alignItems: "flex-start" }}>
-            <Icons.MapPin width={13} height={13} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>{addr}</span>
-          </div>
+          <MapLink
+            address={addr}
+            icon={<Icons.MapPin width={13} height={13} style={{ flexShrink: 0, marginTop: 2, color: "var(--gw-fg-muted)" }} />}
+            style={{ ...muted, fontSize: 13, color: "var(--gw-fg)", display: "flex", gap: 6, alignItems: "flex-start", alignSelf: "flex-start" }}
+          />
         )}
         {(p.phone || p.email) && <ContactLine phone={p.phone} email={p.email} label="Player" />}
         {isStaff && staffFacts.length > 0 && <div style={muted}>{staffFacts.join(" · ")}</div>}

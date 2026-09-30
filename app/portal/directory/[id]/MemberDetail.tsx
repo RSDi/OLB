@@ -3,6 +3,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
+import { MapLink } from "../../../components/MapLink";
 import { Input, Pill, Textarea } from "../../../components/ui";
 import { resolveAvatarUrl } from "../../../../lib/members/avatar";
 import {
@@ -501,7 +502,7 @@ function ProfileCard({
             label="Address"
             value={member.address}
           >
-            {member.address}
+            <MapLink address={member.address} />
           </ContactField>
         )}
         {deceasedLabel && (

@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
+import { MapLink } from "../../components/MapLink";
 import { ClearSearchButton } from "../../components/ui";
 import { ageFromDob } from "../../../lib/teams/age";
 import type { DirectoryPlayer } from "./_shared/data";
@@ -638,10 +639,11 @@ function PlayerRow({
           </div>
         )}
         {addr && (
-          <div style={{ ...muted, display: "flex", gap: 6, alignItems: "flex-start" }}>
-            <Icons.MapPin width={12} height={12} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>{addr}</span>
-          </div>
+          <MapLink
+            address={addr}
+            icon={<Icons.MapPin width={12} height={12} style={{ flexShrink: 0, marginTop: 2, color: "var(--gw-fg-muted)" }} />}
+            style={{ ...muted, color: "var(--gw-fg)", display: "flex", gap: 6, alignItems: "flex-start", alignSelf: "flex-start" }}
+          />
         )}
         {(p.phone || p.email) && (
           <ContactLine phone={p.phone} email={p.email} label="Player" />

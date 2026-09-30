@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
+import { MapLink } from "../../../components/MapLink";
 import { Pill } from "../../../components/ui";
 import { ageFromDob } from "../../../../lib/teams/age";
 import { approveRegistration, rejectRegistration } from "../../../../lib/teams/registration-actions";
@@ -134,10 +135,11 @@ function RegistrationCard({ reg }: { reg: PendingRegistration }) {
               .join(" · ")}
           </span>
           {address && (
-            <span style={{ ...muted, display: "flex", gap: 6, alignItems: "flex-start" }}>
-              <Icons.MapPin width={12} height={12} style={{ flexShrink: 0, marginTop: 2 }} />
-              {address}
-            </span>
+            <MapLink
+              address={address}
+              icon={<Icons.MapPin width={12} height={12} style={{ flexShrink: 0, marginTop: 2, color: "var(--gw-fg-muted)" }} />}
+              style={{ ...muted, color: "var(--gw-fg)", display: "flex", gap: 6, alignItems: "flex-start", alignSelf: "flex-start" }}
+            />
           )}
           <ContactLine phone={x.athlete_phone ?? null} email={x.athlete_email ?? null} label="Player" />
         </div>

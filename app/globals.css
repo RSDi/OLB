@@ -262,6 +262,9 @@ main::-webkit-scrollbar-track { background: transparent; }
 /* Dashboard list rows — lighten on hover, matching the maintenance list. */
 .rsd-dash-row { transition: background-color 120ms ease; border-radius: 8px; }
 .rsd-dash-row:hover { background: var(--gw-bg); }
+/* An address's "Open in" menu (app/components/MapLink.tsx). */
+.rsd-map-link-item:hover, .rsd-map-link-item:focus-visible { background: var(--gw-bg); outline: none; }
+.rsd-map-link:hover .rsd-map-link-text { text-decoration: underline; text-underline-offset: 2px; }
 
 /* Chip */
 .rsd-chip {
