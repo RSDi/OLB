@@ -15,16 +15,21 @@ import {
   matchesWeekendFilters,
   matchingWeekends,
   nextWeekendDates,
+  programTeamIds,
   recordLabel,
   resultLabel,
   sortWeekends,
   summarizeCell,
+  teamsLabel,
+  teamsPlaying,
+  toggleProgramTeam,
   weekdayOf,
   weekendFacts,
   weekendFilterCounts,
+  weekendPrograms,
   type WeekendFilter,
 } from "../../lib/hs-schedule/logic.ts";
-import type { HsGames, HsOpponent, HsWeekend } from "../../lib/hs-schedule/types.ts";
+import type { HsGames, HsLevel, HsOpponent, HsWeekend } from "../../lib/hs-schedule/types.ts";
 
 // Programs from the planning spreadsheet's Contacts tab (names and cities only).
 const PROGRAMS = [
@@ -204,6 +209,84 @@ test("a cell lists its own teams, and the whole weekend's when that team plays",
   assert.equal(levelPlays(games("V", null, true)), true);
   assert.equal(levelPlays(games("V", 0)), false);
   assert.equal(levelPlays(undefined), false);
+});
+
+// Our teams, in column order, for who-plays-whom.
+const LEVELS: HsLevel[] = ["V", "JV1", "JV2", "14U"].map((label, i) => ({
+  id: label,
+  season_id: "s1",
+  label,
+  name: null,
+  team_id: null,
+  hidden: false,
+  sort_order: i,
+}));
+
+test("our teams playing a weekend are the ones with games in, or a ?", () => {
+  const g = [games("V", 4), games("JV1", null, true), games("JV2", 0), { ...games("14U", 3), weekend_id: "w2" }];
+  assert.deepEqual([...teamsPlaying("w1", LEVELS, g)], ["V", "JV1"]);
+  assert.deepEqual([...teamsPlaying("w2", LEVELS, g)], ["14U"]);
+});
+
+test("each program on a weekend knows which of our teams it plays", () => {
+  const list = [
+    // Down for all our teams.
+    opp({ id: "1", name: "Lincoln Eagles", contact_id: "lincoln", sort_order: 0 }),
+    // Just V and JV1.
+    opp({ id: "2", name: "KC Metro Mavericks", level_id: "V", sort_order: 1 }),
+    opp({ id: "3", name: "KC Metro Mavericks", level_id: "JV1", sort_order: 1 }),
+    // No varsity: a maybe for JV1, coming for JV2.
+    opp({ id: "4", name: "BluePrint", level_id: "JV1", status: "tentative", sort_order: 2 }),
+    // The same program typed another way, added later.
+    opp({ id: "5", name: "blueprint ", level_id: "JV2", sort_order: 7 }),
+    // A maybe for all our teams, but not coming for V: its own row wins.
+    opp({ id: "6", name: "Veritas", status: "tentative", sort_order: 3 }),
+    opp({ id: "7", name: "Veritas", level_id: "V", status: "declined", sort_order: 3 }),
+    // Played V already, and down for all our teams.
+    opp({ id: "8", name: "Hastings", level_id: "V", our_score: 60, their_score: 40, sort_order: 4 }),
+    opp({ id: "9", name: "Hastings", sort_order: 4 }),
+    opp({ id: "10", name: "Elsewhere", weekend_id: "w2" }),
+  ];
+  const playing = new Set(["V", "JV1", "JV2"]);
+  const ps = weekendPrograms("w1", list, LEVELS, playing);
+  // Coming ones first, then the maybes; the same program under one line.
+  assert.deepEqual(ps.map((p) => p.name), ["Lincoln Eagles", "KC Metro Mavericks", "BluePrint", "Hastings", "Veritas"]);
+  const by = new Map(ps.map((p) => [p.name, p]));
+  const lincoln = by.get("Lincoln Eagles")!;
+  assert.equal(lincoln.all, true);
+  // All our teams means the ones playing: 14U has no games that weekend.
+  assert.deepEqual(programTeamIds(lincoln), ["V", "JV1", "JV2"]);
+  assert.ok(lincoln.teams.every((t) => t.viaAll));
+  const kc = by.get("KC Metro Mavericks")!;
+  assert.equal(kc.all, false);
+  assert.equal(teamsLabel(kc, "V"), "JV1");
+  assert.equal(teamsLabel(by.get("BluePrint")!), "JV1?, JV2");
+  const veritas = by.get("Veritas")!;
+  assert.equal(veritas.status, "tentative");
+  assert.deepEqual(veritas.teams.map((t) => `${t.level.id}:${t.status}`), ["V:declined", "JV1:tentative", "JV2:tentative"]);
+  // Not coming is left out of what it plays.
+  assert.deepEqual(programTeamIds(veritas), ["JV1", "JV2"]);
+  assert.equal(teamsLabel(veritas, "JV1"), "JV2?");
+  const hastings = by.get("Hastings")!;
+  assert.deepEqual(hastings.teams.map((t) => `${t.level.id}:${t.scored ? "played" : t.viaAll ? "all" : "own"}`), ["V:played", "JV1:all", "JV2:all"]);
+});
+
+test("tapping one of our teams adds it or takes it off, but never a game already played", () => {
+  const list = [
+    opp({ id: "1", name: "Lincoln Eagles" }),
+    opp({ id: "2", name: "KC Metro Mavericks", level_id: "V" }),
+    opp({ id: "3", name: "KC Metro Mavericks", level_id: "JV1" }),
+    opp({ id: "4", name: "Hastings", level_id: "V", our_score: 60, their_score: 40 }),
+    opp({ id: "5", name: "Veritas", level_id: "V", status: "declined" }),
+  ];
+  const by = new Map(weekendPrograms("w1", list, LEVELS, new Set(["V", "JV1", "JV2"])).map((p) => [p.name, p]));
+  // Down for all our teams: taking one off leaves the others, one by one.
+  assert.deepEqual(toggleProgramTeam(by.get("Lincoln Eagles")!, "JV2"), ["V", "JV1"]);
+  assert.deepEqual(toggleProgramTeam(by.get("KC Metro Mavericks")!, "JV2"), ["V", "JV1", "JV2"]);
+  assert.deepEqual(toggleProgramTeam(by.get("KC Metro Mavericks")!, "V"), ["JV1"]);
+  assert.deepEqual(toggleProgramTeam(by.get("Hastings")!, "V"), ["V"]);
+  // A "not coming" for V is off, so tapping V turns it on.
+  assert.deepEqual(toggleProgramTeam(by.get("Veritas")!, "V"), ["V"]);
 });
 
 test("a cell's count is the games entered, never guessed from the teams", () => {

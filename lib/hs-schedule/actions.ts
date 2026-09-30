@@ -11,7 +11,7 @@ import { revalidatePath } from "next/cache";
 import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import { requireHsPlanner } from "./guard";
-import { carryWeekend, isOpponentStatus, isWeekendStatus, isYmd, daysBetween } from "./logic";
+import { carryWeekend, isOpponentStatus, isWeekendStatus, isYmd, daysBetween, opponentKey } from "./logic";
 import type {
   HsGames,
   HsLevel,
@@ -164,6 +164,103 @@ export async function deleteOpponent(id: string): Promise<Result<null>> {
   const supabase = await createClient();
   const { error } = await supabase.from("hs_opponents").delete().eq("id", id);
   return error ? { error: error.message } : { data: null };
+}
+
+// Which of our teams a program plays on a weekend: every team we bring (one
+// row with no team of ours, `level_ids` null), or just the ones listed (a row
+// each, so each can have its own Yes / Maybe / No and score). A row with a
+// score is a game already played and is never touched, and a "not coming"
+// row for a team that isn't listed stays. A team of ours it's added to
+// starts as the program stands for all our teams (a maybe stays a maybe),
+// else as `status` (coming, if that's "not coming"). Returns the program's
+// rows on the weekend afterwards.
+export async function setOpponentLevels(input: {
+  weekend_id: string;
+  contact_id: string | null;
+  name: string;
+  level_ids: string[] | null;
+  status: HsOpponentStatus;
+}): Promise<Result<HsOpponent[]>> {
+  const gate = await requireHsPlanner();
+  if ("error" in gate) return { error: gate.error };
+  const status: HsOpponentStatus = isOpponentStatus(input.status) && input.status !== "declined" ? input.status : "confirmed";
+  const supabase = await createClient();
+
+  const { data: weekend } = await supabase.from("hs_weekends").select("season_id").eq("id", input.weekend_id).maybeSingle();
+  if (!weekend) return { error: "That weekend isn't on the schedule any more." };
+  const { data: levelRows } = await supabase
+    .from("hs_levels")
+    .select("id")
+    .eq("season_id", (weekend as { season_id: string }).season_id);
+  const inSeason = new Set(((levelRows as { id: string }[] | null) ?? []).map((l) => l.id));
+  const wanted = input.level_ids === null ? null : [...new Set(input.level_ids)].filter((id) => inSeason.has(id));
+
+  const key = opponentKey({ contact_id: input.contact_id, name: input.name });
+  const load = async () => {
+    const { data, error } = await supabase.from("hs_opponents").select(OPPONENT_COLUMNS).eq("weekend_id", input.weekend_id);
+    return { rows: ((data as HsOpponent[] | null) ?? []).filter((o) => opponentKey(o) === key), error };
+  };
+  const { rows, error: loadError } = await load();
+  if (loadError) return { error: loadError.message };
+  if (rows.length === 0) return { error: "That team isn't on this weekend any more." };
+  const first = [...rows].sort((a, b) => a.sort_order - b.sort_order)[0];
+  const open = rows.filter((o) => o.our_score == null);
+  const forAll = open.filter((o) => o.level_id === null);
+  // How it stands for all our teams, coming or a maybe.
+  const standing = forAll.find((o) => o.status !== "declined")?.status;
+
+  const add: (string | null)[] = [];
+  const settle: string[] = [];
+  const drop: string[] = [];
+  let startAs: HsOpponentStatus = status;
+  if (wanted === null) {
+    for (const o of open) if (o.level_id !== null) drop.push(o.id);
+    const keep = forAll.find((o) => o.status !== "declined") ?? forAll[0];
+    for (const o of forAll) if (o !== keep) drop.push(o.id);
+    if (!keep) add.push(null);
+    else if (keep.status === "declined") settle.push(keep.id);
+  } else {
+    startAs = standing ?? status;
+    for (const o of forAll) drop.push(o.id);
+    for (const levelId of wanted) {
+      const own = rows.filter((o) => o.level_id === levelId);
+      if (own.some((o) => o.status !== "declined")) continue;
+      const no = own.find((o) => o.our_score == null);
+      if (no) settle.push(no.id);
+      else add.push(levelId);
+    }
+    for (const o of open) {
+      if (o.level_id !== null && !wanted.includes(o.level_id) && o.status !== "declined") drop.push(o.id);
+    }
+  }
+
+  // Add before taking away, so the program is never missing from the weekend.
+  if (add.length) {
+    const { error } = await supabase.from("hs_opponents").insert(
+      add.map((levelId) => ({
+        weekend_id: input.weekend_id,
+        level_id: levelId,
+        contact_id: first.contact_id,
+        name: first.name,
+        status: startAs,
+        sort_order: first.sort_order,
+        created_by: gate.userId,
+        updated_by: gate.userId,
+      }))
+    );
+    if (error) return { error: error.message };
+  }
+  if (settle.length) {
+    const { error } = await supabase.from("hs_opponents").update({ status: startAs, updated_by: gate.userId }).in("id", settle);
+    if (error) return { error: error.message };
+  }
+  if (drop.length) {
+    const { error } = await supabase.from("hs_opponents").delete().in("id", drop);
+    if (error) return { error: error.message };
+  }
+  const after = await load();
+  if (after.error) return { error: after.error.message };
+  return { data: after.rows };
 }
 
 // ─── Weekends ───────────────────────────────────────────────────────────────

@@ -219,6 +219,112 @@ function statusRank(s: HsOpponentStatus): number {
   return s === "confirmed" ? 0 : s === "tentative" ? 1 : 2;
 }
 
+function bestStatus(rows: Pick<HsOpponent, "status">[]): HsOpponentStatus {
+  return rows.reduce<HsOpponentStatus>((best, o) => (statusRank(o.status) < statusRank(best) ? o.status : best), "declined");
+}
+
+// ─── Which of our teams each program plays ──────────────────────────────────
+
+// Our teams that play a weekend: games entered, or a "?".
+export function teamsPlaying(
+  weekendId: string,
+  levels: Pick<HsLevel, "id">[],
+  games: Pick<HsGames, "weekend_id" | "level_id" | "games" | "unsure">[]
+): Set<string> {
+  return new Set(
+    levels.filter((l) => levelPlays(games.find((g) => g.weekend_id === weekendId && g.level_id === l.id))).map((l) => l.id)
+  );
+}
+
+export interface ProgramTeam {
+  level: HsLevel;
+  status: HsOpponentStatus;
+  // Only from its row for all our teams, not one of its own for this team.
+  viaAll: boolean;
+  // A game with a score: it was played, so it stays.
+  scored: boolean;
+}
+
+// A program on a weekend, however many rows it has there.
+export interface WeekendProgram {
+  key: string;
+  name: string;
+  contact_id: string | null;
+  rows: HsOpponent[];
+  // Down for all our teams (a row with no team of ours), coming or a maybe.
+  all: boolean;
+  // Its best: coming if it's coming for any team of ours.
+  status: HsOpponentStatus;
+  // The teams of ours it plays, in column order.
+  teams: ProgramTeam[];
+  sort_order: number;
+}
+
+// Every program on a weekend, with the teams of ours it plays. A row for one
+// of our teams counts for that team. A row for all our teams counts for each
+// team of ours that plays that weekend (`playing`), except where the program
+// has its own row for that team, which wins (as in cellOpponents).
+export function weekendPrograms(
+  weekendId: string,
+  opponents: HsOpponent[],
+  levels: HsLevel[],
+  playing: ReadonlySet<string>
+): WeekendProgram[] {
+  const byKey = new Map<string, HsOpponent[]>();
+  for (const o of opponents) {
+    if (o.weekend_id !== weekendId) continue;
+    const k = opponentKey(o);
+    byKey.set(k, [...(byKey.get(k) ?? []), o]);
+  }
+  const out: WeekendProgram[] = [];
+  for (const [key, rows] of byKey) {
+    const forAll = rows.filter((o) => o.level_id === null);
+    const teams: ProgramTeam[] = [];
+    for (const level of levels) {
+      const own = rows.filter((o) => o.level_id === level.id);
+      if (own.length) teams.push({ level, status: bestStatus(own), viaAll: false, scored: own.some((o) => o.our_score != null) });
+      else if (forAll.length && playing.has(level.id)) teams.push({ level, status: bestStatus(forAll), viaAll: true, scored: false });
+    }
+    const first = [...rows].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))[0];
+    out.push({
+      key,
+      name: first.name,
+      contact_id: first.contact_id,
+      rows,
+      all: forAll.some((o) => o.status !== "declined"),
+      status: bestStatus(rows),
+      teams,
+      sort_order: first.sort_order,
+    });
+  }
+  return out.sort(
+    (a, b) => statusRank(a.status) - statusRank(b.status) || a.sort_order - b.sort_order || a.name.localeCompare(b.name)
+  );
+}
+
+// The teams of ours a program plays, coming or a maybe.
+export function programTeamIds(p: Pick<WeekendProgram, "teams">): string[] {
+  return p.teams.filter((t) => t.status !== "declined").map((t) => t.level.id);
+}
+
+// "JV1, JV2?": the teams of ours a program plays, leaving one out (the card's
+// own team), with a "?" where it's a maybe. Not coming is left out.
+export function teamsLabel(p: Pick<WeekendProgram, "teams">, except?: string): string {
+  return p.teams
+    .filter((t) => t.level.id !== except && t.status !== "declined")
+    .map((t) => `${t.level.label}${t.status === "tentative" ? "?" : ""}`)
+    .join(", ");
+}
+
+// What tapping one of our teams in a program's chips asks for: the teams it
+// plays afterwards. A played game (a score) can't be taken off.
+export function toggleProgramTeam(p: Pick<WeekendProgram, "teams">, levelId: string): string[] {
+  const on = programTeamIds(p);
+  if (!on.includes(levelId)) return [...on, levelId];
+  if (p.teams.some((t) => t.level.id === levelId && t.scored)) return on;
+  return on.filter((id) => id !== levelId);
+}
+
 export interface CellSummary {
   // What the cell shows: the games entered, or nothing.
   count: number | null;

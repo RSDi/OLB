@@ -500,7 +500,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "schedule-popover",
         click: "schedule-cell",
         title: "The team's card",
-        body: "**Coming**, **On the fence** and **Not coming**. **Weekend details** opens the whole weekend.",
+        body: "The teams this one of ours plays: **Coming**, **On the fence** and **Not coming**, each with the other teams of ours it plays in parentheses. **For our other teams** lists the rest coming that weekend. **Weekend details** opens the whole weekend.",
       },
       {
         target: "schedule-popover-games",
@@ -511,7 +511,12 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "schedule-popover-add",
         title: "Add a team, or settle one",
-        body: "Type a program the way coaches write it (DMW, So Metro) and pick it. Each team gets **Yes**, **Maybe** or **No**, and **All our teams** or just this one.",
+        body: "Type a program the way coaches write it (DMW, So Metro) and pick it. Each team gets **Yes**, **Maybe** or **No**.",
+      },
+      {
+        target: "schedule-popover-teams",
+        title: "Who plays whom",
+        body: "Under each team, tap the teams of ours it plays (**V**, **JV1**, **JV2**…) to add or take one off, or **All** for every team we bring.",
       },
       {
         target: "schedule-compare",

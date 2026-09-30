@@ -3,6 +3,7 @@
 // page. Fresh data from the server (a column added in Season settings, an
 // import) starts it over.
 
+import { opponentKey } from "../../../../lib/hs-schedule/logic";
 import type { HsGames, HsLevel, HsOpponent, HsWeekend } from "../../../../lib/hs-schedule/types";
 
 export interface ScheduleState {
@@ -17,6 +18,8 @@ export type ScheduleAction =
   | { type: "games"; weekendId: string; levelId: string; row: HsGames | null }
   | { type: "opponent"; row: HsOpponent }
   | { type: "opponentGone"; id: string }
+  // All of one program's rows on a weekend, as they are now.
+  | { type: "program"; weekendId: string; key: string; rows: HsOpponent[] }
   | { type: "weekend"; row: HsWeekend }
   | { type: "weekendGone"; id: string };
 
@@ -37,6 +40,14 @@ export function scheduleReducer(state: ScheduleState, a: ScheduleAction): Schedu
     }
     case "opponentGone":
       return { ...state, opponents: state.opponents.filter((o) => o.id !== a.id) };
+    case "program":
+      return {
+        ...state,
+        opponents: [
+          ...state.opponents.filter((o) => !(o.weekend_id === a.weekendId && opponentKey(o) === a.key)),
+          ...a.rows,
+        ],
+      };
     case "weekend": {
       const exists = state.weekends.some((w) => w.id === a.row.id);
       return {

@@ -510,6 +510,9 @@ export function ScheduleView({
             levelPlays(gamesAt(liveCell.weekend.id, liveCell.level.id))
           )}
           weekendOpponents={state.opponents.filter((o) => o.weekend_id === liveCell.weekend.id)}
+          weekendGames={state.games.filter((g) => g.weekend_id === liveCell.weekend.id)}
+          levels={levels}
+          shownLevels={shownLevels}
           contacts={contacts}
           canEdit
           options={options}

@@ -1,8 +1,9 @@
 "use client";
 // A weekend's details in a sheet: its dates, event, where, trip, status,
 // notes (the venue and game times) and the Facilities contact, plus every
-// team of ours with its games and every team coming. The fields save with
-// "Save"; games and teams save as you change them, like the grid.
+// team of ours with its games and every team coming, each with the teams of
+// ours it plays (TeamChips). The fields save with "Save"; games and teams
+// save as you change them, like the grid.
 
 import { useState } from "react";
 import { Icons } from "../../../components/icons";
@@ -23,8 +24,10 @@ import {
   daysBetween,
   formatWeekdays,
   formatWeekendDates,
-  opponentKey,
   resultLabel,
+  teamsPlaying,
+  weekendPrograms,
+  type WeekendProgram,
 } from "../../../../lib/hs-schedule/logic";
 import type {
   HsContactOption,
@@ -41,6 +44,7 @@ import { Dot, StatusSwitch } from "./CellPopover";
 import type { ScheduleAction } from "./store";
 import { TeamAdder, type TeamPick } from "./TeamAdder";
 import { ComboSelect } from "../../../components/ComboSelect";
+import { TeamChips } from "./TeamChips";
 
 const FACILITY_TYPES = ["facilities", "facility", "gyms", "venues", "gym rentals"];
 
@@ -218,6 +222,7 @@ export function WeekendSheet({
           <TeamsEditor
             weekend={weekend}
             levels={levels}
+            games={games}
             opponents={opponents.filter((o) => o.weekend_id === weekend.id)}
             contacts={contacts}
             options={options}
@@ -292,6 +297,7 @@ function GamesEditor({
 function TeamsEditor({
   weekend,
   levels,
+  games,
   opponents,
   contacts,
   options,
@@ -301,6 +307,7 @@ function TeamsEditor({
 }: {
   weekend: HsWeekend;
   levels: HsLevel[];
+  games: HsGames[];
   opponents: HsOpponent[];
   contacts: Map<string, HsContactRef>;
   options: HsContactOption[];
@@ -311,24 +318,34 @@ function TeamsEditor({
   const [addLevel, setAddLevel] = useState<string>("all");
   const [addStatus, setAddStatus] = useState<HsOpponentStatus>("confirmed");
   const labelOf = new Map(levels.map((l) => [l.id, l.label]));
-  const order = (s: HsOpponentStatus) => (s === "confirmed" ? 0 : s === "tentative" ? 1 : 2);
-  const sorted = [...opponents].sort((a, b) => order(a.status) - order(b.status) || a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  const playing = teamsPlaying(weekend.id, levels, games);
+  const programs = weekendPrograms(weekend.id, opponents, levels, playing);
+  const chipLevels = levels.filter((l) => !l.hidden);
 
-  const patch = async (o: HsOpponent, p: Partial<HsOpponent>) => {
-    dispatch({ type: "opponent", row: { ...o, ...p } });
-    const res = await updateOpponent(o.id, p);
-    if (res.error || !res.data) {
-      dispatch({ type: "opponent", row: o });
-      onError(res.error ?? "Couldn't save.");
-    } else dispatch({ type: "opponent", row: res.data });
+  // Yes / Maybe / No for every team of ours it plays; a game with a score keeps its own.
+  const setStatus = async (p: WeekendProgram, status: HsOpponentStatus) => {
+    const rows = p.rows.filter((o) => o.our_score == null && o.status !== status);
+    for (const o of rows) dispatch({ type: "opponent", row: { ...o, status } });
+    const saved = await Promise.all(rows.map((o) => updateOpponent(o.id, { status })));
+    saved.forEach((res, i) => {
+      if (res.error || !res.data) {
+        dispatch({ type: "opponent", row: rows[i] });
+        onError(res.error ?? "Couldn't save.");
+      } else dispatch({ type: "opponent", row: res.data });
+    });
   };
-  const remove = async (o: HsOpponent) => {
-    dispatch({ type: "opponentGone", id: o.id });
-    const res = await deleteOpponent(o.id);
-    if (res.error) {
-      dispatch({ type: "opponent", row: o });
-      onError(res.error);
-    }
+  const remove = async (p: WeekendProgram, name: string) => {
+    const played = p.rows.some((o) => o.our_score != null);
+    if (played && !confirm(`${name} has a score this weekend. Take it off anyway?`)) return;
+    if (!played && p.teams.length > 1 && !confirm(`Take ${name} off this weekend for all our teams?`)) return;
+    for (const o of p.rows) dispatch({ type: "opponentGone", id: o.id });
+    const done = await Promise.all(p.rows.map((o) => deleteOpponent(o.id)));
+    done.forEach((res, i) => {
+      if (res.error) {
+        dispatch({ type: "opponent", row: p.rows[i] });
+        onError(res.error);
+      }
+    });
   };
   const add = async (pick: TeamPick) => {
     const res = await addOpponent({
@@ -341,50 +358,63 @@ function TeamsEditor({
     if (res.error || !res.data) onError(res.error ?? "Couldn't add the team.");
     else dispatch({ type: "opponent", row: res.data });
   };
-  const taken = new Set(opponents.filter((o) => (addLevel === "all" ? !o.level_id : o.level_id === addLevel)).map(opponentKey));
+  // A team already here gets more of our teams with its chips, not a second line.
+  const taken = new Set(programs.map((p) => p.key));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-tour="schedule-weekend-teams">
-      <span style={cap}>Teams coming ({opponents.length})</span>
-      {sorted.length === 0 && <div style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>None yet.</div>}
-      {sorted.map((o) => {
-        const c = o.contact_id ? contacts.get(o.contact_id) : undefined;
-        const name = c?.name ?? o.name;
+      <span style={cap}>Teams coming ({programs.length})</span>
+      {programs.length === 0 ? (
+        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>None yet.</div>
+      ) : (
+        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+          Under each, tap the teams of ours it plays. <strong>All</strong> is every team we bring.
+        </div>
+      )}
+      {programs.map((p) => {
+        const c = p.contact_id ? contacts.get(p.contact_id) : undefined;
+        const name = c?.name ?? p.name;
+        const results = p.rows
+          .filter((o) => resultLabel(o))
+          .map((o) => [o.level_id ? labelOf.get(o.level_id) : null, resultLabel(o)].filter(Boolean).join(" "))
+          .join(", ");
         return (
-          <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "6px 0", borderTop: "1px solid var(--gw-border)" }}>
-            <Dot tone={o.status} />
-            <span style={{ flex: "1 1 160px", minWidth: 0, fontSize: 13, fontWeight: 700 }}>
-              {c ? (
-                <a href={`/portal/contacts/${c.id}`} style={{ color: "inherit", textDecoration: "none" }}>
-                  {name}
-                </a>
-              ) : (
-                name
-              )}
-              {resultLabel(o) && <span style={{ fontWeight: 600, color: "var(--gw-fg-muted)" }}> · {resultLabel(o)}</span>}
-            </span>
-            <StatusSwitch value={o.status} onChange={(s) => patch(o, { status: s })} name={name} />
-            <ComboSelect
-              value={o.level_id ?? "all"}
-              onChange={(e) => patch(o, { level_id: e.target.value === "all" ? null : e.target.value })}
-              aria-label={`Which of our teams ${name} plays`}
-              style={{ height: 26, padding: "0 6px", borderRadius: 7, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 11.5, fontWeight: 600 }}
-            >
-              <option value="all">All our teams</option>
-              {levels.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {labelOf.get(l.id)} only
-                </option>
-              ))}
-            </ComboSelect>
-            <button
-              type="button"
-              aria-label={`Remove ${name}`}
-              onClick={() => remove(o)}
-              style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-            >
-              <Icons.Trash width={13} height={13} />
-            </button>
+          <div key={p.key} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 0", borderTop: "1px solid var(--gw-border)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <Dot tone={p.status} />
+              <span style={{ flex: "1 1 160px", minWidth: 0, fontSize: 13, fontWeight: 700 }}>
+                {c ? (
+                  <a href={`/portal/contacts/${c.id}`} style={{ color: "inherit", textDecoration: "none" }}>
+                    {name}
+                  </a>
+                ) : (
+                  name
+                )}
+                {results && <span style={{ fontWeight: 600, color: "var(--gw-fg-muted)" }}> · {results}</span>}
+              </span>
+              <StatusSwitch value={p.status} onChange={(s) => setStatus(p, s)} name={name} />
+              <button
+                type="button"
+                aria-label={`Remove ${name}`}
+                onClick={() => remove(p, name)}
+                style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              >
+                <Icons.Trash width={13} height={13} />
+              </button>
+            </div>
+            <div style={{ paddingLeft: 16 }}>
+              <TeamChips
+                weekendId={weekend.id}
+                program={p}
+                name={name}
+                levels={chipLevels}
+                playing={playing}
+                status={p.status}
+                keepOne
+                dispatch={dispatch}
+                onError={onError}
+              />
+            </div>
           </div>
         );
       })}
