@@ -57,6 +57,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/slack-archive/exceptions": { title: "Exceptions",     subtitle: "Slack Archive" },
   "/portal/slack-archive/album":      { title: "Photo Album",    subtitle: "Slack Archive" },
   "/portal/guide":       { title: "User Guide",   subtitle: "Help" },
+  "/portal/search":      { title: "Search",       subtitle: "" },
   "/portal/activity":    { title: "Activity",     subtitle: "Super-admin" },
 };
 
