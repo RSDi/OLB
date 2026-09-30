@@ -29,6 +29,7 @@ import {
   weekendPrograms,
   type WeekendFilter,
 } from "../../lib/hs-schedule/logic.ts";
+import { hsScheduleAccess } from "../../lib/hs-schedule/access.ts";
 import type { HsGames, HsLevel, HsOpponent, HsWeekend } from "../../lib/hs-schedule/types.ts";
 
 // Programs from the planning spreadsheet's Contacts tab (names and cities only).
@@ -411,4 +412,14 @@ test("the chips show weekends by status, not-sure games and teams on the fence",
   assert.equal(counts.get("tentative"), undefined);
   assert.equal(counts.get("unsure"), 1);
   assert.equal(counts.get("fence"), 1);
+});
+
+test("the board and the coaches plan the schedule; the travel coordinator only looks", () => {
+  assert.equal(hsScheduleAccess({ isStaff: true }, false), "edit");
+  assert.equal(hsScheduleAccess({ isStaff: false }, true), "edit");
+  assert.equal(hsScheduleAccess({ isStaff: false, canManageTravel: true }, false), "view");
+  // A coach who's also the travel coordinator still plans it.
+  assert.equal(hsScheduleAccess({ isStaff: false, canManageTravel: true }, true), "edit");
+  assert.equal(hsScheduleAccess({ isStaff: false }, false), null);
+  assert.equal(hsScheduleAccess(null, false), null);
 });

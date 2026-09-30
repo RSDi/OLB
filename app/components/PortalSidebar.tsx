@@ -22,8 +22,9 @@ interface NavItem {
   previewOnly?: boolean;
   // Payments: finance managers, and parents once their balance is open.
   paymentsOnly?: boolean;
-  // The board and the coaches (a leadership volunteer role on a team).
-  coachesOnly?: boolean;
+  // The HS Schedule: the board and the coaches (a leadership volunteer role
+  // on a team), and the travel coordinator, who only looks.
+  scheduleOnly?: boolean;
   // External Contacts: the board, the coaches and the travel coordinator.
   contactsOnly?: boolean;
   // Guided-tour anchor (lib/help/tours.ts).
@@ -39,9 +40,9 @@ const NAV: NavItem[] = [
   { href: "/portal/events", label: "Planning", icon: <Icons.Calendar width={16} height={16}/>, previewOnly: true },
   { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/>, previewOnly: true },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/>, tour: "nav-directory" },
-  // The high school season weekend by weekend, for coaches and the board
-  // (lib/hs-schedule/access.ts).
-  { href: "/portal/schedule", label: "HS Schedule", icon: <Icons.Ball width={16} height={16}/>, coachesOnly: true, tour: "nav-schedule" },
+  // The high school season weekend by weekend, for coaches and the board,
+  // and the travel coordinator to look at (lib/hs-schedule/access.ts).
+  { href: "/portal/schedule", label: "HS Schedule", icon: <Icons.Ball width={16} height={16}/>, scheduleOnly: true, tour: "nav-schedule" },
   // Vendors, rented facilities, opposing programs. The board sees them all;
   // coaches read the types shared with them (Settings → Contact Types), and
   // the travel coordinator keeps the hotels and places to eat.
@@ -146,7 +147,7 @@ export function PortalSidebar({
   const seesPayments = viewer?.seesPayments ?? false;
   const isCoach = viewer?.isCoach ?? false;
   const travel = viewer?.canManageTravel ?? false;
-  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.coachesOnly || isStaff || isCoach) && (!item.contactsOnly || isStaff || isCoach || travel));
+  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || isStaff || isCoach || travel) && (!item.contactsOnly || isStaff || isCoach || travel));
   const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
   const bottomItems = BOTTOM_HREFS
     .map(href => visibleItems.find(item => item.href === href))

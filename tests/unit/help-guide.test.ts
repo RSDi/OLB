@@ -118,6 +118,13 @@ test("the travel coordinator reads the hotels section, and the board still gets 
   // The board's "i" on External Contacts stays the main section.
   assert.equal(guideSectionForPath("/portal/contacts", ADMIN)?.id, "external-contacts");
   assert.ok(guideSectionsFor(SUPER).some((s) => s.id === "travel-contacts"));
+  // The HS Schedule, to look at: its own section. Those who plan it (a coach
+  // with Travel too) keep theirs.
+  assert.equal(guideSectionForPath("/portal/schedule", TRAVEL)?.id, "hs-schedule-travel");
+  assert.equal(guideSectionForPath("/portal/schedule", ADMIN)?.id, "hs-schedule");
+  assert.equal(guideSectionForPath("/portal/schedule", SUPER)?.id, "hs-schedule");
+  assert.equal(guideSectionForPath("/portal/schedule", { ...TRAVEL, isCoach: true })?.id, "hs-schedule");
+  assert.equal(guideSectionForPath("/portal/schedule", MEMBER), null);
 });
 
 test("a pending account is treated as a member", () => {

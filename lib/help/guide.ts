@@ -106,7 +106,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **User Guide** — this page, near the bottom of the sidebar.
 - **Sign out** — at the very bottom.
 
-Coaches and board members also see the **HS Schedule** and **External Contacts**, and board members **Settings**, just below **User Guide**.
+Coaches and board members also see the **HS Schedule** and **External Contacts** (the travel coordinator does too), and board members **Settings**, just below **User Guide**.
 
 Below a thin line you may see extra links the club has added, like **Schedule**. Most open in a new browser tab, so the portal stays open where you left it.
 
@@ -292,7 +292,7 @@ Requirements start over each season, since each season has its own roster. The l
     audience: "coaches",
     routes: ["/portal/schedule"],
     keywords: ["schedule", "hs schedule", "high school", "season", "weekend", "tournament", "games", "varsity", "jv", "14u", "opponents", "teams coming", "who plays who", "which of our teams", "jv only", "all our teams", "on the fence", "maybe", "confirmed", "not coming", "facility", "secured", "trip", "overnight", "notes", "scores", "results", "record", "compare", "last season", "columns", "spreadsheet", "coaches", "filter", "needs work", "good to go", "waiting", "to do", "hotel", "hotels", "food", "restaurant", "where to eat", "where to stay", "travel", "room block", "rates"],
-    body: `The high school season weekend by weekend, laid out like the planning spreadsheet's "HS Schedule" tab, for the coaches and the board. Every season has its own schedule, and the earlier ones stay to look back on.
+    body: `The high school season weekend by weekend, laid out like the planning spreadsheet's "HS Schedule" tab, for the coaches and the board. Every season has its own schedule, and the earlier ones stay to look back on. The travel coordinator (the **Travel** permission) sees it too, without changing it.
 
 **The grid.** A row per weekend, grouped by month: the dates and days, **Where** and the trip, the **Event**, a column for each of our teams (V, JV1, JV2, 14U A…) with its games, and **Notes** (the venue and game times). The event's color says how it stands, as in the spreadsheet: **Tentative** (red), **Need to secure facility** (yellow), **Final details in process** (pale yellow) and **Facility secured** (green); off and open weekends are grey. Under the event are the teams coming and how many are on the fence. **Total games** at the bottom adds up each team's games, with the record for a season that has scores.
 
@@ -309,6 +309,22 @@ Requirements start over each season, since each season has its own roster. The l
 **Seasons.** Use the arrows, or the season buttons, to move between seasons. **Compare with** puts another season's same weekend beside each row, so you can see what we did a year ago. **Season** changes the notes and the columns: add, rename, reorder or hide one, or link it to its team in the Directory. The board can also **Start 2027–28 from 2026–27** there (the same weekends a year on, with the teams that came now on the fence), or add a **+ New season**.
 
 **Walk me through it.** Press **Show me around** next to this section's title, or tap **ⓘ** on the HS Schedule and then **Show me around**.`,
+  },
+  {
+    id: "hs-schedule-travel",
+    title: "HS Schedule",
+    group: "HS Schedule",
+    audience: "travel",
+    routes: ["/portal/schedule"],
+    keywords: ["schedule", "hs schedule", "high school", "season", "weekend", "tournament", "travel", "travel coordinator", "weekends away", "overnight", "trip", "hotel", "hotels", "room block", "food", "restaurant", "where to stay", "where to eat", "teams coming", "view only", "read-only"],
+    body: `For the travel coordinator: the high school season weekend by weekend, to plan the hotel blocks and team meals. It's **HS Schedule** in the sidebar. You see all of it; the coaches and the board keep it up to date, so there's nothing to change here (**View only** at the top).
+
+- **The grid.** A row per weekend: the dates, **Where** and the trip (**Local**, **Day trip**, **Overnight**…), the event, a column for each of our teams (V, JV1, JV2…) with its games, and **Notes** (the venue and game times). The event's color says how it stands: **Tentative** (red), **Need to secure facility** (yellow), **Final details in process** (pale yellow) and **Facility secured** (green).
+- **Where to stay and eat.** On a weekend away, a bed and a fork under **Where** count the hotels and places to eat saved there. Tap them for the list, with your notes. They're the ones you keep in **External Contacts**: a place shows on the weekends in its **City**, or in a city it's tagged with.
+- **Who's coming.** Hover over a team's count (tap it on a phone) to see its games and the teams it plays, with the other teams of ours each one plays in parentheses.
+- **A weekend's details.** Tap the event, or **Weekend details** on a team's card, for the notes and details, every team's games and every team coming.
+- **Show just some weekends.** The colors above the schedule are filters: tap **Facility secured** for the weekends that are set, or **Tentative** for the ones that may still change.
+- **Seasons.** The arrows and the season buttons move between seasons. **Compare with** puts another season's same weekend beside each row, to see where we went a year ago.`,
   },
   {
     id: "external-contacts",
@@ -348,7 +364,7 @@ Super-admins can **Delete** a contact.`,
 - On a place's page, **+ Add person** adds who you deal with there, and **Edit** changes the place. If someone else saved it after you opened it, your save stops and says so, so nobody's changes are lost.
 - **Tags** put a place on the HS Schedule's weekends in a nearby city: tag a hotel in Ankeny **des moines** and it shows on Des Moines weekends as well as Ankeny's. Tag one **closed** to keep it off the schedule.
 
-The coaches and the board see these places under each weekend away on the HS Schedule, with your notes. Only the board can delete a contact.`,
+You, the coaches and the board see these places under each weekend away on the **HS Schedule**, with your notes. Only the board can delete a contact.`,
   },
   {
     id: "playbooks",
@@ -548,7 +564,7 @@ Activity is recorded from the day this page went live.`,
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
-| Add and edit the hotels and places to eat in External Contacts | With **Travel** | ✓ | ✓ |
+| Add and edit the hotels and places to eat in External Contacts; see the HS Schedule | With **Travel** | ✓ | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
@@ -585,7 +601,7 @@ Activity is recorded from the day this page went live.`,
 - **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
 - Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
-- Next to **Manages:** on the **Approved** tab, turn on **Payments** to let someone see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to let someone review new registrations, put players on teams and edit players, and **Travel** to let the travel coordinator add and edit the hotels and places to eat in External Contacts. They all work for members and board alike. Tap one again to take it away.
+- Next to **Manages:** on the **Approved** tab, turn on **Payments** to let someone see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to let someone review new registrations, put players on teams and edit players, and **Travel** to let the travel coordinator add and edit the hotels and places to eat in External Contacts and see the HS Schedule. They all work for members and board alike. Tap one again to take it away.
 - **Remove** a member (demote a super-admin first).
 
 Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,

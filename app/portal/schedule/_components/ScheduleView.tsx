@@ -6,6 +6,8 @@
 // notes. Hover a team's count (or tap it) to see the teams coming and edit
 // them; tap an event for the weekend's details. Past seasons are one click
 // away, and "Compare" puts another season's same weekend beside each row.
+// Without canEdit (the travel coordinator) it's the same schedule to look at:
+// no Add weekend, Season or Edit, and the weekend's details read-only.
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Link from "next/link";
@@ -50,6 +52,7 @@ import { STATUS_STYLE, StatusChip } from "./status";
 import { scheduleReducer } from "./store";
 import type { TeamPick } from "./TeamAdder";
 import { WeekendSheet } from "./WeekendSheet";
+import { WeekendDetails } from "./WeekendDetails";
 import { TravelChip, TravelPopover } from "./TravelPopover";
 import { placesNear, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
 import { ComboSelect } from "../../../components/ComboSelect";
@@ -73,6 +76,7 @@ export function ScheduleView({
   seasons,
   compare,
   isStaff,
+  canEdit,
   options,
   knownTeams,
   directoryTeams,
@@ -83,6 +87,8 @@ export function ScheduleView({
   seasons: HsSeason[];
   compare: { season: number; weekends: CompareWeekend[] } | null;
   isStaff: boolean;
+  // The board and the coaches change it; the travel coordinator only looks.
+  canEdit: boolean;
   options: HsContactOption[];
   knownTeams: TeamPick[];
   directoryTeams: DirectoryTeam[];
@@ -293,18 +299,28 @@ export function ScheduleView({
             )}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <span data-tour="schedule-season-settings" style={{ display: "inline-flex" }}>
-            <Pill variant="ghost" size="sm" onClick={() => setSheet({ kind: "season" })}>
-              <Icons.Cog width={13} height={13} /> Season
-            </Pill>
+        {canEdit ? (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span data-tour="schedule-season-settings" style={{ display: "inline-flex" }}>
+              <Pill variant="ghost" size="sm" onClick={() => setSheet({ kind: "season" })}>
+                <Icons.Cog width={13} height={13} /> Season
+              </Pill>
+            </span>
+            <span data-tour="schedule-add-weekend" style={{ display: "inline-flex" }}>
+              <Pill variant="accent" size="sm" onClick={() => setSheet({ kind: "weekend", id: null })}>
+                <Icons.Plus width={13} height={13} /> Add weekend
+              </Pill>
+            </span>
+          </div>
+        ) : (
+          <span
+            className="rsd-chip rsd-chip-mute"
+            title="The coaches and the board keep the schedule up to date."
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}
+          >
+            <Icons.Eye width={13} height={13} /> View only
           </span>
-          <span data-tour="schedule-add-weekend" style={{ display: "inline-flex" }}>
-            <Pill variant="accent" size="sm" onClick={() => setSheet({ kind: "weekend", id: null })}>
-              <Icons.Plus width={13} height={13} /> Add weekend
-            </Pill>
-          </span>
-        </div>
+        )}
       </div>
 
       {/* ─── The key, which filters the weekends, and view options ─── */}
@@ -366,7 +382,13 @@ export function ScheduleView({
         <div className="rsd-card" style={{ textAlign: "center", padding: "40px 24px", gap: 8 }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>No weekends yet</div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
-            Press <strong>Add weekend</strong> to add the season&apos;s weekends one at a time.
+            {canEdit ? (
+              <>
+                Press <strong>Add weekend</strong> to add the season&apos;s weekends one at a time.
+              </>
+            ) : (
+              "The coaches and the board haven't added this season's weekends yet."
+            )}
           </div>
         </div>
       ) : shownWeekends.length === 0 ? (
@@ -514,7 +536,7 @@ export function ScheduleView({
           levels={levels}
           shownLevels={shownLevels}
           contacts={contacts}
-          canEdit
+          canEdit={canEdit}
           options={options}
           knownTeams={known}
           today={today}
@@ -534,7 +556,17 @@ export function ScheduleView({
         />
       )}
 
-      {sheet?.kind === "weekend" && (
+      {sheet?.kind === "weekend" && !canEdit && sheetWeekend && (
+        <WeekendDetails
+          weekend={sheetWeekend}
+          levels={levels}
+          games={state.games}
+          opponents={state.opponents}
+          contacts={contacts}
+          onClose={() => setSheet(null)}
+        />
+      )}
+      {sheet?.kind === "weekend" && canEdit && (
         <WeekendSheet
           key={sheet.id ?? "new"}
           seasonId={season.id}
@@ -551,7 +583,7 @@ export function ScheduleView({
           onSaved={(w) => setSheet({ kind: "weekend", id: w.id })}
         />
       )}
-      {sheet?.kind === "season" && (
+      {sheet?.kind === "season" && canEdit && (
         <SeasonSheet season={season} levels={levels} seasons={seasons} teams={directoryTeams} isStaff={isStaff} onClose={() => setSheet(null)} />
       )}
       {sheet?.kind === "new-season" && <NewSeasonSheet seasons={seasons} onClose={() => setSheet(null)} />}
