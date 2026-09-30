@@ -112,6 +112,9 @@ export function CellPopover({
   // Which side of the cell it opened on, kept while it's open so the card
   // doesn't jump as its teams change.
   const side = useRef<{ anchor: HTMLElement; side: "below" | "above" | "fill" } | null>(null);
+  // The pointer is on the card: it's being read, so the page scrolling under
+  // it doesn't close it.
+  const pointerInside = useRef(false);
 
   // Below the cell, or above it when there's more room, and never over it
   // unless there's no room either way; a sheet along the bottom on a phone.
@@ -147,11 +150,12 @@ export function CellPopover({
     };
     place(false);
     const onResize = () => place(true);
-    // The page scrolling moves a pinned card with its cell and closes one
-    // opened by hovering. Scrolling the card's own list is neither.
+    // The page scrolling moves a pinned card (or one the pointer is on) with
+    // its cell, and closes one only hovered. Scrolling the card's own list is
+    // neither.
     const onMove = (e: Event) => {
       if (e.target instanceof Node && ref.current?.contains(e.target)) return;
-      if (target.pinned) place(true);
+      if (target.pinned || pointerInside.current) place(true);
       else onClose();
     };
     window.addEventListener("resize", onResize);
@@ -215,8 +219,18 @@ export function CellPopover({
         ref={ref}
         role="dialog"
         aria-label={`${levelTitle(level)}, ${weekend.event || "weekend"}`}
-        onMouseEnter={() => onHover(true)}
-        onMouseLeave={() => onHover(false)}
+        onMouseEnter={() => {
+          pointerInside.current = true;
+          onHover(true);
+        }}
+        onMouseLeave={() => {
+          pointerInside.current = false;
+          onHover(false);
+        }}
+        // Scrolling or clicking in a card opened by hovering keeps it open,
+        // with its ✕, as if its cell had been clicked.
+        onWheel={() => !target.pinned && onPin(false)}
+        onMouseDown={() => !target.pinned && onPin(false)}
         data-tour="schedule-popover"
         style={{
           ...style,
