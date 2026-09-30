@@ -6,8 +6,9 @@ import { getViewer } from "../../../../../lib/auth/viewer";
 import { churchToday } from "../../../../../lib/dates/today";
 import { canUsePlanning } from "../../../../../lib/planning/access";
 import {
-  loadMeetings,
+  loadMeetingState,
   loadPlanningRoles,
+  namesForUsers,
   loadPlanningTasks,
   loadPlanningTemplates,
   sortTasks,
@@ -44,23 +45,16 @@ export default async function MeetingPage({ params }: { params: Promise<{ month:
 
   const supabase = await createClient();
   const season = seasonOfMonth(month);
-  const [meetings, tpl, rolesRes, kept] = await Promise.all([
-    loadMeetings(supabase, month, month),
+  const [tpl, rolesRes, kept] = await Promise.all([
     loadPlanningTemplates(supabase),
     loadPlanningRoles(supabase),
     loadPlanningTasks(supabase, ["approved"]),
   ]);
-  const meeting = meetings.get(month) ?? null;
-
-  // What this meeting said about each task.
-  const notes: Record<string, string> = {};
-  if (meeting) {
-    const { data } = await supabase
-      .from("planning_meeting_notes")
-      .select("task_id, note_md")
-      .eq("meeting_id", meeting.id);
-    for (const n of (data as { task_id: string; note_md: string }[] | null) ?? []) notes[n.task_id] = n.note_md;
-  }
+  const [{ ok: historyReady, state }, names] = await Promise.all([
+    loadMeetingState(supabase, month),
+    namesForUsers(supabase, [viewer.userId]),
+  ]);
+  const notes = state.snapshot.notes;
 
   const roleOrder = new Map(rolesRes.roles.map((r, i) => [r.id, i]));
   const tasks = sortTasks(kept.tasks, roleOrder);
@@ -104,22 +98,16 @@ export default async function MeetingPage({ params }: { params: Promise<{ month:
         </div>
       </div>
 
-      {!tpl.ok ? (
+      {!tpl.ok || !historyReady ? (
         <MigrationNotice />
       ) : (
         <MeetingForm
-          key={meeting?.id ?? month}
           month={month}
-          saved={meeting !== null}
-          initial={{
-            meetsOn: meeting?.meets_on ?? "",
-            status: meeting?.status ?? "planned",
-            agendaMd: meeting ? meeting.agenda_md : agendaDraft(tpl.templates, monthNumber(month)),
-            minutesMd: meeting?.minutes_md ?? "",
-            notes,
-          }}
+          server={state}
+          draftAgenda={agendaDraft(tpl.templates, monthNumber(month))}
           thisMonth={thisMonth}
           earlier={earlier}
+          me={{ userId: viewer.userId, name: names.get(viewer.userId) ?? "A board member" }}
         />
       )}
     </>

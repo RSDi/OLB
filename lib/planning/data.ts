@@ -5,6 +5,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { memberDisplayName } from "../members/display";
 import { splitDescription, taskMonth } from "./logic";
+import type { MeetingSnapshot } from "./merge";
 import { firstDayOf, monthKeyOf, type MonthKey } from "./season";
 import type {
   PlanningMeeting,
@@ -214,8 +215,9 @@ export interface TaskPlanning {
   month: MonthKey;
   role: { id: string; name: string; chip_class: string } | null;
   playbook: { id: string; title: string; excerpt: string | null } | null;
-  // What each board meeting said about this task, oldest first.
-  notes: { month: MonthKey; note_md: string }[];
+  // What each board meeting said about this task, oldest first, and who
+  // wrote it last.
+  notes: { month: MonthKey; note_md: string; by: string | null; at: string }[];
 }
 
 // A task's place in Planning, for its task page: which season and month, its
@@ -254,11 +256,22 @@ export async function loadTaskPlanning(supabase: SupabaseClient, taskId: string)
 
   const { data: noteRows } = await supabase
     .from("planning_meeting_notes")
-    .select("note_md, meeting:planning_meetings(month)")
+    .select("note_md, updated_by, updated_at, meeting:planning_meetings(month)")
     .eq("task_id", taskId);
-  const notes = ((noteRows as unknown as { note_md: string; meeting: { month: string } | null }[] | null) ?? [])
-    .filter((n) => n.meeting)
-    .map((n) => ({ month: monthKeyOf(n.meeting!.month), note_md: n.note_md }))
+  const rows = ((noteRows as unknown as {
+    note_md: string;
+    updated_by: string | null;
+    updated_at: string;
+    meeting: { month: string } | null;
+  }[] | null) ?? []).filter((n) => n.meeting);
+  const noteNames = await namesForUsers(supabase, rows.map((n) => n.updated_by));
+  const notes = rows
+    .map((n) => ({
+      month: monthKeyOf(n.meeting!.month),
+      note_md: n.note_md,
+      by: n.updated_by ? noteNames.get(n.updated_by) ?? null : null,
+      at: n.updated_at,
+    }))
     .sort((a, b) => a.month.localeCompare(b.month));
 
   const role = row.template?.role && !row.template.role.deleted_at ? row.template.role : null;
@@ -270,4 +283,90 @@ export async function loadTaskPlanning(supabase: SupabaseClient, taskId: string)
     playbook: playbook ? { id: playbook.id, title: playbook.title, excerpt: playbook.excerpt } : null,
     notes,
   };
+}
+
+// ─── A meeting as it's saved now (for saving safely and for the page) ──────
+
+export interface SavedBy {
+  name: string | null;
+  at: string;
+}
+
+export interface MeetingState {
+  meetingId: string | null;
+  revision: number;
+  snapshot: MeetingSnapshot;
+  // Revision of each task's note row, so a note is only changed from the
+  // revision the save merged against.
+  noteRevisions: Record<string, number>;
+  savedBy: SavedBy | null;
+  noteSavedBy: Record<string, SavedBy>;
+}
+
+// Member names for auth user ids (who saved what).
+export async function namesForUsers(supabase: SupabaseClient, ids: (string | null)[]): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter((v): v is string => Boolean(v)))];
+  const out = new Map<string, string>();
+  if (unique.length === 0) return out;
+  const { data } = await supabase.from("members").select("user_id, full_name, nickname, email").in("user_id", unique);
+  for (const m of (data as { user_id: string; full_name: string | null; nickname: string | null; email: string }[] | null) ?? []) {
+    out.set(m.user_id, memberDisplayName(m));
+  }
+  return out;
+}
+
+// `draftAgenda` fills the agenda of a meeting nobody has saved yet.
+export async function loadMeetingState(
+  supabase: SupabaseClient,
+  month: MonthKey,
+  draftAgenda = "",
+): Promise<{ ok: boolean; state: MeetingState }> {
+  const { data: m, error } = await supabase
+    .from("planning_meetings")
+    .select("id, meets_on, status, agenda_md, minutes_md, revision, updated_by, updated_at")
+    .eq("month", firstDayOf(month))
+    .maybeSingle();
+  const empty: MeetingState = {
+    meetingId: null,
+    revision: 0,
+    snapshot: { meetsOn: "", status: "planned", agendaMd: draftAgenda, minutesMd: "", notes: {} },
+    noteRevisions: {},
+    savedBy: null,
+    noteSavedBy: {},
+  };
+  if (error) return { ok: false, state: empty };
+  if (!m) return { ok: true, state: empty };
+  const row = m as {
+    id: string;
+    meets_on: string | null;
+    status: MeetingSnapshot["status"];
+    agenda_md: string;
+    minutes_md: string;
+    revision: number;
+    updated_by: string | null;
+    updated_at: string;
+  };
+  const { data: n } = await supabase
+    .from("planning_meeting_notes")
+    .select("task_id, note_md, revision, updated_by, updated_at")
+    .eq("meeting_id", row.id);
+  const notes = (n as { task_id: string; note_md: string; revision: number; updated_by: string | null; updated_at: string }[] | null) ?? [];
+  const names = await namesForUsers(supabase, [row.updated_by, ...notes.map((x) => x.updated_by)]);
+  const state: MeetingState = {
+    meetingId: row.id,
+    revision: row.revision,
+    snapshot: {
+      meetsOn: row.meets_on ?? "",
+      status: row.status,
+      agendaMd: row.agenda_md,
+      minutesMd: row.minutes_md,
+      notes: Object.fromEntries(notes.map((x) => [x.task_id, x.note_md])),
+    },
+    noteRevisions: Object.fromEntries(notes.map((x) => [x.task_id, x.revision])),
+    savedBy: { name: row.updated_by ? names.get(row.updated_by) ?? null : null, at: row.updated_at },
+    noteSavedBy: Object.fromEntries(
+      notes.map((x) => [x.task_id, { name: x.updated_by ? names.get(x.updated_by) ?? null : null, at: x.updated_at }]),
+    ),
+  };
+  return { ok: true, state };
 }

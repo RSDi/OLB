@@ -109,8 +109,11 @@ const CONTRACT: Record<string, string> = {
   // Planning (0104).
   planning_roles: "id,name,chip_class,member_id,sort_order,seed_key,created_at,updated_at,deleted_at",
   planning_templates: "id,kind,title,notes,month,role_id,playbook_id,sort_order,seed_key,created_by,created_at,updated_at,deleted_at",
-  planning_meetings: "id,month,meets_on,status,agenda_md,minutes_md,created_by,updated_by,created_at,updated_at",
-  planning_meeting_notes: "meeting_id,task_id,note_md,updated_by,created_at,updated_at",
+  planning_meetings: "id,month,meets_on,status,agenda_md,minutes_md,created_by,updated_by,created_at,updated_at,revision",
+  planning_meeting_notes: "meeting_id,task_id,note_md,updated_by,created_at,updated_at,revision",
+  // Meeting history (0105).
+  planning_meeting_versions: "id,meeting_id,revision,meets_on,status,agenda_md,minutes_md,changed_by,changed_at",
+  planning_meeting_note_versions: "id,meeting_id,task_id,note_md,changed_by,changed_at",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {

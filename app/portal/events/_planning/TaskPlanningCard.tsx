@@ -4,6 +4,7 @@ import { MarkdownView } from "../../../components/MarkdownView";
 import type { TaskPlanning } from "../../../../lib/planning/data";
 import { monthLabel, seasonLabel } from "../../../../lib/planning/season";
 import { RoleChip } from "./chips";
+import { formatStamp } from "./format";
 
 // On a task that came from the Planning template: where it sits in the
 // season, the playbook that explains how, and what the board meetings said.
@@ -82,6 +83,9 @@ export function TaskPlanningCard({ planning }: { planning: TaskPlanning }) {
               </Link>
               <div style={{ fontSize: 14, lineHeight: 1.6 }}>
                 <MarkdownView>{n.note_md}</MarkdownView>
+              </div>
+              <div style={{ fontSize: 11, color: "var(--gw-fg-muted)" }}>
+                {n.by ?? "A board member"} · {formatStamp(n.at)}
               </div>
             </div>
           ))}

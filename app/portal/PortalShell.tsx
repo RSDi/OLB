@@ -177,6 +177,8 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       ? { title: "Asset", subtitle: "Facilities" }
       : pathname.startsWith("/portal/pm/")
       ? { title: "PM Task", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/events/meetings/") && pathname.endsWith("/history")
+      ? { title: "Meeting history", subtitle: "Planning" }
       : pathname.startsWith("/portal/events/meetings/")
       ? { title: "Board meeting", subtitle: "Planning" }
       : pathname.startsWith("/portal/events/")
