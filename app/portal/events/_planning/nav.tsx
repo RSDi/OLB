@@ -145,9 +145,10 @@ export function MigrationNotice() {
     >
       <div style={{ fontSize: 14, fontWeight: 700 }}>Planning isn&apos;t set up in the database yet</div>
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.6 }}>
-        Apply <code>supabase/migrations/0104_planning.sql</code> in the Supabase SQL editor. It adds the
-        yearly template (already filled in from the President and AD timeline), the roles and the board
-        meetings. Events keep working in the meantime.
+        Apply <code>supabase/migrations/0104_planning.sql</code> and then{" "}
+        <code>0105_planning_meeting_history.sql</code> in the Supabase SQL editor. They add the yearly template
+        (already filled in from the President and AD timeline), the roles, the board meetings and their history.
+        Events keep working in the meantime.
       </div>
     </div>
   );

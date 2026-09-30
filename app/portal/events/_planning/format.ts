@@ -49,3 +49,15 @@ export function formatPlainDate(ymd: string, withYear = false): string {
     ...(withYear ? { year: "numeric" } : {}),
   });
 }
+
+// When something was saved, e.g. "Sep 30, 7:42 PM" (Central, stable between
+// the server render and the browser).
+export function formatStamp(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: CHURCH_TZ,
+  });
+}

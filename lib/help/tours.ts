@@ -1012,6 +1012,12 @@ export const GUIDE_TOURS: GuideTour[] = [
       },
       {
         route: "/portal/events/meetings/this-month",
+        target: "meeting-activity",
+        title: "Who changed what",
+        body: "Who last edited the meeting and when. **History** lists every change with who made it, and can restore an earlier version. If someone else has the meeting open, a chip here says so.",
+      },
+      {
+        route: "/portal/events/meetings/this-month",
         target: "meeting-save",
         title: "Save meeting",
         body: "Saves the date, agenda, minutes and notes together.",

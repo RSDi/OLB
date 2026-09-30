@@ -151,6 +151,10 @@ Tap **Search home** to start over. To share a search, copy the page's address: i
 
 **Board meetings.** Tap a month's **Board meeting** to open it. Set the **Meeting date** and whether it's **Planned**, **Held** or **No meeting**, edit the **Agenda** (the first draft comes from that month's topics in the template) and write the **Minutes**. Below are the month's tasks, and any from earlier in the season that aren't done, each with **+ Add a note from this meeting**, so what the board decided stays with the task and shows on its page. Press **Save meeting** when you're done.
 
+**More than one of you at once.** Anyone on the board can open a meeting at the same time. A yellow chip at the top says who else is there (and whether they're editing). When someone saves, what they changed comes into your page; if you have unsaved changes, **Load their changes** brings them in without losing yours. Changes to different parts (say, you write the minutes while someone adds a task note) simply combine. If you both changed the same part, a red box shows their version: pick **Use theirs** or **Keep mine**, then save. Nothing is ever overwritten without someone choosing.
+
+**Who changed what.** The top of each meeting says who last edited it and when, and each task note says who wrote it. **History** lists every change, newest first, with who made it and what changed (added lines in green, removed ones crossed out). Open a version with **See the whole meeting as of this version**, and **Restore this version** puts the date, status, agenda and minutes back to how they were; the restore is saved as a new change, so it can be undone too.
+
 **Walk me through it.** For a guided tour of all of this, press **Show me around** next to this section's title, or tap **ⓘ** on Planning and then **Show me around**.`,
   },
   {

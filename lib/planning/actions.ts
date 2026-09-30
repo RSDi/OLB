@@ -9,9 +9,18 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 import { requirePlanner } from "./guard";
+import { loadMeetingState, type MeetingState } from "./data";
 import { seasonTasksFromTemplates } from "./logic";
+import {
+  changedFields,
+  fieldTaskId,
+  fieldValue,
+  mergeSnapshots,
+  type MeetingField,
+  type MeetingSnapshot,
+} from "./merge";
 import { firstDayOf, isMonthKey, type MonthKey } from "./season";
-import type { MeetingStatus, PlanningTemplate, TemplateKind } from "./types";
+import type { PlanningTemplate, TemplateKind } from "./types";
 
 export interface PlanningActionResult {
   success?: boolean;
@@ -307,87 +316,173 @@ export async function deletePlanningRole(id: string): Promise<PlanningActionResu
 }
 
 // ─── Monthly board meetings ─────────────────────────────────────────────────
+// Several board members can have a meeting open at once. A save sends what
+// the page started from (base) and what it has now (mine); the server merges
+// that with what's saved now (lib/planning/merge.ts). Parts only one person
+// changed combine; a part two people changed differently comes back as a
+// conflict and nothing is saved until they choose. Every write only goes
+// through if the row is still at the revision it was merged against, so two
+// saves racing each other merge instead of one overwriting the other.
+// Migration 0105 keeps every saved version (the meeting's History page).
 
-export interface MeetingInput {
+export interface SaveMeetingInput {
   month: MonthKey;
-  meetsOn: string | null;
-  status: MeetingStatus;
-  agendaMd: string;
-  minutesMd: string;
-  // What the meeting said about each task. An empty note clears it.
-  notes: { taskId: string; noteMd: string }[];
+  base: MeetingSnapshot;
+  mine: MeetingSnapshot;
 }
 
-const MAX_TEXT = 100_000;
+export type SaveMeetingResult =
+  | { error: string }
+  | { saved: true; state: MeetingState }
+  | { saved: false; conflicts: MeetingField[]; state: MeetingState };
 
-export async function saveMeeting(input: MeetingInput): Promise<PlanningActionResult> {
+const MAX_TEXT = 100_000;
+const MEETING_PARTS = ["meetsOn", "status", "agendaMd", "minutesMd"] as const;
+
+function checkSnapshot(s: MeetingSnapshot): string | null {
+  if (s.meetsOn && !YMD.test(s.meetsOn)) return "Pick a date for the meeting.";
+  if (!["planned", "held", "skipped"].includes(s.status)) return "Pick how the meeting went.";
+  if (s.agendaMd.length > MAX_TEXT || s.minutesMd.length > MAX_TEXT) return "The agenda or minutes are too long to save.";
+  const ids = Object.keys(s.notes);
+  if (ids.length > 300) return "Too many task notes at once.";
+  if (ids.some((id) => !UUID.test(id))) return "A task note doesn't belong to a task.";
+  if (Object.values(s.notes).some((n) => n.length > 20_000)) return "One of the task notes is too long.";
+  return null;
+}
+
+export async function saveMeeting(input: SaveMeetingInput): Promise<SaveMeetingResult> {
   const gate = await requirePlanner();
   if ("error" in gate) return { error: gate.error };
   if (!isMonthKey(input.month)) return { error: "Meeting month not found." };
-  if (input.meetsOn && !YMD.test(input.meetsOn)) return { error: "Pick a date for the meeting." };
-  if (!["planned", "held", "skipped"].includes(input.status)) return { error: "Pick how the meeting went." };
-  if (input.agendaMd.length > MAX_TEXT || input.minutesMd.length > MAX_TEXT) {
-    return { error: "The agenda or minutes are too long to save." };
-  }
-  const notes = input.notes.filter((n) => UUID.test(n.taskId));
-  if (notes.length > 300) return { error: "Too many task notes at once." };
-  if (notes.some((n) => n.noteMd.length > 20_000)) return { error: "One of the task notes is too long." };
+  const bad = checkSnapshot(input.base) ?? checkSnapshot(input.mine);
+  if (bad) return { error: bad };
+  return writeMeeting(gate.userId, input.month, input.base, input.mine);
+}
 
+// Put a meeting's date, status, agenda and minutes back to how an earlier
+// version had them. Task notes stay as they are. The restore is itself a new
+// version, so it can be undone the same way.
+export async function restoreMeetingVersion(month: MonthKey, versionId: string): Promise<SaveMeetingResult> {
+  const gate = await requirePlanner();
+  if ("error" in gate) return { error: gate.error };
+  if (!isMonthKey(month) || !UUID.test(versionId)) return { error: "Version not found." };
   const supabase = await createClient();
-  const month = firstDayOf(input.month);
-  const fields = {
-    meets_on: input.meetsOn || null,
-    status: input.status,
-    agenda_md: input.agendaMd,
-    minutes_md: input.minutesMd,
-    updated_by: gate.userId,
-  };
-
-  const { data: existing, error: findErr } = await supabase
-    .from("planning_meetings")
-    .select("id")
-    .eq("month", month)
+  const { data: v } = await supabase
+    .from("planning_meeting_versions")
+    .select("meets_on, status, agenda_md, minutes_md, meeting:planning_meetings!inner(month)")
+    .eq("id", versionId)
     .maybeSingle();
-  if (findErr) return { error: findErr.message };
+  const version = v as unknown as {
+    meets_on: string | null;
+    status: MeetingSnapshot["status"];
+    agenda_md: string;
+    minutes_md: string;
+    meeting: { month: string };
+  } | null;
+  if (!version || version.meeting.month !== firstDayOf(month)) return { error: "Version not found." };
+  const { state } = await loadMeetingState(supabase, month);
+  const mine = {
+    ...state.snapshot,
+    meetsOn: version.meets_on ?? "",
+    status: version.status,
+    agendaMd: version.agenda_md,
+    minutesMd: version.minutes_md,
+  };
+  return writeMeeting(gate.userId, month, state.snapshot, mine);
+}
 
-  let meetingId = (existing as { id: string } | null)?.id ?? null;
-  if (meetingId) {
-    const { error } = await supabase.from("planning_meetings").update(fields).eq("id", meetingId);
-    if (error) return { error: error.message };
-  } else {
-    const { data: created, error } = await supabase
-      .from("planning_meetings")
-      .insert({ month, ...fields, created_by: gate.userId })
-      .select("id")
-      .single();
-    if (error) return { error: error.message };
-    meetingId = (created as { id: string }).id;
-  }
+async function writeMeeting(
+  userId: string,
+  month: MonthKey,
+  base: MeetingSnapshot,
+  mine: MeetingSnapshot,
+): Promise<SaveMeetingResult> {
+  const supabase = await createClient();
+  // A write that finds the row moved on since it was read merges again.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const { ok, state } = await loadMeetingState(supabase, month);
+    if (!ok) return { error: "Board meetings need migration 0105. Apply it in the Supabase SQL editor." };
+    const { merged, conflicts } = mergeSnapshots(base, mine, state.snapshot);
+    if (conflicts.length > 0) return { saved: false, conflicts, state };
 
-  const keep = notes.filter((n) => n.noteMd.trim());
-  const clear = notes.filter((n) => !n.noteMd.trim()).map((n) => n.taskId);
-  if (keep.length > 0) {
-    const { error } = await supabase.from("planning_meeting_notes").upsert(
-      keep.map((n) => ({
-        meeting_id: meetingId,
-        task_id: n.taskId,
-        note_md: n.noteMd.trim(),
-        updated_by: gate.userId,
-      })),
-      { onConflict: "meeting_id,task_id" },
-    );
-    if (error) return { error: error.message };
-  }
-  if (clear.length > 0) {
-    const { error } = await supabase
-      .from("planning_meeting_notes")
-      .delete()
-      .eq("meeting_id", meetingId)
-      .in("task_id", clear);
-    if (error) return { error: error.message };
-  }
+    const changes = changedFields(state.snapshot, merged);
+    if (changes.length === 0 && state.meetingId) return { saved: true, state };
+    const fields = {
+      meets_on: merged.meetsOn || null,
+      status: merged.status,
+      agenda_md: merged.agendaMd,
+      minutes_md: merged.minutesMd,
+      updated_by: userId,
+    };
 
-  revalidatePlanning();
-  for (const n of notes) revalidatePath(`/portal/tasks/${n.taskId}`);
-  return { success: true };
+    let meetingId = state.meetingId;
+    let raced = false;
+    if (!meetingId) {
+      const { data, error } = await supabase
+        .from("planning_meetings")
+        .insert({ month: firstDayOf(month), ...fields, created_by: userId })
+        .select("id")
+        .single();
+      if (error) {
+        if (error.code === "23505") continue; // someone else saved it first
+        return { error: error.message };
+      }
+      meetingId = (data as { id: string }).id;
+    } else if (changes.some((f) => (MEETING_PARTS as readonly string[]).includes(f))) {
+      const { data, error } = await supabase
+        .from("planning_meetings")
+        .update(fields)
+        .eq("id", meetingId)
+        .eq("revision", state.revision)
+        .select("id");
+      if (error) return { error: error.message };
+      if (!data || data.length === 0) continue;
+    }
+
+    for (const f of changes) {
+      const taskId = fieldTaskId(f);
+      if (!taskId) continue;
+      const note = fieldValue(merged, f);
+      const rev = state.noteRevisions[taskId];
+      if (rev === undefined) {
+        if (!note) continue;
+        const { error } = await supabase
+          .from("planning_meeting_notes")
+          .insert({ meeting_id: meetingId, task_id: taskId, note_md: note, updated_by: userId });
+        if (error) {
+          if (error.code === "23505") raced = true;
+          else return { error: error.message };
+        }
+      } else if (!note) {
+        const { data, error } = await supabase
+          .from("planning_meeting_notes")
+          .delete()
+          .eq("meeting_id", meetingId)
+          .eq("task_id", taskId)
+          .eq("revision", rev)
+          .select("task_id");
+        if (error) return { error: error.message };
+        if (!data || data.length === 0) raced = true;
+      } else {
+        const { data, error } = await supabase
+          .from("planning_meeting_notes")
+          .update({ note_md: note, updated_by: userId })
+          .eq("meeting_id", meetingId)
+          .eq("task_id", taskId)
+          .eq("revision", rev)
+          .select("task_id");
+        if (error) return { error: error.message };
+        if (!data || data.length === 0) raced = true;
+      }
+      revalidatePath(`/portal/tasks/${taskId}`);
+    }
+    // What's written is now the base; a note that raced merges on the next pass.
+    base = merged;
+    if (raced) continue;
+
+    revalidatePlanning();
+    const after = await loadMeetingState(supabase, month);
+    return { saved: true, state: after.state };
+  }
+  return { error: "The meeting kept changing while saving. Try Save meeting again." };
 }
