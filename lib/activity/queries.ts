@@ -7,7 +7,8 @@ import { memberDisplayName } from "../members/display";
 
 export interface RosterMember {
   memberId: string;
-  userId: string;
+  // null: invited (approved, with an email) but not signed up yet.
+  userId: string | null;
   name: string;
   email: string | null;
   avatarUrl: string | null;
@@ -46,7 +47,7 @@ export interface ActivityOverview {
 
 type MemberRow = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   full_name: string | null;
   nickname: string | null;
   email: string | null;
@@ -79,7 +80,7 @@ export async function loadActivityOverview(): Promise<ActivityOverview> {
       supabase
         .from("members")
         .select("id, user_id, full_name, nickname, email, avatar_url, role, status, access_revoked_at")
-        .not("user_id", "is", null)
+        .or("user_id.not.is.null,and(status.eq.approved,email.not.is.null,access_revoked_at.is.null)")
         .is("deleted_at", null),
       supabase.from("activity_user_summary").select("user_id, last_login_at, last_seen_at, sessions_30d, page_views_30d"),
       supabase.from("activity_user_last_view").select("user_id, last_seen_path"),
@@ -115,8 +116,11 @@ export async function loadActivityOverview(): Promise<ActivityOverview> {
     lastView.set(r.user_id, r.last_seen_path);
   }
 
-  const members: RosterMember[] = ((membersRes.data as MemberRow[]) ?? []).map((m) => {
-    const s = summary.get(m.user_id);
+  // Everyone with a login, plus approved members who were invited (an email)
+  // but haven't signed up: "Preview as" sets up their login.
+  const rosterRows = ((membersRes.data as MemberRow[]) ?? []).filter((m) => m.user_id || m.email?.trim());
+  const members: RosterMember[] = rosterRows.map((m) => {
+    const s = m.user_id ? summary.get(m.user_id) : undefined;
     return {
       memberId: m.id,
       userId: m.user_id,
@@ -128,7 +132,7 @@ export async function loadActivityOverview(): Promise<ActivityOverview> {
       revoked: !!m.access_revoked_at,
       lastLoginAt: s?.last_login_at ?? null,
       lastSeenAt: s?.last_seen_at ?? null,
-      lastSeenPath: lastView.get(m.user_id) ?? null,
+      lastSeenPath: m.user_id ? lastView.get(m.user_id) ?? null : null,
       sessions30d: Number(s?.sessions_30d ?? 0),
       pageViews30d: Number(s?.page_views_30d ?? 0),
     };

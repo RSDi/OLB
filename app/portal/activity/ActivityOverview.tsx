@@ -1,7 +1,8 @@
 "use client";
 // The Activity page's front view: usage at a glance, every member with a
-// login (last sign-in, last seen, sessions), the most-visited pages, and the
-// "Preview as" log. Rows open that member's sessions (?u=<user id>).
+// login (last sign-in, last seen, sessions) plus those invited but not signed
+// up yet, the most-visited pages, and the "Preview as" log. Rows open that
+// member's sessions (?u=<user id>).
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -153,7 +154,7 @@ function Roster({ members, viewerUserId, now }: { members: RosterMember[]; viewe
   };
   const canPreview = (m: RosterMember) =>
     previewBlocker(
-      { user_id: m.userId, role: m.role, status: m.status, access_revoked_at: m.revoked ? "revoked" : null },
+      { user_id: m.userId, email: m.email, role: m.role, status: m.status, access_revoked_at: m.revoked ? "revoked" : null },
       viewerUserId
     ) === null;
   // The guided tour points at the first "Preview as" button.
@@ -164,7 +165,7 @@ function Roster({ members, viewerUserId, now }: { members: RosterMember[]; viewe
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Members</h2>
-          <div style={muted}>Everyone with a portal login. Tap a row to see their sessions.</div>
+          <div style={muted}>Everyone with a portal login, and anyone invited who hasn&apos;t signed up yet. Tap a row to see their sessions.</div>
         </div>
         <div style={{ position: "relative" }}>
           <input
@@ -240,20 +241,30 @@ function Roster({ members, viewerUserId, now }: { members: RosterMember[]; viewe
             return (
               <tr
                 key={m.memberId}
-                onClick={() => router.push(`/portal/activity?u=${m.userId}`)}
-                style={{ cursor: "pointer" }}
+                onClick={m.userId ? () => router.push(`/portal/activity?u=${m.userId}`) : undefined}
+                style={{ cursor: m.userId ? "pointer" : "default" }}
               >
                 <td>
                   <div style={{ display: "flex", flexDirection: "column", padding: "8px 0" }}>
-                    <Link
-                      href={`/portal/activity?u=${m.userId}`}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
-                    >
-                      {m.name}
-                    </Link>
+                    {m.userId ? (
+                      <Link
+                        href={`/portal/activity?u=${m.userId}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
+                      >
+                        {m.name}
+                      </Link>
+                    ) : (
+                      <span style={{ fontWeight: 700 }}>{m.name}</span>
+                    )}
                     <span style={{ ...muted, fontWeight: 500 }}>
                       {m.email}
+                      {!m.userId && (
+                        <>
+                          {" "}
+                          <Chip>Not signed up</Chip>
+                        </>
+                      )}
                       {m.revoked && (
                         <>
                           {" "}
@@ -300,7 +311,7 @@ function Roster({ members, viewerUserId, now }: { members: RosterMember[]; viewe
                   onClick={(e) => e.stopPropagation()}
                   data-tour={m === firstPreviewable ? "activity-preview" : undefined}
                 >
-                  {canPreview(m) && <PreviewButton memberId={m.memberId} name={m.name} />}
+                  {canPreview(m) && <PreviewButton memberId={m.memberId} name={m.name} email={m.userId ? null : m.email} />}
                 </td>
               </tr>
             );
@@ -440,7 +451,7 @@ export function ActivityOverview({ data, viewerUserId }: { data: Overview; viewe
       <div className="rsd-kpi-grid" data-tour="activity-kpis">
         <KpiCard label="Sign-ins · 7 days" value={data.kpis.logins7d} />
         <KpiCard label="Active · 24 hours" value={data.kpis.active24h} sub="People who opened the portal" />
-        <KpiCard label="Active · 7 days" value={data.kpis.active7d} sub={`of ${data.members.length} with a login`} />
+        <KpiCard label="Active · 7 days" value={data.kpis.active7d} sub={`of ${data.members.filter((m) => m.userId).length} with a login`} />
         <KpiCard label="Previews · 30 days" value={data.kpis.previews30d} />
       </div>
       <DailyChart daily={data.daily} now={data.asOf} />

@@ -512,7 +512,7 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 
 **At a glance.** The tiles count **Sign-ins · 7 days**, people **Active · 24 hours** and **Active · 7 days**, and **Previews · 30 days**. **People each day** charts how many members opened the portal each day for the last 30 days — hover over (or tap) a bar for that day's numbers. **Most visited pages** lists the pages people open most.
 
-**Members.** Everyone with a portal login, most recently seen first: their role, **Last sign-in**, **Last seen** (when, and the page they were on) and **Sessions · 30d**. Search by name or email, or tap **Seen in 30 days** or **Never signed in** to narrow the list.
+**Members.** Everyone with a portal login, most recently seen first, then approved members who were invited but haven't signed up yet (marked **Not signed up**): their role, **Last sign-in**, **Last seen** (when, and the page they were on) and **Sessions · 30d**. Search by name or email, or tap **Seen in 30 days** or **Never signed in** to narrow the list.
 
 **Sessions.** Tap a member to see each time they signed in: when, how long, how many pages and on what device. Tap a session to see every page they opened, in order, with how long they stayed on each. A long gap shows as **idle**.
 
@@ -521,7 +521,8 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 - A yellow bar across the top reminds you who you're previewing. Tap **Exit preview** to go back to your own account.
 - **Anything you change during a preview really happens, as them** — so look, don't touch. The Audit Log credits those changes to you ("Jeff Malone (as Pat Smith)").
 - A preview ends by itself after 2 hours. **Sign out** during a preview ends it and signs you out.
-- You can preview anyone with a portal login, other super-admins included — but not yourself, or people who haven't signed up, are waiting for approval, or have had their login revoked.
+- You can preview anyone with a portal login, other super-admins included — but not yourself, or people who are waiting for approval or have had their login revoked.
+- You can also preview someone marked **Not signed up**. The first preview sets up their portal login (no email goes out), and it's theirs when they sign in with that email. After that, Settings no longer shows them as **Invited**. Members with no email (**Directory only**) can't be previewed.
 - While you're previewing, Activity is hidden (you're seeing exactly what they see) and you can't start another preview until you exit.
 
 **Previews** lists every preview — who previewed whom, when and for how long — and each one's pages show in that member's sessions, marked **Preview**. Previews don't count toward a member's own sign-ins or last seen.

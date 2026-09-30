@@ -2,12 +2,14 @@
 // "Preview as" on a row of the Activity roster: a confirm step that says
 // plainly what a preview is, then the server action. A full page load
 // afterwards, so every cookie and server component is read as the member.
+// `email` is set for a member who was invited but hasn't signed up: the
+// confirm says their login gets set up first.
 
 import { useEffect, useState, useTransition } from "react";
 import { Icons } from "../../components/icons";
 import { startPreview } from "./actions";
 
-export function PreviewButton({ memberId, name }: { memberId: string; name: string }) {
+export function PreviewButton({ memberId, name, email }: { memberId: string; name: string; email: string | null }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -36,12 +38,22 @@ export function PreviewButton({ memberId, name }: { memberId: string; name: stri
         <Icons.Eye width={14} height={14} />
         Preview as
       </button>
-      {open && <PreviewConfirm memberId={memberId} name={name} onClose={() => setOpen(false)} />}
+      {open && <PreviewConfirm memberId={memberId} name={name} email={email} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-function PreviewConfirm({ memberId, name, onClose }: { memberId: string; name: string; onClose: () => void }) {
+function PreviewConfirm({
+  memberId,
+  name,
+  email,
+  onClose,
+}: {
+  memberId: string;
+  name: string;
+  email: string | null;
+  onClose: () => void;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const first = name.split(/\s+/)[0] || name;
@@ -98,6 +110,12 @@ function PreviewConfirm({ memberId, name, onClose }: { memberId: string; name: s
           really happens, as them. The preview is recorded with your name, when it started and when it ended, and
           ends by itself after 2 hours.
         </p>
+        {email && (
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+            {first} hasn&apos;t signed up yet, so this sets up their portal login first. No email is sent. When they
+            sign in with {email}, it&apos;s theirs.
+          </p>
+        )}
         {error && (
           <div role="alert" style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-error)" }}>
             {error}
