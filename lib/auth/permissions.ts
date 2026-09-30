@@ -22,6 +22,9 @@ export interface MemberLike {
   // Registrations grant (migration 0102): reviewing registrations, placing
   // players on teams, editing and removing players. Any approved member.
   can_manage_registrations?: boolean;
+  // Travel grant (migration 0110): the travel coordinator keeps the hotels
+  // and places to eat in External Contacts. Any approved member.
+  can_manage_travel?: boolean;
 }
 
 interface TicketLike {
@@ -75,6 +78,15 @@ export function canManageFinances(m: MemberLike | null | undefined): boolean {
 export function canManageRegistrations(m: MemberLike | null | undefined): boolean {
   if (!m || m.status !== "approved") return false;
   return m.role === "super_admin" || !!m.can_manage_registrations;
+}
+
+// --- Travel --------------------------------------------------------------------
+// The travel coordinator: reading, adding and editing the External Contacts
+// of the travel types (Hotels, Food). Mirrors public.can_manage_travel() (0110).
+
+export function canManageTravel(m: MemberLike | null | undefined): boolean {
+  if (!m || m.status !== "approved") return false;
+  return m.role === "super_admin" || !!m.can_manage_travel;
 }
 
 // Add/rename settings items needs the edit grant; (was: any staff).

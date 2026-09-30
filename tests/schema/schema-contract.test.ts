@@ -45,7 +45,7 @@ const skip = env ? false : "no Supabase env — schema probes skipped (unit test
 // here whenever a migration adds a column the code starts using.
 const CONTRACT: Record<string, string> = {
   members:
-    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations",
+    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel",
   maintenance_requests:
     "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at,planning_template_id,planning_season",
   request_votes: "id,ticket_id,voter_id,vote,note,created_at,updated_at",
@@ -66,7 +66,7 @@ const CONTRACT: Record<string, string> = {
   contacts:
     "id,kind,parent_contact_id,category_id,name,nickname,email,phone,mobile_phone,notes,tags,deleted_at,title,city,state,alt_email,team_colors,aliases",
   contact_links: "id,contact_id,entity_type,entity_id",
-  contact_categories: "id,name,slug,sort_order,shared_with_coaches",
+  contact_categories: "id,name,slug,sort_order,shared_with_coaches,travel_kind",
   contact_versions: "id,contact_id,action,changes,snapshot,source,changed_by,impersonator_user_id,changed_at",
   playbooks: "id,title,category_id,excerpt,body_md,created_by,updated_by,deleted_at,steps,wizard_slack_channel,wizard_completion_message",
   playbook_categories: "id,name,deleted_at",

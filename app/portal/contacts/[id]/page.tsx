@@ -26,8 +26,17 @@ export default async function ContactDetailPage({
   const parentId = !isCompany ? contact.parent?.id ?? null : null;
   const schedule = await getViewer().then(viewerCanUseHsSchedule);
   // Coaches read the contact; the board also edits it, sees what uses it and
-  // its history.
+  // its history. The travel coordinator edits the hotels and places to eat
+  // (the database's own test, 0110).
   const board = viewer.isStaff;
+  const canEdit =
+    board ||
+    (viewer.canManageTravel &&
+      (await createClient().then((supabase) =>
+        supabase
+          .rpc("contact_is_travel", { p_category_id: contact.category_id, p_parent_contact_id: contact.parent_contact_id })
+          .then(({ data }) => data === true)
+      )));
 
   // A company: the people who work there. A person: their company, and who
   // else works there.
@@ -52,7 +61,8 @@ export default async function ContactDetailPage({
       coworkers={coworkers.filter((c) => c.id !== id)}
       links={links}
       history={history}
-      canEdit={board}
+      canEdit={canEdit}
+      canHistory={board}
       canDelete={viewer.isSuperAdmin}
       lastChange={lastChange}
     />

@@ -212,14 +212,24 @@ export async function loadContactScheduleHistory(
   return rows.sort((a, b) => b.starts_on.localeCompare(a.starts_on));
 }
 
-// Hotels and places to eat (the Hotels and Food contact types) with the
-// people there, for where to stay and eat on weekends away (./travel.ts).
-// A coach gets them when those types are shared with coaches.
+// Hotels and places to eat (the contact types marked Travel in Settings →
+// Contact Types: Hotels, Food) with the people there, for where to stay and
+// eat on weekends away (./travel.ts). A coach gets them when those types are
+// shared with coaches, the travel coordinator always.
 export async function loadHsTravelPlaces(supabase: SupabaseClient): Promise<TravelPlace[]> {
-  const { data: cats } = await supabase.from("contact_categories").select("id, name").is("deleted_at", null);
+  // The Travel setting (0110); before that migration, the types' names.
+  type Cat = { id: string; name: string; travel_kind?: TravelKind | null };
+  const { data: withKind, error: catErr } = await supabase
+    .from("contact_categories")
+    .select("id, name, travel_kind")
+    .is("deleted_at", null);
+  const flagged = !catErr;
+  const cats = flagged
+    ? (withKind as Cat[] | null)
+    : ((await supabase.from("contact_categories").select("id, name").is("deleted_at", null)).data as Cat[] | null);
   const kindOf = new Map<string, TravelKind>();
-  for (const c of (cats as { id: string; name: string }[] | null) ?? []) {
-    const k = travelKind(c.name);
+  for (const c of cats ?? []) {
+    const k = flagged ? c.travel_kind ?? null : travelKind(c.name);
     if (k) kindOf.set(c.id, k);
   }
   if (kindOf.size === 0) return [];

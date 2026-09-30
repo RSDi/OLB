@@ -20,6 +20,7 @@ import {
   canUndeleteSettings,
   canManageFinances,
   canManageRegistrations,
+  canManageTravel,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -41,6 +42,9 @@ export interface Viewer {
   // Registrations grant (0102): the registrations queue, team placement and
   // editing players.
   canManageRegistrations: boolean;
+  // Travel grant (0110): keeps the hotels and places to eat in External
+  // Contacts.
+  canManageTravel: boolean;
   // Staged rollout: sees the nav items and Settings tabs still in preview.
   seesFullUi: boolean;
 }
@@ -92,7 +96,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   // best-effort query, in parallel on the same user_id so they cost no extra
   // round trip. If the columns aren't there yet that query errors → grants
   // default false (view-only), which is the safe default.
-  const [{ data }, { data: g }, { data: f }, { data: r }] = await Promise.all([
+  const [{ data }, { data: g }, { data: f }, { data: r }, { data: t }] = await Promise.all([
     supabase
       .from("members")
       .select("id, role, status")
@@ -115,6 +119,12 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
       .select("can_manage_registrations")
       .eq("user_id", user.id)
       .maybeSingle(),
+    // The Travel grant (0110), the same way.
+    supabase
+      .from("members")
+      .select("can_manage_travel")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
   if (!data) return null;
 
@@ -128,6 +138,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     can_undelete_settings: !!grants.can_undelete_settings,
     can_manage_finances: !!(f as Partial<MemberLike> | null)?.can_manage_finances,
     can_manage_registrations: !!(r as Partial<MemberLike> | null)?.can_manage_registrations,
+    can_manage_travel: !!(t as Partial<MemberLike> | null)?.can_manage_travel,
   };
 
   return {
@@ -142,6 +153,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canUndeleteSettings: canUndeleteSettings(member),
     canManageFinances: canManageFinances(member),
     canManageRegistrations: canManageRegistrations(member),
+    canManageTravel: canManageTravel(member),
     seesFullUi: seesFullUi(user.email),
   };
 });

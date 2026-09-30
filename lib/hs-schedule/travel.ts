@@ -1,6 +1,6 @@
-// Where to stay and eat on a weekend away: the hotels (the Hotels contact
-// type) and places to eat (Food) in External Contacts near the weekend's
-// place. A place is near when its city is the weekend's, or when it's tagged
+// Where to stay and eat on a weekend away: the hotels and places to eat in
+// External Contacts (the types marked Travel in Settings → Contact Types,
+// like Hotels and Food) near the weekend's place. A place is near when its city is the weekend's, or when it's tagged
 // with it: a hotel in Ankeny tagged "des moines" shows on Des Moines weekends
 // (and, by its city, on Ankeny's). A place tagged "closed" is left out.
 // Pure, so the schedule and the tests share it. Safe to import from client
@@ -8,7 +8,8 @@
 
 export type TravelKind = "hotel" | "food";
 
-// Contact type names that mean the same, as in Settings → Contact Types.
+// Contact type names that mean the same, for a database from before the
+// Travel setting (migration 0110), and for that migration's first pass.
 export const TRAVEL_TYPE_NAMES: Record<TravelKind, string[]> = {
   hotel: ["hotels", "hotel", "lodging", "hotel blocks"],
   food: ["food", "restaurants", "restaurant", "dining", "places to eat"],

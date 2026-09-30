@@ -34,6 +34,8 @@ interface Member {
   can_undelete_settings: boolean;
   can_manage_finances: boolean;
   can_manage_registrations: boolean;
+  // Travel grant (0110), loaded on its own; false before the migration.
+  can_manage_travel: boolean;
   membership_status: string;
   access_revoked_at: string | null;
   requested_at: string;
@@ -45,7 +47,8 @@ type GrantKey =
   | "can_delete_settings"
   | "can_undelete_settings"
   | "can_manage_finances"
-  | "can_manage_registrations";
+  | "can_manage_registrations"
+  | "can_manage_travel";
 
 // Pending splits in two: people who signed in and asked (the approval queue),
 // and registered parents pre-created from a player registration who haven't
@@ -87,6 +90,8 @@ export function MembersTab({
   canManage: boolean;
 }) {
   const [members, setMembers] = useState<Member[]>([]);
+  // The Travel grant needs migration 0110; until then it isn't offered.
+  const [travelReady, setTravelReady] = useState(false);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("pending");
@@ -101,6 +106,7 @@ export function MembersTab({
     const [
       { data: m, error: mErr },
       { data: r, error: rErr },
+      { data: t, error: tErr },
     ] = await Promise.all([
       supabase
         .from("members")
@@ -112,10 +118,14 @@ export function MembersTab({
       supabase
         .from("member_relationships")
         .select("id, member_id, related_member_id, relationship"),
+      // The Travel grant (0110), best-effort so the tab loads before it.
+      supabase.from("members").select("id, can_manage_travel").is("deleted_at", null),
     ]);
     if (mErr || rErr) setError(mErr?.message ?? rErr?.message ?? "Failed to load");
     else {
-      setMembers((m as Member[]) ?? []);
+      const travel = new Map(((t as { id: string; can_manage_travel: boolean }[] | null) ?? []).map((x) => [x.id, !!x.can_manage_travel]));
+      setTravelReady(!tErr);
+      setMembers(((m as Omit<Member, "can_manage_travel">[]) ?? []).map((x) => ({ ...x, can_manage_travel: travel.get(x.id) ?? false })));
       setRelationships((r as Relationship[]) ?? []);
     }
     setLoading(false);
@@ -531,6 +541,7 @@ export function MembersTab({
                 tab={tab === "invited" ? "pending" : tab}
                 acting={acting === member.id}
                 canManage={canManage}
+                travelReady={travelReady}
                 onApprove={() => setStatus(member.id, "approved")}
                 onDeny={() => setStatus(member.id, "denied")}
                 onRestore={() => setStatus(member.id, "pending")}
@@ -591,6 +602,7 @@ function MemberRow({
   tab,
   acting,
   canManage,
+  travelReady,
   onApprove,
   onDeny,
   onRestore,
@@ -604,6 +616,7 @@ function MemberRow({
   tab: MemberStatus;
   acting: boolean;
   canManage: boolean;
+  travelReady: boolean;
   onApprove: () => void;
   onDeny: () => void;
   onRestore: () => void;
@@ -741,9 +754,9 @@ function MemberRow({
             <GrantChip label="Undelete" on={member.can_undelete_settings} disabled={acting} onClick={() => onSetGrant("can_undelete_settings", !member.can_undelete_settings)} />
           </div>
         )}
-        {/* Payments and Registrations grants — any approved member, board or
-            not (the Treasurer; whoever runs registrations). Super-admins
-            always have both. */}
+        {/* Payments, Registrations and Travel grants — any approved member,
+            board or not (the Treasurer; whoever runs registrations; the travel
+            coordinator). Super-admins always have them all. */}
         {tab === "approved" && canManage && member.role !== "super_admin" && (
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "flex-end", marginTop: 2 }}>
             <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
@@ -767,6 +780,19 @@ function MemberRow({
               disabled={acting}
               onClick={() => onSetGrant("can_manage_registrations", !member.can_manage_registrations)}
             />
+            {travelReady && (
+              <GrantChip
+                label="Travel"
+                title={
+                  member.can_manage_travel
+                    ? "Keeps the hotels and places to eat in External Contacts — tap to revoke"
+                    : "Tap to let them add and edit the hotels and places to eat in External Contacts"
+                }
+                on={member.can_manage_travel}
+                disabled={acting}
+                onClick={() => onSetGrant("can_manage_travel", !member.can_manage_travel)}
+              />
+            )}
           </div>
         )}
         {tab === "denied" && (

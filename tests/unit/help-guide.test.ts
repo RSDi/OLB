@@ -109,6 +109,17 @@ test("coaches see the coaches' sections, other members don't", () => {
   assert.ok(!guideSectionsFor({ ...COACH, status: "pending" }).some((s) => s.audience === "coaches"));
 });
 
+test("the travel coordinator reads the hotels section, and the board still gets its own", () => {
+  const TRAVEL: GuideViewer = { ...MEMBER, canManageTravel: true };
+  assert.equal(guideSectionForPath("/portal/contacts", TRAVEL)?.id, "travel-contacts");
+  assert.equal(guideSectionForPath("/portal/contacts/abc/edit", TRAVEL)?.id, "travel-contacts");
+  assert.ok(!guideSectionsFor(TRAVEL).some((s) => s.audience === "staff" || s.audience === "coaches"));
+  assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "travel-contacts"));
+  // The board's "i" on External Contacts stays the main section.
+  assert.equal(guideSectionForPath("/portal/contacts", ADMIN)?.id, "external-contacts");
+  assert.ok(guideSectionsFor(SUPER).some((s) => s.id === "travel-contacts"));
+});
+
 test("a pending account is treated as a member", () => {
   const pendingAdmin: GuideViewer = { role: "admin", status: "pending", isStaff: false };
   assert.ok(guideSectionsFor(pendingAdmin).every((s) => s.audience === "everyone"));

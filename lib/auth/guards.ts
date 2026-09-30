@@ -18,6 +18,7 @@ import {
   canUndeleteSettings,
   canManageFinances,
   canManageRegistrations,
+  canManageTravel,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -38,11 +39,12 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
     .maybeSingle();
   if (!data) return { userId: user.id, member: null };
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
-  // Settings grants (0057), the Payments grant (0101) and the Registrations
-  // grant (0102), best-effort so the guards work pre-migration (grants default
+  // Settings grants (0057), the Payments grant (0101), the Registrations
+  // grant (0102) and the Travel grant (0110), best-effort so the guards work
+  // pre-migration (grants default
   // false → no access, the safe default). Separate queries, so a missing
   // later column can't hide an earlier one.
-  const [{ data: g }, { data: f }, { data: r }] = await Promise.all([
+  const [{ data: g }, { data: f }, { data: r }, { data: t }] = await Promise.all([
     supabase
       .from("members")
       .select("can_edit_settings, can_delete_settings, can_undelete_settings")
@@ -50,6 +52,7 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
       .maybeSingle(),
     supabase.from("members").select("can_manage_finances").eq("id", row.id).maybeSingle(),
     supabase.from("members").select("can_manage_registrations").eq("id", row.id).maybeSingle(),
+    supabase.from("members").select("can_manage_travel").eq("id", row.id).maybeSingle(),
   ]);
   const grants = (g as Partial<MemberLike> | null) ?? {};
   return {
@@ -62,6 +65,7 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
       can_undelete_settings: !!grants.can_undelete_settings,
       can_manage_finances: !!(f as Partial<MemberLike> | null)?.can_manage_finances,
       can_manage_registrations: !!(r as Partial<MemberLike> | null)?.can_manage_registrations,
+      can_manage_travel: !!(t as Partial<MemberLike> | null)?.can_manage_travel,
     },
   };
 }
@@ -133,4 +137,14 @@ export async function requireRegistrations(): Promise<GateResult> {
     return { error: "You don't have permission to manage registrations." };
   }
   return { userId: caller.userId };
+}
+
+// Adding and editing External Contacts: the board, or the travel coordinator
+// (0110), whom RLS keeps to the travel types. `isStaff` says which.
+export async function requireContactEditor(): Promise<{ error: string } | { userId: string; isStaff: boolean }> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (isStaff(caller.member)) return { userId: caller.userId, isStaff: true };
+  if (canManageTravel(caller.member)) return { userId: caller.userId, isStaff: false };
+  return { error: "Board access required." };
 }

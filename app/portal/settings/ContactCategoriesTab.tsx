@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Icons } from "../../components/icons";
-import { Input, Pill } from "../../components/ui";
+import { Input, Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
 import {
   createContactCategory,
@@ -22,7 +22,13 @@ interface ContactCategory {
   sort_order: number;
   // Coaches can read its contacts (0109).
   shared_with_coaches?: boolean;
+  // Hotels or places to eat: the travel coordinator keeps them, and the HS
+  // Schedule lists them under a weekend away (0110).
+  travel_kind?: TravelKind | null;
 }
+
+type TravelKind = "hotel" | "food";
+const TRAVEL_LABEL: Record<TravelKind, string> = { hotel: "Hotels", food: "Places to eat" };
 
 export function ContactCategoriesTab({ me }: { me: MemberLike }) {
   const [rows, setRows] = useState<ContactCategory[]>([]);
@@ -31,8 +37,10 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // "Coaches can see" needs migration 0109; until then it isn't offered.
+  // "Coaches can see" needs migration 0109, and Travel 0110; until then
+  // they aren't offered.
   const [sharing, setSharing] = useState(true);
+  const [travelReady, setTravelReady] = useState(true);
 
   const canDelete = isSuperAdmin(me);
 
@@ -45,9 +53,14 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
         .is("deleted_at", null)
         .order("sort_order", { ascending: true })
         .order("name", { ascending: true });
-    let { data, error: loadError } = await run("id, name, slug, sort_order, shared_with_coaches");
+    let { data, error: loadError } = await run("id, name, slug, sort_order, shared_with_coaches, travel_kind");
+    if (loadError && /travel_kind/.test(loadError.message)) {
+      setTravelReady(false);
+      ({ data, error: loadError } = await run("id, name, slug, sort_order, shared_with_coaches"));
+    }
     if (loadError && /shared_with_coaches/.test(loadError.message)) {
       setSharing(false);
+      setTravelReady(false);
       ({ data, error: loadError } = await run("id, name, slug, sort_order"));
     }
     if (loadError) setError(loadError.message);
@@ -66,6 +79,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
       slug: values.slug,
       sortOrder: values.sortOrder,
       sharedWithCoaches: sharing ? values.shared : undefined,
+      travelKind: travelReady ? values.travel : undefined,
     });
     if (result.error) {
       setError(result.error);
@@ -83,6 +97,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
       slug: values.slug,
       sortOrder: values.sortOrder,
       sharedWithCoaches: sharing ? values.shared : undefined,
+      travelKind: travelReady ? values.travel : undefined,
     });
     if (result.error) {
       setError(result.error);
@@ -161,6 +176,7 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
         <CategoryForm
           submitLabel="Add type"
           sharing={sharing}
+          travelReady={travelReady}
           onCancel={() => {
             setAdding(false);
             setError(null);
@@ -192,9 +208,16 @@ export function ContactCategoriesTab({ me }: { me: MemberLike }) {
             editingId === c.id ? (
               <CategoryForm
                 key={c.id}
-                initial={{ name: c.name, slug: c.slug ?? "", sortOrder: c.sort_order, shared: !!c.shared_with_coaches }}
+                initial={{
+                  name: c.name,
+                  slug: c.slug ?? "",
+                  sortOrder: c.sort_order,
+                  shared: !!c.shared_with_coaches,
+                  travel: c.travel_kind ?? null,
+                }}
                 submitLabel="Save"
                 sharing={sharing}
+                travelReady={travelReady}
                 onCancel={() => {
                   setEditingId(null);
                   setError(null);
@@ -253,6 +276,15 @@ function CategoryRow({
           Coaches can see
         </span>
       )}
+      {category.travel_kind && (
+        <span
+          className="rsd-chip rsd-chip-mute"
+          style={{ fontSize: 10 }}
+          title="The travel coordinator keeps these, and they show under the HS Schedule's weekends away"
+        >
+          Travel: {TRAVEL_LABEL[category.travel_kind]}
+        </span>
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
           {category.slug ? `Slug: ${category.slug} · ` : ""}Sort order: {category.sort_order}
@@ -277,12 +309,14 @@ interface CategoryFormValues {
   slug: string;
   sortOrder: number;
   shared: boolean;
+  travel: TravelKind | null;
 }
 
 function CategoryForm({
   initial,
   submitLabel,
   sharing,
+  travelReady,
   onSubmit,
   onCancel,
 }: {
@@ -290,14 +324,17 @@ function CategoryForm({
   submitLabel: string;
   // Offer "Coaches can see" (migration 0109 is in).
   sharing: boolean;
+  // Offer Travel (migration 0110 is in).
+  travelReady: boolean;
   onSubmit: (values: CategoryFormValues) => void | Promise<void>;
   onCancel: () => void;
 }) {
-  const start: CategoryFormValues = initial ?? { name: "", slug: "", sortOrder: 100, shared: false };
+  const start: CategoryFormValues = initial ?? { name: "", slug: "", sortOrder: 100, shared: false, travel: null };
   const [name, setName] = useState(start.name);
   const [slug, setSlug] = useState(start.slug);
   const [sortOrder, setSortOrder] = useState(String(start.sortOrder));
   const [shared, setShared] = useState(start.shared);
+  const [travel, setTravel] = useState<TravelKind | null>(start.travel);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -309,6 +346,7 @@ function CategoryForm({
       slug: slug.trim(),
       sortOrder: Number(sortOrder) || 100,
       shared,
+      travel,
     });
     setPending(false);
   }
@@ -348,6 +386,18 @@ function CategoryForm({
             </span>
           </span>
         </label>
+      )}
+      {travelReady && (
+        <Select
+          label="Travel"
+          value={travel ?? ""}
+          onChange={(e) => setTravel((e.target.value || null) as TravelKind | null)}
+          help="Hotels and places to eat show under the HS Schedule's weekends away in their city, and the travel coordinator keeps them."
+        >
+          <option value="">Not travel</option>
+          <option value="hotel">Hotels</option>
+          <option value="food">Places to eat</option>
+        </Select>
       )}
       <div data-tour="contact-types-save" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>

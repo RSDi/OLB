@@ -23,9 +23,10 @@ import type { MemberRole, MemberStatus } from "../auth/permissions";
 // Who a section is for. "staff" = board members and super-admins; "coaches" =
 // the coaches (a leadership volunteer role on a team) and the board;
 // "finance" = anyone with the Payments grant; "registrations" = anyone with
-// the Registrations grant (super-admins always have both). The guide hides a
+// the Registrations grant; "travel" = anyone with the Travel grant (the
+// travel coordinator). Super-admins always have all three. The guide hides a
 // section from anyone it doesn't apply to.
-export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "super_admin";
+export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "travel" | "super_admin";
 
 export interface GuideSection {
   id: string; // anchor: #help-<id>
@@ -59,6 +60,8 @@ export interface GuideViewer {
   canManageRegistrations?: boolean;
   // A coach: sees the "coaches" sections (the board always does).
   isCoach?: boolean;
+  // Holds the Travel grant: sees the "travel" sections.
+  canManageTravel?: boolean;
 }
 
 export const GUIDE_UPDATED = "September 2026";
@@ -324,10 +327,26 @@ Requirements start over each season, since each season has its own roster. The l
 - **Edit** a contact from its page. If someone else saved it after you opened it, your save stops and says so, so nobody's changes are lost.
 - **History** on a contact's page lists every change to it, newest first: who made it, when, and each field before and after, including what the spreadsheet import added or filled in. **Restore this version** puts an earlier version back; that's saved as a new change, so it can be undone the same way. **Recent changes**, at the top of External Contacts, lists the latest changes to every contact.
 - **Used by** on a contact's page lists the playbooks it's attached to.
-- **Hotels** and **Food** are where we stay and eat on the road, with the rates and what worked in their notes. They show on the HS Schedule's weekends in their city. Tag one with the city it's near to show it there too (a hotel in Ankeny: **des moines**), or **closed** to keep it off the schedule.
+- **Hotels** and **Food** are where we stay and eat on the road, with the rates and what worked in their notes. They show on the HS Schedule's weekends in their city. Tag one with the city it's near to show it there too (a hotel in Ankeny: **des moines**), or **closed** to keep it off the schedule. The travel coordinator (the **Travel** permission) adds and edits them too.
 - Which types coaches see is set by a super-admin in **Settings → Contact Types** (**Coaches can see**). Coaches see everything on those contacts, notes included, so keep anything just for the board on another type.
 
 Super-admins can **Delete** a contact.`,
+  },
+  {
+    id: "travel-contacts",
+    title: "Hotels and places to eat",
+    group: "External Contacts",
+    audience: "travel",
+    routes: ["/portal/contacts"],
+    keywords: ["travel", "travel coordinator", "hotel", "hotels", "room block", "rates", "food", "restaurant", "places to eat", "dinner", "team meal", "external contacts", "tags", "closed"],
+    body: `For the travel coordinator: the hotels we book and the places that feed the team on the road, in **External Contacts** (in the sidebar). You see and change these; the rest of External Contacts is the board's.
+
+- Each hotel or restaurant is listed with the people there under it, their role, phone and email. Tap one to open it.
+- **+ New contact** adds a place. Choose **Company**, give it the **Hotels** or **Food** type, then fill in its **City** and **State**, phone, website and notes: the rates, the room block, what worked last time.
+- On a place's page, **+ Add person** adds who you deal with there, and **Edit** changes the place. If someone else saved it after you opened it, your save stops and says so, so nobody's changes are lost.
+- **Tags** put a place on the HS Schedule's weekends in a nearby city: tag a hotel in Ankeny **des moines** and it shows on Des Moines weekends as well as Ankeny's. Tag one **closed** to keep it off the schedule.
+
+The coaches and the board see these places under each weekend away on the HS Schedule, with your notes. Only the board can delete a contact.`,
   },
   {
     id: "playbooks",
@@ -526,6 +545,7 @@ Activity is recorded from the day this page went live.`,
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
+| Add and edit the hotels and places to eat in External Contacts | With **Travel** | ✓ | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
@@ -562,7 +582,7 @@ Activity is recorded from the day this page went live.`,
 - **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
 - Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
-- Next to **Manages:** on the **Approved** tab, turn on **Payments** to let someone see every family's balance and record payments (the Treasurer, and anyone helping them), and **Registrations** to let someone review new registrations, put players on teams and edit players. Both work for members and board alike. Tap one again to take it away.
+- Next to **Manages:** on the **Approved** tab, turn on **Payments** to let someone see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to let someone review new registrations, put players on teams and edit players, and **Travel** to let the travel coordinator add and edit the hotels and places to eat in External Contacts. They all work for members and board alike. Tap one again to take it away.
 - **Remove** a member (demote a super-admin first).
 
 Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,
@@ -667,6 +687,7 @@ Every signed-in member sees the links; only super-admins can change them.`,
 - **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
 - Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
 - **Coaches can see** — tick it on a type to let the coaches read its contacts (not change them): the companies of that type and the people at them, as a type chip on the list. Programs, Facilities and Referees start ticked. Coaches see everything on those contacts, notes included.
+- **Travel** — **Hotels** or **Places to eat** makes it a travel type: its contacts show under the HS Schedule's weekends away in their city, and the travel coordinator (the **Travel** permission in Settings → Members) adds and edits them. Hotels and Food start that way.
 - Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.`,
   },
   {
@@ -696,6 +717,7 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
   if (audience === "coaches") return viewer.isStaff || !!viewer.isCoach;
   if (audience === "finance") return viewer.role === "super_admin" || !!viewer.canManageFinances;
   if (audience === "registrations") return viewer.role === "super_admin" || !!viewer.canManageRegistrations;
+  if (audience === "travel") return viewer.role === "super_admin" || !!viewer.canManageTravel;
   return viewer.role === "super_admin";
 }
 
