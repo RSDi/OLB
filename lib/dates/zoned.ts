@@ -70,8 +70,13 @@ export function zonedTimeToUtc(
   // Guess with the offset at the wall time read as UTC, then correct once for
   // the offset at the guess (they differ only near a DST change).
   const first = wall - offsetMs(wall, tz);
-  const second = wall - offsetMs(first, tz);
+  const firstOffset = offsetMs(first, tz);
+  const second = wall - firstOffset;
   if (second === first) return new Date(first);
+  // Just after a change the first guess used the other side's offset (5:00 AM
+  // on the spring-forward morning, read as UTC, is still before the jump), and
+  // the corrected guess reads back as the wall time.
+  if (offsetMs(second, tz) === firstOffset) return new Date(second);
   // In the spring-forward gap neither guess reads back as the wall time; take
   // the later instant (the time after the jump).
   return new Date(Math.max(first, second));

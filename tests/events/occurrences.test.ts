@@ -66,3 +66,16 @@ test("zoned helpers round-trip Central wall-clock times, DST included", () => {
   // 2:30 AM doesn't exist on Mar 14, 2027 (clocks jump 2→3): it lands at 3:30 CDT.
   assert.equal(zonedTimeToUtc("2027-03-14", { hour: 2, minute: 30 }).toISOString(), "2027-03-14T08:30:00.000Z");
 });
+
+test("a morning event on the spring-forward Sunday keeps its time", () => {
+  // Sundays 7:00 AM Central, first on Mar 7, 2027; clocks jump 2→3 AM on Mar 14.
+  const ev = weekly("2027-03-07T13:00:00Z", null, [0]);
+  const occ = expandEventOccurrences([ev], {
+    from: new Date("2027-03-07T12:00:00Z"),
+    to: new Date("2027-03-21T12:00:00Z"),
+  });
+  assert.deepEqual(occ.map((o) => central(o.startAt)), ["Sun, Mar 7, 7:00 AM", "Sun, Mar 14, 7:00 AM", "Sun, Mar 21, 7:00 AM"]);
+  assert.equal(occ[1].startAt, "2027-03-14T12:00:00.000Z");
+  // 3:00 AM, the first minute after the jump, is 3:00 CDT.
+  assert.equal(zonedTimeToUtc("2027-03-14", { hour: 3, minute: 0 }).toISOString(), "2027-03-14T08:00:00.000Z");
+});
