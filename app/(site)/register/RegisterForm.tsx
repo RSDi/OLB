@@ -4,17 +4,54 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SlackLogo } from "../../components/SlackLogo";
 import { createClient } from "../../../lib/supabase/client";
-import { ALREADY_REGISTERED, friendlyAuthError } from "../../../lib/auth/friendly-error";
+import { friendlyAuthError } from "../../../lib/auth/friendly-error";
 import { FormError, Or, StatusNote } from "../_components/AuthForm";
 import auth from "../_components/auth.module.css";
 import styles from "../_components/site.module.css";
 import { cx } from "../_components/util";
 
+// An email that already has an account (the club may have set one up ahead of
+// time, e.g. through "Preview as") doesn't dead-end here: we email a code
+// instead, and once it checks out we save the password they just chose and
+// sign them in. The code proves the email is theirs, as "Forgot password?"
+// does, so to them it reads as the usual confirm-your-email step.
 export function RegisterForm() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState(false);
+  const [finish, setFinish] = useState<{ email: string; password: string } | null>(null);
+  const [canResend, setCanResend] = useState(false);
+
+  // Signed in: let the server resolve membership (bootstrap admin, pending
+  // insert, admin notification, all in one place), then go where it says.
+  async function continueSignedIn() {
+    const supabase = createClient();
+    const res = await fetch("/api/auth/post-signin", { method: "POST" });
+    const result = res.ok
+      ? ((await res.json()) as { status: "pending" | "approved" | "denied" })
+      : { status: "pending" as const };
+
+    if (result.status === "approved") {
+      router.push("/portal");
+      router.refresh();
+    } else {
+      await supabase.auth.signOut();
+      router.push(`/login?status=${result.status}`);
+    }
+  }
+
+  async function sendFinishCode(email: string): Promise<boolean> {
+    const supabase = createClient();
+    const { error: otpError } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    if (otpError) {
+      setError(friendlyAuthError(otpError.message));
+      return false;
+    }
+    setCanResend(false);
+    setTimeout(() => setCanResend(true), 30_000);
+    return true;
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -37,42 +74,59 @@ export function RegisterForm() {
       options: { data: { full_name: fullName } },
     });
 
+    // The email already has an account. Supabase says so outright when email
+    // confirmation is off; when it's on, it returns a stand-in user with no
+    // identities and sends nothing.
+    const taken = signUpError
+      ? /already registered|already been registered/i.test(signUpError.message)
+      : !!data.user && data.user.identities?.length === 0;
+    if (taken) {
+      if (await sendFinishCode(email)) setFinish({ email, password });
+      setPending(false);
+      return;
+    }
+
     if (signUpError) {
       setError(friendlyAuthError(signUpError.message));
       setPending(false);
       return;
     }
-    // With email confirmation on, Supabase doesn't say the email is taken: it
-    // returns a stand-in user with no identities and sends nothing. Say so,
-    // rather than "check your email" for a link that never comes.
-    if (data.user && data.user.identities?.length === 0) {
-      setError(ALREADY_REGISTERED);
-      setPending(false);
-      return;
-    }
 
     if (data.session) {
-      // Email confirmation is off — session returned immediately. Let the
-      // server resolve membership (handles bootstrap admin + pending insert
-      // + admin notification in one place).
-      const res = await fetch("/api/auth/post-signin", { method: "POST" });
-      const result = res.ok
-        ? ((await res.json()) as { status: "pending" | "approved" | "denied" })
-        : { status: "pending" as const };
-
-      if (result.status === "approved") {
-        router.push("/portal");
-        router.refresh();
-      } else {
-        await supabase.auth.signOut();
-        router.push(`/login?status=${result.status}`);
-      }
+      // Email confirmation is off — session returned immediately.
+      await continueSignedIn();
     } else {
       // Email confirmation is on — user must click the link first. The auth
       // callback runs the same resolveMembership flow on confirmation.
       setConfirmEmail(true);
       setPending(false);
     }
+  }
+
+  async function handleFinish(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!finish) return;
+    const token = (new FormData(e.currentTarget).get("token") as string).replace(/\D/g, "");
+    if (token.length < 6) {
+      setError("Type the whole code from the email.");
+      return;
+    }
+    setPending(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({ email: finish.email, token, type: "email" });
+    if (verifyError) {
+      setError(friendlyAuthError(verifyError.message));
+      setPending(false);
+      return;
+    }
+    // Signed in either way; a password that didn't save can be set later
+    // with "Forgot password?".
+    const { error: passwordError } = await supabase.auth.updateUser({ password: finish.password });
+    if (passwordError) console.error("[register] saving the password failed:", passwordError.message);
+
+    await continueSignedIn();
   }
 
   async function handleSlack() {
@@ -86,6 +140,54 @@ export function RegisterForm() {
     // where sign-ins from the site's own workspace (SLACK_TEAM_ID) are approved
     // on the spot.
     if (slackError) setError(friendlyAuthError(slackError.message));
+  }
+
+  if (finish) {
+    return (
+      <>
+        <p className={auth.note}>
+          One last step — we sent a code to <strong>{finish.email}</strong> to confirm it&apos;s you. Type it in and
+          you&apos;re in. It can take a minute to arrive. If the email shows a sign-in button instead of a code,
+          tapping the button works too.
+        </p>
+        <form onSubmit={handleFinish} className={styles.form}>
+          <div className={styles.field}>
+            <label htmlFor="register-token" className={styles.fieldTitle}>
+              Code from the email
+            </label>
+            <input
+              id="register-token"
+              name="token"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={10}
+              required
+              placeholder="••••••"
+              autoFocus
+              className={cx(styles.input, auth.code)}
+            />
+          </div>
+          {error && <FormError>{error}</FormError>}
+          <button type="submit" disabled={pending} className={cx(styles.button, auth.action)}>
+            {pending ? "Checking…" : "Continue"}
+          </button>
+        </form>
+        <p className={auth.hint}>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              void sendFinishCode(finish.email);
+            }}
+            disabled={!canResend || pending}
+            className={auth.link}
+          >
+            {canResend ? "Send a new code" : "You can request another code in a moment…"}
+          </button>
+        </p>
+      </>
+    );
   }
 
   if (confirmEmail) {
