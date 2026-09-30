@@ -147,7 +147,13 @@ export function CellPopover({
     };
     place(false);
     const onResize = () => place(true);
-    const onMove = () => (target.pinned ? place(true) : onClose());
+    // The page scrolling moves a pinned card with its cell and closes one
+    // opened by hovering. Scrolling the card's own list is neither.
+    const onMove = (e: Event) => {
+      if (e.target instanceof Node && ref.current?.contains(e.target)) return;
+      if (target.pinned) place(true);
+      else onClose();
+    };
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onMove, true);
     return () => {
@@ -239,7 +245,11 @@ export function CellPopover({
           )}
         </div>
 
-        <div ref={bodyRef} style={{ overflowY: "auto", padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div
+          ref={bodyRef}
+          // Scrolling to the end of the list doesn't go on to scroll the page.
+          style={{ overflowY: "auto", overscrollBehavior: "contain", padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 10 }}
+        >
           {target.editing && canEdit ? (
             <Editor
               weekend={weekend}
