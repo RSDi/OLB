@@ -22,12 +22,15 @@ export function composeSubtitle(parts: (string | null | undefined)[]): string {
 }
 
 // Normalize a phone for a tel: link. Strips everything except digits and
-// the leading +.
+// the leading +. An extension ("913-341-6000 ext. 2") is dialed after a
+// pause, rather than run into the number.
 export function telHref(phone: string | null | undefined): string | null {
   if (!phone) return null;
-  const cleaned = phone.replace(/[^\d+]/g, "");
+  const [main, ext] = phone.split(/\s*(?:extension|ext\.?|x)\s*/i);
+  const cleaned = main.replace(/[^\d+]/g, "");
   if (cleaned.length < 4) return null;
-  return `tel:${cleaned}`;
+  const extDigits = (ext ?? "").replace(/\D/g, "");
+  return extDigits ? `tel:${cleaned},${extDigits}` : `tel:${cleaned}`;
 }
 
 // Normalize a URL for an external link — adds https:// if the user typed a

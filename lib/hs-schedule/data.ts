@@ -1,9 +1,11 @@
 // Server-side loaders for the HS Schedule. Everything runs under the
-// caller's RLS: coaches and the board read the schedule (0108); only the
-// board reads External Contacts, so for coaches the linked programs come back
-// empty and the names stored on the schedule stand in.
+// caller's RLS: coaches and the board read the schedule (0108); the board
+// reads every External Contact and a coach the types shared with coaches
+// (0109), so for a coach anything else comes back empty and the names stored
+// on the schedule stand in.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { travelKind, type TravelKind, type TravelPerson, type TravelPlace } from "./travel";
 import type {
   HsContactOption,
   HsContactRef,
@@ -208,4 +210,47 @@ export async function loadContactScheduleHistory(
     }
   }
   return rows.sort((a, b) => b.starts_on.localeCompare(a.starts_on));
+}
+
+// Hotels and places to eat (the Hotels and Food contact types) with the
+// people there, for where to stay and eat on weekends away (./travel.ts).
+// A coach gets them when those types are shared with coaches.
+export async function loadHsTravelPlaces(supabase: SupabaseClient): Promise<TravelPlace[]> {
+  const { data: cats } = await supabase.from("contact_categories").select("id, name").is("deleted_at", null);
+  const kindOf = new Map<string, TravelKind>();
+  for (const c of (cats as { id: string; name: string }[] | null) ?? []) {
+    const k = travelKind(c.name);
+    if (k) kindOf.set(c.id, k);
+  }
+  if (kindOf.size === 0) return [];
+  const { data: companies, error } = await supabase
+    .from("contacts")
+    .select("id, name, category_id, city, state, website, phone, email, notes, tags")
+    .eq("kind", "company")
+    .in("category_id", [...kindOf.keys()])
+    .is("deleted_at", null)
+    .order("name");
+  const rows =
+    (companies as
+      | (Omit<TravelPlace, "kind" | "people" | "tags"> & { category_id: string; tags: string[] | null })[]
+      | null) ?? [];
+  if (error || rows.length === 0) return [];
+  const { data: people } = await supabase
+    .from("contacts")
+    .select("id, parent_contact_id, name, title, phone, mobile_phone, email")
+    .eq("kind", "person")
+    .in("parent_contact_id", rows.map((r) => r.id))
+    .is("deleted_at", null)
+    .order("name");
+  const byCompany = new Map<string, TravelPerson[]>();
+  for (const person of (people as (TravelPerson & { parent_contact_id: string })[] | null) ?? []) {
+    const { parent_contact_id, ...rest } = person;
+    byCompany.set(parent_contact_id, [...(byCompany.get(parent_contact_id) ?? []), rest]);
+  }
+  return rows.map(({ category_id, tags, ...r }) => ({
+    ...r,
+    kind: kindOf.get(category_id)!,
+    tags: tags ?? [],
+    people: byCompany.get(r.id) ?? [],
+  }));
 }

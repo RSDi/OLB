@@ -51,6 +51,8 @@ import { STATUS_STYLE, StatusChip } from "./status";
 import { scheduleReducer } from "./store";
 import type { TeamPick } from "./TeamAdder";
 import { WeekendSheet } from "./WeekendSheet";
+import { TravelChip, TravelPopover } from "./TravelPopover";
+import { placesNear, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
 
 export interface CompareWeekend {
   id: string;
@@ -75,6 +77,7 @@ export function ScheduleView({
   options,
   knownTeams,
   directoryTeams,
+  travelPlaces,
   today,
 }: {
   schedule: HsSeasonSchedule;
@@ -84,6 +87,8 @@ export function ScheduleView({
   options: HsContactOption[];
   knownTeams: TeamPick[];
   directoryTeams: DirectoryTeam[];
+  // Hotels and places to eat, for where to stay and eat on weekends away.
+  travelPlaces: TravelPlace[];
   today: string;
 }) {
   const router = useRouter();
@@ -106,6 +111,8 @@ export function ScheduleView({
   // The chips above the grid: show only the weekends that match any of them.
   const [filters, setFilters] = useState<ReadonlySet<WeekendFilter>>(() => new Set());
   const [cell, setCell] = useState<CellTarget | null>(null);
+  // Where to stay and eat: the weekend whose card is open, and what opened it.
+  const [travel, setTravel] = useState<{ weekendId: string; anchor: HTMLElement } | null>(null);
   const [sheet, setSheet] = useState<SheetState>(null);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -129,6 +136,22 @@ export function ScheduleView({
     [weekends, filters, facts, openWeekendId]
   );
   const filtering = filters.size > 0;
+  // The hotels and places to eat near each weekend away.
+  const nearBy = useMemo(() => {
+    const out = new Map<string, PlacesNear>();
+    if (travelPlaces.length === 0) return out;
+    for (const w of weekends) {
+      if (w.status === "off" || w.status === "canceled") continue;
+      const near = placesNear(w.location, travelPlaces);
+      if (near) out.set(w.id, near);
+    }
+    return out;
+  }, [weekends, travelPlaces]);
+  const toggleTravel = (weekendId: string, anchor: HTMLElement) =>
+    setTravel((t) => (t?.weekendId === weekendId ? null : { weekendId, anchor }));
+  const closeTravel = useCallback(() => setTravel(null), []);
+  const travelWeekend = travel ? weekends.find((w) => w.id === travel.weekendId) ?? null : null;
+  const travelNear = travel ? nearBy.get(travel.weekendId) ?? null : null;
   const totals = useMemo(
     () => levelTotals(levels, shownWeekends, state.games, state.opponents),
     [levels, shownWeekends, state.games, state.opponents]
@@ -407,6 +430,9 @@ export function ScheduleView({
                         onHoverIn={hoverIn}
                         onHoverOut={hoverOut}
                         onOpen={openCell}
+                        near={nearBy.get(w.id) ?? null}
+                        travelOpen={travel?.weekendId === w.id}
+                        onTravel={(el) => toggleTravel(w.id, el)}
                       />
                     )}
                   />
@@ -451,6 +477,9 @@ export function ScheduleView({
                     flash={flash === w.id}
                     onEvent={() => setSheet({ kind: "weekend", id: w.id })}
                     onOpen={openCell}
+                    near={nearBy.get(w.id) ?? null}
+                    travelOpen={travel?.weekendId === w.id}
+                    onTravel={(el) => toggleTravel(w.id, el)}
                   />
                 ))}
               </div>
@@ -472,6 +501,10 @@ export function ScheduleView({
             </div>
           </div>
         </>
+      )}
+
+      {travel && travelWeekend && travelNear && (
+        <TravelPopover weekend={travelWeekend} near={travelNear} anchor={travel.anchor} onClose={closeTravel} />
       )}
 
       {liveCell && (
@@ -596,6 +629,9 @@ function WeekendRow({
   onHoverIn,
   onHoverOut,
   onOpen,
+  near,
+  travelOpen,
+  onTravel,
 }: {
   w: HsWeekend;
   levels: HsLevel[];
@@ -610,6 +646,9 @@ function WeekendRow({
   onHoverIn: (w: HsWeekend, l: HsLevel, el: HTMLElement) => void;
   onHoverOut: () => void;
   onOpen: (w: HsWeekend, l: HsLevel, el: HTMLElement, pinned: boolean) => void;
+  near: PlacesNear | null;
+  travelOpen: boolean;
+  onTravel: (el: HTMLElement) => void;
 }) {
   const st = STATUS_STYLE[w.status];
   const past = w.ends_on < today;
@@ -633,6 +672,11 @@ function WeekendRow({
       <td style={cellBase}>
         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{w.location ?? ""}</div>
         {w.trip && <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{w.trip}</div>}
+        {near && (
+          <div style={{ marginTop: 6 }}>
+            <TravelChip near={near} active={travelOpen} onOpen={onTravel} />
+          </div>
+        )}
       </td>
       <td style={{ ...cellBase, borderLeft: `4px solid ${st.bar}`, paddingLeft: 12 }}>
         <button
@@ -804,6 +848,9 @@ function WeekendCard({
   flash,
   onEvent,
   onOpen,
+  near,
+  travelOpen,
+  onTravel,
 }: {
   w: HsWeekend;
   levels: HsLevel[];
@@ -814,6 +861,9 @@ function WeekendCard({
   flash: boolean;
   onEvent: () => void;
   onOpen: (w: HsWeekend, l: HsLevel, el: HTMLElement, pinned: boolean) => void;
+  near: PlacesNear | null;
+  travelOpen: boolean;
+  onTravel: (el: HTMLElement) => void;
 }) {
   const st = STATUS_STYLE[w.status];
   const quiet = w.status === "off" || w.status === "canceled";
@@ -845,6 +895,11 @@ function WeekendCard({
       {(w.location || w.trip || w.notes) && (
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
           {[w.location, w.trip, w.notes].filter(Boolean).join(" · ")}
+        </div>
+      )}
+      {near && (
+        <div>
+          <TravelChip near={near} active={travelOpen} onOpen={onTravel} />
         </div>
       )}
       {!quiet && (

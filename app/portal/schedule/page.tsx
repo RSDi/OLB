@@ -9,6 +9,7 @@ import {
   loadHsContactOptions,
   loadHsSeasonSchedule,
   loadHsSeasons,
+  loadHsTravelPlaces,
   loadKnownTeams,
 } from "../../../lib/hs-schedule/data";
 import { ScheduleView, type CompareWeekend } from "./_components/ScheduleView";
@@ -47,7 +48,7 @@ export default async function SchedulePage({
 
   const compareSeason = seasons.find((s) => s.season === parseSeason(params.compare) && s.id !== season.id) ?? null;
   const board = `${season.season}-${season.season + 1}`;
-  const [schedule, options, knownTeams, compareRows, teams] = await Promise.all([
+  const [schedule, options, knownTeams, compareRows, teams, travelPlaces] = await Promise.all([
     loadHsSeasonSchedule(supabase, season),
     // The programs to add teams from: all of them for the board, the types
     // shared with coaches for a coach (RLS, 0109).
@@ -77,6 +78,8 @@ export default async function SchedulePage({
           .order("name");
         return (t as DirectoryTeam[] | null) ?? [];
       }),
+    // Hotels and places to eat, for where to stay and eat on weekends away.
+    loadHsTravelPlaces(supabase),
   ]);
 
   return (
@@ -90,6 +93,7 @@ export default async function SchedulePage({
       options={options}
       knownTeams={knownTeams}
       directoryTeams={teams}
+      travelPlaces={travelPlaces}
       today={today}
     />
   );

@@ -493,6 +493,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "The dates, where and the trip, the event with the teams coming, a column per team of ours with its games, and the notes.",
       },
       {
+        target: "schedule-travel",
+        title: "Where to stay and eat",
+        body: "On a weekend away, the bed and fork count the hotels and places to eat we've saved there. Tap them for the rates, notes, who to call and the website.",
+      },
+      {
         target: "schedule-cell",
         title: "Who's coming",
         body: "Hover over a team's count (tap it on a phone) to see its games and the teams coming, confirmed or on the fence, each linked to its program.",
