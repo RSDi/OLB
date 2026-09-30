@@ -32,7 +32,7 @@ interface NavItem {
 // top-level item — it lives under Settings → Integrations.
 const NAV: NavItem[] = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true, previewOnly: true },
-  { href: "/portal/events", label: "Events", icon: <Icons.Calendar width={16} height={16}/>, previewOnly: true },
+  { href: "/portal/events", label: "Planning", icon: <Icons.Calendar width={16} height={16}/>, previewOnly: true },
   { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/>, previewOnly: true },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/>, tour: "nav-directory" },
   // Vendors, rented facilities, opposing programs. The page itself is
