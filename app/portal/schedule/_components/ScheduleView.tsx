@@ -12,7 +12,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { Pill } from "../../../components/ui";
-import { PlanningImportSheet } from "../../../components/PlanningImportSheet";
 import {
   WEEKEND_STATUSES,
   cellOpponents,
@@ -66,7 +65,6 @@ type SheetState =
   | { kind: "weekend"; id: string | null }
   | { kind: "season" }
   | { kind: "new-season" }
-  | { kind: "import" }
   | null;
 
 export function ScheduleView({
@@ -295,13 +293,6 @@ export function ScheduleView({
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          {isStaff && (
-            <span data-tour="schedule-import" style={{ display: "inline-flex" }}>
-              <Pill variant="ghost" size="sm" onClick={() => setSheet({ kind: "import" })}>
-                <Icons.Download width={13} height={13} style={{ transform: "rotate(180deg)" }} /> Import spreadsheet
-              </Pill>
-            </span>
-          )}
           <span data-tour="schedule-season-settings" style={{ display: "inline-flex" }}>
             <Pill variant="ghost" size="sm" onClick={() => setSheet({ kind: "season" })}>
               <Icons.Cog width={13} height={13} /> Season
@@ -374,7 +365,7 @@ export function ScheduleView({
         <div className="rsd-card" style={{ textAlign: "center", padding: "40px 24px", gap: 8 }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>No weekends yet</div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
-            Add the season&apos;s weekends one at a time, or import them from the planning spreadsheet.
+            Press <strong>Add weekend</strong> to add the season&apos;s weekends one at a time.
           </div>
         </div>
       ) : shownWeekends.length === 0 ? (
@@ -560,7 +551,6 @@ export function ScheduleView({
         <SeasonSheet season={season} levels={levels} seasons={seasons} teams={directoryTeams} isStaff={isStaff} onClose={() => setSheet(null)} />
       )}
       {sheet?.kind === "new-season" && <NewSeasonSheet seasons={seasons} onClose={() => setSheet(null)} />}
-      {sheet?.kind === "import" && <PlanningImportSheet schedules onClose={() => setSheet(null)} />}
     </>
   );
 }

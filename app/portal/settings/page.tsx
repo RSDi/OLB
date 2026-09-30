@@ -20,6 +20,7 @@ import { ContactCategoriesTab } from "./ContactCategoriesTab";
 import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
 import { IntegrationsTab } from "./IntegrationsTab";
+import { ImportTab } from "./ImportTab";
 import { SidebarLinksTab } from "./SidebarLinksTab";
 import { RequirementsTab } from "./RequirementsTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
@@ -67,6 +68,7 @@ type Tab =
   | "closures"
   | "contact_categories"
   | "integrations"
+  | "import"
   | "audit_log"
   | "deleted";
 
@@ -152,6 +154,8 @@ export default function SettingsPage() {
     { key: "closures", label: "Closures", visible: true, tour: "settings-tab-closures" },
     { key: "contact_categories", label: "Contact Types", visible: true, tour: "settings-tab-contact-categories" },
     { key: "integrations", label: "Integrations", visible: true, tour: "settings-tab-integrations" },
+    // The spreadsheet import, kept for the preview accounts only.
+    { key: "import", label: "Import", visible: fullUi, tour: "settings-tab-import" },
     { key: "audit_log", label: "Audit Log", visible: true, tour: "settings-tab-audit-log" },
     { key: "deleted", label: "Deleted", visible: showDeleted, tour: "settings-tab-deleted" },
   ];
@@ -212,6 +216,7 @@ export default function SettingsPage() {
       {tab === "closures" && <ClosuresTab me={me} />}
       {tab === "contact_categories" && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && <IntegrationsTab />}
+      {tab === "import" && fullUi && <ImportTab />}
       {tab === "audit_log" && <AuditLogTab />}
       {tab === "deleted" && showDeleted && <DeletedTab />}
     </>
