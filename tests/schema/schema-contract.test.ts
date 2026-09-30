@@ -47,7 +47,7 @@ const CONTRACT: Record<string, string> = {
   members:
     "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations",
   maintenance_requests:
-    "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at",
+    "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at,planning_template_id,planning_season",
   request_votes: "id,ticket_id,voter_id,vote,note,created_at,updated_at",
   task_review_log: "id,ticket_id,changed_by,old_status,new_status,reason,changed_at",
   ticket_comments: "id,ticket_id,author_id,body,parent_id,external_author,slack_ts,created_at,deleted_at",
@@ -106,6 +106,11 @@ const CONTRACT: Record<string, string> = {
   activity_user_last_view: "user_id,last_seen_path",
   activity_top_pages_30d: "page,views,people",
   activity_daily_30d: "day,people,views",
+  // Planning (0104).
+  planning_roles: "id,name,chip_class,member_id,sort_order,seed_key,created_at,updated_at,deleted_at",
+  planning_templates: "id,kind,title,notes,month,role_id,playbook_id,sort_order,seed_key,created_by,created_at,updated_at,deleted_at",
+  planning_meetings: "id,month,meets_on,status,agenda_md,minutes_md,created_by,updated_by,created_at,updated_at",
+  planning_meeting_notes: "meeting_id,task_id,note_md,updated_by,created_at,updated_at",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {

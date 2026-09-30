@@ -36,12 +36,12 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/review": { title: "Review queue", subtitle: "Board" },
   "/portal/tasks": { title: "Opportunities",  subtitle: "" },
   "/portal/tasks/new": { title: "New task", subtitle: "" },
-  "/portal/events/new": { title: "New event", subtitle: "Calendar" },
+  "/portal/events/new": { title: "New event", subtitle: "Planning" },
   "/portal/pm":           { title: "Preventative", subtitle: "Facilities" },
   "/portal/pm/calendar":  { title: "PM Calendar", subtitle: "Facilities" },
   "/portal/pm/templates": { title: "PM Templates", subtitle: "Facilities" },
   "/portal/pm/templates/new": { title: "New template", subtitle: "Facilities" },
-  "/portal/events":      { title: "Events",       subtitle: "Calendar" },
+  "/portal/events":      { title: "Calendar",     subtitle: "Planning" },
   "/portal/directory":   { title: "Players & parents", subtitle: "Directory" },
   "/portal/contacts":    { title: "External Contacts", subtitle: "" },
   "/portal/contacts/new": { title: "New contact", subtitle: "External Contacts" },
@@ -177,8 +177,10 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       ? { title: "Asset", subtitle: "Facilities" }
       : pathname.startsWith("/portal/pm/")
       ? { title: "PM Task", subtitle: "Facilities" }
+      : pathname.startsWith("/portal/events/meetings/")
+      ? { title: "Board meeting", subtitle: "Planning" }
       : pathname.startsWith("/portal/events/")
-      ? { title: "Edit event", subtitle: "Calendar" }
+      ? { title: "Edit event", subtitle: "Planning" }
       : pathname.startsWith("/portal/contacts/")
       ? { title: "Contact", subtitle: "External Contacts" }
       : pathname.startsWith("/portal/directory/teams/")

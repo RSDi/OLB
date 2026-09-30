@@ -132,6 +132,26 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 Tap **Search home** to start over. To share a search, copy the page's address: it includes your question. Whoever opens it only sees what their own account allows.`,
   },
   {
+    id: "planning",
+    title: "Planning",
+    group: "Planning",
+    audience: "staff",
+    preview: true,
+    keywords: ["planning", "events", "calendar", "timeline", "responsibilities", "president", "athletic director", "ad", "treasurer", "communications", "coaches", "template", "review", "keep", "toss", "season", "year", "board meeting", "minutes", "agenda", "playbook"],
+    routes: ["/portal/events"],
+    body: `Planning is the board's year as a calendar: the events, a board meeting every month, and the tasks each role takes care of, built from a template the board reuses every season. A season runs August through July.
+
+**Upcoming, Past and All.** **Upcoming** starts with this month and runs through the end of the season. **Past** starts with last month and goes back. **All** is everything, oldest first (**Jump to this month** takes you to today). Each month shows its **Board meeting**, its events (a repeating event, like practice, is one line with how many times it meets that month) and its tasks under **To do**. Tap the circle beside a task to mark it done, or tap the task to assign it, comment or add to-dos. The book chip on a task opens the playbook that explains how. Use **Everyone**, **President**, **Athletic Director** and the other role buttons to see one role's tasks.
+
+**Year.** One season on a page, a card per month, plus the year-round duties. Use the arrows beside the season's name to step back to last season or ahead to the next.
+
+**Review.** Each season starts as a copy of the template. Press **Send 2026–27 to Review** (the season you pick) and every monthly task in the template lands in **Needs review**. Press **Keep** for what the board will do this season and **Toss** for what it won't, or **Keep all** for a month you take as it is. Kept tasks go on the calendar, into Opportunities, and to whoever holds the role (Settings → Planning Roles). Changed your mind? **Kept** and **Tossed** list them, with **Back to Review**. Pressing the button again for a season only adds template items it doesn't have yet, and never brings back what you tossed.
+
+**Template.** The year month by month: each role's tasks and each month's board meeting topics. **+ Task** and **+ Topic** add one; the pencil edits it (title, notes, month, role, and a **Playbook** to link) and the trash can removes it. Changes shape the next season you send to Review, not the ones already sent.
+
+**Board meetings.** Tap a month's **Board meeting** to open it. Set the **Meeting date** and whether it's **Planned**, **Held** or **No meeting**, edit the **Agenda** (the first draft comes from that month's topics in the template) and write the **Minutes**. Below are the month's tasks, and any from earlier in the season that aren't done, each with **+ Add a note from this meeting**, so what the board decided stays with the task and shows on its page. Press **Save meeting** when you're done.`,
+  },
+  {
     id: "directory",
     title: "Directory",
     group: "Directory",
@@ -549,6 +569,21 @@ What you enter here shows on the team's Directory banner and team page. Players 
 - **Active** — untick it to retire a requirement. It leaves the Directory but keeps everyone's record, and you can turn it back on later.
 
 Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
+  },
+  {
+    id: "settings-planning-roles",
+    title: "Settings: Planning Roles",
+    group: "Settings",
+    audience: "staff",
+    preview: true,
+    keywords: ["planning", "roles", "president", "athletic director", "treasurer", "communications", "coaches", "held by", "assign"],
+    body: `The roles Planning's tasks belong to: President, Athletic Director, Treasurer, Communications and Coaches to start. Open **Settings → Planning Roles**.
+
+- **Add role** gives it a name and a **Chip color** (the color its tasks wear on the calendar).
+- **Held by** is who has the role this season. When the board keeps a task in Planning → Review, it's assigned to that person. Leave it as **Nobody named** for a role several people share, like Coaches.
+- **Order** sets the order of the role buttons and of tasks within a month.
+
+Use the **pencil** to edit a role, for example when a new President takes over, and the **trash** can to remove one. A removed role's tasks stay; they just show without a role.`,
   },
   {
     id: "settings-playbooks",

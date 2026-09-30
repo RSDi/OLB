@@ -22,6 +22,7 @@ import { DeletedTab } from "./DeletedTab";
 import { IntegrationsTab } from "./IntegrationsTab";
 import { SidebarLinksTab } from "./SidebarLinksTab";
 import { RequirementsTab } from "./RequirementsTab";
+import { PlanningRolesTab } from "./PlanningRolesTab";
 import { usePageHelp } from "../../components/PageHelp";
 
 // Staged rollout: the tabs released to everyone who can open Settings, and
@@ -58,6 +59,7 @@ type Tab =
   | "teams"
   | "volunteer_roles"
   | "requirements"
+  | "planning_roles"
   | "event_categories"
   | "task_categories"
   | "playbooks"
@@ -140,6 +142,9 @@ export default function SettingsPage() {
     { key: "teams", label: "Teams", visible: isSuperAdmin(me), tour: "settings-tab-teams" },
     { key: "volunteer_roles", label: "Volunteer Roles", visible: isSuperAdmin(me), tour: "settings-tab-volunteer-roles" },
     { key: "requirements", label: "Requirements", visible: canEditSettings(me), tour: "settings-tab-requirements" },
+    // Planning (lib/planning/access.ts): staged rollout, so only the preview
+    // accounts get the tab until Planning is released.
+    { key: "planning_roles", label: "Planning Roles", visible: fullUi, tour: "settings-tab-planning-roles" },
     { key: "event_categories", label: "Event Categories", visible: true, tour: "settings-tab-event-categories" },
     { key: "task_categories", label: "Task Categories", visible: true, tour: "settings-tab-task-categories" },
     { key: "playbooks", label: "Playbooks", visible: true, tour: "settings-tab-playbooks" },
@@ -199,6 +204,7 @@ export default function SettingsPage() {
       {tab === "teams" && isSuperAdmin(me) && <TeamsSettingsTab />}
       {tab === "volunteer_roles" && isSuperAdmin(me) && <VolunteerRolesTab />}
       {tab === "requirements" && canEditSettings(me) && <RequirementsTab me={me} />}
+      {tab === "planning_roles" && fullUi && <PlanningRolesTab />}
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}

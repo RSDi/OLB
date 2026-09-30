@@ -44,6 +44,9 @@ import {
   loadContactPickerOptions,
 } from "../../contacts/_shared/data";
 import { memberDisplayName, memberFirstName } from "../../../../lib/members/display";
+import { seesFullUi } from "../../../../lib/auth/feature-preview";
+import { loadTaskPlanning } from "../../../../lib/planning/data";
+import { TaskPlanningCard } from "../../events/_planning/TaskPlanningCard";
 
 interface RequestDetails {
   kind?: string;
@@ -463,6 +466,10 @@ export default async function TicketDetailPage({
 
   const canComment = staff || ticket.submitted_by === user.id;
 
+  // A task from the Planning template: its season and month, role, playbook
+  // and board meeting notes. Planning is in staged rollout (lib/planning/access.ts).
+  const planning = staff && seesFullUi(user.email) ? await loadTaskPlanning(supabase, ticket.id) : null;
+
   return (
     <>
       {/* Header */}
@@ -476,7 +483,7 @@ export default async function TicketDetailPage({
         }}
       >
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", flex: 1, minWidth: 0 }}>
-          {truncate(ticket.description, 80)}
+          {truncate(ticket.description.split("\n")[0], 80)}
         </h2>
         <Link
           href="/portal/tasks"
@@ -581,6 +588,8 @@ export default async function TicketDetailPage({
               <span>· {formatDateTime(ticket.created_at)}</span>
             </div>
           </div>
+
+          {planning && <TaskPlanningCard planning={planning} />}
 
           {/* Building shutdown (Phase 2b): run-wizard + opt-out for the assignee. */}
           {shutdownProc && (
