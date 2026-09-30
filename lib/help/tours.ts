@@ -484,8 +484,8 @@ export const GUIDE_TOURS: GuideTour[] = [
       },
       {
         target: "schedule-legend",
-        title: "The colors",
-        body: "As in the spreadsheet: **Tentative**, **Need to secure facility**, **Final details in process** and **Facility secured**. A dashed **3?** isn't settled; an amber dot means a team is on the fence.",
+        title: "The colors, and a filter",
+        body: "As in the spreadsheet: **Tentative**, **Need to secure facility**, **Final details in process** and **Facility secured**; a dashed **3?** isn't settled and an amber dot means a team is on the fence. Tap any of them to show just those weekends, and **All** to show every one.",
       },
       {
         target: "schedule-grid",
@@ -523,7 +523,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "schedule-season-settings",
         title: "Season settings",
-        body: "The title, notes and columns (add, rename, reorder or hide one). The board can start next season from this one here.",
+        body: "The season's notes and columns (add, rename, reorder or hide one). The board can start next season from this one here.",
       },
       {
         target: "schedule-add-weekend",

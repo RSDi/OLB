@@ -1,5 +1,5 @@
 "use client";
-// A season's settings: its title and notes, its columns (the teams we field,
+// A season's settings: its notes, its columns (the teams we field,
 // in order, each with a short label, an optional longer name, the Directory
 // team it is, and whether it's folded away), starting next season from this
 // one, and deleting it. Adding and deleting seasons is the board's.
@@ -43,7 +43,6 @@ export function SeasonSheet({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [title, setTitle] = useState(season.title);
   const [notes, setNotes] = useState(season.notes ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +80,7 @@ export function SeasonSheet({
             variant="accent"
             size="md"
             disabled={busy}
-            onClick={() => run(() => updateSeason(season.id, { title, notes }))}
+            onClick={() => run(() => updateSeason(season.id, { notes }))}
           >
             Save
           </Pill>
@@ -93,7 +92,6 @@ export function SeasonSheet({
           {error}
         </div>
       )}
-      <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
       <Textarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Anything about the season as a whole: game limits, who's the scheduler…" />
       {season.imported_from && (
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>

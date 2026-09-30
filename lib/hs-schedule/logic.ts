@@ -301,6 +301,77 @@ export function recordLabel(t: Pick<LevelTotal, "wins" | "losses" | "ties">): st
   return t.ties ? `${t.wins}–${t.losses}–${t.ties}` : `${t.wins}–${t.losses}`;
 }
 
+// ─── Filtering the schedule ─────────────────────────────────────────────────
+
+// The chips above the schedule: a weekend's status, "not sure yet" (one of
+// our teams' games has a "?") or "on the fence" (a team coming is a maybe).
+export type WeekendFilter = HsWeekendStatus | "unsure" | "fence";
+
+export interface WeekendFacts {
+  // One of the shown teams of ours isn't sure of its games.
+  unsure: boolean;
+  // Teams on the fence: a maybe, and not also a yes that weekend.
+  fence: number;
+}
+
+export function weekendFacts(
+  weekends: Pick<HsWeekend, "id">[],
+  games: Pick<HsGames, "weekend_id" | "level_id" | "unsure">[],
+  opponents: Pick<HsOpponent, "weekend_id" | "status" | "contact_id" | "name">[],
+  levelIds: ReadonlySet<string>
+): Map<string, WeekendFacts> {
+  const out = new Map<string, WeekendFacts>();
+  for (const w of weekends) out.set(w.id, { unsure: false, fence: 0 });
+  for (const g of games) {
+    const f = out.get(g.weekend_id);
+    if (f && g.unsure && levelIds.has(g.level_id)) f.unsure = true;
+  }
+  const yes = new Map<string, Set<string>>();
+  const maybe = new Map<string, Set<string>>();
+  for (const o of opponents) {
+    const bucket = o.status === "confirmed" ? yes : o.status === "tentative" ? maybe : null;
+    if (!bucket) continue;
+    const keys = bucket.get(o.weekend_id) ?? new Set<string>();
+    keys.add(opponentKey(o));
+    bucket.set(o.weekend_id, keys);
+  }
+  for (const [weekendId, keys] of maybe) {
+    const f = out.get(weekendId);
+    if (!f) continue;
+    const confirmed = yes.get(weekendId);
+    f.fence = [...keys].filter((k) => !confirmed?.has(k)).length;
+  }
+  return out;
+}
+
+// Does a weekend match the chips picked? Any one of them is enough; with
+// none picked, every weekend shows.
+export function matchesWeekendFilters(
+  w: Pick<HsWeekend, "id" | "status">,
+  filters: ReadonlySet<WeekendFilter>,
+  facts: Map<string, WeekendFacts>
+): boolean {
+  if (filters.size === 0 || filters.has(w.status)) return true;
+  const f = facts.get(w.id);
+  return !!f && ((filters.has("unsure") && f.unsure) || (filters.has("fence") && f.fence > 0));
+}
+
+// How many weekends each chip would show.
+export function weekendFilterCounts(
+  weekends: Pick<HsWeekend, "id" | "status">[],
+  facts: Map<string, WeekendFacts>
+): Map<WeekendFilter, number> {
+  const out = new Map<WeekendFilter, number>();
+  const bump = (k: WeekendFilter) => out.set(k, (out.get(k) ?? 0) + 1);
+  for (const w of weekends) {
+    bump(w.status);
+    const f = facts.get(w.id);
+    if (f?.unsure) bump("unsure");
+    if (f && f.fence > 0) bump("fence");
+  }
+  return out;
+}
+
 // ─── Starting a season from another ─────────────────────────────────────────
 
 // What "Start 2027–28 from 2026–27" carries over for one weekend, or null to

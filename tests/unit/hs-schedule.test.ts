@@ -12,6 +12,7 @@ import {
   formatWeekendDates,
   levelPlays,
   levelTotals,
+  matchesWeekendFilters,
   matchingWeekends,
   nextWeekendDates,
   recordLabel,
@@ -19,6 +20,9 @@ import {
   sortWeekends,
   summarizeCell,
   weekdayOf,
+  weekendFacts,
+  weekendFilterCounts,
+  type WeekendFilter,
 } from "../../lib/hs-schedule/logic.ts";
 import type { HsGames, HsOpponent, HsWeekend } from "../../lib/hs-schedule/types.ts";
 
@@ -273,4 +277,55 @@ test("weekends sort by date, then the order they were entered", () => {
     weekend({ id: "c", starts_on: "2026-01-31", ends_on: "2026-01-31", sort_order: 1 }),
   ]);
   assert.deepEqual(ws.map((w) => w.id), ["a", "c", "b"]);
+});
+
+// ─── Filtering the schedule (the chips above it) ────────────────────────────
+
+test("the chips show weekends by status, not-sure games and teams on the fence", () => {
+  const ws = [
+    weekend({ id: "w1", status: "need_facility" }),
+    weekend({ id: "w2", status: "secured" }),
+    weekend({ id: "w3", status: "in_process" }),
+    weekend({ id: "w4", status: "secured" }),
+  ];
+  const levels = new Set(["V", "JV1"]);
+  const facts = weekendFacts(
+    ws,
+    [
+      { ...games("V", 3, true), weekend_id: "w2" },
+      // A "?" on a column that's hidden doesn't count.
+      { ...games("14U", 2, true), weekend_id: "w3" },
+    ],
+    [
+      opp({ id: "a", name: "Lincoln Eagles", weekend_id: "w4", status: "tentative" }),
+      opp({ id: "b", name: "KC East Lions", weekend_id: "w4", status: "tentative", level_id: "V" }),
+      // A maybe for one team that's a yes for another isn't on the fence.
+      opp({ id: "c", name: "Ames Vision", weekend_id: "w3", status: "tentative", level_id: "JV1" }),
+      opp({ id: "d", name: "Ames Vision", weekend_id: "w3", status: "confirmed" }),
+      opp({ id: "e", name: "Wichita Warriors", weekend_id: "w1", status: "declined" }),
+    ],
+    levels
+  );
+  assert.deepEqual(facts.get("w2"), { unsure: true, fence: 0 });
+  assert.deepEqual(facts.get("w3"), { unsure: false, fence: 0 });
+  assert.deepEqual(facts.get("w4"), { unsure: false, fence: 2 });
+  assert.deepEqual(facts.get("w1"), { unsure: false, fence: 0 });
+
+  const shown = (...f: WeekendFilter[]) => ws.filter((w) => matchesWeekendFilters(w, new Set(f), facts)).map((w) => w.id);
+  // Nothing picked: every weekend.
+  assert.deepEqual(shown(), ["w1", "w2", "w3", "w4"]);
+  // Good to go.
+  assert.deepEqual(shown("secured"), ["w2", "w4"]);
+  // What needs work: any of the chips picked.
+  assert.deepEqual(shown("need_facility", "fence"), ["w1", "w4"]);
+  assert.deepEqual(shown("unsure"), ["w2"]);
+  assert.deepEqual(shown("tentative"), []);
+
+  const counts = weekendFilterCounts(ws, facts);
+  assert.equal(counts.get("secured"), 2);
+  assert.equal(counts.get("need_facility"), 1);
+  assert.equal(counts.get("in_process"), 1);
+  assert.equal(counts.get("tentative"), undefined);
+  assert.equal(counts.get("unsure"), 1);
+  assert.equal(counts.get("fence"), 1);
 });
