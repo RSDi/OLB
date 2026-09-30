@@ -40,11 +40,15 @@ test("a preview expires at its deadline", () => {
   assert.equal(previewExpired(c, 1000), true);
 });
 
-test("only approved, signed-up members other than you can be previewed", () => {
+test("only approved members with a login or an email, other than you, can be previewed", () => {
   const ok = { user_id: "u-1", role: "member", status: "approved", access_revoked_at: null, deleted_at: null };
   assert.equal(previewBlocker(ok, "me"), null);
   assert.equal(previewBlocker({ ...ok, role: "admin" }, "me"), null);
+  // Invited, not signed up yet: their login is set up on the first preview.
+  assert.equal(previewBlocker({ ...ok, user_id: null, email: "pat@example.com" }, "me"), null);
   assert.notEqual(previewBlocker({ ...ok, user_id: null }, "me"), null);
+  assert.notEqual(previewBlocker({ ...ok, user_id: null, email: " " }, "me"), null);
+  assert.notEqual(previewBlocker({ ...ok, user_id: null, email: "pat@example.com", status: "pending" }, "me"), null);
   assert.notEqual(previewBlocker(ok, "u-1"), null);
   assert.equal(previewBlocker({ ...ok, role: "super_admin" }, "me"), null);
   assert.notEqual(previewBlocker({ ...ok, status: "pending" }, "me"), null);

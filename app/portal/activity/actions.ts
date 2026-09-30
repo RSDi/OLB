@@ -2,6 +2,11 @@
 // Starts a "Preview as" (see lib/activity/preview.ts). Super-admins only.
 // The member_previews row is written first and the preview doesn't start
 // without it, so there's never a preview the trail doesn't know about.
+//
+// A member who was invited but hasn't signed up has no login to preview, so
+// the first preview sets one up (setUpLogin). It's theirs from then on: the
+// email is marked confirmed, so signing in with an emailed code, Slack or
+// "Forgot password?" on that address lands in it.
 
 import { cookies, headers } from "next/headers";
 import { randomBytes } from "node:crypto";
@@ -44,7 +49,12 @@ export async function startPreview(memberId: string): Promise<{ error: string } 
   if (!target) return { error: "Member not found." };
   const blocker = previewBlocker(target, me.id);
   if (blocker) return { error: blocker };
-  const targetUserId = target.user_id!;
+  let targetUserId = target.user_id;
+  if (!targetUserId) {
+    const setUp = await setUpLogin(target);
+    if ("error" in setUp) return setUp;
+    targetUserId = setUp.userId;
+  }
 
   const secret = randomBytes(32).toString("base64url");
   const expiresAt = Date.now() + PREVIEW_TTL_MS;
@@ -117,4 +127,43 @@ export async function startPreview(memberId: string): Promise<{ error: string } 
   });
 
   return { ok: true };
+}
+
+// A login for an invited member, linked to their member row. No email goes
+// out. If they signed up in the meantime, or an account with that email
+// already exists, nothing is changed.
+async function setUpLogin(target: {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+}): Promise<{ error: string } | { userId: string }> {
+  const email = target.email?.trim();
+  if (!email) return { error: "They don't have an email address, so they can't have a portal login." };
+  const admin = createAdminClient();
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: target.full_name ? { full_name: target.full_name } : undefined,
+  });
+  const userId = created?.user?.id;
+  if (createError || !userId) {
+    if (createError?.code === "email_exists" || /already been registered/i.test(createError?.message ?? "")) {
+      return {
+        error: `There's already a portal login for ${email} that isn't linked to this member. Check Settings → Members for a second entry with that email.`,
+      };
+    }
+    return { error: `Couldn't set up their login: ${createError?.message ?? "unknown error"}` };
+  }
+
+  const { data: linked } = await admin
+    .from("members")
+    .update({ user_id: userId })
+    .eq("id", target.id)
+    .is("user_id", null)
+    .select("id");
+  if (!linked?.length) {
+    await admin.auth.admin.deleteUser(userId);
+    return { error: "Couldn't link their new login. Refresh the page and try again." };
+  }
+  return { userId };
 }
