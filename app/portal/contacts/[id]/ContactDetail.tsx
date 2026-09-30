@@ -8,6 +8,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
+import { MapLink } from "../../../components/MapLink";
 import { Pill } from "../../../components/ui";
 import { softDeleteContact } from "../../../../lib/contacts/actions";
 import type {
@@ -209,6 +210,7 @@ export function ContactDetail({ contact, people, company, coworkers, links, hist
                 value={contact.address}
                 href={null}
                 multiline
+                map
               />
             )}
           </div>
@@ -481,6 +483,7 @@ function ContactRow({
   href,
   external,
   multiline,
+  map,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -488,6 +491,8 @@ function ContactRow({
   href: string | null;
   external?: boolean;
   multiline?: boolean;
+  // An address: tapping it offers Apple Maps or Google Maps.
+  map?: boolean;
 }) {
   if (!value) {
     return (
@@ -520,7 +525,23 @@ function ContactRow({
       >
         {label}
       </span>
-      {href ? (
+      {map ? (
+        <MapLink
+          address={value}
+          icon={<span style={{ color: "var(--gw-fg-muted)", flexShrink: 0 }}>{icon}</span>}
+          style={{
+            display: "inline-flex",
+            alignItems: multiline ? "flex-start" : "center",
+            alignSelf: "flex-start",
+            gap: 6,
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--rsd-accent)",
+            whiteSpace: multiline ? "pre-wrap" : "normal",
+            wordBreak: "break-word",
+          }}
+        />
+      ) : href ? (
         <a
           href={href}
           target={external ? "_blank" : undefined}

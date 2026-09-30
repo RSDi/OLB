@@ -178,11 +178,12 @@ Tap **Search home** to start over. To share a search, copy the page's address: i
 - Tap a **team** chip to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed.
 - Coaches, other team leaders and board members can switch between **By team** and **By age group** (10U–18U).
 - Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.
+- Tap an address and pick **Apple Maps** or **Google Maps** to get directions.
 - Tap a player's name to open their player page, a parent's name to open their profile, and **Team page ›** to open a team's full page.
 
 **Who's listed.** Players appear when their family said yes to being in the directory on the registration form. If your family said no, you still see your own players, marked **Not in directory**; other families don't.
 
-**Profiles.** A member's profile shows their photo, phone, email and birthday, plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
+**Profiles.** A member's profile shows their photo, phone, email, birthday and address (tap it for **Apple Maps** or **Google Maps**), plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
   },
   {
     id: "team-pages",
@@ -208,7 +209,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     keywords: ["player", "player page", "kid", "child", "son", "siblings", "brother", "sister", "parents", "mom", "dad", "balance", "payments", "fees"],
     body: `Everything about one player in one place. Open it by tapping a player's name in the Directory, on a team page, on a parent's profile, or on the Payments page.
 
-- **The top** shows their jersey number, team (tap it to open the team page), age and birthday, address, and the player's own phone and email. A **New** chip means it's their first season with us.
+- **The top** shows their jersey number, team (tap it to open the team page), age and birthday, address, and the player's own phone and email. A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**.
 - **Parents** lists each parent with their phone and email. Tap a parent's name to open their profile. **Siblings** links to their brothers' and sisters' pages.
 - **Payments** shows what the family owes and has paid, with each charge and payment. You see it for your own kids once the Treasurer has opened balances to families, and the Treasurer sees it for everyone.
 
@@ -337,7 +338,7 @@ Requirements start over each season, since each season has its own roster. The l
 
 - **All** lists each company with the people who work there under it (their role, email and phone), then **People on their own**. **Companies** shows just the companies; **People** lists everyone, each with the company they work at.
 - **Search** by name, role, email, phone, city, account number or type, or by another name a program goes by (like RR). Use the chips to show **Companies**, **People**, one **type**, or one **tag** (tap the tag again to show everyone).
-- A person's page shows **Works at**: their company, with its details, and everyone else who works there. A company's page lists **People at this company**, and a program's or gym's page shows **On the HS Schedule**: every weekend it came to or hosted. Numbers are tap-to-call.
+- A person's page shows **Works at**: their company, with its details, and everyone else who works there. A company's page lists **People at this company**, and a program's or gym's page shows **On the HS Schedule**: every weekend it came to or hosted. Numbers are tap-to-call, and tapping an address offers **Apple Maps** or **Google Maps**.
 
 **The board** also:
 
