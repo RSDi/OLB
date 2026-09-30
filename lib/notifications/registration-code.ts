@@ -11,7 +11,8 @@ export async function sendRegistrationCode({ to, code }: { to: string; code: str
     console.warn("[notify] RESEND_API_KEY not set — skipping registration code email");
     return false;
   }
-  const from = process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
+  // A blank MAIL_FROM counts as unset, as it does for the Contact form.
+  const from = process.env.MAIL_FROM?.trim() || "Omaha Lightning Basketball <onboarding@resend.dev>";
   const body = `
     <p>Here's your code for Omaha Lightning Basketball registration:</p>
     <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:16px 0">${code}</p>
@@ -31,7 +32,7 @@ export async function sendRegistrationCode({ to, code }: { to: string; code: str
   }).catch(() => null);
   if (!res?.ok) {
     const text = res ? await res.text().catch(() => "") : "network error";
-    console.error(`[notify] Resend registration code failed (${res?.status ?? "-"}): ${text.slice(0, 200)}`);
+    console.error(`[notify] Resend registration code failed (${res?.status ?? "-"}) from "${from}": ${text.slice(0, 300)}`);
     return false;
   }
   return true;
