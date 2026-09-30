@@ -71,6 +71,13 @@ export function ContactForm({
     initial?.tags ? tagsToInput(initial.tags) : ""
   );
 
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [city, setCity] = useState(initial?.city ?? "");
+  const [state, setState] = useState(initial?.state ?? "");
+  const [altEmail, setAltEmail] = useState(initial?.alt_email ?? "");
+  const [teamColors, setTeamColors] = useState(initial?.team_colors ?? "");
+  const [aliasesText, setAliasesText] = useState((initial?.aliases ?? []).join(", "));
+
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,6 +109,12 @@ export function ContactForm({
       reorderNotes,
       quoteContactNotes: quoteNotes,
       tags: parseTags(tagsText),
+      title,
+      city,
+      state,
+      altEmail,
+      teamColors,
+      aliases: aliasesText.split(",").map((a) => a.trim()).filter(Boolean),
     };
 
     const result = initial
@@ -127,7 +140,7 @@ export function ContactForm({
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <KindToggle
             label="Company"
-            description="A vendor, supplier, or service provider business."
+            description="A business, school or club: a vendor, a gym we rent, another program."
             selected={kind === "company"}
             onClick={() => {
               setKind("company");
@@ -137,7 +150,7 @@ export function ContactForm({
           />
           <KindToggle
             label="Person"
-            description="A sales rep, account manager, or individual professional."
+            description="Someone you deal with: a coach, an athletic director, a scheduler, a sales rep."
             selected={kind === "person"}
             onClick={() => setKind("person")}
             disabled={Boolean(initial)}
@@ -196,6 +209,27 @@ export function ContactForm({
             </Select>
           )}
         </div>
+        {kind === "person" ? (
+          <div style={GRID_2}>
+            <Input
+              label="Role"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Athletic Director, Scheduler"
+            />
+          </div>
+        ) : (
+          <div style={GRID_2}>
+            <Input label="City" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Des Moines" />
+            <Input
+              label="State"
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+              placeholder="e.g. IA"
+              maxLength={20}
+            />
+          </div>
+        )}
       </div>
 
       <div className="rsd-card" style={{ gap: 14 }}>
@@ -214,6 +248,15 @@ export function ContactForm({
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="(555) 123-4567"
+          />
+        </div>
+        <div style={GRID_2}>
+          <Input
+            label="Other email"
+            type="email"
+            value={altEmail}
+            onChange={(e) => setAltEmail(e.target.value)}
+            placeholder="A second address, if they have one"
           />
         </div>
         <div style={GRID_2}>
@@ -240,6 +283,28 @@ export function ContactForm({
           placeholder="Street, city, state, ZIP"
         />
       </div>
+
+      {kind === "company" && (
+        <div className="rsd-card" style={{ gap: 14 }}>
+          <h3 style={SECTION_TITLE}>Another program</h3>
+          <div style={GRID_2}>
+            <Input
+              label="Team colors"
+              value={teamColors}
+              onChange={(e) => setTeamColors(e.target.value)}
+              placeholder="e.g. Navy & Gold"
+              help="Handy for picking jerseys when we play them."
+            />
+            <Input
+              label="Also known as"
+              value={aliasesText}
+              onChange={(e) => setAliasesText(e.target.value)}
+              placeholder="e.g. RR, Roadrunners"
+              help="Other names people use for them, comma-separated. Search finds them by these, and so does the HS Schedule when you add a team."
+            />
+          </div>
+        </div>
+      )}
 
       <div className="rsd-card" style={{ gap: 14 }}>
         <h3 style={SECTION_TITLE}>Account & billing</h3>

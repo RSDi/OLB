@@ -25,6 +25,8 @@ const PREVIEW_ROUTES = [
   "/portal/review",
   "/portal/reelnotes",
   "/portal/activity",
+  // HS Schedule: coaches and the board, staged rollout (lib/hs-schedule/access.ts).
+  "/portal/schedule",
   // The guide itself: no "i" needed.
   "/portal/guide",
 ];

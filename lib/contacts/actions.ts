@@ -34,6 +34,13 @@ export interface ContactInput {
   reorderNotes?: string | null;
   quoteContactNotes?: string | null;
   tags?: string[];
+  // 0107.
+  title?: string | null;
+  city?: string | null;
+  state?: string | null;
+  altEmail?: string | null;
+  teamColors?: string | null;
+  aliases?: string[];
 }
 
 function emptyToNull(v: string | null | undefined): string | null {
@@ -76,6 +83,25 @@ function toRow(input: ContactInput) {
   };
 }
 
+// The 0107 fields. A person has a role; a company has a place and colors.
+function programFields(input: ContactInput) {
+  const isCompany = input.kind === "company";
+  return {
+    title: isCompany ? null : emptyToNull(input.title),
+    city: isCompany ? emptyToNull(input.city) : null,
+    state: isCompany ? emptyToNull(input.state)?.toUpperCase() ?? null : null,
+    alt_email: emptyToNull(input.altEmail),
+    team_colors: isCompany ? emptyToNull(input.teamColors) : null,
+    aliases: (input.aliases ?? []).map((a) => a.trim()).filter(Boolean),
+  };
+}
+
+// Before migration 0107 the database doesn't have those columns: save the
+// rest rather than failing.
+function missingColumn(error: { message?: string; code?: string } | null): boolean {
+  return !!error && (error.code === "42703" || error.code === "PGRST204" || /column/i.test(error.message ?? ""));
+}
+
 export async function createContact(
   input: ContactInput
 ): Promise<ContactActionResult> {
@@ -90,11 +116,18 @@ export async function createContact(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in." };
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("contacts")
-    .insert({ ...toRow(input), created_by: user.id })
+    .insert({ ...toRow(input), ...programFields(input), created_by: user.id })
     .select("id")
     .single();
+  if (missingColumn(error)) {
+    ({ data, error } = await supabase
+      .from("contacts")
+      .insert({ ...toRow(input), created_by: user.id })
+      .select("id")
+      .single());
+  }
 
   if (error || !data) {
     return { error: error?.message ?? "Failed to create contact." };
@@ -114,10 +147,13 @@ export async function updateContact(
   if (err) return { error: err };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  let { error } = await supabase
     .from("contacts")
-    .update(toRow(input))
+    .update({ ...toRow(input), ...programFields(input) })
     .eq("id", contactId);
+  if (missingColumn(error)) {
+    ({ error } = await supabase.from("contacts").update(toRow(input)).eq("id", contactId));
+  }
 
   if (error) return { error: error.message };
 

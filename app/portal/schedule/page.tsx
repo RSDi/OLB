@@ -1,0 +1,142 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getViewer } from "../../../lib/auth/viewer";
+import { createClient } from "../../../lib/supabase/server";
+import { churchToday } from "../../../lib/dates/today";
+import { seasonOf } from "../../../lib/planning/season";
+import { getIsCoach, viewerCanUseHsSchedule } from "../../../lib/hs-schedule/viewer";
+import {
+  loadHsContactOptions,
+  loadHsSeasonSchedule,
+  loadHsSeasons,
+  loadKnownTeams,
+} from "../../../lib/hs-schedule/data";
+import { ScheduleView, type CompareWeekend } from "./_components/ScheduleView";
+import { EmptySchedule } from "./_components/EmptySchedule";
+import type { DirectoryTeam } from "./_components/SeasonSheet";
+
+// The HS Schedule (/portal/schedule): the high school season weekend by
+// weekend, for the coaches and the board. ?season=2026 picks the season
+// (2026 = 2026–27; the current one by default), ?compare=2025 puts another
+// season's same weekends beside it.
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ season?: string; compare?: string }>;
+}) {
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
+  if (!(await viewerCanUseHsSchedule(viewer))) {
+    // A coach or the board, but it's still being tried out.
+    const soon = viewer.isStaff || (await getIsCoach());
+    return <NotAvailable soon={soon} />;
+  }
+
+  const params = await searchParams;
+  const supabase = await createClient();
+  const { ok, seasons } = await loadHsSeasons(supabase);
+  if (!ok) return <MigrationNotice />;
+
+  const today = churchToday();
+  const current = seasonOf(today);
+  const wanted = parseSeason(params.season);
+  const season =
+    seasons.find((s) => s.season === wanted) ??
+    seasons.find((s) => s.season === current) ??
+    // Nothing for this season yet: the latest one before it, else the next.
+    seasons.find((s) => s.season < current) ??
+    seasons[seasons.length - 1] ??
+    null;
+  if (!season) return <EmptySchedule isStaff={viewer.isStaff} current={current} />;
+
+  const compareSeason = seasons.find((s) => s.season === parseSeason(params.compare) && s.id !== season.id) ?? null;
+  const board = `${season.season}-${season.season + 1}`;
+  const [schedule, options, knownTeams, compareRows, teams] = await Promise.all([
+    loadHsSeasonSchedule(supabase, season),
+    // External Contacts are the board's; coaches add teams by name.
+    viewer.isStaff ? loadHsContactOptions(supabase) : Promise.resolve([]),
+    loadKnownTeams(supabase),
+    compareSeason
+      ? supabase
+          .from("hs_weekends")
+          .select("id, starts_on, ends_on, event, status")
+          .eq("season_id", compareSeason.id)
+          .order("starts_on")
+          .then(({ data }) => (data as CompareWeekend[] | null) ?? [])
+      : Promise.resolve(null),
+    // The season's teams in the Directory, to link the columns to.
+    supabase
+      .from("olb_boards")
+      .select("id")
+      .eq("season", board)
+      .maybeSingle()
+      .then(async ({ data }) => {
+        if (!data) return [] as DirectoryTeam[];
+        const { data: t } = await supabase
+          .from("olb_teams")
+          .select("id, name, age_group")
+          .eq("board_id", (data as { id: string }).id)
+          .order("sort_order")
+          .order("name");
+        return (t as DirectoryTeam[] | null) ?? [];
+      }),
+  ]);
+
+  return (
+    <ScheduleView
+      // A fresh load (another season, an import) starts the page's copy over.
+      key={`${season.id}:${compareSeason?.id ?? ""}`}
+      schedule={schedule}
+      seasons={seasons}
+      compare={compareSeason && compareRows ? { season: compareSeason.season, weekends: compareRows } : null}
+      isStaff={viewer.isStaff}
+      options={options}
+      knownTeams={knownTeams}
+      directoryTeams={teams}
+      today={today}
+    />
+  );
+}
+
+function parseSeason(s: string | undefined): number | null {
+  if (!s || !/^\d{4}$/.test(s)) return null;
+  const n = Number(s);
+  return n >= 2000 && n <= 2100 ? n : null;
+}
+
+function NotAvailable({ soon }: { soon: boolean }) {
+  return (
+    <div className="rsd-card" style={{ padding: "32px 24px", gap: 8, textAlign: "center" }}>
+      <div style={{ fontSize: 16, fontWeight: 700 }}>
+        {soon ? "The HS Schedule isn't open yet" : "The HS Schedule is for coaches and the board"}
+      </div>
+      <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
+        {soon
+          ? "It's being tried out first. It'll show up in your sidebar when it's ready."
+          : "If you coach a team and can't see it, ask the board to add you as the team's coach in the Directory."}
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <Link href="/portal" style={{ fontSize: 13, fontWeight: 700 }}>
+          Back to the portal
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function MigrationNotice() {
+  return (
+    <div
+      className="rsd-card"
+      style={{ padding: "16px 20px", gap: 6, borderColor: "var(--rsd-warn-line)", background: "var(--rsd-warn-bg)" }}
+    >
+      <div style={{ fontSize: 14, fontWeight: 700 }}>The HS Schedule isn&apos;t set up in the database yet</div>
+      <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.6 }}>
+        Apply <code>supabase/migrations/0107_contact_program_fields.sql</code> and{" "}
+        <code>0108_hs_schedule.sql</code> in the Supabase SQL editor (they run by themselves when merged to main).
+        Then import the planning spreadsheet from here or from External Contacts.
+      </div>
+    </div>
+  );
+}
+

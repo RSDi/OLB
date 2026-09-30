@@ -43,6 +43,14 @@ export interface Contact {
   reorder_notes: string | null;
   quote_contact_notes: string | null;
   tags: string[];
+  // 0107: a person's role there; where a company is; a second email; a
+  // program's colors; other names people use for it ("RR").
+  title: string | null;
+  city: string | null;
+  state: string | null;
+  alt_email: string | null;
+  team_colors: string | null;
+  aliases: string[];
   created_at: string;
   updated_at: string;
 }
@@ -84,8 +92,30 @@ export async function loadContactsViewer(): Promise<ContactsViewer> {
   };
 }
 
-const CONTACT_COLUMNS =
+const BASE_COLUMNS =
   "id, kind, parent_contact_id, category_id, name, nickname, email, phone, mobile_phone, website, address, account_number, customer_id, payment_terms, tax_id, notes, reorder_notes, quote_contact_notes, tags, created_at, updated_at";
+// Added by 0107. Loaded best-effort: before that migration is in, the page
+// still works with these empty.
+const PROGRAM_COLUMNS = "title, city, state, alt_email, team_colors, aliases";
+const CONTACT_COLUMNS = `${BASE_COLUMNS}, ${PROGRAM_COLUMNS}`;
+
+function withProgramFields<T extends object>(row: T): T & Pick<Contact, "title" | "city" | "state" | "alt_email" | "team_colors" | "aliases"> {
+  const r = row as Partial<Contact>;
+  return {
+    ...row,
+    title: r.title ?? null,
+    city: r.city ?? null,
+    state: r.state ?? null,
+    alt_email: r.alt_email ?? null,
+    team_colors: r.team_colors ?? null,
+    aliases: r.aliases ?? [],
+  };
+}
+
+// A missing column (migration not applied yet), as PostgREST reports it.
+function missingColumn(error: { message?: string; code?: string } | null): boolean {
+  return !!error && (error.code === "42703" || /column .* does not exist|could not find .* column/i.test(error.message ?? ""));
+}
 
 // All contacts, ordered by name. The filter args narrow the result set
 // without forcing the caller to know the underlying column names.
@@ -95,34 +125,57 @@ export async function loadContacts(opts?: {
   parentId?: string | null;
 }): Promise<Contact[]> {
   const supabase = await createClient();
-  let q = supabase
-    .from("contacts")
-    .select(CONTACT_COLUMNS)
-    .is("deleted_at", null);
-  if (opts?.kind) q = q.eq("kind", opts.kind);
-  if (opts?.categoryId) q = q.eq("category_id", opts.categoryId);
-  if (opts?.parentId !== undefined) {
-    if (opts.parentId === null) q = q.is("parent_contact_id", null);
-    else q = q.eq("parent_contact_id", opts.parentId);
-  }
-  const { data } = await q.order("name", { ascending: true });
-  return (data as Contact[] | null) ?? [];
+  const run = async (columns: string) => {
+    let q = supabase
+      .from("contacts")
+      .select(columns)
+      .is("deleted_at", null);
+    if (opts?.kind) q = q.eq("kind", opts.kind);
+    if (opts?.categoryId) q = q.eq("category_id", opts.categoryId);
+    if (opts?.parentId !== undefined) {
+      if (opts.parentId === null) q = q.is("parent_contact_id", null);
+      else q = q.eq("parent_contact_id", opts.parentId);
+    }
+    return q.order("name", { ascending: true });
+  };
+  let { data, error } = await run(CONTACT_COLUMNS);
+  if (missingColumn(error)) ({ data, error } = await run(BASE_COLUMNS));
+  return ((data as unknown as Contact[] | null) ?? []).map(withProgramFields);
 }
 
-// Single contact with category + parent company resolved (1 query, 2 joins).
+// Names of the companies these contacts work at, by id. A second query
+// rather than embedding contacts in itself: PostgREST reads a self-referencing
+// embed (contacts!parent_contact_id) as the company's people in some versions
+// and as the person's company in others.
+async function companyNames(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ids: (string | null)[]
+): Promise<Map<string, { id: string; name: string }>> {
+  const wanted = [...new Set(ids.filter((x): x is string => !!x))];
+  if (wanted.length === 0) return new Map();
+  const { data } = await supabase.from("contacts").select("id, name").in("id", wanted).is("deleted_at", null);
+  return new Map(((data as { id: string; name: string }[] | null) ?? []).map((c) => [c.id, c]));
+}
+
+// Single contact with its category and the company it works at.
 export async function loadContact(id: string): Promise<ContactWithRefs | null> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("contacts")
-    .select(
-      `${CONTACT_COLUMNS},
-       category:contact_categories(id, name, slug, sort_order),
-       parent:contacts!parent_contact_id(id, name)`
-    )
-    .eq("id", id)
-    .is("deleted_at", null)
-    .maybeSingle();
-  return (data as unknown as ContactWithRefs | null) ?? null;
+  const run = (columns: string) =>
+    supabase
+      .from("contacts")
+      .select(
+        `${columns},
+         category:contact_categories(id, name, slug, sort_order)`
+      )
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+  let { data, error } = await run(CONTACT_COLUMNS);
+  if (missingColumn(error)) ({ data, error } = await run(BASE_COLUMNS));
+  if (!data) return null;
+  const row = withProgramFields(data as unknown as Omit<ContactWithRefs, "parent">);
+  const parents = await companyNames(supabase, [row.parent_contact_id]);
+  return { ...row, parent: row.parent_contact_id ? parents.get(row.parent_contact_id) ?? null : null };
 }
 
 export async function loadContactCategories(): Promise<ContactCategory[]> {
@@ -159,9 +212,8 @@ export async function loadContactPickerOptions(): Promise<ContactPickerOption[]>
   const { data } = await supabase
     .from("contacts")
     .select(
-      `id, name, kind,
-       category:contact_categories(name),
-       parent:contacts!parent_contact_id(name)`
+      `id, name, kind, parent_contact_id,
+       category:contact_categories(name)`
     )
     .is("deleted_at", null)
     .order("name", { ascending: true });
@@ -170,15 +222,17 @@ export async function loadContactPickerOptions(): Promise<ContactPickerOption[]>
         id: string;
         name: string;
         kind: ContactKind;
+        parent_contact_id: string | null;
         category: { name: string } | null;
-        parent: { name: string } | null;
       }[]
     | null) ?? [];
+  // Every contact is in the list, so the companies are too.
+  const nameOf = new Map(rows.map((r) => [r.id, r.name]));
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
     kind: r.kind,
-    parentName: r.parent?.name ?? null,
+    parentName: r.parent_contact_id ? nameOf.get(r.parent_contact_id) ?? null : null,
     categoryName: r.category?.name ?? null,
   }));
 }
@@ -218,9 +272,8 @@ export async function loadLinkedContactsForEntity(
   const { data: contactRows } = await supabase
     .from("contacts")
     .select(
-      `id, name, kind, email, phone,
-       category:contact_categories(name),
-       parent:contacts!parent_contact_id(name)`
+      `id, name, kind, email, phone, parent_contact_id,
+       category:contact_categories(name)`
     )
     .in("id", ids)
     .is("deleted_at", null);
@@ -232,11 +285,17 @@ export async function loadLinkedContactsForEntity(
           kind: ContactKind;
           email: string | null;
           phone: string | null;
+          parent_contact_id: string | null;
           category: { name: string } | null;
-          parent: { name: string } | null;
         }[]
       | null) ?? [];
-  const byId = new Map(contacts.map((c) => [c.id, c]));
+  const parents = await companyNames(supabase, contacts.map((c) => c.parent_contact_id));
+  const byId = new Map(
+    contacts.map((c) => [
+      c.id,
+      { ...c, parent: c.parent_contact_id ? parents.get(c.parent_contact_id) ?? null : null },
+    ])
+  );
 
   return links
     .filter((l) => byId.has(l.contact_id))
@@ -274,12 +333,10 @@ export async function loadLinkedContacts(
   if (links.length === 0) return [];
 
   const ids = [...new Set(links.map((l) => l.contact_id))];
-  const { data: contactRows } = await supabase
-    .from("contacts")
-    .select(CONTACT_COLUMNS)
-    .in("id", ids)
-    .is("deleted_at", null);
-  const contacts = (contactRows as Contact[] | null) ?? [];
+  const run = (columns: string) => supabase.from("contacts").select(columns).in("id", ids).is("deleted_at", null);
+  let { data: contactRows, error } = await run(CONTACT_COLUMNS);
+  if (missingColumn(error)) ({ data: contactRows, error } = await run(BASE_COLUMNS));
+  const contacts = ((contactRows as unknown as Contact[] | null) ?? []).map(withProgramFields);
   const byId = new Map(contacts.map((c) => [c.id, c]));
 
   return links

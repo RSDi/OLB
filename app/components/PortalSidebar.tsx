@@ -22,6 +22,8 @@ interface NavItem {
   previewOnly?: boolean;
   // Payments: finance managers, and parents once their balance is open.
   paymentsOnly?: boolean;
+  // The HS Schedule: coaches and the board (and staged rollout for now).
+  scheduleOnly?: boolean;
   // Guided-tour anchor (lib/help/tours.ts).
   tour?: string;
 }
@@ -35,6 +37,9 @@ const NAV: NavItem[] = [
   { href: "/portal/events", label: "Planning", icon: <Icons.Calendar width={16} height={16}/>, previewOnly: true },
   { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/>, previewOnly: true },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/>, tour: "nav-directory" },
+  // The high school season weekend by weekend, for coaches and the board
+  // (lib/hs-schedule/access.ts; still in staged rollout).
+  { href: "/portal/schedule", label: "HS Schedule", icon: <Icons.Ball width={16} height={16}/>, scheduleOnly: true, tour: "nav-schedule" },
   // Vendors, rented facilities, opposing programs. The page itself is
   // staff-only, so the link is too.
   { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, staffOnly: true, tour: "nav-contacts" },
@@ -85,6 +90,8 @@ export interface SidebarViewer {
   canManageRegistrations?: boolean;
   // Shows the Payments item: a finance manager, or a parent whose balance is open.
   seesPayments?: boolean;
+  // Shows the HS Schedule item: a coach or the board (lib/hs-schedule/access.ts).
+  seesHsSchedule?: boolean;
 }
 
 interface PortalSidebarProps {
@@ -130,7 +137,8 @@ export function PortalSidebar({
   );
 
   const seesPayments = viewer?.seesPayments ?? false;
-  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments));
+  const seesHsSchedule = viewer?.seesHsSchedule ?? false;
+  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || seesHsSchedule));
   const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
   const bottomItems = BOTTOM_HREFS
     .map(href => visibleItems.find(item => item.href === href))

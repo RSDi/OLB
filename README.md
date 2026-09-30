@@ -71,7 +71,17 @@ playbooks/docs, volunteer teams, and global search.
    `--season 2027-2028` for a later season's board. Requires `.env.local` with
    the service-role key.
 
-6. **Run the dev server**
+6. **Import the HS planning spreadsheet** (optional)
+
+   In the portal, as a board member: **External Contacts → Import spreadsheet**
+   (or **HS Schedule → Import spreadsheet**) and pick the "Omaha Lightning
+   Schedule … Working copy for Coaches and Board" workbook. Its Contacts tab
+   becomes External Contacts (programs, facilities and referees, with their
+   people) and each "HS Schedule - 26-27" tab a season on the HS Schedule.
+   You see everything it found before anything is saved; importing again only
+   fills in blanks. Needs migrations 0107 and 0108.
+
+7. **Run the dev server**
 
    ```bash
    npm run dev
@@ -101,6 +111,8 @@ app/                  Routes (App Router)
                       and the sign-in pages (login, register, reset-password)
   portal/             Authenticated member portal
     directory/        Members, households, birthdays, volunteer-team filter, …
+    schedule/         HS Schedule: the high school season weekend by weekend, for
+                      coaches and the board (lib/hs-schedule, lib/hs-planning-import)
     maintenance/      Maintenance request tickets + comments
     pm/               Preventive maintenance: templates, instances, calendar, assets
     events/  supplies/  docs/   Events, supplies inventory, playbooks

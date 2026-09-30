@@ -9,7 +9,7 @@
 // KEEP IT CURRENT: any change people can see (a new page, a renamed button, a
 // feature released from preview) updates the matching section here in the
 // same change, and bumps GUIDE_UPDATED. Sections follow the sidebar (Directory,
-// External Contacts, Playbooks, Slack Archive, Activity, then Settings with
+// HS Schedule, External Contacts, Playbooks, Slack Archive, Activity, then Settings with
 // its sections in the order of its tabs), each page's how-to beside it. tests/unit/help-guide.test.ts fails
 // when a portal page has no section. The guided tours in ./tours.ts retell
 // sections step by step, pointed at the real buttons — keep them in step too.
@@ -278,18 +278,45 @@ Requirements start over each season, since each season has its own roster. The l
 **Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title, or tap **ⓘ** on **Settings → Requirements** and then **Show me around**.`,
   },
   {
+    id: "hs-schedule",
+    title: "HS Schedule",
+    group: "HS Schedule",
+    audience: "staff",
+    preview: true,
+    routes: ["/portal/schedule"],
+    keywords: ["schedule", "hs schedule", "high school", "season", "weekend", "tournament", "games", "varsity", "jv", "14u", "opponents", "teams coming", "on the fence", "maybe", "confirmed", "not coming", "facility", "secured", "trip", "overnight", "notes", "scores", "results", "record", "compare", "last season", "columns", "import", "spreadsheet", "coaches"],
+    body: `The high school season weekend by weekend, laid out like the planning spreadsheet's "HS Schedule" tab, for the coaches and the board. Every season has its own schedule, and the earlier ones stay to look back on.
+
+**The grid.** A row per weekend, grouped by month: the dates and days, **Where** and the trip, the **Event**, a column for each of our teams (V, JV1, JV2, 14U A…) with its games, and **Notes** (the venue and game times). The event's color says how it stands, as in the spreadsheet: **Tentative** (red), **Need to secure facility** (yellow), **Final details in process** (pale yellow) and **Facility secured** (green); off and open weekends are grey. Under the event are the teams coming and how many are on the fence. **Total games** at the bottom adds up each team's games, with the record for a season that has scores.
+
+**Who's coming.** Hover over a team's count (tap it on a phone) to see its games and the teams coming: **Coming**, **On the fence** and **Not coming**, each linked to its program in External Contacts. A **3?** with a dashed line means the games aren't settled yet; a small amber dot means a team is on the fence.
+
+**Change it right there.** Press **Edit** on that card. Use **−** and **+** for the games, and tick **Not sure yet** if they aren't settled. For each team tap **Yes**, **Maybe** or **No**, and pick whether it's coming for just this team of ours or **All our teams**. **Add a team** finds programs the way coaches write them (DMW, So Metro, RR), or keeps what you type as a name. For a weekend that's over, **Score** records the result. Everything saves as you go.
+
+**A weekend's details.** Tap the event, or **Weekend details** on the card, to change its dates, **Where**, **Trip**, **Status**, **Notes**, **Facility** and **Details**, set every team's games at once and see every team coming. **Add weekend** adds one; **Delete** removes one.
+
+**Seasons.** Use the arrows, or the season buttons, to move between seasons. **Compare with** puts another season's same weekend beside each row, so you can see what we did a year ago. **Season** changes the title, the notes and the columns: add, rename, reorder or hide one, or link it to its team in the Directory. The board can also **Start 2027–28 from 2026–27** there (the same weekends a year on, with the teams that came now on the fence), or add a **+ New season**.
+
+**Import spreadsheet** (the board) reads the planning spreadsheet's "HS Schedule - 26-27" tabs along with its Contacts tab: each season's weekends, games, colors and notes, the teams named in each event (the ones after "Potentials" or "Possibly" go on the fence) and the scores. The preview lists what it found for every weekend before anything is saved; a season that's already here is only replaced if you tick **Replace**.
+
+**Walk me through it.** Press **Show me around** next to this section's title, or tap **ⓘ** on the HS Schedule and then **Show me around**.`,
+  },
+  {
     id: "external-contacts",
     title: "External Contacts",
     group: "External Contacts",
     audience: "staff",
     routes: ["/portal/contacts"],
-    keywords: ["contacts", "vendors", "companies", "people", "photographer", "gym", "facility", "rent", "program", "account number", "billing", "tags", "phone", "email"],
-    body: `Everyone outside the club we work with — vendors, photographers, gyms we rent, other programs. Only the board can see it.
+    keywords: ["contacts", "vendors", "companies", "people", "photographer", "gym", "facility", "rent", "program", "programs", "opponents", "referees", "refs", "scheduler", "athletic director", "coach", "role", "team colors", "also known as", "account number", "billing", "tags", "nchc", "ndii", "import", "spreadsheet", "phone", "email"],
+    body: `Everyone outside the club we work with — other programs, gyms we rent, referees, vendors, photographers. Only the board can see it.
 
-- **Search** by name, email, phone, account number or type, and use the chips to show **Companies**, **People** or one **type**.
-- **+ New contact** — choose **Company** or **Person**, then fill in what you know: contact info, account and billing details, notes (like how to re-order or who to call for quotes) and tags.
+- **All** lists each company with the people who work there under it (their role, email and phone), then **People on their own**. **Companies** shows just the companies; **People** lists everyone, each with the company they work at.
+- **Search** by name, role, email, phone, city, account number or type, or by another name a program goes by (like RR). Use the chips to show **Companies**, **People**, one **type**, or one **tag** (tap the tag again to show everyone).
+- **+ New contact** — choose **Company** or **Person**, then fill in what you know: a person's **Role**, a company's **City** and **State**, contact info (with an **Other email**), for another program its **Team colors** and **Also known as** (the short names coaches use), account and billing details, notes and tags.
 - Add the people you deal with at a company from its page with **+ Add person**, or pick their company under **Works at** when you add them.
-- A contact's page shows everything about them, with tap-to-call phone numbers, and **Used by** lists the playbooks it's attached to. Tap **Edit** to make changes.
+- A person's page shows **Works at**: their company, with its details, and everyone else who works there. A company's page lists **People at this company**. Tap-to-call numbers on both, and **Used by** lists the playbooks a contact is attached to. Tap **Edit** to make changes.
+
+**Import spreadsheet** reads the Contacts tab of the HS planning spreadsheet. The Tier I and Tier 2 teams become **Programs** (tagged **nchc** and **ndii**), the gyms **Facilities** and the refs **Referees**, each with its people, their roles, emails and phones, and the teams' colors from the NDII table. You see all of it first; press **Import** to add it. Contacts you already have are only filled in, never overwritten, so importing a newer copy later is safe. If it finds a company you might already have (UBT and UBT Sports Complex, say), pick **Same as …** to fill that one in instead of adding another.
 
 Super-admins can **Delete** a contact.`,
   },
@@ -627,7 +654,7 @@ Every signed-in member sees the links; only super-admins can change them.`,
     body: `The types used to group External Contacts — uniforms, photos, facilities, opponents and so on. Open **Settings → Contact Types**.
 
 - **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
-- Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
+- Types show up when someone adds an external contact, and as filter chips on the External Contacts page. Importing the HS planning spreadsheet adds **Programs** and **Referees** if you don't have them, and uses your **Facilities**.
 - Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.`,
   },
   {
