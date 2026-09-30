@@ -21,7 +21,7 @@ const PATTERNS: [RegExp, string][] = [
   ],
   [
     /already registered|already been registered/i,
-    "There's already an account with this email. Try signing in instead.",
+    "There's already an account with this email. Sign in with “Email me a sign-in code”, or tap “Forgot password?” to choose a password.",
   ],
   [
     // Keep this AFTER any token/code patterns would match — it's for the

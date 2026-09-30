@@ -24,8 +24,10 @@ test("unconfirmed email explains the link", () => {
   assert.match(friendlyAuthError("Email not confirmed"), /confirmation link/i);
 });
 
-test("already registered suggests signing in", () => {
-  assert.match(friendlyAuthError("User already registered"), /signing in/i);
+test("already registered points to the sign-in code and Forgot password?", () => {
+  const msg = friendlyAuthError("User already registered");
+  assert.match(msg, /sign-in code/i);
+  assert.match(msg, /Forgot password\?/);
 });
 
 test("invalid email address gets the typo message", () => {
