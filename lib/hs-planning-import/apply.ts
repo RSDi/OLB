@@ -75,11 +75,17 @@ export async function applyImportPlan(
     const cp = plan.contacts;
     const typeIds: Record<string, string | null> = { ...cp.typeIds } as Record<string, string | null>;
     for (const t of cp.typesToCreate) {
-      const { data, error } = await db
+      // Coaches read these types (0109). Before that migration there's no
+      // such column, so the type goes in without it.
+      const row = { name: t, slug: slugify(t), sort_order: 100 };
+      let { data, error } = await db
         .from("contact_categories")
-        .insert({ name: t, slug: slugify(t), sort_order: 100 })
+        .insert({ ...row, shared_with_coaches: true })
         .select("id")
         .single();
+      if (error && /shared_with_coaches/.test(error.message ?? "")) {
+        ({ data, error } = await db.from("contact_categories").insert(row).select("id").single());
+      }
       if (error || !data) {
         // Someone added it meanwhile: use theirs.
         const { data: again } = await db

@@ -22,8 +22,8 @@ interface NavItem {
   previewOnly?: boolean;
   // Payments: finance managers, and parents once their balance is open.
   paymentsOnly?: boolean;
-  // The HS Schedule: coaches and the board (and staged rollout for now).
-  scheduleOnly?: boolean;
+  // The board and the coaches (a leadership volunteer role on a team).
+  coachesOnly?: boolean;
   // Guided-tour anchor (lib/help/tours.ts).
   tour?: string;
 }
@@ -38,11 +38,11 @@ const NAV: NavItem[] = [
   { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/>, previewOnly: true },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/>, tour: "nav-directory" },
   // The high school season weekend by weekend, for coaches and the board
-  // (lib/hs-schedule/access.ts; still in staged rollout).
-  { href: "/portal/schedule", label: "HS Schedule", icon: <Icons.Ball width={16} height={16}/>, scheduleOnly: true, tour: "nav-schedule" },
-  // Vendors, rented facilities, opposing programs. The page itself is
-  // staff-only, so the link is too.
-  { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, staffOnly: true, tour: "nav-contacts" },
+  // (lib/hs-schedule/access.ts).
+  { href: "/portal/schedule", label: "HS Schedule", icon: <Icons.Ball width={16} height={16}/>, coachesOnly: true, tour: "nav-schedule" },
+  // Vendors, rented facilities, opposing programs. The board sees them all;
+  // coaches read the types shared with them (Settings → Contact Types).
+  { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, coachesOnly: true, tour: "nav-contacts" },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/>, tour: "nav-playbooks" },
   // Every family's balance for the Treasurer (the Payments grant); a parent's
   // own balance once the Treasurer turns that on.
@@ -90,8 +90,9 @@ export interface SidebarViewer {
   canManageRegistrations?: boolean;
   // Shows the Payments item: a finance manager, or a parent whose balance is open.
   seesPayments?: boolean;
-  // Shows the HS Schedule item: a coach or the board (lib/hs-schedule/access.ts).
-  seesHsSchedule?: boolean;
+  // A coach (a leadership volunteer role on a team): sees the HS Schedule and
+  // External Contacts. Only looked up for approved members off the board.
+  isCoach?: boolean;
 }
 
 interface PortalSidebarProps {
@@ -137,8 +138,8 @@ export function PortalSidebar({
   );
 
   const seesPayments = viewer?.seesPayments ?? false;
-  const seesHsSchedule = viewer?.seesHsSchedule ?? false;
-  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || seesHsSchedule));
+  const isCoach = viewer?.isCoach ?? false;
+  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.coachesOnly || isStaff || isCoach));
   const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
   const bottomItems = BOTTOM_HREFS
     .map(href => visibleItems.find(item => item.href === href))

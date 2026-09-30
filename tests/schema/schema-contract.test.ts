@@ -66,7 +66,8 @@ const CONTRACT: Record<string, string> = {
   contacts:
     "id,kind,parent_contact_id,category_id,name,nickname,email,phone,mobile_phone,notes,tags,deleted_at,title,city,state,alt_email,team_colors,aliases",
   contact_links: "id,contact_id,entity_type,entity_id",
-  contact_categories: "id,name,slug,sort_order",
+  contact_categories: "id,name,slug,sort_order,shared_with_coaches",
+  contact_versions: "id,contact_id,action,changes,snapshot,source,changed_by,impersonator_user_id,changed_at",
   playbooks: "id,title,category_id,excerpt,body_md,created_by,updated_by,deleted_at,steps,wizard_slack_channel,wizard_completion_message",
   playbook_categories: "id,name,deleted_at",
   member_relationships: "id,member_id,related_member_id,relationship",

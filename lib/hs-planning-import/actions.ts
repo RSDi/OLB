@@ -163,7 +163,8 @@ export async function runPlanningImport(form: FormData): Promise<{ error?: strin
   for (const [key, id] of Object.entries(options.merges)) {
     if (!existing.contacts.some((c) => c.id === id && c.kind === "company")) delete options.merges[key];
   }
-  const supabase = await createClient();
+  // Contact history (0109) credits these changes to the import.
+  const supabase = await createClient({ changeSource: "import" });
   const summary = await applyImportPlan(supabase, plan, existing, options, gate.userId);
   revalidatePath("/portal/contacts");
   if (options.seasons.length) revalidatePath("/portal/schedule");

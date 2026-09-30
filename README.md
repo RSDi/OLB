@@ -79,7 +79,9 @@ playbooks/docs, volunteer teams, and global search.
    becomes External Contacts (programs, facilities and referees, with their
    people) and each "HS Schedule - 26-27" tab a season on the HS Schedule.
    You see everything it found before anything is saved; importing again only
-   fills in blanks. Needs migrations 0107 and 0108.
+   fills in blanks, and every change it makes shows in the contacts' History.
+   Coaches read the Programs, Facilities and Referees it adds. Needs
+   migrations 0107–0109.
 
 7. **Run the dev server**
 

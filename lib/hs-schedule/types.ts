@@ -98,7 +98,7 @@ export interface HsSeasonSchedule {
   contacts: HsContactRef[];
 }
 
-// A program or facility the pickers offer (External Contacts, board only).
+// A program or facility the pickers offer (External Contacts the viewer can read).
 export interface HsContactOption {
   id: string;
   name: string;

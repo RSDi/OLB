@@ -53,7 +53,6 @@ export function WeekendSheet({
   contacts,
   options,
   knownTeams,
-  canLink,
   dispatch,
   onClose,
   onSaved,
@@ -68,7 +67,6 @@ export function WeekendSheet({
   contacts: Map<string, HsContactRef>;
   options: HsContactOption[];
   knownTeams: TeamPick[];
-  canLink: boolean;
   dispatch: (a: ScheduleAction) => void;
   onClose: () => void;
   onSaved: (w: HsWeekend) => void;
@@ -223,7 +221,6 @@ export function WeekendSheet({
             contacts={contacts}
             options={options}
             knownTeams={knownTeams}
-            canLink={canLink}
             dispatch={dispatch}
             onError={setError}
           />
@@ -298,7 +295,6 @@ function TeamsEditor({
   contacts,
   options,
   knownTeams,
-  canLink,
   dispatch,
   onError,
 }: {
@@ -308,7 +304,6 @@ function TeamsEditor({
   contacts: Map<string, HsContactRef>;
   options: HsContactOption[];
   knownTeams: TeamPick[];
-  canLink: boolean;
   dispatch: (a: ScheduleAction) => void;
   onError: (m: string) => void;
 }) {
@@ -358,7 +353,7 @@ function TeamsEditor({
           <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "6px 0", borderTop: "1px solid var(--gw-border)" }}>
             <Dot tone={o.status} />
             <span style={{ flex: "1 1 160px", minWidth: 0, fontSize: 13, fontWeight: 700 }}>
-              {canLink && c ? (
+              {c ? (
                 <a href={`/portal/contacts/${c.id}`} style={{ color: "inherit", textDecoration: "none" }}>
                   {name}
                 </a>

@@ -38,9 +38,8 @@
 -- (Head coach, Assistant coach…, Settings → Volunteer Roles) on a team.
 -- can_plan_hs_schedule() is the board (is_staff) or a coach; they read and
 -- write everything here, except that only the board adds or deletes a whole
--- season. The app also keeps the page in staged rollout for now
--- (lib/hs-schedule/access.ts); these policies are what it will need once
--- it's open. Helper calls are wrapped in (select …) per AGENTS.md.
+-- season (lib/hs-schedule/access.ts lets the same people in). Helper calls
+-- are wrapped in (select …) per AGENTS.md.
 --
 -- Apply via the Supabase SQL editor, after 0107. Idempotent.
 

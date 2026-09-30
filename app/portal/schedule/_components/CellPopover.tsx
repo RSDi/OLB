@@ -2,7 +2,7 @@
 // The card that opens over a team's cell in the grid (hover it, or tap it):
 // how many games that team of ours plays that weekend and the teams coming,
 // confirmed, on the fence or not coming, each linked to its program in
-// External Contacts (for the board). "Edit" turns the same card into the
+// External Contacts when the viewer can open it. "Edit" turns the same card into the
 // editor: the games (and "not sure yet"), each team's Yes / Maybe / No,
 // whether it's coming for this team of ours or every team we bring, scores,
 // and "Add a team".
@@ -57,7 +57,6 @@ export function CellPopover({
   list,
   weekendOpponents,
   contacts,
-  canLink,
   canEdit,
   options,
   knownTeams,
@@ -76,7 +75,6 @@ export function CellPopover({
   // Every team row on this weekend, for tidying up when a row's scope changes.
   weekendOpponents: HsOpponent[];
   contacts: Map<string, HsContactRef>;
-  canLink: boolean;
   canEdit: boolean;
   options: HsContactOption[];
   knownTeams: TeamPick[];
@@ -225,7 +223,6 @@ export function CellPopover({
               games={games}
               level={level}
               contacts={contacts}
-              canLink={canLink}
               past={past}
               // Teams coming for every team we bring, when this one of ours
               // isn't playing that weekend.
@@ -281,7 +278,6 @@ function Viewer({
   games,
   level,
   contacts,
-  canLink,
   others,
   past,
 }: {
@@ -289,7 +285,6 @@ function Viewer({
   games: HsGames | undefined;
   level: HsLevel;
   contacts: Map<string, HsContactRef>;
-  canLink: boolean;
   others: number;
   // The weekend is over: the teams "played", rather than are coming.
   past: boolean;
@@ -326,9 +321,9 @@ function Viewer({
         </div>
       ) : (
         <>
-          <Section title={past ? "Played" : "Coming"} rows={summary.confirmed} tone="confirmed" contacts={contacts} canLink={canLink} level={level} />
-          <Section title={past ? "Were on the fence" : "On the fence"} rows={summary.tentative} tone="tentative" contacts={contacts} canLink={canLink} level={level} />
-          <Section title={past ? "Didn't come" : "Not coming"} rows={summary.declined} tone="declined" contacts={contacts} canLink={canLink} level={level} />
+          <Section title={past ? "Played" : "Coming"} rows={summary.confirmed} tone="confirmed" contacts={contacts} level={level} />
+          <Section title={past ? "Were on the fence" : "On the fence"} rows={summary.tentative} tone="tentative" contacts={contacts} level={level} />
+          <Section title={past ? "Didn't come" : "Not coming"} rows={summary.declined} tone="declined" contacts={contacts} level={level} />
         </>
       )}
     </>
@@ -340,14 +335,12 @@ function Section({
   rows,
   tone,
   contacts,
-  canLink,
   level,
 }: {
   title: string;
   rows: HsOpponent[];
   tone: HsOpponentStatus;
   contacts: Map<string, HsContactRef>;
-  canLink: boolean;
   level: HsLevel;
 }) {
   if (rows.length === 0) return null;
@@ -377,7 +370,7 @@ function Section({
           <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", minHeight: 26 }}>
             <Dot tone={tone} />
             <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
-              {canLink && o.contact_id && c ? (
+              {o.contact_id && c ? (
                 <Link href={`/portal/contacts/${o.contact_id}`} style={{ textDecoration: "none" }} title={`Open ${name} in External Contacts`}>
                   {nameEl}
                 </Link>
@@ -396,7 +389,7 @@ function Section({
                 {result}
               </span>
             )}
-            {canLink && o.contact_id && c && (
+            {o.contact_id && c && (
               <Link href={`/portal/contacts/${o.contact_id}`} aria-label={`Open ${name}`} style={{ color: "var(--gw-fg-muted)", display: "flex" }}>
                 <Icons.ChevronRight width={12} height={12} />
               </Link>

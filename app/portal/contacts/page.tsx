@@ -4,8 +4,8 @@ import { getViewer } from "../../../lib/auth/viewer";
 import { viewerCanUseHsSchedule } from "../../../lib/hs-schedule/viewer";
 
 export default async function ContactsPage() {
-  // Access guard — redirects non-staff before any rendering.
-  await loadContactsViewer();
+  // Access guard: the board and the coaches, before any rendering.
+  const viewer = await loadContactsViewer();
 
   const [contacts, categories, schedules] = await Promise.all([
     loadContacts(),
@@ -14,5 +14,7 @@ export default async function ContactsPage() {
     getViewer().then(viewerCanUseHsSchedule),
   ]);
 
-  return <ContactsList contacts={contacts} categories={categories} canImportSchedules={schedules} />;
+  return (
+    <ContactsList contacts={contacts} categories={categories} canEdit={viewer.isStaff} canImportSchedules={schedules} />
+  );
 }

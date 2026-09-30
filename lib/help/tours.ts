@@ -434,12 +434,13 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "page-title",
         title: "External Contacts",
-        body: "Everyone outside the club we work with. Only the board can see it.",
+        body: "Everyone outside the club we work with. Coaches see the programs, gyms and referees; the board sees and edits everything.",
       },
       {
         target: "contacts-new",
         title: "New contact",
         body: "Add a **Company** or a **Person**: contact info, account and billing details, notes and tags.",
+        audience: "staff",
       },
       {
         target: "contacts-search",
@@ -460,6 +461,13 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "contacts-import",
         title: "Import the spreadsheet",
         body: "Reads the HS planning spreadsheet's Contacts tab: programs, gyms and refs with their people. You see everything before it's saved, and contacts you already have are only filled in.",
+        audience: "staff",
+      },
+      {
+        target: "contacts-changes",
+        title: "Recent changes",
+        body: "Every change to a contact, newest first: who made it, when, and what it said before. Each contact's own **History** can put an earlier version back.",
+        audience: "staff",
       },
     ],
   },
@@ -526,6 +534,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "schedule-import",
         title: "Import the spreadsheet",
         body: "Brings in the planning spreadsheet's HS Schedule tabs with its contacts. You see what it found for every weekend first.",
+        audience: "staff",
       },
     ],
   },
@@ -750,7 +759,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         click: "contact-types-add",
         interactive: true,
         title: "The type's details",
-        body: "Give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.",
+        body: "Give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name. Tick **Coaches can see** to let the coaches read its contacts.",
       },
       {
         target: "contact-types-save",

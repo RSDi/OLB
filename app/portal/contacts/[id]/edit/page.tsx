@@ -14,7 +14,7 @@ export default async function EditContactPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await loadContactsViewer();
+  await loadContactsViewer({ board: true });
   const { id } = await params;
 
   const [contact, categories, companies] = await Promise.all([

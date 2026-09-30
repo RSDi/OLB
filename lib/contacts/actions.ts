@@ -8,6 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "../auth/guards";
 import { createClient } from "../supabase/server";
+import { differsFrom, restorePatch } from "./history";
 
 export interface ContactActionResult {
   success?: boolean;
@@ -137,9 +138,13 @@ export async function createContact(
   return { success: true, contactId: data.id };
 }
 
+// `openedAt` is the contact's updated_at when the form opened: the save only
+// goes through if nobody has saved it since, so two people editing at once
+// can't quietly overwrite each other.
 export async function updateContact(
   contactId: string,
-  input: ContactInput
+  input: ContactInput,
+  openedAt?: string
 ): Promise<ContactActionResult> {
   const gate = await requireStaff();
   if ("error" in gate) return { error: gate.error };
@@ -147,15 +152,21 @@ export async function updateContact(
   if (err) return { error: err };
 
   const supabase = await createClient();
-  let { error } = await supabase
-    .from("contacts")
-    .update({ ...toRow(input), ...programFields(input) })
-    .eq("id", contactId);
-  if (missingColumn(error)) {
-    ({ error } = await supabase.from("contacts").update(toRow(input)).eq("id", contactId));
-  }
+  const save = (row: Record<string, unknown>) => {
+    let q = supabase.from("contacts").update(row).eq("id", contactId);
+    if (openedAt) q = q.eq("updated_at", openedAt);
+    return q.select("id");
+  };
+  let { data, error } = await save({ ...toRow(input), ...programFields(input) });
+  if (missingColumn(error)) ({ data, error } = await save(toRow(input)));
 
   if (error) return { error: error.message };
+  if (openedAt && (data ?? []).length === 0) {
+    return {
+      error:
+        "Someone else saved this contact after you opened it, so your changes weren't saved. Copy anything you typed, reload the page to see theirs (History shows what they changed), and make yours again.",
+    };
+  }
 
   revalidatePath("/portal/contacts");
   revalidatePath(`/portal/contacts/${contactId}`);
@@ -192,6 +203,43 @@ export async function restoreContact(
 
   revalidatePath("/portal/contacts");
   return { success: true };
+}
+
+// "Restore this version" on a contact's History (contact_versions, 0109):
+// every field the form edits goes back to how that version had it. It's
+// saved as a new change, marked as a restore, so it can be undone the same
+// way. A type or company that has since been deleted stays as it is now.
+export async function restoreContactVersion(versionId: string): Promise<ContactActionResult> {
+  const gate = await requireStaff();
+  if ("error" in gate) return { error: gate.error };
+  const supabase = await createClient({ changeSource: "restore" });
+
+  const { data: v } = await supabase.from("contact_versions").select("contact_id, snapshot").eq("id", versionId).maybeSingle();
+  if (!v) return { error: "That version isn't there any more." };
+  const { contact_id: contactId, snapshot } = v as { contact_id: string; snapshot: Record<string, unknown> };
+  const { data: current } = await supabase.from("contacts").select("*").eq("id", contactId).is("deleted_at", null).maybeSingle();
+  if (!current) return { error: "This contact is in the deleted bin. Bring it back first." };
+  const now = current as Record<string, unknown>;
+  if (!differsFrom(snapshot, now)) return { success: true, contactId };
+
+  const patch = restorePatch(snapshot);
+  const [{ data: type }, { data: company }] = await Promise.all([
+    patch.category_id
+      ? supabase.from("contact_categories").select("id").eq("id", patch.category_id as string).is("deleted_at", null).maybeSingle()
+      : Promise.resolve({ data: null }),
+    patch.parent_contact_id
+      ? supabase.from("contacts").select("id").eq("id", patch.parent_contact_id as string).is("deleted_at", null).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  if (patch.category_id && !type) patch.category_id = now.category_id ?? null;
+  if (patch.parent_contact_id && !company) patch.parent_contact_id = now.parent_contact_id ?? null;
+
+  const { error } = await supabase.from("contacts").update(patch).eq("id", contactId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/portal/contacts");
+  revalidatePath(`/portal/contacts/${contactId}`);
+  return { success: true, contactId };
 }
 
 // ---------------------------------------------------------------------------

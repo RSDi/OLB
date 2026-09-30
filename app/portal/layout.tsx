@@ -11,11 +11,10 @@
 // the `PortalShell` client component below.
 
 import type { Viewport } from "next";
-import { getPendingMembersCount, getViewer } from "../../lib/auth/viewer";
+import { getPendingMembersCount, getViewer, viewerIsCoach } from "../../lib/auth/viewer";
 import { getSidebarLinks } from "../../lib/sidebar-links/queries";
 import { parentHasBalance } from "../../lib/finances/data";
 import { getPreview } from "../../lib/activity/preview";
-import { viewerCanUseHsSchedule } from "../../lib/hs-schedule/viewer";
 import { PortalShell } from "./PortalShell";
 
 // The Lightning theme is light apart from the black sidebar: tint mobile
@@ -34,16 +33,16 @@ export default async function PortalLayout({
   // Any board member can action the approval queue (D1), so the whole
   // staff sees the pending badge.
   const viewer = await getViewer();
-  const [pendingMembersCount, sidebarLinks, preview, hasBalance, seesHsSchedule] = await Promise.all([
+  const [pendingMembersCount, sidebarLinks, preview, hasBalance, isCoach] = await Promise.all([
     viewer?.isStaff ? getPendingMembersCount() : Promise.resolve(0),
     viewer ? getSidebarLinks() : Promise.resolve([]),
     // A super-admin's "Preview as" in progress (banner + way back).
     getPreview(),
     // Payments in the sidebar: a parent whose balance the Treasurer has opened.
     viewer?.status === "approved" && !viewer.canManageFinances ? parentHasBalance() : Promise.resolve(false),
-    // HS Schedule in the sidebar: coaches and the board (no query while it's
-    // in staged rollout for everyone else).
-    viewerCanUseHsSchedule(viewer),
+    // HS Schedule and External Contacts in the sidebar, and the coaches' help:
+    // a coach (the board sees them anyway, so it isn't asked for them).
+    viewerIsCoach(viewer),
   ]);
 
   return (
@@ -58,7 +57,7 @@ export default async function PortalLayout({
               canManageFinances: viewer.canManageFinances,
               canManageRegistrations: viewer.canManageRegistrations,
               seesPayments: viewer.canManageFinances || hasBalance,
-              seesHsSchedule,
+              isCoach,
             }
           : null
       }

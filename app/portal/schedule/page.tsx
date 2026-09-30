@@ -4,7 +4,7 @@ import { getViewer } from "../../../lib/auth/viewer";
 import { createClient } from "../../../lib/supabase/server";
 import { churchToday } from "../../../lib/dates/today";
 import { seasonOf } from "../../../lib/planning/season";
-import { getIsCoach, viewerCanUseHsSchedule } from "../../../lib/hs-schedule/viewer";
+import { viewerCanUseHsSchedule } from "../../../lib/hs-schedule/viewer";
 import {
   loadHsContactOptions,
   loadHsSeasonSchedule,
@@ -26,11 +26,7 @@ export default async function SchedulePage({
 }) {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
-  if (!(await viewerCanUseHsSchedule(viewer))) {
-    // A coach or the board, but it's still being tried out.
-    const soon = viewer.isStaff || (await getIsCoach());
-    return <NotAvailable soon={soon} />;
-  }
+  if (!(await viewerCanUseHsSchedule(viewer))) return <NotAvailable />;
 
   const params = await searchParams;
   const supabase = await createClient();
@@ -53,8 +49,9 @@ export default async function SchedulePage({
   const board = `${season.season}-${season.season + 1}`;
   const [schedule, options, knownTeams, compareRows, teams] = await Promise.all([
     loadHsSeasonSchedule(supabase, season),
-    // External Contacts are the board's; coaches add teams by name.
-    viewer.isStaff ? loadHsContactOptions(supabase) : Promise.resolve([]),
+    // The programs to add teams from: all of them for the board, the types
+    // shared with coaches for a coach (RLS, 0109).
+    loadHsContactOptions(supabase),
     loadKnownTeams(supabase),
     compareSeason
       ? supabase
@@ -104,16 +101,12 @@ function parseSeason(s: string | undefined): number | null {
   return n >= 2000 && n <= 2100 ? n : null;
 }
 
-function NotAvailable({ soon }: { soon: boolean }) {
+function NotAvailable() {
   return (
     <div className="rsd-card" style={{ padding: "32px 24px", gap: 8, textAlign: "center" }}>
-      <div style={{ fontSize: 16, fontWeight: 700 }}>
-        {soon ? "The HS Schedule isn't open yet" : "The HS Schedule is for coaches and the board"}
-      </div>
+      <div style={{ fontSize: 16, fontWeight: 700 }}>The HS Schedule is for coaches and the board</div>
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
-        {soon
-          ? "It's being tried out first. It'll show up in your sidebar when it's ready."
-          : "If you coach a team and can't see it, ask the board to add you as the team's coach in the Directory."}
+        If you coach a team and can&apos;t see it, ask the board to add you as the team&apos;s coach in the Directory.
       </div>
       <div style={{ marginTop: 8 }}>
         <Link href="/portal" style={{ fontSize: 13, fontWeight: 700 }}>

@@ -452,7 +452,6 @@ export function ScheduleView({
           )}
           weekendOpponents={state.opponents.filter((o) => o.weekend_id === liveCell.weekend.id)}
           contacts={contacts}
-          canLink={isStaff}
           canEdit
           options={options}
           knownTeams={known}
@@ -485,7 +484,6 @@ export function ScheduleView({
           contacts={contacts}
           options={options}
           knownTeams={known}
-          canLink={isStaff}
           dispatch={dispatch}
           onClose={() => setSheet(null)}
           onSaved={(w) => setSheet({ kind: "weekend", id: w.id })}

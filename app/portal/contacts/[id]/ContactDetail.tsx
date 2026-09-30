@@ -18,6 +18,8 @@ import type {
 import { displayName, externalHref, telHref } from "../_shared/format";
 import { placeLabel } from "../_shared/group";
 import type { ContactScheduleRow } from "../../../../lib/hs-schedule/data";
+import type { LastContactChange } from "../../../../lib/contacts/history-data";
+import { formatWhen } from "../../../../lib/contacts/history";
 import { formatWeekendDates, weekendStatusLabel } from "../../../../lib/hs-schedule/logic";
 import { seasonLabel } from "../../../../lib/planning/season";
 
@@ -30,10 +32,14 @@ interface Props {
   links: ResolvedLink[];
   // For a program or facility: its weekends on the HS Schedule.
   history: ContactScheduleRow[];
+  // The board: edit, add people, History. Coaches only read (0109).
+  canEdit: boolean;
   canDelete: boolean;
+  // The latest change in its history (the board).
+  lastChange: LastContactChange | null;
 }
 
-export function ContactDetail({ contact, people, company, coworkers, links, history, canDelete }: Props) {
+export function ContactDetail({ contact, people, company, coworkers, links, history, canEdit, canDelete, lastChange }: Props) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -235,18 +241,20 @@ export function ContactDetail({ contact, people, company, coworkers, links, hist
                 <h3 style={SECTION_TITLE}>
                   People at this company ({people.length})
                 </h3>
-                <Link
-                  href={`/portal/contacts/new?kind=person&parent=${contact.id}`}
-                  style={{ textDecoration: "none" }}
-                >
-                  <Pill variant="ghost" size="sm">
-                    <Icons.Plus width={12} height={12} /> Add person
-                  </Pill>
-                </Link>
+                {canEdit && (
+                  <Link
+                    href={`/portal/contacts/new?kind=person&parent=${contact.id}`}
+                    style={{ textDecoration: "none" }}
+                  >
+                    <Pill variant="ghost" size="sm">
+                      <Icons.Plus width={12} height={12} /> Add person
+                    </Pill>
+                  </Link>
+                )}
               </div>
               {people.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, padding: "8px 0" }}>
-                  No people linked yet. Add a sales rep, account manager, or specific contact.
+                  {canEdit ? "No people linked yet. Add a sales rep, account manager, or specific contact." : "No people listed here."}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column" }}>
@@ -305,43 +313,61 @@ export function ContactDetail({ contact, people, company, coworkers, links, hist
 
         {/* Side column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 14, position: "sticky", top: 20 }}>
-          <div className="rsd-card" style={{ gap: 12 }}>
-            <h3 style={SECTION_TITLE}>Actions</h3>
-            <Link href={`/portal/contacts/${contact.id}/edit`} style={{ textDecoration: "none" }}>
-              <Pill variant="light" size="md" style={{ width: "100%", justifyContent: "center" }}>
-                <Icons.Pencil width={14} height={14} /> Edit
-              </Pill>
-            </Link>
-            {canDelete && (
-              <Pill
-                variant="ghost"
-                size="md"
-                onClick={handleDelete}
-                disabled={deleting}
-                style={{
-                  width: "100%",
-                  justifyContent: "center",
-                  color: "var(--gw-error)",
-                  borderColor: "rgba(229,62,62,.25)",
-                }}
-              >
-                <Icons.Trash width={14} height={14} />
-                {deleting ? "Deleting…" : "Delete"}
-              </Pill>
-            )}
-            {error && (
-              <div style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600 }}>
-                {error}
-              </div>
-            )}
-          </div>
+          {canEdit && (
+            <div className="rsd-card" style={{ gap: 12 }}>
+              <h3 style={SECTION_TITLE}>Actions</h3>
+              <Link href={`/portal/contacts/${contact.id}/edit`} style={{ textDecoration: "none" }}>
+                <Pill variant="light" size="md" style={{ width: "100%", justifyContent: "center" }}>
+                  <Icons.Pencil width={14} height={14} /> Edit
+                </Pill>
+              </Link>
+              <Link href={`/portal/contacts/${contact.id}/history`} data-tour="contact-history" style={{ textDecoration: "none" }}>
+                <Pill variant="ghost" size="md" style={{ width: "100%", justifyContent: "center" }}>
+                  <Icons.Clock width={14} height={14} /> History
+                </Pill>
+              </Link>
+              {canDelete && (
+                <Pill
+                  variant="ghost"
+                  size="md"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{
+                    width: "100%",
+                    justifyContent: "center",
+                    color: "var(--gw-error)",
+                    borderColor: "rgba(229,62,62,.25)",
+                  }}
+                >
+                  <Icons.Trash width={14} height={14} />
+                  {deleting ? "Deleting…" : "Delete"}
+                </Pill>
+              )}
+              {error && (
+                <div style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600 }}>
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="rsd-card" style={{ gap: 12 }}>
             <h3 style={SECTION_TITLE}>Meta</h3>
             <Field label="Kind" value={isCompany ? "Company" : "Person"} />
             <Field label="Created" value={formatDate(contact.created_at)} />
-            {contact.updated_at !== contact.created_at && (
-              <Field label="Updated" value={formatDate(contact.updated_at)} />
+            {lastChange ? (
+              <Field
+                label="Last changed"
+                value={
+                  <>
+                    {formatWhen(lastChange.at)}
+                    {lastChange.by && <> by {lastChange.by}</>}
+                    {lastChange.source === "import" && <> (Import spreadsheet)</>}
+                  </>
+                }
+              />
+            ) : (
+              contact.updated_at !== contact.created_at && <Field label="Updated" value={formatDate(contact.updated_at)} />
             )}
           </div>
         </div>

@@ -544,7 +544,10 @@ function SeasonPreview({
 
 function Summary({ summary }: { summary: ApplySummary }) {
   const lines: string[] = [];
-  if (summary.typesCreated.length) lines.push(`Added the contact type${summary.typesCreated.length > 1 ? "s" : ""} ${summary.typesCreated.join(" and ")}.`);
+  if (summary.typesCreated.length)
+    lines.push(
+      `Added the contact type${summary.typesCreated.length > 1 ? "s" : ""} ${summary.typesCreated.join(" and ")}, which coaches can see (Settings → Contact Types).`
+    );
   const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
   if (summary.companiesCreated || summary.peopleCreated)
     lines.push(

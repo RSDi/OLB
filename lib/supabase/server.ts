@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export async function createClient() {
+// `changeSource` labels what this client writes in contact history
+// (contact_versions, migration 0109): the spreadsheet import, or "Restore
+// this version". The x-change-source header reaches the history trigger.
+export async function createClient(opts?: { changeSource?: "import" | "restore" }) {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -22,6 +25,7 @@ export async function createClient() {
           }
         },
       },
+      ...(opts?.changeSource ? { global: { headers: { "x-change-source": opts.changeSource } } } : {}),
     }
   );
 }

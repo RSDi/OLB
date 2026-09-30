@@ -26,10 +26,14 @@ const PEOPLE_SHOWN = 6;
 export function ContactsList({
   contacts,
   categories,
+  canEdit,
   canImportSchedules = false,
 }: {
   contacts: Contact[];
   categories: ContactCategory[];
+  // The board: adds, edits and imports. Coaches only read the types shared
+  // with them (RLS, 0109).
+  canEdit: boolean;
   // Offer the spreadsheet's HS Schedule tabs in the import too.
   canImportSchedules?: boolean;
 }) {
@@ -121,40 +125,49 @@ export function ContactsList({
             External Contacts
           </h2>
           <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            Vendors, photographers, facilities we rent, other programs, and anyone else outside the team.
-            {" "}
+            {canEdit
+              ? "Vendors, photographers, facilities we rent, other programs, and anyone else outside the team."
+              : "The programs, gyms and referees the board shares with coaches."}{" "}
             <strong style={{ color: "var(--gw-fg)" }}>{companyCount}</strong> companies ·{" "}
             <strong style={{ color: "var(--gw-fg)" }}>{personCount}</strong> people.
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <span data-tour="contacts-import" style={{ display: "inline-flex" }}>
-            <Pill variant="ghost" size="md" onClick={() => setImporting(true)}>
-              <Icons.Download width={14} height={14} style={{ transform: "rotate(180deg)" }} />
-              Import spreadsheet
-            </Pill>
-          </span>
-          <Link
-            href="/portal/contacts/new"
-            data-tour="contacts-new"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 18px",
-              borderRadius: 100,
-              background: "var(--rsd-accent-fill)",
-              color: "var(--rsd-accent-fill-on)",
-              border: "1px solid var(--rsd-accent-fill)",
-              fontSize: 13,
-              fontWeight: 700,
-              textDecoration: "none",
-            }}
-          >
-            <Icons.Plus width={14} height={14} />
-            New contact
-          </Link>
-        </div>
+        {canEdit && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <Link href="/portal/contacts/changes" data-tour="contacts-changes" style={{ textDecoration: "none" }}>
+              <Pill variant="ghost" size="md">
+                <Icons.Clock width={14} height={14} />
+                Recent changes
+              </Pill>
+            </Link>
+            <span data-tour="contacts-import" style={{ display: "inline-flex" }}>
+              <Pill variant="ghost" size="md" onClick={() => setImporting(true)}>
+                <Icons.Download width={14} height={14} style={{ transform: "rotate(180deg)" }} />
+                Import spreadsheet
+              </Pill>
+            </span>
+            <Link
+              href="/portal/contacts/new"
+              data-tour="contacts-new"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 18px",
+                borderRadius: 100,
+                background: "var(--rsd-accent-fill)",
+                color: "var(--rsd-accent-fill-on)",
+                border: "1px solid var(--rsd-accent-fill)",
+                fontSize: 13,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              <Icons.Plus width={14} height={14} />
+              New contact
+            </Link>
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -238,11 +251,13 @@ export function ContactsList({
             {contacts.length === 0 ? "No contacts yet" : "No matches"}
           </div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            {contacts.length === 0
-              ? "Start by adding a company (a uniform vendor, a gym we rent, another program), then attach the people you work with there. Or import them from the HS planning spreadsheet."
-              : "Try a different search or filter."}
+            {contacts.length > 0
+              ? "Try a different search or filter."
+              : canEdit
+                ? "Start by adding a company (a uniform vendor, a gym we rent, another program), then attach the people you work with there. Or import them from the HS planning spreadsheet."
+                : "Nothing is shared with coaches yet. The board picks which types coaches see."}
           </div>
-          {contacts.length === 0 && (
+          {contacts.length === 0 && canEdit && (
             <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
               <Link href="/portal/contacts/new" style={{ textDecoration: "none" }}>
                 <Pill variant="accent" size="sm">

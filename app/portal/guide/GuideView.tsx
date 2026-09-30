@@ -235,7 +235,7 @@ export function GuideView({
                   color: "var(--gw-fg-muted)",
                 }}
               >
-                {s.audience === "super_admin" ? "Super admins" : "Board"}
+                {s.audience === "super_admin" ? "Super admins" : s.audience === "coaches" ? "Coaches and board" : "Board"}
               </span>
             )}
             {tours[s.id] && (

@@ -1,13 +1,14 @@
 // Shared types + server-side loaders for all /portal/contacts/* views.
 // Mirrors the convention used by /portal/directory/_shared/data.ts.
 //
-// Visibility: every loader here returns staff-only data (RLS filters out
-// non-staff callers). loadViewer() is the access guard that redirects
-// non-staff to /portal before they see anything.
+// Visibility: RLS decides. The board reads every contact; a coach reads the
+// contact types shared with coaches (0109) and nothing else; anyone else
+// reads nothing. loadContactsViewer() is the access guard that sends
+// everyone else to /portal before they see anything.
 
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
-import { getViewer } from "../../../../lib/auth/viewer";
+import { getViewer, viewerIsCoach } from "../../../../lib/auth/viewer";
 
 export type ContactKind = "company" | "person";
 
@@ -76,14 +77,18 @@ export interface ContactsViewer {
   isSuperAdmin: boolean;
 }
 
-// Access guard. The whole /portal/contacts section is staff-only — regular
-// approved members get redirected back to /portal so they can't even land
-// on the page (RLS would return zero rows anyway, but this short-circuits
-// rendering).
-export async function loadContactsViewer(): Promise<ContactsViewer> {
+// Access guard. The board uses all of /portal/contacts; coaches read the
+// list and the contacts' pages (`board: true` pages, the ones that change
+// contacts or show their history, send them back to the list). Everyone
+// else goes back to /portal (RLS would return zero rows anyway, but this
+// short-circuits rendering).
+export async function loadContactsViewer(opts?: { board?: boolean }): Promise<ContactsViewer> {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
-  if (!viewer.isStaff) redirect("/portal");
+  if (!viewer.isStaff) {
+    if (!(await viewerIsCoach(viewer))) redirect("/portal");
+    if (opts?.board) redirect("/portal/contacts");
+  }
   return {
     memberId: viewer.memberId,
     userId: viewer.userId,

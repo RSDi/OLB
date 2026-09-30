@@ -118,7 +118,7 @@ export function ContactForm({
     };
 
     const result = initial
-      ? await updateContact(initial.id, payload)
+      ? await updateContact(initial.id, payload, initial.updated_at)
       : await createContact(payload);
 
     setPending(false);

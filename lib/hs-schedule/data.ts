@@ -80,7 +80,8 @@ export async function loadContactRefs(supabase: SupabaseClient, ids: string[]): 
 }
 
 // Companies the "Add a team" and facility pickers offer, with their type.
-// Board only by RLS; coaches get none (and add teams by name).
+// RLS: all of them for the board; for a coach, the types shared with coaches
+// (0109). Anything else is added by name.
 export async function loadHsContactOptions(supabase: SupabaseClient): Promise<HsContactOption[]> {
   const { data, error } = await supabase
     .from("contacts")
