@@ -81,9 +81,22 @@ export async function resolveMembership({
 
   const { data: member } = await supabase
     .from("members")
-    .select("status, role, access_revoked_at")
+    .select("id, status, role, access_revoked_at, avatar_url")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  // A member row linked before its first real sign-in (a "Preview as" set up
+  // the login) never went through the linking below, which is where the photo
+  // is copied in. Fill it from this sign-in if the row still has none.
+  if (member && !(member as { avatar_url?: string | null }).avatar_url && avatarUrl) {
+    const admin = process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : null;
+    const { error } = await (admin ?? supabase)
+      .from("members")
+      .update({ avatar_url: avatarUrl })
+      .eq("id", (member as { id: string }).id)
+      .is("avatar_url", null);
+    if (error) console.error(`[auth] filling in the photo for member ${(member as { id: string }).id} failed:`, error.message);
+  }
 
   if (!member) {
     // Check for a pre-created (orphan) member row a super-admin set up with

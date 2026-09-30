@@ -83,7 +83,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 
 **Forgot your password?** Tap **Forgot password?** next to the Password label. We'll email you a code; type it in, then choose a new password (at least 8 characters).
 
-**New here?** Tap **Request access**, then either use **Continue with Slack** or fill in your name, email and a password. If you're asked to confirm your email, click the link we send you.
+**New here?** Tap **Request access**, then either use **Continue with Slack** or fill in your name, email and a password. If you're asked to confirm your email, click the link we send you. If it says there's already an account with your email (the club may have set one up for you), sign in with **Email me a sign-in code** instead, or tap **Forgot password?** to choose a password.
 
 **Waiting for approval.** Unless you came in through the club's Slack, someone from the club reviews each new request. Until then you'll see **Request submitted** when you try to sign in. You'll get an email ("You're in — Omaha Lightning member portal") as soon as you're approved. If you see **Access not granted** and think it's a mistake, use the club's Contact page.
 
@@ -522,7 +522,7 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 - **Anything you change during a preview really happens, as them** — so look, don't touch. The Audit Log credits those changes to you ("Jeff Malone (as Pat Smith)").
 - A preview ends by itself after 2 hours. **Sign out** during a preview ends it and signs you out.
 - You can preview anyone with a portal login, other super-admins included — but not yourself, or people who are waiting for approval or have had their login revoked.
-- You can also preview someone marked **Not signed up**. The first preview sets up their portal login (no email goes out), and it's theirs when they sign in with that email. After that, Settings no longer shows them as **Invited**. Members with no email (**Directory only**) can't be previewed.
+- You can also preview someone marked **Not signed up**. The first preview sets up their portal login (no email goes out), and it's theirs when they sign in with that email. It has no password yet: they sign in with Slack or **Email me a sign-in code**, or tap **Forgot password?** to choose one. After that, Settings no longer shows them as **Invited**. Members with no email (**Directory only**) can't be previewed.
 - While you're previewing, Activity is hidden (you're seeing exactly what they see) and you can't start another preview until you exit.
 
 **Previews** lists every preview — who previewed whom, when and for how long — and each one's pages show in that member's sessions, marked **Preview**. Previews don't count toward a member's own sign-ins or last seen.

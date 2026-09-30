@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SlackLogo } from "../../components/SlackLogo";
 import { createClient } from "../../../lib/supabase/client";
-import { friendlyAuthError } from "../../../lib/auth/friendly-error";
+import { ALREADY_REGISTERED, friendlyAuthError } from "../../../lib/auth/friendly-error";
 import { FormError, Or, StatusNote } from "../_components/AuthForm";
 import auth from "../_components/auth.module.css";
 import styles from "../_components/site.module.css";
@@ -39,6 +39,14 @@ export function RegisterForm() {
 
     if (signUpError) {
       setError(friendlyAuthError(signUpError.message));
+      setPending(false);
+      return;
+    }
+    // With email confirmation on, Supabase doesn't say the email is taken: it
+    // returns a stand-in user with no identities and sends nothing. Say so,
+    // rather than "check your email" for a link that never comes.
+    if (data.user && data.user.identities?.length === 0) {
+      setError(ALREADY_REGISTERED);
       setPending(false);
       return;
     }

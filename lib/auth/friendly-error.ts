@@ -2,6 +2,12 @@
 // members (A9/U2). Unknown errors pass through unchanged so real problems
 // stay debuggable.
 
+// Also shown by the Request access form when Supabase hides the error (see
+// RegisterForm). An account can exist without a password: the club sets one
+// up for an invited member on their first "Preview as".
+export const ALREADY_REGISTERED =
+  "There's already an account with this email. Sign in with “Email me a sign-in code”, or tap “Forgot password?” to choose a password.";
+
 const PATTERNS: [RegExp, string][] = [
   [
     /rate limit/i,
@@ -21,7 +27,7 @@ const PATTERNS: [RegExp, string][] = [
   ],
   [
     /already registered|already been registered/i,
-    "There's already an account with this email. Try signing in instead.",
+    ALREADY_REGISTERED,
   ],
   [
     // Keep this AFTER any token/code patterns would match — it's for the
