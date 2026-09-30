@@ -122,6 +122,11 @@ function RegistrationCard({ reg }: { reg: PendingRegistration }) {
             ) : x.first_season === false ? (
               <span className="rsd-chip rsd-chip-mute">Returning</span>
             ) : null}
+            {x.email_confirmed && (
+              <span className="rsd-chip rsd-chip-mute" title={`The family typed back the code we emailed to ${x.email_confirmed}`}>
+                Email confirmed
+              </span>
+            )}
           </div>
           <span style={muted}>
             {[age != null && `Age ${age}`, born && `Born ${born}`, `Registered ${formatDate(reg.created_at.slice(0, 10))}`]

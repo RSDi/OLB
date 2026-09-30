@@ -188,7 +188,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     group: "Directory",
     audience: "registrations",
     routes: ["/portal/directory/registrations"],
-    keywords: ["registration", "registrations", "register", "sign up", "approve", "not this season", "new player", "team", "place", "put on a team", "no team yet", "roster", "edit player", "remove player", "take off the roster", "jersey", "age group", "birthday", "registration form", "cognito"],
+    keywords: ["registration", "registrations", "register", "sign up", "approve", "not this season", "new player", "team", "place", "put on a team", "no team yet", "roster", "edit player", "remove player", "take off the roster", "jersey", "age group", "birthday", "registration form", "cognito", "code", "email confirmed", "wizard"],
     body: `You see this if you have the **Registrations** permission (a super-admin turns it on in Settings → Members).
 
 **New registrations.** When families fill in the registration form, a yellow bar at the top of the Directory says how many are waiting. Tap **Review registrations** to see them, oldest first. Each one shows the player, the fee for their age group, how the family said they'd pay, the waiver, the homeschool answer, whether they need a uniform, and each parent's phone, email and what they can help with.
@@ -197,6 +197,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 - **Not this season** takes the registration off the list. Nothing is added to the Directory or Payments.
 - A note on a registration means the player's name is already on the roster. **Already on the roster** means Approve updates that player instead of adding a second one. If the birthdays don't match, Approve adds a second player, so check the birthday first and fix it on their player page if it's the same child.
 - **Open the registration form ›** opens the form families fill in, so you can copy its link to send out.
+- The form starts with the family's email and emails them a 6-digit code. Once they type it in, it fills in what we already know about any players on that email (names, birthdays, address and parents), so returning families just check it over. Brothers and sisters are registered together, and each one arrives here as their own registration. **Email confirmed** on a registration means the family typed the code back.
 
 **Putting players on teams.** In the Directory, every player has a **Team** drop-down. Pick a team and the player moves there right away. Pick **No team yet** to take them off their team. Tap the **No team yet** chip at the top to see who still needs a team.
 
