@@ -188,6 +188,12 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "This season's players and their parents, grouped by team.",
       },
       {
+        target: "directory-registrations",
+        audience: "registrations",
+        title: "New registrations",
+        body: "When families fill in the registration form, this says how many are waiting. **Review registrations** opens them.",
+      },
+      {
         target: "directory-search",
         title: "Search",
         body: "Find a player, parent, email or phone number. Type 3 or more digits to match a phone.",
@@ -206,6 +212,12 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "directory-player",
         title: "Each player",
         body: "Jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.",
+      },
+      {
+        target: "directory-place",
+        audience: "registrations",
+        title: "Put players on teams",
+        body: "Pick a team from a player's **Team** drop-down and they move there right away. The **No team yet** chip shows who still needs one.",
       },
       {
         target: "directory-player-link",
@@ -227,6 +239,39 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "directory-team-page",
         title: "Team page",
         body: "Opens the team's own page: every staff and volunteer job (with **Open spot** where nobody's signed up yet) and the roster.",
+      },
+    ],
+  },
+  {
+    id: "registrations",
+    sectionId: "registrations",
+    title: "New registrations tour",
+    route: "/portal/directory/registrations",
+    steps: [
+      {
+        target: "page-title",
+        title: "New registrations",
+        body: "Registrations from the form, oldest first, waiting for someone to approve them.",
+      },
+      {
+        target: "registration-card",
+        title: "Each registration",
+        body: "The player, the fee for their age group, how they'll pay, the waiver and uniform answers, and each parent's phone and email. A note means the name is already on the roster.",
+      },
+      {
+        target: "registration-approve",
+        title: "Approve",
+        body: "Adds the player to the Directory under **No team yet** and puts their fee on the family's Payments account.",
+      },
+      {
+        target: "registration-reject",
+        title: "Not this season",
+        body: "Takes the registration off the list without adding anyone.",
+      },
+      {
+        target: "registrations-form-link",
+        title: "The form",
+        body: "Opens the registration form families fill in, so you can copy its link.",
       },
     ],
   },

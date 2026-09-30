@@ -1,9 +1,13 @@
 "use client";
 // Pieces of a player's Directory card, shared by the Directory list and the
 // player page: dates, the address line, a parent's block, the phone/email
-// line and the requirement chips.
+// line, the requirement chips and the team picker.
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
+import { placePlayer } from "../../../../lib/teams/actions";
+import { teamLabel } from "../../../../lib/teams/volunteer-options";
 import type { DirectoryParent, DirectoryPlayer } from "./data";
 import type { PlayerRequirement, Requirement } from "../../../../lib/requirements/types";
 import { doneWord, requirementLabel, rowKey, stateFor } from "../../../../lib/requirements/logic";
@@ -158,6 +162,76 @@ export function ContactLine({
         <a href={`mailto:${email}`} style={contactLink}>
           {email}
         </a>
+      )}
+    </div>
+  );
+}
+
+// Puts a player on a team, for the Registrations grant. Saves as soon as a
+// team is picked; "No team yet" takes them off their team.
+export function TeamPicker({
+  player,
+  teams,
+}: {
+  player: Pick<DirectoryPlayer, "id" | "full_name" | "team_id">;
+  teams: { id: string; name: string; age_group: string | null }[];
+}) {
+  const router = useRouter();
+  const [value, setValue] = useState(player.team_id ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function change(teamId: string) {
+    setValue(teamId);
+    setBusy(true);
+    setError(null);
+    const res = await placePlayer(player.id, teamId || null);
+    setBusy(false);
+    if (res.error) {
+      setError(res.error);
+      setValue(player.team_id ?? "");
+    } else router.refresh();
+  }
+
+  return (
+    <div data-tour="directory-place" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+      <label
+        htmlFor={`team-${player.id}`}
+        style={{ fontSize: 10, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".06em" }}
+      >
+        Team
+      </label>
+      <select
+        id={`team-${player.id}`}
+        value={value}
+        onChange={(e) => change(e.target.value)}
+        disabled={busy}
+        style={{
+          height: 32,
+          padding: "0 10px",
+          borderRadius: 8,
+          border: "1px solid",
+          borderColor: value ? "var(--gw-border)" : "var(--rsd-accent-line)",
+          background: value ? "var(--gw-bg-elev)" : "var(--rsd-accent-bg)",
+          color: "var(--gw-fg)",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: busy ? "wait" : "pointer",
+          maxWidth: "100%",
+        }}
+      >
+        <option value="">No team yet</option>
+        {teams.map((t) => (
+          <option key={t.id} value={t.id}>
+            {teamLabel(t)}
+          </option>
+        ))}
+      </select>
+      {busy && <span style={muted}>Saving…</span>}
+      {error && (
+        <span role="alert" style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-error)" }}>
+          {error}
+        </span>
       )}
     </div>
   );

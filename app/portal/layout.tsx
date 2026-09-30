@@ -52,6 +52,7 @@ export default async function PortalLayout({
               isStaff: viewer.isStaff,
               seesFullUi: viewer.seesFullUi,
               canManageFinances: viewer.canManageFinances,
+              canManageRegistrations: viewer.canManageRegistrations,
               seesPayments: viewer.canManageFinances || hasBalance,
             }
           : null

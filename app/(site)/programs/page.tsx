@@ -181,7 +181,7 @@ export default function ProgramsPage() {
         </Block>
       </Section>
 
-      <Section theme="white" height="medium" rows={[14, 14]}>
+      <Section theme="white" height="medium" rows={[16, 14]}>
         <Block m="1/2/4/10" d="1/2/4/11">
           <Text>
             <h2>Our Programs</h2>
@@ -198,6 +198,13 @@ export default function ProgramsPage() {
         <Block m="11/2/13/10" d="6/2/8/10" align="center">
           <Button href={ASSESSMENTS_URL} newTab hover="grow">
             CLICK HERE TO REGISTER FOR HIGH SCHOOL ASSESMENTS
+          </Button>
+        </Block>
+        {/* The season registration for families already in the program. It
+            lands on the portal Directory's New registrations page. */}
+        <Block m="15/2/17/10" d="8/2/10/10" align="center">
+          <Button href="/player-registration" hover="grow">
+            CLICK HERE TO REGISTER A CURRENT PLAYER OR SIBLING FOR 2026-27
           </Button>
         </Block>
       </Section>

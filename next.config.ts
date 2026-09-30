@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
       // The door-QR landing page launched as /not-here before becoming the
       // evergreen Meeting Times page; keep anything already printed working.
       { source: "/not-here", destination: "/meeting-times", permanent: false },
+      // The Teams section folded into the Directory.
+      { source: "/portal/teams/registrations", destination: "/portal/directory/registrations", permanent: false },
+      { source: "/portal/teams", destination: "/portal/directory", permanent: false },
+      { source: "/portal/teams/:path*", destination: "/portal/directory", permanent: false },
       // The temporary public search moved behind the login.
       { source: "/search", destination: "/portal/search", permanent: false },
       { source: "/not-here-sign", destination: "/door-sign", permanent: false },

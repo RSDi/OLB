@@ -21,9 +21,10 @@
 import type { MemberRole, MemberStatus } from "../auth/permissions";
 
 // Who a section is for. "staff" = board members and super-admins; "finance" =
-// anyone with the Payments grant (super-admins always have it). The guide
-// hides a section from anyone it doesn't apply to.
-export type GuideAudience = "everyone" | "staff" | "finance" | "super_admin";
+// anyone with the Payments grant; "registrations" = anyone with the
+// Registrations grant (super-admins always have both). The guide hides a
+// section from anyone it doesn't apply to.
+export type GuideAudience = "everyone" | "staff" | "finance" | "registrations" | "super_admin";
 
 export interface GuideSection {
   id: string; // anchor: #help-<id>
@@ -53,6 +54,8 @@ export interface GuideViewer {
   seesFullUi?: boolean;
   // Holds the Payments grant: sees the "finance" sections.
   canManageFinances?: boolean;
+  // Holds the Registrations grant: sees the "registrations" sections.
+  canManageRegistrations?: boolean;
 }
 
 export const GUIDE_UPDATED = "September 2026";
@@ -178,6 +181,28 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 **For the board.** The top also shows the registration fee, how the family said they'd pay, shirt size and waiver, plus a chip for each requirement. Tap a chip to check it off, the same as in the Directory.
 
 **For the Treasurer.** **Record payment**, **Add a charge** and **Take off an amount** work right on the player page, for the whole family. **Open in Payments ›** jumps to the family on the Payments page.`,
+  },
+  {
+    id: "registrations",
+    title: "New registrations and teams",
+    group: "Directory",
+    audience: "registrations",
+    routes: ["/portal/directory/registrations"],
+    keywords: ["registration", "registrations", "register", "sign up", "approve", "not this season", "new player", "team", "place", "put on a team", "no team yet", "roster", "edit player", "remove player", "take off the roster", "jersey", "age group", "birthday", "registration form", "cognito"],
+    body: `You see this if you have the **Registrations** permission (a super-admin turns it on in Settings → Members).
+
+**New registrations.** When families fill in the registration form, a yellow bar at the top of the Directory says how many are waiting. Tap **Review registrations** to see them, oldest first. Each one shows the player, the fee for their age group, how the family said they'd pay, the waiver, the homeschool answer, whether they need a uniform, and each parent's phone, email and what they can help with.
+
+- **Approve** adds the player to the Directory under **No team yet** and puts their registration fee on the family's Payments account. Their parents are set up so they can sign in with the email on the form.
+- **Not this season** takes the registration off the list. Nothing is added to the Directory or Payments.
+- A note on a registration means the player's name is already on the roster. **Already on the roster** means Approve updates that player instead of adding a second one. If the birthdays don't match, Approve adds a second player, so check the birthday first and fix it on their player page if it's the same child.
+- **Open the registration form ›** opens the form families fill in, so you can copy its link to send out.
+
+**Putting players on teams.** In the Directory, every player has a **Team** drop-down. Pick a team and the player moves there right away. Pick **No team yet** to take them off their team. Tap the **No team yet** chip at the top to see who still needs a team.
+
+**Editing a player.** On a player's page, the **Team** drop-down works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number** and **Age group**. Tap **Save**.
+
+**Taking a player off the roster.** In **Edit player**, **Take off the roster** removes a player who isn't in the program this season. Their parents stay as members. If the player has charges or payments on the Payments page, the Treasurer voids those first.`,
   },
   {
     id: "your-profile",
@@ -437,6 +462,7 @@ Activity is recorded from the day this page went live.`,
 | Check players off on requirements (handbook signature, fees) | | ✓ | ✓ |
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
+| Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
@@ -452,7 +478,7 @@ Activity is recorded from the day this page went live.`,
     group: "Settings",
     audience: "staff",
     routes: ["/portal/settings"],
-    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer"],
+    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages"],
     body: `Where new sign-ups are approved and member accounts are managed.
 
 **The red badge** on **Settings** in the sidebar counts access requests waiting for you.
@@ -471,7 +497,7 @@ Activity is recorded from the day this page went live.`,
 - **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
 - Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
-- Turn on **Payments** (next to **Money:** on the **Approved** tab) to let someone see every family's balance and record payments — the Treasurer, and anyone helping them. It works for members and board alike. Tap it again to take it away.
+- Next to **Manages:** on the **Approved** tab, turn on **Payments** to let someone see every family's balance and record payments (the Treasurer, and anyone helping them), and **Registrations** to let someone review new registrations, put players on teams and edit players. Both work for members and board alike. Tap one again to take it away.
 - **Remove** a member (demote a super-admin first).
 
 Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,
@@ -485,10 +511,10 @@ Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Dire
     body: `Set up this season's teams. Open **Settings → Teams**.
 
 - **+ New team** — give it a **Team name** (e.g. Gold), then pick an **Age group** (10U–18U) and **Team color**, and add the **Division**, **Practice times** and **Practice location**. Separate more than one practice time with a semicolon.
-- Tap the **pencil** to edit a team, or the **trash** can to delete one — its players go back to unassigned and its volunteer spots are cleared.
+- Tap the **pencil** to edit a team, or the **trash** can to delete one — its players go back to **No team yet** and its volunteer spots are cleared.
 - **Staff & volunteers →** opens the team's page in the Directory, where you assign coaches and volunteers.
 
-What you enter here shows on the team's Directory banner and team page.`,
+What you enter here shows on the team's Directory banner and team page. Players are put on teams in the Directory, with the **Team** drop-down on each player.`,
   },
   {
     id: "settings-volunteer-roles",
@@ -587,6 +613,7 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
   if (!viewer || viewer.status !== "approved") return false;
   if (audience === "staff") return viewer.isStaff;
   if (audience === "finance") return viewer.role === "super_admin" || !!viewer.canManageFinances;
+  if (audience === "registrations") return viewer.role === "super_admin" || !!viewer.canManageRegistrations;
   return viewer.role === "super_admin";
 }
 

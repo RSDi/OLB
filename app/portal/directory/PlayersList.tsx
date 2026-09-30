@@ -19,7 +19,7 @@ import {
   type RequirementState,
 } from "../../../lib/requirements/logic";
 import { RequirementDialog } from "./RequirementDialog";
-import { ContactLine, ParentBlock, RequirementChips, formatDate, muted, playerAddress } from "./_shared/PlayerParts";
+import { ContactLine, ParentBlock, RequirementChips, TeamPicker, formatDate, muted, playerAddress } from "./_shared/PlayerParts";
 
 const NO_GROUP = "No age group";
 
@@ -52,6 +52,8 @@ export function PlayersList({
   canViewAges,
   requirements,
   requirementRows,
+  canPlace,
+  pendingRegistrations,
 }: {
   players: DirectoryPlayer[];
   isStaff: boolean;
@@ -61,6 +63,10 @@ export function PlayersList({
   // Staff only (0098); empty for everyone else.
   requirements: Requirement[];
   requirementRows: PlayerRequirement[];
+  // The Registrations grant (0102): a team picker on every player, and the
+  // new-registrations banner.
+  canPlace: boolean;
+  pendingRegistrations: number;
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("team");
@@ -159,6 +165,8 @@ export function PlayersList({
 
   return (
     <>
+      {canPlace && pendingRegistrations > 0 && <RegistrationsBanner count={pendingRegistrations} />}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
           <div data-tour="directory-search" style={{ position: "relative", flex: "1 1 320px", maxWidth: 480 }}>
@@ -310,7 +318,9 @@ export function PlayersList({
                 ? "No players match."
                 : query
                   ? "No matches."
-                  : "No players on this team yet."
+                  : teamId === NO_TEAM
+                    ? "Everyone is on a team."
+                    : "No players on this team yet."
           }
         />
       ) : (
@@ -367,6 +377,7 @@ export function PlayersList({
                     key={p.id}
                     player={p}
                     isStaff={isStaff}
+                    teams={canPlace ? teams : null}
                     border={i < g.players.length - 1}
                     requirements={requirements}
                     rows={rows}
@@ -387,6 +398,73 @@ export function PlayersList({
         />
       )}
     </>
+  );
+}
+
+// New registrations from the public form, for whoever reviews them.
+function RegistrationsBanner({ count }: { count: number }) {
+  return (
+    <div
+      className="rsd-card"
+      data-tour="directory-registrations"
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 14,
+        padding: "14px 18px",
+        background: "var(--rsd-accent-bg)",
+        borderColor: "var(--rsd-accent-line)",
+      }}
+    >
+      <span
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 11,
+          background: "var(--rsd-accent-fill)",
+          color: "var(--rsd-accent-fill-on)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 18,
+          fontWeight: 800,
+          flexShrink: 0,
+        }}
+      >
+        {count}
+      </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: "1 1 240px", minWidth: 0 }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: "var(--gw-fg)" }}>
+          {count === 1 ? "1 new registration to review" : `${count} new registrations to review`}
+        </span>
+        <span style={{ ...muted, fontSize: 12.5 }}>
+          Approving one puts the player under No team yet and their fee on the Payments page.
+        </span>
+      </div>
+      <Link
+        href="/portal/directory/registrations"
+        prefetch={false}
+        className="gw-press"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          height: 38,
+          padding: "0 16px",
+          borderRadius: 100,
+          background: "var(--gw-ink)",
+          color: "#fff",
+          fontSize: 13,
+          fontWeight: 700,
+          textDecoration: "none",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Review registrations
+        <Icons.ChevronRight width={13} height={13} />
+      </Link>
+    </div>
   );
 }
 
@@ -489,6 +567,7 @@ function FilterTab({ label, active, onClick }: { label: string; active: boolean;
 function PlayerRow({
   player: p,
   isStaff,
+  teams,
   border,
   requirements,
   rows,
@@ -496,6 +575,8 @@ function PlayerRow({
 }: {
   player: DirectoryPlayer;
   isStaff: boolean;
+  // Set for the Registrations grant: the team picker.
+  teams: TeamWithStaff[] | null;
   border: boolean;
   requirements: Requirement[];
   rows: Map<string, PlayerRequirement>;
@@ -568,6 +649,7 @@ function PlayerRow({
         {isStaff && requirements.length > 0 && (
           <RequirementChips player={p} requirements={requirements} rows={rows} onOpen={onOpenRequirement} />
         )}
+        {teams && <TeamPicker player={p} teams={teams} />}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>

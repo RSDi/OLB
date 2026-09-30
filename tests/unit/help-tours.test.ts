@@ -25,8 +25,9 @@ const MEMBER: GuideViewer = { role: "member", status: "approved", isStaff: false
 const ADMIN: GuideViewer = { role: "admin", status: "approved", isStaff: true };
 const SUPER: GuideViewer = { role: "super_admin", status: "approved", isStaff: true };
 
-// "finance" (the Payments grant) and "staff" are different groups; super-admins are in both.
-const RANK: Record<GuideAudience, number> = { everyone: 0, staff: 1, finance: 1, super_admin: 2 };
+// "finance" (the Payments grant), "registrations" (the Registrations grant) and
+// "staff" are different groups; super-admins are in all three.
+const RANK: Record<GuideAudience, number> = { everyone: 0, staff: 1, finance: 1, registrations: 1, super_admin: 2 };
 
 // Every tour anchor the app's components carry: `data-tour="x"` on an
 // element, a quoted name inside `data-tour={…}`, or `tour: "x"` on a sidebar

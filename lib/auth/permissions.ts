@@ -19,6 +19,9 @@ export interface MemberLike {
   // Payments grant (migration 0101): the Treasurer and whoever else a
   // super-admin enables. Any approved member can hold it, board or not.
   can_manage_finances?: boolean;
+  // Registrations grant (migration 0102): reviewing registrations, placing
+  // players on teams, editing and removing players. Any approved member.
+  can_manage_registrations?: boolean;
 }
 
 interface TicketLike {
@@ -62,6 +65,16 @@ export function canUndeleteSettings(m: MemberLike | null | undefined): boolean {
 export function canManageFinances(m: MemberLike | null | undefined): boolean {
   if (!m || m.status !== "approved") return false;
   return m.role === "super_admin" || !!m.can_manage_finances;
+}
+
+// --- Registrations -----------------------------------------------------------
+// Reviewing registrations from the public form, putting players on teams,
+// editing a player and taking one off the roster. Mirrors
+// public.can_manage_registrations() (0102).
+
+export function canManageRegistrations(m: MemberLike | null | undefined): boolean {
+  if (!m || m.status !== "approved") return false;
+  return m.role === "super_admin" || !!m.can_manage_registrations;
 }
 
 // Add/rename settings items needs the edit grant; (was: any staff).

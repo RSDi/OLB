@@ -18,28 +18,6 @@ export type OlbTeam = {
   sort_order: number;
 };
 
-export type OlbPlayer = {
-  id: string;
-  board_id: string;
-  team_id: string | null; // null = Unassigned pool
-  full_name: string;
-  dob: string | null; // ISO date (YYYY-MM-DD)
-  grade: string | null;
-  sort_order: number;
-  import_flag: string | null;
-  age_group: string | null; // from the registration spreadsheet (10U, 12U, …)
-  jersey_number: string | null;
-};
-
-export type OlbCoach = {
-  id: string;
-  board_id: string;
-  team_id: string | null;
-  name: string;
-  role: string | null;
-  sort_order: number;
-};
-
 export type OlbVolunteerRole = {
   id: string;
   name: string;
@@ -62,41 +40,6 @@ export type OlbTeamVolunteer = {
     email: string | null;
     phone: string | null;
   };
-};
-
-export type OlbBoardData = {
-  board: { id: string; season: string; name: string };
-  teams: OlbTeam[];
-  players: OlbPlayer[];
-  coaches: OlbCoach[];
-};
-
-// ── Parser output (from lib/teams/parse-roster.ts) ──────────────────────
-export type ParsedPlayer = {
-  full_name: string;
-  dob: string | null;
-  grade: string | null;
-  sheet_age: number | null;
-  flag: string | null; // 'dob_check' when DOB is missing/implausible
-};
-
-export type ParsedTeam = {
-  name: string;
-  age_group: string | null;
-  color: string | null;
-  grade_label: string | null;
-  division: string | null;
-  practice_times: string[];
-  coaches: string[];
-  players: ParsedPlayer[];
-  raw_header: string;
-  needs_name: boolean; // true for the unlabeled right-column team
-};
-
-export type ParseResult = {
-  teams: ParsedTeam[];
-  totalPlayers: number;
-  flags: string[]; // human-readable warnings to surface in the preview
 };
 
 // ── Settings → Teams / Volunteer Roles inputs (lib/teams/volunteer-actions.ts) ──

@@ -6,12 +6,14 @@ import type { PaymentsData } from "../../../../../lib/finances/types";
 import { AccessDenied } from "../../_shared/AccessDenied";
 import { loadPlayers, loadRequirements, loadViewer } from "../../_shared/data";
 import { PlayerDetail } from "./PlayerDetail";
+import { loadSeasonTeams } from "../../../../../lib/teams/volunteer-data";
 
 // One player: everything on their Directory card, their parents and brothers
 // and sisters, and their family's payments. Payments show to anyone with the
 // Payments grant, and to the player's own parents once the Treasurer has
 // opened balances to families. Who can see the player at all is RLS's call,
-// the same as the Directory.
+// the same as the Directory. Anyone with the Registrations permission can also
+// put the player on a team, edit them, or take them off the roster.
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // Started before the viewer check on purpose — see loadViewer().
@@ -47,6 +49,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   }
 
   const req = viewer.isStaff ? await requirements : { requirements: [], rows: [] };
+  const teams = viewer.canManageRegistrations ? await loadSeasonTeams() : null;
 
   return (
     <PlayerDetail
@@ -57,6 +60,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       requirementRows={req.rows.filter((r) => r.player_id === id)}
       payments={payments}
       canManageFinances={canManageFinances}
+      teams={teams}
     />
   );
 }

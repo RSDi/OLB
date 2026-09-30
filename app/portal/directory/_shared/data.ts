@@ -40,6 +40,9 @@ export interface DirectoryViewer {
   userId: string;
   isStaff: boolean;
   isSuperAdmin: boolean;
+  // The Registrations grant (0102): the registrations queue, putting players
+  // on teams and editing them.
+  canManageRegistrations: boolean;
 }
 
 // Auth + access guard reused across every directory view. Redirects to
@@ -62,6 +65,7 @@ export async function loadViewer(): Promise<DirectoryViewer | null> {
     userId: viewer.userId,
     isStaff: viewer.isStaff,
     isSuperAdmin: viewer.isSuperAdmin,
+    canManageRegistrations: viewer.canManageRegistrations,
   };
 }
 
@@ -84,7 +88,7 @@ export async function loadMembers(opts: {
   return (data as DirectoryMember[] | null) ?? [];
 }
 
-// A player on the season board (the Team manager's olb_players) with the
+// A player on the season board (olb_players) with the
 // parents linked to them (members rows).
 export interface DirectoryParent {
   relationship: "father" | "mother" | "guardian";
@@ -131,8 +135,9 @@ const PLAYER_COLUMNS =
   "parents:olb_player_parents(relationship, member:members(id, user_id, status, full_name, email, phone, volunteer_interests))";
 
 // Every player on the latest season's board ("2026-2027" style, so seasons
-// sort as text). RLS decides who's listed: staff see everyone, approved
-// members see the players whose family opted into the directory. Parents show
+// sort as text). RLS decides who's listed: staff and the Registrations and
+// Payments grants see everyone, approved members see the players whose family
+// opted into the directory, and parents see their own. Parents show
 // whether or not they've been approved for the portal yet (0091); a deleted
 // one comes back with member: null and is dropped.
 export async function loadPlayers(): Promise<DirectoryPlayer[]> {
