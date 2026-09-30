@@ -12,8 +12,8 @@
 import * as XLSX from "xlsx";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "../auth/guards";
-import { getAuthUser } from "../auth/viewer";
-import { seesFullUi } from "../auth/feature-preview";
+import { getViewer } from "../auth/viewer";
+import { canUseHsSchedule } from "../hs-schedule/access";
 import { createClient } from "../supabase/server";
 import { gridFromSheetJs, type Grid } from "./grid";
 import { parseContactsSheet, type ContactBook } from "./contacts-sheet";
@@ -101,10 +101,9 @@ async function loadExisting(withSchedule: boolean): Promise<{ error: string } | 
 }
 
 // The schedule tabs are only offered to accounts that can use the HS
-// Schedule (still in staged rollout, lib/hs-schedule/access.ts).
+// Schedule, so they open up with it (lib/hs-schedule/access.ts).
 async function schedulesAllowed(): Promise<boolean> {
-  const user = await getAuthUser();
-  return seesFullUi(user?.email);
+  return canUseHsSchedule(await getViewer(), false);
 }
 
 export async function previewPlanningImport(form: FormData): Promise<{ error?: string; plan?: ImportPlan; schedules?: boolean }> {
