@@ -4,9 +4,9 @@
 // and Enter, Tab or the mouse. A drop-in for <select>: the same props and
 // <option>/<optgroup> children, with a real <select> hidden underneath that
 // still holds the value, the name for forms, `required` and the change
-// event, so callers' onChange gets e.target.value as before. Touch screens
-// (and the page before it hydrates) get the plain <select> and the phone's
-// own picker.
+// event, so callers' onChange gets e.target.value as before. Phones work the
+// same way (tap to see the list, type to narrow it). The page before it
+// hydrates shows the plain <select>.
 
 import {
   Children,
@@ -42,19 +42,15 @@ const LAYOUT_KEYS = [
   "gridColumn", "gridRow", "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
 ] as const;
 
-function subscribeFinePointer(cb: () => void) {
-  const m = window.matchMedia("(pointer: fine)");
-  m.addEventListener("change", cb);
-  return () => m.removeEventListener("change", cb);
-}
+const noSubscribe = () => () => {};
 
 export function ComboSelect(props: ComboSelectProps) {
-  const fine = useSyncExternalStore(
-    subscribeFinePointer,
-    () => window.matchMedia("(pointer: fine)").matches,
+  const hydrated = useSyncExternalStore(
+    noSubscribe,
+    () => true,
     () => false
   );
-  if (!fine || props.multiple) return <select {...props} />;
+  if (!hydrated || props.multiple) return <select {...props} />;
   return <Combo {...props} />;
 }
 
@@ -156,7 +152,10 @@ function Combo(props: ComboSelectProps) {
       const w = wrapRef.current;
       if (!w) return;
       const r = w.getBoundingClientRect();
-      const below = window.innerHeight - r.bottom;
+      // On a phone, the part of the screen above the keyboard.
+      const vv = window.visualViewport;
+      const bottomEdge = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      const below = bottomEdge - r.bottom;
       const up = below < 220 && r.top > below;
       const width = Math.max(r.width, 160);
       const left = Math.max(8, Math.min(r.left, window.innerWidth - Math.min(width, 360) - 8));
@@ -172,9 +171,13 @@ function Combo(props: ComboSelectProps) {
     place();
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
+    window.visualViewport?.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("scroll", place);
     return () => {
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
+      window.visualViewport?.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("scroll", place);
     };
   }, [showing]);
   // If a transformed ancestor moved "fixed", shift the list back to the field.
@@ -222,6 +225,8 @@ function Combo(props: ComboSelectProps) {
   fieldStyle.paddingRight ??= chip ? 18 : 28;
   fieldStyle.cursor = disabled ? "default" : fieldStyle.cursor ?? "pointer";
   fieldStyle.textOverflow = "ellipsis";
+  // A <select>'s width includes its padding and border; match it.
+  fieldStyle.boxSizing ??= "border-box";
   if (!className && fieldStyle.border === undefined) {
     // A bare <select> looked like one; keep a field outline.
     fieldStyle.border = "1px solid var(--gw-border)";
@@ -255,7 +260,9 @@ function Combo(props: ComboSelectProps) {
         placeholder={blank ? (selected?.label ?? "") : undefined}
         style={fieldStyle}
         onFocus={(e) => {
-          e.currentTarget.select();
+          // On a computer, select the choice so typing replaces it. (On a
+          // phone that pops up the copy/paste bubble instead.)
+          if (window.matchMedia("(pointer: fine)").matches) e.currentTarget.select();
           onFocus?.(e as unknown as React.FocusEvent<HTMLSelectElement>);
         }}
         onBlur={(e) => {
@@ -268,7 +275,16 @@ function Combo(props: ComboSelectProps) {
           else if (!showing) openAll();
           onClick?.(e as unknown as React.MouseEvent<HTMLSelectElement>);
         }}
-        onChange={(e) => search(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (query !== null) return search(v);
+          // Typing over the chosen option (phone keyboards don't say which
+          // key it was): search for just what was typed.
+          const label = blank ? "" : selected!.label;
+          if (label && v.startsWith(label)) search(v.slice(label.length));
+          else if (label && label.startsWith(v)) search("");
+          else search(v);
+        }}
         onKeyDown={(e) => {
           onKeyDown?.(e as unknown as React.KeyboardEvent<HTMLSelectElement>);
           if (e.defaultPrevented) return;
@@ -336,6 +352,9 @@ function Combo(props: ComboSelectProps) {
           id={listId}
           role="listbox"
           onMouseDown={(e) => e.preventDefault()}
+          // Inside a <label> (the shared Select), a click would also reach
+          // the field and open the list again.
+          onClick={(e) => e.preventDefault()}
           style={{
             position: "fixed",
             zIndex: 90,
