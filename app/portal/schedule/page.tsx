@@ -4,7 +4,7 @@ import { getViewer } from "../../../lib/auth/viewer";
 import { createClient } from "../../../lib/supabase/server";
 import { churchToday } from "../../../lib/dates/today";
 import { seasonOf } from "../../../lib/planning/season";
-import { viewerCanUseHsSchedule } from "../../../lib/hs-schedule/viewer";
+import { viewerHsScheduleAccess } from "../../../lib/hs-schedule/viewer";
 import {
   loadHsContactOptions,
   loadHsSeasonSchedule,
@@ -17,7 +17,8 @@ import { EmptySchedule } from "./_components/EmptySchedule";
 import type { DirectoryTeam } from "./_components/SeasonSheet";
 
 // The HS Schedule (/portal/schedule): the high school season weekend by
-// weekend, for the coaches and the board. ?season=2026 picks the season
+// weekend, for the coaches and the board, and for the travel coordinator to
+// look at without changing (0111). ?season=2026 picks the season
 // (2026 = 2026–27; the current one by default), ?compare=2025 puts another
 // season's same weekends beside it.
 export default async function SchedulePage({
@@ -27,7 +28,9 @@ export default async function SchedulePage({
 }) {
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
-  if (!(await viewerCanUseHsSchedule(viewer))) return <NotAvailable />;
+  const access = await viewerHsScheduleAccess(viewer);
+  if (!access) return <NotAvailable />;
+  const canEdit = access === "edit";
 
   const params = await searchParams;
   const supabase = await createClient();
@@ -51,9 +54,9 @@ export default async function SchedulePage({
   const [schedule, options, knownTeams, compareRows, teams, travelPlaces] = await Promise.all([
     loadHsSeasonSchedule(supabase, season),
     // The programs to add teams from: all of them for the board, the types
-    // shared with coaches for a coach (RLS, 0109).
-    loadHsContactOptions(supabase),
-    loadKnownTeams(supabase),
+    // shared with coaches for a coach (RLS, 0109). Only for those who edit.
+    canEdit ? loadHsContactOptions(supabase) : Promise.resolve([]),
+    canEdit ? loadKnownTeams(supabase) : Promise.resolve([]),
     compareSeason
       ? supabase
           .from("hs_weekends")
@@ -62,22 +65,25 @@ export default async function SchedulePage({
           .order("starts_on")
           .then(({ data }) => (data as CompareWeekend[] | null) ?? [])
       : Promise.resolve(null),
-    // The season's teams in the Directory, to link the columns to.
-    supabase
-      .from("olb_boards")
-      .select("id")
-      .eq("season", board)
-      .maybeSingle()
-      .then(async ({ data }) => {
-        if (!data) return [] as DirectoryTeam[];
-        const { data: t } = await supabase
-          .from("olb_teams")
-          .select("id, name, age_group")
-          .eq("board_id", (data as { id: string }).id)
-          .order("sort_order")
-          .order("name");
-        return (t as DirectoryTeam[] | null) ?? [];
-      }),
+    // The season's teams in the Directory, to link the columns to (Season
+    // settings, for those who edit).
+    !canEdit
+      ? Promise.resolve([] as DirectoryTeam[])
+      : supabase
+          .from("olb_boards")
+          .select("id")
+          .eq("season", board)
+          .maybeSingle()
+          .then(async ({ data }) => {
+            if (!data) return [] as DirectoryTeam[];
+            const { data: t } = await supabase
+              .from("olb_teams")
+              .select("id, name, age_group")
+              .eq("board_id", (data as { id: string }).id)
+              .order("sort_order")
+              .order("name");
+            return (t as DirectoryTeam[] | null) ?? [];
+          }),
     // Hotels and places to eat, for where to stay and eat on weekends away.
     loadHsTravelPlaces(supabase),
   ]);
@@ -90,6 +96,7 @@ export default async function SchedulePage({
       seasons={seasons}
       compare={compareSeason && compareRows ? { season: compareSeason.season, weekends: compareRows } : null}
       isStaff={viewer.isStaff}
+      canEdit={canEdit}
       options={options}
       knownTeams={knownTeams}
       directoryTeams={teams}
@@ -108,7 +115,7 @@ function parseSeason(s: string | undefined): number | null {
 function NotAvailable() {
   return (
     <div className="rsd-card" style={{ padding: "32px 24px", gap: 8, textAlign: "center" }}>
-      <div style={{ fontSize: 16, fontWeight: 700 }}>The HS Schedule is for coaches and the board</div>
+      <div style={{ fontSize: 16, fontWeight: 700 }}>The HS Schedule is for coaches, the board and the travel coordinator</div>
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
         If you coach a team and can&apos;t see it, ask the board to add you as the team&apos;s coach in the Directory.
       </div>
