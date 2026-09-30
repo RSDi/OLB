@@ -7,7 +7,8 @@ import { memberDisplayName } from "../members/display";
 
 export interface RosterMember {
   memberId: string;
-  // null: invited (approved, with an email) but not signed up yet.
+  // null: approved but not signed up yet — invited (an email) or directory
+  // only (no email).
   userId: string | null;
   name: string;
   email: string | null;
@@ -80,7 +81,7 @@ export async function loadActivityOverview(): Promise<ActivityOverview> {
       supabase
         .from("members")
         .select("id, user_id, full_name, nickname, email, avatar_url, role, status, access_revoked_at")
-        .or("user_id.not.is.null,and(status.eq.approved,email.not.is.null,access_revoked_at.is.null)")
+        .or("user_id.not.is.null,and(status.eq.approved,access_revoked_at.is.null)")
         .is("deleted_at", null),
       supabase.from("activity_user_summary").select("user_id, last_login_at, last_seen_at, sessions_30d, page_views_30d"),
       supabase.from("activity_user_last_view").select("user_id, last_seen_path"),
@@ -116,10 +117,10 @@ export async function loadActivityOverview(): Promise<ActivityOverview> {
     lastView.set(r.user_id, r.last_seen_path);
   }
 
-  // Everyone with a login, plus approved members who were invited (an email)
-  // but haven't signed up: "Preview as" sets up their login.
-  const rosterRows = ((membersRes.data as MemberRow[]) ?? []).filter((m) => m.user_id || m.email?.trim());
-  const members: RosterMember[] = rosterRows.map((m) => {
+  // Everyone with a login, plus approved members who haven't signed up: an
+  // invited one (an email) can be previewed, which sets up their login; a
+  // directory-only one (no email) can't.
+  const members: RosterMember[] = ((membersRes.data as MemberRow[]) ?? []).map((m) => {
     const s = m.user_id ? summary.get(m.user_id) : undefined;
     return {
       memberId: m.id,
