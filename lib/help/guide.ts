@@ -112,6 +112,23 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 **Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, tap **ⓘ** on that page and then **Show me around** (in Settings, it's for the tab you're on), or press **Show me around** next to a section's title below.`,
   },
   {
+    id: "ask-a-question",
+    title: "Asking a question (Search page)",
+    group: "Getting started",
+    audience: "everyone",
+    keywords: ["search", "ask", "question", "ai", "answer", "find", "sources", "portal search"],
+    routes: ["/portal/search"],
+    body: `The Search page answers questions about the club in plain words. It isn't in the sidebar: type **/portal/search** after the portal's web address to open it.
+
+**Ask anything.** Type a question in the big box, like "When is the next tournament?", and press **Enter** or the arrow button. You can also tap one of the suggested questions or a **Popular topics** card.
+
+**AI answer.** A short answer appears at the top, written only from records you can already open in the portal: members, playbooks, events, tasks, Slack messages (and, for the board, external contacts). The small numbers in the answer, and the cards under **Sources**, open the record each fact came from. AI can make mistakes, so open the source before you act on it.
+
+**In the portal.** Below the answer is every record that matched. Tap a type, like **Playbooks**, to show only those, or **All** to see everything again.
+
+Tap **Search home** to start over. To share a search, copy the page's address: it includes your question. Whoever opens it only sees what their own account allows.`,
+  },
+  {
     id: "directory",
     title: "Directory",
     group: "Directory",
