@@ -13,7 +13,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { ClearSearchButton, Pill } from "../../components/ui";
-import { PlanningImportSheet } from "../../components/PlanningImportSheet";
 import type { Contact, ContactCategory, ContactKind } from "./_shared/data";
 import { composeSubtitle, displayName } from "./_shared/format";
 import { groupContacts, placeLabel } from "./_shared/group";
@@ -27,21 +26,17 @@ export function ContactsList({
   contacts,
   categories,
   canEdit,
-  canImportSchedules = false,
 }: {
   contacts: Contact[];
   categories: ContactCategory[];
-  // The board: adds, edits and imports. Coaches only read the types shared
-  // with them (RLS, 0109).
+  // The board: adds and edits. Coaches only read the types shared with them
+  // (RLS, 0109).
   canEdit: boolean;
-  // Offer the spreadsheet's HS Schedule tabs in the import too.
-  canImportSchedules?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<KindFilter>("all");
   const [categoryId, setCategoryId] = useState<string | "all">("all");
   const [tag, setTag] = useState<string | null>(null);
-  const [importing, setImporting] = useState(false);
 
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const contactById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
@@ -140,12 +135,6 @@ export function ContactsList({
                 Recent changes
               </Pill>
             </Link>
-            <span data-tour="contacts-import" style={{ display: "inline-flex" }}>
-              <Pill variant="ghost" size="md" onClick={() => setImporting(true)}>
-                <Icons.Download width={14} height={14} style={{ transform: "rotate(180deg)" }} />
-                Import spreadsheet
-              </Pill>
-            </span>
             <Link
               href="/portal/contacts/new"
               data-tour="contacts-new"
@@ -254,7 +243,7 @@ export function ContactsList({
             {contacts.length > 0
               ? "Try a different search or filter."
               : canEdit
-                ? "Start by adding a company (a uniform vendor, a gym we rent, another program), then attach the people you work with there. Or import them from the HS planning spreadsheet."
+                ? "Start by adding a company (a uniform vendor, a gym we rent, another program), then attach the people you work with there."
                 : "Nothing is shared with coaches yet. The board picks which types coaches see."}
           </div>
           {contacts.length === 0 && canEdit && (
@@ -264,9 +253,6 @@ export function ContactsList({
                   <Icons.Plus width={14} height={14} /> Add first contact
                 </Pill>
               </Link>
-              <Pill variant="ghost" size="sm" onClick={() => setImporting(true)}>
-                Import spreadsheet
-              </Pill>
             </div>
           )}
         </div>
@@ -319,8 +305,6 @@ export function ContactsList({
           )}
         </div>
       )}
-
-      {importing && <PlanningImportSheet schedules={canImportSchedules} onClose={() => setImporting(false)} />}
     </>
   );
 }

@@ -286,7 +286,7 @@ Requirements start over each season, since each season has its own roster. The l
     group: "HS Schedule",
     audience: "coaches",
     routes: ["/portal/schedule"],
-    keywords: ["schedule", "hs schedule", "high school", "season", "weekend", "tournament", "games", "varsity", "jv", "14u", "opponents", "teams coming", "on the fence", "maybe", "confirmed", "not coming", "facility", "secured", "trip", "overnight", "notes", "scores", "results", "record", "compare", "last season", "columns", "import", "spreadsheet", "coaches", "filter", "needs work", "good to go", "waiting", "to do", "hotel", "hotels", "food", "restaurant", "where to eat", "where to stay", "travel", "room block", "rates"],
+    keywords: ["schedule", "hs schedule", "high school", "season", "weekend", "tournament", "games", "varsity", "jv", "14u", "opponents", "teams coming", "on the fence", "maybe", "confirmed", "not coming", "facility", "secured", "trip", "overnight", "notes", "scores", "results", "record", "compare", "last season", "columns", "spreadsheet", "coaches", "filter", "needs work", "good to go", "waiting", "to do", "hotel", "hotels", "food", "restaurant", "where to eat", "where to stay", "travel", "room block", "rates"],
     body: `The high school season weekend by weekend, laid out like the planning spreadsheet's "HS Schedule" tab, for the coaches and the board. Every season has its own schedule, and the earlier ones stay to look back on.
 
 **The grid.** A row per weekend, grouped by month: the dates and days, **Where** and the trip, the **Event**, a column for each of our teams (V, JV1, JV2, 14U A…) with its games, and **Notes** (the venue and game times). The event's color says how it stands, as in the spreadsheet: **Tentative** (red), **Need to secure facility** (yellow), **Final details in process** (pale yellow) and **Facility secured** (green); off and open weekends are grey. Under the event are the teams coming and how many are on the fence. **Total games** at the bottom adds up each team's games, with the record for a season that has scores.
@@ -303,8 +303,6 @@ Requirements start over each season, since each season has its own roster. The l
 
 **Seasons.** Use the arrows, or the season buttons, to move between seasons. **Compare with** puts another season's same weekend beside each row, so you can see what we did a year ago. **Season** changes the notes and the columns: add, rename, reorder or hide one, or link it to its team in the Directory. The board can also **Start 2027–28 from 2026–27** there (the same weekends a year on, with the teams that came now on the fence), or add a **+ New season**.
 
-**Import spreadsheet** (the board, only while the HS Schedule has no seasons yet) reads the planning spreadsheet's "HS Schedule - 26-27" tabs along with its Contacts tab: each season's weekends, games, colors and notes, the teams named in each event (the ones after "Potentials" or "Possibly" go on the fence) and the scores. The preview lists what it found for every weekend before anything is saved; a season that's already here is only replaced if you tick **Replace**.
-
 **Walk me through it.** Press **Show me around** next to this section's title, or tap **ⓘ** on the HS Schedule and then **Show me around**.`,
   },
   {
@@ -313,7 +311,7 @@ Requirements start over each season, since each season has its own roster. The l
     group: "External Contacts",
     audience: "coaches",
     routes: ["/portal/contacts"],
-    keywords: ["contacts", "vendors", "companies", "people", "photographer", "gym", "facility", "rent", "program", "programs", "opponents", "referees", "refs", "scheduler", "athletic director", "coach", "role", "team colors", "also known as", "account number", "billing", "tags", "nchc", "ndii", "import", "spreadsheet", "phone", "email", "history", "changes", "who changed", "restore", "undo", "coaches can see", "read-only"],
+    keywords: ["contacts", "vendors", "companies", "people", "photographer", "gym", "facility", "rent", "program", "programs", "opponents", "referees", "refs", "scheduler", "athletic director", "coach", "role", "team colors", "also known as", "account number", "billing", "tags", "nchc", "ndii", "phone", "email", "history", "changes", "who changed", "restore", "undo", "coaches can see", "read-only"],
     body: `Everyone outside the club we work with — other programs, gyms we rent, referees, vendors, photographers. The board sees and edits all of it. Coaches see the types the board shares with them (the programs, gyms and referees), read-only.
 
 - **All** lists each company with the people who work there under it (their role, email and phone), then **People on their own**. **Companies** shows just the companies; **People** lists everyone, each with the company they work at.
@@ -328,8 +326,6 @@ Requirements start over each season, since each season has its own roster. The l
 - **Used by** on a contact's page lists the playbooks it's attached to.
 - **Hotels** and **Food** are where we stay and eat on the road, with the rates and what worked in their notes. They show on the HS Schedule's weekends in their city. Tag one with the city it's near to show it there too (a hotel in Ankeny: **des moines**), or **closed** to keep it off the schedule.
 - Which types coaches see is set by a super-admin in **Settings → Contact Types** (**Coaches can see**). Coaches see everything on those contacts, notes included, so keep anything just for the board on another type.
-
-**Import spreadsheet** (the board) reads the Contacts tab of the HS planning spreadsheet. The Tier I and Tier 2 teams become **Programs** (tagged **nchc** and **ndii**), the gyms **Facilities** and the refs **Referees**, each with its people, their roles, emails and phones, and the teams' colors from the NDII table. You see all of it first; press **Import** to add it. Contacts you already have are only filled in, never overwritten, so importing a newer copy later is safe. If it finds a company you might already have (UBT and UBT Sports Complex, say), pick **Same as …** to fill that one in instead of adding another.
 
 Super-admins can **Delete** a contact.`,
   },
@@ -669,7 +665,7 @@ Every signed-in member sees the links; only super-admins can change them.`,
     body: `The types used to group External Contacts — uniforms, photos, facilities, opponents and so on. Open **Settings → Contact Types**.
 
 - **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
-- Types show up when someone adds an external contact, and as filter chips on the External Contacts page. Importing the HS planning spreadsheet adds **Programs** and **Referees** if you don't have them, and uses your **Facilities**.
+- Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
 - **Coaches can see** — tick it on a type to let the coaches read its contacts (not change them): the companies of that type and the people at them, as a type chip on the list. Programs, Facilities and Referees start ticked. Coaches see everything on those contacts, notes included.
 - Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.`,
   },

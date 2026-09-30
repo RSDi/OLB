@@ -2,7 +2,7 @@
 // Import the HS planning spreadsheet: its Contacts tab into External
 // Contacts and its "HS Schedule - 26-27" tabs into the HS Schedule. Pick the
 // file, see what it would add (and what it found in every weekend), choose,
-// import. Opened from External Contacts and from the HS Schedule; the board
+// import. Opened from Settings → Import (the preview accounts); the board
 // only (lib/hs-planning-import/actions.ts).
 
 import { useMemo, useState } from "react";

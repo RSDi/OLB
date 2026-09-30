@@ -458,12 +458,6 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Each company shows the people who work there under it, with their role, email and phone. Tap either to open it: a person's page shows **Works at**, their company and everyone else there; at a company, **+ Add person** adds someone.",
       },
       {
-        target: "contacts-import",
-        title: "Import the spreadsheet",
-        body: "Reads the HS planning spreadsheet's Contacts tab: programs, gyms and refs with their people. You see everything before it's saved, and contacts you already have are only filled in.",
-        audience: "staff",
-      },
-      {
         target: "contacts-changes",
         title: "Recent changes",
         body: "Every change to a contact, newest first: who made it, when, and what it said before. Each contact's own **History** can put an earlier version back.",
