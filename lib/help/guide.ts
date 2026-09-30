@@ -512,7 +512,7 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 
 **At a glance.** The tiles count **Sign-ins · 7 days**, people **Active · 24 hours** and **Active · 7 days**, and **Previews · 30 days**. **People each day** charts how many members opened the portal each day for the last 30 days — hover over (or tap) a bar for that day's numbers. **Most visited pages** lists the pages people open most.
 
-**Members.** Everyone with a portal login, most recently seen first, then approved members who were invited but haven't signed up yet (marked **Not signed up**): their role, **Last sign-in**, **Last seen** (when, and the page they were on) and **Sessions · 30d**. Search by name or email, or tap **Seen in 30 days** or **Never signed in** to narrow the list.
+**Members.** Everyone with a portal login, most recently seen first, then approved members who haven't signed up yet (marked **Not signed up**, or **Directory only** when there's no email): their role, **Last sign-in**, **Last seen** (when, and the page they were on) and **Sessions · 30d**. Search by name or email, or tap **Seen in 30 days** or **Never signed in** to narrow the list.
 
 **Sessions.** Tap a member to see each time they signed in: when, how long, how many pages and on what device. Tap a session to see every page they opened, in order, with how long they stayed on each. A long gap shows as **idle**.
 

@@ -1,6 +1,6 @@
 "use client";
 // The Activity page's front view: usage at a glance, every member with a
-// login (last sign-in, last seen, sessions) plus those invited but not signed
+// login (last sign-in, last seen, sessions) plus approved members not signed
 // up yet, the most-visited pages, and the "Preview as" log. Rows open that
 // member's sessions (?u=<user id>).
 
@@ -165,7 +165,7 @@ function Roster({ members, viewerUserId, now }: { members: RosterMember[]; viewe
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Members</h2>
-          <div style={muted}>Everyone with a portal login, and anyone invited who hasn&apos;t signed up yet. Tap a row to see their sessions.</div>
+          <div style={muted}>Everyone with a portal login, and approved members who haven&apos;t signed up yet. Tap a row to see their sessions.</div>
         </div>
         <div style={{ position: "relative" }}>
           <input
@@ -262,7 +262,7 @@ function Roster({ members, viewerUserId, now }: { members: RosterMember[]; viewe
                       {!m.userId && (
                         <>
                           {" "}
-                          <Chip>Not signed up</Chip>
+                          <Chip>{m.email?.trim() ? "Not signed up" : "Directory only"}</Chip>
                         </>
                       )}
                       {m.revoked && (
