@@ -4,6 +4,7 @@
 // RESEND_API_KEY is missing).
 
 import { createAdminClient } from "../supabase/admin";
+import { mailFrom, mailReplyTo } from "./mail";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -37,7 +38,7 @@ export async function sendNewTicketNotification({
     );
     return;
   }
-  const from = process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
+  const from = mailFrom("OLB Portal");
 
   const admin = createAdminClient();
 
@@ -107,7 +108,7 @@ export async function sendNewTicketNotification({
   const res = await fetch(RESEND_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ from, to, subject, html: body }),
+    body: JSON.stringify({ from, to, reply_to: mailReplyTo(), subject, html: body }),
   });
 
   if (!res.ok) {

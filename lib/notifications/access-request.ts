@@ -3,6 +3,7 @@
 // of the app keeps working without email set up.
 
 import { createAdminClient } from "../supabase/admin";
+import { mailFrom, mailReplyTo } from "./mail";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -20,8 +21,7 @@ export async function sendAccessRequestNotification({
     );
     return;
   }
-  const from =
-    process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
+  const from = mailFrom("OLB Portal");
 
   // Fetch super-admin emails. Only super-admins can approve/deny members
   // (per the Phase 1 permission matrix), so emailing anyone else would just
@@ -70,6 +70,7 @@ export async function sendAccessRequestNotification({
     body: JSON.stringify({
       from,
       to: recipients,
+      reply_to: mailReplyTo(),
       subject,
       html: body,
     }),

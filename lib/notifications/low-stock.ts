@@ -5,6 +5,7 @@
 // fallback. Gracefully no-ops without RESEND_API_KEY.
 
 import { createAdminClient } from "../supabase/admin";
+import { mailFrom, mailReplyTo } from "./mail";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -48,7 +49,7 @@ export async function sendLowStockNotification(info: LowStockInfo) {
     return;
   }
 
-  const from = process.env.MAIL_FROM ?? "OLB Portal <onboarding@resend.dev>";
+  const from = mailFrom("OLB Portal");
   const vendorLine = info.vendorName
     ? `<p><strong>Reorder from:</strong> ${escapeHtml(info.vendorName)}${
         info.vendorPhone ? ` · ${escapeHtml(info.vendorPhone)}` : ""
@@ -72,6 +73,7 @@ export async function sendLowStockNotification(info: LowStockInfo) {
     body: JSON.stringify({
       from,
       to,
+      reply_to: mailReplyTo(),
       subject: `Low stock: ${info.supplyName} (${info.onHand} ${info.unit} left)`,
       html,
     }),
