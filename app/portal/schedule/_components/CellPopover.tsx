@@ -1,13 +1,15 @@
 "use client";
 // The card that opens over a team's cell in the grid (hover it, or tap it):
-// how many games that team of ours plays that weekend and the teams coming,
-// confirmed, on the fence or not coming, each linked to its program in
-// External Contacts when the viewer can open it. "Edit" turns the same card into the
-// editor: the games (and "not sure yet"), each team's Yes / Maybe / No,
-// whether it's coming for this team of ours or every team we bring, scores,
-// and "Add a team".
+// how many games that team of ours plays that weekend and the teams it plays,
+// coming, on the fence or not coming, each with the other teams of ours it
+// plays there "(also JV1, JV2)" and linked to its program in External
+// Contacts when the viewer can open it; then the teams coming just for our
+// other teams. "Edit" turns the same card into the editor: the games (and
+// "not sure yet"), each team's Yes / Maybe / No, which of our teams it plays
+// (TeamChips), scores, and "Add a team".
 //
-// On a phone it opens as a sheet from the bottom instead.
+// It opens below the cell, or above it when there's more room there, and
+// never over it. On a phone it opens as a sheet from the bottom instead.
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
@@ -24,6 +26,10 @@ import {
   opponentKey,
   resultLabel,
   summarizeCell,
+  teamsLabel,
+  teamsPlaying,
+  weekendPrograms,
+  type WeekendProgram,
 } from "../../../../lib/hs-schedule/logic";
 import type {
   HsContactOption,
@@ -36,9 +42,9 @@ import type {
 } from "../../../../lib/hs-schedule/types";
 import type { ScheduleAction } from "./store";
 import { TeamAdder, type TeamPick } from "./TeamAdder";
-import { ComboSelect } from "../../../components/ComboSelect";
+import { TeamChips } from "./TeamChips";
 
-const WIDTH = 340;
+const WIDTH = 360;
 
 export interface CellTarget {
   weekend: HsWeekend;
@@ -57,6 +63,9 @@ export function CellPopover({
   games,
   list,
   weekendOpponents,
+  weekendGames,
+  levels,
+  shownLevels,
   contacts,
   canEdit,
   options,
@@ -73,8 +82,13 @@ export function CellPopover({
   games: HsGames | undefined;
   // The teams this cell lists (lib/hs-schedule/logic.ts cellOpponents).
   list: HsOpponent[];
-  // Every team row on this weekend, for tidying up when a row's scope changes.
+  // Every team row on this weekend, and every team of ours' games there: who
+  // plays which of our teams.
   weekendOpponents: HsOpponent[];
+  weekendGames: HsGames[];
+  // Our teams, in column order: all of them, and the columns showing.
+  levels: HsLevel[];
+  shownLevels: HsLevel[];
   contacts: Map<string, HsContactRef>;
   canEdit: boolean;
   options: HsContactOption[];
@@ -89,36 +103,58 @@ export function CellPopover({
 }) {
   const { weekend, level } = target;
   const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; sheet: boolean } | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number; sheet: boolean } | null>(null);
   const summary = summarizeCell(games, list);
   const past = weekend.ends_on < today;
+  const playing = teamsPlaying(weekend.id, levels, weekendGames);
+  const programs = weekendPrograms(weekend.id, weekendOpponents, levels, playing);
+  // Which side of the cell it opened on, kept while it's open so the card
+  // doesn't jump as its teams change.
+  const side = useRef<{ anchor: HTMLElement; side: "below" | "above" | "fill" } | null>(null);
 
-  // Place it under the cell (above when there's no room), kept on screen;
-  // a sheet along the bottom on a phone.
+  // Below the cell, or above it when there's more room, and never over it
+  // unless there's no room either way; a sheet along the bottom on a phone.
   useLayoutEffect(() => {
-    const place = () => {
+    const place = (fresh: boolean) => {
       const el = ref.current;
-      if (!el) return;
+      const body = bodyRef.current;
+      if (!el || !body) return;
       if (window.innerWidth < 640) {
-        setPos({ top: 0, left: 0, sheet: true });
+        setPos({ top: 0, left: 0, maxHeight: 0, sheet: true });
         return;
       }
       const r = target.anchor.getBoundingClientRect();
-      const h = el.offsetHeight;
-      const below = r.bottom + 6;
-      const top = below + h > window.innerHeight - 8 && r.top - 6 - h > 8 ? r.top - 6 - h : Math.min(below, Math.max(8, window.innerHeight - 8 - h));
+      // Its full height, however much of it shows now.
+      const natural = el.offsetHeight - body.clientHeight + body.scrollHeight;
+      const roomBelow = window.innerHeight - r.bottom - 14;
+      const roomAbove = r.top - 14;
+      let s = !fresh && side.current?.anchor === target.anchor ? side.current.side : null;
+      if (!s) {
+        s =
+          natural <= roomBelow || (natural > roomAbove && roomBelow >= roomAbove && roomBelow >= 220)
+            ? "below"
+            : natural <= roomAbove || roomAbove >= 220
+              ? "above"
+              : "fill";
+        side.current = { anchor: target.anchor, side: s };
+      }
+      const cap = 560;
+      const maxHeight = s === "below" ? Math.min(roomBelow, cap) : s === "above" ? Math.min(roomAbove, cap) : window.innerHeight - 16;
+      const top = s === "below" ? r.bottom + 6 : s === "above" ? r.top - 6 - Math.min(natural, maxHeight) : 8;
       const left = Math.min(Math.max(8, r.left + r.width / 2 - WIDTH / 2), window.innerWidth - WIDTH - 8);
-      setPos({ top, left, sheet: false });
+      setPos({ top, left, maxHeight, sheet: false });
     };
-    place();
-    const onMove = () => (target.pinned ? place() : onClose());
-    window.addEventListener("resize", place);
+    place(false);
+    const onResize = () => place(true);
+    const onMove = () => (target.pinned ? place(true) : onClose());
+    window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onMove, true);
     return () => {
-      window.removeEventListener("resize", place);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onMove, true);
     };
-  }, [target, onClose, list.length, target.editing, summary.count]);
+  }, [target, onClose, list.length, programs.length, weekendOpponents.length, target.editing, summary.count]);
 
   // Escape closes; a click outside closes a pinned card.
   useEffect(() => {
@@ -156,7 +192,7 @@ export function CellPopover({
         top: pos?.top ?? -9999,
         left: pos?.left ?? -9999,
         width: WIDTH,
-        maxHeight: "min(560px, calc(100vh - 16px))",
+        maxHeight: pos?.maxHeight ?? 560,
         borderRadius: 14,
       };
 
@@ -203,14 +239,16 @@ export function CellPopover({
           )}
         </div>
 
-        <div style={{ overflowY: "auto", padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div ref={bodyRef} style={{ overflowY: "auto", padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 10 }}>
           {target.editing && canEdit ? (
             <Editor
               weekend={weekend}
               level={level}
               games={games}
               list={list}
-              weekendOpponents={weekendOpponents}
+              programs={programs}
+              playing={playing}
+              chipLevels={shownLevels}
               contacts={contacts}
               options={options}
               knownTeams={knownTeams}
@@ -223,17 +261,12 @@ export function CellPopover({
               summary={summary}
               games={games}
               level={level}
+              list={list}
+              programs={programs}
+              playing={playing}
               contacts={contacts}
               past={past}
-              // Teams coming for every team we bring, when this one of ours
-              // isn't playing that weekend.
-              others={
-                new Set(
-                  weekendOpponents
-                    .filter((o) => !o.level_id && o.status !== "declined" && !list.some((x) => opponentKey(x) === opponentKey(o)))
-                    .map(opponentKey)
-                ).size
-              }
+              canEdit={canEdit}
             />
           )}
         </div>
@@ -278,19 +311,40 @@ function Viewer({
   summary,
   games,
   level,
+  list,
+  programs,
+  playing,
   contacts,
-  others,
   past,
+  canEdit,
 }: {
   summary: ReturnType<typeof summarizeCell>;
   games: HsGames | undefined;
   level: HsLevel;
+  list: HsOpponent[];
+  programs: WeekendProgram[];
+  playing: ReadonlySet<string>;
   contacts: Map<string, HsContactRef>;
-  others: number;
   // The weekend is over: the teams "played", rather than are coming.
   past: boolean;
+  canEdit: boolean;
 }) {
-  const nothing = summary.confirmed.length + summary.tentative.length + summary.declined.length === 0;
+  const byKey = new Map(programs.map((p) => [p.key, p]));
+  const here = new Set(list.map(opponentKey));
+  // Coming this weekend, but just for our other teams.
+  const others = programs.filter((p) => !here.has(p.key) && p.teams.some((t) => t.status !== "declined"));
+  // Down for all our teams, and not here because this team of ours has no games in yet.
+  const waiting = summary.count == null && !summary.unsure ? programs.filter((p) => !here.has(p.key) && p.all).length : 0;
+  // Nothing split by team yet: every team here is down for all our teams.
+  const unsplit = list.length > 0 && list.every((o) => o.level_id === null);
+  // "(also JV1, JV2)": the other teams of ours it plays.
+  const alsoOf = (o: HsOpponent): string | null => {
+    if (o.level_id === null) return "all our teams";
+    const p = byKey.get(opponentKey(o));
+    const also = p ? teamsLabel(p, level.id) : "";
+    if (!also) return null;
+    return o.status === "declined" ? also : `also ${also}`;
+  };
   return (
     <>
       <div style={{ fontSize: 13, fontWeight: 600, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
@@ -309,23 +363,49 @@ function Viewer({
         )}
       </div>
       {games?.note && <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>{games.note}</div>}
-      {nothing ? (
-        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
-          No teams named for {level.label} yet.
-          {others > 0 && summary.count == null && !summary.unsure && (
+      {unsplit && playing.size > 1 && (
+        <div style={hint}>
+          These are down for all our teams.
+          {canEdit && (
             <>
               {" "}
-              {others} team{others === 1 ? " is" : "s are"} coming this weekend for our other teams; enter {level.label}
-              &apos;s games to list them here too.
+              Press <strong>Edit</strong> to mark which ones {level.label} plays.
+            </>
+          )}
+        </div>
+      )}
+      {list.length === 0 ? (
+        <div style={hint}>
+          No teams named for {level.label} yet.
+          {waiting > 0 && (
+            <>
+              {" "}
+              {waiting} down for all our teams will show here once {level.label}&apos;s games are in.
             </>
           )}
         </div>
       ) : (
         <>
-          <Section title={past ? "Played" : "Coming"} rows={summary.confirmed} tone="confirmed" contacts={contacts} level={level} />
-          <Section title={past ? "Were on the fence" : "On the fence"} rows={summary.tentative} tone="tentative" contacts={contacts} level={level} />
-          <Section title={past ? "Didn't come" : "Not coming"} rows={summary.declined} tone="declined" contacts={contacts} level={level} />
+          <Section title={past ? "Played" : "Coming"} rows={summary.confirmed} tone="confirmed" contacts={contacts} alsoOf={alsoOf} sayAll={!unsplit} />
+          <Section title={past ? "Were on the fence" : "On the fence"} rows={summary.tentative} tone="tentative" contacts={contacts} alsoOf={alsoOf} sayAll={!unsplit} />
+          <Section title={past ? "Didn't come" : "Not coming"} rows={summary.declined} tone="declined" contacts={contacts} alsoOf={alsoOf} sayAll={!unsplit} />
         </>
+      )}
+      {others.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={cap}>For our other teams ({others.length})</span>
+          {others.map((p) => (
+            <TeamRow
+              key={p.key}
+              name={(p.contact_id && contacts.get(p.contact_id)?.name) || p.name}
+              contactId={p.contact_id}
+              contact={p.contact_id ? contacts.get(p.contact_id) : undefined}
+              tone={p.status}
+              also={teamsLabel(p)}
+              muted
+            />
+          ))}
+        </div>
       )}
     </>
   );
@@ -336,68 +416,102 @@ function Section({
   rows,
   tone,
   contacts,
-  level,
+  alsoOf,
+  sayAll,
 }: {
   title: string;
   rows: HsOpponent[];
   tone: HsOpponentStatus;
   contacts: Map<string, HsContactRef>;
-  level: HsLevel;
+  alsoOf: (o: HsOpponent) => string | null;
+  // Say "all our teams" by the title when every one here is; off when the
+  // card has already said so.
+  sayAll: boolean;
 }) {
   if (rows.length === 0) return null;
+  // Every one here is down for all our teams: say it once, not on each.
+  const allHere = rows.every((o) => o.level_id === null);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <span style={cap}>
-        {title} ({rows.length})
+        {title} ({rows.length}){allHere && sayAll ? " · all our teams" : ""}
       </span>
       {rows.map((o) => {
         const c = o.contact_id ? contacts.get(o.contact_id) : undefined;
-        const name = c?.name ?? o.name;
-        const place = c ? [c.city, c.state].filter(Boolean).join(", ") : "";
-        const result = resultLabel(o);
-        const nameEl = (
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: tone === "declined" ? "var(--gw-fg-muted)" : "var(--gw-fg)",
-              textDecoration: tone === "declined" ? "line-through" : "none",
-            }}
-          >
-            {name}
-          </span>
-        );
         return (
-          <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", minHeight: 26 }}>
-            <Dot tone={tone} />
-            <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
-              {o.contact_id && c ? (
-                <Link href={`/portal/contacts/${o.contact_id}`} style={{ textDecoration: "none" }} title={`Open ${name} in External Contacts`}>
-                  {nameEl}
-                </Link>
-              ) : (
-                nameEl
-              )}
-              {place && <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>{place}</span>}
-              {o.level_id && (
-                <span style={{ fontSize: 10, color: "var(--gw-fg-muted)", fontWeight: 700, border: "1px solid var(--gw-border)", borderRadius: 100, padding: "0 6px" }}>
-                  {level.label} only
-                </span>
-              )}
-            </div>
-            {result && (
-              <span className={`rsd-chip ${result.startsWith("W") ? "rsd-chip-success" : "rsd-chip-mute"}`} style={{ fontSize: 10, whiteSpace: "nowrap" }}>
-                {result}
-              </span>
-            )}
-            {o.contact_id && c && (
-              <Link href={`/portal/contacts/${o.contact_id}`} aria-label={`Open ${name}`} style={{ color: "var(--gw-fg-muted)", display: "flex" }}>
-                <Icons.ChevronRight width={12} height={12} />
-              </Link>
-            )}
-          </div>
+          <TeamRow
+            key={o.id}
+            name={c?.name ?? o.name}
+            contactId={o.contact_id}
+            contact={c}
+            tone={tone}
+            also={allHere && o.level_id === null ? null : alsoOf(o)}
+            result={resultLabel(o)}
+          />
         );
       })}
+    </div>
+  );
+}
+
+// A team on the card: its name (a link to its program for the board), its
+// town, the other teams of ours it plays in parentheses, and a score.
+function TeamRow({
+  name,
+  contactId,
+  contact,
+  tone,
+  also,
+  result,
+  muted = false,
+}: {
+  name: string;
+  contactId: string | null;
+  contact: HsContactRef | undefined;
+  tone: HsOpponentStatus;
+  also: string | null;
+  result?: string | null;
+  // Coming for our other teams, not this one.
+  muted?: boolean;
+}) {
+  const place = contact ? [contact.city, contact.state].filter(Boolean).join(", ") : "";
+  const nameEl = (
+    <span
+      style={{
+        fontSize: 13,
+        fontWeight: muted ? 600 : 700,
+        color: tone === "declined" || muted ? "var(--gw-fg-muted)" : "var(--gw-fg)",
+        textDecoration: tone === "declined" ? "line-through" : "none",
+      }}
+    >
+      {name}
+    </span>
+  );
+  const linked = !!contactId && !!contact;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", minHeight: 26 }}>
+      <Dot tone={tone} />
+      <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+        {linked ? (
+          <Link href={`/portal/contacts/${contactId}`} style={{ textDecoration: "none" }} title={`Open ${name} in External Contacts`}>
+            {nameEl}
+          </Link>
+        ) : (
+          nameEl
+        )}
+        {place && <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>{place}</span>}
+        {also && <span style={{ fontSize: 11.5, color: muted ? "var(--gw-fg)" : "var(--gw-fg-muted)", fontWeight: 700 }}>({also})</span>}
+      </div>
+      {result && (
+        <span className={`rsd-chip ${result.startsWith("W") ? "rsd-chip-success" : "rsd-chip-mute"}`} style={{ fontSize: 10, whiteSpace: "nowrap" }}>
+          {result}
+        </span>
+      )}
+      {linked && (
+        <Link href={`/portal/contacts/${contactId}`} aria-label={`Open ${name}`} style={{ color: "var(--gw-fg-muted)", display: "flex" }}>
+          <Icons.ChevronRight width={12} height={12} />
+        </Link>
+      )}
     </div>
   );
 }
@@ -409,7 +523,9 @@ function Editor({
   level,
   games,
   list,
-  weekendOpponents,
+  programs,
+  playing,
+  chipLevels,
   contacts,
   options,
   knownTeams,
@@ -421,7 +537,10 @@ function Editor({
   level: HsLevel;
   games: HsGames | undefined;
   list: HsOpponent[];
-  weekendOpponents: HsOpponent[];
+  programs: WeekendProgram[];
+  playing: ReadonlySet<string>;
+  // Our teams the chips offer: the columns showing.
+  chipLevels: HsLevel[];
   contacts: Map<string, HsContactRef>;
   options: HsContactOption[];
   knownTeams: TeamPick[];
@@ -464,22 +583,6 @@ function Editor({
     }
   };
 
-  // This team of ours only ⇄ every team we bring. Going to every team also
-  // folds in the program's rows for our other teams (unless they have a score).
-  const setScope = async (o: HsOpponent, all: boolean) => {
-    if (all === !o.level_id) return;
-    if (all) {
-      const twins = weekendOpponents.filter(
-        (x) => x.id !== o.id && x.level_id && opponentKey(x) === opponentKey(o) && x.our_score == null
-      );
-      for (const t of twins) {
-        dispatch({ type: "opponentGone", id: t.id });
-        void deleteOpponent(t.id);
-      }
-    }
-    await patch(o, { level_id: all ? null : level.id });
-  };
-
   const add = async (pick: TeamPick) => {
     const res = await addOpponent({
       weekend_id: weekend.id,
@@ -494,6 +597,7 @@ function Editor({
 
   const n = games?.games ?? null;
   const taken = new Set(list.map(opponentKey));
+  const byKey = new Map(programs.map((p) => [p.key, p]));
 
   return (
     <>
@@ -547,11 +651,16 @@ function Editor({
       {/* Teams */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <span style={cap}>Teams</span>
-        {list.length === 0 && (
-          <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>None yet. Add one below.</div>
+        {list.length === 0 ? (
+          <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>None yet. Add one above.</div>
+        ) : (
+          <div style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.45 }}>
+            Under each, tap the teams of ours it plays, or <strong>All</strong>.
+          </div>
         )}
-        {list.map((o) => {
+        {list.map((o, i) => {
           const name = (o.contact_id && contacts.get(o.contact_id)?.name) || o.name;
+          const program = byKey.get(opponentKey(o));
           return (
             <div key={o.id} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "6px 0", borderTop: "1px solid var(--gw-border)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -565,21 +674,27 @@ function Editor({
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", paddingLeft: 14 }}>
                 <StatusSwitch value={o.status} onChange={(s) => patch(o, { status: s })} name={name} />
-                <ComboSelect
-                  value={o.level_id ? "one" : "all"}
-                  onChange={(e) => setScope(o, e.target.value === "all")}
-                  aria-label={`Which of our teams ${name} plays`}
-                  style={miniSelect}
-                >
-                  <option value="one">{level.label} only</option>
-                  <option value="all">All our teams</option>
-                </ComboSelect>
                 {(past || o.our_score != null) && o.level_id && (
                   <button type="button" onClick={() => setScoring(scoring === o.id ? null : o.id)} style={{ ...textBtn, fontSize: 11 }}>
                     {resultLabel(o) ?? "Score"}
                   </button>
                 )}
               </div>
+              {program && (
+                // The tour points at the first team's chips.
+                <div style={{ paddingLeft: 14 }} data-tour={i === 0 ? "schedule-popover-teams" : undefined}>
+                  <TeamChips
+                    weekendId={weekend.id}
+                    program={program}
+                    name={name}
+                    levels={chipLevels}
+                    playing={playing}
+                    status={o.status}
+                    dispatch={dispatch}
+                    onError={onError}
+                  />
+                </div>
+              )}
               {scoring === o.id && (
                 <ScoreInputs
                   o={o}
@@ -688,6 +803,8 @@ function FenceTag({ children }: { children: React.ReactNode }) {
   );
 }
 
+const hint: CSSProperties = { fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 };
+
 const cap: CSSProperties = {
   fontSize: 10.5,
   fontWeight: 800,
@@ -746,17 +863,6 @@ const stepBtn: CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
   cursor: "pointer",
-};
-
-const miniSelect: CSSProperties = {
-  height: 26,
-  padding: "0 6px",
-  borderRadius: 7,
-  border: "1px solid var(--gw-border)",
-  background: "var(--gw-bg)",
-  color: "var(--gw-fg)",
-  fontSize: 11.5,
-  fontWeight: 600,
 };
 
 const scoreInput: CSSProperties = {
