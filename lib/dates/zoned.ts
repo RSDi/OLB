@@ -76,3 +76,20 @@ export function zonedTimeToUtc(
   // the later instant (the time after the jump).
   return new Date(Math.max(first, second));
 }
+
+// An instant as the "YYYY-MM-DDTHH:mm" value a date-time field holds
+// (<input type="datetime-local">, DateTimePicker), on the clock in `tz`. The
+// field has no timezone, so this can't use the server's clock (UTC on Vercel)
+// or the browser's.
+export function toZonedDatetimeLocal(date: Date, tz: string = CHURCH_TZ): string {
+  const p = zonedParts(date, tz);
+  return `${p.ymd}T${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+}
+
+// The instant a date-time field's "YYYY-MM-DDTHH:mm" value means on the clock
+// in `tz`.
+export function fromZonedDatetimeLocal(value: string, tz: string = CHURCH_TZ): Date {
+  const [ymd, time = ""] = value.split("T");
+  const [hour, minute] = time.split(":").map(Number);
+  return zonedTimeToUtc(ymd, { hour, minute }, tz);
+}
