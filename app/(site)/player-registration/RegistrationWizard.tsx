@@ -26,6 +26,7 @@ import {
   type KidAnswers,
   type RegistrationState,
 } from "../../../lib/teams/registration-form";
+import { ComboSelect } from "../../components/ComboSelect";
 
 export interface WizardApi {
   sendCode: (email: string, honeypot: string) => Promise<{ sent: boolean; error?: string }>;
@@ -818,14 +819,14 @@ function Step(p: StepProps) {
                     {parts ? `${parts.label} · $${parts.dollars}` : "Pick a fee"}
                   </span>
                   {p.editing === k.key || !parts ? (
-                    <select className="olb-select" aria-label={`Fee for ${kidFirst(k)}`} value={k.fee_tier} onChange={(e) => setTier(k, e.target.value)} style={{ maxWidth: 220, height: 44 }}>
+                    <ComboSelect className="olb-select" aria-label={`Fee for ${kidFirst(k)}`} value={k.fee_tier} onChange={(e) => setTier(k, e.target.value)} style={{ maxWidth: 220, height: 44 }}>
                       <option value="">Pick one</option>
                       {FEE_TIERS.map((t) => (
                         <option key={t} value={t}>
                           {t}
                         </option>
                       ))}
-                    </select>
+                    </ComboSelect>
                   ) : (
                     <button type="button" className={s.linkBtn} onClick={() => p.setEditing(k.key)}>
                       Change
@@ -1312,14 +1313,14 @@ function AddressFields({ f, up }: { f: FamilyAnswers; up: (patch: Partial<Family
         </label>
         <label className={s.field}>
           State
-          <select className="olb-select" autoComplete="address-level1" value={f.state} onChange={(e) => up({ state: e.target.value })}>
+          <ComboSelect className="olb-select" autoComplete="address-level1" value={f.state} onChange={(e) => up({ state: e.target.value })}>
             <option value="">State</option>
             {US_STATES.map(([abbr, name]) => (
               <option key={abbr} value={abbr}>
                 {name}
               </option>
             ))}
-          </select>
+          </ComboSelect>
         </label>
         <label className={s.field}>
           Zip

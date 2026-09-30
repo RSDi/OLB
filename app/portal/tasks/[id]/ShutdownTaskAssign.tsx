@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { assignShutdownTask } from "../../../../lib/shutdown/actions";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 export interface ShutdownTeamMember {
   id: string;
@@ -50,7 +51,7 @@ export function ShutdownTaskAssign({
           No Building Shutdown team members yet — add some in Settings → Teams.
         </span>
       ) : (
-        <select
+        <ComboSelect
           value={assigneeId ?? ""}
           onChange={(e) => assign(e.target.value)}
           disabled={pending}
@@ -62,7 +63,7 @@ export function ShutdownTaskAssign({
               {m.fullName}
             </option>
           ))}
-        </select>
+        </ComboSelect>
       )}
       {error && <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--gw-error)" }}>{error}</div>}
     </div>

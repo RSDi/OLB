@@ -10,6 +10,7 @@ import {
   updateEvent,
   softDeleteEvent,
 } from "../../../lib/events/actions";
+import { ComboSelect } from "../../components/ComboSelect";
 
 interface Area {
   id: string;
@@ -372,7 +373,7 @@ export function EventForm({
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>On the</span>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <select
+                  <ComboSelect
                     value={recurMonthlyWeek ?? ""}
                     onChange={(e) => setRecurMonthlyWeek(e.target.value === "" ? null : Number(e.target.value))}
                     style={{ height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
@@ -381,8 +382,8 @@ export function EventForm({
                     {WEEK_OPTIONS.map((w) => (
                       <option key={w.value} value={w.value}>{w.label}</option>
                     ))}
-                  </select>
-                  <select
+                  </ComboSelect>
+                  <ComboSelect
                     value={recurMonthlyWeekday ?? ""}
                     onChange={(e) => setRecurMonthlyWeekday(e.target.value === "" ? null : Number(e.target.value))}
                     style={{ height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontSize: 13.5 }}
@@ -391,7 +392,7 @@ export function EventForm({
                     {WEEKDAY_FULL.map((label, d) => (
                       <option key={d} value={d}>{label}</option>
                     ))}
-                  </select>
+                  </ComboSelect>
                   <span style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>of the month</span>
                 </div>
               </div>
@@ -430,7 +431,7 @@ export function EventForm({
               {/* Repeating skip — e.g. the last Sunday of every month. */}
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12.5, color: "var(--gw-fg-muted)" }}>
                 <span>or skip the</span>
-                <select
+                <ComboSelect
                   value={skipRuleWeek}
                   onChange={(e) => setSkipRuleWeek(Number(e.target.value))}
                   style={skipSelectStyle}
@@ -440,8 +441,8 @@ export function EventForm({
                   <option value={3}>3rd</option>
                   <option value={4}>4th</option>
                   <option value={-1}>Last</option>
-                </select>
-                <select
+                </ComboSelect>
+                <ComboSelect
                   value={skipRuleWeekday}
                   onChange={(e) => setSkipRuleWeekday(Number(e.target.value))}
                   style={skipSelectStyle}
@@ -449,7 +450,7 @@ export function EventForm({
                   {SKIP_DAY_LABELS.map((d, i) => (
                     <option key={i} value={i}>{d}</option>
                   ))}
-                </select>
+                </ComboSelect>
                 <span>of every month</span>
                 <button
                   type="button"

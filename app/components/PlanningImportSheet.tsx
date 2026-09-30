@@ -15,6 +15,7 @@ import { previewPlanningImport, runPlanningImport } from "../../lib/hs-planning-
 import type { ImportPlan, PlannedCompany, PlannedSeason } from "../../lib/hs-planning-import/plan";
 import type { ApplySummary } from "../../lib/hs-planning-import/apply";
 import { formatWeekendDates, weekendStatusLabel } from "../../lib/hs-schedule/logic";
+import { ComboSelect } from "./ComboSelect";
 
 const cap: React.CSSProperties = {
   fontSize: 11,
@@ -355,7 +356,7 @@ function ContactsPreview(props: {
             .map((c) => (
               <div key={c.key} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 13 }}>
                 <span style={{ fontWeight: 700 }}>{c.name}</span>
-                <select
+                <ComboSelect
                   className="rsd-chip"
                   value={props.merges[c.key] ?? ""}
                   onChange={(e) => {
@@ -373,7 +374,7 @@ function ContactsPreview(props: {
                       Same as {s.name}
                     </option>
                   ))}
-                </select>
+                </ComboSelect>
               </div>
             ))}
         </div>

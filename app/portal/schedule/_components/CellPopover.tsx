@@ -36,6 +36,7 @@ import type {
 } from "../../../../lib/hs-schedule/types";
 import type { ScheduleAction } from "./store";
 import { TeamAdder, type TeamPick } from "./TeamAdder";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 const WIDTH = 340;
 
@@ -564,7 +565,7 @@ function Editor({
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", paddingLeft: 14 }}>
                 <StatusSwitch value={o.status} onChange={(s) => patch(o, { status: s })} name={name} />
-                <select
+                <ComboSelect
                   value={o.level_id ? "one" : "all"}
                   onChange={(e) => setScope(o, e.target.value === "all")}
                   aria-label={`Which of our teams ${name} plays`}
@@ -572,7 +573,7 @@ function Editor({
                 >
                   <option value="one">{level.label} only</option>
                   <option value="all">All our teams</option>
-                </select>
+                </ComboSelect>
                 {(past || o.our_score != null) && o.level_id && (
                   <button type="button" onClick={() => setScoring(scoring === o.id ? null : o.id)} style={{ ...textBtn, fontSize: 11 }}>
                     {resultLabel(o) ?? "Score"}

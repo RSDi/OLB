@@ -17,6 +17,7 @@ import {
   type RelationshipKind,
 } from "../../../lib/auth/member-actions";
 import { MemberEditForm } from "./MemberEditForm";
+import { ComboSelect } from "../../components/ComboSelect";
 
 interface Member {
   id: string;
@@ -571,7 +572,7 @@ function RoleSelect({
   onChange: (role: MemberRole) => void;
 }) {
   return (
-    <select
+    <ComboSelect
       value={role}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as MemberRole)}
@@ -592,7 +593,7 @@ function RoleSelect({
       <option value="member">Member</option>
       <option value="admin">Board</option>
       <option value="super_admin">Super-admin</option>
-    </select>
+    </ComboSelect>
   );
 }
 

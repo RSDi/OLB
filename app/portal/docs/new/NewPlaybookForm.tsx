@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { MarkdownEditor } from "../../../components/MarkdownEditor";
 import { createPlaybook } from "../../../../lib/playbooks/actions";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 interface Props {
   categories: { id: string; name: string; chip_class: string }[];
@@ -134,7 +135,7 @@ export function NewPlaybookForm({ categories }: Props) {
       >
         <label style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
           Category
-          <select
+          <ComboSelect
             value={categoryId ?? ""}
             onChange={(e) => setCategoryId(e.target.value || null)}
             style={{
@@ -154,7 +155,7 @@ export function NewPlaybookForm({ categories }: Props) {
                 {c.name}
               </option>
             ))}
-          </select>
+          </ComboSelect>
         </label>
       </div>
 

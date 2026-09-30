@@ -17,6 +17,7 @@ import {
   type KidAnswers,
   type RegistrationState,
 } from "../../../lib/teams/registration-form";
+import { ComboSelect } from "../../components/ComboSelect";
 
 const radioLbl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, cursor: "pointer" };
 const cbLbl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, cursor: "pointer" };
@@ -115,10 +116,10 @@ export default function RegistrationForm({
             <input className="olb-input" placeholder="Address Line 2" value={f.address_line2} onChange={(e) => up({ address_line2: e.target.value })} />
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
               <input className="olb-input" placeholder="City" required value={f.city} onChange={(e) => up({ city: e.target.value })} />
-              <select className="olb-select" required value={f.state} onChange={(e) => up({ state: e.target.value })} aria-label="State">
+              <ComboSelect className="olb-select" required value={f.state} onChange={(e) => up({ state: e.target.value })} aria-label="State">
                 <option value="">State</option>
                 {US_STATES.map(([abbr, name]) => <option key={abbr} value={abbr}>{name}</option>)}
-              </select>
+              </ComboSelect>
               <input className="olb-input" placeholder="Zip Code" required value={f.zip} onChange={(e) => up({ zip: e.target.value })} />
             </div>
           </div>

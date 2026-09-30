@@ -40,6 +40,7 @@ import type {
 import { Dot, StatusSwitch } from "./CellPopover";
 import type { ScheduleAction } from "./store";
 import { TeamAdder, type TeamPick } from "./TeamAdder";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 const FACILITY_TYPES = ["facilities", "facility", "gyms", "venues", "gym rentals"];
 
@@ -363,7 +364,7 @@ function TeamsEditor({
               {resultLabel(o) && <span style={{ fontWeight: 600, color: "var(--gw-fg-muted)" }}> · {resultLabel(o)}</span>}
             </span>
             <StatusSwitch value={o.status} onChange={(s) => patch(o, { status: s })} name={name} />
-            <select
+            <ComboSelect
               value={o.level_id ?? "all"}
               onChange={(e) => patch(o, { level_id: e.target.value === "all" ? null : e.target.value })}
               aria-label={`Which of our teams ${name} plays`}
@@ -375,7 +376,7 @@ function TeamsEditor({
                   {labelOf.get(l.id)} only
                 </option>
               ))}
-            </select>
+            </ComboSelect>
             <button
               type="button"
               aria-label={`Remove ${name}`}
@@ -391,7 +392,7 @@ function TeamsEditor({
         <TeamAdder options={options} knownTeams={knownTeams} taken={taken} onAdd={add} placeholder="Add a team coming…" />
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <StatusSwitch value={addStatus} onChange={setAddStatus} name="the new team" />
-          <select
+          <ComboSelect
             value={addLevel}
             onChange={(e) => setAddLevel(e.target.value)}
             aria-label="For which of our teams"
@@ -403,7 +404,7 @@ function TeamsEditor({
                 For {l.label} only
               </option>
             ))}
-          </select>
+          </ComboSelect>
         </div>
       </div>
     </div>
