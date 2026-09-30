@@ -4,13 +4,13 @@
 // one signs up with their registration email, the row becomes their access
 // request, and a super-admin approves it in Settings → Members.
 //
-// Shared by the spreadsheet import (scripts/import-registrations.ts, service
-// role) and the Team manager's Approve button (a super-admin's client). A
-// plain module, not "use server": it takes the client to write with.
+// Shared by the spreadsheet import (scripts/import-registrations.ts) and
+// Approve on the Directory's New registrations page, both with the service
+// role. A plain module, not "use server": it takes the client to write with.
 //
 // Players are matched on the board by name, and by birthdate when both have
-// one, so re-applying a registration updates the same player and keeps the
-// team they were put on.
+// one (pickExistingPlayer), so re-applying a registration updates the same
+// player and keeps the team they were put on.
 //
 // Parents are matched to a member by email, else (no email) by name among
 // members with no email. A member who has never signed in is refreshed from
@@ -20,6 +20,7 @@
 // Deleted or revoked members are never relinked.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { pickExistingPlayer } from "./roster-logic";
 
 export type ParentRelationship = "father" | "mother" | "guardian";
 
@@ -129,10 +130,7 @@ export async function applyRegistration(
     .eq("board_id", boardId)
     .ilike("full_name", ilikeExact(fullName));
   if (findErr) throw new Error(`Looking up ${fullName} failed: ${findErr.message}`);
-  const existing =
-    (candidates ?? []).find((p) => reg.dob && p.dob === reg.dob) ??
-    (candidates ?? []).find((p) => !reg.dob || !p.dob) ??
-    null;
+  const existing = pickExistingPlayer(candidates ?? [], reg.dob);
 
   const details = {
     full_name: fullName,

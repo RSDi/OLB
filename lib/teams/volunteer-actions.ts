@@ -13,7 +13,6 @@ import type { TeamSettingsInput, VolunteerActionResult, VolunteerRoleInput } fro
 function revalidate() {
   revalidatePath("/portal/directory", "layout");
   revalidatePath("/portal/settings");
-  revalidatePath("/portal/teams");
 }
 
 function cleanTeam(input: TeamSettingsInput) {
@@ -81,7 +80,7 @@ export async function updateTeamSettings(
   return {};
 }
 
-// Players on the team go back to the Unassigned pool; its volunteer
+// Players on the team go back to No team yet; its volunteer
 // assignments go with it.
 export async function deleteTeam(id: string): Promise<VolunteerActionResult> {
   const gate = await requireSuperAdmin();

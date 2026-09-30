@@ -39,6 +39,20 @@ function cleanVolunteers(rows: unknown): OlbTeamVolunteer[] {
   return ((rows as OlbTeamVolunteer[] | null) ?? []).filter((v) => v.member);
 }
 
+// The current board's teams, for a team picker.
+export async function loadSeasonTeams(): Promise<Pick<OlbTeam, "id" | "name" | "age_group" | "color">[]> {
+  const board = await loadCurrentBoard();
+  if (!board) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("olb_teams")
+    .select("id, name, age_group, color")
+    .eq("board_id", board.id)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  return (data as Pick<OlbTeam, "id" | "name" | "age_group" | "color">[] | null) ?? [];
+}
+
 // Every team on the current board with its volunteers, plus the roles.
 export async function loadTeamsWithStaff(): Promise<{
   season: string | null;

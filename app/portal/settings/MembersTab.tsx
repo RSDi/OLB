@@ -33,13 +33,19 @@ interface Member {
   can_delete_settings: boolean;
   can_undelete_settings: boolean;
   can_manage_finances: boolean;
+  can_manage_registrations: boolean;
   membership_status: string;
   access_revoked_at: string | null;
   requested_at: string;
   reviewed_at: string | null;
 }
 
-type GrantKey = "can_edit_settings" | "can_delete_settings" | "can_undelete_settings" | "can_manage_finances";
+type GrantKey =
+  | "can_edit_settings"
+  | "can_delete_settings"
+  | "can_undelete_settings"
+  | "can_manage_finances"
+  | "can_manage_registrations";
 
 // Pending splits in two: people who signed in and asked (the approval queue),
 // and registered parents pre-created from a player registration who haven't
@@ -99,7 +105,7 @@ export function MembersTab({
       supabase
         .from("members")
         .select(
-          "id, user_id, email, full_name, nickname, avatar_url, phone, birthday, status, role, can_edit_settings, can_delete_settings, can_undelete_settings, can_manage_finances, membership_status, access_revoked_at, requested_at, reviewed_at"
+          "id, user_id, email, full_name, nickname, avatar_url, phone, birthday, status, role, can_edit_settings, can_delete_settings, can_undelete_settings, can_manage_finances, can_manage_registrations, membership_status, access_revoked_at, requested_at, reviewed_at"
         )
         .is("deleted_at", null)
         .order("requested_at", { ascending: false }),
@@ -735,12 +741,13 @@ function MemberRow({
             <GrantChip label="Undelete" on={member.can_undelete_settings} disabled={acting} onClick={() => onSetGrant("can_undelete_settings", !member.can_undelete_settings)} />
           </div>
         )}
-        {/* Payments grant — any approved member, board or not (the Treasurer
-            first). Super-admins always have it. */}
+        {/* Payments and Registrations grants — any approved member, board or
+            not (the Treasurer; whoever runs registrations). Super-admins
+            always have both. */}
         {tab === "approved" && canManage && member.role !== "super_admin" && (
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "flex-end", marginTop: 2 }}>
             <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
-              Money:
+              Manages:
             </span>
             <GrantChip
               label="Payments"
@@ -748,6 +755,17 @@ function MemberRow({
               on={member.can_manage_finances}
               disabled={acting}
               onClick={() => onSetGrant("can_manage_finances", !member.can_manage_finances)}
+            />
+            <GrantChip
+              label="Registrations"
+              title={
+                member.can_manage_registrations
+                  ? "Can review registrations, put players on teams and edit players — tap to revoke"
+                  : "Tap to let them review registrations, put players on teams and edit players"
+              }
+              on={member.can_manage_registrations}
+              disabled={acting}
+              onClick={() => onSetGrant("can_manage_registrations", !member.can_manage_registrations)}
             />
           </div>
         )}

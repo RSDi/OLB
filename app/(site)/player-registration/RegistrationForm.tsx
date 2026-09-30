@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { createRegistration } from "../../../lib/teams/registration-actions";
 import SignaturePad from "./SignaturePad";
 import { VOLUNTEER_OPTIONS } from "../../../lib/teams/volunteer-options";
@@ -143,8 +144,9 @@ export default function RegistrationForm() {
     <div className="olb-page" style={{ maxWidth: 720 }}>
       <h1 className="olb-h1" style={{ marginBottom: 8 }}>2026-27 Omaha Lightning Basketball Registration</h1>
       <p className="olb-sub" style={{ marginTop: 0 }}>
-        Registration is <strong>NOW OPEN</strong> to current Lightning players and their siblings ONLY!
-        Please contact <strong>lightningbasketballomaha@gmail.com</strong> with questions.
+        This registration is for current Lightning players and their brothers and sisters. New to Lightning? Join the
+        waitlist on our <Link href="/programs">Programs</Link> page. Questions? Email{" "}
+        <strong>lightningbasketballomaha@gmail.com</strong>.
       </p>
 
       <form onSubmit={onSubmit} className="olb-card olb-card--pad" style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: 14 }}>

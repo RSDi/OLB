@@ -42,8 +42,6 @@ const NAV: NavItem[] = [
   // Every family's balance for the Treasurer (the Payments grant); a parent's
   // own balance once the Treasurer turns that on.
   { href: "/portal/payments", label: "Payments", icon: <Icons.Give width={16} height={16}/>, paymentsOnly: true, tour: "nav-payments" },
-  // Team manager (roster board, registrations, import): super-admin only.
-  { href: "/portal/teams", label: "Teams", icon: <Icons.Shield width={16} height={16}/>, superAdminOnly: true, previewOnly: true, tour: "nav-activity" },
   // Board can view Settings; editing is gated per grant inside.
   // Pinned to the bottom of the nav (BOTTOM_HREFS).
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true, tour: "nav-settings" },
@@ -51,7 +49,7 @@ const NAV: NavItem[] = [
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
   // Sign-ins, page views, usage and "Preview as": super-admin only, and
   // still in staged rollout (lib/auth/feature-preview.ts).
-  { href: "/portal/activity", label: "Activity", icon: <Icons.Activity width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
+  { href: "/portal/activity", label: "Activity", icon: <Icons.Activity width={16} height={16}/>, superAdminOnly: true, previewOnly: true, tour: "nav-activity" },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
   // bottom of the nav, above Settings (BOTTOM_HREFS).
   { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/>, tour: "nav-guide" },
@@ -83,6 +81,8 @@ export interface SidebarViewer {
   seesFullUi: boolean;
   // The Payments grant (0101): every family's balance.
   canManageFinances?: boolean;
+  // The Registrations grant (0102): the registrations queue and team placement.
+  canManageRegistrations?: boolean;
   // Shows the Payments item: a finance manager, or a parent whose balance is open.
   seesPayments?: boolean;
 }

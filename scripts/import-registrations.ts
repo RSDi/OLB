@@ -1,8 +1,8 @@
 /*
- * Imports the season registration spreadsheet onto the Team manager's season
- * board: each player's registration details go on their olb_players row, and
- * their parents become members (so they can sign in), linked through
- * olb_player_parents. New players land in the Unassigned pool with their age
+ * Imports the season registration spreadsheet onto the season board: each
+ * player's registration details go on their olb_players row, and their
+ * parents become members (so they can sign in), linked through
+ * olb_player_parents. New players land under No team yet with their age
  * group; players already on the board (same name, and birthdate when both have
  * one) keep their team. See lib/teams/apply-registration.ts for the matching
  * rules. Safe to re-run after the spreadsheet changes.

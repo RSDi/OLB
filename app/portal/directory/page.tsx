@@ -2,6 +2,7 @@ import { AccessDenied } from "./_shared/AccessDenied";
 import { loadPlayers, loadRequirements, loadViewer } from "./_shared/data";
 import { PlayersList } from "./PlayersList";
 import { holdsLeadershipRole, loadTeamsWithStaff } from "../../../lib/teams/volunteer-data";
+import { countPendingRegistrations } from "../../../lib/teams/registration-data";
 
 export default async function DirectoryPage() {
   // Started before the viewer check on purpose — see loadViewer().
@@ -9,6 +10,8 @@ export default async function DirectoryPage() {
   const teams = loadTeamsWithStaff();
   // Staff only by RLS; anyone else gets an empty list back.
   const requirements = loadRequirements();
+  // The Registrations grant only by RLS; anyone else counts 0.
+  const pending = countPendingRegistrations();
   const viewer = await loadViewer();
   if (!viewer) return <AccessDenied />;
   const { teams: teamList, roles } = await teams;
@@ -29,6 +32,8 @@ export default async function DirectoryPage() {
       canViewAges={canViewAges}
       requirements={req.requirements}
       requirementRows={req.rows.filter((r) => playerIds.has(r.player_id))}
+      canPlace={viewer.canManageRegistrations}
+      pendingRegistrations={viewer.canManageRegistrations ? await pending : 0}
     />
   );
 }

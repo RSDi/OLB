@@ -1,8 +1,10 @@
 "use server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
-import { requireTeamManager } from "./guard";
+import { requireRegistrations } from "../auth/guards";
 import { applyRegistration, cleanName, type RegistrationRecord } from "./apply-registration";
+import type { RegistrationExtra as Extra, RegistrationParentAnswers } from "./roster-logic";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { centralToday } from "../finances/data";
 
@@ -47,7 +49,7 @@ type RegistrationInput = {
 
 // PUBLIC — no auth. Honeypot + validation guard the open endpoint. The full
 // submission is stored in olb_registrations.extra (jsonb); core columns are
-// populated for the manager view + approval flow. Writes with the service
+// populated for the Directory's New registrations page and Approve. Writes with the service
 // role: the olb_ tables have no anon policies, so visitors can't read or
 // write them directly — only through this action.
 export async function createRegistration(input: RegistrationInput, honeypot: string): Promise<string | null> {
@@ -106,27 +108,12 @@ export async function createRegistration(input: RegistrationInput, honeypot: str
   return null;
 }
 
-// The public form's answers (olb_registrations.extra, as createRegistration
-// saves it) as a registration to apply to the board.
-type Extra = {
-  first_season?: boolean | null;
-  address?: { line1?: string; line2?: string; city?: string; state?: string; zip?: string };
-  athlete_phone?: string | null;
-  athlete_email?: string | null;
-  directory_optin?: boolean;
-  father?: ParentAnswers;
-  mother?: ParentAnswers;
-  waiver_agreed?: boolean;
-  signature_date?: string | null;
-  fee_tier?: string;
-  payment_option?: string;
-};
-type ParentAnswers = { first?: string; last?: string; email?: string; phone?: string; volunteer?: string[]; volunteer_other?: string };
-
+// The public form's answers (olb_registrations.extra) as a registration to
+// apply to the board.
 function toRecord(reg: { first_name: string; last_name: string; dob: string | null; extra: Extra | null }): RegistrationRecord {
   const x = reg.extra ?? {};
   const blank = (s: string | null | undefined) => s?.trim() || null;
-  const parent = (relationship: "father" | "mother", p?: ParentAnswers) => ({
+  const parent = (relationship: "father" | "mother", p?: RegistrationParentAnswers) => ({
     relationship,
     fullName: cleanName(p?.first, p?.last),
     email: blank(p?.email),
@@ -156,33 +143,50 @@ function toRecord(reg: { first_name: string; last_name: string; dob: string | nu
   };
 }
 
-// Approve → apply the registration to the board: an Unassigned player (or the
-// matching one already there) with the form's details, linked to the parents
-// as members so they can sign in. Linked back to the registration.
-export async function approveRegistration(id: string): Promise<void> {
-  const userId = await requireTeamManager();
+// Approve → apply the registration to the board: a player under No team yet
+// (or the matching one already there) with the form's details, linked to the
+// parents as members so they can sign in, and the registration fee on their
+// Payments account. Linked back to the registration.
+//
+// The registration is read with the caller's own access, so only someone
+// with the Registrations permission gets it back (0102). Applying it creates
+// and updates parents' member rows and adds a Payments charge, which only the
+// server may do for someone who isn't a super-admin, so those run with the
+// service role.
+export async function approveRegistration(id: string): Promise<{ error?: string }> {
+  const gate = await requireRegistrations();
+  if ("error" in gate) return { error: gate.error };
   const db = await createClient();
   const { data: reg } = await db.from("olb_registrations").select("*").eq("id", id).maybeSingle();
-  if (!reg) throw new Error("Registration not found.");
-  if (reg.status === "approved") return;
+  if (!reg) return { error: "That registration isn't there any more. Refresh the page." };
+  if (reg.status === "approved") return {};
 
-  const { playerId, notes } = await applyRegistration(db, reg.board_id, toRecord(reg));
-  for (const note of notes) console.warn(`[teams] registration ${id}: ${note}`);
+  const admin = createAdminClient();
+  let playerId: string;
+  try {
+    const applied = await applyRegistration(admin, reg.board_id, toRecord(reg));
+    playerId = applied.playerId;
+    for (const note of applied.notes) console.warn(`[registrations] registration ${id}: ${note}`);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Approving didn't work. Try again." };
+  }
 
   const { error } = await db
     .from("olb_registrations")
-    .update({ status: "approved", reviewed_by: userId, reviewed_at: new Date().toISOString(), player_id: playerId })
+    .update({ status: "approved", reviewed_by: gate.userId, reviewed_at: new Date().toISOString(), player_id: playerId })
     .eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
 
-  await chargeRegistrationFee(db, reg.board_id, playerId, (reg.extra as Extra | null)?.fee_tier ?? null, userId);
+  await chargeRegistrationFee(admin, reg.board_id, playerId, (reg.extra as Extra | null)?.fee_tier ?? null, gate.userId);
+  refresh();
+  return {};
 }
 
 // Puts the registration fee on the new player's Payments account (0101), once.
 // Best-effort: the approval stands if this fails, and the Treasurer's
 // "Add registration fees" catches anyone missed.
 async function chargeRegistrationFee(
-  db: Awaited<ReturnType<typeof createClient>>,
+  db: ReturnType<typeof createAdminClient>,
   boardId: string,
   playerId: string,
   feeTier: string | null,
@@ -209,15 +213,28 @@ async function chargeRegistrationFee(
     entry_date: centralToday(),
     created_by: userId,
   });
-  if (error) console.warn(`[teams] registration fee for player ${playerId}: ${error.message}`);
+  if (error) console.warn(`[registrations] registration fee for player ${playerId}: ${error.message}`);
 }
 
-export async function rejectRegistration(id: string): Promise<void> {
-  const userId = await requireTeamManager();
+// Not this season: the registration leaves the queue. Nothing is added to the
+// roster or to Payments.
+export async function rejectRegistration(id: string): Promise<{ error?: string }> {
+  const gate = await requireRegistrations();
+  if ("error" in gate) return { error: gate.error };
   const db = await createClient();
-  const { error } = await db
+  const { data, error } = await db
     .from("olb_registrations")
-    .update({ status: "rejected", reviewed_by: userId, reviewed_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
+    .update({ status: "rejected", reviewed_by: gate.userId, reviewed_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", "pending")
+    .select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "That registration was already reviewed. Refresh the page." };
+  refresh();
+  return {};
+}
+
+function refresh() {
+  revalidatePath("/portal/directory", "layout");
+  revalidatePath("/portal/payments");
 }

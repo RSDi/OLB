@@ -17,6 +17,7 @@ import {
   canDeleteSettings,
   canUndeleteSettings,
   canManageFinances,
+  canManageRegistrations,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -37,16 +38,18 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
     .maybeSingle();
   if (!data) return { userId: user.id, member: null };
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
-  // Settings grants (0057) and the Payments grant (0101), best-effort so the
-  // guards work pre-migration (grants default false → no access, the safe
-  // default). Separate queries, so a missing 0101 column can't hide 0057's.
-  const [{ data: g }, { data: f }] = await Promise.all([
+  // Settings grants (0057), the Payments grant (0101) and the Registrations
+  // grant (0102), best-effort so the guards work pre-migration (grants default
+  // false → no access, the safe default). Separate queries, so a missing
+  // later column can't hide an earlier one.
+  const [{ data: g }, { data: f }, { data: r }] = await Promise.all([
     supabase
       .from("members")
       .select("can_edit_settings, can_delete_settings, can_undelete_settings")
       .eq("id", row.id)
       .maybeSingle(),
     supabase.from("members").select("can_manage_finances").eq("id", row.id).maybeSingle(),
+    supabase.from("members").select("can_manage_registrations").eq("id", row.id).maybeSingle(),
   ]);
   const grants = (g as Partial<MemberLike> | null) ?? {};
   return {
@@ -58,6 +61,7 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
       can_delete_settings: !!grants.can_delete_settings,
       can_undelete_settings: !!grants.can_undelete_settings,
       can_manage_finances: !!(f as Partial<MemberLike> | null)?.can_manage_finances,
+      can_manage_registrations: !!(r as Partial<MemberLike> | null)?.can_manage_registrations,
     },
   };
 }
@@ -116,6 +120,17 @@ export async function requireFinances(): Promise<GateResult> {
   if (!caller) return { error: "You must be signed in." };
   if (!canManageFinances(caller.member)) {
     return { error: "You don't have permission to manage payments." };
+  }
+  return { userId: caller.userId };
+}
+
+// Registrations (0102): reviewing registrations, placing players on teams,
+// editing and removing players.
+export async function requireRegistrations(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canManageRegistrations(caller.member)) {
+    return { error: "You don't have permission to manage registrations." };
   }
   return { userId: caller.userId };
 }

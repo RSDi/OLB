@@ -11,12 +11,13 @@ import { buildAccounts, formatAmount } from "../../../../../lib/finances/logic";
 import type { ChargeKind, PaymentsData } from "../../../../../lib/finances/types";
 import type { DirectoryPlayer } from "../../_shared/data";
 import { JerseyNumber, TeamDot } from "../../_shared/TeamBanner";
-import { ContactLine, ParentBlock, RequirementChips, formatDate, muted, playerAddress } from "../../_shared/PlayerParts";
+import { ContactLine, ParentBlock, RequirementChips, TeamPicker, formatDate, muted, playerAddress } from "../../_shared/PlayerParts";
 import { RequirementDialog } from "../../RequirementDialog";
 import { AccountDetail } from "../../../payments/AccountDetail";
 import { ChargeDialog } from "../../../payments/ChargeDialog";
 import { PaymentDialog } from "../../../payments/PaymentDialog";
 import { BalanceChip } from "../../../payments/parts";
+import { EditPlayerSheet } from "./EditPlayerSheet";
 
 const cap: React.CSSProperties = {
   fontSize: 11,
@@ -29,6 +30,7 @@ const cap: React.CSSProperties = {
 // A player's own page: the Directory card's details, links to their parents'
 // and siblings' pages, requirements for the board, and the family's balance
 // for the Treasurer (who can record from here) or the player's own parents.
+// The Registrations grant also gets the team picker and Edit player.
 export function PlayerDetail({
   player: p,
   siblings,
@@ -37,6 +39,7 @@ export function PlayerDetail({
   requirementRows,
   payments,
   canManageFinances,
+  teams,
 }: {
   player: DirectoryPlayer;
   siblings: DirectoryPlayer[];
@@ -46,8 +49,11 @@ export function PlayerDetail({
   // The family's charges and payments, when this viewer may see them.
   payments: PaymentsData | null;
   canManageFinances: boolean;
+  // The season's teams, for the Registrations grant; null for everyone else.
+  teams: { id: string; name: string; age_group: string | null }[] | null;
 }) {
   const [openReq, setOpenReq] = useState<Requirement | null>(null);
+  const [editing, setEditing] = useState(false);
   const [openMoney, setOpenMoney] = useState<"payment" | ChargeKind | null>(null);
   const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
   const account = useMemo(
@@ -97,6 +103,13 @@ export function PlayerDetail({
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
           {!p.directory_optin && <span className="rsd-chip rsd-chip-mute">Not in directory</span>}
+          {teams && (
+            <span data-tour="player-edit" style={{ marginLeft: "auto", display: "inline-flex" }}>
+              <Pill size="sm" variant="dark" onClick={() => setEditing(true)}>
+                Edit player
+              </Pill>
+            </span>
+          )}
         </div>
         {facts.length > 0 && <div style={{ ...muted, fontSize: 13 }}>{facts.join(" · ")}</div>}
         {addr && (
@@ -110,6 +123,7 @@ export function PlayerDetail({
         {isStaff && requirements.length > 0 && (
           <RequirementChips player={p} requirements={requirements} rows={rows} onOpen={setOpenReq} />
         )}
+        {teams && <TeamPicker player={p} teams={teams} />}
       </div>
 
       <div className="rsd-card" data-tour="player-parents" style={{ padding: "16px 20px", gap: 12 }}>
@@ -193,6 +207,7 @@ export function PlayerDetail({
           onClose={() => setOpenReq(null)}
         />
       )}
+      {editing && <EditPlayerSheet player={p} onClose={() => setEditing(false)} />}
       {account && openMoney === "payment" && <PaymentDialog account={account} onClose={() => setOpenMoney(null)} />}
       {account && (openMoney === "charge" || openMoney === "credit") && (
         <ChargeDialog account={account} kind={openMoney} onClose={() => setOpenMoney(null)} />

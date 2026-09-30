@@ -1,7 +1,7 @@
 "use client";
-// Settings → Teams: the current season's teams. Players are placed on them in
-// the Team manager; staff and volunteers are assigned on each team's
-// Directory page.
+// Settings → Teams: the current season's teams. Players are put on them in
+// the Directory; staff and volunteers are assigned on each team's Directory
+// page.
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -98,7 +98,7 @@ export function TeamsSettingsTab() {
     const n = players.get(t.id) ?? 0;
     const msg =
       n > 0
-        ? `Delete ${teamLabel(t)}? Its ${n} players go back to Unassigned in the Team manager, and its volunteer spots are cleared.`
+        ? `Delete ${teamLabel(t)}? Its ${n} players go back to No team yet in the Directory, and its volunteer spots are cleared.`
         : `Delete ${teamLabel(t)}? Its volunteer spots are cleared.`;
     if (!confirm(msg)) return;
     setError(null);
@@ -111,11 +111,11 @@ export function TeamsSettingsTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 560 }}>
-          {season ? `${season} season. ` : ""}Players are placed on teams in the{" "}
-          <Link href="/portal/teams" prefetch={false} style={{ color: "var(--gw-fg)", fontWeight: 700 }}>
-            Team manager
+          {season ? `${season} season. ` : ""}Players are put on teams in the{" "}
+          <Link href="/portal/directory" prefetch={false} style={{ color: "var(--gw-fg)", fontWeight: 700 }}>
+            Directory
           </Link>
-          ; coaches and volunteers are assigned on each team&apos;s page in the Directory.
+          ; coaches and volunteers are assigned on each team&apos;s page there.
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {!adding && season && (

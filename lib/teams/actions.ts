@@ -1,79 +1,62 @@
 "use server";
+// The roster, from the Directory: putting a player on a team, Edit player,
+// and taking a player off the roster. For anyone with the Registrations
+// permission (0102); RLS and remove_olb_player() check it again.
+
+import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
-import { requireTeamManager } from "./guard";
+import { requireRegistrations } from "../auth/guards";
+import { cleanPlayerEdit, type PlayerEdit } from "./roster-logic";
 
-export async function movePlayer(playerId: string, toTeamId: string | null): Promise<void> {
-  await requireTeamManager();
+type Result = { error?: string };
+
+function refresh() {
+  revalidatePath("/portal/directory", "layout");
+  revalidatePath("/portal/payments");
+}
+
+// Puts a player on a team, or back under No team yet (null).
+export async function placePlayer(playerId: string, teamId: string | null): Promise<Result> {
+  const gate = await requireRegistrations();
+  if ("error" in gate) return { error: gate.error };
   const db = await createClient();
-  const { error } = await db
+  const { data, error } = await db
     .from("olb_players")
-    .update({ team_id: toTeamId, updated_at: new Date().toISOString() })
-    .eq("id", playerId);
-  if (error) throw new Error(error.message);
+    .update({ team_id: teamId || null, updated_at: new Date().toISOString() })
+    .eq("id", playerId)
+    .select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "That player couldn't be moved. Refresh the page and try again." };
+  refresh();
+  return {};
 }
 
-export async function moveCoach(coachId: string, toTeamId: string | null): Promise<void> {
-  await requireTeamManager();
+export async function updatePlayer(playerId: string, input: PlayerEdit): Promise<Result> {
+  const gate = await requireRegistrations();
+  if ("error" in gate) return { error: gate.error };
+  const clean = cleanPlayerEdit(input);
+  if ("error" in clean) return { error: clean.error };
   const db = await createClient();
-  const { error } = await db
-    .from("olb_coaches")
-    .update({ team_id: toTeamId, updated_at: new Date().toISOString() })
-    .eq("id", coachId);
-  if (error) throw new Error(error.message);
-}
-
-export async function updatePlayer(
-  id: string,
-  fields: { full_name: string; dob: string | null; grade: string | null; jersey_number: string | null },
-): Promise<void> {
-  await requireTeamManager();
-  // Editing a player clears the import flag — the data has now been reviewed.
-  const db = await createClient();
-  const { error } = await db
+  const { data, error } = await db
     .from("olb_players")
-    .update({
-      full_name: fields.full_name,
-      dob: fields.dob,
-      grade: fields.grade,
-      jersey_number: fields.jersey_number,
-      import_flag: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
+    .update({ ...clean.value, updated_at: new Date().toISOString() })
+    .eq("id", playerId)
+    .select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "That player couldn't be saved. Refresh the page and try again." };
+  refresh();
+  return {};
 }
 
-export async function deletePlayer(id: string): Promise<void> {
-  await requireTeamManager();
+// Takes a player off the roster for good, with their parent links and
+// requirement check-offs. Refused while they have charges or payments that
+// aren't voided.
+export async function removePlayer(playerId: string): Promise<Result> {
+  const gate = await requireRegistrations();
+  if ("error" in gate) return { error: gate.error };
   const db = await createClient();
-  const { error } = await db.from("olb_players").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-}
-
-export async function deleteCoach(id: string): Promise<void> {
-  await requireTeamManager();
-  const db = await createClient();
-  const { error } = await db.from("olb_coaches").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-}
-
-export async function updateTeam(
-  id: string,
-  fields: {
-    name: string;
-    color: string | null;
-    grade_label: string | null;
-    division: string | null;
-    target_size: number | null;
-    min_size: number | null;
-    max_size: number | null;
-  },
-): Promise<void> {
-  await requireTeamManager();
-  const db = await createClient();
-  const { error } = await db
-    .from("olb_teams")
-    .update({ ...fields, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw new Error(error.message);
+  const { error } = await db.rpc("remove_olb_player", { p_player_id: playerId });
+  if (error) return { error: error.message };
+  refresh();
+  return {};
 }
