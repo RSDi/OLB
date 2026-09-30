@@ -127,17 +127,27 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
     title: "Asking a question (Search page)",
     group: "Getting started",
     audience: "everyone",
-    keywords: ["search", "ask", "question", "ai", "answer", "find", "sources", "portal search"],
+    keywords: ["search", "ask", "question", "ai", "answer", "find", "sources", "portal search", "follow-up", "assistant", "log"],
     routes: ["/portal/search"],
     body: `The Search page answers questions about the club in plain words. It isn't in the sidebar: type **/portal/search** after the portal's web address to open it.
 
-**Ask anything.** Type a question in the big box, like "When is the next tournament?", and press **Enter** or the arrow button. You can also tap one of the suggested questions or a **Popular topics** card.
+**Ask anything.** Type a question in the big box, like "When is our next game?", and press **Enter** or the arrow button. You can also tap one of the suggested questions or a **Popular topics** card.
 
-**AI answer.** A short answer appears at the top, written only from records you can already open in the portal: members, playbooks, events, tasks, Slack messages (and, for the board, external contacts). The small numbers in the answer, and the cards under **Sources**, open the record each fact came from. AI can make mistakes, so open the source before you act on it.
+**It knows who's asking.** The assistant knows your name, your role, and your children's teams, so "When does my son's team practice?" works.
 
-**In the portal.** Below the answer is every record that matched. Tap a type, like **Playbooks**, to show only those, or **All** to see everything again.
+**Watch it look things up.** While it works, lines like *Searching for "uniforms"* or *Checking the calendar* show where it's looking. Once the answer is ready they fold into **Looked in 3 places**; tap that to see them again.
 
-Tap **Search home** to start over. To share a search, copy the page's address: it includes your question. Whoever opens it only sees what their own account allows.`,
+**AI answer.** The answer is written only from records you can already open in the portal: members, teams, the calendar, playbooks, tasks, Slack messages (and, for the board, external contacts and the high school schedule). The small numbers in the answer, and the cards under **Sources**, open the record each fact came from. AI can make mistakes, so open the source before you act on it.
+
+**It may ask you first.** If your question could mean different things, like which team, it asks, with buttons to tap for the answer.
+
+**Follow-ups.** Under the answer, **Ask a follow-up** keeps the conversation going ("What about Thursday?"). To start fresh, use **Start a new search** at the top, or **Search home**.
+
+**In the portal.** Below the answer is every record that matched your words. Tap a type, like **Playbooks**, to show only those, or **All** to see everything again.
+
+**Your questions are logged.** Each question, and which records the answer used, is saved so the club can see what people look for and improve the answers. Only super-admins can read the log.
+
+To share a search, copy the page's address: it includes your first question. Whoever opens it only sees what their own account allows.`,
   },
   {
     id: "planning",

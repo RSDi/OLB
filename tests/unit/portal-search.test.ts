@@ -1,9 +1,9 @@
 // The portal's /portal/search page (lib/portal-search/query.ts): turning a
-// question into search words, merging what each word finds, and numbering
-// the top records for the AI answer.
+// question into search words, merging what each word finds, numbering the
+// records an answer can cite, and the progress lines the page shows.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { answerContext, mergeHits, searchTerms, type TermHits } from "../../lib/portal-search/query.ts";
+import { mergeHits, searchTerms, SourceRegistry, stepLabel, stripCitations, type TermHits } from "../../lib/portal-search/query.ts";
 import type { SearchHit } from "../../lib/search/useGlobalSearch.ts";
 
 const hit = (entity_type: SearchHit["entity_type"], id: string, title: string, rank = 0.1): SearchHit => ({
@@ -38,19 +38,41 @@ test("a word-for-word match of the whole question counts extra", () => {
   assert.equal(merged[0].id, "p2");
 });
 
-test("answerContext numbers records and falls back to the result's own text", () => {
-  const hits = mergeHits([{ term: "x", whole: false, hits: [hit("member", "m1", "Pat Smith"), hit("slack", "s1", "See you at practice")] }]);
-  const texts = new Map([["member:m1", "Name: Pat Smith\nPhone: 555-0100"]]);
-  const { sources, context } = answerContext(hits, texts);
-  assert.deepEqual(sources.map((s) => [s.n, s.entity_type]), [[1, "member"], [2, "slack"]]);
-  assert.match(context, /^\[1\] Member: Pat Smith\nName: Pat Smith\nPhone: 555-0100/);
-  assert.match(context, /\[2\] Slack message: See you at practice\nSee you at practice/);
+test("SourceRegistry numbers each record once, in the order it's found", () => {
+  const reg = new SourceRegistry();
+  const a = reg.add({ entity_type: "playbook", id: "p1", title: "Game day", href: "/portal/docs/p1", text: "short" });
+  const b = reg.add({ entity_type: "event", id: "e1", title: "Tournament", href: "/portal/events/e1/edit", text: "Sat" });
+  const again = reg.add({ entity_type: "playbook", id: "p1", title: "Game day", href: "/portal/docs/p1", text: "a longer full text" });
+  assert.deepEqual([a, b, again], [1, 2, 1]);
+  // The longer text wins, so a full record replaces a search snippet.
+  assert.equal(reg.get(1)?.text, "a longer full text");
+  assert.deepEqual(reg.sources().map((s) => [s.n, s.entity_type]), [[1, "playbook"], [2, "event"]]);
+  assert.equal(reg.get(3), undefined);
 });
 
-test("answerContext stays within its budget", () => {
-  const many = Array.from({ length: 20 }, (_, i) => hit("playbook", `p${i}`, `Playbook ${i}`));
-  const texts = new Map(many.map((h) => [`playbook:${h.id}`, "x".repeat(5000)]));
-  const { sources, context } = answerContext(mergeHits([{ term: "p", whole: false, hits: many }]), texts, { budget: 10_000 });
-  assert.ok(sources.length >= 1 && sources.length < 12);
-  assert.ok(context.length <= 10_000 + 3100);
+test("SourceRegistry.cited lists what an answer cites, in order, once each", () => {
+  const reg = new SourceRegistry();
+  reg.add({ entity_type: "playbook", id: "p1", title: "Game day", href: "/x", text: "t" });
+  reg.add({ entity_type: "team", id: "t1", title: "12U Black", href: "/y", text: "t" });
+  const cited = reg.cited("Arrive at 8am [2]. Bring water [1][2]. Parking is free [9].");
+  assert.deepEqual(cited.map((c) => [c.n, c.id]), [[2, "t1"], [1, "p1"]]);
+});
+
+test("SourceRegistry caps a record's text", () => {
+  const reg = new SourceRegistry();
+  reg.add({ entity_type: "playbook", id: "p1", title: "Long", href: "/x", text: "x".repeat(20_000) });
+  assert.ok((reg.get(1)?.text.length ?? 0) <= 8_002);
+});
+
+test("stripCitations drops an earlier answer's [n] markers", () => {
+  assert.equal(stripCitations("Practice is Tuesday [1]. Games on Saturday [2][3]."), "Practice is Tuesday. Games on Saturday.");
+});
+
+test("stepLabel describes each lookup in plain words", () => {
+  assert.equal(stepLabel("search_portal", { query: "uniform order" }), "Searching for “uniform order”");
+  assert.equal(stepLabel("schedule", { from: "2026-10-03", to: "2026-10-04", team: "12U" }), "Checking the calendar, Oct 3 – Oct 4 (12U)");
+  assert.equal(stepLabel("team", { name: "10U" }), "Looking up the 10U team");
+  assert.equal(stepLabel("tasks", { filter: "overdue" }), "Checking overdue tasks");
+  assert.equal(stepLabel("get_record", { source: 2 }), "Reading source 2");
+  assert.equal(stepLabel("something_new", {}), "Looking something up");
 });
