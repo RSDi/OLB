@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { assignShutdown } from "../../../lib/shutdown/actions";
+import { ComboSelect } from "../../components/ComboSelect";
 
 export interface ShutdownTeamMember {
   id: string;
@@ -74,7 +75,7 @@ export function ShutdownAssignment({
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
             {assigneeName ? "Reassign to" : "Assign to"}
           </span>
-          <select
+          <ComboSelect
             value={assigneeId ?? ""}
             onChange={(e) => assign(e.target.value)}
             disabled={pending}
@@ -86,7 +87,7 @@ export function ShutdownAssignment({
                 {m.fullName}
               </option>
             ))}
-          </select>
+          </ComboSelect>
         </label>
       )}
 

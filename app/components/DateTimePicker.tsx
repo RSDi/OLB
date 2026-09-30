@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icons } from "./icons";
+import { ComboSelect } from "./ComboSelect";
 
 // On-brand date + time picker replacing the native <input type="datetime-local">
 // (whose calendar is off-theme and whose time scroller is painful). Value is the
@@ -284,7 +285,7 @@ export function DateTimePicker({
           {/* Time row */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, borderTop: "1px solid var(--gw-border)", paddingTop: 12 }}>
             <Icons.Clock width={15} height={15} />
-            <select
+            <ComboSelect
               aria-label="Hour"
               value={hour12}
               onChange={(e) => setTime(to24(Number(e.target.value), ampm), min)}
@@ -293,9 +294,9 @@ export function DateTimePicker({
               {Array.from({ length: 12 }, (_, i) => i + 1).map((hh) => (
                 <option key={hh} value={hh}>{hh}</option>
               ))}
-            </select>
+            </ComboSelect>
             <span style={{ fontWeight: 800, color: "var(--gw-fg-muted)" }}>:</span>
-            <select
+            <ComboSelect
               aria-label="Minute"
               value={min}
               onChange={(e) => setTime(h, Number(e.target.value))}
@@ -304,8 +305,8 @@ export function DateTimePicker({
               {minuteOpts.map((mm) => (
                 <option key={mm} value={mm}>{pad2(mm)}</option>
               ))}
-            </select>
-            <select
+            </ComboSelect>
+            <ComboSelect
               aria-label="AM or PM"
               value={ampm}
               onChange={(e) => setTime(to24(hour12, e.target.value as "AM" | "PM"), min)}
@@ -313,7 +314,7 @@ export function DateTimePicker({
             >
               <option value="AM">AM</option>
               <option value="PM">PM</option>
-            </select>
+            </ComboSelect>
           </div>
 
           {/* Footer */}

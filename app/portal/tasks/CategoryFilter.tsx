@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { ComboSelect } from "../../components/ComboSelect";
 
 // The category filter as a single dropdown instead of a row of chips — one of
 // the declutter moves on the Opportunities page. Each option carries the full
@@ -16,7 +17,7 @@ export function CategoryFilter({ value, options }: { value: string; options: Cat
   return (
     <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
       <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Category</span>
-      <select
+      <ComboSelect
         value={value}
         onChange={(e) => {
           const opt = options.find((o) => o.value === e.target.value);
@@ -39,7 +40,7 @@ export function CategoryFilter({ value, options }: { value: string; options: Cat
             {o.label}
           </option>
         ))}
-      </select>
+      </ComboSelect>
     </label>
   );
 }

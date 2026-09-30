@@ -11,6 +11,7 @@ import { teamLabel } from "../../../../lib/teams/volunteer-options";
 import type { DirectoryParent, DirectoryPlayer } from "./data";
 import type { PlayerRequirement, Requirement } from "../../../../lib/requirements/types";
 import { doneWord, requirementLabel, rowKey, stateFor } from "../../../../lib/requirements/logic";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 export function formatDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -201,7 +202,7 @@ export function TeamPicker({
       >
         Team
       </label>
-      <select
+      <ComboSelect
         id={`team-${player.id}`}
         value={value}
         onChange={(e) => change(e.target.value)}
@@ -226,7 +227,7 @@ export function TeamPicker({
             {teamLabel(t)}
           </option>
         ))}
-      </select>
+      </ComboSelect>
       {busy && <span style={muted}>Saving…</span>}
       {error && (
         <span role="alert" style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-error)" }}>

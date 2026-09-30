@@ -20,6 +20,7 @@ import {
   type LinkedContactRow,
   type PickerOption,
 } from "../../contacts/_shared/LinkedContacts";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 export interface PlaybookDetailData {
   id: string;
@@ -321,7 +322,7 @@ export function PlaybookDetail({
         >
           <label style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}>
             Category
-            <select
+            <ComboSelect
               value={categoryId ?? ""}
               onChange={(e) => setCategoryId(e.target.value || null)}
               style={{
@@ -341,7 +342,7 @@ export function PlaybookDetail({
                   {c.name}
                 </option>
               ))}
-            </select>
+            </ComboSelect>
           </label>
         </div>
       )}

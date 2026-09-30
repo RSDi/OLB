@@ -4,6 +4,7 @@ import { Icons } from "../../../components/icons";
 import { createClient } from "../../../../lib/supabase/server";
 import { getAuthUser } from "../../../../lib/auth/viewer";
 import { isStaff, type MemberLike } from "../../../../lib/auth/permissions";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 interface InstanceRow {
   id: string;
@@ -174,7 +175,7 @@ export default async function PmCalendarPage({
             style={{ display: "inline-flex", gap: 4 }}
           >
             <input type="hidden" name="month" value={monthParam(month)} />
-            <select
+            <ComboSelect
               name="area"
               defaultValue={areaFilter ?? ""}
               onChange={undefined}
@@ -199,7 +200,7 @@ export default async function PmCalendarPage({
                   {a.name}
                 </option>
               ))}
-            </select>
+            </ComboSelect>
             <button
               type="submit"
               style={{

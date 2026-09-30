@@ -52,6 +52,7 @@ import type { TeamPick } from "./TeamAdder";
 import { WeekendSheet } from "./WeekendSheet";
 import { TravelChip, TravelPopover } from "./TravelPopover";
 import { placesNear, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 export interface CompareWeekend {
   id: string;
@@ -326,7 +327,7 @@ export function ScheduleView({
           {seasons.length > 1 && (
             <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, fontWeight: 600 }} data-tour="schedule-compare">
               Compare with
-              <select
+              <ComboSelect
                 value={compare?.season ?? ""}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -342,7 +343,7 @@ export function ScheduleView({
                       {seasonLabel(s.season)}
                     </option>
                   ))}
-              </select>
+              </ComboSelect>
             </label>
           )}
         </div>

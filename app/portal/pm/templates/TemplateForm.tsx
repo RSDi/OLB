@@ -9,6 +9,7 @@ import {
   softDeleteTemplate,
 } from "../../../../lib/pm/actions";
 import type { ScheduleKind } from "../../../../lib/pm/schedule";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 interface Area {
   id: string;
@@ -333,7 +334,7 @@ export function TemplateForm({
           label={
             <>
               Weekly on&nbsp;
-              <select
+              <ComboSelect
                 value={scheduleKind === "weekly_day" ? scheduleValue : 1}
                 onChange={(e) => setScheduleValue(Number(e.target.value))}
                 onFocus={() => pickScheduleKind("weekly_day")}
@@ -345,7 +346,7 @@ export function TemplateForm({
                     {d.label}
                   </option>
                 ))}
-              </select>
+              </ComboSelect>
             </>
           }
         />

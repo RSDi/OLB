@@ -9,6 +9,7 @@ import {
 } from "../../../lib/maintenance/actions";
 import { memberDisplayName } from "../../../lib/members/display";
 import { formatShortDate } from "../../../lib/dates/today";
+import { ComboSelect } from "../../components/ComboSelect";
 
 interface PriorityOption {
   id: string;
@@ -285,7 +286,7 @@ function InlineAssignSelect({
   }
 
   return (
-    <select
+    <ComboSelect
       value={value}
       onChange={handleChange}
       disabled={pending}
@@ -313,7 +314,7 @@ function InlineAssignSelect({
           {memberDisplayName(s)}
         </option>
       ))}
-    </select>
+    </ComboSelect>
   );
 }
 
@@ -331,7 +332,7 @@ export function ChipSelect({
   children: ReactNode;
 }) {
   return (
-    <select
+    <ComboSelect
       value={value}
       onChange={onChange}
       disabled={disabled}
@@ -348,7 +349,7 @@ export function ChipSelect({
       }}
     >
       {children}
-    </select>
+    </ComboSelect>
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 import type { ReactNode, CSSProperties } from "react";
 import Link from "next/link";
+import { ComboSelect } from "./ComboSelect";
 import { HelpTip } from "./HelpTip";
 import { Icons } from "./icons";
 
@@ -214,7 +215,7 @@ export function Select({ label, help, style, children, ...props }: SelectProps) 
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {label && <FieldLabel label={label} help={help} />}
-      <select
+      <ComboSelect
         {...props}
         style={{
           height: 42, padding: "0 14px",
@@ -230,7 +231,7 @@ export function Select({ label, help, style, children, ...props }: SelectProps) 
         }}
       >
         {children}
-      </select>
+      </ComboSelect>
     </label>
   );
 }

@@ -94,7 +94,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: "Getting around",
     group: "Getting started",
     audience: "everyone",
-    keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k", "scroll", "back to top", "jump to top", "tour", "walkthrough", "show me around", "take the tour"],
+    keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k", "scroll", "back to top", "jump to top", "tour", "walkthrough", "show me around", "take the tour", "dropdown", "drop down", "pick list", "autocomplete", "space bar"],
     body: `**Home is the Directory.** After you sign in you land on the Directory of players and parents.
 
 **The sidebar** on the left has everything you can use — you only see the parts that apply to you:
@@ -113,6 +113,8 @@ Below a thin line you may see extra links the club has added, like **Schedule**.
 On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a phone, tap the **menu** button at the top left to open it.
 
 **Search.** The search box at the top of every page finds members, playbooks and Slack messages (and, for coaches and the board, external contacts). Press **⌘K** on a Mac or **Ctrl K** on Windows to jump to it from anywhere. Type at least 2 letters, use the arrow keys and **Enter** to open a result, and **Esc** to close. Tap the **×** inside the box to clear what you typed and start over. Your last few searches are remembered under **Recent**. To find a *player*, use the search box on the Directory page instead. That one, and the other search boxes on a page, have the same **×**.
+
+**Dropdowns.** On a computer, every dropdown works the same way. Start typing to narrow the list to what matches, or press the space bar (or the down arrow, or click it) to see the whole list. Move with the arrow keys and press **Enter** or **Tab** to pick, or click one. **Esc** closes the list without changing anything. On a phone, tapping a dropdown opens your phone's own picker.
 
 **Back to the top.** On a long page, once you scroll down a yellow round button with an up arrow appears in the bottom right corner. Tap it to jump back to the top of the page.
 

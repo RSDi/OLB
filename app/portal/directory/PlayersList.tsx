@@ -20,6 +20,7 @@ import {
 } from "../../../lib/requirements/logic";
 import { RequirementDialog } from "./RequirementDialog";
 import { ContactLine, ParentBlock, RequirementChips, TeamPicker, formatDate, muted, playerAddress } from "./_shared/PlayerParts";
+import { ComboSelect } from "../../components/ComboSelect";
 
 const NO_GROUP = "No age group";
 
@@ -255,7 +256,7 @@ export function PlayersList({
 
       {isStaff && requirements.length > 0 && (
         <div data-tour="directory-requirements" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <select
+          <ComboSelect
             value={reqId}
             onChange={(e) => {
               setReqId(e.target.value);
@@ -272,7 +273,7 @@ export function PlayersList({
                 {requirementLabel(r)}
               </option>
             ))}
-          </select>
+          </ComboSelect>
           {pickedReq && (
             <div
               role="group"

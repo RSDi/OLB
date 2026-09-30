@@ -16,6 +16,7 @@ import {
   type BusyWindow,
 } from "../../../../lib/requests/availability";
 import { resolveRequestDates, formatDateLabel } from "../../../../lib/requests/recurrence";
+import { ComboSelect } from "../../../components/ComboSelect";
 
 // Availability-aware date+time picker. Shows the months calendar, then the
 // free start times for the chosen day (existing reservations for the space are
@@ -339,14 +340,14 @@ export function PerDayHours({
         return (
           <div key={date} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ flex: "0 0 60px", fontSize: 13, fontWeight: 700 }}>{formatDateLabel(date)}</span>
-            <select value={startValid ? str(cur.start) : ""} onChange={(e) => setDay(date, e.target.value, "")} style={selectStyle}>
+            <ComboSelect value={startValid ? str(cur.start) : ""} onChange={(e) => setDay(date, e.target.value, "")} style={selectStyle}>
               <option value="">Start…</option>
               {starts.map((m) => (
                 <option key={m} value={minutesToHHMM(m)}>{minutesTo12h(m)}</option>
               ))}
-            </select>
+            </ComboSelect>
             <span style={{ fontSize: 12.5, color: "var(--gw-fg-muted)" }}>to</span>
-            <select
+            <ComboSelect
               value={endOpts.includes(hhmmToMinutes(str(cur.end)) ?? -1) ? str(cur.end) : ""}
               disabled={!startValid}
               onChange={(e) => setDay(date, str(cur.start), e.target.value)}
@@ -356,7 +357,7 @@ export function PerDayHours({
               {endOpts.map((m) => (
                 <option key={m} value={minutesToHHMM(m)}>{minutesTo12h(m)}</option>
               ))}
-            </select>
+            </ComboSelect>
           </div>
         );
       })}
