@@ -7,7 +7,7 @@
 // couldn't open themselves. Each record a tool returns is numbered in the
 // turn's SourceRegistry, which is what the answer's [n] citations point at.
 
-import { tool, type ToolSet } from "ai";
+import { rerank, tool, type ToolSet } from "ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Viewer } from "../auth/viewer";
@@ -24,6 +24,7 @@ import {
   type SourceRegistry,
   type TermHits,
 } from "./query";
+import { RERANK_MODEL } from "./chunks";
 import { loadRecordTexts, runSearches } from "./records";
 
 const WEEKDAY_DATE = new Intl.DateTimeFormat("en-US", {
@@ -100,9 +101,28 @@ export function makeTools({
         const lists = await runSearches(supabase, query, searchTerms(query), texts);
         onSearch(lists);
         const hits = mergeHits(lists, 40).filter((h) => !types?.length || (types as string[]).includes(h.entity_type));
-        const top = hits.slice(0, 8);
-        if (!top.length) return { found: 0, tip: "Nothing matched. Try other or fewer words." };
-        await loadRecordTexts(supabase, top, texts);
+        if (!hits.length) return { found: 0, tip: "Nothing matched. Try other or fewer words." };
+        // The 20 best candidates, re-ordered by how well each one's text
+        // answers the query, and the 8 best kept. Without the reranker
+        // (gateway down), the merged order stands.
+        const candidates = hits.slice(0, 20);
+        await loadRecordTexts(supabase, candidates, texts);
+        const textOf = (h: (typeof hits)[number]) =>
+          texts.get(`${h.entity_type}:${h.id}`) ?? [h.title, h.subtitle].filter(Boolean).join("\n");
+        let top = candidates.slice(0, 8);
+        if (candidates.length > 8) {
+          try {
+            const { ranking } = await rerank({
+              model: RERANK_MODEL,
+              query,
+              documents: candidates.map((h) => cut(textOf(h), 2000)),
+              topN: 8,
+            });
+            top = ranking.map((r) => candidates[r.originalIndex]).filter(Boolean);
+          } catch (err) {
+            console.error("[portal-search] rerank failed", err instanceof Error ? err.message : err);
+          }
+        }
         return top.map((h) => {
           const text = texts.get(`${h.entity_type}:${h.id}`) ?? [h.title, h.subtitle].filter(Boolean).join("\n");
           const source = registry.add({ entity_type: h.entity_type, id: h.id, title: h.title, href: h.href, text });

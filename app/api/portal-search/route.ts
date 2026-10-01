@@ -1,7 +1,9 @@
 import type { ModelMessage } from "ai";
+import { after } from "next/server";
 import { getViewer } from "@/lib/auth/viewer";
 import { createClient } from "@/lib/supabase/server";
 import { loadMemberContext, makeTools } from "@/lib/portal-search/assistant";
+import { processIndexQueue } from "@/lib/portal-search/indexer";
 import { logSearch } from "@/lib/portal-search/log";
 import { mergeHits, searchTerms, SourceRegistry, stripCitations, type TermHits } from "@/lib/portal-search/query";
 import { runAssistant } from "@/lib/portal-search/run";
@@ -38,6 +40,7 @@ const MAX_HISTORY = 6; // earlier turns sent back, as question + answer pairs
 const WINDOW_MS = 60_000;
 const PER_WINDOW = 12;
 const recent = new Map<string, number[]>();
+let indexWarned = false;
 
 function allowAnswer(key: string): boolean {
   const now = Date.now();
@@ -100,6 +103,23 @@ export async function POST(request: Request) {
     // fall through to the empty-question response
   }
   if (!q) return Response.json({ error: "Ask a question or enter a search." }, { status: 400 });
+
+  // Once the answer is sent, bring the search-by-meaning index up to date
+  // with whatever changed since (lib/portal-search/indexer.ts), so it stays
+  // fresh between nightly runs.
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    after(async () => {
+      const left = maxDuration * 1000 - (Date.now() - started) - 5000;
+      if (left < 3000) return;
+      const run = await processIndexQueue({ deadlineMs: Math.min(15_000, left), maxItems: 100 });
+      // Logged once per server instance: before migration 0113 every search
+      // would otherwise report the same missing table.
+      if (run.errors.length && !indexWarned) {
+        indexWarned = true;
+        console.error("[search-index] after search:", run.errors.join("; "));
+      }
+    });
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({

@@ -482,7 +482,7 @@ function Records({ q, results, submit }: { q: string; results: RankedHit[] | nul
       ) : results.length === 0 ? (
         <div className={styles.noResults}>
           <p>
-            No records matched <strong>“{q}”</strong> word for word. Try different words, or one of these:
+            Nothing in the portal matched <strong>“{q}”</strong>. Try different words, or one of these:
           </p>
           <div className={styles.chips}>
             {SUGGESTIONS.map((s) => (

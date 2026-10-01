@@ -7,9 +7,11 @@
 // AI reads, exactly as in the top-bar search. Nobody's answer can draw on a
 // record they couldn't open themselves.
 
+import { embed } from "ai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EntityType, SearchHit } from "../search/useGlobalSearch";
 import { CHURCH_TZ } from "../dates/today";
+import { EMBEDDING_MODEL, groupChunkHits, type ChunkRow } from "./chunks";
 import type { RankedHit, RecordText, TermHits } from "./query";
 
 interface ArchiveRow {
@@ -75,16 +77,44 @@ async function searchRecords(supabase: SupabaseClient, term: string, whole: bool
   return { term, whole, hits: (data ?? []) as SearchHit[] };
 }
 
+// Search by meaning (search_hybrid, migration 0113): the question embedded
+// and compared with the indexed chunks, blended with a keyword match on the
+// same chunks. Runs as the member, so the chunks' policy limits it to what
+// they can see. Each record's matched text goes into `texts` for the AI.
+// Before 0113 is applied, or if the embedding call fails, it finds nothing
+// and the keyword searches carry on alone; that's logged once.
+let meaningWarned = false;
+async function searchMeaning(supabase: SupabaseClient, query: string, texts: RecordText): Promise<TermHits> {
+  const none = { term: query, whole: true, hits: [] };
+  try {
+    const { embedding } = await embed({ model: EMBEDDING_MODEL, value: query });
+    const { data, error } = await supabase.rpc("search_hybrid", {
+      query_embedding: JSON.stringify(embedding),
+      query_text: query,
+      match_count: 30,
+    });
+    if (error) throw new Error(error.message);
+    const { hits, texts: matched } = groupChunkHits((data ?? []) as ChunkRow[]);
+    for (const [key, text] of matched) if (!texts.has(key)) texts.set(key, text);
+    return { term: query, whole: true, hits };
+  } catch (err) {
+    if (!meaningWarned) console.error("[portal-search] search by meaning unavailable:", err instanceof Error ? err.message : err);
+    meaningWarned = true;
+    return none;
+  }
+}
+
 // The whole question (when it's short enough to appear word for word) plus
-// each of its words, through both search functions, all at once. Slack's
-// search needs every word it's given, so it also gets all the words together.
+// each of its words, through both keyword search functions, and the whole
+// question by meaning, all at once. Slack's keyword search needs every word
+// it's given, so it also gets all the words together.
 export async function runSearches(
   supabase: SupabaseClient,
   query: string,
   terms: string[],
   texts: RecordText,
 ): Promise<TermHits[]> {
-  const searches: Array<Promise<TermHits>> = [];
+  const searches: Array<Promise<TermHits>> = [searchMeaning(supabase, query, texts)];
   const phrase = query.trim();
   if (phrase.split(/\s+/).length <= 5) searches.push(searchRecords(supabase, phrase, true));
   for (const t of terms) {

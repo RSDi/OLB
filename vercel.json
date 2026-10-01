@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/slack-archive-sync",
       "schedule": "7 5 * * *"
+    },
+    {
+      "path": "/api/cron/search-index",
+      "schedule": "41 5 * * *"
     }
   ]
 }
