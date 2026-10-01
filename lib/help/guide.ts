@@ -150,6 +150,23 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 To share a search, copy the page's address: it includes your first question. Whoever opens it only sees what their own account allows.`,
   },
   {
+    id: "search-log",
+    title: "Search log",
+    group: "Getting started",
+    audience: "super_admin",
+    keywords: ["search log", "questions", "asked", "unanswered", "couldn't answer", "gaps", "ai cost", "tokens", "log"],
+    routes: ["/portal/search/log"],
+    body: `Every question asked on the Search page, and what became of it. Open it from the **Search log** link under **Popular topics** on the Search page, or go to **/portal/search/log**. Only super-admins can see it.
+
+**At the top:** how many questions were asked and by how many people, how many got an answer with sources, how many it **Couldn't answer**, the estimated AI cost, and how long answers take. Choose **7 days**, **30 days** or **90 days**.
+
+**Questions it couldn't answer.** These are the gaps: nothing the person could see in the portal answered them. A playbook, an event or an updated record usually fixes one. Tap a question to ask it again once you've added the answer.
+
+**Questions.** The full list, newest first. Use **All**, **Couldn't answer**, **Asked which one** or **Errors & limits** to narrow it, or type in the box to find a question or a person. Tap a question to see the lookups it made, the records its answer cited, how long it took and what it cost, and **Ask it again**.
+
+The cost is an estimate from the AI's token counts. It doesn't include the small cost of searching by meaning.`,
+  },
+  {
     id: "planning",
     title: "Planning",
     group: "Planning",

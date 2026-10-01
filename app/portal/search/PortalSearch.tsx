@@ -95,7 +95,8 @@ function historyOf(turns: Turn[]): Array<{ role: "user" | "assistant"; text: str
   });
 }
 
-export function PortalSearch({ initialQuery }: { initialQuery: string }) {
+// showLog: a super-admin, who also gets a link to the Search log.
+export function PortalSearch({ initialQuery, showLog = false }: { initialQuery: string; showLog?: boolean }) {
   const [input, setInput] = useState(initialQuery);
   const [followUp, setFollowUp] = useState("");
   const [thread, setThread] = useState<Thread | null>(() =>
@@ -206,7 +207,7 @@ export function PortalSearch({ initialQuery }: { initialQuery: string }) {
   if (!thread) {
     return (
       <div className={styles.page}>
-        <Home input={input} setInput={setInput} submit={(q) => startThread(q)} />
+        <Home input={input} setInput={setInput} submit={(q) => startThread(q)} showLog={showLog} />
       </div>
     );
   }
@@ -245,7 +246,17 @@ export function PortalSearch({ initialQuery }: { initialQuery: string }) {
   );
 }
 
-function Home({ input, setInput, submit }: { input: string; setInput: (v: string) => void; submit: (q: string) => void }) {
+function Home({
+  input,
+  setInput,
+  submit,
+  showLog,
+}: {
+  input: string;
+  setInput: (v: string) => void;
+  submit: (q: string) => void;
+  showLog: boolean;
+}) {
   return (
     <>
       <section className={styles.hero}>
@@ -286,6 +297,11 @@ function Home({ input, setInput, submit }: { input: string; setInput: (v: string
             );
           })}
         </div>
+        {showLog && (
+          <Link href="/portal/search/log" className={styles.logLink}>
+            Search log: what people ask, and what it couldn’t answer <Icons.ArrowRight width={14} height={14} />
+          </Link>
+        )}
       </section>
     </>
   );

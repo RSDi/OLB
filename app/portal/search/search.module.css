@@ -206,6 +206,17 @@
 }
 .topicText { display: flex; flex-direction: column; min-width: 0; }
 .topicTitle { font-weight: 600; }
+.logLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.logLink:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
 .topicBlurb { color: var(--muted); font-size: 13.5px; line-height: 1.45; }
 
 /* ── Results ────────────────────────────────────────────────────────────── */
