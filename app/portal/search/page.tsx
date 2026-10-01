@@ -21,5 +21,5 @@ export default async function PortalSearchPage({ searchParams }: { searchParams:
   }
   const { q } = await searchParams;
   const initial = (Array.isArray(q) ? q[0] : q)?.trim().slice(0, 200) ?? "";
-  return <PortalSearch initialQuery={initial} />;
+  return <PortalSearch initialQuery={initial} showLog={viewer.isSuperAdmin} />;
 }
