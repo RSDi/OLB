@@ -719,7 +719,13 @@ export const GUIDE_TOURS: GuideTour[] = [
         click: "links-add",
         interactive: true,
         title: "The link",
-        body: "Type a **Label** (what people see, like Schedule) and the **Link**: a web address, or a portal page like /portal/docs. **Open in a new browser tab** is ticked to start with, so the portal stays open.",
+        body: "Type a **Label** (what people see, like Schedule) and the **Link**: a web address, or a portal page like /portal/docs.",
+      },
+      {
+        target: "links-mode",
+        interactive: true,
+        title: "How it opens",
+        body: "**Open in a new browser tab** keeps the portal open in its own tab. **Open inside the portal** shows the site in the portal, with the sidebar still there. **Open in the same tab** replaces the portal.",
       },
       {
         target: "links-save",

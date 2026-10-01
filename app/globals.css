@@ -193,6 +193,24 @@ main::-webkit-scrollbar { width: 10px; }
 main::-webkit-scrollbar-thumb { background: var(--gw-border); border-radius: 100px; border: 2px solid transparent; background-clip: content-box; }
 main::-webkit-scrollbar-track { background: transparent; }
 
+/* A sidebar link that opens inside the portal (/portal/links/<id>): the
+   framed site runs edge to edge under the top bar, with a small way out in
+   the corner. Beats the phone-width padding rule below on purpose. */
+.rsd-app main:has(> .rsd-embed) { padding: 0 !important; overflow: hidden; }
+.rsd-embed { position: relative; flex: 1 1 auto !important; min-height: 0; display: flex; }
+.rsd-embed iframe { flex: 1; width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+.rsd-embed-out {
+  position: absolute; left: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 100px;
+  background: var(--gw-bg-elev); color: var(--gw-fg-muted);
+  border: 1px solid var(--gw-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  font-size: 11px; font-weight: 700; text-decoration: none;
+  opacity: .85;
+}
+.rsd-embed-out:hover { opacity: 1; color: var(--gw-fg); }
+
 /* ─── Reusable ─── */
 .gw-press { transition: background 200ms var(--gw-ease), border-color 200ms var(--gw-ease), color 200ms var(--gw-ease), filter 200ms ease; }
 .gw-press:active { filter: brightness(0.95); }

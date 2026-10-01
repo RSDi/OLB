@@ -202,6 +202,8 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       ? { title: "Playbook", subtitle: "Operations" }
       : pathname.startsWith("/portal/slack-archive/")
       ? { title: "Channel", subtitle: "Slack Archive" }
+      : pathname.startsWith("/portal/links/")
+      ? { title: sidebarLinks.find(l => pathname === `/portal/links/${l.id}`)?.label ?? "Link", subtitle: "" }
       : { title: "Portal", subtitle: "" });
 
   // Members (non-staff) use /portal/requests as their dashboard — label it

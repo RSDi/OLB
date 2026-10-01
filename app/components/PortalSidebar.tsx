@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icons } from "./icons";
 import { createClient } from "../../lib/supabase/client";
 import type { MemberRole, MemberStatus } from "../../lib/auth/permissions";
-import type { SidebarLink } from "../../lib/sidebar-links/url";
+import { sidebarFrameHref, sidebarLinkMode, type SidebarLink } from "../../lib/sidebar-links/url";
 import { PREVIEW_EXIT_PATH } from "../../lib/activity/preview-cookie";
 import { recordSignOut } from "./ActivityBeacon";
 
@@ -312,14 +312,18 @@ export function PortalSidebar({
             <div role="separator" style={{ height: 1, background: "var(--rsd-frame-line)", margin: "8px 4px" }} />
             <div data-tour="sidebar-links" style={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {links.map(link => {
-                // Portal paths opened in the same tab behave like the items above;
-                // everything else is a plain link, in a new tab unless turned off.
-                const internal = link.url.startsWith("/") && !link.open_in_new_tab;
-                const active = internal && isActive(link.url);
+                // Portal paths opened in the same tab, and outside sites opened
+                // inside the portal (/portal/links/<id>), behave like the items
+                // above; everything else is a plain link, in a new tab unless
+                // turned off.
+                const mode = sidebarLinkMode(link);
+                const href = mode === "frame" ? sidebarFrameHref(link.id) : link.url;
+                const internal = mode === "frame" || (link.url.startsWith("/") && mode === "same_tab");
+                const active = internal && isActive(href);
                 const body = (
                   <>
                     <span style={iconStyle(active)}>
-                      {link.open_in_new_tab
+                      {mode === "new_tab"
                         ? <Icons.ExternalLink width={16} height={16}/>
                         : <Icons.Link width={16} height={16}/>}
                     </span>
@@ -336,7 +340,7 @@ export function PortalSidebar({
                 return internal ? (
                   <Link
                     key={link.id}
-                    href={link.url}
+                    href={href}
                     prefetch={false}
                     aria-current={active ? "page" : undefined}
                     className="gw-press rsd-nav-item"
