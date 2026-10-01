@@ -94,8 +94,13 @@ export function mergeHits(lists: TermHits[], limit = 20): RankedHit[] {
     .map((r) => ({ ...r.hit, matched: [...r.matched] }));
 }
 
+// Every kind of record an answer can cite: what the portal's search finds,
+// plus a team and a weekend on the high school schedule, which the
+// assistant's own lookups return.
+export type SourceType = EntityType | "team" | "schedule";
+
 // What the page shows for each kind of record, and what the AI is told it is.
-export const TYPE_LABEL: Record<EntityType, string> = {
+export const TYPE_LABEL: Record<SourceType, string> = {
   member: "Member",
   contact: "External contact",
   maintenance: "Task",
@@ -105,10 +110,12 @@ export const TYPE_LABEL: Record<EntityType, string> = {
   event: "Event",
   playbook: "Playbook",
   slack: "Slack message",
+  team: "Team",
+  schedule: "HS schedule",
 };
 
 // The filter buttons over the results.
-export const TYPE_GROUP: Record<EntityType, string> = {
+export const TYPE_GROUP: Record<SourceType, string> = {
   member: "Members",
   contact: "External contacts",
   maintenance: "Tasks",
@@ -118,40 +125,120 @@ export const TYPE_GROUP: Record<EntityType, string> = {
   event: "Events",
   playbook: "Playbooks",
   slack: "Slack",
+  team: "Teams",
+  schedule: "HS schedule",
 };
 
-export type Source = { n: number; entity_type: EntityType; title: string; href: string };
+export type Source = { n: number; entity_type: SourceType; title: string; href: string };
 
-// A record's full text for the AI, keyed by `${entity_type}:${id}`.
+// A record's full text, keyed by `${entity_type}:${id}`.
 export type RecordText = Map<string, string>;
 
-const PER_RECORD = 3000;
+export type SourceRecord = {
+  entity_type: SourceType;
+  id: string;
+  title: string;
+  href: string;
+  text: string;
+};
 
-// The records the AI answer is written from, numbered so it can cite them as
-// [1], [2]… Each is its type, title and full text (or, if its text couldn't
-// be loaded, what the search result shows), cut to a length and a total.
-export function answerContext(
-  hits: RankedHit[],
-  texts: RecordText,
-  { max = 12, budget = 30_000 } = {},
-): { sources: Source[]; context: string } {
-  const sources: Source[] = [];
-  const blocks: string[] = [];
-  let used = 0;
-  for (const hit of hits.slice(0, max)) {
-    const n = sources.length + 1;
-    const body = (texts.get(`${hit.entity_type}:${hit.id}`) ?? [hit.title, hit.subtitle].filter(Boolean).join("\n")).trim();
-    const text = body.length > PER_RECORD ? `${body.slice(0, PER_RECORD)} …` : body;
-    const block = `[${n}] ${TYPE_LABEL[hit.entity_type]}: ${oneLine(hit.title)}\n${text}\n`;
-    if (sources.length && used + block.length > budget) break;
-    sources.push({ n, entity_type: hit.entity_type, title: oneLine(hit.title), href: hit.href });
-    blocks.push(block);
-    used += block.length;
+const MAX_TEXT = 8000;
+
+type Entry = Source & { id: string; text: string };
+
+// The records one answer can cite, numbered in the order the assistant's
+// lookups first return them, so it can cite them as [1], [2]… A record found
+// twice keeps its first number. Text is cut to a length, so opening a long
+// playbook can't crowd out the rest of the answer.
+export class SourceRegistry {
+  #byKey = new Map<string, Entry>();
+  #list: Entry[] = [];
+
+  add(rec: SourceRecord): number {
+    const key = `${rec.entity_type}:${rec.id}`;
+    const have = this.#byKey.get(key);
+    if (have) {
+      if (rec.text.length > have.text.length) have.text = cut(rec.text, MAX_TEXT);
+      return have.n;
+    }
+    const entry: Entry = {
+      n: this.#list.length + 1,
+      entity_type: rec.entity_type,
+      id: rec.id,
+      title: oneLine(rec.title),
+      href: rec.href,
+      text: cut(rec.text, MAX_TEXT),
+    };
+    this.#byKey.set(key, entry);
+    this.#list.push(entry);
+    return entry.n;
   }
-  return { sources, context: blocks.join("\n") };
+
+  get(n: number): Entry | undefined {
+    return this.#list[n - 1];
+  }
+
+  sources(): Source[] {
+    return this.#list.map(({ n, entity_type, title, href }) => ({ n, entity_type, title, href }));
+  }
+
+  // The records an answer cites, in the order it first cites them.
+  cited(answer: string): Array<{ n: number; entity_type: SourceType; id: string; title: string }> {
+    const seen = new Set<number>();
+    const out: Array<{ n: number; entity_type: SourceType; id: string; title: string }> = [];
+    for (const m of answer.matchAll(/\[(\d{1,3})\]/g)) {
+      const n = Number(m[1]);
+      const s = this.#list[n - 1];
+      if (s && !seen.has(n)) {
+        seen.add(n);
+        out.push({ n: s.n, entity_type: s.entity_type, id: s.id, title: s.title });
+      }
+    }
+    return out;
+  }
 }
 
-function oneLine(s: string): string {
+export function cut(s: string, max: number): string {
+  const t = s.trim();
+  return t.length > max ? `${t.slice(0, max)} …` : t;
+}
+
+export function oneLine(s: string): string {
   const flat = s.replace(/\s+/g, " ").trim();
   return flat.length > 120 ? `${flat.slice(0, 117)}…` : flat;
+}
+
+// Earlier answers go back to the assistant as plain text for follow-ups.
+// Their [n] citations pointed at that turn's own sources, so they're dropped
+// rather than confused with this turn's numbering.
+export function stripCitations(text: string): string {
+  return text.replace(/\s*\[\d{1,3}\]/g, "").trim();
+}
+
+const LABEL_DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const labelDay = (ymd: unknown) =>
+  typeof ymd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? LABEL_DAY.format(new Date(`${ymd}T12:00:00Z`)) : "?";
+
+// The progress line the page shows while the assistant uses a tool.
+export function stepLabel(toolName: string, input: unknown): string {
+  const i = (input ?? {}) as Record<string, unknown>;
+  switch (toolName) {
+    case "search_portal":
+      return `Searching for “${String(i.query ?? "").slice(0, 60)}”`;
+    case "get_record":
+      return `Reading source ${i.source}`;
+    case "schedule":
+      return `Checking the calendar, ${labelDay(i.from)} – ${labelDay(i.to)}${i.team ? ` (${String(i.team).slice(0, 30)})` : ""}`;
+    case "team":
+      return `Looking up the ${String(i.name ?? "").slice(0, 40)} team`;
+    case "tasks":
+      return {
+        mine: "Checking your tasks",
+        open: "Checking open tasks",
+        overdue: "Checking overdue tasks",
+        due_soon: "Checking tasks due soon",
+      }[String(i.filter)] ?? "Checking tasks";
+    default:
+      return "Looking something up";
+  }
 }
