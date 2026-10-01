@@ -11,7 +11,7 @@ export const getSidebarLinks = cache(async (): Promise<SidebarLink[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sidebar_links")
-    .select("id, label, url, open_in_new_tab, sort_order")
+    .select("id, label, url, open_in_new_tab, open_in_frame, sort_order")
     .order("sort_order")
     .order("label");
   if (error) return [];

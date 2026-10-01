@@ -64,7 +64,7 @@ export interface GuideViewer {
   canManageTravel?: boolean;
 }
 
-export const GUIDE_UPDATED = "September 2026";
+export const GUIDE_UPDATED = "October 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -94,7 +94,9 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: "Getting around",
     group: "Getting started",
     audience: "everyone",
-    keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k", "scroll", "back to top", "jump to top", "tour", "walkthrough", "show me around", "take the tour", "dropdown", "drop down", "pick list", "autocomplete", "space bar"],
+    // A sidebar link that opens inside the portal.
+    routes: ["/portal/links"],
+    keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "inside the portal", "frame", "collapse", "mobile", "phone", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k", "scroll", "back to top", "jump to top", "tour", "walkthrough", "show me around", "take the tour", "dropdown", "drop down", "pick list", "autocomplete", "space bar"],
     body: `**Home is the Directory.** After you sign in you land on the Directory of players and parents.
 
 **The sidebar** on the left has everything you can use — you only see the parts that apply to you:
@@ -108,7 +110,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 
 Coaches and board members also see the **HS Schedule** and **External Contacts** (the travel coordinator does too), and board members **Settings**, just below **User Guide**.
 
-Below a thin line you may see extra links the club has added, like **Schedule**. Most open in a new browser tab, so the portal stays open where you left it.
+Below a thin line you may see extra links the club has added, like **Schedule**. Some open in a new browser tab, so the portal stays open where you left it. Others open right inside the portal, with the sidebar still there. If one of those doesn't look right, tap **Open in a new tab** in its bottom left corner.
 
 On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a phone, tap the **menu** button at the top left to open it.
 
@@ -714,11 +716,14 @@ Tap the **trash** can to delete a category or a playbook.`,
     title: "Settings: Sidebar Links",
     group: "Settings",
     audience: "super_admin",
-    keywords: ["sidebar", "links", "link", "schedule", "website", "url", "web address", "new tab", "menu", "shortcut", "reorder"],
+    keywords: ["sidebar", "links", "link", "schedule", "website", "url", "web address", "new tab", "same tab", "inside the portal", "frame", "iframe", "embed", "menu", "shortcut", "reorder"],
     body: `Add your own links to the bottom of everyone's sidebar — the season schedule, a sign-up form, the club store. Open **Settings → Sidebar Links**.
 
 - **Add link** — type a **Label** (the name people see, like Schedule) and the **Link** (a web address like https://schedule.omahalightningbasketball.com/, or a portal page like /portal/docs). Tap **Add link**.
-- **Open in a new browser tab** is ticked to start with, so the portal stays open. Untick it for a link that should open in the same tab.
+- Pick how the link opens:
+  - **Open in a new browser tab** (the choice to start with) — the site opens in its own tab, so the portal stays open.
+  - **Open inside the portal** — the site shows right in the portal, under the top bar with the sidebar still there, so it feels like part of the portal. Some sites don't allow this; if the one you typed doesn't, saving tells you so and you can pick a new tab instead. Portal pages can't use this choice (they're already inside the portal).
+  - **Open in the same tab** — the site replaces the portal in that tab.
 - Use the arrows to change the order, the **pencil** to edit a link, and the **trash** can to remove it.
 
 Every signed-in member sees the links; only super-admins can change them.`,

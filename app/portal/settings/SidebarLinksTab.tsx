@@ -12,12 +12,35 @@ import {
   type SidebarLinkInput,
   type SidebarLinkResult,
 } from "../../../lib/sidebar-links/actions";
-import { SIDEBAR_LINK_LABEL_MAX, type SidebarLink } from "../../../lib/sidebar-links/url";
+import {
+  canOpenInFrame,
+  normalizeSidebarUrl,
+  SIDEBAR_LINK_LABEL_MAX,
+  sidebarLinkMode,
+  type SidebarLink,
+  type SidebarLinkMode,
+} from "../../../lib/sidebar-links/url";
+
+const MODES: { value: SidebarLinkMode; label: string; hint: string }[] = [
+  { value: "new_tab", label: "Open in a new browser tab", hint: "The portal stays open in its own tab." },
+  {
+    value: "frame",
+    label: "Open inside the portal",
+    hint: "The site shows in the portal, with the sidebar still there. Some sites don't allow this.",
+  },
+  { value: "same_tab", label: "Open in the same tab", hint: "The site replaces the portal in this tab." },
+];
+
+const MODE_SUMMARY: Record<SidebarLinkMode, string> = {
+  new_tab: "Opens in a new tab",
+  frame: "Opens inside the portal",
+  same_tab: "Opens in the same tab",
+};
 
 function fetchLinks() {
   return createClient()
     .from("sidebar_links")
-    .select("id, label, url, open_in_new_tab, sort_order")
+    .select("id, label, url, open_in_new_tab, open_in_frame, sort_order")
     .order("sort_order")
     .order("label");
 }
@@ -92,7 +115,8 @@ export function SidebarLinksTab() {
       >
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 540 }}>
           Extra links everyone sees at the bottom of the sidebar — the season schedule, a sign-up
-          form, the club store. Links open in a new browser tab unless you turn that off.
+          form, the club store. Each link opens in a new browser tab, inside the portal, or in the
+          same tab.
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {!adding && (
@@ -152,7 +176,7 @@ export function SidebarLinksTab() {
             editingId === link.id ? (
               <LinkForm
                 key={link.id}
-                initial={{ label: link.label, url: link.url, openInNewTab: link.open_in_new_tab }}
+                initial={{ label: link.label, url: link.url, mode: sidebarLinkMode(link) }}
                 submitLabel="Save"
                 onCancel={() => {
                   setEditingId(null);
@@ -208,7 +232,7 @@ export function SidebarLinksTab() {
                     {link.url}
                   </a>
                   <span style={{ fontSize: 11, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
-                    {link.open_in_new_tab ? "Opens in a new tab" : "Opens in the same tab"}
+                    {MODE_SUMMARY[sidebarLinkMode(link)]}
                   </span>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -248,14 +272,18 @@ function LinkForm({
 }) {
   const [label, setLabel] = useState(initial?.label ?? "");
   const [url, setUrl] = useState(initial?.url ?? "");
-  const [openInNewTab, setOpenInNewTab] = useState(initial?.openInNewTab ?? true);
+  const [mode, setMode] = useState<SidebarLinkMode>(initial?.mode ?? "new_tab");
   const [pending, setPending] = useState(false);
+  // A portal page is already inside the portal, so that choice is off for it.
+  const typed = normalizeSidebarUrl(url);
+  const frameOff = !!typed && !canOpenInFrame(typed);
+  const effectiveMode = frameOff && mode === "frame" ? "same_tab" : mode;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!label.trim() || !url.trim()) return;
     setPending(true);
-    await onSubmit({ label: label.trim(), url: url.trim(), openInNewTab });
+    await onSubmit({ label: label.trim(), url: url.trim(), mode: effectiveMode });
     setPending(false);
   }
 
@@ -282,10 +310,42 @@ function LinkForm({
           required
         />
       </div>
-      <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "var(--gw-fg)" }}>
-        <input type="checkbox" checked={openInNewTab} onChange={(e) => setOpenInNewTab(e.target.checked)} />
-        Open in a new browser tab
-      </label>
+      <div role="radiogroup" aria-label="How the link opens" data-tour="links-mode" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {MODES.map((m) => {
+          const disabled = m.value === "frame" && frameOff;
+          return (
+            <label
+              key={m.value}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--gw-fg)",
+                opacity: disabled ? 0.45 : 1,
+                cursor: disabled ? "not-allowed" : "pointer",
+              }}
+            >
+              <input
+                type="radio"
+                name="sidebar-link-mode"
+                value={m.value}
+                checked={effectiveMode === m.value}
+                disabled={disabled}
+                onChange={() => setMode(m.value)}
+                style={{ marginTop: 2 }}
+              />
+              <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {m.label}
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)" }}>
+                  {disabled ? "Portal pages already open inside the portal." : m.hint}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
       <div data-tour="links-save" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
           Cancel

@@ -3,9 +3,17 @@
 // Settings → Sidebar Links. Super-admin only, here and in RLS (migration 0097).
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { requireSuperAdmin } from "../auth/guards";
 import { createClient } from "../supabase/server";
-import { normalizeSidebarUrl, SIDEBAR_LINK_LABEL_MAX, type SidebarLink } from "./url";
+import {
+  canOpenInFrame,
+  normalizeSidebarUrl,
+  refusesFraming,
+  SIDEBAR_LINK_LABEL_MAX,
+  type SidebarLink,
+  type SidebarLinkMode,
+} from "./url";
 
 export interface SidebarLinkResult {
   success?: boolean;
@@ -15,10 +23,17 @@ export interface SidebarLinkResult {
 export interface SidebarLinkInput {
   label: string;
   url: string;
-  openInNewTab: boolean;
+  mode: SidebarLinkMode;
 }
 
-function clean(input: SidebarLinkInput): { error: string } | { label: string; url: string } {
+interface CleanLink {
+  label: string;
+  url: string;
+  open_in_new_tab: boolean;
+  open_in_frame: boolean;
+}
+
+async function clean(input: SidebarLinkInput): Promise<{ error: string } | CleanLink> {
   const label = input.label.trim();
   if (!label) return { error: "Label is required." };
   if (label.length > SIDEBAR_LINK_LABEL_MAX) {
@@ -26,7 +41,39 @@ function clean(input: SidebarLinkInput): { error: string } | { label: string; ur
   }
   const url = normalizeSidebarUrl(input.url);
   if (!url) return { error: "Enter a web address like https://example.com, or a portal page like /portal/docs." };
-  return { label, url };
+  // A portal page is already inside the portal: "inside the portal" just
+  // means the same tab for it.
+  const mode = input.mode === "frame" && !canOpenInFrame(url) ? "same_tab" : input.mode;
+  if (mode === "frame" && (await siteRefusesFraming(url))) {
+    return {
+      error:
+        "That site doesn't let other sites show it inside a frame, so it can't open inside the portal. Choose \"Open in a new browser tab\" instead.",
+    };
+  }
+  return { label, url, open_in_new_tab: mode === "new_tab", open_in_frame: mode === "frame" };
+}
+
+// Asks the site whether it can be framed, so nobody gets a blank page. If the
+// site can't be reached right now, give it the benefit of the doubt.
+async function siteRefusesFraming(url: string): Promise<boolean> {
+  try {
+    const ourHost = ((await headers()).get("host") ?? "").replace(/:\d+$/, "");
+    const res = await fetch(url, {
+      redirect: "follow",
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    });
+    res.body?.cancel().catch(() => {});
+    return refusesFraming(
+      {
+        xFrameOptions: res.headers.get("x-frame-options"),
+        contentSecurityPolicy: res.headers.get("content-security-policy"),
+      },
+      ourHost
+    );
+  } catch {
+    return false;
+  }
 }
 
 // The sidebar is in the portal layout, so refresh every portal page.
@@ -37,7 +84,7 @@ function refresh() {
 export async function createSidebarLink(input: SidebarLinkInput): Promise<SidebarLinkResult> {
   const gate = await requireSuperAdmin();
   if ("error" in gate) return { error: gate.error };
-  const c = clean(input);
+  const c = await clean(input);
   if ("error" in c) return { error: c.error };
 
   const supabase = await createClient();
@@ -51,9 +98,7 @@ export async function createSidebarLink(input: SidebarLinkInput): Promise<Sideba
   const sortOrder = ((last as { sort_order: number } | null)?.sort_order ?? 0) + 10;
 
   const { error } = await supabase.from("sidebar_links").insert({
-    label: c.label,
-    url: c.url,
-    open_in_new_tab: input.openInNewTab,
+    ...c,
     sort_order: sortOrder,
     created_by: gate.userId,
   });
@@ -65,13 +110,13 @@ export async function createSidebarLink(input: SidebarLinkInput): Promise<Sideba
 export async function updateSidebarLink(id: string, input: SidebarLinkInput): Promise<SidebarLinkResult> {
   const gate = await requireSuperAdmin();
   if ("error" in gate) return { error: gate.error };
-  const c = clean(input);
+  const c = await clean(input);
   if ("error" in c) return { error: c.error };
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("sidebar_links")
-    .update({ label: c.label, url: c.url, open_in_new_tab: input.openInNewTab })
+    .update(c)
     .eq("id", id);
   if (error) return { error: error.message };
   refresh();
