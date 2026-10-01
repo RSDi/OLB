@@ -127,11 +127,11 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
     title: "Asking a question (Search page)",
     group: "Getting started",
     audience: "everyone",
-    keywords: ["search", "ask", "question", "ai", "answer", "find", "sources", "portal search", "follow-up", "assistant", "log"],
+    keywords: ["search", "ask", "question", "ai", "answer", "find", "sources", "portal search", "follow-up", "assistant", "log", "meaning"],
     routes: ["/portal/search"],
     body: `The Search page answers questions about the club in plain words. It isn't in the sidebar: type **/portal/search** after the portal's web address to open it.
 
-**Ask anything.** Type a question in the big box, like "When is our next game?", and press **Enter** or the arrow button. You can also tap one of the suggested questions or a **Popular topics** card.
+**Ask anything.** Type a question in the big box, like "When is our next game?", and press **Enter** or the arrow button. You can also tap one of the suggested questions or a **Popular topics** card. It looks for what you mean, not just your exact words: asking about "jerseys" also finds a playbook that only says "uniforms".
 
 **It knows who's asking.** The assistant knows your name, your role, and your children's teams, so "When does my son's team practice?" works.
 
@@ -143,7 +143,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons. On a ph
 
 **Follow-ups.** Under the answer, **Ask a follow-up** keeps the conversation going ("What about Thursday?"). To start fresh, use **Start a new search** at the top, or **Search home**.
 
-**In the portal.** Below the answer is every record that matched your words. Tap a type, like **Playbooks**, to show only those, or **All** to see everything again.
+**In the portal.** Below the answer is every record that matched your question. Tap a type, like **Playbooks**, to show only those, or **All** to see everything again.
 
 **Your questions are logged.** Each question, and which records the answer used, is saved so the club can see what people look for and improve the answers. Only super-admins can read the log.
 
