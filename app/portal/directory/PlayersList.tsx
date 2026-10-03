@@ -55,7 +55,7 @@ export function PlayersList({
   requirements,
   requirementRows,
   canPlace,
-  pendingRegistrations,
+  registrations,
 }: {
   players: DirectoryPlayer[];
   isStaff: boolean;
@@ -68,7 +68,8 @@ export function PlayersList({
   // The Registrations grant (0102): a team picker on every player, and the
   // new-registrations banner.
   canPlace: boolean;
-  pendingRegistrations: number;
+  // Waiting and waitlisted registrations; null without the grant.
+  registrations: { waiting: number; waitlist: number } | null;
 }) {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("team");
@@ -167,7 +168,7 @@ export function PlayersList({
 
   return (
     <>
-      {canPlace && pendingRegistrations > 0 && <RegistrationsBanner count={pendingRegistrations} />}
+      {registrations && registrations.waiting > 0 && <RegistrationsBanner count={registrations.waiting} />}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
@@ -205,6 +206,7 @@ export function PlayersList({
             {query && <ClearSearchButton onClear={() => setQuery("")} />}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {registrations && <RegistrationsLink counts={registrations} />}
             {canViewAges && (
               <div
                 role="group"
@@ -467,6 +469,40 @@ function RegistrationsBanner({ count }: { count: number }) {
         <Icons.ChevronRight width={13} height={13} />
       </Link>
     </div>
+  );
+}
+
+// Always there for the Registrations grant, so the Waitlist and Approved
+// tabs are a tap away even when nothing is waiting.
+function RegistrationsLink({ counts }: { counts: { waiting: number; waitlist: number } }) {
+  const detail = [counts.waiting > 0 && `${counts.waiting} waiting`, counts.waitlist > 0 && `${counts.waitlist} on waitlist`]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <Link
+      href={counts.waiting === 0 && counts.waitlist > 0 ? "/portal/directory/registrations?tab=waitlist" : "/portal/directory/registrations"}
+      prefetch={false}
+      data-tour="directory-registrations-link"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        height: 38,
+        padding: "0 14px",
+        borderRadius: 10,
+        border: "1px solid var(--gw-border)",
+        background: "var(--gw-bg-elev)",
+        color: "var(--gw-fg)",
+        fontSize: 12,
+        fontWeight: 700,
+        textDecoration: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      Registrations
+      {detail && <span style={{ fontWeight: 600, color: "var(--gw-fg-muted)" }}>{detail}</span>}
+      <Icons.ChevronRight width={12} height={12} />
+    </Link>
   );
 }
 

@@ -64,15 +64,6 @@ interface Row {
   player: PendingRegistration["player"];
 }
 
-export async function countPendingRegistrations(): Promise<number> {
-  const db = await createClient();
-  const { count } = await db
-    .from("olb_registrations")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "pending");
-  return count ?? 0;
-}
-
 export async function countRegistrations(): Promise<Record<RegistrationTab, number>> {
   const db = await createClient();
   const count = async (tab: RegistrationTab) => {
