@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   allEmails,
+  familyContacts,
   familyEmails,
   fillMessage,
   firstNames,
@@ -32,23 +33,41 @@ const reg = (id: string, first: string, extra: WaitlistRow["extra"], more: Parti
 
 const parents = { father: { first: "Chris", last: "Carter", email: "Chris@Example.com" }, mother: { first: "Jamie", last: "Carter", email: "jamie@example.com " } };
 
-test("a family's emails are the parents', tidied, else the row's or the player's own", () => {
-  assert.deepEqual(familyEmails(reg("a", "Sam", parents)), ["chris@example.com", "jamie@example.com"]);
-  assert.deepEqual(familyEmails(reg("b", "Sam", { father: { email: "N/A" }, athlete_email: "sam@example.com" })), ["sam@example.com"]);
-  assert.deepEqual(familyEmails(reg("c", "Sam", {}, { parent_email: "p@example.com" })), ["p@example.com"]);
-  assert.deepEqual(familyEmails(reg("d", "Sam", { mother: { email: "same@example.com" }, father: { email: "SAME@example.com" } })), ["same@example.com"]);
-  assert.deepEqual(familyEmails(reg("e", "Sam", {})), []);
+test("a family's contacts are Dad, Mom and the player, each with their own email", () => {
+  const r = reg("a", "Sam", { ...parents, athlete_email: "sam@example.com" });
+  assert.deepEqual(familyContacts(r), [
+    { role: "father", name: "Chris Carter", email: "chris@example.com" },
+    { role: "mother", name: "Jamie Carter", email: "jamie@example.com" },
+    { role: "player", name: "Sam Carter", email: "sam@example.com" },
+  ]);
+  assert.deepEqual(familyEmails(r), ["chris@example.com", "jamie@example.com", "sam@example.com"]);
+  assert.deepEqual(familyEmails(r, ["mother"]), ["jamie@example.com"]);
+  assert.deepEqual(familyEmails(r, ["player"]), ["sam@example.com"]);
+  // No parent email on the form: the row's parent email stands in for them.
+  assert.deepEqual(familyEmails(reg("c", "Sam", {}, { parent_email: "p@example.com" }), ["father", "mother"]), ["p@example.com"]);
+  // The same address for everyone goes out once.
+  assert.deepEqual(familyEmails(reg("d", "Sam", { mother: { email: "same@example.com" }, father: { email: "SAME@example.com" }, athlete_email: "same@example.com" })), ["same@example.com"]);
+  assert.deepEqual(familyEmails(reg("e", "Sam", { father: { email: "N/A" } })), []);
 });
 
-test("brothers and sisters get one email between them", () => {
-  const { groups, noEmail } = groupFamilies([
-    reg("a", "Sam", parents),
+test("brothers and sisters get one email between them, to the people picked", () => {
+  const regs = [
+    reg("a", "Sam", { ...parents, athlete_email: "sam@example.com" }),
     reg("b", "Evan", { mother: parents.mother, father: parents.father }),
     reg("c", "Leo", { mother: { email: "robin@example.com" } }),
     reg("d", "Max", {}),
+  ];
+  const all = groupFamilies(regs);
+  assert.deepEqual(all.groups.map((g) => [g.registrations.map((r) => r.first_name), g.emails]), [
+    [["Sam", "Evan"], ["chris@example.com", "jamie@example.com", "sam@example.com"]],
+    [["Leo"], ["robin@example.com"]],
   ]);
-  assert.deepEqual(groups.map((g) => g.registrations.map((r) => r.first_name)), [["Sam", "Evan"], ["Leo"]]);
-  assert.deepEqual(noEmail.map((r) => r.first_name), ["Max"]);
+  assert.deepEqual(all.noEmail.map((r) => r.first_name), ["Max"]);
+  // Players only: Sam's own email; Evan and Leo have none, so the Carters
+  // still get one email (Sam's) and Leo's family is left out.
+  const players = groupFamilies(regs, ["player"]);
+  assert.deepEqual(players.groups.map((g) => g.emails), [["sam@example.com"]]);
+  assert.deepEqual(players.noEmail.map((r) => r.first_name), ["Leo", "Max"]);
   assert.deepEqual(allEmails([reg("a", "Sam", parents), reg("b", "Evan", parents)]), ["chris@example.com", "jamie@example.com"]);
 });
 

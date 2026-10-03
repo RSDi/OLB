@@ -10,7 +10,7 @@ import { CODE_MINUTES, CODES_PER_HOUR, VERIFIED_HOURS, checkCode, hashCode, newC
 import { findFamily } from "./registration-prefill";
 import { sendRegistrationCode } from "../notifications/registration-code";
 import { sendFamilyEmails } from "../notifications/registration-message";
-import { fillMessage, groupFamilies, messageHtml, type WaitlistRegistration } from "./waitlist";
+import { ALL_RECIPIENTS, fillMessage, groupFamilies, messageHtml, type Recipient, type WaitlistRegistration } from "./waitlist";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { centralToday } from "../finances/data";
 
@@ -366,13 +366,15 @@ async function setStatus(
 }
 
 // A message to one family or everyone on the waitlist, sent from the club's
-// address with replies to the club's Gmail. Brothers and sisters get one
-// email between them. {player} becomes the family's players' first names.
-// Each email is kept on its registrations, and they're marked contacted.
+// address with replies to the club's Gmail, to the dads, moms and players
+// picked (all three to start). Brothers and sisters get one email between
+// them. {player} becomes the family's players' first names. Each email is
+// kept on its registrations, and they're marked contacted.
 export async function sendRegistrationMessage(
   ids: string[],
   subject: string,
-  body: string
+  body: string,
+  recipients: Recipient[] = ALL_RECIPIENTS
 ): Promise<{ sent?: number; skipped?: string[]; error?: string }> {
   const gate = await requireRegistrations();
   if ("error" in gate) return { error: gate.error };
@@ -381,6 +383,8 @@ export async function sendRegistrationMessage(
   if (!title || title.length > 200) return { error: "Add a subject (up to 200 characters)." };
   if (!text || text.length > 4000) return { error: "Add a message (up to 4,000 characters)." };
   if (!Array.isArray(ids) || ids.length === 0 || ids.length > 300) return { error: "Pick who to send it to." };
+  const roles = ALL_RECIPIENTS.filter((r) => Array.isArray(recipients) && recipients.includes(r));
+  if (roles.length === 0) return { error: "Pick at least one person to send it to." };
 
   // Read under the caller's own access (0102): only registrations they may see.
   const db = await createClient();
@@ -392,7 +396,7 @@ export async function sendRegistrationMessage(
   const regs = (data as (WaitlistRegistration & { contacted_at: string | null })[] | null) ?? [];
   if (regs.length === 0) return { error: "Those registrations aren't on the waitlist any more. Refresh the page." };
 
-  const { groups, noEmail } = groupFamilies(regs);
+  const { groups, noEmail } = groupFamilies(regs, roles);
   const emails = groups.map((g) => {
     const filled = fillMessage(text, g.registrations);
     return { to: g.emails, subject: fillMessage(title, g.registrations), text: filled, html: messageHtml(filled) };
