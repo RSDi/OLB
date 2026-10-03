@@ -21,12 +21,40 @@ const clean = (e: string | null | undefined) => {
   return v && EMAIL.test(v) ? v : null;
 };
 
-// The parents' emails on a registration, else the one on the row, else the
-// player's own. Lowercase, no repeats.
-export function familyEmails(r: WaitlistRegistration): string[] {
-  const parents = [r.extra.father?.email, r.extra.mother?.email].map(clean).filter((e): e is string => !!e);
-  const found = parents.length ? parents : [clean(r.parent_email), clean(r.extra.athlete_email)].filter((e): e is string => !!e).slice(0, 1);
-  return [...new Set(found)];
+// Who a message can go to: Dad, Mom and the player, each with their own email.
+export type Recipient = "father" | "mother" | "player";
+export const ALL_RECIPIENTS: Recipient[] = ["father", "mother", "player"];
+
+export interface Contact {
+  role: Recipient;
+  name: string;
+  email: string;
+}
+
+const personName = (p?: { first?: string; last?: string }) =>
+  [p?.first, p?.last].map((s) => s?.trim()).filter((s) => s && !/^n\/?a$/i.test(s)).join(" ");
+
+// The people on a registration who have an email. A parent with no email of
+// their own falls back to the one on the row (the first parent email the form
+// had), so an older registration still reaches a parent.
+export function familyContacts(r: WaitlistRegistration): Contact[] {
+  const out: Contact[] = [];
+  const father = clean(r.extra.father?.email);
+  const mother = clean(r.extra.mother?.email);
+  if (father) out.push({ role: "father", name: personName(r.extra.father) || "Dad", email: father });
+  if (mother) out.push({ role: "mother", name: personName(r.extra.mother) || "Mom", email: mother });
+  if (!father && !mother) {
+    const row = clean(r.parent_email);
+    if (row) out.push({ role: "mother", name: "Parent", email: row });
+  }
+  const player = clean(r.extra.athlete_email);
+  if (player) out.push({ role: "player", name: `${r.first_name} ${r.last_name}`.trim(), email: player });
+  return out;
+}
+
+// Every email on a registration for the people picked, once each.
+export function familyEmails(r: WaitlistRegistration, roles: Recipient[] = ALL_RECIPIENTS): string[] {
+  return [...new Set(familyContacts(r).filter((c) => roles.includes(c.role)).map((c) => c.email))];
 }
 
 export interface FamilyGroup<T extends WaitlistRegistration> {
@@ -34,23 +62,27 @@ export interface FamilyGroup<T extends WaitlistRegistration> {
   registrations: T[];
 }
 
-// One group per set of parents, so brothers and sisters on the waitlist get
-// one email between them. Registrations with no email at all are left out.
-export function groupFamilies<T extends WaitlistRegistration>(regs: T[]): { groups: FamilyGroup<T>[]; noEmail: T[] } {
-  const groups = new Map<string, FamilyGroup<T>>();
-  const noEmail: T[] = [];
+// Brothers and sisters share parents, so they're one family and get one
+// email between them, to the parents and players picked. A family with no
+// email for anyone picked is left out.
+export function groupFamilies<T extends WaitlistRegistration>(
+  regs: T[],
+  roles: Recipient[] = ALL_RECIPIENTS
+): { groups: FamilyGroup<T>[]; noEmail: T[] } {
+  const families = new Map<string, T[]>();
   for (const r of regs) {
-    const emails = familyEmails(r);
-    if (emails.length === 0) {
-      noEmail.push(r);
-      continue;
-    }
-    const key = [...emails].sort().join(",");
-    const g = groups.get(key) ?? { emails, registrations: [] };
-    g.registrations.push(r);
-    groups.set(key, g);
+    const parents = familyEmails(r, ["father", "mother"]).sort();
+    const key = parents.length ? parents.join(",") : `reg:${r.id}`;
+    families.set(key, [...(families.get(key) ?? []), r]);
   }
-  return { groups: [...groups.values()], noEmail };
+  const groups: FamilyGroup<T>[] = [];
+  const noEmail: T[] = [];
+  for (const members of families.values()) {
+    const emails = [...new Set(members.flatMap((r) => familyEmails(r, roles)))];
+    if (emails.length) groups.push({ emails, registrations: members });
+    else noEmail.push(...members);
+  }
+  return { groups, noEmail };
 }
 
 // "Sam", "Sam and Evan", "Sam, Evan and Leo".
@@ -68,7 +100,7 @@ export function fillMessage(text: string, regs: { first_name: string }[]): strin
 export const DEFAULT_SUBJECT = "Your Omaha Lightning registration";
 export const DEFAULT_MESSAGE = `Hi,
 
-Thanks for registering {player} with Omaha Lightning Basketball. Our teams are full right now, so {player} is on our waitlist for the 2026-27 season. We'll be in touch as soon as a spot opens.
+Thanks for registering {player} with Omaha Lightning Basketball. Our teams are full right now, so we've added {player} to our waitlist for the 2026-27 season. We'll be in touch as soon as a spot opens.
 
 Questions? Just reply to this email.
 
@@ -92,9 +124,9 @@ export function mailtoHref(emails: string[], subject: string): string {
   return `mailto:${emails.map(encodeURIComponent).join(",")}?subject=${encodeURIComponent(subject)}`;
 }
 
-// Every email on the list once, for pasting into Bcc.
+// Every email on the list once (parents and players), for pasting into Bcc.
 export function allEmails(regs: WaitlistRegistration[]): string[] {
-  return [...new Set(regs.flatMap(familyEmails))];
+  return [...new Set(regs.flatMap((r) => familyEmails(r)))];
 }
 
 export interface WaitlistRow extends WaitlistRegistration {
@@ -109,14 +141,13 @@ const csvCell = (v: string | null | undefined) => {
   const s = (v ?? "").replace(/\r?\n/g, " ");
   return /[",]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
-const parentName = (p?: { first?: string; last?: string }) =>
-  [p?.first, p?.last].map((s) => s?.trim()).filter((s) => s && !/^n\/?a$/i.test(s)).join(" ");
+const parentName = personName;
 
 // The waitlist as a spreadsheet (CSV), oldest registration first.
 export function waitlistCsv(rows: WaitlistRow[]): string {
   const head = [
     "Player", "Birthday", "Fee", "Registered", "Waitlisted", "Waitlisted by", "Note", "Contacted", "Contacted by",
-    "Father", "Father email", "Father phone", "Mother", "Mother email", "Mother phone", "Address",
+    "Father", "Father email", "Father phone", "Mother", "Mother email", "Mother phone", "Player email", "Player phone", "Address",
   ];
   const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
   const lines = rows.map((r) => {
@@ -127,7 +158,7 @@ export function waitlistCsv(rows: WaitlistRow[]): string {
       `${r.first_name} ${r.last_name}`.trim(), r.dob ?? "", x.fee_tier ?? "", day(r.created_at), day(r.reviewed_at), r.reviewed_by_name,
       r.notes, day(r.contacted_at), r.contacted_by_name,
       parentName(x.father), x.father?.email?.trim(), x.father?.phone?.trim(),
-      parentName(x.mother), x.mother?.email?.trim(), x.mother?.phone?.trim(), address,
+      parentName(x.mother), x.mother?.email?.trim(), x.mother?.phone?.trim(), x.athlete_email?.trim(), x.athlete_phone?.trim(), address,
     ].map(csvCell).join(",");
   });
   return [head.join(","), ...lines].join("\r\n") + "\r\n";
