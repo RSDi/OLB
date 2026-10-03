@@ -19,6 +19,8 @@ interface DetailMember {
   directory_category: "regular" | "extended" | "memorial";
   deceased_at: string | null;
   status: string;
+  membership_status: string;
+  access_revoked_at: string | null;
 }
 
 type RelationshipRow = DirectoryRelationship & { id: string };
@@ -37,7 +39,7 @@ export default async function MemberDetailPage({
   const batch = Promise.all([
     supabase
       .from("members")
-      .select("id, user_id, email, full_name, nickname, avatar_url, phone, home_phone, birthday, anniversary, address, directory_category, deceased_at, status, deleted_at")
+      .select("id, user_id, email, full_name, nickname, avatar_url, phone, home_phone, birthday, anniversary, address, directory_category, deceased_at, status, membership_status, access_revoked_at, deleted_at")
       .eq("id", id)
       .maybeSingle(),
     // Every approved member, memorials included, so a relationship chip can
