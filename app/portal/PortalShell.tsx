@@ -50,7 +50,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/docs":        { title: "Playbooks",    subtitle: "Operations" },
   "/portal/payments":    { title: "Payments",     subtitle: "" },
   "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
-  "/portal/directory/registrations": { title: "New registrations", subtitle: "Directory" },
+  "/portal/directory/registrations": { title: "Registrations", subtitle: "Directory" },
   "/portal/settings":    { title: "Settings",     subtitle: "Board" },
   "/portal/slack-archive":            { title: "Slack Archive", subtitle: "" },
   "/portal/slack-archive/search":     { title: "Search archive", subtitle: "Slack Archive" },

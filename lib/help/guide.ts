@@ -252,16 +252,25 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     group: "Directory",
     audience: "registrations",
     routes: ["/portal/directory/registrations"],
-    keywords: ["registration", "registrations", "register", "sign up", "approve", "not this season", "new player", "team", "place", "put on a team", "no team yet", "roster", "edit player", "remove player", "take off the roster", "jersey", "age group", "birthday", "registration form", "cognito", "code", "email confirmed", "wizard"],
+    keywords: ["registration", "registrations", "register", "sign up", "approve", "waitlist", "wait list", "not this season", "contacted", "message", "email families", "spreadsheet", "csv", "new player", "team", "place", "put on a team", "no team yet", "roster", "edit player", "remove player", "take off the roster", "jersey", "age group", "birthday", "registration form", "cognito", "code", "email confirmed", "wizard"],
     body: `You see this if you have the **Registrations** permission (a super-admin turns it on in Settings → Members).
 
-**New registrations.** When families fill in the registration form, a yellow bar at the top of the Directory says how many are waiting. Tap **Review registrations** to see them, oldest first. Each one shows the player, the fee for their age group, how the family said they'd pay, the waiver, the homeschool answer, whether they need a uniform, and each parent's phone, email and what they can help with.
+**New registrations.** When families fill in the registration form, a yellow bar at the top of the Directory says how many are waiting. Tap **Review registrations** to see them. The page has three tabs: **Waiting** (to review, oldest first), **Waitlist** and **Approved**. Each registration shows the player, the fee for their age group, how the family said they'd pay, the waiver, the homeschool answer, whether they need a uniform, and each parent's phone, email and what they can help with.
 
 - **Approve** adds the player to the Directory under **No team yet** and puts their registration fee on the family's Payments account. Their parents are set up so they can sign in with the email on the form.
-- **Not this season** takes the registration off the list. Nothing is added to the Directory or Payments.
+- **Waitlist** keeps a family you can't place yet. Add a note on why if you like ("14u is full"); families don't see it. Nothing is added to the Directory or Payments.
 - A note on a registration means the player's name is already on the roster. **Already on the roster** means Approve updates that player instead of adding a second one. If the birthdays don't match, Approve adds a second player, so check the birthday first and fix it on their player page if it's the same child.
 - **Open the registration form ›** opens the form families fill in, so you can copy its link to send out.
 - The form starts with the family's email and emails them a 6-digit code. Once they type it in, it fills in what we already know about any players on that email (names, birthdays, address and parents), so returning families just check it over. Brothers and sisters are registered together, and each one arrives here as their own registration. **Email confirmed** on a registration means the family typed the code back.
+
+**The waitlist.** The **Waitlist** tab lists those families in the order they registered, with who put them there, when, and the note (**Edit note** changes it).
+
+- **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. **{player}** in the message becomes each family's player names. A copy is kept on the registration under **Messages sent**.
+- **Contacted** marks that someone has reached out, with the date and who, so two people don't both call. Sending a message ticks it for you.
+- **Email from my app** opens your own email app addressed to the parents instead. **Copy all emails** copies every parent's email to paste into Bcc, and **Download spreadsheet** saves the waitlist as a file for Excel or Google Sheets.
+- When a spot opens, **Approve** works right from the waitlist. **Move back to Waiting** puts a registration back in the review queue, and **Remove** takes it off every tab (for a test, or a family that withdrew).
+
+**Approved** lists every registration that's been approved, newest first, with who approved it and when. Tap a name to open the player's page.
 
 **Putting players on teams.** In the Directory, every player has a **Team** drop-down. Pick a team and the player moves there right away. Pick **No team yet** to take them off their team. Tap the **No team yet** chip at the top to see who still needs a team.
 

@@ -9,6 +9,8 @@ import { MAX_PLAYERS, REGISTRATION_SEASON, looksLikeEmail, type FamilyPrefill, t
 import { CODE_MINUTES, CODES_PER_HOUR, VERIFIED_HOURS, checkCode, hashCode, newCode, type CodeRow } from "./registration-codes";
 import { findFamily } from "./registration-prefill";
 import { sendRegistrationCode } from "../notifications/registration-code";
+import { sendFamilyEmails } from "../notifications/registration-message";
+import { fillMessage, groupFamilies, messageHtml, type WaitlistRegistration } from "./waitlist";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { centralToday } from "../finances/data";
 
@@ -301,22 +303,125 @@ async function chargeRegistrationFee(
   if (error) console.warn(`[registrations] registration fee for player ${playerId}: ${error.message}`);
 }
 
-// Not this season: the registration leaves the queue. Nothing is added to the
-// roster or to Payments.
-export async function rejectRegistration(id: string): Promise<{ error?: string }> {
+// ─── The waitlist (0115) ────────────────────────────────────────────────────
+
+type Result = { error?: string };
+
+// Waiting → Waitlist: not on the roster yet, but kept, with an optional note
+// on why, so the board can reach the family and approve them when a spot
+// opens. Nothing is added to the roster or to Payments.
+export async function waitlistRegistration(id: string, note: string): Promise<Result> {
+  return setStatus(id, "pending", { status: "waitlisted", notes: cleanNote(note) }, true);
+}
+
+export async function updateRegistrationNote(id: string, note: string): Promise<Result> {
+  return setStatus(id, "waitlisted", { notes: cleanNote(note) }, false);
+}
+
+// Back to Waiting, to review again (Approve works from the Waitlist too).
+export async function moveRegistrationToWaiting(id: string): Promise<Result> {
+  return setStatus(id, "waitlisted", { status: "pending" }, false);
+}
+
+// Off the list for good: a test, or a family that withdrew. Kept in the
+// database, shown nowhere.
+export async function removeRegistration(id: string): Promise<Result> {
+  return setStatus(id, ["pending", "waitlisted"], { status: "rejected" }, true);
+}
+
+// "Contacted Oct 3 by Rachel", or cleared.
+export async function setRegistrationContacted(id: string, contacted: boolean): Promise<Result> {
+  return setStatus(
+    id,
+    "waitlisted",
+    (userId) => (contacted ? { contacted_at: new Date().toISOString(), contacted_by: userId } : { contacted_at: null, contacted_by: null }),
+    false
+  );
+}
+
+const NOTE_MAX = 500;
+function cleanNote(note: string): string | null {
+  return note?.trim().slice(0, NOTE_MAX) || null;
+}
+
+async function setStatus(
+  id: string,
+  from: string | string[],
+  patch: Record<string, unknown> | ((userId: string) => Record<string, unknown>),
+  review: boolean
+): Promise<Result> {
   const gate = await requireRegistrations();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
-  const { data, error } = await db
+  const fields = typeof patch === "function" ? patch(gate.userId) : patch;
+  const q = db
     .from("olb_registrations")
-    .update({ status: "rejected", reviewed_by: gate.userId, reviewed_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("status", "pending")
-    .select("id");
+    .update({ ...fields, ...(review ? { reviewed_by: gate.userId, reviewed_at: new Date().toISOString() } : {}) })
+    .eq("id", id);
+  const { data, error } = await (Array.isArray(from) ? q.in("status", from) : q.eq("status", from)).select("id");
   if (error) return { error: error.message };
-  if (!data?.length) return { error: "That registration was already reviewed. Refresh the page." };
+  if (!data?.length) return { error: "That registration has changed since you opened the page. Refresh the page." };
   refresh();
   return {};
+}
+
+// A message to one family or everyone on the waitlist, sent from the club's
+// address with replies to the club's Gmail. Brothers and sisters get one
+// email between them. {player} becomes the family's players' first names.
+// Each email is kept on its registrations, and they're marked contacted.
+export async function sendRegistrationMessage(
+  ids: string[],
+  subject: string,
+  body: string
+): Promise<{ sent?: number; skipped?: string[]; error?: string }> {
+  const gate = await requireRegistrations();
+  if ("error" in gate) return { error: gate.error };
+  const title = subject?.trim();
+  const text = body?.trim();
+  if (!title || title.length > 200) return { error: "Add a subject (up to 200 characters)." };
+  if (!text || text.length > 4000) return { error: "Add a message (up to 4,000 characters)." };
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 300) return { error: "Pick who to send it to." };
+
+  // Read under the caller's own access (0102): only registrations they may see.
+  const db = await createClient();
+  const { data } = await db
+    .from("olb_registrations")
+    .select("id, first_name, last_name, dob, created_at, parent_email, extra, contacted_at")
+    .in("id", ids)
+    .eq("status", "waitlisted");
+  const regs = (data as (WaitlistRegistration & { contacted_at: string | null })[] | null) ?? [];
+  if (regs.length === 0) return { error: "Those registrations aren't on the waitlist any more. Refresh the page." };
+
+  const { groups, noEmail } = groupFamilies(regs);
+  const emails = groups.map((g) => {
+    const filled = fillMessage(text, g.registrations);
+    return { to: g.emails, subject: fillMessage(title, g.registrations), text: filled, html: messageHtml(filled) };
+  });
+  const { sent, error } = emails.length ? await sendFamilyEmails(emails) : { sent: 0, error: undefined };
+
+  // Keep a copy on each registration that was emailed, and mark it contacted.
+  const done = groups.slice(0, sent);
+  if (done.length) {
+    const now = new Date().toISOString();
+    const rows = done.flatMap((g, i) =>
+      g.registrations.map((r) => ({
+        registration_id: r.id,
+        subject: emails[i].subject,
+        body: emails[i].text,
+        sent_to: g.emails,
+        sent_by: gate.userId,
+        sent_at: now,
+      }))
+    );
+    const { error: logError } = await db.from("olb_registration_messages").insert(rows);
+    if (logError) console.warn(`[registrations] keeping a copy of a message failed: ${logError.message}`);
+    const fresh = done.flatMap((g) => g.registrations.filter((r) => !r.contacted_at).map((r) => r.id));
+    if (fresh.length) {
+      await db.from("olb_registrations").update({ contacted_at: now, contacted_by: gate.userId }).in("id", fresh);
+    }
+  }
+  refresh();
+  return { sent, skipped: noEmail.map((r) => `${r.first_name} ${r.last_name}`.trim()), ...(error ? { error } : {}) };
 }
 
 function refresh() {

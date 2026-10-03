@@ -245,13 +245,18 @@ export const GUIDE_TOURS: GuideTour[] = [
   {
     id: "registrations",
     sectionId: "registrations",
-    title: "New registrations tour",
+    title: "Registrations tour",
     route: "/portal/directory/registrations",
     steps: [
       {
         target: "page-title",
-        title: "New registrations",
-        body: "Registrations from the form, oldest first, waiting for someone to approve them.",
+        title: "Registrations",
+        body: "Registrations from the form, waiting for someone to review them.",
+      },
+      {
+        target: "registrations-tabs",
+        title: "Waiting, Waitlist, Approved",
+        body: "**Waiting** is the review queue. **Waitlist** keeps families you can't place yet, so you can reach them and approve them when a spot opens. **Approved** is the history.",
       },
       {
         target: "registration-card",
@@ -264,9 +269,9 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Adds the player to the Directory under **No team yet** and puts their fee on the family's Payments account.",
       },
       {
-        target: "registration-reject",
-        title: "Not this season",
-        body: "Takes the registration off the list without adding anyone.",
+        target: "registration-waitlist",
+        title: "Waitlist",
+        body: "Moves a family you can't place yet to the **Waitlist**, with a note on why if you like. Nothing is added to the roster.",
       },
       {
         target: "registrations-form-link",
