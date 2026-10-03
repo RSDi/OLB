@@ -188,10 +188,10 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "This season's players and their parents, grouped by team.",
       },
       {
-        target: "directory-registrations",
+        target: "directory-registrations-link",
         audience: "registrations",
-        title: "New registrations",
-        body: "When families fill in the registration form, this says how many are waiting. **Review registrations** opens them.",
+        title: "Registrations",
+        body: "Opens registrations from the form: **Waiting** to review, the **Waitlist** and **Approved**. When some are waiting, a yellow bar at the top says how many.",
       },
       {
         target: "directory-search",
