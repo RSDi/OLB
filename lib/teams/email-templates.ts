@@ -8,7 +8,13 @@ export interface EmailTemplate {
   name: string;
   subject: string;
   body: string;
+  // Set on a template the portal starts a message with (WAITLIST_TEMPLATE).
+  slug: string | null;
 }
+
+// The waitlist's "teams are full" message (added by 0117): the waitlist's
+// message window starts from it, so the board's wording is what goes out.
+export const WAITLIST_TEMPLATE = "waitlist";
 
 export interface EmailTemplateInput {
   name: string;
@@ -21,7 +27,7 @@ export const TEMPLATE_SUBJECT_MAX = 200;
 // The same limit as a message sent from the portal.
 export const TEMPLATE_BODY_MAX = 4000;
 
-export const EMAIL_TEMPLATE_COLUMNS = "id, name, subject, body";
+export const EMAIL_TEMPLATE_COLUMNS = "id, name, subject, body, slug";
 
 // Trimmed and checked, or what's wrong in words people can act on.
 export function cleanTemplate(input: EmailTemplateInput): EmailTemplateInput | { error: string } {

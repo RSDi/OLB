@@ -266,7 +266,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **The waitlist.** The **Waitlist** tab lists those families in the order they registered, with who put them there, when, and the note (**Edit note** changes it).
 
-- **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. Pick who it goes to: for one family, tick **Dad**, **Mom** and the **Player** (when they have their own email); for everyone, tick **Dads**, **Moms** and **Players**. All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. For one family the player's name is already in the message; for everyone, **{player}** becomes each family's player names, and a preview shows how it reads. **Template** swaps in one the board wrote in Settings → Email Templates. A copy is kept on the registration under **Messages sent**.
+- **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. Pick who it goes to: for one family, tick **Dad**, **Mom** and the **Player** (when they have their own email); for everyone, tick **Dads**, **Moms** and **Players**. All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. For one family the player's name is already in the message; for everyone, **{player}** becomes each family's player names, and a preview shows how it reads. The message starts from the board's **Waitlist: teams are full** template (change its words in Settings → Email Templates), and **Template** swaps in any other. A copy is kept on the registration under **Messages sent**.
 - **Contacted** marks that someone has reached out, with the date and who, so two people don't both call. Sending a message ticks it for you.
 - **Email from my app** opens your own email app addressed to the parents instead. **Copy all emails** copies every parent's email to paste into Bcc, and **Download spreadsheet** saves the waitlist as a file for Excel or Google Sheets.
 - The Directory has the same thing for players already on the roster: see *Emailing families*.
@@ -719,12 +719,14 @@ Use the arrows to change the order (it's the order of the chips in the Directory
     title: "Settings: Email Templates",
     group: "Settings",
     audience: "staff",
-    keywords: ["email templates", "templates", "template", "email", "message", "subject", "reuse", "canned", "practice change", "reminder", "{player}", "families"],
+    keywords: ["email templates", "templates", "template", "email", "message", "subject", "reuse", "canned", "practice change", "reminder", "{player}", "families", "waitlist", "teams are full", "starts waitlist messages"],
     body: `Emails you send families again and again, written once: a practice change, picture day, a fee reminder. Open **Settings → Email Templates**. Any board member can add, change and delete them.
 
 - **Add template**: give it a **Name** (what you pick from the list; families don't see it), a **Subject** and a **Message**.
 - Type **{player}** where the player's first name goes. Brothers and sisters get one email, with their names together (Sam and Evan).
 - Tap the **pencil** to change a template, or the **trash** can to delete it. Emails already sent aren't affected.
+
+**The waitlist's message.** **Waitlist: teams are full**, marked **Starts waitlist messages**, is what the waitlist's **Message everyone** and **Send a message** start with. Change its words here and the waitlist uses yours. Delete it and the waitlist goes back to the wording it started with.
 
 **Using one.** When you email families from the Directory, a player's page or the registration waitlist, pick it from **Template**. It fills in the subject and message, and you can change anything before you send. Anyone who can email families can use the templates, including people with the **Registrations** permission who aren't on the board.`,
   },

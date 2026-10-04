@@ -10,6 +10,7 @@ import {
   TEMPLATE_BODY_MAX,
   TEMPLATE_NAME_MAX,
   TEMPLATE_SUBJECT_MAX,
+  WAITLIST_TEMPLATE,
   sortTemplates,
   type EmailTemplate,
   type EmailTemplateInput,
@@ -90,7 +91,8 @@ export function EmailTemplatesTab() {
   }
 
   async function handleDelete(t: TemplateRow) {
-    if (!confirm(`Delete the "${t.name}" template? Emails already sent with it aren't affected.`)) return;
+    const waitlist = t.slug === WAITLIST_TEMPLATE ? " Waitlist messages will go back to the wording they started with." : "";
+    if (!confirm(`Delete the "${t.name}" template? Emails already sent with it aren't affected.${waitlist}`)) return;
     await run(t.id, () => deleteEmailTemplate(t.id));
   }
 
@@ -158,7 +160,14 @@ export function EmailTemplatesTab() {
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800 }}>{t.name}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 14, fontWeight: 800 }}>{t.name}</span>
+                    {t.slug === WAITLIST_TEMPLATE && (
+                      <span className="rsd-chip rsd-chip-accent" title="The waitlist's message window starts with this one">
+                        Starts waitlist messages
+                      </span>
+                    )}
+                  </div>
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--gw-fg)" }}>{t.subject}</span>
                   <span
                     style={{
