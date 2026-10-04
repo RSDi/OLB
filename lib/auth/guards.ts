@@ -139,6 +139,17 @@ export async function requireRegistrations(): Promise<GateResult> {
   return { userId: caller.userId };
 }
 
+// Emailing families from the Directory (0116): the board, or anyone with the
+// Registrations grant.
+export async function requireFamilyEmail(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!isStaff(caller.member) && !canManageRegistrations(caller.member)) {
+    return { error: "Only the board and people with the Registrations permission can email families." };
+  }
+  return { userId: caller.userId };
+}
+
 // Adding and editing External Contacts: the board, or the travel coordinator
 // (0110), whom RLS keeps to the travel types. `isStaff` says which.
 export async function requireContactEditor(): Promise<{ error: string } | { userId: string; isStaff: boolean }> {

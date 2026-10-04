@@ -58,7 +58,7 @@ test("brothers and sisters get one email between them, to the people picked", ()
     reg("d", "Max", {}),
   ];
   const all = groupFamilies(regs);
-  assert.deepEqual(all.groups.map((g) => [g.registrations.map((r) => r.first_name), g.emails]), [
+  assert.deepEqual(all.groups.map((g) => [g.players.map((r) => r.first_name), g.emails]), [
     [["Sam", "Evan"], ["chris@example.com", "jamie@example.com", "sam@example.com"]],
     [["Leo"], ["robin@example.com"]],
   ]);

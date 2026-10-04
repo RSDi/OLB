@@ -398,8 +398,8 @@ export async function sendRegistrationMessage(
 
   const { groups, noEmail } = groupFamilies(regs, roles);
   const emails = groups.map((g) => {
-    const filled = fillMessage(text, g.registrations);
-    return { to: g.emails, subject: fillMessage(title, g.registrations), text: filled, html: messageHtml(filled) };
+    const filled = fillMessage(text, g.players);
+    return { to: g.emails, subject: fillMessage(title, g.players), text: filled, html: messageHtml(filled) };
   });
   const { sent, error } = emails.length ? await sendFamilyEmails(emails) : { sent: 0, error: undefined };
 
@@ -408,7 +408,7 @@ export async function sendRegistrationMessage(
   if (done.length) {
     const now = new Date().toISOString();
     const rows = done.flatMap((g, i) =>
-      g.registrations.map((r) => ({
+      g.players.map((r) => ({
         registration_id: r.id,
         subject: emails[i].subject,
         body: emails[i].text,
@@ -419,7 +419,7 @@ export async function sendRegistrationMessage(
     );
     const { error: logError } = await db.from("olb_registration_messages").insert(rows);
     if (logError) console.warn(`[registrations] keeping a copy of a message failed: ${logError.message}`);
-    const fresh = done.flatMap((g) => g.registrations.filter((r) => !r.contacted_at).map((r) => r.id));
+    const fresh = done.flatMap((g) => g.players.filter((r) => !r.contacted_at).map((r) => r.id));
     if (fresh.length) {
       await db.from("olb_registrations").update({ contacted_at: now, contacted_by: gate.userId }).in("id", fresh);
     }

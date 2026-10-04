@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { MapLink } from "../../../components/MapLink";
-import { Input, Pill, Textarea } from "../../../components/ui";
+import { Pill, Textarea } from "../../../components/ui";
 import { ageFromDob } from "../../../../lib/teams/age";
 import {
   approveRegistration,
@@ -19,22 +19,18 @@ import type { PendingRegistration, RegistrationTab } from "../../../../lib/teams
 import type { RegistrationParentAnswers } from "../../../../lib/teams/roster-logic";
 import { teamLabel } from "../../../../lib/teams/volunteer-options";
 import {
-  ALL_RECIPIENTS,
   DEFAULT_MESSAGE,
   DEFAULT_SUBJECT,
   allEmails,
-  familyContacts,
   familyEmails,
-  fillMessage,
-  firstNames,
-  groupFamilies,
   mailtoHref,
   waitlistCsv,
-  type Recipient,
+  waitlistTarget,
 } from "../../../../lib/teams/waitlist";
 import { formatDollars, registrationFeeCents, registrationTier } from "../../../../lib/finances/logic";
 import { ContactLine, formatDate, muted } from "../_shared/PlayerParts";
-import { ErrorNote, Sheet, capStyle } from "../../payments/parts";
+import { ComposeSheet, SentMessages } from "../_shared/Messaging";
+import { ErrorNote, capStyle } from "../../payments/parts";
 
 const TABS: { key: RegistrationTab; label: string }[] = [
   { key: "waiting", label: "Waiting" },
@@ -142,7 +138,18 @@ export function RegistrationsReview({
         registrations.map((r) => <RegistrationCard key={r.id} reg={r} tab={tab} onMessage={() => setCompose([r])} />)
       )}
 
-      {compose && <ComposeSheet targets={compose} everyone={compose.length > 1} onClose={() => setCompose(null)} />}
+      {compose && (
+        <ComposeSheet
+          targets={compose.map(waitlistTarget)}
+          title={compose.length > 1 ? "Message everyone on the waitlist" : "Send a message"}
+          eyebrow={compose.length > 1 ? `${compose.length} on the waitlist` : waitlistTarget(compose[0]).name}
+          note="Sent from the club's email address, one email per family. Replies go to the club's Gmail. A copy is kept on each registration, and they're marked contacted."
+          subject={DEFAULT_SUBJECT}
+          body={DEFAULT_MESSAGE}
+          onSend={sendRegistrationMessage}
+          onClose={() => setCompose(null)}
+        />
+      )}
     </>
   );
 }
@@ -343,7 +350,9 @@ function RegistrationCard({ reg, tab, onMessage }: { reg: PendingRegistration; t
         </div>
       )}
 
-      {tab === "waitlist" && reg.messages.length > 0 && <Messages reg={reg} />}
+      {tab === "waitlist" && reg.messages.length > 0 && (
+        <SentMessages messages={reg.messages} style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 12 }} />
+      )}
 
       {error && <ErrorNote text={error} />}
 
@@ -529,164 +538,6 @@ function WaitlistStatus({
     </div>
   );
 }
-
-// Emails sent to the family from this page, newest first.
-function Messages({ reg }: { reg: PendingRegistration }) {
-  return (
-    <details style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 12 }}>
-      <summary style={{ ...capStyle, fontSize: 10, cursor: "pointer" }}>Messages sent ({reg.messages.length})</summary>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
-        {reg.messages.map((m) => (
-          <div key={m.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>{m.subject}</span>
-            <span style={muted}>
-              {new Date(m.sent_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-              {m.sent_by_name ? ` · by ${m.sent_by_name}` : ""} · to {m.sent_to.join(", ")}
-            </span>
-            <div style={{ ...muted, whiteSpace: "pre-wrap", lineHeight: 1.55, padding: "8px 10px", borderRadius: 8, background: "var(--gw-bg)" }}>{m.body}</div>
-          </div>
-        ))}
-      </div>
-    </details>
-  );
-}
-
-// ─── Writing to families ────────────────────────────────────────────────────
-
-const ROLE_LABEL: Record<Recipient, { one: string; many: string }> = {
-  father: { one: "Dad", many: "Dads" },
-  mother: { one: "Mom", many: "Moms" },
-  player: { one: "Player", many: "Players" },
-};
-
-function ComposeSheet({ targets, everyone, onClose }: { targets: PendingRegistration[]; everyone: boolean; onClose: () => void }) {
-  const router = useRouter();
-  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
-  // One family: the player's name is already in. Everyone: {player} is
-  // filled in per family when it sends, with a preview below.
-  const [body, setBody] = useState(everyone ? DEFAULT_MESSAGE : fillMessage(DEFAULT_MESSAGE, targets));
-  const [roles, setRoles] = useState<Recipient[]>(ALL_RECIPIENTS);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
-  const { groups, noEmail } = groupFamilies(targets, roles);
-  const families = groups.length;
-  const contacts = everyone ? [] : familyContacts(targets[0]);
-  const title = everyone ? "Message everyone on the waitlist" : "Send a message";
-  const eyebrow = everyone ? `${targets.length} on the waitlist` : `${targets[0].first_name} ${targets[0].last_name}`.trim();
-  const toggle = (r: Recipient) => setRoles((list) => (list.includes(r) ? list.filter((x) => x !== r) : ALL_RECIPIENTS.filter((x) => x === r || list.includes(x))));
-  const preview = everyone && /\{player\}/i.test(body) && groups[0] ? groups[0] : null;
-
-  async function send() {
-    setBusy(true);
-    setError(null);
-    const res = await sendRegistrationMessage(
-      targets.map((t) => t.id),
-      subject,
-      body,
-      roles
-    );
-    setBusy(false);
-    if (res.error && !res.sent) return setError(res.error);
-    const skipped = res.skipped?.length ? ` No email for ${res.skipped.join(", ")}.` : "";
-    setDone(`Sent to ${res.sent} ${res.sent === 1 ? "family" : "families"}.${skipped}${res.error ? ` ${res.error}` : ""}`);
-    router.refresh();
-  }
-
-  return (
-    <Sheet eyebrow={eyebrow} title={title} busy={busy} onClose={onClose}>
-      {done ? (
-        <>
-          <div role="status" style={{ padding: "12px 14px", borderRadius: 10, background: "var(--rsd-accent-bg)", fontSize: 13.5, fontWeight: 600, lineHeight: 1.5 }}>
-            {done}
-          </div>
-          <Pill variant="accent" onClick={onClose}>
-            Done
-          </Pill>
-        </>
-      ) : (
-        <>
-          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--gw-fg-muted)", lineHeight: 1.55 }}>
-            Sent from the club&apos;s email address, one email per family. Replies go to the club&apos;s Gmail. A copy is kept on
-            each registration, and they&apos;re marked contacted.
-          </div>
-
-          <div data-tour="message-recipients" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={capStyle}>Send to</span>
-            {everyone ? (
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                {ALL_RECIPIENTS.map((r) => (
-                  <label key={r} style={checkLabel}>
-                    <input type="checkbox" checked={roles.includes(r)} onChange={() => toggle(r)} />
-                    {ROLE_LABEL[r].many}
-                  </label>
-                ))}
-              </div>
-            ) : contacts.length === 0 ? (
-              <span style={{ fontSize: 13, color: "var(--gw-error)", fontWeight: 600 }}>No email on file for this family.</span>
-            ) : (
-              contacts.map((c) => (
-                <label key={c.role} style={{ ...checkLabel, alignItems: "flex-start" }}>
-                  <input type="checkbox" checked={roles.includes(c.role)} onChange={() => toggle(c.role)} style={{ marginTop: 3 }} />
-                  <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>
-                    <strong>{ROLE_LABEL[c.role].one}</strong> · {c.name} · <span style={{ color: "var(--gw-fg-muted)" }}>{c.email}</span>
-                  </span>
-                </label>
-              ))
-            )}
-            {everyone && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 2 }}>
-                {groups.map((g) => (
-                  <span key={g.registrations.map((r) => r.id).join()} style={{ fontSize: 12.5, color: "var(--gw-fg)", overflowWrap: "anywhere" }}>
-                    <strong>{g.registrations.map((r) => r.first_name).join(" & ")}</strong> · {g.emails.join(", ")}
-                  </span>
-                ))}
-              </div>
-            )}
-            {!everyone && groups[0] && groups[0].emails.length < roles.filter((r) => contacts.some((c) => c.role === r)).length && (
-              <span style={muted}>They share an email, so it goes out once: {groups[0].emails.join(", ")}.</span>
-            )}
-            {noEmail.length > 0 && (everyone || contacts.length > 0) && (
-              <span style={{ fontSize: 12.5, color: "var(--gw-error)", fontWeight: 600 }}>
-                No email for {everyone ? "the people picked for " : ""}
-                {noEmail.map((r) => `${r.first_name} ${r.last_name}`.trim()).join(", ")}, so {noEmail.length === 1 ? "that family won't" : "they won't"} get it.
-              </span>
-            )}
-          </div>
-
-          <Input label="Subject" value={subject} maxLength={200} onChange={(e) => setSubject(e.target.value)} />
-          <Textarea
-            label="Message"
-            help={everyone ? "{player} becomes each family's player names when it sends." : "Type {player} anywhere to put in the player's name."}
-            value={body}
-            rows={11}
-            maxLength={4000}
-            onChange={(e) => setBody(e.target.value)}
-          />
-          {preview && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <span style={capStyle}>How it reads for {firstNames(preview.registrations)}</span>
-              <div style={{ ...muted, whiteSpace: "pre-wrap", lineHeight: 1.55, padding: "10px 12px", borderRadius: 10, background: "var(--gw-bg)", border: "1px solid var(--gw-border)" }}>
-                {fillMessage(body, preview.registrations)}
-              </div>
-            </div>
-          )}
-          {error && <ErrorNote text={error} />}
-          <div style={{ display: "flex", gap: 8, marginTop: "auto", paddingTop: 8 }}>
-            <Pill variant="accent" onClick={send} disabled={busy || families === 0 || !subject.trim() || !body.trim()}>
-              {busy ? "Sending…" : families <= 1 ? "Send" : `Send to ${families} families`}
-            </Pill>
-            <Pill variant="ghost" onClick={onClose} disabled={busy}>
-              Cancel
-            </Pill>
-          </div>
-        </>
-      )}
-    </Sheet>
-  );
-}
-
-const checkLabel: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600, cursor: "pointer" };
 
 // ─── Approved: a history ────────────────────────────────────────────────────
 

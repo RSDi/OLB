@@ -241,7 +241,9 @@ export function GuideView({
                     ? "Coaches and board"
                     : s.audience === "travel"
                       ? "Travel coordinator"
-                      : "Board"}
+                      : s.audience === "messaging"
+                        ? "Board and Registrations"
+                        : "Board"}
               </span>
             )}
             {tours[s.id] && (

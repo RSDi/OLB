@@ -24,9 +24,10 @@ import type { MemberRole, MemberStatus } from "../auth/permissions";
 // the coaches (a leadership volunteer role on a team) and the board;
 // "finance" = anyone with the Payments grant; "registrations" = anyone with
 // the Registrations grant; "travel" = anyone with the Travel grant (the
-// travel coordinator). Super-admins always have all three. The guide hides a
-// section from anyone it doesn't apply to.
-export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "travel" | "super_admin";
+// travel coordinator); "messaging" = the board and the Registrations grant,
+// who can email families from the Directory. Super-admins always have all
+// of them. The guide hides a section from anyone it doesn't apply to.
+export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "travel" | "messaging" | "super_admin";
 
 export interface GuideSection {
   id: string; // anchor: #help-<id>
@@ -268,6 +269,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 - **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. Pick who it goes to: for one family, tick **Dad**, **Mom** and the **Player** (when they have their own email); for everyone, tick **Dads**, **Moms** and **Players**. All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. For one family the player's name is already in the message; for everyone, **{player}** becomes each family's player names, and a preview shows how it reads. A copy is kept on the registration under **Messages sent**.
 - **Contacted** marks that someone has reached out, with the date and who, so two people don't both call. Sending a message ticks it for you.
 - **Email from my app** opens your own email app addressed to the parents instead. **Copy all emails** copies every parent's email to paste into Bcc, and **Download spreadsheet** saves the waitlist as a file for Excel or Google Sheets.
+- The Directory has the same thing for players already on the roster: see *Emailing families*.
 - When a spot opens, **Approve** works right from the waitlist. **Move back to Waiting** puts a registration back in the review queue, and **Remove** takes it off every tab (for a test, or a family that withdrew).
 
 **Approved** lists every registration that's been approved, newest first, with who approved it and when. Tap a name to open the player's page.
@@ -277,6 +279,24 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 **Editing a player.** On a player's page, the **Team** drop-down works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number** and **Age group**. Tap **Save**.
 
 **Taking a player off the roster.** In **Edit player**, **Take off the roster** removes a player who isn't in the program this season. Their parents stay as members. If the player has charges or payments on the Payments page, the Treasurer voids those first.`,
+  },
+  {
+    id: "email-families",
+    title: "Emailing families",
+    group: "Directory",
+    audience: "messaging",
+    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "messages sent", "{player}"],
+    body: `You see this if you're on the board or have the **Registrations** permission.
+
+**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: tap a team or **No team yet**, pick an age group, search, or pick a requirement and **Missing** to remind just the families who still need it. The top of the window says who it's going to, and **see who gets it** lists each family.
+
+**Email one family.** On a player's page, **Email family** writes to just that player's family.
+
+**Who gets it.** For one family, tick each person: **Dad**, **Mom**, a **Guardian**, and the **Player** when they have their own email. For several, tick **Dads**, **Moms** and **Players** (and **Guardians** when anyone has one). All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. If a family has no email for the people picked, the window names them so you can reach them another way.
+
+**{player}** in the subject or message becomes the family's player names. Writing to several families, a preview shows how it reads for the first one.
+
+**A copy** of each email is kept on the player's page under **Messages sent**, with who sent it and when.`,
   },
   {
     id: "your-profile",
@@ -779,6 +799,7 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
   if (audience === "finance") return viewer.role === "super_admin" || !!viewer.canManageFinances;
   if (audience === "registrations") return viewer.role === "super_admin" || !!viewer.canManageRegistrations;
   if (audience === "travel") return viewer.role === "super_admin" || !!viewer.canManageTravel;
+  if (audience === "messaging") return viewer.isStaff || viewer.role === "super_admin" || !!viewer.canManageRegistrations;
   return viewer.role === "super_admin";
 }
 

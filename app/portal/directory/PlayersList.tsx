@@ -22,6 +22,10 @@ import {
 import { RequirementDialog } from "./RequirementDialog";
 import { ContactLine, ParentBlock, RequirementChips, TeamPicker, formatDate, muted, playerAddress } from "./_shared/PlayerParts";
 import { ComboSelect } from "../../components/ComboSelect";
+import { Pill } from "../../components/ui";
+import { ComposeSheet } from "./_shared/Messaging";
+import { FAMILY_MESSAGE, playerTarget } from "../../../lib/teams/family-mail";
+import { sendPlayerMessage } from "../../../lib/teams/player-message-actions";
 
 const NO_GROUP = "No age group";
 
@@ -55,6 +59,7 @@ export function PlayersList({
   requirements,
   requirementRows,
   canPlace,
+  canEmail,
   registrations,
 }: {
   players: DirectoryPlayer[];
@@ -68,6 +73,9 @@ export function PlayersList({
   // The Registrations grant (0102): a team picker on every player, and the
   // new-registrations banner.
   canPlace: boolean;
+  // The board and the Registrations grant: Email families, to the players
+  // in view.
+  canEmail: boolean;
   // Waiting and waitlisted registrations; null without the grant.
   registrations: { waiting: number; waitlist: number } | null;
 }) {
@@ -78,6 +86,7 @@ export function PlayersList({
   const [reqId, setReqId] = useState("all");
   const [reqShow, setReqShow] = useState<ReqShow>("missing");
   const [open, setOpen] = useState<{ player: DirectoryPlayer; requirement: Requirement } | null>(null);
+  const [emailing, setEmailing] = useState(false);
 
   const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
   const pickedReq = requirements.find((r) => r.id === reqId) ?? null;
@@ -165,6 +174,13 @@ export function PlayersList({
   const shown = shownSections.reduce((n, g) => n + g.players.length, 0);
   const reqTotal = reqCounts.done + reqCounts.waived + reqCounts.missing;
   const season = players[0]?.board?.season;
+  // Who Email families writes to: the players in view, as the filters say.
+  const inView = shownSections.flatMap((g) => g.players);
+  const scope = [
+    view === "team" ? (pickedTeam ? teamLabel(pickedTeam) : teamId === NO_TEAM ? "No team yet" : null) : group !== "all" ? group : null,
+    pickedReq && reqShow !== "all" && `${reqShow === "missing" ? "Missing" : reqShow === "done" ? doneWord(pickedReq.kind) : "Waived"}: ${pickedReq.name}`,
+    query.trim() && `Search "${query.trim()}"`,
+  ].filter(Boolean);
 
   return (
     <>
@@ -303,12 +319,21 @@ export function PlayersList({
         <TeamBanner team={pickedTeam} roles={roles} playerCount={countByTeam.get(pickedTeam.id) ?? 0} />
       )}
 
-      <div data-tour="requirement-summary" style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-        {shown} {shown === 1 ? "player" : "players"}
-        {season && ` · ${season} season`}
-        {pickedReq &&
-          ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${pickedReq.kind === "fee" ? "paid" : "done"}` +
-            (reqCounts.waived > 0 ? ` (${reqCounts.waived} waived)` : "")}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <div data-tour="requirement-summary" style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+          {shown} {shown === 1 ? "player" : "players"}
+          {season && ` · ${season} season`}
+          {pickedReq &&
+            ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${pickedReq.kind === "fee" ? "paid" : "done"}` +
+              (reqCounts.waived > 0 ? ` (${reqCounts.waived} waived)` : "")}
+        </div>
+        {canEmail && shown > 0 && (
+          <span data-tour="directory-email" style={{ display: "inline-flex" }}>
+            <Pill size="sm" variant="light" onClick={() => setEmailing(true)}>
+              <Icons.Mail width={13} height={13} /> {shown === 1 ? "Email family" : "Email families"}
+            </Pill>
+          </span>
+        )}
       </div>
 
       {players.length === 0 ? (
@@ -391,6 +416,19 @@ export function PlayersList({
               </div>
             </section>
           ))
+      )}
+
+      {emailing && (
+        <ComposeSheet
+          targets={inView.map(playerTarget)}
+          title={inView.length === 1 ? "Email the family" : "Email families"}
+          eyebrow={[`${inView.length} ${inView.length === 1 ? "player" : "players"}`, ...scope].join(" · ")}
+          note="Sent from the club's email address, one email per family (brothers and sisters get one between them). Replies go to the club's Gmail. A copy is kept on each player's page."
+          subject=""
+          body={FAMILY_MESSAGE}
+          onSend={sendPlayerMessage}
+          onClose={() => setEmailing(false)}
+        />
       )}
 
       {open && (

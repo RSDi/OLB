@@ -1,9 +1,23 @@
 // The registration waitlist's rules (0115): who a registration's emails go
-// to, one email per family when several players share parents, the message
-// text, and the spreadsheet. Plain module (no "use server"), safe for client
+// to (the rest of emailing families is in ./family-mail), the waitlist
+// message, and the spreadsheet. Plain module (no "use server"), safe for client
 // and server, and pure, so tests can run it.
 
 import type { RegistrationExtra } from "./roster-logic.ts"; // explicit extension so node --test can load this file
+import {
+  ALL_RECIPIENTS,
+  cleanEmail as clean,
+  contactEmails,
+  groupByFamily,
+  personName,
+  type Contact,
+  type FamilyGroup,
+  type MailTarget,
+  type Recipient,
+} from "./family-mail.ts";
+
+export { ALL_RECIPIENTS, fillMessage, firstNames, mailtoHref, messageHtml } from "./family-mail.ts";
+export type { Contact, Recipient } from "./family-mail.ts";
 
 export interface WaitlistRegistration {
   id: string;
@@ -14,25 +28,6 @@ export interface WaitlistRegistration {
   parent_email?: string | null;
   extra: RegistrationExtra;
 }
-
-const EMAIL = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
-const clean = (e: string | null | undefined) => {
-  const v = e?.trim().toLowerCase();
-  return v && EMAIL.test(v) ? v : null;
-};
-
-// Who a message can go to: Dad, Mom and the player, each with their own email.
-export type Recipient = "father" | "mother" | "player";
-export const ALL_RECIPIENTS: Recipient[] = ["father", "mother", "player"];
-
-export interface Contact {
-  role: Recipient;
-  name: string;
-  email: string;
-}
-
-const personName = (p?: { first?: string; last?: string }) =>
-  [p?.first, p?.last].map((s) => s?.trim()).filter((s) => s && !/^n\/?a$/i.test(s)).join(" ");
 
 // The people on a registration who have an email. A parent with no email of
 // their own falls back to the one on the row (the first parent email the form
@@ -52,49 +47,22 @@ export function familyContacts(r: WaitlistRegistration): Contact[] {
   return out;
 }
 
+// A registration as someone to email, for the message window.
+export function waitlistTarget(r: WaitlistRegistration): MailTarget {
+  return { id: r.id, first_name: r.first_name, name: `${r.first_name} ${r.last_name}`.trim(), contacts: familyContacts(r) };
+}
+
 // Every email on a registration for the people picked, once each.
 export function familyEmails(r: WaitlistRegistration, roles: Recipient[] = ALL_RECIPIENTS): string[] {
-  return [...new Set(familyContacts(r).filter((c) => roles.includes(c.role)).map((c) => c.email))];
+  return contactEmails(familyContacts(r), roles);
 }
 
-export interface FamilyGroup<T extends WaitlistRegistration> {
-  emails: string[];
-  registrations: T[];
-}
-
-// Brothers and sisters share parents, so they're one family and get one
-// email between them, to the parents and players picked. A family with no
-// email for anyone picked is left out.
+// Brothers and sisters share parents, so they get one email between them.
 export function groupFamilies<T extends WaitlistRegistration>(
   regs: T[],
   roles: Recipient[] = ALL_RECIPIENTS
 ): { groups: FamilyGroup<T>[]; noEmail: T[] } {
-  const families = new Map<string, T[]>();
-  for (const r of regs) {
-    const parents = familyEmails(r, ["father", "mother"]).sort();
-    const key = parents.length ? parents.join(",") : `reg:${r.id}`;
-    families.set(key, [...(families.get(key) ?? []), r]);
-  }
-  const groups: FamilyGroup<T>[] = [];
-  const noEmail: T[] = [];
-  for (const members of families.values()) {
-    const emails = [...new Set(members.flatMap((r) => familyEmails(r, roles)))];
-    if (emails.length) groups.push({ emails, registrations: members });
-    else noEmail.push(...members);
-  }
-  return { groups, noEmail };
-}
-
-// "Sam", "Sam and Evan", "Sam, Evan and Leo".
-export function firstNames(regs: { first_name: string }[]): string {
-  const names = [...new Set(regs.map((r) => r.first_name.trim()).filter(Boolean))];
-  if (names.length <= 1) return names[0] ?? "your player";
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
-
-// {player} in a message becomes the family's players' first names.
-export function fillMessage(text: string, regs: { first_name: string }[]): string {
-  return text.replace(/\{player\}/gi, firstNames(regs));
+  return groupByFamily(regs, familyContacts, roles);
 }
 
 export const DEFAULT_SUBJECT = "Your Omaha Lightning registration";
@@ -105,24 +73,6 @@ Thanks for registering {player} with Omaha Lightning Basketball. Our teams are f
 Questions? Just reply to this email.
 
 Omaha Lightning Basketball`;
-
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-
-// Plain text as email HTML: blank lines start paragraphs, single line
-// breaks stay.
-export function messageHtml(text: string): string {
-  return text
-    .trim()
-    .split(/\n\s*\n/)
-    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
-    .join("\n");
-}
-
-// Opens the reviewer's own email app, addressed to the family.
-export function mailtoHref(emails: string[], subject: string): string {
-  return `mailto:${emails.map(encodeURIComponent).join(",")}?subject=${encodeURIComponent(subject)}`;
-}
 
 // Every email on the list once (parents and players), for pasting into Bcc.
 export function allEmails(regs: WaitlistRegistration[]): string[] {
@@ -141,7 +91,6 @@ const csvCell = (v: string | null | undefined) => {
   const s = (v ?? "").replace(/\r?\n/g, " ");
   return /[",]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
-const parentName = personName;
 
 // The waitlist as a spreadsheet (CSV), oldest registration first.
 export function waitlistCsv(rows: WaitlistRow[]): string {
@@ -157,8 +106,8 @@ export function waitlistCsv(rows: WaitlistRow[]): string {
     return [
       `${r.first_name} ${r.last_name}`.trim(), r.dob ?? "", x.fee_tier ?? "", day(r.created_at), day(r.reviewed_at), r.reviewed_by_name,
       r.notes, day(r.contacted_at), r.contacted_by_name,
-      parentName(x.father), x.father?.email?.trim(), x.father?.phone?.trim(),
-      parentName(x.mother), x.mother?.email?.trim(), x.mother?.phone?.trim(), x.athlete_email?.trim(), x.athlete_phone?.trim(), address,
+      personName(x.father), x.father?.email?.trim(), x.father?.phone?.trim(),
+      personName(x.mother), x.mother?.email?.trim(), x.mother?.phone?.trim(), x.athlete_email?.trim(), x.athlete_phone?.trim(), address,
     ].map(csvCell).join(",");
   });
   return [head.join(","), ...lines].join("\r\n") + "\r\n";

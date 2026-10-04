@@ -5,6 +5,7 @@
 
 import { createClient } from "../supabase/server";
 import { matchRoster, type RegistrationExtra, type RosterMatch } from "./roster-logic";
+import type { SentMessage } from "./family-mail";
 
 export type RegistrationTab = "waiting" | "waitlist" | "approved";
 const STATUS: Record<RegistrationTab, string> = { waiting: "pending", waitlist: "waitlisted", approved: "approved" };
@@ -16,14 +17,7 @@ export interface RosterPlayer {
   team: { id: string; name: string; age_group: string | null } | null;
 }
 
-export interface RegistrationMessage {
-  id: string;
-  subject: string;
-  body: string;
-  sent_to: string[];
-  sent_at: string;
-  sent_by_name: string | null;
-}
+export type RegistrationMessage = SentMessage;
 
 export interface PendingRegistration {
   id: string;
@@ -146,7 +140,7 @@ async function loadMessages(ids: string[]) {
 }
 
 // Who reviewed, contacted or sent: logins to the names people know them by.
-async function loadNames(userIds: (string | null)[]): Promise<Map<string, string>> {
+export async function loadNames(userIds: (string | null)[]): Promise<Map<string, string>> {
   const ids = [...new Set(userIds.filter((id): id is string => !!id))];
   if (ids.length === 0) return new Map();
   const db = await createClient();
