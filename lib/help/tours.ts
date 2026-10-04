@@ -209,6 +209,12 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Tap a team to show just that team, with its division, practice times and location, and who's coaching. **All teams** shows everyone; **No team yet** shows players who haven't been placed.",
       },
       {
+        target: "directory-email",
+        audience: "messaging",
+        title: "Email families",
+        body: "Writes to the families of the players the list is showing, one email per family. Pick a team, an age group, or a requirement's **Missing** first to narrow who gets it.",
+      },
+      {
         target: "directory-player",
         title: "Each player",
         body: "Jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.",

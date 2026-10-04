@@ -109,6 +109,14 @@ test("coaches see the coaches' sections, other members don't", () => {
   assert.ok(!guideSectionsFor({ ...COACH, status: "pending" }).some((s) => s.audience === "coaches"));
 });
 
+test("emailing families reaches the board and the Registrations permission, not other members", () => {
+  const REGISTRAR: GuideViewer = { ...MEMBER, canManageRegistrations: true };
+  for (const v of [ADMIN, SUPER, REGISTRAR]) assert.ok(guideSectionsFor(v).some((s) => s.id === "email-families"));
+  assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "email-families"));
+  assert.ok(!guideSectionsFor({ ...MEMBER, canManageFinances: true, isCoach: true }).some((s) => s.id === "email-families"));
+  assert.ok(!guideSectionsFor({ ...REGISTRAR, status: "pending" }).some((s) => s.id === "email-families"));
+});
+
 test("the travel coordinator reads the hotels section, and the board still gets its own", () => {
   const TRAVEL: GuideViewer = { ...MEMBER, canManageTravel: true };
   assert.equal(guideSectionForPath("/portal/contacts", TRAVEL)?.id, "travel-contacts");

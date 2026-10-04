@@ -4,7 +4,7 @@ import { loadPaymentsData, myPlayerIds } from "../../../../../lib/finances/data"
 import { groupFamilies } from "../../../../../lib/finances/logic";
 import type { PaymentsData } from "../../../../../lib/finances/types";
 import { AccessDenied } from "../../_shared/AccessDenied";
-import { loadPlayers, loadRequirements, loadViewer } from "../../_shared/data";
+import { loadPlayerMessages, loadPlayers, loadRequirements, loadViewer } from "../../_shared/data";
 import { PlayerDetail } from "./PlayerDetail";
 import { loadSeasonTeams } from "../../../../../lib/teams/volunteer-data";
 
@@ -13,7 +13,8 @@ import { loadSeasonTeams } from "../../../../../lib/teams/volunteer-data";
 // Payments grant, and to the player's own parents once the Treasurer has
 // opened balances to families. Who can see the player at all is RLS's call,
 // the same as the Directory. Anyone with the Registrations permission can also
-// put the player on a team, edit them, or take them off the roster.
+// put the player on a team, edit them, or take them off the roster; they and
+// the board can email the family.
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // Started before the viewer check on purpose — see loadViewer().
@@ -50,6 +51,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
   const req = viewer.isStaff ? await requirements : { requirements: [], rows: [] };
   const teams = viewer.canManageRegistrations ? await loadSeasonTeams() : null;
+  // The board and the Registrations grant can email the family (0116).
+  const canEmail = viewer.isStaff || viewer.canManageRegistrations;
+  const messages = canEmail ? await loadPlayerMessages(id) : [];
 
   return (
     <PlayerDetail
@@ -61,6 +65,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       payments={payments}
       canManageFinances={canManageFinances}
       teams={teams}
+      canEmail={canEmail}
+      messages={messages}
     />
   );
 }

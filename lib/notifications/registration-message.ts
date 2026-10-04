@@ -1,5 +1,6 @@
-// Server-only. Sends messages to waitlisted families from the Directory's
-// Registrations page (0115), one email per family, through Resend: from
+// Server-only. Sends messages to families from the Directory: waitlisted
+// families on its Registrations page (0115), and the families of players in
+// the Directory or on a player's page (0116). One email per family, through Resend: from
 // MAIL_FROM, with replies to the club's Gmail. Several at once go as one
 // batch request (up to 100 per request), so a whole waitlist sends quickly.
 

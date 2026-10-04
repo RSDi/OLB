@@ -19,6 +19,9 @@ import { ChargeDialog } from "../../../payments/ChargeDialog";
 import { PaymentDialog } from "../../../payments/PaymentDialog";
 import { BalanceChip } from "../../../payments/parts";
 import { EditPlayerSheet } from "./EditPlayerSheet";
+import { ComposeSheet, SentMessages } from "../../_shared/Messaging";
+import { FAMILY_MESSAGE, playerTarget, type SentMessage } from "../../../../../lib/teams/family-mail";
+import { sendPlayerMessage } from "../../../../../lib/teams/player-message-actions";
 
 const cap: React.CSSProperties = {
   fontSize: 11,
@@ -31,7 +34,8 @@ const cap: React.CSSProperties = {
 // A player's own page: the Directory card's details, links to their parents'
 // and siblings' pages, requirements for the board, and the family's balance
 // for the Treasurer (who can record from here) or the player's own parents.
-// The Registrations grant also gets the team picker and Edit player.
+// The Registrations grant also gets the team picker and Edit player, and it
+// and the board get Email family.
 export function PlayerDetail({
   player: p,
   siblings,
@@ -41,6 +45,8 @@ export function PlayerDetail({
   payments,
   canManageFinances,
   teams,
+  canEmail,
+  messages,
 }: {
   player: DirectoryPlayer;
   siblings: DirectoryPlayer[];
@@ -52,9 +58,13 @@ export function PlayerDetail({
   canManageFinances: boolean;
   // The season's teams, for the Registrations grant; null for everyone else.
   teams: { id: string; name: string; age_group: string | null }[] | null;
+  // The board and the Registrations grant: Email family, and what was sent.
+  canEmail: boolean;
+  messages: SentMessage[];
 }) {
   const [openReq, setOpenReq] = useState<Requirement | null>(null);
   const [editing, setEditing] = useState(false);
+  const [emailing, setEmailing] = useState(false);
   const [openMoney, setOpenMoney] = useState<"payment" | ChargeKind | null>(null);
   const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
   const account = useMemo(
@@ -104,11 +114,22 @@ export function PlayerDetail({
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
           {!p.directory_optin && <span className="rsd-chip rsd-chip-mute">Not in directory</span>}
-          {teams && (
-            <span data-tour="player-edit" style={{ marginLeft: "auto", display: "inline-flex" }}>
-              <Pill size="sm" variant="dark" onClick={() => setEditing(true)}>
-                Edit player
-              </Pill>
+          {(canEmail || teams) && (
+            <span style={{ marginLeft: "auto", display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+              {canEmail && (
+                <span data-tour="player-email" style={{ display: "inline-flex" }}>
+                  <Pill size="sm" variant="light" onClick={() => setEmailing(true)}>
+                    <Icons.Mail width={13} height={13} /> Email family
+                  </Pill>
+                </span>
+              )}
+              {teams && (
+                <span data-tour="player-edit" style={{ display: "inline-flex" }}>
+                  <Pill size="sm" variant="dark" onClick={() => setEditing(true)}>
+                    Edit player
+                  </Pill>
+                </span>
+              )}
             </span>
           )}
         </div>
@@ -166,6 +187,12 @@ export function PlayerDetail({
         )}
       </div>
 
+      {canEmail && messages.length > 0 && (
+        <div className="rsd-card" style={{ padding: "14px 20px" }}>
+          <SentMessages messages={messages} />
+        </div>
+      )}
+
       {account && (
         <div className="rsd-card" data-tour="player-payments" style={{ padding: "16px 20px", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
@@ -210,6 +237,18 @@ export function PlayerDetail({
         />
       )}
       {editing && <EditPlayerSheet player={p} onClose={() => setEditing(false)} />}
+      {emailing && (
+        <ComposeSheet
+          targets={[playerTarget(p)]}
+          title="Email the family"
+          eyebrow={p.full_name}
+          note="Sent from the club's email address. Replies go to the club's Gmail. A copy is kept on this page."
+          subject=""
+          body={FAMILY_MESSAGE}
+          onSend={sendPlayerMessage}
+          onClose={() => setEmailing(false)}
+        />
+      )}
       {account && openMoney === "payment" && <PaymentDialog account={account} onClose={() => setOpenMoney(null)} />}
       {account && (openMoney === "charge" || openMoney === "credit") && (
         <ChargeDialog account={account} kind={openMoney} onClose={() => setOpenMoney(null)} />

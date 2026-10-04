@@ -4,6 +4,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
 import { getViewer } from "../../../../lib/auth/viewer";
+import { loadNames } from "../../../../lib/teams/registration-data";
+import type { SentMessage } from "../../../../lib/teams/family-mail";
 import {
   PLAYER_REQUIREMENT_COLUMNS,
   REQUIREMENT_COLUMNS,
@@ -189,4 +191,20 @@ export async function loadRequirements(): Promise<DirectoryRequirements> {
     for (const r of rows) r.marked_by_name = r.marked_by ? names.get(r.marked_by) ?? null : null;
   }
   return { requirements, rows };
+}
+
+// Emails sent to a player's family from the Directory (0116), newest first,
+// for the board and the Registrations grant (RLS returns nothing to anyone
+// else, or before 0116 is applied).
+export async function loadPlayerMessages(playerId: string): Promise<SentMessage[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("olb_player_messages")
+    .select("id, subject, body, sent_to, sent_at, sent_by")
+    .eq("player_id", playerId)
+    .order("sent_at", { ascending: false });
+  const rows = (data as (Omit<SentMessage, "sent_by_name"> & { sent_by: string | null })[] | null) ?? [];
+  if (rows.length === 0) return [];
+  const names = await loadNames(rows.map((r) => r.sent_by));
+  return rows.map(({ sent_by, ...m }) => ({ ...m, sent_by_name: sent_by ? names.get(sent_by) ?? null : null }));
 }
