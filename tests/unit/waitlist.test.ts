@@ -50,6 +50,15 @@ test("a family's contacts are Dad, Mom and the player, each with their own email
   assert.deepEqual(familyEmails(reg("e", "Sam", { father: { email: "N/A" } })), []);
 });
 
+test("a registration whose player email is a parent's lists it once, on the parent, as primary", () => {
+  const r = reg("g", "Greyson", { ...parents, athlete_email: "jamie@EXAMPLE.com" });
+  assert.deepEqual(familyContacts(r), [
+    { role: "mother", name: "Jamie Carter", email: "jamie@example.com", primary: true },
+    { role: "father", name: "Chris Carter", email: "chris@example.com" },
+  ]);
+  assert.deepEqual(familyEmails(r, ["player"]), []);
+});
+
 test("brothers and sisters get one email between them, to the people picked", () => {
   const regs = [
     reg("a", "Sam", { ...parents, athlete_email: "sam@example.com" }),

@@ -81,6 +81,7 @@ export function ComposeSheet({
   const toggle = (r: Recipient) => setRoles((list) => (list.includes(r) ? list.filter((x) => x !== r) : ALL_RECIPIENTS.filter((x) => x === r || list.includes(x))));
   const preview = !one && /\{player\}/i.test(body) && groups[0] ? groups[0] : null;
   const picked = contacts.filter((c) => roles.includes(c.role)).length;
+  const primary = contacts.find((c) => c.primary);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,6 +165,11 @@ export function ComposeSheet({
                   <input type="checkbox" checked={roles.includes(c.role)} onChange={() => toggle(c.role)} style={{ marginTop: 3 }} />
                   <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>
                     <strong>{ROLE_LABEL[c.role].one}</strong> · {c.name} · <span style={{ color: "var(--gw-fg-muted)" }}>{c.email}</span>
+                    {c.primary && (
+                      <span className="rsd-chip rsd-chip-accent" style={{ marginLeft: 8, verticalAlign: "1px" }}>
+                        Primary email
+                      </span>
+                    )}
                   </span>
                 </label>
               ))
@@ -190,6 +196,12 @@ export function ComposeSheet({
                   familyList
                 )}
               </div>
+            )}
+            {one && primary && (
+              <span style={muted}>
+                {targets[0].first_name}&apos;s email on file is {ROLE_LABEL[primary.role].one}&apos;s too, so it&apos;s listed once, as the family&apos;s
+                primary email.
+              </span>
             )}
             {one && groups[0] && groups[0].emails.length < picked && (
               <span style={muted}>They share an email, so it goes out once: {groups[0].emails.join(", ")}.</span>
