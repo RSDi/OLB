@@ -266,7 +266,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **The waitlist.** The **Waitlist** tab lists those families in the order they registered, with who put them there, when, and the note (**Edit note** changes it).
 
-- **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. Pick who it goes to: for one family, tick **Dad**, **Mom** and the **Player** (when they have their own email); for everyone, tick **Dads**, **Moms** and **Players**. All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. For one family the player's name is already in the message; for everyone, **{player}** becomes each family's player names, and a preview shows how it reads. A copy is kept on the registration under **Messages sent**.
+- **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. Pick who it goes to: for one family, tick **Dad**, **Mom** and the **Player** (when they have their own email); for everyone, tick **Dads**, **Moms** and **Players**. All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. For one family the player's name is already in the message; for everyone, **{player}** becomes each family's player names, and a preview shows how it reads. **Template** swaps in one the board wrote in Settings → Email Templates. A copy is kept on the registration under **Messages sent**.
 - **Contacted** marks that someone has reached out, with the date and who, so two people don't both call. Sending a message ticks it for you.
 - **Email from my app** opens your own email app addressed to the parents instead. **Copy all emails** copies every parent's email to paste into Bcc, and **Download spreadsheet** saves the waitlist as a file for Excel or Google Sheets.
 - The Directory has the same thing for players already on the roster: see *Emailing families*.
@@ -285,7 +285,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     title: "Emailing families",
     group: "Directory",
     audience: "messaging",
-    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "messages sent", "{player}"],
+    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "messages sent", "template", "templates", "{player}"],
     body: `You see this if you're on the board or have the **Registrations** permission.
 
 **Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: tap a team or **No team yet**, pick an age group, search, or pick a requirement and **Missing** to remind just the families who still need it. The top of the window says who it's going to, and **see who gets it** lists each family.
@@ -293,6 +293,8 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 **Email one family.** On a player's page, **Email family** writes to just that player's family.
 
 **Who gets it.** For one family, tick each person: **Dad**, **Mom**, a **Guardian**, and the **Player** when they have their own email. For several, tick **Dads**, **Moms** and **Players** (and **Guardians** when anyone has one). All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. If a family has no email for the people picked, the window names them so you can reach them another way.
+
+**Templates.** Pick one from **Template** to fill in the subject and message, then change anything you like. The board writes them in **Settings → Email Templates**.
 
 **{player}** in the subject or message becomes the family's player names. Writing to several families, a preview shows how it reads for the first one.
 
@@ -711,6 +713,20 @@ What you enter here shows on the team's Directory banner and team page. Players 
 - **Active** — untick it to retire a requirement. It leaves the Directory but keeps everyone's record, and you can turn it back on later.
 
 Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
+  },
+  {
+    id: "settings-email-templates",
+    title: "Settings: Email Templates",
+    group: "Settings",
+    audience: "staff",
+    keywords: ["email templates", "templates", "template", "email", "message", "subject", "reuse", "canned", "practice change", "reminder", "{player}", "families"],
+    body: `Emails you send families again and again, written once: a practice change, picture day, a fee reminder. Open **Settings → Email Templates**. Any board member can add, change and delete them.
+
+- **Add template**: give it a **Name** (what you pick from the list; families don't see it), a **Subject** and a **Message**.
+- Type **{player}** where the player's first name goes. Brothers and sisters get one email, with their names together (Sam and Evan).
+- Tap the **pencil** to change a template, or the **trash** can to delete it. Emails already sent aren't affected.
+
+**Using one.** When you email families from the Directory, a player's page or the registration waitlist, pick it from **Template**. It fills in the subject and message, and you can change anything before you send. Anyone who can email families can use the templates, including people with the **Registrations** permission who aren't on the board.`,
   },
   {
     id: "settings-planning-roles",

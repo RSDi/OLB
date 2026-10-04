@@ -1,7 +1,9 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Input, Pill, Textarea } from "../../../components/ui";
+import { Input, Pill, Select, Textarea } from "../../../components/ui";
+import { createClient } from "../../../../lib/supabase/client";
+import { EMAIL_TEMPLATE_COLUMNS, sortTemplates, type EmailTemplate } from "../../../../lib/teams/email-templates";
 import { ErrorNote, Sheet, capStyle } from "../../payments/parts";
 import {
   ALL_RECIPIENTS,
@@ -54,6 +56,11 @@ export function ComposeSheet({
   const one = targets.length === 1;
   const [subject, setSubject] = useState(startSubject);
   const [body, setBody] = useState(one ? fillMessage(startBody, targets) : startBody);
+  // The board's templates (0117), and the text last put in from one (or the
+  // start), so picking another only asks before replacing your own writing.
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [templateId, setTemplateId] = useState("");
+  const [placed, setPlaced] = useState({ subject, body });
   const [roles, setRoles] = useState<Recipient[]>(ALL_RECIPIENTS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +72,32 @@ export function ComposeSheet({
   const toggle = (r: Recipient) => setRoles((list) => (list.includes(r) ? list.filter((x) => x !== r) : ALL_RECIPIENTS.filter((x) => x === r || list.includes(x))));
   const preview = !one && /\{player\}/i.test(body) && groups[0] ? groups[0] : null;
   const picked = contacts.filter((c) => roles.includes(c.role)).length;
+
+  useEffect(() => {
+    let cancelled = false;
+    createClient()
+      .from("olb_email_templates")
+      .select(EMAIL_TEMPLATE_COLUMNS)
+      .then(({ data }) => {
+        if (!cancelled) setTemplates(sortTemplates((data as EmailTemplate[] | null) ?? []));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function pickTemplate(id: string) {
+    const t = templates.find((x) => x.id === id);
+    if (!t) return setTemplateId("");
+    const written = (subject !== placed.subject || body !== placed.body) && !!(subject.trim() || body.trim());
+    if (written && !confirm(`Replace what you've written with the "${t.name}" template?`)) return;
+    // One family: their names go straight in, the same as the start.
+    const next = one ? { subject: fillMessage(t.subject, targets), body: fillMessage(t.body, targets) } : { subject: t.subject, body: t.body };
+    setSubject(next.subject);
+    setBody(next.body);
+    setPlaced(next);
+    setTemplateId(id);
+  }
 
   async function send() {
     setBusy(true);
@@ -151,6 +184,18 @@ export function ComposeSheet({
             )}
           </div>
 
+          {templates.length > 0 && (
+            <div data-tour="message-template">
+              <Select label="Template" value={templateId} onChange={(e) => pickTemplate(e.target.value)} help="Fills in the subject and message. Change anything before you send.">
+                <option value="">Pick a template…</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
           <Input label="Subject" value={subject} maxLength={200} placeholder="What's it about?" onChange={(e) => setSubject(e.target.value)} />
           <Textarea
             label="Message"
