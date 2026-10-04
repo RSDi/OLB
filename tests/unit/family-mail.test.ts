@@ -65,3 +65,19 @@ test("brothers and sisters with the same parents get one email between them", ()
   assert.deepEqual(dads.groups.map((g) => g.emails), [["chris@example.com"], ["tom@example.com"]]);
   assert.deepEqual(dads.noEmail.map((t) => t.first_name), ["Max"]);
 });
+
+test("a player who shares a parent's email isn't a separate choice: that parent's email is the primary one", () => {
+  // Greyson's own email is Mom's.
+  const greyson = playerTarget(player("g", "Greyson Ackerman", [dad, mom], "JAMIE@example.com"));
+  assert.deepEqual(greyson.contacts, [
+    { role: "mother", name: "Jamie Carter", email: "jamie@example.com", primary: true },
+    { role: "father", name: "Chris Carter", email: "chris@example.com" },
+  ]);
+  assert.deepEqual(rolesPresent(greyson.contacts), ["father", "mother"]);
+  // Dads only: Mom's (and Greyson's) email isn't included.
+  assert.deepEqual(contactEmails(greyson.contacts, ["father", "player"]), ["chris@example.com"]);
+  // A player with their own email stays a choice; no parent is marked.
+  const sam = playerTarget(player("s", "Sam Carter", [dad, mom], "sam@example.com"));
+  assert.ok(sam.contacts.some((c) => c.role === "player"));
+  assert.ok(!sam.contacts.some((c) => c.primary));
+});

@@ -12,6 +12,8 @@ export interface Contact {
   role: Recipient;
   name: string;
   email: string;
+  // A parent whose email is the player's too: likely the family's main one.
+  primary?: boolean;
 }
 
 // Who a message is about: a player, with the people who can be emailed.
@@ -45,6 +47,18 @@ export const personName = (p?: { first?: string; last?: string }) =>
 // Every email among a player's contacts for the people picked, once each.
 export function contactEmails(contacts: Contact[], roles: Recipient[] = ALL_RECIPIENTS): string[] {
   return [...new Set(contacts.filter((c) => roles.includes(c.role)).map((c) => c.email))];
+}
+
+// A player whose email is one of their parents' is reached through that
+// parent, so they aren't a separate choice. That parent's email is marked
+// primary (it's on the player's record too, so it's likely the family's main
+// one) and listed first.
+export function withPrimary(contacts: Contact[]): Contact[] {
+  const player = contacts.find((c) => c.role === "player");
+  const parents = contacts.filter((c) => c.role !== "player");
+  if (!player || !parents.some((c) => c.email === player.email)) return contacts;
+  const marked = parents.map((c) => (c.email === player.email ? { ...c, primary: true } : c));
+  return [...marked.filter((c) => c.primary), ...marked.filter((c) => !c.primary)];
 }
 
 // The people picked who have an email, in the order the boxes show.
@@ -82,7 +96,8 @@ export function groupByFamily<T extends { id: string }>(
 }
 
 // A Directory player (olb_players with its olb_player_parents) as someone to
-// email: each parent on the roster with an email, then the player's own.
+// email: each parent on the roster with an email, then the player's own
+// (unless it's a parent's: see withPrimary).
 export interface PlayerWithParents {
   id: string;
   full_name: string;
@@ -100,7 +115,7 @@ export function playerTarget(p: PlayerWithParents): MailTarget {
   }
   const own = cleanEmail(p.email);
   if (own) contacts.push({ role: "player", name: p.full_name.trim(), email: own });
-  return { id: p.id, first_name: p.full_name.trim().split(/\s+/)[0] ?? "", name: p.full_name.trim(), contacts };
+  return { id: p.id, first_name: p.full_name.trim().split(/\s+/)[0] ?? "", name: p.full_name.trim(), contacts: withPrimary(contacts) };
 }
 
 // "Sam", "Sam and Evan", "Sam, Evan and Leo".

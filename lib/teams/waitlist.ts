@@ -14,6 +14,7 @@ import {
   type FamilyGroup,
   type MailTarget,
   type Recipient,
+  withPrimary,
 } from "./family-mail.ts";
 
 export { ALL_RECIPIENTS, fillMessage, firstNames, mailtoHref, messageHtml } from "./family-mail.ts";
@@ -31,7 +32,8 @@ export interface WaitlistRegistration {
 
 // The people on a registration who have an email. A parent with no email of
 // their own falls back to the one on the row (the first parent email the form
-// had), so an older registration still reaches a parent.
+// had), so an older registration still reaches a parent. A player sharing a
+// parent's email isn't listed separately (withPrimary).
 export function familyContacts(r: WaitlistRegistration): Contact[] {
   const out: Contact[] = [];
   const father = clean(r.extra.father?.email);
@@ -44,7 +46,7 @@ export function familyContacts(r: WaitlistRegistration): Contact[] {
   }
   const player = clean(r.extra.athlete_email);
   if (player) out.push({ role: "player", name: `${r.first_name} ${r.last_name}`.trim(), email: player });
-  return out;
+  return withPrimary(out);
 }
 
 // A registration as someone to email, for the message window.

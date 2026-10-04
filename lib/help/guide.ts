@@ -285,14 +285,14 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     title: "Emailing families",
     group: "Directory",
     audience: "messaging",
-    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "messages sent", "template", "templates", "{player}"],
+    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "messages sent", "template", "templates", "primary email", "same email", "{player}"],
     body: `You see this if you're on the board or have the **Registrations** permission.
 
 **Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: tap a team or **No team yet**, pick an age group, search, or pick a requirement and **Missing** to remind just the families who still need it. The top of the window says who it's going to, and **see who gets it** lists each family.
 
 **Email one family.** On a player's page, **Email family** writes to just that player's family.
 
-**Who gets it.** For one family, tick each person: **Dad**, **Mom**, a **Guardian**, and the **Player** when they have their own email. For several, tick **Dads**, **Moms** and **Players** (and **Guardians** when anyone has one). All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. If a family has no email for the people picked, the window names them so you can reach them another way.
+**Who gets it.** For one family, tick each person: **Dad**, **Mom**, a **Guardian**, and the **Player** when they have their own email. For several, tick **Dads**, **Moms** and **Players** (and **Guardians** when anyone has one). All are ticked to start. When a player's email is the same as a parent's, it's listed once, on that parent, marked **Primary email**. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. If a family has no email for the people picked, the window names them so you can reach them another way.
 
 **Templates.** Pick one from **Template** to fill in the subject and message, then change anything you like. The board writes them in **Settings → Email Templates**.
 
