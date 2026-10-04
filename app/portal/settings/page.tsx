@@ -23,13 +23,14 @@ import { IntegrationsTab } from "./IntegrationsTab";
 import { ImportTab } from "./ImportTab";
 import { SidebarLinksTab } from "./SidebarLinksTab";
 import { RequirementsTab } from "./RequirementsTab";
+import { EmailTemplatesTab } from "./EmailTemplatesTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
 import { usePageHelp } from "../../components/PageHelp";
 
 // Staged rollout: the tabs released to everyone who can open Settings, and
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
-const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "playbooks",
   "sidebar_links",
@@ -44,6 +45,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   teams: "settings-teams",
   volunteer_roles: "settings-volunteer-roles",
   requirements: "settings-requirements",
+  email_templates: "settings-email-templates",
   playbooks: "settings-playbooks",
   sidebar_links: "settings-sidebar-links",
   contact_categories: "settings-contact-types",
@@ -60,6 +62,7 @@ type Tab =
   | "teams"
   | "volunteer_roles"
   | "requirements"
+  | "email_templates"
   | "planning_roles"
   | "event_categories"
   | "task_categories"
@@ -144,6 +147,8 @@ export default function SettingsPage() {
     { key: "teams", label: "Teams", visible: isSuperAdmin(me), tour: "settings-tab-teams" },
     { key: "volunteer_roles", label: "Volunteer Roles", visible: isSuperAdmin(me), tour: "settings-tab-volunteer-roles" },
     { key: "requirements", label: "Requirements", visible: canEditSettings(me), tour: "settings-tab-requirements" },
+    // Any board member writes the templates used when emailing families (0117).
+    { key: "email_templates", label: "Email Templates", visible: true, tour: "settings-tab-email-templates" },
     // Planning (lib/planning/access.ts): staged rollout, so only the preview
     // accounts get the tab until Planning is released.
     { key: "planning_roles", label: "Planning Roles", visible: fullUi, tour: "settings-tab-planning-roles" },
@@ -208,6 +213,7 @@ export default function SettingsPage() {
       {tab === "teams" && isSuperAdmin(me) && <TeamsSettingsTab />}
       {tab === "volunteer_roles" && isSuperAdmin(me) && <VolunteerRolesTab />}
       {tab === "requirements" && canEditSettings(me) && <RequirementsTab me={me} />}
+      {tab === "email_templates" && <EmailTemplatesTab />}
       {tab === "planning_roles" && fullUi && <PlanningRolesTab />}
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}

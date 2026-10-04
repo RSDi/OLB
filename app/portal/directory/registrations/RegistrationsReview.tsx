@@ -30,6 +30,7 @@ import {
 import { formatDollars, registrationFeeCents, registrationTier } from "../../../../lib/finances/logic";
 import { ContactLine, formatDate, muted } from "../_shared/PlayerParts";
 import { ComposeSheet, SentMessages } from "../_shared/Messaging";
+import { WAITLIST_TEMPLATE } from "../../../../lib/teams/email-templates";
 import { ErrorNote, capStyle } from "../../payments/parts";
 
 const TABS: { key: RegistrationTab; label: string }[] = [
@@ -146,6 +147,7 @@ export function RegistrationsReview({
           note="Sent from the club's email address, one email per family. Replies go to the club's Gmail. A copy is kept on each registration, and they're marked contacted."
           subject={DEFAULT_SUBJECT}
           body={DEFAULT_MESSAGE}
+          startTemplate={WAITLIST_TEMPLATE}
           onSend={sendRegistrationMessage}
           onClose={() => setCompose(null)}
         />

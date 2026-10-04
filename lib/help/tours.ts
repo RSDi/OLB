@@ -660,6 +660,38 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-email-templates",
+    sectionId: "settings-email-templates",
+    title: "Email Templates walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-email-templates",
+        title: "Settings → Email Templates",
+        body: "Emails you send families again and again, written once. They show up under **Template** whenever someone emails families.",
+      },
+      {
+        target: "email-templates-add",
+        click: "settings-tab-email-templates",
+        title: "Add template",
+        body: "Starts a new one. Tap the **pencil** on a template to change it instead.",
+      },
+      {
+        target: "email-template-name",
+        click: "email-templates-add",
+        interactive: true,
+        title: "Name and subject",
+        body: "The **Name** is what you pick from the list, like **Practice change**; families don't see it. The **Subject** is what they do see.",
+      },
+      {
+        target: "email-template-body",
+        interactive: true,
+        title: "The message",
+        body: "Type **{player}** where the player's first name goes. Brothers and sisters get one email with their names together. Tap **Add template** to save.",
+      },
+    ],
+  },
+  {
     id: "settings-playbooks",
     sectionId: "settings-playbooks",
     title: "Playbooks walkthrough",

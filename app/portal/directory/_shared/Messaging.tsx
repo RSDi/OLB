@@ -1,7 +1,9 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Input, Pill, Textarea } from "../../../components/ui";
+import { Input, Pill, Select, Textarea } from "../../../components/ui";
+import { createClient } from "../../../../lib/supabase/client";
+import { EMAIL_TEMPLATE_COLUMNS, sortTemplates, type EmailTemplate } from "../../../../lib/teams/email-templates";
 import { ErrorNote, Sheet, capStyle } from "../../payments/parts";
 import {
   ALL_RECIPIENTS,
@@ -30,6 +32,8 @@ const contactsOf = (t: MailTarget) => t.contacts;
 // player's page. One player: a box for each person with an email, and their
 // name already in the message. Several: a box for Dads, Moms and Players,
 // one email per family, and {player} filled in for each family as it sends.
+// `startTemplate` starts from the board's template with that slug, when it
+// has one (the waitlist's message), instead of `subject` and `body`.
 export function ComposeSheet({
   targets,
   title,
@@ -37,6 +41,7 @@ export function ComposeSheet({
   note,
   subject: startSubject,
   body: startBody,
+  startTemplate,
   onSend,
   onClose,
 }: {
@@ -47,13 +52,24 @@ export function ComposeSheet({
   note: ReactNode;
   subject: string;
   body: string;
+  startTemplate?: string;
   onSend: (ids: string[], subject: string, body: string, roles: Recipient[]) => Promise<SendResult>;
   onClose: () => void;
 }) {
   const router = useRouter();
   const one = targets.length === 1;
+  // One family: their names go straight into the text. Several: {player}
+  // stays, and is filled in for each family as it sends.
+  const [fill] = useState(() => (text: string) => (one ? fillMessage(text, targets) : text));
   const [subject, setSubject] = useState(startSubject);
-  const [body, setBody] = useState(one ? fillMessage(startBody, targets) : startBody);
+  const [body, setBody] = useState(() => fill(startBody));
+  // Set once you type, so a template arriving late doesn't overwrite you.
+  const typed = useRef(false);
+  // The board's templates (0117), and the text last put in from one (or the
+  // start), so picking another only asks before replacing your own writing.
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [templateId, setTemplateId] = useState("");
+  const [placed, setPlaced] = useState({ subject, body });
   const [roles, setRoles] = useState<Recipient[]>(ALL_RECIPIENTS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +81,41 @@ export function ComposeSheet({
   const toggle = (r: Recipient) => setRoles((list) => (list.includes(r) ? list.filter((x) => x !== r) : ALL_RECIPIENTS.filter((x) => x === r || list.includes(x))));
   const preview = !one && /\{player\}/i.test(body) && groups[0] ? groups[0] : null;
   const picked = contacts.filter((c) => roles.includes(c.role)).length;
+
+  useEffect(() => {
+    let cancelled = false;
+    createClient()
+      .from("olb_email_templates")
+      .select(EMAIL_TEMPLATE_COLUMNS)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const list = sortTemplates((data as EmailTemplate[] | null) ?? []);
+        setTemplates(list);
+        const start = startTemplate && !typed.current ? list.find((t) => t.slug === startTemplate) : undefined;
+        if (start) {
+          const next = { subject: fill(start.subject), body: fill(start.body) };
+          setSubject(next.subject);
+          setBody(next.body);
+          setPlaced(next);
+          setTemplateId(start.id);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fill, startTemplate]);
+
+  function pickTemplate(id: string) {
+    const t = templates.find((x) => x.id === id);
+    if (!t) return setTemplateId("");
+    const written = (subject !== placed.subject || body !== placed.body) && !!(subject.trim() || body.trim());
+    if (written && !confirm(`Replace what you've written with the "${t.name}" template?`)) return;
+    const next = { subject: fill(t.subject), body: fill(t.body) };
+    setSubject(next.subject);
+    setBody(next.body);
+    setPlaced(next);
+    setTemplateId(id);
+  }
 
   async function send() {
     setBusy(true);
@@ -151,14 +202,38 @@ export function ComposeSheet({
             )}
           </div>
 
-          <Input label="Subject" value={subject} maxLength={200} placeholder="What's it about?" onChange={(e) => setSubject(e.target.value)} />
+          {templates.length > 0 && (
+            <div data-tour="message-template">
+              <Select label="Template" value={templateId} onChange={(e) => pickTemplate(e.target.value)} help="Fills in the subject and message. Change anything before you send.">
+                <option value="">Pick a template…</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+          <Input
+            label="Subject"
+            value={subject}
+            maxLength={200}
+            placeholder="What's it about?"
+            onChange={(e) => {
+              typed.current = true;
+              setSubject(e.target.value);
+            }}
+          />
           <Textarea
             label="Message"
             help={one ? "Type {player} anywhere to put in the player's name." : "{player} becomes each family's player names when it sends."}
             value={body}
             rows={11}
             maxLength={4000}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => {
+              typed.current = true;
+              setBody(e.target.value);
+            }}
           />
           {preview && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
