@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadPublicDirectory, loadPublicDirectoryKey } from "../../../../lib/teams/public-directory";
 import { keyOpens } from "../../../../lib/teams/public-directory-key";
@@ -19,9 +20,10 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 // The public, read-only Directory at /directory/<key>: no login, but only for
-// someone with the link. Nothing to change, no links into the portal. Only
-// families who said yes to the directory are listed, and no birthdays, street
-// addresses, fees or payment details are sent (see
+// someone with the link. Nothing to change, no links into the portal (the
+// logo goes to the club website's home page). Only families who said yes to
+// the directory are listed, and no birthdays, street addresses, fees or
+// payment details are sent (see
 // lib/teams/public-directory.ts). A wrong key is a plain 404, so the page's
 // existence isn't given away.
 export default async function PublicDirectoryPage({ params }: { params: Promise<{ key: string }> }) {
@@ -43,15 +45,18 @@ export default async function PublicDirectoryPage({ params }: { params: Promise<
         }}
       >
         <header style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* The website's wordmark; not a link, so the page leads nowhere. */}
-          <Image
-            src={logo}
-            alt="Omaha Lightning Basketball"
-            sizes="(max-width: 466px) 60vw, 280px"
-            loading="eager"
-            fetchPriority="high"
-            style={{ width: "min(280px, 60vw)", height: "auto", display: "block" }}
-          />
+          {/* The website's wordmark, back to the club website's home page on
+              this same site (so it follows whichever domain serves it). */}
+          <Link href="/" style={{ alignSelf: "flex-start", display: "block" }}>
+            <Image
+              src={logo}
+              alt="Omaha Lightning Basketball home"
+              sizes="(max-width: 466px) 60vw, 280px"
+              loading="eager"
+              fetchPriority="high"
+              style={{ width: "min(280px, 60vw)", height: "auto", display: "block" }}
+            />
+          </Link>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-.01em" }}>Directory</h1>
         </header>
         <PublicDirectoryList season={season} teams={teams} players={players} />
