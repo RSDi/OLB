@@ -5,7 +5,8 @@ import { keyOpens } from "../../../../lib/teams/public-directory-key";
 import { PublicDirectoryList } from "../PublicDirectoryList";
 
 export const metadata: Metadata = {
-  title: "Directory",
+  // No site layout here to add " — Omaha Lightning Basketball".
+  title: { absolute: "Directory — Omaha Lightning Basketball" },
   description: "This season's Omaha Lightning players and their families.",
   // Families' phone numbers and emails: open to anyone with the link,
   // but kept out of search engines (and the link is hard to guess).
@@ -28,7 +29,7 @@ export default async function PublicDirectoryPage({ params }: { params: Promise<
   if (!keyOpens(key, await loadPublicDirectoryKey())) notFound();
   const { season, teams, players } = await loadPublicDirectory();
   return (
-    <div data-theme="lightning" style={{ background: "var(--gw-bg)", color: "var(--gw-fg)" }}>
+    <div data-theme="lightning" style={{ minHeight: "100vh", background: "var(--gw-bg)", color: "var(--gw-fg)" }}>
       <div
         style={{
           maxWidth: 1200,
@@ -39,7 +40,12 @@ export default async function PublicDirectoryPage({ params }: { params: Promise<
           gap: 16,
         }}
       >
-        <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-.01em" }}>Directory</h1>
+        <header style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--gw-fg-muted)" }}>
+            Omaha Lightning Basketball
+          </div>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-.01em" }}>Directory</h1>
+        </header>
         <PublicDirectoryList season={season} teams={teams} players={players} />
       </div>
     </div>
