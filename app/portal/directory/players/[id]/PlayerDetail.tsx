@@ -20,7 +20,7 @@ import { PaymentDialog } from "../../../payments/PaymentDialog";
 import { BalanceChip } from "../../../payments/parts";
 import { EditPlayerSheet } from "./EditPlayerSheet";
 import { ComposeSheet, SentMessages } from "../../_shared/Messaging";
-import { FAMILY_MESSAGE, playerTarget, type SentMessage } from "../../../../../lib/teams/family-mail";
+import { FAMILY_MESSAGE, playerOwnEmail, playerTarget, type SentMessage } from "../../../../../lib/teams/family-mail";
 import { sendPlayerMessage } from "../../../../../lib/teams/player-message-actions";
 
 const cap: React.CSSProperties = {
@@ -76,6 +76,8 @@ export function PlayerDetail({
   const age = ageFromDob(p.dob);
   const born = formatDate(p.dob);
   const addr = playerAddress(p);
+  // Left off when it's a parent's: it shows with them below.
+  const ownEmail = playerOwnEmail(p);
   const facts = [
     age != null && `Age ${age}`,
     born && `Born ${born}`,
@@ -141,7 +143,7 @@ export function PlayerDetail({
             style={{ ...muted, fontSize: 13, color: "var(--gw-fg)", display: "flex", gap: 6, alignItems: "flex-start", alignSelf: "flex-start" }}
           />
         )}
-        {(p.phone || p.email) && <ContactLine phone={p.phone} email={p.email} label="Player" />}
+        {(p.phone || ownEmail) && <ContactLine phone={p.phone} email={ownEmail} label="Player" />}
         {isStaff && staffFacts.length > 0 && <div style={muted}>{staffFacts.join(" · ")}</div>}
         {isStaff && requirements.length > 0 && (
           <RequirementChips player={p} requirements={requirements} rows={rows} onOpen={setOpenReq} />

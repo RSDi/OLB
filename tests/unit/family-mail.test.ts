@@ -6,6 +6,7 @@ import {
   contactEmails,
   fillMessage,
   groupByFamily,
+  playerOwnEmail,
   playerTarget,
   rolesPresent,
   type MailTarget,
@@ -80,4 +81,11 @@ test("a player who shares a parent's email isn't a separate choice: that parent'
   const sam = playerTarget(player("s", "Sam Carter", [dad, mom], "sam@example.com"));
   assert.ok(sam.contacts.some((c) => c.role === "player"));
   assert.ok(!sam.contacts.some((c) => c.primary));
+});
+
+test("the Directory leaves a player's email off when it's a parent's", () => {
+  assert.equal(playerOwnEmail(player("g", "Greyson Ackerman", [dad, mom], " JAMIE@example.com")), null);
+  assert.equal(playerOwnEmail(player("s", "Sam Carter", [dad, mom], " Sam@Example.com ")), "Sam@Example.com");
+  assert.equal(playerOwnEmail(player("n", "Max Ford", [mom], null)), null);
+  assert.equal(playerOwnEmail(player("o", "Ava Lane", [], "ava@example.com")), "ava@example.com");
 });

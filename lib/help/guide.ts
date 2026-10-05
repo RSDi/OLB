@@ -207,7 +207,7 @@ The cost is an estimate from the AI's token counts. It doesn't include the small
 - **Search** by player, parent, email or phone number (type 3 or more digits to match a phone).
 - Tap a **team** chip to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed.
 - Coaches, other team leaders and board members can switch between **By team** and **By age group** (10U–18U).
-- Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.
+- Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A player's own email shows too, unless it's the same as a parent's. A **New** chip means it's their first season with us.
 - Tap an address and pick **Apple Maps** or **Google Maps** to get directions.
 - Tap a player's name to open their player page, a parent's name to open their profile, and **Team page ›** to open a team's full page.
 
@@ -239,7 +239,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     keywords: ["player", "player page", "kid", "child", "son", "siblings", "brother", "sister", "parents", "mom", "dad", "balance", "payments", "fees"],
     body: `Everything about one player in one place. Open it by tapping a player's name in the Directory, on a team page, on a parent's profile, or on the Payments page.
 
-- **The top** shows their jersey number, team (tap it to open the team page), age and birthday, address, and the player's own phone and email. A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**.
+- **The top** shows their jersey number, team (tap it to open the team page), age and birthday, address, and the player's own phone and email (their email is left off when it's the same as a parent's, since it shows with that parent). A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**.
 - **Parents** lists each parent with their phone and email. Tap a parent's name to open their profile. **Siblings** links to their brothers' and sisters' pages.
 - **Payments** shows what the family owes and has paid, with each charge and payment. You see it for your own kids once the Treasurer has opened balances to families, and the Treasurer sees it for everyone.
 
