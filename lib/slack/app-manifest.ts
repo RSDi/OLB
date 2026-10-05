@@ -38,7 +38,18 @@ export const SLACK_BOT_SCOPES = [
 
 // "Continue with Slack" is Supabase's slack_oidc provider, which asks for
 // exactly these. Sign in with Slack accepts no other scopes.
-const SLACK_USER_SCOPES = ["openid", "email", "profile"];
+const SLACK_SIGN_IN_SCOPES = ["openid", "email", "profile"];
+
+// Slack DMs (0118): "Connect Slack" (/api/slack/connect) asks a sender for
+// these on their own account, so the portal can DM families as them.
+export const SLACK_DM_USER_SCOPES = [
+  "chat:write", // chat.postMessage: the DM itself
+  "im:write", // conversations.open: the 1:1 DM to post in
+  "users:read", // users.lookupByEmail, users.info
+  "users:read.email", // ...finding a parent by the email on file
+];
+
+const SLACK_USER_SCOPES = [...SLACK_SIGN_IN_SCOPES, ...SLACK_DM_USER_SCOPES];
 
 // Thread replies to the portal's posts come back through /api/slack/events.
 const SLACK_BOT_EVENTS = ["message.channels", "message.groups"];
@@ -69,13 +80,15 @@ export function buildSlackAppManifest(opts: SlackAppManifestOptions): SlackAppMa
   return {
     display_information: {
       name,
-      description: "Posts portal notifications, brings thread replies back to tasks, signs members in, and archives channels.",
+      description: "Posts portal notifications, brings thread replies back to tasks, signs members in, sends members' DMs to families, and archives channels.",
     },
     features: {
       bot_user: { display_name: name },
     },
     oauth_config: {
-      redirect_urls: [`${supabase}/auth/v1/callback`],
+      // Sign-in comes back through Supabase; "Connect Slack" for Slack DMs
+      // comes back to the site.
+      redirect_urls: [`${supabase}/auth/v1/callback`, `${site}/api/slack/connect/callback`],
       scopes: { bot: [...SLACK_BOT_SCOPES], user: [...SLACK_USER_SCOPES] },
     },
     settings: {

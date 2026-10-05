@@ -45,6 +45,8 @@ export interface DirectoryViewer {
   // The Registrations grant (0102): the registrations queue, putting players
   // on teams and editing them.
   canManageRegistrations: boolean;
+  // The Slack DMs grant (0118): Slack families from the Directory.
+  canSlackDm: boolean;
 }
 
 // Auth + access guard reused across every directory view. Redirects to
@@ -68,6 +70,7 @@ export async function loadViewer(): Promise<DirectoryViewer | null> {
     isStaff: viewer.isStaff,
     isSuperAdmin: viewer.isSuperAdmin,
     canManageRegistrations: viewer.canManageRegistrations,
+    canSlackDm: viewer.canSlackDm,
   };
 }
 
@@ -193,16 +196,16 @@ export async function loadRequirements(): Promise<DirectoryRequirements> {
   return { requirements, rows };
 }
 
-// Emails sent to a player's family from the Directory (0116), newest first,
-// for the board and the Registrations grant (RLS returns nothing to anyone
-// else, or before 0116 is applied).
+// Emails (0116) and Slack DMs (0118) sent to a player's family from the
+// Directory, newest first, for the board, the Registrations grant and the
+// Slack DMs grant (RLS returns nothing to anyone else, or before 0116 is
+// applied). Before 0118 there's no `via`, so everything reads as email.
 export async function loadPlayerMessages(playerId: string): Promise<SentMessage[]> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("olb_player_messages")
-    .select("id, subject, body, sent_to, sent_at, sent_by")
-    .eq("player_id", playerId)
-    .order("sent_at", { ascending: false });
+  const read = (cols: string) =>
+    supabase.from("olb_player_messages").select(cols).eq("player_id", playerId).order("sent_at", { ascending: false });
+  const withVia = await read("id, subject, body, sent_to, sent_at, sent_by, via");
+  const { data } = withVia.error ? await read("id, subject, body, sent_to, sent_at, sent_by") : withVia;
   const rows = (data as (Omit<SentMessage, "sent_by_name"> & { sent_by: string | null })[] | null) ?? [];
   if (rows.length === 0) return [];
   const names = await loadNames(rows.map((r) => r.sent_by));

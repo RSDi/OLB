@@ -14,7 +14,7 @@ import { loadSeasonTeams } from "../../../../../lib/teams/volunteer-data";
 // opened balances to families. Who can see the player at all is RLS's call,
 // the same as the Directory. Anyone with the Registrations permission can also
 // put the player on a team, edit them, or take them off the roster; they and
-// the board can email the family.
+// the board can email the family, and the Slack DMs grant can Slack them.
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // Started before the viewer check on purpose — see loadViewer().
@@ -51,9 +51,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
   const req = viewer.isStaff ? await requirements : { requirements: [], rows: [] };
   const teams = viewer.canManageRegistrations ? await loadSeasonTeams() : null;
-  // The board and the Registrations grant can email the family (0116).
+  // The board and the Registrations grant can email the family (0116); the
+  // Slack DMs grant can Slack them (0118). Either sees what was sent.
   const canEmail = viewer.isStaff || viewer.canManageRegistrations;
-  const messages = canEmail ? await loadPlayerMessages(id) : [];
+  const canSlack = viewer.canSlackDm;
+  const messages = canEmail || canSlack ? await loadPlayerMessages(id) : [];
 
   return (
     <PlayerDetail
@@ -66,6 +68,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       canManageFinances={canManageFinances}
       teams={teams}
       canEmail={canEmail}
+      canSlack={canSlack}
       messages={messages}
     />
   );

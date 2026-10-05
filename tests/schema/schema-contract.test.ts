@@ -45,7 +45,7 @@ const skip = env ? false : "no Supabase env — schema probes skipped (unit test
 // here whenever a migration adds a column the code starts using.
 const CONTRACT: Record<string, string> = {
   members:
-    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel",
+    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel,can_slack_dm",
   maintenance_requests:
     "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at,planning_template_id,planning_season",
   request_votes: "id,ticket_id,voter_id,vote,note,created_at,updated_at",
@@ -97,6 +97,10 @@ const CONTRACT: Record<string, string> = {
     "id,board_id,player_id,kind,category,description,amount_cents,entry_date,note,created_by,created_at,voided_at,voided_by",
   olb_payments:
     "id,board_id,group_id,player_id,amount_cents,paid_on,method,reference,note,recorded_by,created_at,voided_at,voided_by",
+  // Emails (0116) and Slack DMs (0118) to families, and each Slack DM
+  // sender's connection (0118).
+  olb_player_messages: "id,player_id,subject,body,sent_to,sent_by,sent_at,via",
+  member_slack_connections: "user_id,slack_user_id,slack_team_id,slack_name,access_token,scopes,connected_at",
   // Activity page + "Preview as" (0099).
   member_audit_log: "id,member_id,changed_by,changed_at,action,old_data,new_data,impersonator_user_id",
   activity_events:

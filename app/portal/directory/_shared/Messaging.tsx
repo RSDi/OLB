@@ -16,6 +16,7 @@ import {
   type SentMessage,
 } from "../../../../lib/teams/family-mail";
 import { muted } from "./PlayerParts";
+import { SlackLogo } from "../../../components/SlackLogo";
 
 export type SendResult = { sent?: number; skipped?: string[]; error?: string };
 
@@ -272,7 +273,7 @@ export function ComposeSheet({
 
 const checkLabel: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600, cursor: "pointer" };
 
-// Emails sent to the family from the portal, newest first.
+// Emails and Slack DMs sent to the family from the portal, newest first.
 export function SentMessages({ messages, style }: { messages: SentMessage[]; style?: React.CSSProperties }) {
   return (
     <details style={style}>
@@ -280,7 +281,10 @@ export function SentMessages({ messages, style }: { messages: SentMessage[]; sty
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
         {messages.map((m) => (
           <div key={m.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>{m.subject}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {m.via === "slack" && <SlackLogo size={12} />}
+              {m.subject}
+            </span>
             <span style={muted}>
               {new Date(m.sent_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
               {m.sent_by_name ? ` · by ${m.sent_by_name}` : ""} · to {m.sent_to.join(", ")}

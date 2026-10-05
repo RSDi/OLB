@@ -25,6 +25,9 @@ export interface MemberLike {
   // Travel grant (migration 0110): the travel coordinator keeps the hotels
   // and places to eat in External Contacts. Any approved member.
   can_manage_travel?: boolean;
+  // Slack DMs grant (migration 0118): messaging families from the Directory
+  // as yourself in Slack. Any approved member.
+  can_slack_dm?: boolean;
 }
 
 interface TicketLike {
@@ -87,6 +90,15 @@ export function canManageRegistrations(m: MemberLike | null | undefined): boolea
 export function canManageTravel(m: MemberLike | null | undefined): boolean {
   if (!m || m.status !== "approved") return false;
   return m.role === "super_admin" || !!m.can_manage_travel;
+}
+
+// --- Slack DMs -----------------------------------------------------------------
+// Messaging the families of the Directory players you can see, one Slack DM
+// per person, sent as you. Mirrors public.can_slack_dm() (0118).
+
+export function canSlackDm(m: MemberLike | null | undefined): boolean {
+  if (!m || m.status !== "approved") return false;
+  return m.role === "super_admin" || !!m.can_slack_dm;
 }
 
 // Add/rename settings items needs the edit grant; (was: any staff).

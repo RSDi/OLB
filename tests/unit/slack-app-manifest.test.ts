@@ -3,7 +3,7 @@
 // Slack calls are well-formed.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSlackAppManifest, SLACK_BOT_SCOPES } from "../../lib/slack/app-manifest.ts";
+import { buildSlackAppManifest, SLACK_BOT_SCOPES, SLACK_DM_USER_SCOPES } from "../../lib/slack/app-manifest.ts";
 
 const opts = {
   name: "Sparky",
@@ -17,10 +17,13 @@ test("names the app and its bot from the options", () => {
   assert.equal(m.features.bot_user.display_name, "Sparky");
 });
 
-test("points events at this site and sign-in back through Supabase", () => {
+test("points events at this site, sign-in back through Supabase, and Connect Slack back to the site", () => {
   const m = buildSlackAppManifest(opts);
   assert.equal(m.settings.event_subscriptions.request_url, "https://portal.example.org/api/slack/events");
-  assert.deepEqual(m.oauth_config.redirect_urls, ["https://abcdefgh.supabase.co/auth/v1/callback"]);
+  assert.deepEqual(m.oauth_config.redirect_urls, [
+    "https://abcdefgh.supabase.co/auth/v1/callback",
+    "https://portal.example.org/api/slack/connect/callback",
+  ]);
 });
 
 test("trailing slashes and paths don't double up in the URLs", () => {
@@ -30,15 +33,19 @@ test("trailing slashes and paths don't double up in the URLs", () => {
     supabaseUrl: "https://abcdefgh.supabase.co/rest/v1/",
   });
   assert.equal(m.settings.event_subscriptions.request_url, "https://portal.example.org/api/slack/events");
-  assert.deepEqual(m.oauth_config.redirect_urls, ["https://abcdefgh.supabase.co/auth/v1/callback"]);
+  assert.deepEqual(m.oauth_config.redirect_urls, [
+    "https://abcdefgh.supabase.co/auth/v1/callback",
+    "https://portal.example.org/api/slack/connect/callback",
+  ]);
 });
 
-test("asks for every scope the code relies on, and only OIDC scopes for users", () => {
+test("asks for every scope the code relies on: sign-in's OIDC scopes and Slack DMs' for users", () => {
   const m = buildSlackAppManifest(opts);
   for (const scope of ["chat:write", "users:read.email", "channels:history", "groups:history", "files:read"]) {
     assert.ok(m.oauth_config.scopes.bot.includes(scope), `missing bot scope ${scope}`);
   }
-  assert.deepEqual(m.oauth_config.scopes.user, ["openid", "email", "profile"]);
+  assert.deepEqual(m.oauth_config.scopes.user, ["openid", "email", "profile", "chat:write", "im:write", "users:read", "users:read.email"]);
+  assert.deepEqual(SLACK_DM_USER_SCOPES, ["chat:write", "im:write", "users:read", "users:read.email"]);
   assert.deepEqual(m.settings.event_subscriptions.bot_events, ["message.channels", "message.groups"]);
 });
 

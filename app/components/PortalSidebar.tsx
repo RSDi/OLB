@@ -100,6 +100,8 @@ export interface SidebarViewer {
   // The Travel grant (0110): keeps the hotels and places to eat in External
   // Contacts.
   canManageTravel?: boolean;
+  // The Slack DMs grant (0118): for the guide's Slack DMs section.
+  canSlackDm?: boolean;
 }
 
 interface PortalSidebarProps {

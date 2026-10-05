@@ -34,6 +34,7 @@ export default async function DirectoryPage() {
       requirementRows={req.rows.filter((r) => playerIds.has(r.player_id))}
       canPlace={viewer.canManageRegistrations}
       canEmail={viewer.isStaff || viewer.canManageRegistrations}
+      canSlack={viewer.canSlackDm}
       registrations={registrations}
     />
   );
