@@ -194,7 +194,9 @@ export function PortalSidebar({
     transform: isMobile ? "scale(1.15)" : undefined, transformOrigin: "center",
   });
 
-  const collapsedLabelStyle: React.CSSProperties = { fontSize: 9, fontWeight: 700, letterSpacing: ".04em", opacity: 0.75 };
+  // Two-word labels ("Slack Archive", "User Guide") wrap in the narrow
+  // column, so center each line, not just the block.
+  const collapsedLabelStyle: React.CSSProperties = { fontSize: 9, fontWeight: 700, letterSpacing: ".04em", opacity: 0.75, textAlign: "center", lineHeight: 1.15, maxWidth: "100%" };
 
   const renderNavItem = (item: NavItem) => {
     const active = isActive(item.href, item.exact);
