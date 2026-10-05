@@ -1,6 +1,7 @@
-// The public Directory (/directory): this season's players and their parents,
-// for anyone, no login. Reads with the service role because there's no
-// session to run RLS under, so this file decides what's public: only players
+// The public Directory (/directory/<key>): this season's players and their
+// parents, for anyone with the link, no login. Reads with the service role
+// because there's no session to run RLS under, so this file decides what's
+// public: only players
 // whose family said yes to the directory, and only names, team, jersey, age
 // (never the birthday), address and contact details. Nothing about fees,
 // payments, shirts, waivers or requirements is selected, so none of it can
