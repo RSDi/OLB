@@ -12,6 +12,7 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "import-registrations": "tsx --env-file=.env.local scripts/import-registrations.ts",
+    "import-venmo": "tsx --env-file=.env.local scripts/import-venmo-payments.ts",
     "create-admin": "tsx --env-file=.env.local scripts/create-admin.ts",
     "slack-archive-backfill": "tsx --env-file=.env.local scripts/slack-archive-backfill.ts",
     "slack-archive-refresh-access": "tsx --env-file=.env.local scripts/slack-archive-refresh-access.ts",
