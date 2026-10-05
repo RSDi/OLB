@@ -1,11 +1,13 @@
 // The public Directory (/directory): this season's players and their parents,
 // for anyone, no login. Reads with the service role because there's no
 // session to run RLS under, so this file decides what's public: only players
-// whose family said yes to the directory, and only names, team, jersey, age,
-// address and contact details. Nothing about fees, payments, shirts, waivers
-// or requirements is selected, so none of it can reach the page.
+// whose family said yes to the directory, and only names, team, jersey, age
+// (never the birthday), address and contact details. Nothing about fees,
+// payments, shirts, waivers or requirements is selected, so none of it can
+// reach the page.
 
 import { createAdminClient } from "../supabase/admin";
+import { ageFromDob } from "./age";
 import { playerOwnEmail } from "./family-mail";
 
 export interface PublicTeam {
@@ -25,7 +27,8 @@ export interface PublicParent {
 export interface PublicPlayer {
   id: string;
   full_name: string;
-  dob: string | null;
+  // Worked out here from the birthday, which never leaves the server.
+  age: number | null;
   age_group: string | null;
   team_id: string | null;
   jersey_number: string | null;
@@ -104,10 +107,11 @@ export async function loadPublicDirectory(): Promise<PublicDirectory> {
   return {
     season: board.season as string,
     teams: (teams.data as PublicTeam[] | null) ?? [],
-    players: rows.map(({ parents, ...p }) => {
+    players: rows.map(({ parents, dob, ...p }) => {
       const live = parents.filter((pa) => pa.member && !pa.member.deleted_at);
       return {
         ...p,
+        age: ageFromDob(dob),
         email: playerOwnEmail({ email: p.email, parents: live }),
         parents: live.map((pa) => ({
           relationship: pa.relationship,

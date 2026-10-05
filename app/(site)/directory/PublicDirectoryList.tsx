@@ -6,11 +6,10 @@ import { useMemo, useState } from "react";
 import { Icons } from "../../components/icons";
 import { MapLink } from "../../components/MapLink";
 import { ClearSearchButton } from "../../components/ui";
-import { ageFromDob } from "../../../lib/teams/age";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
 import type { PublicPlayer, PublicTeam } from "../../../lib/teams/public-directory";
 import { JerseyNumber, TeamDot } from "../../portal/directory/_shared/TeamBanner";
-import { ContactLine, RELATIONSHIP_LABEL, formatDate, muted, playerAddress } from "../../portal/directory/_shared/PlayerParts";
+import { ContactLine, RELATIONSHIP_LABEL, muted, playerAddress } from "../../portal/directory/_shared/PlayerParts";
 
 type View = "alpha" | "city" | "team" | "age";
 const VIEWS: { key: View; label: string }[] = [
@@ -272,8 +271,6 @@ export function PublicDirectoryList({
 }
 
 function PlayerRow({ player: p, border }: { player: PublicPlayer; border: boolean }) {
-  const age = ageFromDob(p.dob);
-  const born = formatDate(p.dob);
   const addr = playerAddress(p);
   return (
     <div
@@ -292,13 +289,7 @@ function PlayerRow({ player: p, border }: { player: PublicPlayer; border: boolea
           {p.team && <span className="rsd-chip rsd-chip-mute">{teamLabel(p.team)}</span>}
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
         </div>
-        {(age != null || born) && (
-          <div style={muted}>
-            {age != null && `Age ${age}`}
-            {age != null && born && " · "}
-            {born && `Born ${born}`}
-          </div>
-        )}
+        {p.age != null && <div style={muted}>Age {p.age}</div>}
         {addr && (
           <MapLink
             address={addr}
