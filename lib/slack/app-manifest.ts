@@ -37,19 +37,21 @@ export const SLACK_BOT_SCOPES = [
 ];
 
 // "Continue with Slack" is Supabase's slack_oidc provider, which asks for
-// exactly these. Sign in with Slack accepts no other scopes.
-const SLACK_SIGN_IN_SCOPES = ["openid", "email", "profile"];
+// exactly these. Sign in with Slack accepts no other scopes, and Slack won't
+// install an app that asks for these alongside any other user scope
+// ("Invalid permissions requested"), so Slack DMs have an app of their own
+// (buildSlackDmAppManifest below).
+const SLACK_USER_SCOPES = ["openid", "email", "profile"];
 
 // Slack DMs (0118): "Connect Slack" (/api/slack/connect) asks a sender for
-// these on their own account, so the portal can DM families as them.
+// these on their own account, so the portal can DM families as them. They
+// live on the separate Slack DMs app.
 export const SLACK_DM_USER_SCOPES = [
   "chat:write", // chat.postMessage: the DM itself
   "im:write", // conversations.open: the 1:1 DM to post in
   "users:read", // users.lookupByEmail, users.info
   "users:read.email", // ...finding a parent by the email on file
 ];
-
-const SLACK_USER_SCOPES = [...SLACK_SIGN_IN_SCOPES, ...SLACK_DM_USER_SCOPES];
 
 // Thread replies to the portal's posts come back through /api/slack/events.
 const SLACK_BOT_EVENTS = ["message.channels", "message.groups"];
@@ -80,15 +82,13 @@ export function buildSlackAppManifest(opts: SlackAppManifestOptions): SlackAppMa
   return {
     display_information: {
       name,
-      description: "Posts portal notifications, brings thread replies back to tasks, signs members in, sends members' DMs to families, and archives channels.",
+      description: "Posts portal notifications, brings thread replies back to tasks, signs members in, and archives channels.",
     },
     features: {
       bot_user: { display_name: name },
     },
     oauth_config: {
-      // Sign-in comes back through Supabase; "Connect Slack" for Slack DMs
-      // comes back to the site.
-      redirect_urls: [`${supabase}/auth/v1/callback`, `${site}/api/slack/connect/callback`],
+      redirect_urls: [`${supabase}/auth/v1/callback`],
       scopes: { bot: [...SLACK_BOT_SCOPES], user: [...SLACK_USER_SCOPES] },
     },
     settings: {
@@ -96,6 +96,39 @@ export function buildSlackAppManifest(opts: SlackAppManifestOptions): SlackAppMa
         request_url: `${site}/api/slack/events`,
         bot_events: [...SLACK_BOT_EVENTS],
       },
+      org_deploy_enabled: false,
+      socket_mode_enabled: false,
+      token_rotation_enabled: false,
+    },
+  };
+}
+
+// The Slack DMs app (0118): no bot, only the user scopes each sender grants
+// through "Connect Slack", coming back to the site. Its Client ID and Secret
+// are SLACK_DM_CLIENT_ID and SLACK_DM_CLIENT_SECRET.
+export interface SlackDmAppManifest {
+  display_information: { name: string; description: string };
+  oauth_config: { redirect_urls: string[]; scopes: { user: string[] } };
+  settings: { org_deploy_enabled: boolean; socket_mode_enabled: boolean; token_rotation_enabled: boolean };
+}
+
+export function buildSlackDmAppManifest(opts: Pick<SlackAppManifestOptions, "name" | "siteUrl">): SlackDmAppManifest {
+  const name = opts.name.trim();
+  if (!name) throw new Error("The app needs a name.");
+  if (name.length > MAX_NAME_LENGTH) {
+    throw new Error(`Slack app names can be at most ${MAX_NAME_LENGTH} characters ("${name}" is ${name.length}).`);
+  }
+  const site = httpsOrigin(opts.siteUrl, "site URL");
+  return {
+    display_information: {
+      name,
+      description: "Lets members send families Slack DMs from the portal, as themselves.",
+    },
+    oauth_config: {
+      redirect_urls: [`${site}/api/slack/connect/callback`],
+      scopes: { user: [...SLACK_DM_USER_SCOPES] },
+    },
+    settings: {
       org_deploy_enabled: false,
       socket_mode_enabled: false,
       token_rotation_enabled: false,

@@ -47,8 +47,8 @@ export async function GET(req: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        client_id: process.env.SLACK_CLIENT_ID!.trim(),
-        client_secret: process.env.SLACK_CLIENT_SECRET!.trim(),
+        client_id: process.env.SLACK_DM_CLIENT_ID!.trim(),
+        client_secret: process.env.SLACK_DM_CLIENT_SECRET!.trim(),
         code,
         redirect_uri: origin + CALLBACK_PATH,
       }),
