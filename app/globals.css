@@ -178,7 +178,9 @@ a { text-decoration: none; color: inherit; }
   transition: grid-template-columns 200ms var(--gw-ease);
 }
 .rsd-app.sidebar-collapsed { grid-template-columns: 72px 1fr; }
-.rsd-app .rsd-sidebar { grid-area: sidebar; min-height: 0; overflow: hidden; }
+/* The sidebar scrolls when it's taller than the window (a car or laptop
+   screen), so Collapse and Sign out at the bottom stay reachable. */
+.rsd-app .rsd-sidebar { grid-area: sidebar; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--rsd-frame-line) transparent; }
 .rsd-app .rsd-topbar  { grid-area: topbar; }
 .rsd-app main {
   grid-area: main;

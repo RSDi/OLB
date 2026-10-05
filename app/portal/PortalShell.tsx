@@ -62,6 +62,10 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/activity":    { title: "Activity",     subtitle: "Super-admin" },
 };
 
+// Below this the full-width sidebar crowds the page (or doesn't fit
+// top to bottom), so it starts collapsed.
+const SMALL_SCREEN_QUERY = "(max-width: 1279px), (max-height: 760px)";
+
 interface Props {
   viewer: SidebarViewer | null;
   pendingMembersCount: number;
@@ -135,6 +139,19 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       clearTimeout(timer);
     };
   }, [viewer?.status, pathname, startTour, previewing]);
+
+  // Small screens (a car's browser, a small laptop) start with the sidebar
+  // collapsed to icons, and it collapses or expands again when the window
+  // crosses that size. Collapse / expand by hand still works in between.
+  useEffect(() => {
+    const mq = window.matchMedia(SMALL_SCREEN_QUERY);
+    // Read after mount: the server render can't know the window size.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCollapsed(mq.matches);
+    const h = (e: MediaQueryListEvent) => setCollapsed(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
 
   // Cmd+K / Ctrl+K behavior depends on viewport: focus the inline topbar
   // input if it's mounted (large viewports), otherwise toggle the modal
