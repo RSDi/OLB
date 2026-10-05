@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { loadPublicDirectory, loadPublicDirectoryKey } from "../../../../lib/teams/public-directory";
 import { keyOpens } from "../../../../lib/teams/public-directory-key";
 import { PublicDirectoryList } from "../PublicDirectoryList";
+import logo from "../../../(site)/_images/logo-wordmark.png";
 
 export const metadata: Metadata = {
   // No site layout here to add " — Omaha Lightning Basketball".
@@ -40,10 +42,16 @@ export default async function PublicDirectoryPage({ params }: { params: Promise<
           gap: 16,
         }}
       >
-        <header style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--gw-fg-muted)" }}>
-            Omaha Lightning Basketball
-          </div>
+        <header style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* The website's wordmark; not a link, so the page leads nowhere. */}
+          <Image
+            src={logo}
+            alt="Omaha Lightning Basketball"
+            sizes="(max-width: 466px) 60vw, 280px"
+            loading="eager"
+            fetchPriority="high"
+            style={{ width: "min(280px, 60vw)", height: "auto", display: "block" }}
+          />
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-.01em" }}>Directory</h1>
         </header>
         <PublicDirectoryList season={season} teams={teams} players={players} />
