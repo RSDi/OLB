@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   const state = newState();
   const authorize = new URL("https://slack.com/oauth/v2/authorize");
-  authorize.searchParams.set("client_id", process.env.SLACK_CLIENT_ID!.trim());
+  authorize.searchParams.set("client_id", process.env.SLACK_DM_CLIENT_ID!.trim());
   authorize.searchParams.set("user_scope", SLACK_DM_USER_SCOPES.join(","));
   authorize.searchParams.set("redirect_uri", origin + CALLBACK_PATH);
   authorize.searchParams.set("state", state);

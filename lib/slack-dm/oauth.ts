@@ -3,9 +3,10 @@
 // /api/slack/connect/callback finishes it. Server-only.
 //
 // This is Slack's ordinary OAuth (oauth.v2.access) for user scopes, not the
-// "Continue with Slack" sign-in, which only allows profile scopes. Same Slack
-// app, same Client ID and Secret; the callback URL is in the manifest
-// (lib/slack/app-manifest.ts).
+// "Continue with Slack" sign-in, which only allows profile scopes. Slack won't
+// install one app with both kinds, so this uses the separate Slack DMs app
+// (buildSlackDmAppManifest in lib/slack/app-manifest.ts, which also has the
+// callback URL).
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { CONNECT_OUTCOMES } from "./recipients";

@@ -14,10 +14,11 @@ export interface SlackConnection {
   scopes: string[];
 }
 
-// The env vars "Connect Slack" needs: the Slack app's Client ID and Client
-// Secret (Basic Information), the same pair Supabase's Slack sign-in uses.
+// The env vars "Connect Slack" needs: the Slack DMs app's Client ID and
+// Client Secret (Basic Information). A separate app from the bot's: see
+// buildSlackDmAppManifest in lib/slack/app-manifest.ts.
 export function slackDmConfigured(): boolean {
-  return !!(process.env.SLACK_CLIENT_ID?.trim() && process.env.SLACK_CLIENT_SECRET?.trim() && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return !!(process.env.SLACK_DM_CLIENT_ID?.trim() && process.env.SLACK_DM_CLIENT_SECRET?.trim() && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 // Null when they haven't connected (or 0118 isn't applied yet).
