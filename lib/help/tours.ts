@@ -785,6 +785,32 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-public-directory",
+    sectionId: "settings-public-directory",
+    title: "Public Directory walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-public-directory",
+        title: "Settings → Public Directory",
+        body: "A read-only Directory on the club website that opens without signing in, for anyone with its private link.",
+      },
+      {
+        target: "public-directory-key",
+        click: "settings-tab-public-directory",
+        interactive: true,
+        title: "The key",
+        body: "The end of the link. Type your own (at least 16 letters, numbers, dashes or underscores) and tap **Save key**. The old link stops working right away.",
+      },
+      {
+        target: "public-directory-new",
+        click: "settings-tab-public-directory",
+        title: "New random key",
+        body: "Makes a hard-to-guess key for you, and retires the old link. Once there's a key, **Copy link** above copies the address to share, and **Turn off** closes the page.",
+      },
+    ],
+  },
+  {
     id: "settings-contact-types",
     sectionId: "settings-contact-types",
     title: "Contact Types walkthrough",
