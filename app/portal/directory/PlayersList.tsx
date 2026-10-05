@@ -24,6 +24,8 @@ import { ContactLine, ParentBlock, RequirementChips, TeamPicker, formatDate, mut
 import { ComboSelect } from "../../components/ComboSelect";
 import { Pill } from "../../components/ui";
 import { ComposeSheet } from "./_shared/Messaging";
+import { SlackComposeSheet } from "./_shared/SlackMessaging";
+import { SlackLogo } from "../../components/SlackLogo";
 import { FAMILY_MESSAGE, playerOwnEmail, playerTarget } from "../../../lib/teams/family-mail";
 import { sendPlayerMessage } from "../../../lib/teams/player-message-actions";
 
@@ -60,6 +62,7 @@ export function PlayersList({
   requirementRows,
   canPlace,
   canEmail,
+  canSlack,
   registrations,
 }: {
   players: DirectoryPlayer[];
@@ -76,6 +79,8 @@ export function PlayersList({
   // The board and the Registrations grant: Email families, to the players
   // in view.
   canEmail: boolean;
+  // The Slack DMs grant (0118): Slack families, to the players in view.
+  canSlack: boolean;
   // Waiting and waitlisted registrations; null without the grant.
   registrations: { waiting: number; waitlist: number } | null;
 }) {
@@ -87,6 +92,7 @@ export function PlayersList({
   const [reqShow, setReqShow] = useState<ReqShow>("missing");
   const [open, setOpen] = useState<{ player: DirectoryPlayer; requirement: Requirement } | null>(null);
   const [emailing, setEmailing] = useState(false);
+  const [slacking, setSlacking] = useState(false);
 
   const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
   const pickedReq = requirements.find((r) => r.id === reqId) ?? null;
@@ -174,7 +180,8 @@ export function PlayersList({
   const shown = shownSections.reduce((n, g) => n + g.players.length, 0);
   const reqTotal = reqCounts.done + reqCounts.waived + reqCounts.missing;
   const season = players[0]?.board?.season;
-  // Who Email families writes to: the players in view, as the filters say.
+  // Who Email families and Slack families write to: the players in view, as
+  // the filters say.
   const inView = shownSections.flatMap((g) => g.players);
   const scope = [
     view === "team" ? (pickedTeam ? teamLabel(pickedTeam) : teamId === NO_TEAM ? "No team yet" : null) : group !== "all" ? group : null,
@@ -327,11 +334,22 @@ export function PlayersList({
             ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${pickedReq.kind === "fee" ? "paid" : "done"}` +
               (reqCounts.waived > 0 ? ` (${reqCounts.waived} waived)` : "")}
         </div>
-        {canEmail && shown > 0 && (
-          <span data-tour="directory-email" style={{ display: "inline-flex" }}>
-            <Pill size="sm" variant="light" onClick={() => setEmailing(true)}>
-              <Icons.Mail width={13} height={13} /> {shown === 1 ? "Email family" : "Email families"}
-            </Pill>
+        {(canEmail || canSlack) && shown > 0 && (
+          <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+            {canEmail && (
+              <span data-tour="directory-email" style={{ display: "inline-flex" }}>
+                <Pill size="sm" variant="light" onClick={() => setEmailing(true)}>
+                  <Icons.Mail width={13} height={13} /> {shown === 1 ? "Email family" : "Email families"}
+                </Pill>
+              </span>
+            )}
+            {canSlack && (
+              <span data-tour="directory-slack" style={{ display: "inline-flex" }}>
+                <Pill size="sm" variant="light" onClick={() => setSlacking(true)}>
+                  <SlackLogo size={13} /> {shown === 1 ? "Slack family" : "Slack families"}
+                </Pill>
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -428,6 +446,14 @@ export function PlayersList({
           body={FAMILY_MESSAGE}
           onSend={sendPlayerMessage}
           onClose={() => setEmailing(false)}
+        />
+      )}
+
+      {slacking && (
+        <SlackComposeSheet
+          targets={inView.map(playerTarget)}
+          eyebrow={[`${inView.length} ${inView.length === 1 ? "player" : "players"}`, ...scope].join(" · ")}
+          onClose={() => setSlacking(false)}
         />
       )}
 

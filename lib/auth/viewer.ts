@@ -21,6 +21,7 @@ import {
   canManageFinances,
   canManageRegistrations,
   canManageTravel,
+  canSlackDm,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -45,6 +46,9 @@ export interface Viewer {
   // Travel grant (0110): keeps the hotels and places to eat in External
   // Contacts.
   canManageTravel: boolean;
+  // Slack DMs grant (0118): messages families from the Directory as
+  // themselves in Slack.
+  canSlackDm: boolean;
   // Staged rollout: sees the nav items and Settings tabs still in preview.
   seesFullUi: boolean;
 }
@@ -96,7 +100,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   // best-effort query, in parallel on the same user_id so they cost no extra
   // round trip. If the columns aren't there yet that query errors → grants
   // default false (view-only), which is the safe default.
-  const [{ data }, { data: g }, { data: f }, { data: r }, { data: t }] = await Promise.all([
+  const [{ data }, { data: g }, { data: f }, { data: r }, { data: t }, { data: s }] = await Promise.all([
     supabase
       .from("members")
       .select("id, role, status")
@@ -125,6 +129,12 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
       .select("can_manage_travel")
       .eq("user_id", user.id)
       .maybeSingle(),
+    // The Slack DMs grant (0118), the same way.
+    supabase
+      .from("members")
+      .select("can_slack_dm")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
   if (!data) return null;
 
@@ -139,6 +149,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     can_manage_finances: !!(f as Partial<MemberLike> | null)?.can_manage_finances,
     can_manage_registrations: !!(r as Partial<MemberLike> | null)?.can_manage_registrations,
     can_manage_travel: !!(t as Partial<MemberLike> | null)?.can_manage_travel,
+    can_slack_dm: !!(s as Partial<MemberLike> | null)?.can_slack_dm,
   };
 
   return {
@@ -154,6 +165,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canManageFinances: canManageFinances(member),
     canManageRegistrations: canManageRegistrations(member),
     canManageTravel: canManageTravel(member),
+    canSlackDm: canSlackDm(member),
     seesFullUi: seesFullUi(user.email),
   };
 });

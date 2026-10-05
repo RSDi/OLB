@@ -47,7 +47,7 @@ function main() {
       "  1. api.slack.com/apps → Create New App → From a manifest → pick the workspace → paste the JSON above.",
       "  2. Basic Information → Display Information: upload the app icon (square, 512–2000px).",
       "  3. Basic Information → App Credentials: Signing Secret → SLACK_SIGNING_SECRET; Client ID + Secret →",
-      "     Supabase → Authentication → Providers → Slack (OIDC).",
+      "     Supabase → Authentication → Providers → Slack (OIDC), and SLACK_CLIENT_ID + SLACK_CLIENT_SECRET (Slack DMs).",
       "  4. Redeploy, then verify the Events Request URL (App Manifest or Event Subscriptions page).",
       "  5. Install to Workspace → Bot User OAuth Token → SLACK_BOT_TOKEN. Invite the bot to each channel it posts in or archives.",
     ].join("\n"),

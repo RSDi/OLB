@@ -24,7 +24,8 @@ export interface MailTarget {
   contacts: Contact[];
 }
 
-// An email sent to a family from the portal, as its page lists it.
+// An email sent to a family from the portal, as its page lists it, or a
+// Slack DM (via 'slack', 0118).
 export interface SentMessage {
   id: string;
   subject: string;
@@ -32,6 +33,7 @@ export interface SentMessage {
   sent_to: string[];
   sent_at: string;
   sent_by_name: string | null;
+  via?: "email" | "slack";
 }
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;

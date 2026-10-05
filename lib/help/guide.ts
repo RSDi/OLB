@@ -25,9 +25,10 @@ import type { MemberRole, MemberStatus } from "../auth/permissions";
 // "finance" = anyone with the Payments grant; "registrations" = anyone with
 // the Registrations grant; "travel" = anyone with the Travel grant (the
 // travel coordinator); "messaging" = the board and the Registrations grant,
-// who can email families from the Directory. Super-admins always have all
-// of them. The guide hides a section from anyone it doesn't apply to.
-export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "travel" | "messaging" | "super_admin";
+// who can email families from the Directory; "slack" = anyone with the Slack
+// DMs grant. Super-admins always have all of them. The guide hides a section
+// from anyone it doesn't apply to.
+export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "travel" | "messaging" | "slack" | "super_admin";
 
 export interface GuideSection {
   id: string; // anchor: #help-<id>
@@ -63,6 +64,8 @@ export interface GuideViewer {
   isCoach?: boolean;
   // Holds the Travel grant: sees the "travel" sections.
   canManageTravel?: boolean;
+  // Holds the Slack DMs grant: sees the "slack" sections.
+  canSlackDm?: boolean;
 }
 
 export const GUIDE_UPDATED = "October 2026";
@@ -299,6 +302,32 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 **{player}** in the subject or message becomes the family's player names. Writing to several families, a preview shows how it reads for the first one.
 
 **A copy** of each email is kept on the player's page under **Messages sent**, with who sent it and when.`,
+  },
+  {
+    id: "slack-dms",
+    title: "Slack DMs to families",
+    group: "Directory",
+    audience: "slack",
+    keywords: ["slack", "dm", "direct message", "message", "families", "parents", "dad", "mom", "remind", "reminder", "missing", "handbook", "connect slack", "disconnect", "reply", "replies", "{name}", "{player}"],
+    body: `You see this if a super-admin turned on **Slack DMs** for you in **Settings → Members**: board members, coaches, the travel coordinator, anyone the club picks.
+
+**What it does.** Sends the parents of the players you pick a Slack direct message **from you**, one to each person, never a group DM. It looks just like a message you typed yourself, so when a parent replies, the reply comes straight to you in Slack.
+
+**Connect Slack, once.** The first time, **Slack families** asks you to **Connect Slack**. A Slack window opens; tap **Allow** and it closes by itself. After that the portal can send DMs for you. To stop, tap **Disconnect Slack** at the top of the window.
+
+**Slack the players in view.** On the Directory, **Slack families** (next to **Email families**, when you have both) writes to the families of the players the list shows right now. Narrow it first: tap a team, pick an age group, search, or (for the board) pick a requirement like the handbook and **Missing**, so only the families who still need it hear from you.
+
+**Slack one family.** On a player's page, **Slack family** writes to just that player's parents.
+
+**Who gets it.** Tick **Dads**, **Moms**, **Guardians** and **Players**. The window looks each person up in the club's Slack by the email on file and lists them: a ✓ means they're on Slack and get a DM, a ✗ means no Slack account uses their email. A parent of brothers and sisters gets one DM about all of them. Nobody gets a DM from themselves. You can send up to 150 DMs at a time.
+
+**Writing it.** **{name}** becomes each person's first name and **{player}** their players' names, so *Hi {name}, we still need {player}'s handbook. Can you send it over?* reads as *Hi Sarah, we still need Sam's handbook. Can you send it over?* A preview shows how it reads for the first person. **Template** fills the message in from one of the board's email templates.
+
+**Sending.** **Send 18 DMs** (with how many) sends them, counting up as it goes. Afterwards it lists anyone it couldn't reach, and who isn't on Slack with their email, so you can reach them another way.
+
+**A copy** of each DM is kept on the player's page under **Messages sent**, marked with the Slack logo.
+
+You can only Slack the families of players you can see in the Directory. Slack DMs are off while a super-admin is using **Preview as**.`,
   },
   {
     id: "your-profile",
@@ -626,6 +655,7 @@ Activity is recorded from the day this page went live.`,
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
 | Add and edit the hotels and places to eat in External Contacts; see the HS Schedule | With **Travel** | ✓ | ✓ |
+| Send families Slack DMs from the Directory, as yourself | With **Slack DMs** | With **Slack DMs** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
@@ -643,7 +673,7 @@ Activity is recorded from the day this page went live.`,
     group: "Settings",
     audience: "staff",
     routes: ["/portal/settings"],
-    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages"],
+    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages", "slack dms", "slack"],
     body: `Where new sign-ups are approved and member accounts are managed.
 
 **The red badge** on **Settings** in the sidebar counts access requests waiting for you.
@@ -662,7 +692,7 @@ Activity is recorded from the day this page went live.`,
 - **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
 - Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
-- Next to **Manages:** on the **Approved** tab, turn on **Payments** to let someone see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to let someone review new registrations, put players on teams and edit players, and **Travel** to let the travel coordinator add and edit the hotels and places to eat in External Contacts and see the HS Schedule. They all work for members and board alike. Tap one again to take it away.
+- Next to **Manages:** on the **Approved** tab, turn on **Payments** to let someone see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to let someone review new registrations, put players on teams and edit players, **Travel** to let the travel coordinator add and edit the hotels and places to eat in External Contacts and see the HS Schedule, and **Slack DMs** to let someone send families Slack DMs from the Directory as themselves (see *Slack DMs to families*). They all work for members and board alike. Tap one again to take it away.
 - **Remove** a member (demote a super-admin first).
 
 Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,
@@ -818,6 +848,7 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
   if (audience === "registrations") return viewer.role === "super_admin" || !!viewer.canManageRegistrations;
   if (audience === "travel") return viewer.role === "super_admin" || !!viewer.canManageTravel;
   if (audience === "messaging") return viewer.isStaff || viewer.role === "super_admin" || !!viewer.canManageRegistrations;
+  if (audience === "slack") return viewer.role === "super_admin" || !!viewer.canSlackDm;
   return viewer.role === "super_admin";
 }
 

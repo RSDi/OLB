@@ -37,6 +37,8 @@ interface Member {
   can_manage_registrations: boolean;
   // Travel grant (0110), loaded on its own; false before the migration.
   can_manage_travel: boolean;
+  // Slack DMs grant (0118), loaded the same way.
+  can_slack_dm: boolean;
   membership_status: string;
   access_revoked_at: string | null;
   requested_at: string;
@@ -49,7 +51,8 @@ type GrantKey =
   | "can_undelete_settings"
   | "can_manage_finances"
   | "can_manage_registrations"
-  | "can_manage_travel";
+  | "can_manage_travel"
+  | "can_slack_dm";
 
 // Pending splits in two: people who signed in and asked (the approval queue),
 // and registered parents pre-created from a player registration who haven't
@@ -93,6 +96,8 @@ export function MembersTab({
   const [members, setMembers] = useState<Member[]>([]);
   // The Travel grant needs migration 0110; until then it isn't offered.
   const [travelReady, setTravelReady] = useState(false);
+  // The Slack DMs grant needs migration 0118, the same way.
+  const [slackReady, setSlackReady] = useState(false);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("pending");
@@ -108,6 +113,7 @@ export function MembersTab({
       { data: m, error: mErr },
       { data: r, error: rErr },
       { data: t, error: tErr },
+      { data: sd, error: sdErr },
     ] = await Promise.all([
       supabase
         .from("members")
@@ -121,12 +127,22 @@ export function MembersTab({
         .select("id, member_id, related_member_id, relationship"),
       // The Travel grant (0110), best-effort so the tab loads before it.
       supabase.from("members").select("id, can_manage_travel").is("deleted_at", null),
+      // The Slack DMs grant (0118), the same way.
+      supabase.from("members").select("id, can_slack_dm").is("deleted_at", null),
     ]);
     if (mErr || rErr) setError(mErr?.message ?? rErr?.message ?? "Failed to load");
     else {
       const travel = new Map(((t as { id: string; can_manage_travel: boolean }[] | null) ?? []).map((x) => [x.id, !!x.can_manage_travel]));
+      const slack = new Map(((sd as { id: string; can_slack_dm: boolean }[] | null) ?? []).map((x) => [x.id, !!x.can_slack_dm]));
       setTravelReady(!tErr);
-      setMembers(((m as Omit<Member, "can_manage_travel">[]) ?? []).map((x) => ({ ...x, can_manage_travel: travel.get(x.id) ?? false })));
+      setSlackReady(!sdErr);
+      setMembers(
+        ((m as Omit<Member, "can_manage_travel" | "can_slack_dm">[]) ?? []).map((x) => ({
+          ...x,
+          can_manage_travel: travel.get(x.id) ?? false,
+          can_slack_dm: slack.get(x.id) ?? false,
+        }))
+      );
       setRelationships((r as Relationship[]) ?? []);
     }
     setLoading(false);
@@ -543,6 +559,7 @@ export function MembersTab({
                 acting={acting === member.id}
                 canManage={canManage}
                 travelReady={travelReady}
+                slackReady={slackReady}
                 onApprove={() => setStatus(member.id, "approved")}
                 onDeny={() => setStatus(member.id, "denied")}
                 onRestore={() => setStatus(member.id, "pending")}
@@ -604,6 +621,7 @@ function MemberRow({
   acting,
   canManage,
   travelReady,
+  slackReady,
   onApprove,
   onDeny,
   onRestore,
@@ -618,6 +636,7 @@ function MemberRow({
   acting: boolean;
   canManage: boolean;
   travelReady: boolean;
+  slackReady: boolean;
   onApprove: () => void;
   onDeny: () => void;
   onRestore: () => void;
@@ -755,9 +774,9 @@ function MemberRow({
             <GrantChip label="Undelete" on={member.can_undelete_settings} disabled={acting} onClick={() => onSetGrant("can_undelete_settings", !member.can_undelete_settings)} />
           </div>
         )}
-        {/* Payments, Registrations and Travel grants — any approved member,
-            board or not (the Treasurer; whoever runs registrations; the travel
-            coordinator). Super-admins always have them all. */}
+        {/* Payments, Registrations, Travel and Slack DMs grants — any approved
+            member, board or not (the Treasurer; whoever runs registrations; the
+            travel coordinator; coaches). Super-admins always have them all. */}
         {tab === "approved" && canManage && member.role !== "super_admin" && (
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "flex-end", marginTop: 2 }}>
             <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
@@ -792,6 +811,19 @@ function MemberRow({
                 on={member.can_manage_travel}
                 disabled={acting}
                 onClick={() => onSetGrant("can_manage_travel", !member.can_manage_travel)}
+              />
+            )}
+            {slackReady && (
+              <GrantChip
+                label="Slack DMs"
+                title={
+                  member.can_slack_dm
+                    ? "Can send Slack DMs to families from the Directory, as themselves — tap to revoke"
+                    : "Tap to let them send Slack DMs to the families of the players they can see in the Directory, as themselves"
+                }
+                on={member.can_slack_dm}
+                disabled={acting}
+                onClick={() => onSetGrant("can_slack_dm", !member.can_slack_dm)}
               />
             )}
           </div>

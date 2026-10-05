@@ -20,6 +20,8 @@ import { PaymentDialog } from "../../../payments/PaymentDialog";
 import { BalanceChip } from "../../../payments/parts";
 import { EditPlayerSheet } from "./EditPlayerSheet";
 import { ComposeSheet, SentMessages } from "../../_shared/Messaging";
+import { SlackComposeSheet } from "../../_shared/SlackMessaging";
+import { SlackLogo } from "../../../../components/SlackLogo";
 import { FAMILY_MESSAGE, playerOwnEmail, playerTarget, type SentMessage } from "../../../../../lib/teams/family-mail";
 import { sendPlayerMessage } from "../../../../../lib/teams/player-message-actions";
 
@@ -46,6 +48,7 @@ export function PlayerDetail({
   canManageFinances,
   teams,
   canEmail,
+  canSlack,
   messages,
 }: {
   player: DirectoryPlayer;
@@ -60,11 +63,14 @@ export function PlayerDetail({
   teams: { id: string; name: string; age_group: string | null }[] | null;
   // The board and the Registrations grant: Email family, and what was sent.
   canEmail: boolean;
+  // The Slack DMs grant (0118): Slack family. They see what was sent too.
+  canSlack: boolean;
   messages: SentMessage[];
 }) {
   const [openReq, setOpenReq] = useState<Requirement | null>(null);
   const [editing, setEditing] = useState(false);
   const [emailing, setEmailing] = useState(false);
+  const [slacking, setSlacking] = useState(false);
   const [openMoney, setOpenMoney] = useState<"payment" | ChargeKind | null>(null);
   const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
   const account = useMemo(
@@ -116,12 +122,19 @@ export function PlayerDetail({
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
           {!p.directory_optin && <span className="rsd-chip rsd-chip-mute">Not in directory</span>}
-          {(canEmail || teams) && (
+          {(canEmail || canSlack || teams) && (
             <span style={{ marginLeft: "auto", display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
               {canEmail && (
                 <span data-tour="player-email" style={{ display: "inline-flex" }}>
                   <Pill size="sm" variant="light" onClick={() => setEmailing(true)}>
                     <Icons.Mail width={13} height={13} /> Email family
+                  </Pill>
+                </span>
+              )}
+              {canSlack && (
+                <span data-tour="player-slack" style={{ display: "inline-flex" }}>
+                  <Pill size="sm" variant="light" onClick={() => setSlacking(true)}>
+                    <SlackLogo size={13} /> Slack family
                   </Pill>
                 </span>
               )}
@@ -189,7 +202,7 @@ export function PlayerDetail({
         )}
       </div>
 
-      {canEmail && messages.length > 0 && (
+      {(canEmail || canSlack) && messages.length > 0 && (
         <div className="rsd-card" style={{ padding: "14px 20px" }}>
           <SentMessages messages={messages} />
         </div>
@@ -251,6 +264,7 @@ export function PlayerDetail({
           onClose={() => setEmailing(false)}
         />
       )}
+      {slacking && <SlackComposeSheet targets={[playerTarget(p)]} eyebrow={p.full_name} onClose={() => setSlacking(false)} />}
       {account && openMoney === "payment" && <PaymentDialog account={account} onClose={() => setOpenMoney(null)} />}
       {account && (openMoney === "charge" || openMoney === "credit") && (
         <ChargeDialog account={account} kind={openMoney} onClose={() => setOpenMoney(null)} />
