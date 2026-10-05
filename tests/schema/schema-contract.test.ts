@@ -101,6 +101,8 @@ const CONTRACT: Record<string, string> = {
   // sender's connection (0118).
   olb_player_messages: "id,player_id,subject,body,sent_to,sent_by,sent_at,via",
   member_slack_connections: "user_id,slack_user_id,slack_team_id,slack_name,access_token,scopes,connected_at",
+  // The public Directory's link (0119).
+  public_directory_link: "id,key,updated_by,updated_at",
   // Activity page + "Preview as" (0099).
   member_audit_log: "id,member_id,changed_by,changed_at,action,old_data,new_data,impersonator_user_id",
   activity_events:

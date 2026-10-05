@@ -4,12 +4,11 @@
 // or links into the portal.
 import { useMemo, useState } from "react";
 import { Icons } from "../../components/icons";
-import { MapLink } from "../../components/MapLink";
 import { ClearSearchButton } from "../../components/ui";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
 import type { PublicPlayer, PublicTeam } from "../../../lib/teams/public-directory";
 import { JerseyNumber, TeamDot } from "../../portal/directory/_shared/TeamBanner";
-import { ContactLine, RELATIONSHIP_LABEL, muted, playerAddress } from "../../portal/directory/_shared/PlayerParts";
+import { ContactLine, RELATIONSHIP_LABEL, muted } from "../../portal/directory/_shared/PlayerParts";
 
 type View = "alpha" | "city" | "team" | "age";
 const VIEWS: { key: View; label: string }[] = [
@@ -271,7 +270,10 @@ export function PublicDirectoryList({
 }
 
 function PlayerRow({ player: p, border }: { player: PublicPlayer; border: boolean }) {
-  const addr = playerAddress(p);
+  // "Omaha, NE 68106": city and ZIP, no street.
+  const place = [p.city?.trim(), [p.state?.trim(), p.postal_code?.trim()].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ");
   return (
     <div
       style={{
@@ -290,12 +292,11 @@ function PlayerRow({ player: p, border }: { player: PublicPlayer; border: boolea
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
         </div>
         {p.age != null && <div style={muted}>Age {p.age}</div>}
-        {addr && (
-          <MapLink
-            address={addr}
-            icon={<Icons.MapPin width={12} height={12} style={{ flexShrink: 0, marginTop: 2, color: "var(--gw-fg-muted)" }} />}
-            style={{ ...muted, color: "var(--gw-fg)", display: "flex", gap: 6, alignItems: "flex-start", alignSelf: "flex-start" }}
-          />
+        {place && (
+          <div style={{ ...muted, color: "var(--gw-fg)", display: "flex", gap: 6, alignItems: "flex-start" }}>
+            <Icons.MapPin width={12} height={12} style={{ flexShrink: 0, marginTop: 2, color: "var(--gw-fg-muted)" }} />
+            {place}
+          </div>
         )}
         {(p.phone || p.email) && <ContactLine phone={p.phone} email={p.email} label="Player" />}
       </div>

@@ -25,6 +25,7 @@ import { SidebarLinksTab } from "./SidebarLinksTab";
 import { RequirementsTab } from "./RequirementsTab";
 import { EmailTemplatesTab } from "./EmailTemplatesTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
+import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { usePageHelp } from "../../components/PageHelp";
 
 // Staged rollout: the tabs released to everyone who can open Settings, and
@@ -34,6 +35,7 @@ const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "r
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "playbooks",
   "sidebar_links",
+  "public_directory",
   "contact_categories",
   "audit_log",
 ]);
@@ -48,6 +50,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   email_templates: "settings-email-templates",
   playbooks: "settings-playbooks",
   sidebar_links: "settings-sidebar-links",
+  public_directory: "settings-public-directory",
   contact_categories: "settings-contact-types",
   audit_log: "settings-audit-log",
 };
@@ -68,6 +71,7 @@ type Tab =
   | "task_categories"
   | "playbooks"
   | "sidebar_links"
+  | "public_directory"
   | "closures"
   | "contact_categories"
   | "integrations"
@@ -156,6 +160,8 @@ export default function SettingsPage() {
     { key: "task_categories", label: "Task Categories", visible: true, tour: "settings-tab-task-categories" },
     { key: "playbooks", label: "Playbooks", visible: true, tour: "settings-tab-playbooks" },
     { key: "sidebar_links", label: "Sidebar Links", visible: isSuperAdmin(me), tour: "settings-tab-sidebar-links" },
+    // The key in the public Directory's link (0119).
+    { key: "public_directory", label: "Public Directory", visible: isSuperAdmin(me), tour: "settings-tab-public-directory" },
     { key: "closures", label: "Closures", visible: true, tour: "settings-tab-closures" },
     { key: "contact_categories", label: "Contact Types", visible: true, tour: "settings-tab-contact-categories" },
     { key: "integrations", label: "Integrations", visible: true, tour: "settings-tab-integrations" },
@@ -219,6 +225,7 @@ export default function SettingsPage() {
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}
       {tab === "sidebar_links" && isSuperAdmin(me) && <SidebarLinksTab />}
+      {tab === "public_directory" && isSuperAdmin(me) && <PublicDirectoryTab />}
       {tab === "closures" && <ClosuresTab me={me} />}
       {tab === "contact_categories" && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && <IntegrationsTab />}

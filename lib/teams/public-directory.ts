@@ -2,7 +2,8 @@
 // parents, for anyone with the link, no login. Reads with the service role
 // because there's no session to run RLS under, so this file decides what's
 // public: only players whose family said yes to the directory, and only
-// names, team, jersey, age (never the birthday), address and contact details.
+// names, team, jersey, age (never the birthday), city and ZIP (never the
+// street), and contact details.
 // Nothing about fees, payments, shirts, waivers or requirements is selected,
 // so none of it can reach the page.
 
@@ -34,8 +35,7 @@ export interface PublicPlayer {
   jersey_number: string | null;
   team: PublicTeam | null;
   new_to_program: boolean;
-  address_line1: string | null;
-  address_line2: string | null;
+  // City, state and ZIP only: the street address never leaves the server.
   city: string | null;
   state: string | null;
   postal_code: string | null;
@@ -59,8 +59,6 @@ interface Row {
   team_id: string | null;
   jersey_number: string | null;
   new_to_program: boolean;
-  address_line1: string | null;
-  address_line2: string | null;
   city: string | null;
   state: string | null;
   postal_code: string | null;
@@ -74,9 +72,16 @@ interface Row {
 }
 
 const COLUMNS =
-  "id, full_name, dob, age_group, team_id, jersey_number, new_to_program, address_line1, address_line2, city, state, postal_code, phone, email, " +
+  "id, full_name, dob, age_group, team_id, jersey_number, new_to_program, city, state, postal_code, phone, email, " +
   "team:olb_teams(id, name, age_group, color), " +
   "parents:olb_player_parents(relationship, member:members(full_name, email, phone, deleted_at))";
+
+// The key in the page's link (Settings → Public Directory, 0119), or null
+// when the page is off or the table isn't there yet.
+export async function loadPublicDirectoryKey(): Promise<string | null> {
+  const { data } = await createAdminClient().from("public_directory_link").select("key").maybeSingle();
+  return (data as { key: string | null } | null)?.key ?? null;
+}
 
 export async function loadPublicDirectory(): Promise<PublicDirectory> {
   const db = createAdminClient();

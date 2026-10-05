@@ -216,7 +216,7 @@ The cost is an estimate from the AI's token counts. It doesn't include the small
 
 **Who's listed.** Players appear when their family said yes to being in the directory on the registration form. If your family said no, you still see your own players, marked **Not in directory**; other families don't.
 
-**Public directory.** The same players and parents are also on a read-only page on the club website that opens without signing in, for anyone the board gives its private link to. Only people with the link can find it. It lists only families who said yes to the directory, shows no fees or payment details, and can be grouped **Alphabetical** (the default), **By city**, **By team** or **By age group**. It shows each player's age but not their birthday.
+**Public directory.** The same players and parents are also on a read-only page on the club website that opens without signing in, for anyone given its private link. Only people with the link can find it, and super-admins manage the link in **Settings → Public Directory**. It lists only families who said yes to the directory, shows no fees or payment details, and can be grouped **Alphabetical** (the default), **By city**, **By team** or **By age group**. It shows each player's age (not their birthday) and their city and ZIP code (not their street address).
 
 **Profiles.** A member's profile shows their photo, phone, email, birthday and address (tap it for **Apple Maps** or **Google Maps**), plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
   },
@@ -806,6 +806,21 @@ Tap the **trash** can to delete a category or a playbook.`,
 - Use the arrows to change the order, the **pencil** to edit a link, and the **trash** can to remove it.
 
 Every signed-in member sees the links; only super-admins can change them.`,
+  },
+  {
+    id: "settings-public-directory",
+    title: "Settings: Public Directory",
+    group: "Settings",
+    audience: "super_admin",
+    keywords: ["public directory", "directory link", "share", "link", "key", "no login", "without signing in", "read-only", "roster", "turn off"],
+    body: `The public Directory is a read-only copy of the Directory on the club website. It opens without signing in, for anyone you give its private link to. It lists only families who said yes to the directory, shows each player's age (not their birthday) and city and ZIP code (not their street address), and never shows fees or payments. Open **Settings → Public Directory**.
+
+- **Link** — the address to share. **Copy link** copies it; **Open** shows the page in a new tab.
+- **Key** — the end of the link. Type your own (at least 16 letters, numbers, dashes or underscores) and tap **Save key**, or tap **New random key** to have one made for you.
+- Changing the key retires the old link right away. Do it if the link has been passed around more than you'd like.
+- **Turn off** — nobody can open the page until you save a key again.
+
+Anyone with the link can see parents' names, phone numbers and emails, so share it only with families in the program.`,
   },
   {
     id: "settings-contact-types",
