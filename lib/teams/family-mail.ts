@@ -118,6 +118,15 @@ export function playerTarget(p: PlayerWithParents): MailTarget {
   return { id: p.id, first_name: p.full_name.trim().split(/\s+/)[0] ?? "", name: p.full_name.trim(), contacts: withPrimary(contacts) };
 }
 
+// The player's own email, for their Directory card and page: left off when
+// it's one of their parents' (a young player registered with Mom's
+// address), since it shows with that parent already.
+export function playerOwnEmail(p: Pick<PlayerWithParents, "email" | "parents">): string | null {
+  const own = cleanEmail(p.email);
+  if (!own || p.parents.some((pa) => cleanEmail(pa.member?.email) === own)) return null;
+  return p.email!.trim();
+}
+
 // "Sam", "Sam and Evan", "Sam, Evan and Leo".
 export function firstNames(regs: { first_name: string }[]): string {
   const names = [...new Set(regs.map((r) => r.first_name.trim()).filter(Boolean))];

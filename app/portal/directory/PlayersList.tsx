@@ -24,7 +24,7 @@ import { ContactLine, ParentBlock, RequirementChips, TeamPicker, formatDate, mut
 import { ComboSelect } from "../../components/ComboSelect";
 import { Pill } from "../../components/ui";
 import { ComposeSheet } from "./_shared/Messaging";
-import { FAMILY_MESSAGE, playerTarget } from "../../../lib/teams/family-mail";
+import { FAMILY_MESSAGE, playerOwnEmail, playerTarget } from "../../../lib/teams/family-mail";
 import { sendPlayerMessage } from "../../../lib/teams/player-message-actions";
 
 const NO_GROUP = "No age group";
@@ -661,6 +661,7 @@ function PlayerRow({
   const age = ageFromDob(p.dob);
   const born = formatDate(p.dob);
   const addr = playerAddress(p);
+  const ownEmail = playerOwnEmail(p);
   const staffFacts = [
     p.registration_fee && `Fee: ${p.registration_fee}`,
     // The form's chosen payment option, not a confirmed payment.
@@ -719,8 +720,8 @@ function PlayerRow({
             style={{ ...muted, color: "var(--gw-fg)", display: "flex", gap: 6, alignItems: "flex-start", alignSelf: "flex-start" }}
           />
         )}
-        {(p.phone || p.email) && (
-          <ContactLine phone={p.phone} email={p.email} label="Player" />
+        {(p.phone || ownEmail) && (
+          <ContactLine phone={p.phone} email={ownEmail} label="Player" />
         )}
         {isStaff && staffFacts.length > 0 && <div style={muted}>{staffFacts.join(" · ")}</div>}
         {isStaff && requirements.length > 0 && (
