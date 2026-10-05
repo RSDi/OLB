@@ -216,6 +216,8 @@ The cost is an estimate from the AI's token counts. It doesn't include the small
 
 **Who's listed.** Players appear when their family said yes to being in the directory on the registration form. If your family said no, you still see your own players, marked **Not in directory**; other families don't.
 
+**Public directory.** The same players and parents are also on a public, read-only page at **/directory** on the club website, no sign-in needed. It lists only families who said yes to the directory, shows no fees or payment details, and can be grouped **Alphabetical** (the default), **By city**, **By team** or **By age group**.
+
 **Profiles.** A member's profile shows their photo, phone, email, birthday and address (tap it for **Apple Maps** or **Google Maps**), plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
   },
   {
