@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 import { Icons } from "../../components/icons";
 import { ClearSearchButton } from "../../components/ui";
+import { ScrollToTopButton } from "../../components/ScrollToTopButton";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
 import type { PublicPlayer, PublicTeam } from "../../../lib/teams/public-directory";
 import { JerseyNumber, TeamDot } from "../../portal/directory/_shared/TeamBanner";
@@ -265,6 +266,8 @@ export function PublicDirectoryList({
           </section>
         ))
       )}
+
+      <ScrollToTopButton scroller="window" />
     </>
   );
 }

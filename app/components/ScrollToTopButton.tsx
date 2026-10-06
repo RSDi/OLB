@@ -13,28 +13,38 @@ const SCROLLER_SELECTOR = ".rsd-app main";
 
 // Floating yellow "back to top" button, mounted once by the portal shell so
 // every portal page gets it. It only appears once you've scrolled far enough
-// for it to save a real scroll, so short pages never show it.
-export function ScrollToTopButton() {
+// for it to save a real scroll, so short pages never show it. Pages outside
+// the shell, where the window itself scrolls (the public Directory), pass
+// `scroller="window"`.
+export function ScrollToTopButton({ scroller: target = "shell" }: { scroller?: "shell" | "window" }) {
   const [visible, setVisible] = useState(false);
   // The scroller outlives client navigations, so re-check on each page
   // change instead of trusting the last page's scroll position.
   const pathname = usePathname();
 
   useEffect(() => {
+    if (target === "window") {
+      const onScroll = () => setVisible(window.scrollY > SHOW_AFTER_PX);
+      onScroll();
+      window.addEventListener("scroll", onScroll, { passive: true });
+      return () => window.removeEventListener("scroll", onScroll);
+    }
     const scroller = document.querySelector(SCROLLER_SELECTOR);
     if (!scroller) return;
     const onScroll = () => setVisible(scroller.scrollTop > SHOW_AFTER_PX);
     onScroll();
     scroller.addEventListener("scroll", onScroll, { passive: true });
     return () => scroller.removeEventListener("scroll", onScroll);
-  }, [pathname]);
+  }, [pathname, target]);
 
   if (!visible) return null;
 
   return (
     <button
       type="button"
-      onClick={() => document.querySelector(SCROLLER_SELECTOR)?.scrollTo({ top: 0, behavior: "smooth" })}
+      onClick={() =>
+        (target === "window" ? window : document.querySelector(SCROLLER_SELECTOR))?.scrollTo({ top: 0, behavior: "smooth" })
+      }
       aria-label="Scroll to top"
       className="gw-press"
       style={{
