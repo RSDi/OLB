@@ -844,28 +844,85 @@ textarea.input {
   background-position: 0 calc(100% - 0.1em);
 }
 
+/* Folder titles carry a small chevron that flips while their menu is open. */
+.navFolder::after {
+  content: "";
+  width: 0.36em;
+  height: 0.36em;
+  margin: -0.2em 0 0 0.45em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease, margin 0.2s ease;
+}
+
+/* A white card that fades and drops in on hover. It hangs from the folder
+   title's left edge and opens rightward, so About's menu never covers the
+   logo. It opens on hover, or when the keyboard (not the mouse) moves focus
+   into it, so a click no longer pins it open after the pointer leaves. A short
+   delay before closing forgives a pointer that slips off the edge. */
 .dropdown {
   position: absolute;
-  top: auto;
-  /* Hang from the folder title's left edge and open rightward, so About's
-     menu never spreads back over the logo. */
-  left: -1em;
+  top: 100%;
+  left: -1.1em;
   z-index: 10;
-  display: none;
-  box-sizing: content-box;
-  min-width: 200px;
-  padding: 0.5em 1em;
-  background: #fff;
+  min-width: 190px;
+  padding-top: 0.6em;
   text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.18s ease 0.12s,
+    transform 0.18s ease 0.12s,
+    visibility 0s linear 0.3s;
+}
+
+.dropdownCard {
+  padding: 0.5em 0;
+  border-top: 3px solid var(--accent);
+  border-radius: 2px 2px 8px 8px;
+  background: #fff;
+  color: #000;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.14), 0 2px 6px rgb(0 0 0 / 0.08);
 }
 
 .navItem:hover .dropdown,
-.navItem:focus-within .dropdown {
-  display: block;
+.navItem:has(:focus-visible) .dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    visibility 0s;
 }
 
-.dropdownItem {
-  line-height: 1.3;
+.navItem:hover .navFolder::after,
+.navItem:has(:focus-visible) .navFolder::after {
+  margin-top: 0.2em;
+  transform: rotate(-135deg);
+}
+
+.dropdownItem .navLink {
+  display: flex;
+  padding: 0.35em 1.1em;
+  line-height: 1.4;
+  transition: background-color 0.15s ease, padding 0.15s ease;
+}
+
+.dropdownItem .navLink:hover,
+.dropdownItem .navLink:focus-visible {
+  padding-left: 1.35em;
+  background-color: rgb(251 203 68 / 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown,
+  .navFolder::after,
+  .dropdownItem .navLink {
+    transition: none;
+  }
 }
 
 .headerActions {

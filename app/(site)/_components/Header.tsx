@@ -80,15 +80,17 @@ export function Header() {
           {NAV.map((item) =>
             isFolder(item) ? (
               <div key={item.label} className={styles.navItem}>
-                <button type="button" className={styles.navLink}>
+                <button type="button" className={cx(styles.navLink, styles.navFolder)} aria-haspopup="true">
                   <span className={cx(item.children.some(isActive) && styles.active)}>{item.label}</span>
                 </button>
                 <div className={styles.dropdown}>
-                  {item.children.map((child) => (
-                    <div key={child.href} className={styles.dropdownItem}>
-                      <NavAnchor link={child} className={cx(styles.navLink, isActive(child) && styles.active)} />
-                    </div>
-                  ))}
+                  <div className={styles.dropdownCard}>
+                    {item.children.map((child) => (
+                      <div key={child.href} className={styles.dropdownItem}>
+                        <NavAnchor link={child} className={cx(styles.navLink, isActive(child) && styles.active)} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : (
