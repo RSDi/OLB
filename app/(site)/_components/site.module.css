@@ -847,14 +847,16 @@ textarea.input {
 .dropdown {
   position: absolute;
   top: auto;
-  right: -1em;
+  /* Hang from the folder title's left edge and open rightward, so About's
+     menu never spreads back over the logo. */
+  left: -1em;
   z-index: 10;
   display: none;
   box-sizing: content-box;
   min-width: 200px;
   padding: 0.5em 1em;
   background: #fff;
-  text-align: right;
+  text-align: left;
 }
 
 .navItem:hover .dropdown,
