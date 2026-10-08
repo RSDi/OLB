@@ -1272,3 +1272,61 @@ textarea.input {
   line-height: 1.87;
   text-decoration: underline;
 }
+
+/* ── Lists edited in Settings → Website ─────────────────────────────────── */
+
+/* The coaches, once their list has been edited: two even columns (one on
+   phones), each coach's name and role beside an oval portrait, then the bio. */
+.coachList {
+  display: grid;
+  gap: 56px 6vw;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 8vw 6vw;
+}
+
+.coach {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38%;
+  gap: 0 6%;
+  align-content: start;
+}
+
+.coachName {
+  align-self: center;
+}
+
+.coachPhoto {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  clip-path: ellipse(50% 50% at 50% 50%);
+}
+
+.coachBio {
+  grid-column: 1 / -1;
+  margin-top: 20px;
+}
+
+@media (min-width: 768px) {
+  .coachList {
+    grid-template-columns: 1fr 1fr;
+    padding: var(--page-padding) calc(var(--page-padding) * 2);
+  }
+  .coach {
+    grid-template-columns: minmax(0, 1fr) 32%;
+  }
+}
+
+/* A note after the list. */
+.coachNote {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 6vw 8vw;
+}
+
+@media (min-width: 768px) {
+  .coachNote {
+    padding: 0 calc(var(--page-padding) * 2) var(--page-padding);
+  }
+}

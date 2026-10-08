@@ -26,9 +26,9 @@ import type { MemberRole, MemberStatus } from "../auth/permissions";
 // the Registrations grant; "travel" = anyone with the Travel grant (the
 // travel coordinator); "messaging" = the board and the Registrations grant,
 // who can email families from the Directory; "slack" = anyone with the Slack
-// DMs grant. Super-admins always have all of them. The guide hides a section
+// DMs grant; "website" = board members with the Website grant. Super-admins always have all of them. The guide hides a section
 // from anyone it doesn't apply to.
-export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "travel" | "messaging" | "slack" | "super_admin";
+export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "travel" | "messaging" | "slack" | "website" | "super_admin";
 
 export interface GuideSection {
   id: string; // anchor: #help-<id>
@@ -66,6 +66,8 @@ export interface GuideViewer {
   canManageTravel?: boolean;
   // Holds the Slack DMs grant: sees the "slack" sections.
   canSlackDm?: boolean;
+  // Holds the Website grant: sees the "website" sections.
+  canManageWebsite?: boolean;
 }
 
 export const GUIDE_UPDATED = "October 2026";
@@ -658,6 +660,7 @@ Activity is recorded from the day this page went live.`,
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
 | Add and edit the hotels and places to eat in External Contacts; see the HS Schedule | With **Travel** | ✓ | ✓ |
 | Send families Slack DMs from the Directory, as yourself | With **Slack DMs** | With **Slack DMs** | ✓ |
+| Change the club website's menu, page text and pictures | | With **Settings: Website** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | | | ✓ |
 
@@ -675,7 +678,7 @@ Activity is recorded from the day this page went live.`,
     group: "Settings",
     audience: "staff",
     routes: ["/portal/settings"],
-    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages", "slack dms", "slack"],
+    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages", "slack dms", "slack", "website"],
     body: `Where new sign-ups are approved and member accounts are managed.
 
 **The red badge** on **Settings** in the sidebar counts access requests waiting for you.
@@ -695,6 +698,7 @@ Activity is recorded from the day this page went live.`,
 - Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - Next to **Manages:** on the **Approved** tab, turn on **Payments** to let someone see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to let someone review new registrations, put players on teams and edit players, **Travel** to let the travel coordinator add and edit the hotels and places to eat in External Contacts and see the HS Schedule, and **Slack DMs** to let someone send families Slack DMs from the Directory as themselves (see *Slack DMs to families*). They all work for members and board alike. Tap one again to take it away.
+- Next to **Settings:** on a board member's row, **Website** lets them change the club website's menu, page text and pictures (see *Settings: Website*). Tap it again to take it away.
 - **Remove** a member (demote a super-admin first).
 
 Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,
@@ -761,6 +765,45 @@ Use the arrows to change the order (it's the order of the chips in the Directory
 **The waitlist's message.** **Waitlist: teams are full**, marked **Starts waitlist messages**, is what the waitlist's **Message everyone** and **Send a message** start with. Change its words here and the waitlist uses yours. Delete it and the waitlist goes back to the wording it started with.
 
 **Using one.** When you email families from the Directory, a player's page or the registration waitlist, pick it from **Template**. It fills in the subject and message, and you can change anything before you send. Anyone who can email families can use the templates, including people with the **Registrations** permission who aren't on the board.`,
+  },
+  {
+    id: "settings-website",
+    title: "Settings: Website",
+    group: "Settings",
+    audience: "website",
+    keywords: ["website", "public site", "club website", "menu", "navigation", "nav", "folder", "page text", "words", "wording", "pictures", "photos", "images", "upload", "flyer", "banner", "footer", "home page", "philosophy", "history", "summer", "programs", "coaches", "sponsors", "logos", "buttons", "new page", "add a page", "address", "draft", "preview", "publish", "discard", "reset", "original", "description"],
+    body: `Change the public club website without a developer: the menu across the top, the words, pictures and buttons on its pages, the lists of programs, coaches and sponsors, and pages of your own. Open **Settings → Website**. Super-admins can always use it; a super-admin turns it on for a board member with **Website** next to **Settings:** in **Settings → Members**.
+
+**Draft, preview, publish**
+
+Nothing you save goes on the site straight away. Every **Save draft** keeps your change as a draft, and the box at the top lists your unpublished changes.
+
+- **Preview** opens the site in a new tab with your drafts in place. Only people with the Website permission can see them; a black bar at the bottom says you're previewing. **Exit preview** goes back to the live site.
+- **Publish** puts every draft on the live site at once.
+- The **×** on a change throws that draft away; **Discard all** throws them all away.
+- Each spot says **Draft**, **Published** (changed and live) or **Original** (the website's own). On the **Pages** tab, ◆ on a page's name means it has unpublished changes and • means it has published ones.
+
+**Menu**
+
+- Each item is a **link**, or a **folder** that opens to show its own links (like About → Philosophy, History).
+- **Goes to** is a page on the site, like **/coaches** or one of your new pages (pick from the list as you type), or any web address, like a Google Drive file. Web addresses open in a new tab.
+- The arrows move an item up or down; the **trash** can removes it. **Add link** and **Add folder** add one at the bottom; **Add link to …** adds one inside a folder.
+- Tap **Save draft** when you're done. **Discard changes** throws away what you haven't saved.
+- **Reset to original** saves a draft that puts back the menu the website started with.
+
+**Pages**
+
+Pick a page (**Home**, **Philosophy**, **History**, **Summer**, **Programs**, **Coaches**, **Sponsors**, **Footer** for the bottom of every page, or **New pages**), then change any of the spots listed. **Preview this page** opens it with your drafts.
+
+- **Text**: type the new words and tap **Save draft**. In the bigger boxes, leave a blank line between paragraphs. **\\*\\*bold\\*\\***, **\\*italic\\***, **[link words](/philosophy)** and lines starting with a dash (**-**) for a list all work. A bold line on its own gets a little space above it, like a heading.
+- **Pictures**: tap **Upload new picture** and choose a JPEG, PNG, WebP or GIF up to 10 MB (iPhone HEIC photos: export them as JPEG first). Fill in **Description** first: it's read aloud to people who can't see the picture.
+- **Buttons**: change the **Words on the button** and where it **Goes to**.
+- **Lists** (the programs, coaches and sponsors): tap one to open it and change it; the arrows reorder, the **trash** can removes one, and **Add program**, **Add coach** or **Add sponsor** adds one at the bottom. Then **Save draft**. Once the coaches list has been changed, the Coaches page shows them in two even columns rather than the original staggered layout.
+- **Reset to original** saves a draft that puts the website's own words, picture or list back for that spot.
+
+**New pages**
+
+Make a page of your own, like a fall camp or a tryouts page. Under **Pages → New pages**, tap **Add page** and fill in its **Title**, its **Address** (filled in from the title: Fall Camp makes **/fall-camp**), an optional **Banner picture**, and the **Page text**. Save the draft, preview it, publish it, then add it to the **Menu** so people can find it. An address the site already uses can't be taken. Delete a page from the list (and publish) to take it down.`,
   },
   {
     id: "settings-planning-roles",
@@ -866,6 +909,7 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
   if (audience === "travel") return viewer.role === "super_admin" || !!viewer.canManageTravel;
   if (audience === "messaging") return viewer.isStaff || viewer.role === "super_admin" || !!viewer.canManageRegistrations;
   if (audience === "slack") return viewer.role === "super_admin" || !!viewer.canSlackDm;
+  if (audience === "website") return viewer.role === "super_admin" || !!viewer.canManageWebsite;
   return viewer.role === "super_admin";
 }
 

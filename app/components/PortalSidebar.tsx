@@ -102,6 +102,8 @@ export interface SidebarViewer {
   canManageTravel?: boolean;
   // The Slack DMs grant (0118): for the guide's Slack DMs section.
   canSlackDm?: boolean;
+  // The Website grant (0120): for the guide's Settings: Website section.
+  canManageWebsite?: boolean;
 }
 
 interface PortalSidebarProps {

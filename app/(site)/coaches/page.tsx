@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { StaticImageData } from "next/image";
+import Image, { type StaticImageData } from "next/image";
 import catherine from "../_images/coach-catherine-goeller.jpg";
 import cory from "../_images/coach-cory-eikmeier.jpg";
 import courtney from "../_images/coach-courtney-kidd.jpg";
@@ -12,7 +12,10 @@ import phil from "../_images/coach-phil-friesen.jpg";
 import rodney from "../_images/coach-rodney-wyatt.jpg";
 import { Picture } from "../_components/Picture";
 import { Block, Section } from "../_components/Section";
+import { SiteMarkdown } from "../_components/SiteMarkdown";
+import styles from "../_components/site.module.css";
 import { Small, Text } from "../_components/Text";
+import { getSiteContent, type SiteListItem } from "../../../lib/website/queries";
 
 export const metadata: Metadata = { title: "Coaches" };
 
@@ -244,35 +247,36 @@ const COACHES: Coach[] = [
   },
 ];
 
-export default function CoachesPage() {
+// The heading, coaches and note come from Settings → Website. Until the list
+// of coaches is edited, the page keeps the original site's hand-placed
+// layout (COACHES above); after that, the coaches sit in two even columns.
+export default async function CoachesPage() {
+  const content = await getSiteContent();
+  const note = content.text("coaches.note");
   return (
     <>
       <Section height={{ minHeight: "10vh", padding: "1vmax" }} rule rows={[12, 5]}>
         <Block m="4/2/10/10" d="2/4/6/22" align="center">
           <Text>
-            <h1>Our Coaches</h1>
+            <h1>{content.text("coaches.title")}</h1>
           </Text>
         </Block>
       </Section>
 
-      <Section theme="white" height={{ minHeight: "10vh", padding: "1vmax" }} rows={[252, 111]}>
-        {COACHES.map((coach) => (
-          <CoachBlocks key={coach.name} coach={coach} />
-        ))}
-        <Block m="170/2/172/10" d="84/15/89/23">
-          <Text>
-            <p>
-              <strong>NEW Coaches joining lightning for the 2026-27 season!</strong>
-            </p>
-            <p>
-              <strong>-Thomas Rehm </strong>
-            </p>
-            <p>
-              <strong>-Chris Woodhouse</strong>
-            </p>
-          </Text>
-        </Block>
-      </Section>
+      {content.edited("coaches.list") ? (
+        <EditedCoaches coaches={content.list("coaches.list")} note={note} />
+      ) : (
+        <Section theme="white" height={{ minHeight: "10vh", padding: "1vmax" }} rows={[252, 111]}>
+          {COACHES.map((coach) => (
+            <CoachBlocks key={coach.name} coach={coach} />
+          ))}
+          <Block m="170/2/172/10" d="84/15/89/23">
+            <Text>
+              <SiteMarkdown>{note}</SiteMarkdown>
+            </Text>
+          </Block>
+        </Section>
+      )}
     </>
   );
 }
@@ -301,5 +305,59 @@ function CoachBlocks({ coach }: { coach: Coach }) {
         <Text>{coach.bio}</Text>
       </Block>
     </>
+  );
+}
+
+// The coaches once their list has been edited in Settings → Website.
+function EditedCoaches({ coaches, note }: { coaches: SiteListItem[]; note: string }) {
+  return (
+    <Section theme="white" height={{ minHeight: "10vh", padding: "1vmax" }}>
+      <div className={styles.coachList}>
+        {coaches.map((coach, i) => {
+          const photo = coach.image("photo");
+          const role = coach.text("role");
+          const bio = coach.text("bio");
+          return (
+            <div key={i} className={styles.coach}>
+              <div className={styles.coachName}>
+                <Text>
+                  <h4>{coach.text("name")}</h4>
+                  {role && (
+                    <Small>
+                      <em>{role}</em>
+                    </Small>
+                  )}
+                </Text>
+              </div>
+              <div className={styles.coachPhoto}>
+                {photo && (
+                  <Image
+                    src={photo.src}
+                    alt={photo.alt || coach.text("name")}
+                    fill
+                    sizes="(min-width: 768px) 14vw, 34vw"
+                    style={{ objectFit: "cover" }}
+                  />
+                )}
+              </div>
+              {bio && (
+                <div className={styles.coachBio}>
+                  <Text>
+                    <SiteMarkdown>{bio}</SiteMarkdown>
+                  </Text>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {note && (
+        <div className={styles.coachNote}>
+          <Text>
+            <SiteMarkdown>{note}</SiteMarkdown>
+          </Text>
+        </div>
+      )}
+    </Section>
   );
 }

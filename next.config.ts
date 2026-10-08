@@ -1,9 +1,22 @@
 import type { NextConfig } from "next";
 
+// Pictures uploaded in Settings → Website live in the public `site-images`
+// bucket of this project's Supabase storage; let next/image resize them.
+function siteImagesPattern(): URL[] {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) return [];
+  try {
+    return [new URL(`${url.replace(/\/+$/, "")}/storage/v1/object/public/site-images/**`)];
+  } catch {
+    return [];
+  }
+}
+
 const nextConfig: NextConfig = {
   // ReelNotes ships as a workspace package of raw TS/TSX source; Next must
   // transpile it like first-party app code.
   transpilePackages: ["reelnotes"],
+  images: { remotePatterns: siteImagesPattern() },
   async redirects() {
     // The maintenance area was renamed to Tasks & Projects; keep old links working.
     return [

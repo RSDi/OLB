@@ -741,6 +741,57 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-website",
+    sectionId: "settings-website",
+    title: "Website walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-website",
+        title: "Settings → Website",
+        body: "Change the public club website: its menu, the words, pictures, buttons and lists on its pages, and pages of your own.",
+      },
+      {
+        target: "website-drafts",
+        click: "settings-tab-website",
+        title: "Drafts first",
+        body: "Everything you save is a **draft** until it's published. Your unpublished changes are listed here; the **×** throws one away.",
+      },
+      {
+        target: "website-preview",
+        title: "Preview",
+        body: "Opens the site with your drafts in place. Only people with the Website permission see them.",
+      },
+      {
+        target: "website-menu-item",
+        click: "website-section-menu",
+        title: "Each menu item",
+        body: "A **link**, or a **folder** of links. Change its label and where it goes; the arrows move it and the **trash** can removes it.",
+      },
+      {
+        target: "website-menu-save",
+        title: "Save the menu",
+        body: "**Save draft** keeps your menu as a draft. **Reset to original** puts the website's own menu back.",
+      },
+      {
+        target: "website-pages",
+        click: "website-section-pages",
+        title: "Pages",
+        body: "Pick a page to change its words, pictures, buttons and lists, or **New pages** to make one of your own. ◆ marks a page with unpublished changes.",
+      },
+      {
+        target: "website-slot",
+        title: "Each spot",
+        body: "Change it and tap **Save draft**. It says **Draft**, **Published** or **Original**; **Reset to original** puts the website's own back.",
+      },
+      {
+        target: "website-drafts",
+        title: "Publish",
+        body: "When the preview looks right, tap **Publish** up here to put every draft on the live site at once.",
+      },
+    ],
+  },
+  {
     id: "settings-sidebar-links",
     sectionId: "settings-sidebar-links",
     title: "Sidebar Links walkthrough",

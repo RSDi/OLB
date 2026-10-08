@@ -1,32 +1,29 @@
 import Link from "next/link";
-import basketball from "./_images/home-basketball.jpg";
 import teamHeartland from "./_images/home-team-heartland.jpg";
 import teamMedals from "./_images/home-team-medals.jpg";
 import youngPlayers from "./_images/home-young-players.jpg";
 import { Gallery } from "./_components/Gallery";
 import { Picture } from "./_components/Picture";
 import { Block, Section } from "./_components/Section";
+import { SiteMarkdown } from "./_components/SiteMarkdown";
 import { Scaled, Small, Text } from "./_components/Text";
+import { getSiteContent } from "../../lib/website/queries";
 
 const CUSTOM = { minHeight: "10vh", padding: "1vmax" };
 
-export default function HomePage() {
+export default async function HomePage() {
+  // The words and photo from Settings → Website.
+  const content = await getSiteContent();
+  const photo = content.image("home.photo");
   return (
     <>
       <Section theme="white" height={CUSTOM} divider={{ height: "6vw", tip: 75, stroke: true }} rows={[10, 8]}>
         <Block m="2/2/11/10" d="1/2/9/26" align="center">
           <Text>
             <h4>
-              <strong>Welcome to Omaha Lightning Basketball! </strong>
+              <strong>{content.text("home.welcome.title")}</strong>
             </h4>
-            <p>
-              For over{" "}two decades, Omaha Lightning Basketball has served to create an opportunity for home
-              school athletes from all over the Omaha metro and surrounding areas to experience the challenge,
-              enjoyment, and personal development opportunities that competitive basketball can offer. Most
-              importantly though, our goal is to provide these experiences in a Christian environment where young boys
-              have the opportunity to grow into Godly Christian men. To learn more about the Lightning philosophy click{" "}
-              <Link href="/philosophy">HERE</Link>.{" "}
-            </p>
+            <SiteMarkdown>{content.text("home.welcome.body")}</SiteMarkdown>
           </Text>
         </Block>
       </Section>
@@ -34,8 +31,8 @@ export default function HomePage() {
       <Section height={CUSTOM} rows={[17, 18]}>
         <Block m="2/2/10/10" d="2/2/19/16" align="center">
           <Picture
-            src={basketball}
-            alt="A basketball on the court at players' feet"
+            src={photo.src}
+            alt={photo.alt}
             stretch
             radius="10px"
             eager
@@ -47,25 +44,15 @@ export default function HomePage() {
             <Small>
               <strong>-PURPOSE-</strong>
             </Small>
-            <Small>
-              Omaha Lightning Basketball exists to provide home educated boys the opportunity to participate in an
-              organized competitive basketball program that has a distinctly Christian character.
-            </Small>
+            <SiteMarkdown size="small">{content.text("home.purpose")}</SiteMarkdown>
             <Small>
               <strong>-MISSION-</strong>
             </Small>
-            <Small>
-              Provide an enriching environment that challenges players to mature physically, emotionally, and
-              spiritually, thereby growing in grace, and in the knowledge of our Lord and Savior Jesus Christ.
-            </Small>
+            <SiteMarkdown size="small">{content.text("home.mission")}</SiteMarkdown>
             <Small>
               <strong>-VISION-</strong>
             </Small>
-            <Small>
-              That students develop into mature Christian adults who serve their families, churches, and communities
-              according to the ideals espoused in Colossians 3:17; “And whatever you do in word or deed, do all in the
-              name of the Lord Jesus, giving thanks to God the Father through Him.”
-            </Small>
+            <SiteMarkdown size="small">{content.text("home.vision")}</SiteMarkdown>
             <Small />
           </Text>
         </Block>

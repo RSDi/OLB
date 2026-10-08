@@ -16,7 +16,7 @@ export function Accordion({ items }: { items: AccordionItem[] }) {
       {items.map((item, i) => {
         const isOpen = open === i;
         return (
-          <li key={item.title} className={styles.accordionItem} data-open={isOpen}>
+          <li key={i} className={styles.accordionItem} data-open={isOpen}>
             {i === 0 && <div className={styles.accordionDivider} aria-hidden="true" />}
             <h4 className={styles.accordionHeading}>
               <button
