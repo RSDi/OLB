@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Icons } from "../../../components/icons";
 import { Pill } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
@@ -29,17 +29,44 @@ function previewKind(f: ArchivedFile): PreviewKind | null {
 // A link opened in place changes only the hash. The browser reports that as
 // "hashchange", but Next's router (a search result in the same channel)
 // moves the URL with history.pushState, which only the Navigation API
-// reports. Browsers without it still get the first two.
+// reports. Browsers without it still get the first two. Next calls
+// pushState while React is committing, when an update can't be scheduled,
+// so that one waits a microtask.
 function subscribeToHash(onChange: () => void): () => void {
   const navigation = (window as unknown as { navigation?: EventTarget }).navigation;
+  const afterCommit = () => queueMicrotask(onChange);
   window.addEventListener("hashchange", onChange);
   window.addEventListener("popstate", onChange);
-  navigation?.addEventListener("currententrychange", onChange);
+  navigation?.addEventListener("currententrychange", afterCommit);
   return () => {
     window.removeEventListener("hashchange", onChange);
     window.removeEventListener("popstate", onChange);
-    navigation?.removeEventListener("currententrychange", onChange);
+    navigation?.removeEventListener("currententrychange", afterCommit);
   };
+}
+
+// Keeps jumps within the page (a linked message, Jump to date) clear of the
+// sticky bar: the page's scroller gets a scroll-padding-top just past the
+// bar's bottom, kept in step as the bar wraps to two rows on a narrow phone
+// or grows with "Filter (n)". <main> belongs to the portal shell, so the
+// padding comes off again when the channel page goes.
+function useStickyBarScrollPadding(bar: React.RefObject<HTMLDivElement | null>): void {
+  useLayoutEffect(() => {
+    const el = bar.current;
+    const scroller = el?.closest("main");
+    if (!el || !scroller) return;
+    const previous = scroller.style.scrollPaddingTop;
+    const update = () => {
+      scroller.style.scrollPaddingTop = `${el.offsetHeight + 11}px`;
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      scroller.style.scrollPaddingTop = previous;
+    };
+  }, [bar]);
 }
 
 // The message a link opened this page at ("#msg-<ts>": the photo album's
@@ -99,12 +126,14 @@ export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; 
 
   const authorCounts = useMemo(() => countAuthors(threads), [threads]);
   const linkedTs = useLinkedMessageTs();
+  const stickyBar = useRef<HTMLDivElement>(null);
+  useStickyBarScrollPadding(stickyBar);
 
   // The browser's own jump to the anchor happens before the page is ready;
   // center the message once it's here, or, when it's taller than the room
   // below the sticky bar, line its top up under the bar so its author and
-  // text show. The scroller's scroll-padding-top (globals.css) keeps both
-  // clear of the bar.
+  // text show. The scroller's scroll-padding-top (useStickyBarScrollPadding)
+  // keeps both clear of the bar.
   useEffect(() => {
     if (!linkedTs) return;
     const el = document.getElementById(messageAnchorId(linkedTs));
@@ -142,6 +171,7 @@ export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; 
   return (
     <div>
       <div
+        ref={stickyBar}
         className="rsd-slack-sticky-bar"
         style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}
       >
@@ -413,8 +443,10 @@ function FileChip({ file: f, onPreview }: { file: ArchiveMessageFile; onPreview:
     cursor: "pointer", font: "inherit",
   };
   // A file kept outside Slack (a Google Doc, say) is only a link to it, so
-  // it opens there rather than in the preview overlay.
+  // it opens there rather than in the preview overlay. So does a HEIC or
+  // TIFF photo without a preview yet, which most browsers can't show.
   const kind = f.external ? null : previewKind(f);
+  const opensInOverlay = kind !== null && !(needsPreviewToShow(f) && !f.thumb_url);
   const icon = f.error
     ? <Icons.AlertCircle width={13} height={13} />
     : f.external ? <Icons.ExternalLink width={13} height={13} />
@@ -434,7 +466,7 @@ function FileChip({ file: f, onPreview }: { file: ArchiveMessageFile; onPreview:
       </span>
     );
   }
-  if (kind && !f.error) {
+  if (opensInOverlay && !f.error) {
     return (
       <button type="button" onClick={onPreview} style={chipStyle}>
         {icon}

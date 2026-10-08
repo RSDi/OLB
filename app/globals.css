@@ -870,13 +870,6 @@ main::-webkit-scrollbar-track { background: transparent; }
   .rsd-slack-media-play { width: 32px; height: 32px; margin: -16px 0 0 -16px; }
 }
 
-/* Keeps a linked message (and any "#..." jump) clear of the sticky filter
-   bar, which is about this tall. */
-.rsd-app main:has(.rsd-slack-sticky-bar) { scroll-padding-top: 88px; }
-@media (max-width: 768px) {
-  .rsd-app main:has(.rsd-slack-sticky-bar) { scroll-padding-top: 72px; }
-}
-
 /* @channel, @here, @everyone: Slack's yellow highlight. */
 .rsd-slack-text .rsd-slack-broadcast {
   padding: 0 2px;
