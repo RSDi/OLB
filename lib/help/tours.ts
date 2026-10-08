@@ -496,12 +496,12 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "schedule-seasons",
         title: "One season at a time",
-        body: "The arrows and the season buttons move between seasons; the earlier ones stay to look back on.",
+        body: "The arrows move between seasons; the earlier ones stay to look back on.",
       },
       {
         target: "schedule-legend",
-        title: "The colors, and a filter",
-        body: "As in the spreadsheet: **Tentative**, **Need to secure facility**, **Final details in process** and **Facility secured**; a dashed **3?** isn't settled and an amber dot means a team is on the fence. Tap any of them to show just those weekends, and **All** to show every one.",
+        title: "Show just some weekends",
+        body: "The colors are the spreadsheet's: **Tentative**, **Need to secure facility**, **Final details in process** and **Facility secured**. Pick one here to show just those weekends, or **Not sure yet** (a dashed **3?**) or **Teams on the fence** (an amber dot). **All weekends** shows every one.",
       },
       {
         target: "schedule-grid",
@@ -544,12 +544,12 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "schedule-compare",
         dismiss: "schedule-popover-done",
         title: "Compare with another season",
-        body: "Puts that season's same weekend beside each row: what we did a year ago, at a glance.",
+        body: "Pick a season to put its same weekend beside each row: what we did a year ago, at a glance.",
       },
       {
         target: "schedule-season-settings",
         title: "Season settings",
-        body: "The season's notes and columns (add, rename, reorder or hide one). The board can start next season from this one here.",
+        body: "The gear opens the season's notes and columns (add, rename, reorder or hide one). The board can start next season from this one here, or add a **New season**.",
       },
       {
         target: "schedule-add-weekend",

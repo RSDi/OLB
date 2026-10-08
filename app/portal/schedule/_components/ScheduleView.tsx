@@ -5,7 +5,7 @@
 // teams coming under it), a column per team of ours with its games, and the
 // notes. Hover a team's count (or tap it) to see the teams coming and edit
 // them; tap an event for the weekend's details. Past seasons are one click
-// away, and "Compare" puts another season's same weekend beside each row.
+// away, and "Compare with" puts another season's same weekend beside each row.
 // Without canEdit (the travel coordinator) it's the same schedule to look at:
 // no Add weekend, Season or Edit, and the weekend's details read-only.
 
@@ -55,7 +55,7 @@ import { WeekendSheet } from "./WeekendSheet";
 import { WeekendDetails } from "./WeekendDetails";
 import { TravelChip, TravelPopover } from "./TravelPopover";
 import { placesNear, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
-import { ComboSelect } from "../../../components/ComboSelect";
+import { FilterSelect } from "../../../components/FilterControls";
 
 export interface CompareWeekend {
   id: string;
@@ -113,8 +113,10 @@ export function ScheduleView({
     dispatch({ type: "reset", state: fromServer(schedule) });
   }
   const [showHidden, setShowHidden] = useState(false);
-  // The chips above the grid: show only the weekends that match any of them.
-  const [filters, setFilters] = useState<ReadonlySet<WeekendFilter>>(() => new Set());
+  // The Show drop-down above the grid: just the weekends of one status, or
+  // with a "3?", or with a team on the fence. Null shows every weekend.
+  const [filter, setFilter] = useState<WeekendFilter | null>(null);
+  const filters = useMemo<ReadonlySet<WeekendFilter>>(() => new Set(filter ? [filter] : []), [filter]);
   const [cell, setCell] = useState<CellTarget | null>(null);
   // Where to stay and eat: the weekend whose card is open, and what opened it.
   const [travel, setTravel] = useState<{ weekendId: string; anchor: HTMLElement } | null>(null);
@@ -162,13 +164,6 @@ export function ScheduleView({
     [levels, shownWeekends, state.games, state.opponents]
   );
   const totalLabel = filtering ? `Total for these ${shownWeekends.length} weekend${shownWeekends.length === 1 ? "" : "s"}` : "Total games";
-  const toggleFilter = (f: WeekendFilter) =>
-    setFilters((cur) => {
-      const next = new Set(cur);
-      if (next.has(f)) next.delete(f);
-      else next.add(f);
-      return next;
-    });
   const gamesAt = useCallback(
     (w: string, l: string) => state.games.find((g) => g.weekend_id === w && g.level_id === l),
     [state.games]
@@ -252,60 +247,32 @@ export function ScheduleView({
 
   return (
     <>
-      {/* ─── Season switcher and actions ─── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }} data-tour="schedule-seasons">
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-            <SeasonArrow href={older ? `/portal/schedule?season=${older.season}` : null} label={older ? `Back to ${seasonLabel(older.season)}` : "No earlier season"}>
-              <Icons.ChevronLeft width={16} height={16} />
-            </SeasonArrow>
-            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-.02em", minWidth: 96, textAlign: "center" }}>
-              {seasonLabel(season.season)}
-            </h2>
-            <SeasonArrow href={newer ? `/portal/schedule?season=${newer.season}` : null} label={newer ? `On to ${seasonLabel(newer.season)}` : "No later season"}>
-              <Icons.ChevronRight width={16} height={16} />
-            </SeasonArrow>
-          </div>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {[...seasons].reverse().map((s) => (
-              <Link
-                key={s.id}
-                href={`/portal/schedule?season=${s.season}`}
-                aria-current={s.season === season.season ? "page" : undefined}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 100,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  textDecoration: "none",
-                  border: "1px solid",
-                  borderColor: s.season === season.season ? "var(--rsd-accent-fill)" : "var(--gw-border)",
-                  background: s.season === season.season ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
-                  color: s.season === season.season ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
-                }}
-              >
-                {seasonLabel(s.season)}
-              </Link>
-            ))}
-            {isStaff && (
-              <button
-                type="button"
-                onClick={() => setSheet({ kind: "new-season" })}
-                data-tour="schedule-new-season"
-                style={{ padding: "4px 10px", borderRadius: 100, fontSize: 12, fontWeight: 700, border: "1px dashed var(--gw-border)", background: "transparent", color: "var(--gw-fg-muted)", cursor: "pointer" }}
-              >
-                + New season
-              </button>
-            )}
-          </div>
+      {/* ─── Season and actions ─── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }} data-tour="schedule-seasons">
+          <SeasonArrow href={older ? `/portal/schedule?season=${older.season}` : null} label={older ? `Back to ${seasonLabel(older.season)}` : "No earlier season"}>
+            <Icons.ChevronLeft width={16} height={16} />
+          </SeasonArrow>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-.02em", minWidth: 96, textAlign: "center" }}>
+            {seasonLabel(season.season)}
+          </h2>
+          <SeasonArrow href={newer ? `/portal/schedule?season=${newer.season}` : null} label={newer ? `On to ${seasonLabel(newer.season)}` : "No later season"}>
+            <Icons.ChevronRight width={16} height={16} />
+          </SeasonArrow>
         </div>
         {canEdit ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <span data-tour="schedule-season-settings" style={{ display: "inline-flex" }}>
-              <Pill variant="ghost" size="sm" onClick={() => setSheet({ kind: "season" })}>
-                <Icons.Cog width={13} height={13} /> Season
-              </Pill>
-            </span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setSheet({ kind: "season" })}
+              data-tour="schedule-season-settings"
+              aria-label="Season settings"
+              title="Season settings"
+              className="gw-press"
+              style={{ ...roundButton, cursor: "pointer" }}
+            >
+              <Icons.Cog width={15} height={15} />
+            </button>
             <span data-tour="schedule-add-weekend" style={{ display: "inline-flex" }}>
               <Pill variant="accent" size="sm" onClick={() => setSheet({ kind: "weekend", id: null })}>
                 <Icons.Plus width={13} height={13} /> Add weekend
@@ -323,47 +290,63 @@ export function ScheduleView({
         )}
       </div>
 
-      {/* ─── The key, which filters the weekends, and view options ─── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <WeekendFilters
-          filters={filters}
-          counts={filterCounts}
-          total={weekends.length}
-          shown={shownWeekends.length}
-          onToggle={toggleFilter}
-          onClear={() => setFilters(new Set())}
-        />
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          {hiddenCount > 0 && (
-            <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-              <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} style={{ accentColor: "var(--rsd-accent-fill)" }} />
-              Show hidden columns ({hiddenCount})
-            </label>
+      {/* ─── Which weekends, and view options ─── */}
+      {(weekends.length > 0 || seasons.length > 1 || hiddenCount > 0) && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {weekends.length > 0 && (
+            <WeekendFilterSelect filter={filter} counts={filterCounts} total={weekends.length} onChange={setFilter} />
           )}
           {seasons.length > 1 && (
-            <label style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 12, fontWeight: 600 }} data-tour="schedule-compare">
-              Compare with
-              <ComboSelect
-                value={compare?.season ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  router.push(`/portal/schedule?season=${season.season}${v ? `&compare=${v}` : ""}`);
-                }}
-                style={{ height: 30, padding: "0 8px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg-elev)", color: "var(--gw-fg)", fontSize: 12, fontWeight: 600 }}
-              >
-                <option value="">No other season</option>
-                {seasons
-                  .filter((s) => s.season !== season.season)
-                  .map((s) => (
-                    <option key={s.id} value={s.season}>
-                      {seasonLabel(s.season)}
-                    </option>
-                  ))}
-              </ComboSelect>
-            </label>
+            <FilterSelect
+              value={compare?.season ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                router.push(`/portal/schedule?season=${season.season}${v ? `&compare=${v}` : ""}`);
+              }}
+              aria-label="Compare with another season"
+              data-tour="schedule-compare"
+              grow
+              active={!!compare}
+            >
+              <option value="">Compare with…</option>
+              {seasons
+                .filter((s) => s.season !== season.season)
+                .map((s) => (
+                  <option key={s.id} value={s.season}>
+                    Compare with {seasonLabel(s.season)}
+                  </option>
+                ))}
+            </FilterSelect>
+          )}
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              aria-pressed={showHidden}
+              onClick={() => setShowHidden((v) => !v)}
+              title={showHidden ? "Hide the hidden columns again" : "Show the columns hidden in Season settings"}
+              className="rsd-chip"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                height: 34,
+                padding: "0 14px",
+                borderRadius: 100,
+                border: "1px solid",
+                borderColor: showHidden ? "var(--rsd-accent-fill)" : "var(--gw-border)",
+                background: showHidden ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+                color: showHidden ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Icons.Eye width={13} height={13} /> Hidden columns {hiddenCount}
+            </button>
           )}
         </div>
-      </div>
+      )}
 
       {error && (
         <div
@@ -394,7 +377,7 @@ export function ScheduleView({
       ) : shownWeekends.length === 0 ? (
         <div className="rsd-card" style={{ textAlign: "center", padding: "32px 24px", gap: 10, alignItems: "center" }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>No weekends match</div>
-          <Pill variant="ghost" size="sm" onClick={() => setFilters(new Set())}>
+          <Pill variant="ghost" size="sm" onClick={() => setFilter(null)}>
             Show every weekend
           </Pill>
         </div>
@@ -584,7 +567,15 @@ export function ScheduleView({
         />
       )}
       {sheet?.kind === "season" && canEdit && (
-        <SeasonSheet season={season} levels={levels} seasons={seasons} teams={directoryTeams} isStaff={isStaff} onClose={() => setSheet(null)} />
+        <SeasonSheet
+          season={season}
+          levels={levels}
+          seasons={seasons}
+          teams={directoryTeams}
+          isStaff={isStaff}
+          onClose={() => setSheet(null)}
+          onNewSeason={() => setSheet({ kind: "new-season" })}
+        />
       )}
       {sheet?.kind === "new-season" && <NewSeasonSheet seasons={seasons} onClose={() => setSheet(null)} />}
     </>
@@ -957,18 +948,22 @@ function WeekendCard({
 
 // ─── Bits ───────────────────────────────────────────────────────────────────
 
+const roundButton: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  flexShrink: 0,
+  borderRadius: 100,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid var(--gw-border)",
+  background: "var(--gw-bg-elev)",
+  color: "var(--gw-fg)",
+  padding: 0,
+};
+
 function SeasonArrow({ href, label, children }: { href: string | null; label: string; children: React.ReactNode }) {
-  const style: React.CSSProperties = {
-    width: 32,
-    height: 32,
-    borderRadius: 100,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    border: "1px solid var(--gw-border)",
-    background: "var(--gw-bg-elev)",
-    color: href ? "var(--gw-fg)" : "var(--gw-fg-faint)",
-  };
+  const style: React.CSSProperties = { ...roundButton, color: href ? "var(--gw-fg)" : "var(--gw-fg-faint)" };
   return href ? (
     <Link href={href} aria-label={label} title={label} style={style}>
       {children}
@@ -980,136 +975,59 @@ function SeasonArrow({ href, label, children }: { href: string | null; label: st
   );
 }
 
-// The key above the grid, which is also its filter: tap a color (or "not
-// sure yet", "on the fence") to show just those weekends — what still needs
-// work, what's waiting, what's good to go. Tap more to add them; All shows
-// every weekend again.
-function WeekendFilters({
-  filters,
+// The Show drop-down above the grid: one status (what still needs work,
+// what's waiting, what's good to go), the weekends with a "3?", or the ones
+// with a team on the fence, each with how many weekends it has.
+const ALL_WEEKENDS = "all";
+
+function WeekendFilterSelect({
+  filter,
   counts,
   total,
-  shown,
-  onToggle,
-  onClear,
+  onChange,
 }: {
-  filters: ReadonlySet<WeekendFilter>;
+  filter: WeekendFilter | null;
   counts: Map<WeekendFilter, number>;
   total: number;
-  shown: number;
-  onToggle: (f: WeekendFilter) => void;
-  onClear: () => void;
+  onChange: (f: WeekendFilter | null) => void;
 }) {
-  const neutral = { bar: "var(--gw-border)", tint: "var(--gw-bg-elev)", ink: "var(--gw-fg)" };
-  // The spreadsheet's four colors always (they're the key); Planned, Off and
-  // Canceled when the season has any, so every weekend has a chip.
-  const statuses = WEEKEND_STATUSES.filter((s) => s.legend || (counts.get(s.value) ?? 0) > 0 || filters.has(s.value));
+  // The spreadsheet's four colors always; Planned, Off and Canceled when the
+  // season has any.
+  const statuses = WEEKEND_STATUSES.filter((s) => s.legend || (counts.get(s.value) ?? 0) > 0 || filter === s.value);
+  const option = (value: WeekendFilter, label: string) => {
+    const n = counts.get(value) ?? 0;
+    return (
+      <option key={value} value={value} disabled={n === 0 && filter !== value}>
+        {label} ({n})
+      </option>
+    );
+  };
+  const leading =
+    filter === "fence" ? (
+      <FenceDot />
+    ) : filter && filter !== "unsure" && filter !== "planned" ? (
+      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 4, background: STATUS_STYLE[filter].bar, boxShadow: "0 0 0 1.5px var(--gw-bg-elev)" }} />
+    ) : undefined;
   return (
-    <div role="group" aria-label="Show weekends" data-tour="schedule-legend" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-      <FilterChip label="All" count={total} active={filters.size === 0} tone={neutral} onClick={onClear} />
-      {statuses.map((s) => (
-        <FilterChip
-          key={s.value}
-          label={s.label}
-          count={counts.get(s.value) ?? 0}
-          active={filters.has(s.value)}
-          tone={s.value === "planned" ? neutral : STATUS_STYLE[s.value]}
-          mark={
-            <span
-              aria-hidden
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: 4,
-                flexShrink: 0,
-                boxSizing: "border-box",
-                ...(s.value === "planned" ? { border: "1.5px solid var(--gw-fg-muted)" } : { background: STATUS_STYLE[s.value].bar }),
-              }}
-            />
-          }
-          onClick={() => onToggle(s.value)}
-        />
-      ))}
-      <FilterChip
-        label="Not sure yet"
-        count={counts.get("unsure") ?? 0}
-        active={filters.has("unsure")}
-        tone={neutral}
-        mark={<UnsureSample />}
-        onClick={() => onToggle("unsure")}
-      />
-      <FilterChip
-        label="Teams on the fence"
-        count={counts.get("fence") ?? 0}
-        active={filters.has("fence")}
-        tone={neutral}
-        mark={<FenceDot />}
-        onClick={() => onToggle("fence")}
-      />
-      {filters.size > 0 && (
-        <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }} aria-live="polite">
-          {shown} of {total} weekends
-        </span>
-      )}
-    </div>
-  );
-}
-
-function FilterChip({
-  label,
-  count,
-  active,
-  tone,
-  mark,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  tone: { bar: string; tint: string; ink: string };
-  mark?: React.ReactNode;
-  onClick: () => void;
-}) {
-  const empty = count === 0 && !active;
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      disabled={empty}
-      onClick={onClick}
-      title={empty ? "No weekends this season" : undefined}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        minHeight: 30,
-        padding: "4px 11px",
-        borderRadius: 100,
-        border: `1px solid ${tone.bar}`,
-        background: tone.tint,
-        color: tone.ink,
-        boxShadow: active ? `0 0 0 2px ${tone.ink}` : "none",
-        fontSize: 12,
-        fontWeight: 700,
-        whiteSpace: "nowrap",
-        cursor: empty ? "default" : "pointer",
-        opacity: empty ? 0.45 : 1,
-      }}
+    <FilterSelect
+      value={filter ?? ALL_WEEKENDS}
+      onChange={(e) => onChange(e.target.value === ALL_WEEKENDS ? null : (e.target.value as WeekendFilter))}
+      aria-label="Show weekends"
+      data-tour="schedule-legend"
+      grow
+      active={filter !== null}
+      leading={leading}
     >
-      {active ? <Icons.Check width={12} height={12} /> : mark}
-      {label}
-      <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 800, opacity: 0.7 }}>{count}</span>
-    </button>
+      <option value={ALL_WEEKENDS}>All weekends ({total})</option>
+      {statuses.map((s) => option(s.value, s.label))}
+      {option("unsure", "Not sure yet")}
+      {option("fence", "Teams on the fence")}
+    </FilterSelect>
   );
 }
 
 function FenceDot({ style }: { style?: React.CSSProperties }) {
   return <span aria-hidden style={{ width: 7, height: 7, borderRadius: 4, background: "#E7A600", display: "inline-block", ...style }} />;
-}
-
-function UnsureSample() {
-  return (
-    <span style={{ fontSize: 12, fontWeight: 800, color: "#8A6100", borderBottom: "2px dashed #D39B00", lineHeight: 1 }}>3?</span>
-  );
 }
 
 function Th({ children, style, title }: { children: React.ReactNode; style?: React.CSSProperties; title?: string }) {
