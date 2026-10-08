@@ -5,8 +5,9 @@
 // <option>/<optgroup> children, with a real <select> hidden underneath that
 // still holds the value, the name for forms, `required` and the change
 // event, so callers' onChange gets e.target.value as before. Phones work the
-// same way (tap to see the list, type to narrow it). The page before it
-// hydrates shows the plain <select>.
+// same way (tap to see the list, type to narrow it), except that a short list
+// is tap-only: no keyboard, so the page doesn't zoom or jump. The page before
+// it hydrates shows the plain <select>.
 
 import {
   Children,
@@ -43,6 +44,9 @@ const LAYOUT_KEYS = [
 ] as const;
 
 const noSubscribe = () => () => {};
+
+// On a phone, a list this short is tap-only: no keyboard to type with.
+const TAP_ONLY_MAX = 20;
 
 export function ComboSelect(props: ComboSelectProps) {
   const hydrated = useSyncExternalStore(
@@ -237,6 +241,11 @@ function Combo(props: ComboSelectProps) {
     fieldStyle.paddingLeft ??= 8;
   }
 
+  // Phones: a short list opens on a tap with no keyboard, so iOS doesn't zoom
+  // into the field or scroll the page up to make room.
+  const [coarse] = useState(() => window.matchMedia("(pointer: coarse)").matches);
+  const tapOnly = coarse && opts.length <= TAP_ONLY_MAX;
+
   const blank = !selected || selected.value === "";
   const longest = opts.reduce((m, o) => Math.max(m, o.label.length), 4);
 
@@ -253,6 +262,8 @@ function Combo(props: ComboSelectProps) {
         aria-activedescendant={showing && shown[active] ? `${listId}-${active}` : undefined}
         autoComplete="off"
         spellCheck={false}
+        readOnly={tapOnly}
+        inputMode={tapOnly ? "none" : undefined}
         disabled={disabled}
         className={className}
         size={longest + 2}
