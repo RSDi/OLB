@@ -21,7 +21,7 @@ import {
 } from "../../../lib/requirements/logic";
 import { RequirementDialog } from "./RequirementDialog";
 import { ContactLine, ParentBlock, RequirementChips, TeamPicker, formatDate, muted, playerAddress } from "./_shared/PlayerParts";
-import { ComboSelect } from "../../components/ComboSelect";
+import { ComboSelect, type ComboSelectProps } from "../../components/ComboSelect";
 import { Pill } from "../../components/ui";
 import { ComposeSheet } from "./_shared/Messaging";
 import { SlackComposeSheet } from "./_shared/SlackMessaging";
@@ -49,8 +49,6 @@ function sortName(p: DirectoryPlayer): string {
 
 type View = "team" | "age";
 const NO_TEAM = "none";
-// The team, age group and requirement drop-downs share one look.
-const filterSelect = { height: 34, padding: "0 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" } as const;
 // The board's requirement filter: who's still missing it, who's handled it.
 type ReqShow = "missing" | "done" | "waived" | "all";
 
@@ -252,13 +250,13 @@ export function PlayersList({
       {(showTeamFilter || showGroupFilter || requirements.length > 0) && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {showTeamFilter && (
-            <ComboSelect
+            <FilterSelect
               value={teamId}
               onChange={(e) => setTeamId(e.target.value)}
               aria-label="Show a team"
               data-tour="directory-teams"
-              className="rsd-chip"
-              style={filterSelect}
+              active={teamId !== "all"}
+              dot={pickedTeam ? pickedTeam.color : undefined}
             >
               <option value="all">All teams</option>
               {teams.map((t) => (
@@ -269,15 +267,14 @@ export function PlayersList({
               {(countByTeam.get(NO_TEAM) ?? 0) > 0 && (
                 <option value={NO_TEAM}>No team yet ({countByTeam.get(NO_TEAM)})</option>
               )}
-            </ComboSelect>
+            </FilterSelect>
           )}
           {showGroupFilter && (
-            <ComboSelect
+            <FilterSelect
               value={group}
               onChange={(e) => setGroup(e.target.value)}
               aria-label="Show an age group"
-              className="rsd-chip"
-              style={filterSelect}
+              active={group !== "all"}
             >
               <option value="all">All ages</option>
               {groupNames.map((g) => (
@@ -285,11 +282,11 @@ export function PlayersList({
                   {g}
                 </option>
               ))}
-            </ComboSelect>
+            </FilterSelect>
           )}
           {requirements.length > 0 && (
             <div data-tour="directory-requirements" style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <ComboSelect
+              <FilterSelect
                 value={reqId}
                 onChange={(e) => {
                   setReqId(e.target.value);
@@ -297,8 +294,7 @@ export function PlayersList({
                 }}
                 aria-label="Filter by requirement"
                 data-tour="requirement-filter"
-                className="rsd-chip"
-                style={filterSelect}
+                active={reqId !== "all"}
               >
                 <option value="all">All requirements</option>
                 {requirements.map((r) => (
@@ -306,7 +302,7 @@ export function PlayersList({
                     {requirementLabel(r)}
                   </option>
                 ))}
-              </ComboSelect>
+              </FilterSelect>
               {pickedReq && (
                 <div
                   role="group"
@@ -576,6 +572,36 @@ function RegistrationsLink({ counts }: { counts: { waiting: number; waitlist: nu
       {detail && <span style={{ fontWeight: 600, color: "var(--gw-fg-muted)" }}>{detail}</span>}
       <Icons.ChevronRight width={12} height={12} />
     </Link>
+  );
+}
+
+// The team, age group and requirement filters: a chip-shaped drop-down that
+// fills in once it's narrowing the list, with the picked team's color.
+function FilterSelect({ active, dot, ...props }: ComboSelectProps & { active: boolean; dot?: string | null }) {
+  return (
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+      {dot !== undefined && (
+        <span style={{ position: "absolute", left: 12, display: "flex", pointerEvents: "none", zIndex: 1 }}>
+          <TeamDot color={dot} />
+        </span>
+      )}
+      <ComboSelect
+        {...props}
+        className="rsd-chip"
+        style={{
+          height: 34,
+          padding: `0 24px 0 ${dot !== undefined ? 30 : 14}px`,
+          borderRadius: 100,
+          border: "1px solid",
+          borderColor: active ? "var(--rsd-accent-fill)" : "var(--gw-border)",
+          background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+          color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+        }}
+      />
+    </span>
   );
 }
 
