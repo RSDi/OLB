@@ -5,8 +5,9 @@
 // <option>/<optgroup> children, with a real <select> hidden underneath that
 // still holds the value, the name for forms, `required` and the change
 // event, so callers' onChange gets e.target.value as before. Phones work the
-// same way (tap to see the list, type to narrow it). The page before it
-// hydrates shows the plain <select>.
+// same way (tap to see the list, type to narrow it), except that a short list
+// is tap-only: no keyboard, so the page doesn't zoom or jump. The page before
+// it hydrates shows the plain <select>.
 
 import {
   Children,
@@ -43,6 +44,9 @@ const LAYOUT_KEYS = [
 ] as const;
 
 const noSubscribe = () => () => {};
+
+// On a phone, a list this short is tap-only: no keyboard to type with.
+const TAP_ONLY_MAX = 20;
 
 export function ComboSelect(props: ComboSelectProps) {
   const hydrated = useSyncExternalStore(
@@ -237,6 +241,22 @@ function Combo(props: ComboSelectProps) {
     fieldStyle.paddingLeft ??= 8;
   }
 
+  // Phones: a short list opens on a tap with no keyboard, so iOS doesn't zoom
+  // into the field or scroll the page up to make room. iOS zooms into any
+  // focused field with small text, read-only or not, so the field never takes
+  // focus: a tap lands on a cover over it, and a tap anywhere else closes.
+  const [coarse] = useState(() => window.matchMedia("(pointer: coarse)").matches);
+  const tapOnly = coarse && opts.length <= TAP_ONLY_MAX;
+  useEffect(() => {
+    if (!tapOnly || !showing) return;
+    function outside(e: PointerEvent) {
+      const t = e.target as Node;
+      if (!wrapRef.current?.contains(t) && !listRef.current?.contains(t)) close();
+    }
+    document.addEventListener("pointerdown", outside, true);
+    return () => document.removeEventListener("pointerdown", outside, true);
+  }, [tapOnly, showing]);
+
   const blank = !selected || selected.value === "";
   const longest = opts.reduce((m, o) => Math.max(m, o.label.length), 4);
 
@@ -253,6 +273,8 @@ function Combo(props: ComboSelectProps) {
         aria-activedescendant={showing && shown[active] ? `${listId}-${active}` : undefined}
         autoComplete="off"
         spellCheck={false}
+        readOnly={tapOnly}
+        inputMode={tapOnly ? "none" : undefined}
         disabled={disabled}
         className={className}
         size={longest + 2}
@@ -346,6 +368,19 @@ function Combo(props: ComboSelectProps) {
       >
         {children}
       </select>
+      {tapOnly && !disabled && (
+        <span
+          aria-hidden
+          onClick={(e) => {
+            // Inside a <label>, the click would otherwise focus the field.
+            e.preventDefault();
+            if (showing) close();
+            else openAll();
+            onClick?.(e as unknown as React.MouseEvent<HTMLSelectElement>);
+          }}
+          style={{ position: "absolute", inset: 0, cursor: "pointer" }}
+        />
+      )}
       {showing && (
         <div
           ref={listRef}
@@ -403,7 +438,7 @@ function Combo(props: ComboSelectProps) {
                   onMouseEnter={() => !o.disabled && setActive(i)}
                   onClick={() => {
                     pick(o);
-                    inputRef.current?.focus();
+                    if (!tapOnly) inputRef.current?.focus();
                   }}
                   style={{
                     padding: "7px 9px",

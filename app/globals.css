@@ -465,6 +465,8 @@ main::-webkit-scrollbar-track { background: transparent; }
   /* Chip-style dropdowns (status/priority/assignee) keep the 11px chip size so
      they match the chips beside them instead of jumping to 16px on mobile. */
   select.rsd-chip, input.rsd-chip { font-size: 11px !important; }
+  /* Compact dropdowns (the Directory's filters and team picker) stay 12px. */
+  select.rsd-select-sm, input.rsd-select-sm { font-size: 12px !important; }
 }
 
 /* KPI grid */
