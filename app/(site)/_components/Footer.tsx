@@ -4,9 +4,11 @@ import { FACEBOOK_URL, INSTAGRAM_URL } from "./links";
 import { Picture } from "./Picture";
 import { Block, Section } from "./Section";
 import styles from "./site.module.css";
-import { Large, Small, Text } from "./Text";
+import { SiteMarkdown } from "./SiteMarkdown";
+import { Small, Text } from "./Text";
 
-export function Footer() {
+// The verse and tagline come from Settings → Website.
+export function Footer({ verse, tagline }: { verse: string; tagline: string }) {
   return (
     <footer className={styles.footer}>
       <Section height="medium" rows={[10, 12]}>
@@ -21,10 +23,8 @@ export function Footer() {
                 Instagram
               </a>
             </h3>
-            <Large>
-              <em>“And whatever you do, do it heartily, as to the Lord and not to men.”</em> Col 3:23
-            </Large>
-            <Small>A volunteer-run program that supports and advances homeschool sports in Omaha, Nebraska</Small>
+            <SiteMarkdown size="large">{verse}</SiteMarkdown>
+            <Small>{tagline}</Small>
           </Text>
         </Block>
         <Block m="5/2/11/10" d="7/11/13/17" align="center">

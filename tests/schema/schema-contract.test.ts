@@ -45,7 +45,7 @@ const skip = env ? false : "no Supabase env — schema probes skipped (unit test
 // here whenever a migration adds a column the code starts using.
 const CONTRACT: Record<string, string> = {
   members:
-    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel,can_slack_dm",
+    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel,can_slack_dm,can_manage_website",
   maintenance_requests:
     "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at,planning_template_id,planning_season",
   request_votes: "id,ticket_id,voter_id,vote,note,created_at,updated_at",
@@ -103,6 +103,9 @@ const CONTRACT: Record<string, string> = {
   member_slack_connections: "user_id,slack_user_id,slack_team_id,slack_name,access_token,scopes,connected_at",
   // The public Directory's link (0119).
   public_directory_link: "id,key,updated_by,updated_at",
+  // Settings → Website (0120): the public site's menu and edited spots.
+  site_menu_items: "id,parent_id,label,href,sort_order,updated_at,updated_by",
+  site_content: "key,value,updated_at,updated_by",
   // Activity page + "Preview as" (0099).
   member_audit_log: "id,member_id,changed_by,changed_at,action,old_data,new_data,impersonator_user_id",
   activity_events:

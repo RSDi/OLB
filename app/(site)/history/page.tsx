@@ -1,18 +1,25 @@
 import type { Metadata } from "next";
-import net from "../_images/history-net.jpg";
 import { Block, Section } from "../_components/Section";
-import { Large, Text } from "../_components/Text";
+import { SiteMarkdown } from "../_components/SiteMarkdown";
+import { Text } from "../_components/Text";
+import { getSiteContent } from "../../../lib/website/queries";
 
 export const metadata: Metadata = { title: "History" };
 
-export default function HistoryPage() {
+export default async function HistoryPage() {
+  // The words and background from Settings → Website.
+  const content = await getSiteContent();
   return (
-    <Section theme="white" height="large" background={{ image: net, wash: 0.15 }} rows={[9, 6]}>
+    <Section
+      theme="white"
+      height="large"
+      background={{ image: content.image("history.background").src, wash: 0.15 }}
+      rows={[9, 6]}
+    >
       <Block m="1/2/9/10" d="1/4/6/24">
         <Text>
-          <h1>History.</h1>
-          <Large>The Lightning Story… </Large>
-          <Large>coming soon!</Large>
+          <h1>{content.text("history.title")}</h1>
+          <SiteMarkdown size="large">{content.text("history.body")}</SiteMarkdown>
         </Text>
       </Block>
     </Section>

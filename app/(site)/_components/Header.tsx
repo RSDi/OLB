@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import logo from "../_images/logo-wordmark.png";
 import { ArrowIcon, FacebookIcon, InstagramIcon, PersonIcon } from "./icons";
-import { FACEBOOK_URL, INSTAGRAM_URL, NAV, isFolder, type NavLink } from "./links";
+import { isFolder, type NavItem, type NavLink } from "../../../lib/website/menu";
+import { FACEBOOK_URL, INSTAGRAM_URL } from "./links";
 import styles from "./site.module.css";
 import { cx } from "./util";
 
@@ -13,7 +14,8 @@ import { cx } from "./util";
 // icons and a Contact Us button, plus a member Log In button beside it. Below
 // 800px it becomes a burger that opens a full-screen menu where folders slide
 // in as their own panel, and Log In shrinks to an icon in the top-right corner.
-export function Header() {
+// The menu comes from Settings → Website (lib/website/menu.ts).
+export function Header({ menu }: { menu: NavItem[] }) {
   const pathname = usePathname();
   const login = useLogin();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -77,16 +79,16 @@ export function Header() {
         </Link>
 
         <nav className={styles.nav} aria-label="Main">
-          {NAV.map((item) =>
+          {menu.map((item, i) =>
             isFolder(item) ? (
-              <div key={item.label} className={styles.navItem}>
+              <div key={i} className={styles.navItem}>
                 <button type="button" className={cx(styles.navLink, styles.navFolder)} aria-haspopup="true">
                   <span className={cx(item.children.some(isActive) && styles.active)}>{item.label}</span>
                 </button>
                 <div className={styles.dropdown}>
                   <div className={styles.dropdownCard}>
-                    {item.children.map((child) => (
-                      <div key={child.href} className={styles.dropdownItem}>
+                    {item.children.map((child, j) => (
+                      <div key={j} className={styles.dropdownItem}>
                         <NavAnchor link={child} className={cx(styles.navLink, isActive(child) && styles.active)} />
                       </div>
                     ))}
@@ -94,7 +96,7 @@ export function Header() {
                 </div>
               </div>
             ) : (
-              <div key={item.href} className={styles.navItem}>
+              <div key={i} className={styles.navItem}>
                 <NavAnchor link={item} className={cx(styles.navLink, isActive(item) && styles.active)} />
               </div>
             ),
@@ -124,8 +126,8 @@ export function Header() {
             inert={folder !== null}
           >
             <div className={styles.menuList}>
-              {NAV.map((item) => (
-                <div key={item.label} className={styles.menuItem}>
+              {menu.map((item, i) => (
+                <div key={i} className={styles.menuItem}>
                   {isFolder(item) ? (
                     <button type="button" className={styles.menuLink} onClick={() => setFolder(item.label)}>
                       {item.label}
@@ -147,7 +149,7 @@ export function Header() {
               </Link>
             </div>
           </div>
-          {NAV.filter(isFolder).map((item) => (
+          {menu.filter(isFolder).map((item) => (
             <div
               key={item.label}
               className={cx(styles.menuPanel, folder === item.label && styles.menuPanelActive)}
@@ -160,8 +162,8 @@ export function Header() {
                     Back
                   </button>
                 </div>
-                {item.children.map((child) => (
-                  <div key={child.href} className={styles.menuItem}>
+                {item.children.map((child, j) => (
+                  <div key={j} className={styles.menuItem}>
                     <NavAnchor link={child} className={styles.menuLink} onClick={closeMenu} />
                   </div>
                 ))}

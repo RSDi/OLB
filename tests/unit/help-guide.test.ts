@@ -135,6 +135,14 @@ test("the travel coordinator reads the hotels section, and the board still gets 
   assert.equal(guideSectionForPath("/portal/schedule", MEMBER), null);
 });
 
+test("Settings: Website reaches the Website grant and super-admins, not the rest of the board", () => {
+  const has = (v: GuideViewer) => guideSectionsFor(v).some((s) => s.id === "settings-website");
+  assert.ok(has(SUPER));
+  assert.ok(has({ ...ADMIN, canManageWebsite: true }));
+  assert.ok(!has(ADMIN));
+  assert.ok(!has(MEMBER));
+});
+
 test("a pending account is treated as a member", () => {
   const pendingAdmin: GuideViewer = { role: "admin", status: "pending", isStaff: false };
   assert.ok(guideSectionsFor(pendingAdmin).every((s) => s.audience === "everyone"));

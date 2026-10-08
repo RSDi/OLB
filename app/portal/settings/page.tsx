@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
-import { canEditSettings, isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
+import { canEditSettings, canManageWebsite, isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
 import { seesFullUi } from "../../../lib/auth/feature-preview";
 import { MembersTab } from "./MembersTab";
 import { AreasTab } from "./AreasTab";
@@ -26,12 +26,14 @@ import { RequirementsTab } from "./RequirementsTab";
 import { EmailTemplatesTab } from "./EmailTemplatesTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
 import { PublicDirectoryTab } from "./PublicDirectoryTab";
+import { WebsiteTab } from "./WebsiteTab";
 import { usePageHelp } from "../../components/PageHelp";
 
 // Staged rollout: the tabs released to everyone who can open Settings, and
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
-const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates"]);
+// Website is released to whoever holds its grant (and super-admins).
+const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "website"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "playbooks",
   "sidebar_links",
@@ -48,6 +50,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   volunteer_roles: "settings-volunteer-roles",
   requirements: "settings-requirements",
   email_templates: "settings-email-templates",
+  website: "settings-website",
   playbooks: "settings-playbooks",
   sidebar_links: "settings-sidebar-links",
   public_directory: "settings-public-directory",
@@ -66,6 +69,7 @@ type Tab =
   | "volunteer_roles"
   | "requirements"
   | "email_templates"
+  | "website"
   | "planning_roles"
   | "event_categories"
   | "task_categories"
@@ -103,7 +107,18 @@ export default function SettingsPage() {
         .select("role, status, can_edit_settings, can_delete_settings, can_undelete_settings")
         .eq("user_id", user.id)
         .maybeSingle();
-      const memberLike = (meRow as MemberLike | null) ?? null;
+      // The Website grant (0120), best-effort so Settings loads before it.
+      const { data: websiteRow } = await supabase
+        .from("members")
+        .select("can_manage_website")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const memberLike = meRow
+        ? ({
+            ...(meRow as MemberLike),
+            can_manage_website: !!(websiteRow as Partial<MemberLike> | null)?.can_manage_website,
+          } as MemberLike)
+        : null;
       if (!isStaff(memberLike)) {
         router.replace("/portal");
         return;
@@ -153,6 +168,8 @@ export default function SettingsPage() {
     { key: "requirements", label: "Requirements", visible: canEditSettings(me), tour: "settings-tab-requirements" },
     // Any board member writes the templates used when emailing families (0117).
     { key: "email_templates", label: "Email Templates", visible: true, tour: "settings-tab-email-templates" },
+    // The public club website's menu, page text and pictures (0120).
+    { key: "website", label: "Website", visible: canManageWebsite(me), tour: "settings-tab-website" },
     // Planning (lib/planning/access.ts): staged rollout, so only the preview
     // accounts get the tab until Planning is released.
     { key: "planning_roles", label: "Planning Roles", visible: fullUi, tour: "settings-tab-planning-roles" },
@@ -220,6 +237,7 @@ export default function SettingsPage() {
       {tab === "volunteer_roles" && isSuperAdmin(me) && <VolunteerRolesTab />}
       {tab === "requirements" && canEditSettings(me) && <RequirementsTab me={me} />}
       {tab === "email_templates" && <EmailTemplatesTab />}
+      {tab === "website" && canManageWebsite(me) && <WebsiteTab />}
       {tab === "planning_roles" && fullUi && <PlanningRolesTab />}
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}

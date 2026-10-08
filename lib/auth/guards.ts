@@ -20,6 +20,7 @@ import {
   canManageRegistrations,
   canManageTravel,
   canSlackDm,
+  canManageWebsite,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -41,11 +42,12 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
   if (!data) return { userId: user.id, member: null };
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
   // Settings grants (0057), the Payments grant (0101), the Registrations
-  // grant (0102), the Travel grant (0110) and the Slack DMs grant (0118),
+  // grant (0102), the Travel grant (0110), the Slack DMs grant (0118) and the
+  // Website grant (0120),
   // best-effort so the guards work pre-migration (grants default false → no
   // access, the safe default). Separate queries, so a missing
   // later column can't hide an earlier one.
-  const [{ data: g }, { data: f }, { data: r }, { data: t }, { data: s }] = await Promise.all([
+  const [{ data: g }, { data: f }, { data: r }, { data: t }, { data: s }, { data: w }] = await Promise.all([
     supabase
       .from("members")
       .select("can_edit_settings, can_delete_settings, can_undelete_settings")
@@ -55,6 +57,7 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
     supabase.from("members").select("can_manage_registrations").eq("id", row.id).maybeSingle(),
     supabase.from("members").select("can_manage_travel").eq("id", row.id).maybeSingle(),
     supabase.from("members").select("can_slack_dm").eq("id", row.id).maybeSingle(),
+    supabase.from("members").select("can_manage_website").eq("id", row.id).maybeSingle(),
   ]);
   const grants = (g as Partial<MemberLike> | null) ?? {};
   return {
@@ -69,6 +72,7 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
       can_manage_registrations: !!(r as Partial<MemberLike> | null)?.can_manage_registrations,
       can_manage_travel: !!(t as Partial<MemberLike> | null)?.can_manage_travel,
       can_slack_dm: !!(s as Partial<MemberLike> | null)?.can_slack_dm,
+      can_manage_website: !!(w as Partial<MemberLike> | null)?.can_manage_website,
     },
   };
 }
@@ -160,6 +164,17 @@ export async function requireSlackDm(): Promise<GateResult> {
   if (!caller) return { error: "You must be signed in." };
   if (!canSlackDm(caller.member)) {
     return { error: "You don't have permission to send Slack DMs from the portal." };
+  }
+  return { userId: caller.userId };
+}
+
+// Settings → Website (0120): a board member with the Website grant, or a
+// super-admin.
+export async function requireWebsite(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canManageWebsite(caller.member)) {
+    return { error: "You don't have permission to edit the website." };
   }
   return { userId: caller.userId };
 }

@@ -39,6 +39,8 @@ interface Member {
   can_manage_travel: boolean;
   // Slack DMs grant (0118), loaded the same way.
   can_slack_dm: boolean;
+  // Website grant (0120), loaded the same way.
+  can_manage_website: boolean;
   membership_status: string;
   access_revoked_at: string | null;
   requested_at: string;
@@ -52,7 +54,8 @@ type GrantKey =
   | "can_manage_finances"
   | "can_manage_registrations"
   | "can_manage_travel"
-  | "can_slack_dm";
+  | "can_slack_dm"
+  | "can_manage_website";
 
 // Pending splits in two: people who signed in and asked (the approval queue),
 // and registered parents pre-created from a player registration who haven't
@@ -98,6 +101,8 @@ export function MembersTab({
   const [travelReady, setTravelReady] = useState(false);
   // The Slack DMs grant needs migration 0118, the same way.
   const [slackReady, setSlackReady] = useState(false);
+  // The Website grant needs migration 0120, the same way.
+  const [websiteReady, setWebsiteReady] = useState(false);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("pending");
@@ -114,6 +119,7 @@ export function MembersTab({
       { data: r, error: rErr },
       { data: t, error: tErr },
       { data: sd, error: sdErr },
+      { data: w, error: wErr },
     ] = await Promise.all([
       supabase
         .from("members")
@@ -129,18 +135,23 @@ export function MembersTab({
       supabase.from("members").select("id, can_manage_travel").is("deleted_at", null),
       // The Slack DMs grant (0118), the same way.
       supabase.from("members").select("id, can_slack_dm").is("deleted_at", null),
+      // The Website grant (0120), the same way.
+      supabase.from("members").select("id, can_manage_website").is("deleted_at", null),
     ]);
     if (mErr || rErr) setError(mErr?.message ?? rErr?.message ?? "Failed to load");
     else {
       const travel = new Map(((t as { id: string; can_manage_travel: boolean }[] | null) ?? []).map((x) => [x.id, !!x.can_manage_travel]));
       const slack = new Map(((sd as { id: string; can_slack_dm: boolean }[] | null) ?? []).map((x) => [x.id, !!x.can_slack_dm]));
       setTravelReady(!tErr);
+      const website = new Map(((w as { id: string; can_manage_website: boolean }[] | null) ?? []).map((x) => [x.id, !!x.can_manage_website]));
       setSlackReady(!sdErr);
+      setWebsiteReady(!wErr);
       setMembers(
-        ((m as Omit<Member, "can_manage_travel" | "can_slack_dm">[]) ?? []).map((x) => ({
+        ((m as Omit<Member, "can_manage_travel" | "can_slack_dm" | "can_manage_website">[]) ?? []).map((x) => ({
           ...x,
           can_manage_travel: travel.get(x.id) ?? false,
           can_slack_dm: slack.get(x.id) ?? false,
+          can_manage_website: website.get(x.id) ?? false,
         }))
       );
       setRelationships((r as Relationship[]) ?? []);
@@ -560,6 +571,7 @@ export function MembersTab({
                 canManage={canManage}
                 travelReady={travelReady}
                 slackReady={slackReady}
+                websiteReady={websiteReady}
                 onApprove={() => setStatus(member.id, "approved")}
                 onDeny={() => setStatus(member.id, "denied")}
                 onRestore={() => setStatus(member.id, "pending")}
@@ -622,6 +634,7 @@ function MemberRow({
   canManage,
   travelReady,
   slackReady,
+  websiteReady,
   onApprove,
   onDeny,
   onRestore,
@@ -637,6 +650,7 @@ function MemberRow({
   canManage: boolean;
   travelReady: boolean;
   slackReady: boolean;
+  websiteReady: boolean;
   onApprove: () => void;
   onDeny: () => void;
   onRestore: () => void;
@@ -772,6 +786,19 @@ function MemberRow({
             <GrantChip label="Edit" on={member.can_edit_settings} disabled={acting} onClick={() => onSetGrant("can_edit_settings", !member.can_edit_settings)} />
             <GrantChip label="Delete" on={member.can_delete_settings} disabled={acting} onClick={() => onSetGrant("can_delete_settings", !member.can_delete_settings)} />
             <GrantChip label="Undelete" on={member.can_undelete_settings} disabled={acting} onClick={() => onSetGrant("can_undelete_settings", !member.can_undelete_settings)} />
+            {websiteReady && (
+              <GrantChip
+                label="Website"
+                title={
+                  member.can_manage_website
+                    ? "Can change the club website's menu, page text and pictures in Settings → Website — tap to revoke"
+                    : "Tap to let them change the club website's menu, page text and pictures in Settings → Website"
+                }
+                on={member.can_manage_website}
+                disabled={acting}
+                onClick={() => onSetGrant("can_manage_website", !member.can_manage_website)}
+              />
+            )}
           </div>
         )}
         {/* Payments, Registrations, Travel and Slack DMs grants — any approved

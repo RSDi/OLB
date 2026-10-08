@@ -741,6 +741,46 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-website",
+    sectionId: "settings-website",
+    title: "Website walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-website",
+        title: "Settings → Website",
+        body: "Change the public club website: the menu across the top, and the words and pictures on its pages. Everything you save is on the site straight away.",
+      },
+      {
+        target: "website-menu-item",
+        click: "settings-tab-website",
+        title: "Each menu item",
+        body: "A **link**, or a **folder** of links. Change its label and where it goes; the arrows move it and the **trash** can removes it.",
+      },
+      {
+        target: "website-menu-add",
+        title: "Add to the menu",
+        body: "**Add link** and **Add folder** add one at the bottom of the menu.",
+      },
+      {
+        target: "website-menu-save",
+        title: "Save the menu",
+        body: "Nothing changes on the site until you tap **Save menu**. **Reset to original** puts the website's own menu back.",
+      },
+      {
+        target: "website-pages",
+        click: "website-section-pages",
+        title: "Pages",
+        body: "Pick a page to see the words and pictures you can change on it. A dot means something on it has been changed.",
+      },
+      {
+        target: "website-slot",
+        title: "Each spot",
+        body: "Type new words and tap **Save**, or **Upload new picture**. **Reset to original** puts the website's own words or picture back.",
+      },
+    ],
+  },
+  {
     id: "settings-sidebar-links",
     sectionId: "settings-sidebar-links",
     title: "Sidebar Links walkthrough",

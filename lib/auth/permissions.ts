@@ -28,6 +28,9 @@ export interface MemberLike {
   // Slack DMs grant (migration 0118): messaging families from the Directory
   // as yourself in Slack. Any approved member.
   can_slack_dm?: boolean;
+  // Website grant (migration 0120): editing the public club website's menu,
+  // page text and pictures. A board member's grant, like the Settings ones.
+  can_manage_website?: boolean;
 }
 
 interface TicketLike {
@@ -99,6 +102,16 @@ export function canManageTravel(m: MemberLike | null | undefined): boolean {
 export function canSlackDm(m: MemberLike | null | undefined): boolean {
   if (!m || m.status !== "approved") return false;
   return m.role === "super_admin" || !!m.can_slack_dm;
+}
+
+// --- Website -------------------------------------------------------------------
+// Settings → Website: the public site's menu, page text and pictures. A board
+// member with the grant, or a super-admin. Mirrors public.can_manage_website()
+// (0120).
+
+export function canManageWebsite(m: MemberLike | null | undefined): boolean {
+  if (isSuperAdmin(m)) return true;
+  return isStaff(m) && !!m?.can_manage_website;
 }
 
 // Add/rename settings items needs the edit grant; (was: any staff).

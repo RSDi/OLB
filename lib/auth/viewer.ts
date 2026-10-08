@@ -22,6 +22,7 @@ import {
   canManageRegistrations,
   canManageTravel,
   canSlackDm,
+  canManageWebsite,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -49,6 +50,9 @@ export interface Viewer {
   // Slack DMs grant (0118): messages families from the Directory as
   // themselves in Slack.
   canSlackDm: boolean;
+  // Website grant (0120): edits the public site's menu, page text and
+  // pictures in Settings → Website.
+  canManageWebsite: boolean;
   // Staged rollout: sees the nav items and Settings tabs still in preview.
   seesFullUi: boolean;
 }
@@ -100,7 +104,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   // best-effort query, in parallel on the same user_id so they cost no extra
   // round trip. If the columns aren't there yet that query errors → grants
   // default false (view-only), which is the safe default.
-  const [{ data }, { data: g }, { data: f }, { data: r }, { data: t }, { data: s }] = await Promise.all([
+  const [{ data }, { data: g }, { data: f }, { data: r }, { data: t }, { data: s }, { data: w }] = await Promise.all([
     supabase
       .from("members")
       .select("id, role, status")
@@ -135,6 +139,12 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
       .select("can_slack_dm")
       .eq("user_id", user.id)
       .maybeSingle(),
+    // The Website grant (0120), the same way.
+    supabase
+      .from("members")
+      .select("can_manage_website")
+      .eq("user_id", user.id)
+      .maybeSingle(),
   ]);
   if (!data) return null;
 
@@ -150,6 +160,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     can_manage_registrations: !!(r as Partial<MemberLike> | null)?.can_manage_registrations,
     can_manage_travel: !!(t as Partial<MemberLike> | null)?.can_manage_travel,
     can_slack_dm: !!(s as Partial<MemberLike> | null)?.can_slack_dm,
+    can_manage_website: !!(w as Partial<MemberLike> | null)?.can_manage_website,
   };
 
   return {
@@ -166,6 +177,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canManageRegistrations: canManageRegistrations(member),
     canManageTravel: canManageTravel(member),
     canSlackDm: canSlackDm(member),
+    canManageWebsite: canManageWebsite(member),
     seesFullUi: seesFullUi(user.email),
   };
 });

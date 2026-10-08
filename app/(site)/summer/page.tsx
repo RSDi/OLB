@@ -1,24 +1,27 @@
 import type { Metadata } from "next";
-import flyer from "../_images/summer-clinic-flyer.jpg";
 import { Button } from "../_components/Button";
 import { Picture } from "../_components/Picture";
 import { Block, Section } from "../_components/Section";
 import { Highlight, Large, Text } from "../_components/Text";
+import { getSiteContent } from "../../../lib/website/queries";
 
 export const metadata: Metadata = { title: "Summer 2026" };
 
 const REGISTRATION_URL =
   "https://www.cognitoforms.com/OmahaLightningBasketball1/_2026OmahaLightningSummerClinicRegistrationAges718";
 
-export default function SummerPage() {
+export default async function SummerPage() {
+  // The heading, status and flyer from Settings → Website.
+  const content = await getSiteContent();
+  const flyer = content.image("summer.flyer");
   return (
     <Section theme="white" height={{ minHeight: "0", padding: "0" }} rows={[45, 38]}>
       <Block m="2/2/11/8" d="2/3/9/11">
         <Text>
-          <h2>SUMMER 2026 CLINICS</h2>
+          <h2>{content.text("summer.title")}</h2>
           <h3>
             <Highlight>
-              <strong style={{ color: "#fb445a" }}>WAITLISTED!</strong>
+              <strong style={{ color: "#fb445a" }}>{content.text("summer.status")}</strong>
             </Highlight>
           </h3>
         </Text>
@@ -56,8 +59,8 @@ export default function SummerPage() {
       </Block>
       <Block m="31/2/45/10" d="2/13/27/26" align="center">
         <Picture
-          src={flyer}
-          alt="Omaha Lightning's Summer Heat basketball clinics: 8 sessions for $60, July and August, ages 7-18, T-shirt included"
+          src={flyer.src}
+          alt={flyer.alt}
           fit="contain"
           sizes="(min-width: 768px) 50vw, 88vw"
           eager

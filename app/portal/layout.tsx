@@ -58,6 +58,7 @@ export default async function PortalLayout({
               canManageRegistrations: viewer.canManageRegistrations,
               canManageTravel: viewer.canManageTravel,
               canSlackDm: viewer.canSlackDm,
+              canManageWebsite: viewer.canManageWebsite,
               seesPayments: viewer.canManageFinances || hasBalance,
               isCoach,
             }
