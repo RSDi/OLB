@@ -55,7 +55,7 @@ import { WeekendSheet } from "./WeekendSheet";
 import { WeekendDetails } from "./WeekendDetails";
 import { TravelChip, TravelPopover } from "./TravelPopover";
 import { placesNear, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
-import { FilterSelect } from "../../../components/FilterControls";
+import { FilterMultiSelect, FilterSelect, type MultiOption } from "../../../components/FilterControls";
 
 export interface CompareWeekend {
   id: string;
@@ -113,10 +113,9 @@ export function ScheduleView({
     dispatch({ type: "reset", state: fromServer(schedule) });
   }
   const [showHidden, setShowHidden] = useState(false);
-  // The Show drop-down above the grid: just the weekends of one status, or
-  // with a "3?", or with a team on the fence. Null shows every weekend.
-  const [filter, setFilter] = useState<WeekendFilter | null>(null);
-  const filters = useMemo<ReadonlySet<WeekendFilter>>(() => new Set(filter ? [filter] : []), [filter]);
+  // The weekends drop-down above the grid: show only the weekends that match
+  // any of what's ticked. None ticked shows every weekend.
+  const [filters, setFilters] = useState<ReadonlySet<WeekendFilter>>(() => new Set());
   const [cell, setCell] = useState<CellTarget | null>(null);
   // Where to stay and eat: the weekend whose card is open, and what opened it.
   const [travel, setTravel] = useState<{ weekendId: string; anchor: HTMLElement } | null>(null);
@@ -163,6 +162,13 @@ export function ScheduleView({
     () => levelTotals(levels, shownWeekends, state.games, state.opponents),
     [levels, shownWeekends, state.games, state.opponents]
   );
+  const toggleFilter = (f: WeekendFilter) =>
+    setFilters((cur) => {
+      const next = new Set(cur);
+      if (next.has(f)) next.delete(f);
+      else next.add(f);
+      return next;
+    });
   const totalLabel = filtering ? `Total for these ${shownWeekends.length} weekend${shownWeekends.length === 1 ? "" : "s"}` : "Total games";
   const gamesAt = useCallback(
     (w: string, l: string) => state.games.find((g) => g.weekend_id === w && g.level_id === l),
@@ -294,7 +300,13 @@ export function ScheduleView({
       {(weekends.length > 0 || seasons.length > 1 || hiddenCount > 0) && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {weekends.length > 0 && (
-            <WeekendFilterSelect filter={filter} counts={filterCounts} total={weekends.length} onChange={setFilter} />
+            <WeekendFilterSelect
+              filters={filters}
+              counts={filterCounts}
+              total={weekends.length}
+              onToggle={toggleFilter}
+              onClear={() => setFilters(new Set())}
+            />
           )}
           {seasons.length > 1 && (
             <FilterSelect
@@ -377,7 +389,7 @@ export function ScheduleView({
       ) : shownWeekends.length === 0 ? (
         <div className="rsd-card" style={{ textAlign: "center", padding: "32px 24px", gap: 10, alignItems: "center" }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>No weekends match</div>
-          <Pill variant="ghost" size="sm" onClick={() => setFilter(null)}>
+          <Pill variant="ghost" size="sm" onClick={() => setFilters(new Set())}>
             Show every weekend
           </Pill>
         </div>
@@ -975,54 +987,79 @@ function SeasonArrow({ href, label, children }: { href: string | null; label: st
   );
 }
 
-// The Show drop-down above the grid: one status (what still needs work,
-// what's waiting, what's good to go), the weekends with a "3?", or the ones
-// with a team on the fence, each with how many weekends it has.
-const ALL_WEEKENDS = "all";
-
+// The weekends drop-down above the grid: tick a status (what still needs
+// work, what's waiting, what's good to go), the weekends with a "3?", or the
+// ones with a team on the fence, each with how many weekends it has. Tick
+// more than one to see them together.
 function WeekendFilterSelect({
-  filter,
+  filters,
   counts,
   total,
-  onChange,
+  onToggle,
+  onClear,
 }: {
-  filter: WeekendFilter | null;
+  filters: ReadonlySet<WeekendFilter>;
   counts: Map<WeekendFilter, number>;
   total: number;
-  onChange: (f: WeekendFilter | null) => void;
+  onToggle: (f: WeekendFilter) => void;
+  onClear: () => void;
 }) {
   // The spreadsheet's four colors always; Planned, Off and Canceled when the
   // season has any.
-  const statuses = WEEKEND_STATUSES.filter((s) => s.legend || (counts.get(s.value) ?? 0) > 0 || filter === s.value);
-  const option = (value: WeekendFilter, label: string) => {
-    const n = counts.get(value) ?? 0;
-    return (
-      <option key={value} value={value} disabled={n === 0 && filter !== value}>
-        {label} ({n})
-      </option>
-    );
-  };
+  const statuses = WEEKEND_STATUSES.filter((s) => s.legend || (counts.get(s.value) ?? 0) > 0 || filters.has(s.value));
+  const base: { value: WeekendFilter; label: string; mark: React.ReactNode }[] = [
+    ...statuses.map((s) => ({
+      value: s.value,
+      label: s.label,
+      mark:
+        s.value === "planned" ? (
+          <StatusDot style={{ border: "1.5px solid var(--gw-fg-muted)" }} />
+        ) : (
+          <StatusDot style={{ background: STATUS_STYLE[s.value].bar }} />
+        ),
+    })),
+    { value: "unsure", label: "Not sure yet", mark: <UnsureSample /> },
+    { value: "fence", label: "Teams on the fence", mark: <FenceDot /> },
+  ];
+  const options: (MultiOption & { value: WeekendFilter })[] = base.map((o) => ({ ...o, count: counts.get(o.value) ?? 0, disabled: (counts.get(o.value) ?? 0) === 0 }));
+  const picked = options.filter((o) => filters.has(o.value));
+  const summary =
+    picked.length === 0
+      ? `All weekends (${total})`
+      : picked.length === 1
+        ? `${picked[0].label} (${picked[0].count})`
+        : `${picked[0].label} +${picked.length - 1}`;
+  // One status picked: its color dot on the chip.
+  const only = picked.length === 1 ? picked[0].value : null;
   const leading =
-    filter === "fence" ? (
+    only === "fence" ? (
       <FenceDot />
-    ) : filter && filter !== "unsure" && filter !== "planned" ? (
-      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 4, background: STATUS_STYLE[filter].bar, boxShadow: "0 0 0 1.5px var(--gw-bg-elev)" }} />
+    ) : only && only !== "unsure" && only !== "planned" ? (
+      <StatusDot style={{ width: 8, height: 8, background: STATUS_STYLE[only].bar, boxShadow: "0 0 0 1.5px var(--gw-bg-elev)" }} />
     ) : undefined;
   return (
-    <FilterSelect
-      value={filter ?? ALL_WEEKENDS}
-      onChange={(e) => onChange(e.target.value === ALL_WEEKENDS ? null : (e.target.value as WeekendFilter))}
-      aria-label="Show weekends"
+    <FilterMultiSelect
+      label="Show weekends"
+      summary={summary}
+      allLabel={`All weekends (${total})`}
+      options={options}
+      selected={filters}
+      onToggle={(v) => onToggle(v as WeekendFilter)}
+      onClear={onClear}
       data-tour="schedule-legend"
       grow
-      active={filter !== null}
       leading={leading}
-    >
-      <option value={ALL_WEEKENDS}>All weekends ({total})</option>
-      {statuses.map((s) => option(s.value, s.label))}
-      {option("unsure", "Not sure yet")}
-      {option("fence", "Teams on the fence")}
-    </FilterSelect>
+    />
+  );
+}
+
+function StatusDot({ style }: { style?: React.CSSProperties }) {
+  return <span aria-hidden style={{ width: 7, height: 7, borderRadius: 4, flexShrink: 0, boxSizing: "border-box", display: "inline-block", ...style }} />;
+}
+
+function UnsureSample() {
+  return (
+    <span aria-hidden style={{ fontSize: 11, fontWeight: 800, color: "#8A6100", borderBottom: "2px dashed #D39B00", lineHeight: 1 }}>3?</span>
   );
 }
 

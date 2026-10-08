@@ -501,7 +501,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "schedule-legend",
         title: "Show just some weekends",
-        body: "The colors are the spreadsheet's: **Tentative**, **Need to secure facility**, **Final details in process** and **Facility secured**. Pick one here to show just those weekends, or **Not sure yet** (a dashed **3?**) or **Teams on the fence** (an amber dot). **All weekends** shows every one.",
+        body: "The colors are the spreadsheet's: **Tentative**, **Need to secure facility**, **Final details in process** and **Facility secured**. Tick one or more here to show just those weekends, or **Not sure yet** (a dashed **3?**) or **Teams on the fence** (an amber dot). **All weekends** shows every one.",
       },
       {
         target: "schedule-grid",

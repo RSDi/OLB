@@ -1,10 +1,12 @@
 "use client";
-// The list filters shared by the Directory and External Contacts: a
-// chip-shaped drop-down that fills in once it's narrowing the list, and a
-// segmented switch for a few views of the same list.
+// The list filters shared by the Directory, External Contacts and the HS
+// Schedule: a chip-shaped drop-down that fills in once it's narrowing the
+// list, the same chip with tick boxes to pick several, and a segmented switch
+// for a few views of the same list.
 
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ComboSelect, type ComboSelectProps } from "./ComboSelect";
+import { Icons } from "./icons";
 
 // `leading` sits inside the chip before the label, like a team's color dot.
 // `grow` shares the row with its neighbours instead of sizing to the longest
@@ -45,6 +47,261 @@ export function FilterSelect({
         }}
       />
     </span>
+  );
+}
+
+export interface MultiOption {
+  value: string;
+  label: string;
+  count?: number;
+  // Before the label, like a status's color dot.
+  mark?: ReactNode;
+  disabled?: boolean;
+}
+
+// FilterSelect's chip, but its list has a tick box per option: tick as many
+// as you like, and the first row ("All …") clears them. The chip shows
+// `summary`; the list stays open while you tick.
+export function FilterMultiSelect({
+  label,
+  summary,
+  allLabel,
+  options,
+  selected,
+  onToggle,
+  onClear,
+  leading,
+  grow,
+  ...rest
+}: {
+  label: string;
+  summary: string;
+  allLabel: string;
+  options: MultiOption[];
+  selected: ReadonlySet<string>;
+  onToggle: (value: string) => void;
+  onClear: () => void;
+  leading?: ReactNode;
+  grow?: boolean;
+  "data-tour"?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  // The row the arrow keys are on: -1 is the "All" row.
+  const [activeRow, setActiveRow] = useState(-1);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const listId = useId();
+  const active = selected.size > 0;
+
+  useEffect(() => {
+    if (!open) return;
+    function outside(e: PointerEvent) {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", outside, true);
+    return () => document.removeEventListener("pointerdown", outside, true);
+  }, [open]);
+
+  const rows = [-1, ...options.map((_, i) => i).filter((i) => !options[i].disabled || selected.has(options[i].value))];
+  const pick = (row: number) => (row === -1 ? onClear() : onToggle(options[row].value));
+  const move = (by: number) => {
+    const at = rows.indexOf(activeRow);
+    setActiveRow(rows[Math.min(rows.length - 1, Math.max(0, (at === -1 ? 0 : at) + by))]);
+  };
+
+  return (
+    <span
+      ref={wrapRef}
+      data-tour={rest["data-tour"]}
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+        // The list hangs off the chip, so never stretch to a taller row.
+        alignSelf: "center",
+        ...(grow ? { flex: "1 1 0", minWidth: 0, maxWidth: 220 } : null),
+      }}
+    >
+      {leading && (
+        <span style={{ position: "absolute", left: 12, display: "flex", pointerEvents: "none", zIndex: 1 }}>{leading}</span>
+      )}
+      <button
+        ref={buttonRef}
+        type="button"
+        // A select-only combobox: the focus stays here and the arrow keys
+        // move through the list.
+        role="combobox"
+        aria-label={`${label}: ${summary}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        aria-activedescendant={open ? `${listId}-${activeRow + 1}` : undefined}
+        className="rsd-chip"
+        onClick={() => {
+          setOpen((o) => !o);
+          setActiveRow(-1);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && open) {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(false);
+          } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            if (!open) setOpen(true);
+            else move(e.key === "ArrowDown" ? 1 : -1);
+          } else if ((e.key === " " || e.key === "Enter") && open) {
+            e.preventDefault();
+            pick(activeRow);
+          } else if (e.key === "Tab") {
+            setOpen(false);
+          }
+        }}
+        style={{
+          ...(grow ? { width: "100%" } : null),
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          height: 34,
+          padding: `0 10px 0 ${leading ? 30 : 14}px`,
+          borderRadius: 100,
+          border: "1px solid",
+          borderColor: active ? "var(--rsd-accent-fill)" : "var(--gw-border)",
+          background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+          color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{summary}</span>
+        <Icons.ChevronDown width={11} height={11} style={{ flexShrink: 0, opacity: 0.6 }} />
+      </button>
+      {open && (
+        <div
+          id={listId}
+          role="listbox"
+          aria-multiselectable
+          aria-label={label}
+          // Keep the focus on the chip, so the arrow keys keep working.
+          onMouseDown={(e) => e.preventDefault()}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            zIndex: 90,
+            minWidth: "100%",
+            maxWidth: "calc(100vw - 32px)",
+            maxHeight: 360,
+            overflowY: "auto",
+            background: "var(--gw-bg-elev)",
+            border: "1px solid var(--gw-border)",
+            borderRadius: 10,
+            boxShadow: "0 12px 28px rgba(0,0,0,.14)",
+            padding: 4,
+            boxSizing: "border-box",
+          }}
+        >
+          <MultiRow
+            id={`${listId}-0`}
+            label={allLabel}
+            checked={!active}
+            highlighted={activeRow === -1}
+            onHover={() => setActiveRow(-1)}
+            onPick={() => pick(-1)}
+          />
+          <div style={{ height: 1, background: "var(--gw-border)", margin: "3px 6px" }} />
+          {options.map((o, i) => (
+            <MultiRow
+              key={o.value}
+              id={`${listId}-${i + 1}`}
+              label={o.label}
+              count={o.count}
+              mark={o.mark}
+              checked={selected.has(o.value)}
+              disabled={o.disabled && !selected.has(o.value)}
+              highlighted={activeRow === i}
+              onHover={() => setActiveRow(i)}
+              onPick={() => pick(i)}
+            />
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
+
+function MultiRow({
+  id,
+  label,
+  count,
+  mark,
+  checked,
+  disabled,
+  highlighted,
+  onHover,
+  onPick,
+}: {
+  id: string;
+  label: string;
+  count?: number;
+  mark?: ReactNode;
+  checked: boolean;
+  disabled?: boolean;
+  highlighted: boolean;
+  onHover: () => void;
+  onPick: () => void;
+}) {
+  return (
+    <div
+      id={id}
+      role="option"
+      aria-selected={checked}
+      aria-disabled={disabled || undefined}
+      onMouseEnter={() => !disabled && onHover()}
+      onClick={() => !disabled && onPick()}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "7px 9px",
+        borderRadius: 7,
+        fontSize: 13,
+        fontWeight: checked ? 700 : 500,
+        lineHeight: 1.3,
+        whiteSpace: "nowrap",
+        background: highlighted && !disabled ? "var(--gw-bg)" : "transparent",
+        color: disabled ? "var(--gw-fg-muted)" : "var(--gw-fg)",
+        opacity: disabled ? 0.6 : 1,
+        cursor: disabled ? "default" : "pointer",
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 16,
+          height: 16,
+          flexShrink: 0,
+          borderRadius: 4,
+          border: "1.5px solid",
+          borderColor: checked ? "var(--rsd-accent-fill)" : "var(--gw-border)",
+          background: checked ? "var(--rsd-accent-fill)" : "transparent",
+          color: "var(--rsd-accent-fill-on)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxSizing: "border-box",
+        }}
+      >
+        {checked && <Icons.Check width={11} height={11} />}
+      </span>
+      {mark && <span style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }}>{mark}</span>}
+      <span style={{ flex: 1 }}>{label}</span>
+      {count !== undefined && (
+        <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, color: "var(--gw-fg-muted)", marginLeft: 12 }}>{count}</span>
+      )}
+    </div>
   );
 }
 
