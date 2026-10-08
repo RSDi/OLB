@@ -1,12 +1,12 @@
 "use server";
 
 // Settings → Teams, Settings → Volunteer Roles, and filling a team's roles
-// from its Directory page. Super-admin only, matching RLS (0089, 0092).
-// Types live in ./types (exporting them from a "use server" file breaks the
-// build).
+// from its Directory page. Super-admins, and anyone with the Teams &
+// volunteers permission, matching RLS (0089, 0092, 0123). Types live in
+// ./types (exporting them from a "use server" file breaks the build).
 
 import { revalidatePath } from "next/cache";
-import { requireSuperAdmin } from "../auth/guards";
+import { requireTeams } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import type { TeamSettingsInput, VolunteerActionResult, VolunteerRoleInput } from "./types";
 
@@ -40,7 +40,7 @@ function cleanRole(input: VolunteerRoleInput) {
 // ── Teams ────────────────────────────────────────────────────────────────
 
 export async function createTeam(input: TeamSettingsInput): Promise<VolunteerActionResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireTeams();
   if ("error" in gate) return { error: gate.error };
   if (!input.name.trim()) return { error: "Team name is required." };
   const db = await createClient();
@@ -67,7 +67,7 @@ export async function updateTeamSettings(
   id: string,
   input: TeamSettingsInput
 ): Promise<VolunteerActionResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireTeams();
   if ("error" in gate) return { error: gate.error };
   if (!input.name.trim()) return { error: "Team name is required." };
   const db = await createClient();
@@ -83,7 +83,7 @@ export async function updateTeamSettings(
 // Players on the team go back to No team yet; its volunteer
 // assignments go with it.
 export async function deleteTeam(id: string): Promise<VolunteerActionResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireTeams();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
   const { error } = await db.from("olb_teams").delete().eq("id", id);
@@ -95,7 +95,7 @@ export async function deleteTeam(id: string): Promise<VolunteerActionResult> {
 // ── Volunteer roles ──────────────────────────────────────────────────────
 
 export async function createVolunteerRole(input: VolunteerRoleInput): Promise<VolunteerActionResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireTeams();
   if ("error" in gate) return { error: gate.error };
   if (!input.name.trim()) return { error: "Role name is required." };
   const db = await createClient();
@@ -118,7 +118,7 @@ export async function updateVolunteerRole(
   id: string,
   input: VolunteerRoleInput
 ): Promise<VolunteerActionResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireTeams();
   if ("error" in gate) return { error: gate.error };
   if (!input.name.trim()) return { error: "Role name is required." };
   const db = await createClient();
@@ -134,7 +134,7 @@ export async function updateVolunteerRole(
 // Soft delete: the role drops off every team, and its assignments stop
 // showing because loaders only read live roles.
 export async function deleteVolunteerRole(id: string): Promise<VolunteerActionResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireTeams();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
   const { error } = await db
@@ -148,7 +148,7 @@ export async function deleteVolunteerRole(id: string): Promise<VolunteerActionRe
 
 // Swap a role with its neighbour in the list.
 export async function moveVolunteerRole(id: string, direction: "up" | "down"): Promise<VolunteerActionResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireTeams();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
   const { data } = await db
@@ -180,7 +180,7 @@ export async function assignVolunteer(
   roleId: string,
   memberId: string
 ): Promise<VolunteerActionResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireTeams();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
   const [{ data: role }, { count }] = await Promise.all([
@@ -207,7 +207,7 @@ export async function assignVolunteer(
 }
 
 export async function removeVolunteer(assignmentId: string): Promise<VolunteerActionResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireTeams();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
   const { error } = await db.from("olb_team_volunteers").delete().eq("id", assignmentId);

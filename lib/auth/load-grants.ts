@@ -16,7 +16,7 @@ export async function loadGrants(supabase: SupabaseClient, userId: string): Prom
 
   const columns = [
     "can_edit_settings, can_delete_settings, can_undelete_settings",
-    ...PERMISSIONS.map((p) => p.legacyColumn).filter((c) => !c.endsWith("_settings")),
+    ...PERMISSIONS.flatMap((p) => (p.legacyColumn && !p.legacyColumn.endsWith("_settings") ? [p.legacyColumn] : [])),
   ];
   const rows = await Promise.all(
     columns.map((cols) => supabase.from("members").select(cols).eq("user_id", userId).maybeSingle())
@@ -24,6 +24,7 @@ export async function loadGrants(supabase: SupabaseClient, userId: string): Prom
   const out: Partial<MemberLike> = {};
   for (const { data: row } of rows) {
     for (const p of PERMISSIONS) {
+      if (!p.legacyColumn) continue;
       const v = (row as Record<string, unknown> | null)?.[p.legacyColumn];
       if (v !== undefined) out[p.legacyColumn] = !!v;
     }

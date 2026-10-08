@@ -21,7 +21,17 @@ export type PermissionKey =
   | "settings_edit"
   | "settings_delete"
   | "settings_undelete"
-  | "website";
+  | "website"
+  // Board powers anyone can be given (0123); Board has them all already.
+  | "see_all_players"
+  | "member_notes"
+  | "player_requirements"
+  | "approve_members"
+  | "contacts_edit"
+  | "hs_schedule"
+  // Super-admin powers anyone can be given (0123).
+  | "teams"
+  | "site_links";
 
 // The member columns each permission lived in before 0122. Still used to read
 // grants on a database without 0122, and nothing else.
@@ -39,10 +49,13 @@ export interface PermissionDef {
   key: PermissionKey;
   label: string;
   desc: string;
-  // "manage": any member can hold it. "settings": Board only; it does nothing
-  // for someone who isn't Board.
-  group: "manage" | "settings";
-  legacyColumn: LegacyGrantColumn;
+  // "manage" and "setup": any member can hold it. "board": a Board power,
+  // for someone who isn't Board (Board has it anyway). "settings": Board
+  // only; it does nothing for someone who isn't Board.
+  group: "manage" | "board" | "setup" | "settings";
+  // The column it lived in before 0122. The permissions added later have
+  // none, and before 0122 nobody holds them.
+  legacyColumn?: LegacyGrantColumn;
 }
 
 export const PERMISSIONS: PermissionDef[] = [
@@ -54,10 +67,20 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "settings_delete", label: "Delete", desc: "Delete Settings items", group: "settings", legacyColumn: "can_delete_settings" },
   { key: "settings_undelete", label: "Undelete", desc: "Restore deleted Settings items", group: "settings", legacyColumn: "can_undelete_settings" },
   { key: "website", label: "Website", desc: "Change the club website's menu, page text and pictures", group: "settings", legacyColumn: "can_manage_website" },
+  { key: "see_all_players", label: "See all players", desc: "Every player, listed or not, with fees, waivers, shirts, and parents' sign-up status and \"Can help\"", group: "board" },
+  { key: "member_notes", label: "Member notes", desc: "Read and write the private Member notes on profiles", group: "board" },
+  { key: "player_requirements", label: "Check off requirements", desc: "Mark players done or waived on requirements, like the handbook signature, for the players they can see", group: "board" },
+  { key: "approve_members", label: "Approve access requests", desc: "Approve or deny people asking to join, in Settings → Members", group: "board" },
+  { key: "contacts_edit", label: "External Contacts", desc: "See, add and edit every External Contact, and their history", group: "board" },
+  { key: "hs_schedule", label: "Plan HS Schedule", desc: "Change the HS Schedule, like coaches do", group: "board" },
+  { key: "teams", label: "Teams & volunteers", desc: "Set up teams and volunteer roles, and fill team spots. Putting someone in a leadership spot makes them a coach", group: "setup" },
+  { key: "site_links", label: "Sidebar Links & Public Directory", desc: "Change the links in everyone's sidebar and the public Directory link", group: "setup" },
 ];
 
 export const PERMISSION_GROUPS: { key: PermissionDef["group"]; label: string }[] = [
   { key: "manage", label: "Can manage" },
+  { key: "board", label: "Board powers" },
+  { key: "setup", label: "Club setup" },
   { key: "settings", label: "Settings (Board)" },
 ];
 
@@ -82,9 +105,11 @@ export function sortProfiles(profiles: AccessProfile[]): AccessProfile[] {
   });
 }
 
-// Which permissions mean anything for someone on this base.
+// Which permissions mean anything for someone on this base: a member can be
+// given Board powers; Board has those already, and alone gets the Settings
+// ones.
 export function permissionsForBase(base: MemberRole): PermissionDef[] {
-  return base === "member" ? PERMISSIONS.filter((p) => p.group === "manage") : PERMISSIONS;
+  return PERMISSIONS.filter((p) => (base === "member" ? p.group !== "settings" : p.group !== "board"));
 }
 
 // The profile a person is on: theirs, or the built-in one for their role.
@@ -104,7 +129,7 @@ export function profileOf(
 // The grant booleans permissions.ts checks, from a list of permission keys.
 export function grantsFromPermissions(perms: Iterable<string>): Partial<MemberLike> {
   const held = new Set(perms);
-  const out: Partial<MemberLike> = {};
-  for (const p of PERMISSIONS) out[p.legacyColumn] = held.has(p.key);
+  const out: Partial<MemberLike> = { permissions: [...held] };
+  for (const p of PERMISSIONS) if (p.legacyColumn) out[p.legacyColumn] = held.has(p.key);
   return out;
 }
