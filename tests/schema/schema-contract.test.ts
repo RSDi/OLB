@@ -45,7 +45,8 @@ const skip = env ? false : "no Supabase env — schema probes skipped (unit test
 // here whenever a migration adds a column the code starts using.
 const CONTRACT: Record<string, string> = {
   members:
-    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel,can_slack_dm,can_manage_website",
+    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel,can_slack_dm,can_manage_website,access_profile_id,extra_permissions",
+  access_profiles: "id,name,base_role,permissions,is_builtin",
   maintenance_requests:
     "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at,planning_template_id,planning_season",
   request_votes: "id,ticket_id,voter_id,vote,note,created_at,updated_at",
@@ -183,6 +184,19 @@ test("rpc: decrement_supply exists", { skip }, async () => {
   });
   const body = await res.text();
   assert.ok(!body.includes("PGRST202"), `decrement_supply missing: ${body.slice(0, 200)}`);
+});
+
+test("rpc: my_permissions exists (0122)", { skip }, async () => {
+  const res = await fetch(`${env!.url}/rest/v1/rpc/my_permissions`, {
+    method: "POST",
+    headers: {
+      apikey: env!.key,
+      Authorization: `Bearer ${env!.key}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  assert.equal(res.status, 200, await res.text().then((t) => t.slice(0, 200)));
 });
 
 test("rpc: search_global exists", { skip }, async () => {

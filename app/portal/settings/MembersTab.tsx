@@ -18,6 +18,16 @@ import {
 } from "../../../lib/auth/member-actions";
 import { MemberEditForm } from "./MemberEditForm";
 import { ComboSelect } from "../../components/ComboSelect";
+import {
+  PERMISSIONS,
+  PERMISSION_GROUPS,
+  permissionsForBase,
+  profileOf,
+  sortProfiles,
+  type AccessProfile,
+  type PermissionDef,
+  type PermissionKey,
+} from "../../../lib/auth/access";
 
 interface Member {
   id: string;
@@ -41,48 +51,34 @@ interface Member {
   can_slack_dm: boolean;
   // Website grant (0120), loaded the same way.
   can_manage_website: boolean;
+  // Access profile and extras (0122); null and [] before the migration.
+  access_profile_id: string | null;
+  extra_permissions: string[];
   membership_status: string;
   access_revoked_at: string | null;
   requested_at: string;
   reviewed_at: string | null;
 }
 
-type GrantKey =
-  | "can_edit_settings"
-  | "can_delete_settings"
-  | "can_undelete_settings"
-  | "can_manage_finances"
-  | "can_manage_registrations"
-  | "can_manage_travel"
-  | "can_slack_dm"
-  | "can_manage_website";
+// Before migration 0122 these permissions are offered only once their own
+// grant column (0110, 0118, 0120) loads.
+const NEEDS: Partial<Record<PermissionKey, "travel" | "slack" | "website">> = {
+  travel: "travel",
+  slack_dm: "slack",
+  website: "website",
+};
 
-// What each grant lets someone do, for the Access panel on a member's row.
-// `needs` names the migration-gated grants, offered only once their column
-// loads.
-interface GrantDef {
-  key: GrantKey;
-  label: string;
-  desc: string;
-  needs?: "travel" | "slack" | "website";
+// A person's access as this page shows it.
+interface MemberAccess {
+  // Their access profile. Null for super-admins, and before 0122.
+  profile: AccessProfile | null;
+  // The permissions that can apply to them: Settings ones only on Board.
+  // Empty for super-admins, who hold everything.
+  offered: PermissionDef[];
+  // Where a permission comes from: their profile, an extra given just to
+  // them, or neither.
+  source: (p: PermissionDef) => "profile" | "extra" | null;
 }
-
-// Any approved member, board or not (the Treasurer; whoever runs
-// registrations; the travel coordinator; coaches). Super-admins hold them all.
-const MANAGE_GRANTS: GrantDef[] = [
-  { key: "can_manage_finances", label: "Payments", desc: "See every family's balance and record payments" },
-  { key: "can_manage_registrations", label: "Registrations", desc: "Review registrations, put players on teams and edit players" },
-  { key: "can_manage_travel", label: "Travel", desc: "Add and edit the hotels and places to eat in External Contacts", needs: "travel" },
-  { key: "can_slack_dm", label: "Slack DMs", desc: "Send families Slack DMs from the Directory, as themselves", needs: "slack" },
-];
-
-// Board only: what they may change in Settings.
-const SETTINGS_GRANTS: GrantDef[] = [
-  { key: "can_edit_settings", label: "Edit", desc: "Add and change Settings items, like Requirements" },
-  { key: "can_delete_settings", label: "Delete", desc: "Delete Settings items" },
-  { key: "can_undelete_settings", label: "Undelete", desc: "Restore deleted Settings items" },
-  { key: "can_manage_website", label: "Website", desc: "Change the club website's menu, page text and pictures", needs: "website" },
-];
 
 // Pending splits in two: people who signed in and asked (the approval queue),
 // and registered parents pre-created from a player registration who haven't
@@ -130,6 +126,9 @@ export function MembersTab({
   const [slackReady, setSlackReady] = useState(false);
   // The Website grant needs migration 0120, the same way.
   const [websiteReady, setWebsiteReady] = useState(false);
+  // Access profiles (0122). Null before the migration: the page then reads
+  // and writes the old per-grant columns, and picks a role instead.
+  const [profiles, setProfiles] = useState<AccessProfile[] | null>(null);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("pending");
@@ -150,6 +149,8 @@ export function MembersTab({
       { data: t, error: tErr },
       { data: sd, error: sdErr },
       { data: w, error: wErr },
+      { data: ap, error: apErr },
+      { data: pm, error: pmErr },
     ] = await Promise.all([
       supabase
         .from("members")
@@ -167,6 +168,9 @@ export function MembersTab({
       supabase.from("members").select("id, can_slack_dm").is("deleted_at", null),
       // The Website grant (0120), the same way.
       supabase.from("members").select("id, can_manage_website").is("deleted_at", null),
+      // Access profiles and each person's profile and extras (0122), the same way.
+      supabase.from("access_profiles").select("id, name, base_role, permissions, is_builtin"),
+      supabase.from("members").select("id, access_profile_id, extra_permissions").is("deleted_at", null),
     ]);
     if (mErr || rErr) setError(mErr?.message ?? rErr?.message ?? "Failed to load");
     else {
@@ -176,12 +180,18 @@ export function MembersTab({
       const website = new Map(((w as { id: string; can_manage_website: boolean }[] | null) ?? []).map((x) => [x.id, !!x.can_manage_website]));
       setSlackReady(!sdErr);
       setWebsiteReady(!wErr);
+      const profilesReady = !apErr && !pmErr;
+      setProfiles(profilesReady ? sortProfiles((ap as AccessProfile[]) ?? []) : null);
+      type ProfileRow = { id: string; access_profile_id: string | null; extra_permissions: string[] | null };
+      const onProfile = new Map(((profilesReady ? pm : null) as ProfileRow[] | null ?? []).map((x) => [x.id, x]));
       setMembers(
-        ((m as Omit<Member, "can_manage_travel" | "can_slack_dm" | "can_manage_website">[]) ?? []).map((x) => ({
+        ((m as Omit<Member, "can_manage_travel" | "can_slack_dm" | "can_manage_website" | "access_profile_id" | "extra_permissions">[]) ?? []).map((x) => ({
           ...x,
           can_manage_travel: travel.get(x.id) ?? false,
           can_slack_dm: slack.get(x.id) ?? false,
           can_manage_website: website.get(x.id) ?? false,
+          access_profile_id: onProfile.get(x.id)?.access_profile_id ?? null,
+          extra_permissions: onProfile.get(x.id)?.extra_permissions ?? [],
         }))
       );
       setRelationships((r as Relationship[]) ?? []);
@@ -247,16 +257,61 @@ export function MembersTab({
     await setRole(member.id, role);
   }
 
-  // Toggle a settings grant on a board member. RLS allows only super-admins
-  // to update member rows (same path as setRole), so this is super-admin only.
-  async function setGrant(id: string, key: GrantKey, value: boolean) {
+  // Write fields on a member row. RLS lets only super-admins change roles,
+  // profiles and grants (same path as setRole), so these are super-admin only.
+  async function updateMember(id: string, fields: Record<string, unknown>) {
     setActing(id);
     setError(null);
     const supabase = createClient();
-    const { error: updateError } = await supabase.from("members").update({ [key]: value }).eq("id", id);
+    const { error: updateError } = await supabase.from("members").update(fields).eq("id", id);
     if (updateError) setError(updateError.message);
     else await load();
     setActing(null);
+  }
+
+  // Give or take one permission from one person: an extra on top of their
+  // profile, or before 0122 the permission's own column.
+  function setPermission(member: Member, p: PermissionDef, on: boolean) {
+    if (!profiles) return updateMember(member.id, { [p.legacyColumn]: on });
+    const extras = on
+      ? [...new Set([...member.extra_permissions, p.key])]
+      : member.extra_permissions.filter((k) => k !== p.key);
+    return updateMember(member.id, { extra_permissions: extras });
+  }
+
+  // Put someone on a profile, or make them a super-admin. Their extras come
+  // off: the profile's permissions replace whatever they had.
+  async function chooseProfile(member: Member, value: string) {
+    if (!profiles) return;
+    const current = member.role === "super_admin" ? "super_admin" : profileOf(member, profiles)?.id;
+    if (value === current) return;
+    const name = memberDisplayName(member);
+    const extras = PERMISSIONS.filter((p) => member.extra_permissions.includes(p.key)).map((p) => p.label);
+    if (value === "super_admin") {
+      if (!confirm(`Make ${name} a Super-admin? They'll have full control — managing members, roles, and every setting.`))
+        return;
+      return updateMember(member.id, {
+        role: "super_admin",
+        access_profile_id: null,
+        extra_permissions: [],
+        reviewed_by: currentUserId,
+        reviewed_at: new Date().toISOString(),
+      });
+    }
+    const profile = profiles.find((p) => p.id === value);
+    if (!profile) return;
+    if (member.role === "super_admin") {
+      if (!confirm(`Remove Super-admin from ${name} and put them on ${profile.name}?`)) return;
+    } else if (extras.length > 0) {
+      if (!confirm(`Put ${name} on ${profile.name}? Their extras (${extras.join(", ")}) come off.`)) return;
+    }
+    return updateMember(member.id, {
+      role: profile.base_role,
+      access_profile_id: profile.id,
+      extra_permissions: [],
+      reviewed_by: currentUserId,
+      reviewed_at: new Date().toISOString(),
+    });
   }
 
   async function removeMember(id: string) {
@@ -383,8 +438,49 @@ export function MembersTab({
     : byStatus(tab);
 
   const ready = { travel: travelReady, slack: slackReady, website: websiteReady };
-  const offeredManage = MANAGE_GRANTS.filter((g) => !g.needs || ready[g.needs]);
-  const offeredSettings = SETTINGS_GRANTS.filter((g) => !g.needs || ready[g.needs]);
+  const isOffered = (p: PermissionDef) => !!profiles || !NEEDS[p.key] || ready[NEEDS[p.key]!];
+
+  function accessOf(m: Member): MemberAccess {
+    if (m.role === "super_admin") return { profile: null, offered: [], source: () => null };
+    const offered = permissionsForBase(m.role).filter(isOffered);
+    if (!profiles) return { profile: null, offered, source: (p) => (m[p.legacyColumn] ? "extra" : null) };
+    const profile = profileOf(m, profiles);
+    const fromProfile = new Set(profile?.permissions ?? []);
+    const extras = new Set(m.extra_permissions);
+    return {
+      profile,
+      offered,
+      source: (p) => (fromProfile.has(p.key) ? "profile" : extras.has(p.key) ? "extra" : null),
+    };
+  }
+
+  // The profile picker, or the role picker before 0122.
+  const picker = (m: Member) =>
+    profiles ? (
+      <PickerSelect
+        label="Access profile"
+        value={m.role === "super_admin" ? "super_admin" : profileOf(m, profiles)?.id ?? ""}
+        options={[
+          ...profiles.map((p) => ({ value: p.id, label: p.name })),
+          { value: "super_admin", label: "Super-admin" },
+        ]}
+        disabled={acting === m.id}
+        onChange={(v) => chooseProfile(m, v)}
+      />
+    ) : (
+      <PickerSelect
+        label="Permission group"
+        value={m.role}
+        options={[
+          { value: "member", label: "Member" },
+          { value: "admin", label: "Board" },
+          { value: "super_admin", label: "Super-admin" },
+        ]}
+        disabled={acting === m.id}
+        onChange={(v) => changeRole(m, v as MemberRole)}
+      />
+    );
+
   const showTable = tab === "approved" && canManage && view === "table";
 
   const tabs: { key: TabKey; label: string }[] = [
@@ -562,10 +658,11 @@ export function MembersTab({
           filtered={!!q}
           currentUserId={currentUserId}
           actingId={acting}
-          manageGrants={offeredManage}
-          settingsGrants={offeredSettings}
-          onSetRole={changeRole}
-          onSetGrant={(m, key, value) => setGrant(m.id, key, value)}
+          columns={PERMISSIONS.filter(isOffered)}
+          pickerLabel={profiles ? "Profile" : "Role"}
+          accessOf={accessOf}
+          picker={picker}
+          onSetPermission={setPermission}
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -620,15 +717,14 @@ export function MembersTab({
                 tab={tab === "invited" ? "pending" : tab}
                 acting={acting === member.id}
                 canManage={canManage}
-                travelReady={travelReady}
-                slackReady={slackReady}
-                websiteReady={websiteReady}
+                access={accessOf(member)}
+                profilesOn={!!profiles}
+                picker={picker(member)}
                 onApprove={() => setStatus(member.id, "approved")}
                 onDeny={() => setStatus(member.id, "denied")}
                 onRestore={() => setStatus(member.id, "pending")}
                 onRemove={() => removeMember(member.id)}
-                onSetRole={(role) => changeRole(member, role)}
-                onSetGrant={(key, value) => setGrant(member.id, key, value)}
+                onSetPermission={(p, on) => setPermission(member, p, on)}
                 onEdit={() => setEditingId(member.id)}
               />
             )
@@ -682,33 +778,39 @@ function ViewToggle({ view, onChange }: { view: "list" | "table"; onChange: (v: 
   );
 }
 
-// Every approved person's role and grants on one grid, so a super-admin can
-// see at a glance who holds what and change it in place. Super-admins hold
-// every grant already; Settings grants only apply to Board.
+// Every approved person's profile and permissions on one grid, so a
+// super-admin can see at a glance who holds what and change it in place.
+// Super-admins hold everything already; Settings permissions only apply to
+// Board. A permission from someone's profile shows ticked but greyed: change
+// it on the profile, in Settings → Access Profiles.
 function AccessTable({
   members,
   totalCount,
   filtered,
   currentUserId,
   actingId,
-  manageGrants,
-  settingsGrants,
-  onSetRole,
-  onSetGrant,
+  columns,
+  pickerLabel,
+  accessOf,
+  picker,
+  onSetPermission,
 }: {
   members: Member[];
   totalCount: number;
   filtered: boolean;
   currentUserId: string;
   actingId: string | null;
-  manageGrants: GrantDef[];
-  settingsGrants: GrantDef[];
-  onSetRole: (member: Member, role: MemberRole) => void;
-  onSetGrant: (member: Member, key: GrantKey, value: boolean) => void;
+  columns: PermissionDef[];
+  pickerLabel: string;
+  accessOf: (m: Member) => MemberAccess;
+  picker: (m: Member) => React.ReactNode;
+  onSetPermission: (member: Member, p: PermissionDef, on: boolean) => void;
 }) {
-  const holds = (m: Member, g: GrantDef, board: boolean) =>
-    m.role === "super_admin" || ((!board || m.role === "admin") && m[g.key]);
-  const count = (g: GrantDef, board: boolean) => members.filter((m) => holds(m, g, board)).length;
+  const access = new Map(members.map((m) => [m.id, accessOf(m)]));
+  const holds = (m: Member, p: PermissionDef) => m.role === "super_admin" || !!access.get(m.id)!.source(p);
+  const groups = PERMISSION_GROUPS.map((g) => ({ ...g, defs: columns.filter((p) => p.group === g.key) })).filter(
+    (g) => g.defs.length > 0
+  );
   const groupTh: React.CSSProperties = {
     textAlign: "center",
     borderLeft: "1px solid var(--gw-border)",
@@ -725,33 +827,40 @@ function AccessTable({
     zIndex: 1,
     background: "var(--gw-bg-elev)",
   };
-  const cell = (m: Member, g: GrantDef, board: boolean, first: boolean) => {
+  const cell = (m: Member, p: PermissionDef, first: boolean) => {
     const style: React.CSSProperties = {
       textAlign: "center",
       borderLeft: first ? "1px solid var(--gw-border)" : undefined,
     };
     if (m.role === "super_admin")
       return (
-        <td key={g.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Super-admins have everything">
+        <td key={p.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Super-admins have everything">
           ✓
         </td>
       );
-    if (board && m.role !== "admin")
+    const a = access.get(m.id)!;
+    if (!a.offered.includes(p))
       return (
-        <td key={g.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Board members only">
+        <td key={p.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Board members only">
           –
         </td>
       );
+    const source = a.source(p);
     return (
-      <td key={g.key} style={style}>
+      <td key={p.key} style={style}>
         <input
           type="checkbox"
-          checked={m[g.key]}
-          disabled={actingId === m.id}
-          onChange={(e) => onSetGrant(m, g.key, e.target.checked)}
-          aria-label={`${memberDisplayName(m)}: ${board ? "Settings " : ""}${g.label}`}
-          title={g.desc}
-          style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--rsd-accent-fill)" }}
+          checked={!!source}
+          disabled={actingId === m.id || source === "profile"}
+          onChange={(e) => onSetPermission(m, p, e.target.checked)}
+          aria-label={`${memberDisplayName(m)}: ${p.group === "settings" ? "Settings " : ""}${p.label}`}
+          title={source === "profile" ? `From the ${a.profile?.name} profile` : p.desc}
+          style={{
+            width: 16,
+            height: 16,
+            cursor: source === "profile" ? "default" : "pointer",
+            accentColor: "var(--rsd-accent-fill)",
+          }}
         />
       </td>
     );
@@ -769,37 +878,32 @@ function AccessTable({
             <tr>
               <th style={{ ...stickyName, borderBottom: 0 }} />
               <th style={{ borderBottom: 0 }} />
-              {manageGrants.length > 0 && (
-                <th colSpan={manageGrants.length} style={groupTh}>
-                  Can manage
+              {groups.map((g) => (
+                <th key={g.key} colSpan={g.defs.length} style={groupTh}>
+                  {g.label}
                 </th>
-              )}
-              {settingsGrants.length > 0 && (
-                <th colSpan={settingsGrants.length} style={groupTh}>
-                  Settings (Board)
-                </th>
-              )}
+              ))}
             </tr>
             <tr>
               <th style={stickyName}>Name</th>
-              <th>Role</th>
-              {manageGrants.map((g, i) => (
-                <th key={g.key} style={colTh(i === 0)} title={g.desc}>
-                  {g.label}
-                  <div style={{ fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>{count(g, false)}</div>
-                </th>
-              ))}
-              {settingsGrants.map((g, i) => (
-                <th key={g.key} style={colTh(i === 0)} title={g.desc}>
-                  {g.label}
-                  <div style={{ fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>{count(g, true)}</div>
-                </th>
-              ))}
+              <th>{pickerLabel}</th>
+              {groups.flatMap((g) =>
+                g.defs.map((p, i) => (
+                  <th key={p.key} style={colTh(i === 0)} title={p.desc}>
+                    {p.label}
+                    <div style={{ fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>
+                      {members.filter((m) => holds(m, p)).length}
+                    </div>
+                  </th>
+                ))
+              )}
             </tr>
           </thead>
           <tbody>
             {members.map((m) => {
               const isSelf = m.user_id === currentUserId;
+              const a = access.get(m.id)!;
+              const extras = a.offered.filter((p) => a.source(p) === "extra").length;
               return (
                 <tr key={m.id} style={{ opacity: actingId === m.id ? 0.5 : 1 }}>
                   <td style={{ ...stickyName, fontWeight: 700, whiteSpace: "nowrap" }}>
@@ -812,13 +916,21 @@ function AccessTable({
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     {isSelf ? (
-                      <span style={{ fontSize: 12, fontWeight: 700 }}>{ROLE_LABEL[m.role]}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700 }}>{a.profile?.name ?? ROLE_LABEL[m.role]}</span>
                     ) : (
-                      <RoleSelect role={m.role} disabled={actingId === m.id} onChange={(r) => onSetRole(m, r)} />
+                      picker(m)
+                    )}
+                    {a.profile && extras > 0 && (
+                      <span
+                        className="rsd-chip rsd-chip-mute"
+                        style={{ marginLeft: 6 }}
+                        title="Has permissions on top of their profile"
+                      >
+                        + extras
+                      </span>
                     )}
                   </td>
-                  {manageGrants.map((g, i) => cell(m, g, false, i === 0))}
-                  {settingsGrants.map((g, i) => cell(m, g, true, i === 0))}
+                  {groups.flatMap((g) => g.defs.map((p, i) => cell(m, p, i === 0)))}
                 </tr>
               );
             })}
@@ -835,25 +947,29 @@ const ROLE_LABEL: Record<MemberRole, string> = {
   super_admin: "Super-admin",
 };
 
-// Compact permission-group picker for the member row. Super-admin only (the
-// row only renders it when canManage). Lets a super-admin move anyone directly
-// into any of the three groups.
-function RoleSelect({
-  role,
+// Compact picker for a member's row: their access profile, or before
+// migration 0122 their permission group. Super-admin only (the row only
+// renders it when canManage).
+function PickerSelect({
+  label,
+  value,
+  options,
   disabled,
   onChange,
 }: {
-  role: MemberRole;
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
   disabled: boolean;
-  onChange: (role: MemberRole) => void;
+  onChange: (value: string) => void;
 }) {
   return (
     <ComboSelect
-      value={role}
+      value={value}
       disabled={disabled}
-      onChange={(e) => onChange(e.target.value as MemberRole)}
-      aria-label="Permission group"
-      title="Permission group"
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={label}
+      title={label}
       style={{
         height: 30,
         padding: "0 26px 0 10px",
@@ -866,9 +982,11 @@ function RoleSelect({
         cursor: disabled ? "not-allowed" : "pointer",
       }}
     >
-      <option value="member">Member</option>
-      <option value="admin">Board</option>
-      <option value="super_admin">Super-admin</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
     </ComboSelect>
   );
 }
@@ -879,15 +997,14 @@ function MemberRow({
   tab,
   acting,
   canManage,
-  travelReady,
-  slackReady,
-  websiteReady,
+  access,
+  profilesOn,
+  picker,
   onApprove,
   onDeny,
   onRestore,
   onRemove,
-  onSetRole,
-  onSetGrant,
+  onSetPermission,
   onEdit,
 }: {
   member: Member;
@@ -895,29 +1012,28 @@ function MemberRow({
   tab: MemberStatus;
   acting: boolean;
   canManage: boolean;
-  travelReady: boolean;
-  slackReady: boolean;
-  websiteReady: boolean;
+  access: MemberAccess;
+  profilesOn: boolean;
+  picker: React.ReactNode;
   onApprove: () => void;
   onDeny: () => void;
   onRestore: () => void;
   onRemove: () => void;
-  onSetRole: (role: MemberRole) => void;
-  onSetGrant: (key: GrantKey, value: boolean) => void;
+  onSetPermission: (p: PermissionDef, on: boolean) => void;
   onEdit: () => void;
 }) {
   const rowAvatar = resolveAvatarUrl(member);
   const [accessOpen, setAccessOpen] = useState(false);
-  const ready = { travel: travelReady, slack: slackReady, website: websiteReady };
-  const offered = (defs: GrantDef[]) => defs.filter((g) => !g.needs || ready[g.needs]);
   const showAccess = tab === "approved" && canManage && member.role !== "super_admin";
-  const manageGrants = showAccess ? offered(MANAGE_GRANTS) : [];
-  // Settings grants only mean anything on Board; setRole clears them otherwise.
-  const settingsGrants = showAccess && member.role === "admin" ? offered(SETTINGS_GRANTS) : [];
-  const granted = [
-    ...manageGrants.filter((g) => member[g.key]).map((g) => g.label),
-    ...settingsGrants.filter((g) => member[g.key]).map((g) => `Settings: ${g.label}`),
-  ];
+  const granted = showAccess
+    ? access.offered
+        .filter((p) => access.source(p))
+        .map((p) => (p.group === "settings" ? `Settings: ${p.label}` : p.label))
+    : [];
+  const extras = access.offered.filter((p) => access.source(p) === "extra").length;
+  // A profile of the club's own (Treasurer, Registrar…) gets a chip; the
+  // built-in Member and Board read from the role chip already.
+  const customProfile = access.profile && !access.profile.is_builtin ? access.profile.name : null;
   return (
     <div
       data-tour="members-row"
@@ -929,7 +1045,8 @@ function MemberRow({
         transition: "opacity 150ms",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      {/* Wraps on a phone: the buttons drop below the name. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         {/* Avatar */}
         <div
           style={{
@@ -954,7 +1071,7 @@ function MemberRow({
         </div>
 
         {/* Info */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: "1 1 180px", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, lineHeight: 1.2, flexWrap: "wrap" }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gw-fg)" }}>
               {memberDisplayName(member)}
@@ -963,6 +1080,16 @@ function MemberRow({
               <span className="rsd-chip rsd-chip-accent">Super-admin</span>
             )}
             {member.role === "admin" && <span className="rsd-chip rsd-chip-mute">Board</span>}
+            {canManage && customProfile && (
+              <span className="rsd-chip rsd-chip-mute" title="Their access profile">
+                {customProfile}
+              </span>
+            )}
+            {canManage && profilesOn && extras > 0 && (
+              <span className="rsd-chip rsd-chip-mute" title="Has permissions on top of their profile">
+                + extras
+              </span>
+            )}
             {isSelf && <span className="rsd-chip rsd-chip-mute">You</span>}
             {member.access_revoked_at ? (
               <span className="rsd-chip rsd-chip-warn">No login</span>
@@ -1006,7 +1133,7 @@ function MemberRow({
         </div>
 
         {/* Actions */}
-        <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto", maxWidth: "100%" }}>
           {canManage && (
             <ActionBtn onClick={onEdit} disabled={acting} color="var(--gw-fg)" bgColor="var(--gw-bg-elev)">
               Edit
@@ -1024,9 +1151,7 @@ function MemberRow({
           )}
           {tab === "approved" && canManage && (
             <>
-              {!isSelf && (
-                <RoleSelect role={member.role} disabled={acting} onChange={onSetRole} />
-              )}
+              {!isSelf && picker}
               {member.role !== "super_admin" && (
                 <AccessButton count={granted.length} open={accessOpen} onClick={() => setAccessOpen((o) => !o)} />
               )}
@@ -1060,13 +1185,7 @@ function MemberRow({
         </div>
       </div>
       {showAccess && accessOpen && (
-        <AccessPanel
-          member={member}
-          manageGrants={manageGrants}
-          settingsGrants={settingsGrants}
-          disabled={acting}
-          onSetGrant={onSetGrant}
-        />
+        <AccessPanel access={access} profilesOn={profilesOn} extras={extras} disabled={acting} onSetPermission={onSetPermission} />
       )}
     </div>
   );
@@ -1116,49 +1235,24 @@ function AccessButton({ count, open, onClick }: { count: number; open: boolean; 
   );
 }
 
-// The grants a super-admin can hand out, as labelled switches with what each
-// one does. Grouped so the list can keep growing without crowding the row.
+// The permissions a super-admin can hand out, as labelled switches with what
+// each one does, grouped so the list can keep growing without crowding the
+// row. Those from the person's profile show ticked and greyed: they change on
+// the profile, in Settings → Access Profiles. The rest are extras, just for
+// this person.
 function AccessPanel({
-  member,
-  manageGrants,
-  settingsGrants,
+  access,
+  profilesOn,
+  extras,
   disabled,
-  onSetGrant,
+  onSetPermission,
 }: {
-  member: Member;
-  manageGrants: GrantDef[];
-  settingsGrants: GrantDef[];
+  access: MemberAccess;
+  profilesOn: boolean;
+  extras: number;
   disabled: boolean;
-  onSetGrant: (key: GrantKey, value: boolean) => void;
+  onSetPermission: (p: PermissionDef, on: boolean) => void;
 }) {
-  const group = (title: string, defs: GrantDef[]) =>
-    defs.length > 0 && (
-      <div>
-        <div
-          style={{
-            fontSize: 10.5,
-            fontWeight: 700,
-            color: "var(--gw-fg-muted)",
-            textTransform: "uppercase",
-            letterSpacing: ".04em",
-            marginBottom: 6,
-          }}
-        >
-          {title}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 6 }}>
-          {defs.map((g) => (
-            <GrantToggle
-              key={g.key}
-              def={g}
-              on={member[g.key]}
-              disabled={disabled}
-              onChange={(v) => onSetGrant(g.key, v)}
-            />
-          ))}
-        </div>
-      </div>
-    );
   return (
     <div
       data-tour="members-access"
@@ -1171,25 +1265,67 @@ function AccessPanel({
         gap: 12,
       }}
     >
-      {group("Can manage", manageGrants)}
-      {group("Settings (Board)", settingsGrants)}
+      {profilesOn && access.profile && (
+        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
+          On the <strong style={{ color: "var(--gw-fg)" }}>{access.profile.name}</strong> profile
+          {extras > 0 ? `, plus ${extras === 1 ? "1 extra" : `${extras} extras`}` : ""}. Greyed ticks come from the
+          profile (change them in Settings → Access Profiles); tick anything else to give it to just this person.
+        </div>
+      )}
+      {PERMISSION_GROUPS.map((g) => {
+        const defs = access.offered.filter((p) => p.group === g.key);
+        if (defs.length === 0) return null;
+        return (
+          <div key={g.key}>
+            <div
+              style={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                color: "var(--gw-fg-muted)",
+                textTransform: "uppercase",
+                letterSpacing: ".04em",
+                marginBottom: 6,
+              }}
+            >
+              {g.label}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 6 }}>
+              {defs.map((p) => (
+                <GrantToggle
+                  key={p.key}
+                  def={p}
+                  source={access.source(p)}
+                  profileName={access.profile?.name}
+                  disabled={disabled}
+                  onChange={(v) => onSetPermission(p, v)}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 function GrantToggle({
   def,
-  on,
+  source,
+  profileName,
   disabled,
   onChange,
 }: {
-  def: GrantDef;
-  on: boolean;
+  def: PermissionDef;
+  source: "profile" | "extra" | null;
+  profileName?: string;
   disabled: boolean;
   onChange: (on: boolean) => void;
 }) {
+  const on = !!source;
+  const locked = source === "profile";
   return (
     <label
+      title={locked ? `From the ${profileName} profile` : undefined}
       style={{
         display: "flex",
         alignItems: "flex-start",
@@ -1198,18 +1334,24 @@ function GrantToggle({
         borderRadius: 10,
         border: `1px solid ${on ? "var(--rsd-accent-fill)" : "var(--gw-border)"}`,
         background: "var(--gw-bg)",
-        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: locked ? 0.75 : 1,
+        cursor: disabled || locked ? "default" : "pointer",
       }}
     >
       <input
         type="checkbox"
         checked={on}
-        disabled={disabled}
+        disabled={disabled || locked}
         onChange={(e) => onChange(e.target.checked)}
         style={{ marginTop: 2, accentColor: "var(--rsd-accent-fill)" }}
       />
       <span style={{ minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg)" }}>{def.label}</span>
+        <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg)" }}>
+          {def.label}
+          {locked && (
+            <span style={{ fontWeight: 600, color: "var(--gw-fg-muted)", fontSize: 11 }}> · from {profileName}</span>
+          )}
+        </span>
         <span style={{ display: "block", fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.35 }}>{def.desc}</span>
       </span>
     </label>

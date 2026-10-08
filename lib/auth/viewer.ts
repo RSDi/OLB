@@ -12,6 +12,7 @@
 import { cache } from "react";
 import { unstable_rethrow } from "next/navigation";
 import { createClient } from "../supabase/server";
+import { loadGrants } from "./load-grants";
 import {
   isStaff,
   isSuperAdmin,
@@ -99,69 +100,21 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
   if (!user) return null;
   const supabase = await createClient();
 
-  // Core auth row never selects the grant columns, so a pre-0057 deploy can't
-  // log everyone out. Settings grants (migration 0057) load in a separate
-  // best-effort query, in parallel on the same user_id so they cost no extra
-  // round trip. If the columns aren't there yet that query errors → grants
-  // default false (view-only), which is the safe default.
-  const [{ data }, { data: g }, { data: f }, { data: r }, { data: t }, { data: s }, { data: w }] = await Promise.all([
+  // Core auth row never selects a grant, so a deploy ahead of a migration
+  // can't log everyone out. The grants load alongside it, best-effort
+  // (lib/auth/load-grants.ts): anything missing reads as no grant.
+  const [{ data }, grants] = await Promise.all([
     supabase
       .from("members")
       .select("id, role, status")
       .eq("user_id", user.id)
       .maybeSingle(),
-    supabase
-      .from("members")
-      .select("can_edit_settings, can_delete_settings, can_undelete_settings")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    // The Payments grant (0101), best-effort the same way.
-    supabase
-      .from("members")
-      .select("can_manage_finances")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    // The Registrations grant (0102), the same way.
-    supabase
-      .from("members")
-      .select("can_manage_registrations")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    // The Travel grant (0110), the same way.
-    supabase
-      .from("members")
-      .select("can_manage_travel")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    // The Slack DMs grant (0118), the same way.
-    supabase
-      .from("members")
-      .select("can_slack_dm")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    // The Website grant (0120), the same way.
-    supabase
-      .from("members")
-      .select("can_manage_website")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+    loadGrants(supabase, user.id),
   ]);
   if (!data) return null;
 
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
-  const grants = (g as Partial<MemberLike> | null) ?? {};
-  const member: MemberLike = {
-    role: row.role,
-    status: row.status,
-    can_edit_settings: !!grants.can_edit_settings,
-    can_delete_settings: !!grants.can_delete_settings,
-    can_undelete_settings: !!grants.can_undelete_settings,
-    can_manage_finances: !!(f as Partial<MemberLike> | null)?.can_manage_finances,
-    can_manage_registrations: !!(r as Partial<MemberLike> | null)?.can_manage_registrations,
-    can_manage_travel: !!(t as Partial<MemberLike> | null)?.can_manage_travel,
-    can_slack_dm: !!(s as Partial<MemberLike> | null)?.can_slack_dm,
-    can_manage_website: !!(w as Partial<MemberLike> | null)?.can_manage_website,
-  };
+  const member: MemberLike = { ...grants, role: row.role, status: row.status };
 
   return {
     userId: user.id,
