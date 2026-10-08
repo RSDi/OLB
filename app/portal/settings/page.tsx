@@ -383,12 +383,12 @@ export default function SettingsPage() {
         {menu(false)}
       </nav>
       {/* Phone: one bar naming the open tab; "Change" opens the menu full
-          screen. `data-tour-reveals` lets a tour open it to reach a tab. */}
+          screen. A tour points at this bar for a tab tucked inside it. */}
       <button
         type="button"
         className="gw-press rsd-settings-picker"
         data-tour="settings-tabs"
-        data-tour-reveals="settings-tab-"
+        data-tour-stands-in="settings-tab-"
         aria-haspopup="dialog"
         aria-expanded={sheetOpen}
         onClick={() => setSheetOpen(true)}
@@ -405,7 +405,7 @@ export default function SettingsPage() {
           role="dialog"
           aria-modal="true"
           aria-label="Settings"
-          data-tour-revealed="settings-tab-"
+          data-tour-menu=""
         >
           <div className="rsd-settings-sheet-head">
             <span>Settings</span>

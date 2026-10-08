@@ -563,7 +563,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "settings-tabs",
         audience: "super_admin",
         title: "The Settings menu",
-        body: "Settings is sorted into groups down this menu: People & Access, Facilities & Equipment, Work & Events, Communication, Website & Portal and System. Type in **Find a setting…** to narrow it. Tap **ⓘ** on any page, then **Show me around**, for a walkthrough of that page.",
+        body: "Settings is sorted into groups down this menu: People & Access, Facilities & Equipment, Work & Events, Communication, Website & Portal and System. Type in **Find a setting…** to narrow it. On a phone, tap **Change ›** to see the menu. Tap **ⓘ** on any page, then **Show me around**, for a walkthrough of that page.",
       },
       {
         target: "members-status",
