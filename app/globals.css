@@ -745,6 +745,104 @@ main::-webkit-scrollbar-track { background: transparent; }
   line-height: 1.5;
   white-space: pre-wrap;
 }
+/* A message a link opened the page at (MessageList: "#msg-<ts>" from the
+   photo album's "View in conversation", a search result, a copied link):
+   light yellow, like Slack's. The padding/margin pair lets the tint reach
+   a little past the text without moving it. */
+.rsd-slack-msg {
+  margin: -6px -10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+.rsd-slack-msg.is-linked {
+  background: #FFF6CC;
+  box-shadow: inset 3px 0 0 #F2C744;
+  animation: rsd-slack-linked-in .6s ease-out;
+}
+[data-theme="dark"] .rsd-slack-msg.is-linked {
+  background: rgba(255, 214, 10, .14);
+  box-shadow: inset 3px 0 0 rgba(255, 214, 10, .55);
+}
+@keyframes rsd-slack-linked-in {
+  from { background-color: transparent; }
+}
+
+/* Photos and videos in a message, at preview size: a row of tiles of one
+   height (smaller on phones), each as wide as its picture. The height is
+   fixed so tiles loading in don't push the page down. */
+.rsd-slack-media-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.rsd-slack-media {
+  --rsd-slack-media-h: 160px;
+  position: relative;
+  display: block;
+  height: var(--rsd-slack-media-h);
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--gw-border);
+  border-radius: 8px;
+  background: var(--gw-bg-elev);
+  cursor: zoom-in;
+  font: inherit;
+}
+.rsd-slack-media img {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: cover;
+}
+.rsd-slack-media-video { cursor: pointer; }
+.rsd-slack-media-blank {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  width: calc(var(--rsd-slack-media-h) * 16 / 9);
+  max-width: 100%;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  background: #1d1d1f;
+  color: rgba(255, 255, 255, .75);
+  font-size: 11.5px;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.rsd-slack-media-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .55);
+  color: #fff;
+}
+/* Playing: as big as fits, up to 360px tall. */
+.rsd-slack-media.is-playing {
+  height: auto;
+  cursor: auto;
+  background: #000;
+}
+.rsd-slack-media.is-playing video {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+}
+@media (max-width: 480px) {
+  .rsd-slack-media { --rsd-slack-media-h: 120px; }
+}
+
 /* @channel, @here, @everyone: Slack's yellow highlight. */
 .rsd-slack-text .rsd-slack-broadcast {
   padding: 0 2px;

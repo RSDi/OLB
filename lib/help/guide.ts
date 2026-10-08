@@ -554,8 +554,8 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - **Newest first / Oldest first** flips the order.
 - **Jump to date** opens a calendar — tap any highlighted day to go straight there.
 - **Filter** shows only the threads a certain person posted in.
-- Tap a photo, video or audio clip to preview it; other files open in a new tab. Files linked from outside Slack, like Google Docs, show a ↗ and open where they're kept.
-- The **link** icon on a message copies a direct link you can share.
+- Photos and videos show right in the message: tap a photo to see it full size, or tap ▶ to play a video. Audio clips open in a preview, and other files open in a new tab. Files linked from outside Slack, like Google Docs, show a ↗ and open where they're kept.
+- The **link** icon on a message copies a direct link you can share. Opening one (or **View in conversation** in the Photo Album, or a search result) takes you to that message, highlighted in yellow.
 - **Photos →** opens the Photo Album for just that channel.`,
   },
   {
@@ -586,7 +586,7 @@ Quick lookups work from the top-bar search too — Slack messages show up there 
 - **Search** captions, people, channels or a month (e.g. "june 2024").
 - Show **All**, just **Photos** or just **Videos**, and narrow by **Channel** or **People**.
 - **Jump to month** skips straight to a month; **Newest first / Oldest first** flips the order.
-- Tap a photo to open it full-screen. Use the arrows (or ← and → keys) to move through them, **Show details** to see the caption and who posted it, **View in conversation** to see the Slack thread, and **Download original** to save it.
+- Tap a photo to open it full-screen. Use the arrows (or ← and → keys) to move through them, **Show details** to see the caption and who posted it, **View in conversation** to see the Slack thread (the message is highlighted in yellow), and **Download original** to save it.
 - Your filters stay in the page address, so you can bookmark or share a filtered view.
 
 If the page has been open a long time and pictures stop loading, tap **Reload previews**.`,

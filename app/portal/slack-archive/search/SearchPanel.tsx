@@ -11,6 +11,7 @@ import {
   runArchiveSearch,
 } from "../../../../lib/slack-archive/search-actions";
 import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
+import { messageHref } from "../../../../lib/slack-archive/anchors";
 import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
 import { FilterDropdown, type FilterDropdownItem } from "../_shared/FilterDropdown";
 import { SlackText } from "../_shared/SlackText";
@@ -201,7 +202,7 @@ export function SearchPanel({
             const time = new Date(r.postedAt).toLocaleString(undefined, {
               year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ,
             });
-            const href = `/portal/slack-archive/${encodeURIComponent(r.channelId)}#msg-${r.messageTs}`;
+            const href = messageHref(r.channelId, r.messageTs);
             return (
               <div key={r.messageId} className="rsd-card" style={{ padding: "12px 18px" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".02em" }}>
