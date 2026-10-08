@@ -554,7 +554,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - **Newest first / Oldest first** flips the order.
 - **Jump to date** opens a calendar — tap any highlighted day to go straight there.
 - **Filter** shows only the threads a certain person posted in.
-- Photos and videos show right in the message: tap a photo to see it full size, or tap ▶ to play a video. Audio clips open in a preview, and other files open in a new tab. Files linked from outside Slack, like Google Docs, show a ↗ and open where they're kept.
+- Photos and videos show right in the message as small tiles: tap a photo to see it full size, or tap ▶ to play a video. A new photo can show as a picture icon until its preview is made overnight; tapping it still opens the photo. Audio clips open in a preview, and other files open in a new tab. Files linked from outside Slack, like Google Docs, show a ↗ and open where they're kept.
 - The **link** icon on a message copies a direct link you can share. Opening one (or **View in conversation** in the Photo Album, or a search result) takes you to that message, highlighted in yellow.
 - **Photos →** opens the Photo Album for just that channel.`,
   },

@@ -12,6 +12,7 @@ import type { StoredReaction } from "./sync";
 import {
   albumMediaKind,
   buildAlbumItems,
+  albumMediaHref,
   isInlineMedia,
   isThreadReply,
   orderAlbumItems,
@@ -436,8 +437,11 @@ export async function loadArchiveChannelMessages(slackChannelId: string): Promis
   if (allPaths.length > 0) {
     const admin = createAdminClient();
     // A preview the thumbnail job hasn't made yet is simply absent from
-    // `thumbUrls`; the page then shows the original photo, or the video's
-    // first frame.
+    // `thumbUrls`; the page then shows a small photo's original, or a
+    // placeholder tile (see InlineImage and InlineVideo in MessageList).
+    // With a preview, the page never uses the original's signed URL, so
+    // its permalink is the media route instead: shorter, and it doesn't
+    // expire.
     const previewPaths = rows.flatMap((r) =>
       (r.files ?? []).flatMap((f) => (f.storage_path && isInlineMedia(f) ? [thumbnailPathFor(f.storage_path)] : [])),
     );
@@ -450,7 +454,8 @@ export async function loadArchiveChannelMessages(slackChannelId: string): Promis
         const signedUrl = f.storage_path ? signedUrls.get(f.storage_path) : undefined;
         const thumbUrl = f.storage_path ? thumbUrls.get(thumbnailPathFor(f.storage_path)) : undefined;
         if (!signedUrl) return f;
-        return thumbUrl ? { ...f, permalink: signedUrl, thumb_url: thumbUrl } : { ...f, permalink: signedUrl };
+        if (thumbUrl && f.storage_path) return { ...f, permalink: albumMediaHref(f.storage_path), thumb_url: thumbUrl };
+        return { ...f, permalink: signedUrl };
       });
     }
   }

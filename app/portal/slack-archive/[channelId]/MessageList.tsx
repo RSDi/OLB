@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Icons } from "../../../components/icons";
 import { Pill } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
@@ -15,27 +15,58 @@ import { FilePreviewModal, type PreviewKind } from "./FilePreviewModal";
 import { FilterDropdown } from "../_shared/FilterDropdown";
 import { SlackText } from "../_shared/SlackText";
 
-function isVideoFile(f: ArchivedFile): boolean {
-  return (f.mimetype ?? "").startsWith("video/") || /\.(mp4|mov|webm|m4v|ogv)$/i.test(f.name || "");
-}
-function isImageFile(f: ArchivedFile): boolean {
-  return (f.mimetype ?? "").startsWith("image/") || /\.(jpe?g|png|gif|webp|bmp|svg|heic|heif)$/i.test(f.name || "");
-}
 function isAudioFile(f: ArchivedFile): boolean {
   return (f.mimetype ?? "").startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(f.name || "");
 }
 // null for anything that isn't previewable in-page (docs, PDFs, etc.) — those
-// still open in a new tab, same as before.
+// still open in a new tab, same as before. Photos and videos are told apart
+// the same way as for showing them in place (albumMediaKind), so a tile that
+// shows in place always opens.
 function previewKind(f: ArchivedFile): PreviewKind | null {
-  if (isVideoFile(f)) return "video";
-  if (isImageFile(f)) return "image";
-  if (isAudioFile(f)) return "audio";
-  return null;
+  return albumMediaKind(f) ?? (isAudioFile(f) ? "audio" : null);
 }
 
+// A link opened in place changes only the hash. The browser reports that as
+// "hashchange", but Next's router (a search result in the same channel)
+// moves the URL with history.pushState, which only the Navigation API
+// reports. Browsers without it still get the first two. Next calls
+// pushState while React is committing, when an update can't be scheduled,
+// so that one waits a microtask.
 function subscribeToHash(onChange: () => void): () => void {
+  const navigation = (window as unknown as { navigation?: EventTarget }).navigation;
+  const afterCommit = () => queueMicrotask(onChange);
   window.addEventListener("hashchange", onChange);
-  return () => window.removeEventListener("hashchange", onChange);
+  window.addEventListener("popstate", onChange);
+  navigation?.addEventListener("currententrychange", afterCommit);
+  return () => {
+    window.removeEventListener("hashchange", onChange);
+    window.removeEventListener("popstate", onChange);
+    navigation?.removeEventListener("currententrychange", afterCommit);
+  };
+}
+
+// Keeps jumps within the page (a linked message, Jump to date) clear of the
+// sticky bar: the page's scroller gets a scroll-padding-top just past the
+// bar's bottom, kept in step as the bar wraps to two rows on a narrow phone
+// or grows with "Filter (n)". <main> belongs to the portal shell, so the
+// padding comes off again when the channel page goes.
+function useStickyBarScrollPadding(bar: React.RefObject<HTMLDivElement | null>): void {
+  useLayoutEffect(() => {
+    const el = bar.current;
+    const scroller = el?.closest("main");
+    if (!el || !scroller) return;
+    const previous = scroller.style.scrollPaddingTop;
+    const update = () => {
+      scroller.style.scrollPaddingTop = `${el.offsetHeight + 11}px`;
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      scroller.style.scrollPaddingTop = previous;
+    };
+  }, [bar]);
 }
 
 // The message a link opened this page at ("#msg-<ts>": the photo album's
@@ -95,11 +126,23 @@ export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; 
 
   const authorCounts = useMemo(() => countAuthors(threads), [threads]);
   const linkedTs = useLinkedMessageTs();
+  const stickyBar = useRef<HTMLDivElement>(null);
+  useStickyBarScrollPadding(stickyBar);
 
-  // The browser's own jump to the anchor happens before the page is ready
-  // and leaves the message under the sticky bar; center it once it's here.
+  // The browser's own jump to the anchor happens before the page is ready;
+  // center the message once it's here, or, when it's taller than the room
+  // below the sticky bar, line its top up under the bar so its author and
+  // text show. The scroller's scroll-padding-top (useStickyBarScrollPadding)
+  // keeps both clear of the bar.
   useEffect(() => {
-    if (linkedTs) document.getElementById(messageAnchorId(linkedTs))?.scrollIntoView({ block: "center" });
+    if (!linkedTs) return;
+    const el = document.getElementById(messageAnchorId(linkedTs));
+    if (!el) return;
+    const scroller = el.closest("main");
+    const room = scroller
+      ? scroller.clientHeight - (parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0)
+      : window.innerHeight;
+    el.scrollIntoView({ block: el.offsetHeight <= room - 24 ? "center" : "start" });
   }, [linkedTs]);
 
   // Whole-thread inclusion, not top-level-only: a thread stays visible if
@@ -128,6 +171,7 @@ export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; 
   return (
     <div>
       <div
+        ref={stickyBar}
         className="rsd-slack-sticky-bar"
         style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}
       >
@@ -296,16 +340,31 @@ function fullSizeSrc(file: ArchiveMessageFile): string {
   return albumMediaHref(file.storage_path);
 }
 
-// A photo in place at preview size (its preview image when the thumbnail
-// job has made one, else the original); tap for the full-size view. It loads
-// only as it scrolls into view. Its signed URL lasts an hour, so one that
-// fails (the page was left open) is tried once more through the media
-// route; one that fails there too becomes a file chip.
+// Photos without a preview image show their original in place only up to
+// this size; a phone photo (2-6 MB) would cost the page its whole download
+// just to draw a small tile.
+const SMALL_ORIGINAL_BYTES = 400 * 1024;
+
+// A photo in place: its preview image when the thumbnail job has made one,
+// a small original, or otherwise a picture-icon tile until the job gets to
+// it. Tap for the full-size view. Pictures load only as they scroll into
+// view. A signed URL lasts an hour, so one that fails (the page was left
+// open) is tried once more through the media route; one that fails there
+// too becomes a file chip.
 function InlineImage({ file, onOpen, fallback }: { file: ArchiveMessageFile; onOpen: () => void; fallback: React.ReactNode }) {
   const viaRoute = albumMediaHref(file.thumb_url ? thumbnailPathFor(file.storage_path!) : file.storage_path!);
-  const [src, setSrc] = useState(file.thumb_url ?? file.permalink!);
+  const smallOriginal = file.size > 0 && file.size <= SMALL_ORIGINAL_BYTES ? file.permalink : null;
+  const [src, setSrc] = useState(file.thumb_url ?? smallOriginal);
   const [failed, setFailed] = useState(false);
   if (failed) return fallback;
+  if (!src) {
+    return (
+      <button type="button" className="rsd-slack-media rsd-slack-media-pending" onClick={onOpen} title={file.name} aria-label={`View ${file.name}`}>
+        <Icons.Image width={22} height={22} />
+        <span>{file.name}</span>
+      </button>
+    );
+  }
   return (
     <button type="button" className="rsd-slack-media" onClick={onOpen} title={file.name} aria-label={`View ${file.name}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- a short-lived signed Storage URL, not a static asset next/image can optimize */}
@@ -326,6 +385,8 @@ function InlineImage({ file, onOpen, fallback }: { file: ArchiveMessageFile; onO
 // route, which signs a fresh URL; one the browser can't play becomes a file
 // chip.
 function InlineVideo({ file, fallback }: { file: ArchiveMessageFile; fallback: React.ReactNode }) {
+  // Stable, so React calls it once when the player mounts, not on every render.
+  const focusPlayer = useCallback((video: HTMLVideoElement | null) => video?.focus(), []);
   const [playing, setPlaying] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -334,6 +395,9 @@ function InlineVideo({ file, fallback }: { file: ArchiveMessageFile; fallback: R
     return (
       <div className="rsd-slack-media is-playing">
         <video
+          // Focus moves to the player, which replaced the focused Play
+          // button, so the keyboard can pause it straight away.
+          ref={focusPlayer}
           src={albumMediaHref(file.storage_path!)}
           title={file.name}
           controls
@@ -379,8 +443,10 @@ function FileChip({ file: f, onPreview }: { file: ArchiveMessageFile; onPreview:
     cursor: "pointer", font: "inherit",
   };
   // A file kept outside Slack (a Google Doc, say) is only a link to it, so
-  // it opens there rather than in the preview overlay.
+  // it opens there rather than in the preview overlay. So does a HEIC or
+  // TIFF photo without a preview yet, which most browsers can't show.
   const kind = f.external ? null : previewKind(f);
+  const opensInOverlay = kind !== null && !(needsPreviewToShow(f) && !f.thumb_url);
   const icon = f.error
     ? <Icons.AlertCircle width={13} height={13} />
     : f.external ? <Icons.ExternalLink width={13} height={13} />
@@ -400,7 +466,7 @@ function FileChip({ file: f, onPreview }: { file: ArchiveMessageFile; onPreview:
       </span>
     );
   }
-  if (kind && !f.error) {
+  if (opensInOverlay && !f.error) {
     return (
       <button type="button" onClick={onPreview} style={chipStyle}>
         {icon}

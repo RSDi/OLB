@@ -12,10 +12,12 @@ test("a message link names the channel and the message", () => {
 test("the linked message is read back from the URL hash", () => {
   assert.equal(messageTsFromHash("#msg-1695321234.123456"), "1695321234.123456");
   assert.equal(messageTsFromHash(new URL(`https://x.org${messageHref("C0BOLT", "1.2")}`).hash), "1.2");
+  // Next's router appends a same-page link's hash to the one the page opened at.
+  assert.equal(messageTsFromHash("#msg-1.2#msg-3.4"), "3.4");
 });
 
 test("anything else in the hash links to no message", () => {
-  for (const hash of ["", "#", "#day-2026-09-19", "#msg-", "#msg-abc", "#msg-1695321234", "#msg-1.2.3", "#msg-1.2<script>"]) {
+  for (const hash of ["", "#", "#day-2026-09-19", "#msg-", "#msg-abc", "#msg-1695321234", "#msg-1.2.3", "#msg-1.2<script>", "#xmsg-1.2", "#msg-1.2#x"]) {
     assert.equal(messageTsFromHash(hash), null, hash);
   }
 });

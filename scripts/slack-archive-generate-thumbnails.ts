@@ -133,12 +133,24 @@ async function fetchSlackPreview(admin: SupabaseClient, c: Candidate, token: str
 
 async function makePreview(admin: SupabaseClient, c: Candidate, token: string | undefined): Promise<{ bytes: Buffer; source: "original" | "slack" }> {
   let firstError: unknown;
+  let original: Buffer | undefined;
   try {
-    const original = await downloadOriginal(admin, c.storagePath);
+    original = await downloadOriginal(admin, c.storagePath);
     const bytes = c.kind === "video" ? await renderVideoPreview(original, c.name) : await renderPreview(original);
     return { bytes, source: "original" };
   } catch (err) {
     firstError = err;
+  }
+  // A photo sharp can't read (a BMP, say) usually decodes as a one-frame
+  // video. Worth trying before Slack's copy, which is gone once Slack hides
+  // or deletes the file, and without a preview the channel page shows a
+  // large photo only as an icon.
+  if (original && c.kind === "image") {
+    try {
+      return { bytes: await renderVideoPreview(original, c.name), source: "original" };
+    } catch {
+      // fall through to Slack's preview
+    }
   }
   const slack = await fetchSlackPreview(admin, c, token);
   if (slack) return { bytes: await renderPreview(slack), source: "slack" };

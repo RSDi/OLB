@@ -13,7 +13,10 @@ export function messageHref(channelId: string, ts: string): string {
 }
 
 // The message a URL hash points at ("#msg-1695321234.123456"), or null.
+// Reads the last "#msg-" in it: after a page opened at one message link,
+// Next's router appends the next same-page link's hash to the old one
+// ("#msg-A#msg-B").
 export function messageTsFromHash(hash: string): string | null {
-  const match = /^#msg-(\d+\.\d+)$/.exec(hash);
+  const match = /(?:^|#)msg-(\d+\.\d+)$/.exec(hash);
   return match ? match[1] : null;
 }

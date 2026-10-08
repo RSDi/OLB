@@ -19,7 +19,7 @@ import { getViewer } from "../../../../../lib/auth/viewer";
 import { createClient } from "../../../../../lib/supabase/server";
 import { createAdminClient } from "../../../../../lib/supabase/admin";
 import { signArchiveFileUrl } from "../../../../../lib/slack-archive/files";
-import { THUMBNAIL_PREFIX } from "../../../../../lib/slack-archive/album";
+import { isArchiveStoragePath, THUMBNAIL_PREFIX } from "../../../../../lib/slack-archive/album";
 import { canViewArchive } from "../../../../../lib/slack-archive/data";
 
 function decodeSegment(segment: string): string {
@@ -39,11 +39,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { path } = await params;
   const segments = path.map(decodeSegment);
-  // Reject empty/dot segments so a path can't name one channel up front
-  // while resolving somewhere else.
-  if (segments.length === 0 || segments.some((s) => s === "" || s === "." || s === ".." || s.includes("/"))) {
-    return notFound();
-  }
+  // Only paths shaped like the archive's own, so a path can't name one
+  // channel up front while resolving somewhere else (see isArchiveStoragePath).
+  if (!isArchiveStoragePath(segments)) return notFound();
   const storagePath = segments.join("/");
 
   const channelPath = storagePath.startsWith(THUMBNAIL_PREFIX) ? storagePath.slice(THUMBNAIL_PREFIX.length) : storagePath;

@@ -61,6 +61,18 @@ export function thumbnailPathFor(storagePath: string): string {
   return `${THUMBNAIL_PREFIX}${storagePath}.webp`;
 }
 
+// A storage path as the archive writes it: "<channel>/<ts>/<file id>-<name>"
+// (the name through sanitizeFileName in files.ts), or its preview under
+// "thumbs/". The media route serves nothing else. Storage resolves "..",
+// "\" and "%2e" inside a path it's handed, so a looser check would let a
+// path that starts with a channel the viewer can see reach another
+// channel's files, or another bucket's.
+const STORAGE_SEGMENT = /^[A-Za-z0-9._-]+$/;
+
+export function isArchiveStoragePath(segments: string[]): boolean {
+  return segments.length > 0 && segments.every((s) => STORAGE_SEGMENT.test(s) && s !== "." && s !== "..");
+}
+
 // Full-size originals are served through a same-origin route that signs a
 // fresh URL per request (app/portal/slack-archive/media/[...path]/route.ts),
 // so a viewer left open past a signed URL's expiry still loads the original.

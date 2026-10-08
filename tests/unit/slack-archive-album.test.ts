@@ -14,6 +14,7 @@ import {
   albumUrlSearch,
   buildAlbumItems,
   groupAlbumByMonth,
+  isArchiveStoragePath,
   normalizeForSearch,
   orderAlbumItems,
   parseAlbumQuery,
@@ -292,4 +293,26 @@ test("photos and videos show in place; HEIC only from its preview; failed, exter
   assert.equal(showsInline(file({ external: true, storage_path: null }), false), false);
   assert.equal(showsInline(file({ name: "minutes.pdf", mimetype: "application/pdf" }), false), false);
   assert.equal(showsInline(file({ name: "song.mp3", mimetype: "audio/mpeg" }), false), false);
+});
+
+test("the media route serves only paths shaped like the archive's own", () => {
+  const ok = (p: string) => isArchiveStoragePath(p.split("/"));
+  assert.equal(ok("C0BOLT/1790000000.000100/F0ABC-IMG_0125.jpg"), true);
+  assert.equal(ok("thumbs/C0BOLT/1790000000.000100/F0ABC-IMG_0125.jpg.webp"), true);
+  // Storage resolves these, so each could reach another channel or bucket.
+  for (const bad of [
+    "C0BOLT/..\\G0SECRET\\1.2\\F1-x.jpg",
+    "C0BOLT/../G0SECRET/1.2/F1-x.jpg",
+    "C0BOLT/./x.jpg",
+    "C0BOLT/%2e%2e/G0SECRET/x.jpg",
+    "C0BOLT/.%2e/x.jpg",
+    "C0BOLT//x.jpg",
+    "C0BOLT/x y.jpg",
+    "C0BOLT/x?.jpg",
+    "C0BOLT/x#.jpg",
+    "",
+  ]) {
+    assert.equal(ok(bad), false, bad);
+  }
+  assert.equal(isArchiveStoragePath([]), false);
 });
