@@ -33,6 +33,7 @@ export function SeasonSheet({
   teams,
   isStaff,
   onClose,
+  onNewSeason,
 }: {
   season: HsSeason;
   levels: HsLevel[];
@@ -41,6 +42,8 @@ export function SeasonSheet({
   teams: DirectoryTeam[];
   isStaff: boolean;
   onClose: () => void;
+  // Opens New season, for any other season, empty or from another.
+  onNewSeason: () => void;
 }) {
   const router = useRouter();
   const [notes, setNotes] = useState(season.notes ?? "");
@@ -171,6 +174,11 @@ export function SeasonSheet({
               </div>
             </>
           )}
+          <div>
+            <Pill variant="ghost" size="sm" disabled={busy} onClick={onNewSeason}>
+              <Icons.Plus width={12} height={12} /> New season
+            </Pill>
+          </div>
           <span style={{ ...cap, marginTop: 8 }}>Delete</span>
           <div>
             <Pill
