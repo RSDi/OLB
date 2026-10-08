@@ -10,6 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SearchHit } from "../search/useGlobalSearch";
 import { CHURCH_TZ } from "../dates/today";
 import { messageSnippet } from "./text";
+import { messageHref } from "./anchors";
 
 const RESULT_LIMIT = 5; // search_global also shows at most five per group
 
@@ -54,7 +55,7 @@ export async function searchArchiveForGlobalSearch(
         .filter(Boolean)
         .join(" · "),
       // Same link as the archive's own search results.
-      href: `/portal/slack-archive/${encodeURIComponent(row.channel_id)}#msg-${row.ts}`,
+      href: messageHref(row.channel_id, row.ts),
       rank: row.rank,
     }));
   } catch (err) {

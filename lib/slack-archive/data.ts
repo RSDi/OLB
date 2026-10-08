@@ -12,6 +12,7 @@ import type { StoredReaction } from "./sync";
 import {
   albumMediaKind,
   buildAlbumItems,
+  isInlineMedia,
   isThreadReply,
   orderAlbumItems,
   threadParentKey,
@@ -115,6 +116,11 @@ export async function loadArchiveChannels(): Promise<ArchiveChannel[]> {
   });
 }
 
+// An attachment as the channel page gets it: a stored file's permalink is a
+// signed URL for the original, and thumb_url is its signed preview image
+// when the thumbnail job has made one (photos and videos only).
+export type ArchiveMessageFile = ArchivedFile & { thumb_url?: string };
+
 export interface ArchiveMessage {
   id: string;
   ts: string;
@@ -122,7 +128,7 @@ export interface ArchiveMessage {
   author_name: string | null;
   message_text: string;
   reactions: StoredReaction[];
-  files: ArchivedFile[];
+  files: ArchiveMessageFile[];
   posted_at: string;
   edited: boolean;
 }
@@ -390,8 +396,9 @@ export async function searchArchiveMessages(
 
 // Groups flat rows into threads (a parent with thread_ts === its own ts or
 // null, followed by any replies whose thread_ts points at it) and resolves
-// each file's storage_path to a short-lived signed URL. Signing needs the
-// admin client — the bucket carries no storage.objects read policies at all
+// each file's storage_path to a short-lived signed URL, plus each photo's
+// and video's preview image where one exists (the page shows those in
+// place; see isInlineMedia). Signing needs the admin client — the bucket carries no storage.objects read policies at all
 // (like reel-notes-audio), so even a super-admin session can't read it
 // directly.
 export async function loadArchiveChannelMessages(slackChannelId: string): Promise<ArchiveThread[]> {
@@ -428,11 +435,22 @@ export async function loadArchiveChannelMessages(slackChannelId: string): Promis
   const allPaths = rows.flatMap((r) => (r.files ?? []).flatMap((f) => (f.storage_path ? [f.storage_path] : [])));
   if (allPaths.length > 0) {
     const admin = createAdminClient();
-    const signedUrls = await signArchiveFileUrls(admin, allPaths);
+    // A preview the thumbnail job hasn't made yet is simply absent from
+    // `thumbUrls`; the page then shows the original photo, or the video's
+    // first frame.
+    const previewPaths = rows.flatMap((r) =>
+      (r.files ?? []).flatMap((f) => (f.storage_path && isInlineMedia(f) ? [thumbnailPathFor(f.storage_path)] : [])),
+    );
+    const [signedUrls, thumbUrls] = await Promise.all([
+      signArchiveFileUrls(admin, allPaths),
+      signArchiveFileUrls(admin, previewPaths),
+    ]);
     for (const r of rows) {
       r.files = (r.files ?? []).map((f) => {
         const signedUrl = f.storage_path ? signedUrls.get(f.storage_path) : undefined;
-        return signedUrl ? { ...f, permalink: signedUrl } : f;
+        const thumbUrl = f.storage_path ? thumbUrls.get(thumbnailPathFor(f.storage_path)) : undefined;
+        if (!signedUrl) return f;
+        return thumbUrl ? { ...f, permalink: signedUrl, thumb_url: thumbUrl } : { ...f, permalink: signedUrl };
       });
     }
   }

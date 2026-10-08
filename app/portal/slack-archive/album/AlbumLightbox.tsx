@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Icons } from "../../../components/icons";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import { albumMediaHref, type AlbumItem } from "../../../../lib/slack-archive/album";
+import { messageHref } from "../../../../lib/slack-archive/anchors";
 import { emojify } from "../../../../lib/slack-archive/emoji";
 import { SlackText } from "../_shared/SlackText";
 import { albumFontVariables } from "./fonts";
@@ -122,7 +123,7 @@ export function AlbumLightbox({
   const failed = failedId === item.id;
   const loaded = loadedId === item.id;
   const channelLabel = channelLabels.get(item.channelId) ?? item.channelId;
-  const conversationHref = `/portal/slack-archive/${encodeURIComponent(item.channelId)}#msg-${item.messageTs}`;
+  const conversationHref = messageHref(item.channelId, item.messageTs);
   const downloadHref = albumMediaHref(item.path, { download: item.name });
   const siblings = item.siblingIds.map((id) => itemsById.get(id)).filter((s): s is AlbumItem => Boolean(s));
   const postedAt = new Date(item.postedAt);

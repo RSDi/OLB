@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Icons } from "../../../components/icons";
 import { Pill } from "../../../components/ui";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
-import type { ArchiveMessage, ArchiveThread } from "../../../../lib/slack-archive/data";
+import type { ArchiveMessage, ArchiveMessageFile, ArchiveThread } from "../../../../lib/slack-archive/data";
 import type { ArchivedFile } from "../../../../lib/slack-archive/files";
+import { albumMediaHref, albumMediaKind, needsPreviewToShow, showsInline, thumbnailPathFor } from "../../../../lib/slack-archive/album";
+import { messageAnchorId, messageHref, messageTsFromHash } from "../../../../lib/slack-archive/anchors";
 import { resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";
 import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
 import { DateJumpCalendar } from "./DateJumpCalendar";
@@ -29,6 +31,20 @@ function previewKind(f: ArchivedFile): PreviewKind | null {
   if (isImageFile(f)) return "image";
   if (isAudioFile(f)) return "audio";
   return null;
+}
+
+function subscribeToHash(onChange: () => void): () => void {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+
+// The message a link opened this page at ("#msg-<ts>": the photo album's
+// "View in conversation", a search result, a copied link). It's shown
+// highlighted for as long as the link points at it. Client-only: the server
+// never sees the hash.
+function useLinkedMessageTs(): string | null {
+  const hash = useSyncExternalStore(subscribeToHash, () => window.location.hash, () => "");
+  return messageTsFromHash(hash);
 }
 
 interface DayGroup {
@@ -78,6 +94,13 @@ export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; 
   const [openDropdown, setOpenDropdown] = useState<null | "author">(null);
 
   const authorCounts = useMemo(() => countAuthors(threads), [threads]);
+  const linkedTs = useLinkedMessageTs();
+
+  // The browser's own jump to the anchor happens before the page is ready
+  // and leaves the message under the sticky bar; center it once it's here.
+  useEffect(() => {
+    if (linkedTs) document.getElementById(messageAnchorId(linkedTs))?.scrollIntoView({ block: "center" });
+  }, [linkedTs]);
 
   // Whole-thread inclusion, not top-level-only: a thread stays visible if
   // ANY message in it (parent or a reply) was authored by someone selected,
@@ -137,7 +160,7 @@ export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; 
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {g.threads.map((t) => (
-                <ThreadCard key={t.parent.id} thread={t} channelId={channelId} />
+                <ThreadCard key={t.parent.id} thread={t} channelId={channelId} linkedTs={linkedTs} />
               ))}
             </div>
           </div>
@@ -147,14 +170,14 @@ export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; 
   );
 }
 
-function ThreadCard({ thread, channelId }: { thread: ArchiveThread; channelId: string }) {
+function ThreadCard({ thread, channelId, linkedTs }: { thread: ArchiveThread; channelId: string; linkedTs: string | null }) {
   return (
     <div className="rsd-card" style={{ padding: "14px 18px", gap: 10 }}>
-      <MessageRow message={thread.parent} channelId={channelId} />
+      <MessageRow message={thread.parent} channelId={channelId} linked={thread.parent.ts === linkedTs} />
       {thread.replies.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginLeft: 20, paddingLeft: 14, borderLeft: "2px solid var(--gw-border)" }}>
           {thread.replies.map((r) => (
-            <MessageRow key={r.id} message={r} channelId={channelId} />
+            <MessageRow key={r.id} message={r} channelId={channelId} linked={r.ts === linkedTs} />
           ))}
         </div>
       )}
@@ -162,14 +185,14 @@ function ThreadCard({ thread, channelId }: { thread: ArchiveThread; channelId: s
   );
 }
 
-function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId: string }) {
+function MessageRow({ message, channelId, linked }: { message: ArchiveMessage; channelId: string; linked: boolean }) {
   const time = new Date(message.posted_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ });
   const messageText = decodeSlackEntities(message.message_text);
-  const [playingFile, setPlayingFile] = useState<ArchivedFile | null>(null);
+  const [playingFile, setPlayingFile] = useState<ArchiveMessageFile | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
   async function copyLink() {
-    const url = `${window.location.origin}/portal/slack-archive/${encodeURIComponent(channelId)}#msg-${message.ts}`;
+    const url = `${window.location.origin}${messageHref(channelId, message.ts)}`;
     try {
       await navigator.clipboard.writeText(url);
       setLinkCopied(true);
@@ -180,8 +203,18 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
     }
   }
 
+  // Photos and videos show in place; everything else is a file chip.
+  const inline = message.files.filter((f) => f.permalink && showsInline(f, Boolean(f.thumb_url)));
+  const chips = message.files.filter((f) => !inline.includes(f));
+  const chip = (f: ArchiveMessageFile) => <FileChip key={f.id} file={f} onPreview={() => setPlayingFile(f)} />;
+  const preview = playingFile ? previewKind(playingFile) : null;
+
   return (
-    <div id={`msg-${message.ts}`} style={{ display: "flex", flexDirection: "column", gap: 4, scrollMarginTop: 16 }}>
+    <div
+      id={messageAnchorId(message.ts)}
+      className={linked ? "rsd-slack-msg is-linked" : "rsd-slack-msg"}
+      style={{ display: "flex", flexDirection: "column", gap: 4, scrollMarginTop: 16 }}
+    >
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>
           {message.author_name ?? "Unknown"}
@@ -208,65 +241,23 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
           <SlackText text={messageText} />
         </div>
       )}
-      {message.files.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {message.files.map((f) => {
-            const chipStyle: React.CSSProperties = {
-              display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 12, fontWeight: 600, color: f.error ? "var(--gw-error)" : "var(--rsd-accent)",
-              background: "var(--gw-bg-elev)",
-              border: `1px solid ${f.error ? "rgba(229,62,62,.25)" : "var(--gw-border)"}`,
-              borderRadius: 8, padding: "4px 10px", textDecoration: "none",
-              cursor: "pointer", font: "inherit",
-            };
-            // A file kept outside Slack (a Google Doc, say) is only a link to
-            // it, so it opens there rather than in the preview overlay.
-            const kind = f.external ? null : previewKind(f);
-            const icon = f.error
-              ? <Icons.AlertCircle width={13} height={13} />
-              : f.external ? <Icons.ExternalLink width={13} height={13} />
-              : kind === "video" ? <Icons.Video width={13} height={13} />
-              : kind === "image" ? <Icons.Image width={13} height={13} />
-              : kind === "audio" ? <Icons.Music width={13} height={13} />
-              : <Icons.FileText width={13} height={13} />;
-            // A handful of degraded Slack file objects (the same ones with no
-            // name/url_private) also lack a permalink — an empty href would
-            // silently reload the page instead of going anywhere, so those
-            // render as plain (non-clickable) text instead of a dead link.
-            if (!f.permalink) {
-              return (
-                <span key={f.id} title={f.error ?? undefined} style={{ ...chipStyle, opacity: 0.7, cursor: "default" }}>
-                  {icon}
-                  {f.name || (f.deleted_in_slack ? "Deleted in Slack" : "(unnamed attachment)")}
-                </span>
-              );
-            }
-            // Images/video/audio preview in an overlay right here instead of
-            // navigating away in a new tab — closing it lands you back in
-            // the same spot in the thread. Everything else (PDFs, docs, …)
-            // still opens in a new tab.
-            if (kind && !f.error) {
-              return (
-                <button key={f.id} type="button" onClick={() => setPlayingFile(f)} title={f.error ?? undefined} style={chipStyle}>
-                  {icon}
-                  {f.name}
-                </button>
-              );
-            }
-            return (
-              <a key={f.id} href={f.permalink} target="_blank" rel="noopener noreferrer" title={f.error ?? undefined} style={chipStyle}>
-                {icon}
-                {f.name}
-              </a>
-            );
-          })}
+      {inline.length > 0 && (
+        <div className="rsd-slack-media-row">
+          {inline.map((f) =>
+            albumMediaKind(f) === "video" ? (
+              <InlineVideo key={f.id} file={f} fallback={chip(f)} />
+            ) : (
+              <InlineImage key={f.id} file={f} onOpen={() => setPlayingFile(f)} fallback={chip(f)} />
+            ),
+          )}
         </div>
       )}
-      {playingFile?.permalink && previewKind(playingFile) && (
+      {chips.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{chips.map(chip)}</div>}
+      {playingFile && preview && (
         <FilePreviewModal
-          src={playingFile.permalink}
+          src={fullSizeSrc(playingFile)}
           title={playingFile.name}
-          kind={previewKind(playingFile)!}
+          kind={preview}
           onClose={() => setPlayingFile(null)}
         />
       )}
@@ -293,5 +284,134 @@ function MessageRow({ message, channelId }: { message: ArchiveMessage; channelId
         </div>
       )}
     </div>
+  );
+}
+
+// What the preview overlay shows: the original through the media route,
+// which signs a fresh URL however long the page has been open. A photo most
+// browsers can't show (HEIC) shows its preview image instead, when it has one.
+function fullSizeSrc(file: ArchiveMessageFile): string {
+  if (!file.storage_path) return file.permalink ?? "";
+  if (file.thumb_url && needsPreviewToShow(file)) return albumMediaHref(thumbnailPathFor(file.storage_path));
+  return albumMediaHref(file.storage_path);
+}
+
+// A photo in place at preview size (its preview image when the thumbnail
+// job has made one, else the original); tap for the full-size view. It loads
+// only as it scrolls into view. Its signed URL lasts an hour, so one that
+// fails (the page was left open) is tried once more through the media
+// route; one that fails there too becomes a file chip.
+function InlineImage({ file, onOpen, fallback }: { file: ArchiveMessageFile; onOpen: () => void; fallback: React.ReactNode }) {
+  const viaRoute = albumMediaHref(file.thumb_url ? thumbnailPathFor(file.storage_path!) : file.storage_path!);
+  const [src, setSrc] = useState(file.thumb_url ?? file.permalink!);
+  const [failed, setFailed] = useState(false);
+  if (failed) return fallback;
+  return (
+    <button type="button" className="rsd-slack-media" onClick={onOpen} title={file.name} aria-label={`View ${file.name}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- a short-lived signed Storage URL, not a static asset next/image can optimize */}
+      <img
+        src={src}
+        alt={file.name}
+        loading="lazy"
+        decoding="async"
+        onError={() => (src === viaRoute ? setFailed(true) : setSrc(viaRoute))}
+      />
+    </button>
+  );
+}
+
+// A video in place: its preview image (or a dark tile) with a play button,
+// and nothing of the video itself is fetched until it's played, so a
+// channel full of videos still loads quickly. It plays through the media
+// route, which signs a fresh URL; one the browser can't play becomes a file
+// chip.
+function InlineVideo({ file, fallback }: { file: ArchiveMessageFile; fallback: React.ReactNode }) {
+  const [playing, setPlaying] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (failed) return fallback;
+  if (playing) {
+    return (
+      <div className="rsd-slack-media is-playing">
+        <video
+          src={albumMediaHref(file.storage_path!)}
+          title={file.name}
+          controls
+          autoPlay
+          playsInline
+          onError={() => setFailed(true)}
+        />
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="rsd-slack-media rsd-slack-media-video"
+      onClick={() => setPlaying(true)}
+      title={file.name}
+      aria-label={`Play ${file.name}`}
+    >
+      {file.thumb_url && !posterFailed ? (
+        // eslint-disable-next-line @next/next/no-img-element -- a short-lived signed Storage URL, not a static asset next/image can optimize
+        <img src={file.thumb_url} alt="" loading="lazy" decoding="async" onError={() => setPosterFailed(true)} />
+      ) : (
+        <span className="rsd-slack-media-blank">{file.name}</span>
+      )}
+      <span className="rsd-slack-media-play" aria-hidden="true">
+        <Icons.Play width={18} height={18} />
+      </span>
+    </button>
+  );
+}
+
+// An attachment as a chip: a failed download or a file with no link is
+// plain text; audio (and a photo or video that can't show in place) opens
+// in the preview overlay; anything else (PDFs, docs, Google files) opens in
+// a new tab.
+function FileChip({ file: f, onPreview }: { file: ArchiveMessageFile; onPreview: () => void }) {
+  const chipStyle: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    fontSize: 12, fontWeight: 600, color: f.error ? "var(--gw-error)" : "var(--rsd-accent)",
+    background: "var(--gw-bg-elev)",
+    border: `1px solid ${f.error ? "rgba(229,62,62,.25)" : "var(--gw-border)"}`,
+    borderRadius: 8, padding: "4px 10px", textDecoration: "none",
+    cursor: "pointer", font: "inherit",
+  };
+  // A file kept outside Slack (a Google Doc, say) is only a link to it, so
+  // it opens there rather than in the preview overlay.
+  const kind = f.external ? null : previewKind(f);
+  const icon = f.error
+    ? <Icons.AlertCircle width={13} height={13} />
+    : f.external ? <Icons.ExternalLink width={13} height={13} />
+    : kind === "video" ? <Icons.Video width={13} height={13} />
+    : kind === "image" ? <Icons.Image width={13} height={13} />
+    : kind === "audio" ? <Icons.Music width={13} height={13} />
+    : <Icons.FileText width={13} height={13} />;
+  // A handful of degraded Slack file objects (the same ones with no
+  // name/url_private) also lack a permalink — an empty href would silently
+  // reload the page instead of going anywhere, so those render as plain
+  // (non-clickable) text instead of a dead link.
+  if (!f.permalink) {
+    return (
+      <span title={f.error ?? undefined} style={{ ...chipStyle, opacity: 0.7, cursor: "default" }}>
+        {icon}
+        {f.name || (f.deleted_in_slack ? "Deleted in Slack" : "(unnamed attachment)")}
+      </span>
+    );
+  }
+  if (kind && !f.error) {
+    return (
+      <button type="button" onClick={onPreview} style={chipStyle}>
+        {icon}
+        {f.name}
+      </button>
+    );
+  }
+  return (
+    <a href={f.permalink} target="_blank" rel="noopener noreferrer" title={f.error ?? undefined} style={chipStyle}>
+      {icon}
+      {f.name}
+    </a>
   );
 }

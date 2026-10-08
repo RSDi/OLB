@@ -29,6 +29,26 @@ export function albumMediaKind(file: Pick<ArchivedFile, "mimetype" | "name">): A
   return null;
 }
 
+// Attachments the channel page shows in place — a photo, a playable video —
+// rather than as a link: stored, downloaded without error, and kept in
+// Slack (an external file like a Google Doc is only a link).
+export function isInlineMedia(file: ArchivedFile): boolean {
+  return Boolean(file.storage_path) && !file.error && !file.external && albumMediaKind(file) !== null;
+}
+
+// Photo formats most browsers can't show (an iPhone's HEIC, TIFF), so the
+// channel page shows them in place only from their preview image.
+const NEEDS_PREVIEW_TYPE = /^image\/(heic|heif|tiff)$/i;
+const NEEDS_PREVIEW_EXT = /\.(heic|heif|tiff?)$/i;
+
+export function needsPreviewToShow(file: Pick<ArchivedFile, "mimetype" | "name">): boolean {
+  return NEEDS_PREVIEW_TYPE.test(file.mimetype ?? "") || NEEDS_PREVIEW_EXT.test(file.name ?? "");
+}
+
+export function showsInline(file: ArchivedFile, hasPreview: boolean): boolean {
+  return isInlineMedia(file) && (hasPreview || !needsPreviewToShow(file));
+}
+
 // Preview thumbnails live in the same private bucket as the originals, under
 // their own top-level prefix, at a path derived from the original's. Finding
 // an item's thumbnail therefore needs no extra column or bookkeeping — and a

@@ -4,6 +4,7 @@
 // rules the album page applies client-side.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import type { ArchivedFile } from "../../lib/slack-archive/files.ts";
 import {
   albumItemMatches,
   albumMediaHref,
@@ -17,6 +18,7 @@ import {
   orderAlbumItems,
   parseAlbumQuery,
   parseAlbumUrlState,
+  showsInline,
   threadParentKey,
   thumbnailPathFor,
   type AlbumFilters,
@@ -276,4 +278,18 @@ test("URL state round-trips, ignoring junk and duplicate values", () => {
     photo: null,
   });
   assert.equal(albumUrlSearch(parseAlbumUrlState({})), "");
+});
+
+test("photos and videos show in place; HEIC only from its preview; failed, external and other files don't", () => {
+  const file = (over: Partial<ArchivedFile>): ArchivedFile => ({
+    id: "F1", name: "IMG_0125.jpg", mimetype: "image/jpeg", size: 1, storage_path: "C1/1.0/F1-IMG_0125.jpg", permalink: null, error: null, ...over,
+  });
+  assert.equal(showsInline(file({}), false), true);
+  assert.equal(showsInline(file({ name: "clip.mov", mimetype: "video/quicktime" }), false), true);
+  assert.equal(showsInline(file({ name: "IMG_1.HEIC", mimetype: "image/heic" }), false), false);
+  assert.equal(showsInline(file({ name: "IMG_1.HEIC", mimetype: "image/heic" }), true), true);
+  assert.equal(showsInline(file({ error: "Download failed: HTTP 404", storage_path: null }), false), false);
+  assert.equal(showsInline(file({ external: true, storage_path: null }), false), false);
+  assert.equal(showsInline(file({ name: "minutes.pdf", mimetype: "application/pdf" }), false), false);
+  assert.equal(showsInline(file({ name: "song.mp3", mimetype: "audio/mpeg" }), false), false);
 });
