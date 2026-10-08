@@ -21,7 +21,7 @@ import {
 } from "../../../lib/requirements/logic";
 import { RequirementDialog } from "./RequirementDialog";
 import { ContactLine, ParentBlock, RequirementChips, TeamPicker, formatDate, muted, playerAddress } from "./_shared/PlayerParts";
-import { ComboSelect, type ComboSelectProps } from "../../components/ComboSelect";
+import { FilterSelect, SegButton } from "../../components/FilterControls";
 import { Pill } from "../../components/ui";
 import { ComposeSheet } from "./_shared/Messaging";
 import { SlackComposeSheet } from "./_shared/SlackMessaging";
@@ -256,7 +256,7 @@ export function PlayersList({
               aria-label="Show a team"
               data-tour="directory-teams"
               active={teamId !== "all"}
-              dot={pickedTeam ? pickedTeam.color : undefined}
+              leading={pickedTeam ? <TeamDot color={pickedTeam.color} /> : undefined}
             >
               <option value="all">All teams</option>
               {teams.map((t) => (
@@ -572,60 +572,6 @@ function RegistrationsLink({ counts }: { counts: { waiting: number; waitlist: nu
       {detail && <span style={{ fontWeight: 600, color: "var(--gw-fg-muted)" }}>{detail}</span>}
       <Icons.ChevronRight width={12} height={12} />
     </Link>
-  );
-}
-
-// The team, age group and requirement filters: a chip-shaped drop-down that
-// fills in once it's narrowing the list, with the picked team's color.
-function FilterSelect({ active, dot, ...props }: ComboSelectProps & { active: boolean; dot?: string | null }) {
-  return (
-    <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-      {dot !== undefined && (
-        <span style={{ position: "absolute", left: 12, display: "flex", pointerEvents: "none", zIndex: 1 }}>
-          <TeamDot color={dot} />
-        </span>
-      )}
-      <ComboSelect
-        {...props}
-        className="rsd-chip rsd-select-sm"
-        style={{
-          height: 34,
-          padding: `0 24px 0 ${dot !== undefined ? 30 : 14}px`,
-          borderRadius: 100,
-          border: "1px solid",
-          borderColor: active ? "var(--rsd-accent-fill)" : "var(--gw-border)",
-          background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
-          color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: "pointer",
-        }}
-      />
-    </span>
-  );
-}
-
-function SegButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      style={{
-        height: 32,
-        padding: "0 14px",
-        borderRadius: 8,
-        border: "none",
-        background: active ? "var(--gw-bg-elev)" : "transparent",
-        boxShadow: active ? "0 1px 2px rgba(0,0,0,.08)" : "none",
-        color: active ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-        fontSize: 12,
-        fontWeight: 700,
-        cursor: "pointer",
-      }}
-    >
-      {label}
-    </button>
   );
 }
 
