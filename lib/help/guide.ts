@@ -216,8 +216,8 @@ The cost is an estimate from the AI's token counts. It doesn't include the small
     body: `This season's players and their parents, grouped by team.
 
 - **Search** by player, parent, email or phone number (type 3 or more digits to match a phone).
-- Tap a **team** chip to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed.
-- Coaches, other team leaders and board members can switch between **By team** and **By age group** (10U–18U).
+- Pick a team from the **All teams** drop-down to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed. The number next to each team is how many players are on it.
+- Coaches, other team leaders and board members can switch between **By team** and **By age group** (10U–18U), then pick one from the **All ages** drop-down.
 - Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A player's own email shows too, unless it's the same as a parent's. A **New** chip means it's their first season with us.
 - Tap an address and pick **Apple Maps** or **Google Maps** to get directions.
 - Tap a player's name to open their player page, a parent's name to open their profile, and **Team page ›** to open a team's full page.
@@ -287,7 +287,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **Approved** lists every registration that's been approved, newest first, with who approved it and when. Tap a name to open the player's page.
 
-**Putting players on teams.** In the Directory, every player has a **Team** drop-down. Pick a team and the player moves there right away. Pick **No team yet** to take them off their team. Tap the **No team yet** chip at the top to see who still needs a team.
+**Putting players on teams.** In the Directory, every player has a **Team** drop-down. Pick a team and the player moves there right away. Pick **No team yet** to take them off their team. Pick **No team yet** from the **All teams** drop-down at the top to see who still needs a team.
 
 **Editing a player.** On a player's page, the **Team** drop-down works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number** and **Age group**. Tap **Save**.
 
@@ -301,7 +301,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "messages sent", "template", "templates", "primary email", "same email", "{player}"],
     body: `You see this if you're on the board or have the **Registrations** permission.
 
-**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: tap a team or **No team yet**, pick an age group, search, or pick a requirement and **Missing** to remind just the families who still need it. The top of the window says who it's going to, and **see who gets it** lists each family.
+**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: pick a team or **No team yet**, pick an age group, search, or pick a requirement and **Missing** to remind just the families who still need it. The top of the window says who it's going to, and **see who gets it** lists each family.
 
 **Email one family.** On a player's page, **Email family** writes to just that player's family.
 
@@ -786,7 +786,7 @@ What you enter here shows on the team's Directory banner and team page. Players 
 - **Offer scan upload** lets the board attach a copy when they check a player off: scanned with the phone's camera, or a photo or PDF.
 - **Active** — untick it to retire a requirement. It leaves the Directory but keeps everyone's record, and you can turn it back on later.
 
-Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
+Use the arrows to change the order (it's the order of the teams in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
   },
   {
     id: "settings-email-templates",
