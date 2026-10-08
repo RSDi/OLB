@@ -217,6 +217,82 @@ main::-webkit-scrollbar-track { background: transparent; }
 .gw-press { transition: background 200ms var(--gw-ease), border-color 200ms var(--gw-ease), color 200ms var(--gw-ease), filter 200ms ease; }
 .gw-press:active { filter: brightness(0.95); }
 
+/* Settings: the grouped side menu beside the open tab (app/portal/settings).
+   On a phone it's one bar naming the open tab, whose "Change" opens the
+   same menu full screen. */
+.rsd-settings { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; align-items: start; }
+.rsd-settings-nav {
+  position: sticky; top: 16px; max-height: calc(100vh - 120px); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 16px; padding: 4px 4px 12px 0;
+}
+.rsd-settings-nav > * { flex-shrink: 0; }
+.rsd-settings-filter {
+  width: 100%; height: 36px; padding: 0 12px; font-size: 13px;
+  color: var(--gw-fg); background: var(--gw-bg-elev);
+  border: 1px solid var(--gw-border); border-radius: 8px; outline: none;
+}
+.rsd-settings-filter:focus { border-color: var(--rsd-accent); }
+.rsd-settings-empty { font-size: 13px; color: var(--gw-fg-muted); padding: 0 4px; }
+.rsd-settings-group { display: flex; flex-direction: column; gap: 6px; }
+.rsd-settings-group-label { padding: 0 10px; }
+.rsd-settings-items { display: flex; flex-direction: column; gap: 1px; }
+.rsd-settings-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  text-align: left; padding: 7px 10px; border-radius: 8px; cursor: pointer;
+  background: transparent; border: 1px solid transparent;
+  font-size: 13px; font-weight: 700; color: var(--gw-fg-muted);
+}
+.rsd-settings-item:hover { color: var(--gw-fg); background: var(--gw-bg-elev); }
+.rsd-settings-item.is-active {
+  color: var(--gw-fg); background: var(--gw-bg-elev); border-color: var(--gw-border);
+  box-shadow: inset 3px 0 0 var(--rsd-accent);
+}
+.rsd-settings-picker, .rsd-settings-sheet { display: none; }
+@media (max-width: 767px) {
+  .rsd-settings { grid-template-columns: 1fr; gap: 14px; }
+  .rsd-settings-nav { display: none; }
+  .rsd-settings-picker {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 12px 14px; border-radius: 12px; cursor: pointer; text-align: left;
+    background: var(--gw-bg-elev); border: 1px solid var(--gw-border); color: var(--gw-fg);
+  }
+  .rsd-settings-picker-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .rsd-settings-picker-name { font-size: 17px; font-weight: 800; line-height: 1.15; }
+  .rsd-settings-picker-change { font-size: 13px; font-weight: 700; color: var(--gw-fg-muted); white-space: nowrap; }
+  /* Over the page and its backdrop (1100), under the sidebar drawer (1200),
+     the "i" panel (1400) and the guided tour (1500). */
+  .rsd-settings-sheet {
+    display: flex; flex-direction: column; position: fixed; inset: 0; z-index: 1150;
+    background: var(--gw-bg);
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .rsd-settings-sheet-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 10px; font-size: 17px; font-weight: 800; color: var(--gw-fg);
+  }
+  .rsd-settings-sheet-head button {
+    background: none; border: 0; padding: 8px 4px; cursor: pointer;
+    font-size: 15px; font-weight: 700; color: var(--gw-fg-muted);
+  }
+  .rsd-settings-sheet-body {
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+    padding: 0 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+  .rsd-settings-sheet-body > * { flex-shrink: 0; }
+  .rsd-settings-sheet .rsd-settings-filter { height: 44px; font-size: 16px; border-radius: 10px; }
+  .rsd-settings-sheet .rsd-settings-group-label { padding: 0 4px; }
+  .rsd-settings-sheet .rsd-settings-items {
+    gap: 0; border-radius: 12px; overflow: hidden;
+    background: var(--gw-bg-elev); border: 1px solid var(--gw-border);
+  }
+  .rsd-settings-sheet .rsd-settings-item {
+    padding: 13px 14px; border: 0; border-radius: 0; font-size: 15px;
+    color: var(--gw-fg); border-top: 1px solid var(--gw-border);
+  }
+  .rsd-settings-sheet .rsd-settings-item:first-child { border-top: 0; }
+  .rsd-settings-sheet .rsd-settings-item.is-active { box-shadow: none; background: transparent; }
+}
+
 .rsd-eyebrow {
   font-weight: 700;
   font-size: 11px;
