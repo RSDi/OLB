@@ -587,7 +587,7 @@ function FilterSelect({ active, dot, ...props }: ComboSelectProps & { active: bo
       )}
       <ComboSelect
         {...props}
-        className="rsd-chip"
+        className="rsd-chip rsd-select-sm"
         style={{
           height: 34,
           padding: `0 24px 0 ${dot !== undefined ? 30 : 14}px`,

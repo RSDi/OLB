@@ -207,6 +207,7 @@ export function TeamPicker({
         value={value}
         onChange={(e) => change(e.target.value)}
         disabled={busy}
+        className="rsd-select-sm"
         style={{
           height: 32,
           padding: "0 10px",
