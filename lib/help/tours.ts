@@ -579,7 +579,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "members-row",
         title: "Each person",
-        body: "On **Pending**, **Approve** lets them in and emails them a sign-in link, and **Deny** turns them away. Super-admins also change the **role** here, tap **Edit** to change a profile (or **Revoke login**), and turn on a board member's **Edit** / **Delete** chips for Settings powers, like Requirements.",
+        body: "On **Pending**, **Approve** lets them in and emails them a sign-in link, and **Deny** turns them away. Super-admins also change the **role** here, tap **Edit** to change a profile (or **Revoke login**), and tap **Access** to choose what someone can manage, like **Payments** or **Slack DMs**, and a board member's Settings powers.",
       },
       {
         target: "members-add",
