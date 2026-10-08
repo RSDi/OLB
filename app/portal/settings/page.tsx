@@ -40,6 +40,7 @@ import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { WebsiteTab } from "./WebsiteTab";
 import { AccessProfilesTab } from "./AccessProfilesTab";
 import { usePageHelp } from "../../components/PageHelp";
+import { Icons } from "../../components/icons";
 
 // Staged rollout: the tabs released to everyone who can open Settings, and
 // the extra ones released to super-admins only. The rest stay with the
@@ -197,6 +198,24 @@ export default function SettingsPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [fullUi, setFullUi] = useState(false);
   const [filter, setFilter] = useState("");
+  // The phone's full-screen menu.
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // While the phone menu is open, the page behind it stays put and Esc
+  // closes it.
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSheetOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [sheetOpen]);
 
   useEffect(() => {
     (async () => {
@@ -245,6 +264,7 @@ export default function SettingsPage() {
   const openTab = (key: Tab) => {
     setTab(key);
     setFilter("");
+    setSheetOpen(false);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", key);
     window.history.replaceState(window.history.state, "", url);
@@ -307,49 +327,95 @@ export default function SettingsPage() {
   // at all when that leaves just one.
   if (shownTabs.length <= 1) return content;
 
+  const current = shownTabs.find((t) => t.key === tab);
+
+  // The filter box and the grouped list, shared by the side menu and the
+  // phone's full-screen list. `data-tour` sits on both copies; tours point at
+  // whichever is showing.
+  const menu = (phone: boolean) => (
+    <>
+      <input
+        type="search"
+        className="rsd-settings-filter"
+        placeholder="Find a setting…"
+        aria-label="Find a setting"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setFilter("");
+          // Enter opens the only (or first) match.
+          if (e.key === "Enter" && matching[0]) openTab(matching[0].key);
+        }}
+      />
+      {matching.length === 0 && <div className="rsd-settings-empty">No settings match “{filter.trim()}”.</div>}
+      {GROUPS.map((g) => {
+        const items = matching.filter((t) => t.group === g);
+        if (items.length === 0) return null;
+        return (
+          <div key={g} className="rsd-settings-group">
+            <div className="rsd-eyebrow rsd-settings-group-label">{g}</div>
+            <div className="rsd-settings-items">
+              {items.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => openTab(t.key)}
+                  data-tour={t.tour}
+                  aria-current={tab === t.key ? "page" : undefined}
+                  className={`gw-press rsd-settings-item${tab === t.key ? " is-active" : ""}`}
+                >
+                  {t.label}
+                  {phone && tab === t.key && <Icons.Check width={16} height={16} />}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+
   return (
     <div className="rsd-settings">
       {/* The side menu: the tabs sorted into groups, with a box that
-          narrows them by name. On a phone it sits above the tab instead. */}
+          narrows them by name. Hidden on a phone. */}
       <nav className="rsd-settings-nav" data-tour="settings-tabs" aria-label="Settings">
-        <input
-          type="search"
-          className="rsd-settings-filter"
-          placeholder="Find a setting…"
-          aria-label="Find a setting"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setFilter("");
-            // Enter opens the only (or first) match.
-            if (e.key === "Enter" && matching[0]) openTab(matching[0].key);
-          }}
-        />
-        {matching.length === 0 && <div className="rsd-settings-empty">No settings match “{filter.trim()}”.</div>}
-        {GROUPS.map((g) => {
-          const items = matching.filter((t) => t.group === g);
-          if (items.length === 0) return null;
-          return (
-            <div key={g} className="rsd-settings-group">
-              <div className="rsd-eyebrow rsd-settings-group-label">{g}</div>
-              <div className="rsd-settings-items">
-                {items.map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => openTab(t.key)}
-                    data-tour={t.tour}
-                    aria-current={tab === t.key ? "page" : undefined}
-                    className={`gw-press rsd-settings-item${tab === t.key ? " is-active" : ""}`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        {menu(false)}
       </nav>
+      {/* Phone: one bar naming the open tab; "Change" opens the menu full
+          screen. `data-tour-reveals` lets a tour open it to reach a tab. */}
+      <button
+        type="button"
+        className="gw-press rsd-settings-picker"
+        data-tour="settings-tabs"
+        data-tour-reveals="settings-tab-"
+        aria-haspopup="dialog"
+        aria-expanded={sheetOpen}
+        onClick={() => setSheetOpen(true)}
+      >
+        <span className="rsd-settings-picker-text">
+          <span className="rsd-eyebrow">{current?.group}</span>
+          <span className="rsd-settings-picker-name">{current?.label ?? "Settings"}</span>
+        </span>
+        <span className="rsd-settings-picker-change">Change ›</span>
+      </button>
+      {sheetOpen && (
+        <div
+          className="rsd-settings-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Settings"
+          data-tour-revealed="settings-tab-"
+        >
+          <div className="rsd-settings-sheet-head">
+            <span>Settings</span>
+            <button type="button" className="gw-press" data-tour-close="" onClick={() => setSheetOpen(false)}>
+              Done
+            </button>
+          </div>
+          <div className="rsd-settings-sheet-body">{menu(true)}</div>
+        </div>
+      )}
       <div className="rsd-settings-body">{content}</div>
     </div>
   );

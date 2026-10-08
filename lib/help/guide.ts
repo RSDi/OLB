@@ -693,7 +693,7 @@ Activity is recorded from the day this page went live.`,
     keywords: ["settings", "menu", "find a setting", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages", "slack dms", "slack", "website", "access", "permissions", "roles & access", "table", "profile", "access profile", "extras"],
     body: `Where new sign-ups are approved and member accounts are managed.
 
-**Finding your way around Settings.** The menu down the left side sorts Settings into groups: **People & Access**, **Facilities & Equipment**, **Work & Events**, **Communication**, **Website & Portal** and **System**. Type in **Find a setting…** at the top to narrow the menu (try "email" or "roles"), and press Enter to open the first match. The address bar keeps the page you're on, so you can bookmark it or send someone the link. On a phone, the menu sits above the page.
+**Finding your way around Settings.** The menu down the left side sorts Settings into groups: **People & Access**, **Facilities & Equipment**, **Work & Events**, **Communication**, **Website & Portal** and **System**. Type in **Find a setting…** at the top to narrow the menu (try "email" or "roles"), and press Enter to open the first match. The address bar keeps the page you're on, so you can bookmark it or send someone the link. On a phone, the bar at the top names the page you're on; tap **Change ›** to open the full menu, then pick a page or tap **Done**.
 
 **The red badge** on **Settings** in the sidebar counts access requests waiting for you.
 

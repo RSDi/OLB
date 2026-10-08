@@ -67,6 +67,28 @@ function pickFirstOption(el: HTMLElement) {
   select.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+// A menu that hides its items until opened (Settings' full-screen menu on a
+// phone) marks its opener `data-tour-reveals="<prefix>"`, and the open menu
+// `data-tour-revealed="<prefix>"` with a `data-tour-close` button inside. A
+// step whose element starts with the prefix opens the menu to reach it; any
+// other step closes the menu so it isn't covering the page.
+function findRevealer(target: string): HTMLElement | null {
+  for (const el of document.querySelectorAll<HTMLElement>("[data-tour-reveals]")) {
+    const prefix = el.dataset.tourReveals;
+    const r = el.getBoundingClientRect();
+    if (prefix && target.startsWith(prefix) && r.width > 0 && r.height > 0) return el;
+  }
+  return null;
+}
+
+function closeRevealedMenus(step: { target?: string; click?: string }) {
+  for (const menu of document.querySelectorAll<HTMLElement>("[data-tour-revealed]")) {
+    const prefix = menu.dataset.tourRevealed ?? "";
+    const wanted = [step.target, step.click].some((id) => id?.startsWith(prefix));
+    if (!wanted) menu.querySelector<HTMLElement>("[data-tour-close]")?.click();
+  }
+}
+
 // A marked wrapper around a button clicks the button inside it.
 function press(el: HTMLElement) {
   const inner = el.matches("button, a, [role=button]") ? el : el.querySelector<HTMLElement>("button, a, [role=button]");
@@ -196,11 +218,13 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
       const closer = findTarget(step.dismiss);
       if (closer) press(closer);
     }
+    closeRevealedMenus(step);
     if (!step.target) return;
     const target = step.target;
     let deadline = Math.max(Date.now() + SETTLED_WAIT_MS, lastNavAt.current + AFTER_NAV_WAIT_MS);
     let clicked = false;
     let picked = false;
+    let revealed = false;
     let timer: ReturnType<typeof setTimeout>;
     const look = () => {
       if (forward && step.pick && !picked) {
@@ -226,6 +250,18 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
           return out;
         });
         return;
+      }
+      // The element (or the one to click) is in a closed menu: open it.
+      if (!revealed) {
+        const revealer = [target, forward && !clicked ? step.click : undefined]
+          .map((id) => (id && !findTarget(id) ? findRevealer(id) : null))
+          .find((el) => el);
+        if (revealer) {
+          press(revealer);
+          revealed = true;
+          timer = setTimeout(look, 100);
+          return;
+        }
       }
       if (forward && step.click && !clicked) {
         const opener = findTarget(step.click);
