@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { Footer } from "./_components/Footer";
 import { Header } from "./_components/Header";
-import { getSiteContent, getSiteMenu } from "../../lib/website/queries";
+import { PreviewBar } from "./_components/PreviewBar";
+import { getPreviewState, getSiteContent, getSiteMenu } from "../../lib/website/queries";
 import styles from "./_components/site.module.css";
 
 const poppins = Poppins({
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   // The menu and footer words from Settings → Website.
-  const [menu, content] = await Promise.all([getSiteMenu(), getSiteContent()]);
+  const [menu, content, preview] = await Promise.all([getSiteMenu(), getSiteContent(), getPreviewState()]);
   return (
     <div className={`${poppins.className} ${styles.site}`}>
       <Header menu={menu} />
@@ -31,6 +32,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         {children}
       </main>
       <Footer verse={content.text("footer.verse")} tagline={content.text("footer.tagline")} />
+      {preview.enabled && <PreviewBar changes={preview.changes} />}
     </div>
   );
 }

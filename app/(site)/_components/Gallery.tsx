@@ -43,7 +43,7 @@ export function Gallery({
         <div className={styles.galleryColumns} style={cssVars({ "--gutter": gutter })}>
           {columns.map((column, i) => (
             <div key={i} className={styles.galleryColumn}>
-              {column.map((image) => {
+              {column.map((image, j) => {
                 const img = (
                   <Image
                     src={image.src}
@@ -52,10 +52,10 @@ export function Gallery({
                     className={styles.galleryItem}
                   />
                 );
-                if (!image.href) return <div key={image.src.src}>{img}</div>;
+                if (!image.href) return <div key={j}>{img}</div>;
                 return (
                   <a
-                    key={image.src.src}
+                    key={j}
                     href={image.href}
                     {...(image.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   >

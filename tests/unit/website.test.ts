@@ -134,3 +134,165 @@ test("every editable spot has a unique key the database accepts", () => {
   assert.equal(new Set(keys).size, keys.length);
   for (const k of keys) assert.match(k, /^[a-z0-9_.-]+$/);
 });
+
+// ─── Part 2: buttons, lists, new pages, drafts and preview ──────────────────
+
+import { readdirSync } from "node:fs";
+import {
+  cleanImageRef,
+  cleanLink,
+  cleanList,
+  isValidSlug,
+  normalizeSlug,
+  parseLink,
+  parseList,
+  RESERVED_SLUGS,
+  type ListField,
+} from "../../lib/website/content.ts";
+import { menuFromInput } from "../../lib/website/menu.ts";
+import { rehypeListParagraphs, rehypeSubheadingSpace } from "../../lib/website/markdown.ts";
+import { previewPath } from "../../lib/website/preview-path.ts";
+
+const PREFIX = "https://abc.supabase.co/storage/v1/object/public/site-images/";
+
+test("buttons: words required, links checked; a bad saved one reads as unset", () => {
+  assert.deepEqual(cleanLink({ label: " Donate ", href: "contact" }), { value: { label: "Donate", href: "/contact" } });
+  assert.ok("error" in cleanLink({ label: "", href: "/contact" }));
+  assert.ok("error" in cleanLink({ label: "Go", href: "javascript:alert(1)" }));
+  assert.deepEqual(parseLink(JSON.stringify({ label: "Go", href: "/x" })), { label: "Go", href: "/x" });
+  assert.equal(parseLink(JSON.stringify({ label: "Go", href: "javascript:alert(1)" })), null);
+  assert.equal(parseLink("junk"), null);
+});
+
+test("pictures in lists: the site's own, or uploads to this project's bucket", () => {
+  assert.deepEqual(cleanImageRef({ builtin: "coach-a", alt: " A " }, PREFIX, ["coach-a"]), { value: { builtin: "coach-a", alt: "A" } });
+  assert.ok("error" in cleanImageRef({ builtin: "nope", alt: "" }, PREFIX, ["coach-a"]));
+  assert.ok("error" in cleanImageRef({ url: "https://evil.com/a.jpg", width: 1, height: 1, alt: "" }, PREFIX, []));
+});
+
+const COACH_FIELDS: ListField[] = [
+  { name: "name", label: "Name", type: "text", required: true, max: 80 },
+  { name: "photo", label: "Photo", type: "image", required: true },
+  { name: "link", label: "Web address", type: "url" },
+  { name: "bio", label: "Bio", type: "markdown" },
+];
+const rules = (fields: ListField[], max = 10) => ({ fields, itemName: "coach", max, prefix: PREFIX, builtinIds: ["coach-a"] });
+
+test("lists: tidied, and each problem names the item", () => {
+  const ok = cleanList(
+    [{ name: " Sam ", photo: { builtin: "coach-a", alt: "" }, link: "www.example.com", bio: " Hi\r\nthere " }],
+    rules(COACH_FIELDS),
+  );
+  assert.deepEqual(ok, {
+    value: [{ name: "Sam", photo: { builtin: "coach-a", alt: "" }, link: "https://www.example.com/", bio: "Hi\nthere" }],
+  });
+  assert.deepEqual(cleanList([], rules(COACH_FIELDS)), { value: [] });
+  assert.match((cleanList([{ name: "", photo: null }], rules(COACH_FIELDS)) as { error: string }).error, /Name on Coach 1 is empty/);
+  assert.match((cleanList([{ name: "Sam", photo: null }], rules(COACH_FIELDS)) as { error: string }).error, /"Sam" needs a picture/);
+  assert.match(
+    (cleanList([{ name: "Sam", photo: { builtin: "coach-a", alt: "" }, link: "ftp://x" }], rules(COACH_FIELDS)) as { error: string }).error,
+    /Web address on "Sam"/,
+  );
+  assert.match((cleanList([{ name: "A\nB", photo: { builtin: "coach-a", alt: "" } }], rules(COACH_FIELDS)) as { error: string }).error, /single line/);
+  assert.match((cleanList([{}, {}], rules(COACH_FIELDS, 1)) as { error: string }).error, /up to 1/);
+});
+
+const PAGE_FIELDS: ListField[] = [
+  { name: "title", label: "Title", type: "text", required: true },
+  { name: "slug", label: "Address", type: "slug", required: true },
+  { name: "body", label: "Page text", type: "markdown", required: true },
+];
+
+test("new pages: addresses are tidied, unique, and can't take the site's own", () => {
+  assert.equal(normalizeSlug("  Fall Camp 2026! "), "fall-camp-2026");
+  assert.equal(normalizeSlug("/Coach's Corner"), "coachs-corner");
+  assert.ok(isValidSlug("fall-camp"));
+  assert.ok(!isValidSlug("coaches"));
+  assert.ok(!isValidSlug("portal"));
+  const page = (slug: string) => ({ title: "T", slug, body: "B" });
+  assert.deepEqual(cleanList([page("Fall Camp")], rules(PAGE_FIELDS)), { value: [page("fall-camp")] });
+  assert.match((cleanList([page("coaches")], rules(PAGE_FIELDS)) as { error: string }).error, /already has a page at \/coaches/);
+  assert.match((cleanList([page("a"), page("A")], rules(PAGE_FIELDS)) as { error: string }).error, /Two pages have the address \/a/);
+  assert.match((cleanList([page("!!!")], rules(PAGE_FIELDS)) as { error: string }).error, /needs letters or numbers/);
+});
+
+test("every top-level route and old redirect is a reserved page address", () => {
+  const app = join(import.meta.dirname, "../../app");
+  const dirs = new Set<string>();
+  // Folders with a page or route handler somewhere inside (app/components
+  // is code, not a route).
+  const hasRoute = (dir: string): boolean =>
+    readdirSync(dir, { withFileTypes: true }).some((e) =>
+      e.isDirectory() ? hasRoute(join(dir, e.name)) : /^(page|route)\.tsx?$/.test(e.name),
+    );
+  const walk = (dir: string) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (!e.isDirectory() || e.name.startsWith("_") || e.name.startsWith("[")) continue;
+      if (e.name.startsWith("(")) walk(join(dir, e.name));
+      else if (hasRoute(join(dir, e.name))) dirs.add(e.name);
+    }
+  };
+  walk(app);
+  const config = readFileSync(join(import.meta.dirname, "../../next.config.ts"), "utf8");
+  for (const m of config.matchAll(/source: "\/([a-z0-9-]+)"/g)) dirs.add(m[1]);
+  for (const d of dirs) assert.ok(RESERVED_SLUGS.includes(d), `/${d} should be in RESERVED_SLUGS`);
+});
+
+test("a saved list that isn't a list reads as unset", () => {
+  assert.equal(parseList("junk"), null);
+  assert.equal(parseList(JSON.stringify({ a: 1 })), null);
+  assert.deepEqual(parseList(JSON.stringify([{ a: "1" }, 3, null])), [{ a: "1" }]);
+});
+
+test("a draft menu shows as saved, with bad links dropped", () => {
+  assert.deepEqual(
+    menuFromInput([
+      { label: "About", href: "", children: [{ label: "History", href: "/history" }, { label: "Bad", href: "javascript:x" }] },
+      { label: "Coaches", href: "/coaches", children: [] },
+      { label: "Handbook", href: "https://drive.google.com/x", children: [] },
+      { label: "Broken", href: "javascript:x", children: [] },
+    ]),
+    [
+      { label: "About", children: [{ label: "History", href: "/history" }] },
+      { label: "Coaches", href: "/coaches" },
+      { label: "Handbook", href: "https://drive.google.com/x", external: true },
+    ],
+  );
+  assert.equal(menuFromInput([]), null);
+});
+
+type Node = { type: string; tagName?: string; value?: string; properties?: object; children?: Node[] };
+const p = (...children: Node[]): Node => ({ type: "element", tagName: "p", properties: {}, children });
+const strong = (t: string): Node => ({ type: "element", tagName: "strong", properties: {}, children: [{ type: "text", value: t }] });
+const txt = (t: string): Node => ({ type: "text", value: t });
+const tags = (tree: Node) => (tree.children ?? []).filter((n) => n.type === "element").map((n) => (n.children?.length ? n.tagName : "spacer"));
+
+test("a bold line on its own gets space above it, but not at the top or in a run", () => {
+  const tree: Node = {
+    type: "root",
+    children: [p(strong("Top")), txt("\n"), p(txt("Para")), p(strong("-God-")), p(strong("-Family-")), { type: "element", tagName: "ul", children: [txt("x")] }, p(strong("Fee"))],
+  };
+  rehypeSubheadingSpace()(tree as never);
+  assert.deepEqual(tags(tree), ["p", "p", "spacer", "p", "p", "ul", "spacer", "p"]);
+});
+
+test("preview only ever sends the editor to a page on this site", () => {
+  assert.equal(previewPath("/coaches"), "/coaches");
+  assert.equal(previewPath("/fall-camp?x=1"), "/fall-camp?x=1");
+  for (const bad of [null, "", "https://evil.com", "//evil.com", "/\\evil.com", "/portal/settings", "/api/x", "coaches"]) {
+    assert.equal(previewPath(bad), "/", String(bad));
+  }
+});
+
+test("list items always hold a paragraph, like the original pages' lists", () => {
+  const li = (...children: Node[]): Node => ({ type: "element", tagName: "li", properties: {}, children });
+  const tree: Node = {
+    type: "root",
+    children: [{ type: "element", tagName: "ul", properties: {}, children: [txt("\n"), li(strong("Tight")), txt("\n"), li(txt("\n"), p(strong("Loose")), txt("\n"))] }],
+  };
+  rehypeListParagraphs()(tree as never);
+  const [tight, loose] = (tree.children![0].children ?? []).filter((n) => n.tagName === "li");
+  assert.deepEqual(tight.children!.map((n) => n.tagName), ["p"]);
+  assert.deepEqual(tight.children![0].children!.map((n) => n.tagName), ["strong"]);
+  assert.deepEqual(loose.children!.filter((n) => n.type === "element").map((n) => n.tagName), ["p"]);
+});

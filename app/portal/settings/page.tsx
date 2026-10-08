@@ -127,8 +127,10 @@ export default function SettingsPage() {
       setUserId(user.id);
       setFullUi(seesFullUi(user.email));
       // All board staff land on Members — any of them can work the
-      // approval queue (D1).
-      setTab("members");
+      // approval queue (D1) — unless a link asks for the Website tab (the
+      // public site's preview bar links here to publish).
+      const wanted = new URLSearchParams(window.location.search).get("tab");
+      setTab(wanted === "website" && canManageWebsite(memberLike) ? "website" : "members");
       setAuthChecked(true);
     })();
   }, [router]);

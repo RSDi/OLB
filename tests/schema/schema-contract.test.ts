@@ -106,6 +106,8 @@ const CONTRACT: Record<string, string> = {
   // Settings → Website (0120): the public site's menu and edited spots.
   site_menu_items: "id,parent_id,label,href,sort_order,updated_at,updated_by",
   site_content: "key,value,updated_at,updated_by",
+  // Unpublished changes (0121).
+  site_drafts: "key,value,updated_at,updated_by",
   // Activity page + "Preview as" (0099).
   member_audit_log: "id,member_id,changed_by,changed_at,action,old_data,new_data,impersonator_user_id",
   activity_events:

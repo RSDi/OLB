@@ -771,28 +771,39 @@ Use the arrows to change the order (it's the order of the chips in the Directory
     title: "Settings: Website",
     group: "Settings",
     audience: "website",
-    keywords: ["website", "public site", "club website", "menu", "navigation", "nav", "folder", "page text", "words", "wording", "pictures", "photos", "images", "upload", "flyer", "banner", "footer", "home page", "philosophy", "history", "summer", "reset", "original", "description"],
-    body: `Change the public club website without a developer: the menu across the top, and the words and pictures on its pages. Open **Settings → Website**. Super-admins can always use it; a super-admin turns it on for a board member with **Website** next to **Settings:** in **Settings → Members**.
+    keywords: ["website", "public site", "club website", "menu", "navigation", "nav", "folder", "page text", "words", "wording", "pictures", "photos", "images", "upload", "flyer", "banner", "footer", "home page", "philosophy", "history", "summer", "programs", "coaches", "sponsors", "logos", "buttons", "new page", "add a page", "address", "draft", "preview", "publish", "discard", "reset", "original", "description"],
+    body: `Change the public club website without a developer: the menu across the top, the words, pictures and buttons on its pages, the lists of programs, coaches and sponsors, and pages of your own. Open **Settings → Website**. Super-admins can always use it; a super-admin turns it on for a board member with **Website** next to **Settings:** in **Settings → Members**.
 
-Everything you save is on the site straight away. **View site** opens it in a new tab so you can check.
+**Draft, preview, publish**
+
+Nothing you save goes on the site straight away. Every **Save draft** keeps your change as a draft, and the box at the top lists your unpublished changes.
+
+- **Preview** opens the site in a new tab with your drafts in place. Only people with the Website permission can see them; a black bar at the bottom says you're previewing. **Exit preview** goes back to the live site.
+- **Publish** puts every draft on the live site at once.
+- The **×** on a change throws that draft away; **Discard all** throws them all away.
+- Each spot says **Draft**, **Published** (changed and live) or **Original** (the website's own). On the **Pages** tab, ◆ on a page's name means it has unpublished changes and • means it has published ones.
 
 **Menu**
 
 - Each item is a **link**, or a **folder** that opens to show its own links (like About → Philosophy, History).
-- **Goes to** is a page on the site, like **/coaches** (pick from the list as you type), or any web address, like a Google Drive file. Web addresses open in a new tab.
+- **Goes to** is a page on the site, like **/coaches** or one of your new pages (pick from the list as you type), or any web address, like a Google Drive file. Web addresses open in a new tab.
 - The arrows move an item up or down; the **trash** can removes it. **Add link** and **Add folder** add one at the bottom; **Add link to …** adds one inside a folder.
-- Nothing changes on the site until you tap **Save menu**. **Discard changes** throws away what you haven't saved.
-- **Reset to original** puts back the menu the website started with.
+- Tap **Save draft** when you're done. **Discard changes** throws away what you haven't saved.
+- **Reset to original** saves a draft that puts back the menu the website started with.
 
 **Pages**
 
-Pick a page (**Home**, **Philosophy**, **History**, **Summer**, or **Footer** for the bottom of every page), then change any of the spots listed. Spots you've changed are marked **Edited**; the rest say **Original**, and a dot on a page's name means something on it has been changed.
+Pick a page (**Home**, **Philosophy**, **History**, **Summer**, **Programs**, **Coaches**, **Sponsors**, **Footer** for the bottom of every page, or **New pages**), then change any of the spots listed. **Preview this page** opens it with your drafts.
 
-- **Text**: type the new words and tap **Save**. In the bigger boxes, leave a blank line between paragraphs. **\*\*bold\*\***, **\*italic\***, **[link words](/philosophy)** and lines starting with a dash (**-**) for a list all work.
-- **Pictures**: tap **Upload new picture** and choose a JPEG, PNG, WebP or GIF up to 10 MB (iPhone HEIC photos: export them as JPEG first). Fill in **Description** first: it's read aloud to people who can't see the picture. To change only the description of a picture you've uploaded, edit it and tap **Save description**.
-- **Reset to original** puts the website's own words or picture back for that spot.
+- **Text**: type the new words and tap **Save draft**. In the bigger boxes, leave a blank line between paragraphs. **\\*\\*bold\\*\\***, **\\*italic\\***, **[link words](/philosophy)** and lines starting with a dash (**-**) for a list all work. A bold line on its own gets a little space above it, like a heading.
+- **Pictures**: tap **Upload new picture** and choose a JPEG, PNG, WebP or GIF up to 10 MB (iPhone HEIC photos: export them as JPEG first). Fill in **Description** first: it's read aloud to people who can't see the picture.
+- **Buttons**: change the **Words on the button** and where it **Goes to**.
+- **Lists** (the programs, coaches and sponsors): tap one to open it and change it; the arrows reorder, the **trash** can removes one, and **Add program**, **Add coach** or **Add sponsor** adds one at the bottom. Then **Save draft**. Once the coaches list has been changed, the Coaches page shows them in two even columns rather than the original staggered layout.
+- **Reset to original** saves a draft that puts the website's own words, picture or list back for that spot.
 
-Not every part of the site can be changed here yet; more pages will follow.`,
+**New pages**
+
+Make a page of your own, like a fall camp or a tryouts page. Under **Pages → New pages**, tap **Add page** and fill in its **Title**, its **Address** (filled in from the title: Fall Camp makes **/fall-camp**), an optional **Banner picture**, and the **Page text**. Save the draft, preview it, publish it, then add it to the **Menu** so people can find it. An address the site already uses can't be taken. Delete a page from the list (and publish) to take it down.`,
   },
   {
     id: "settings-planning-roles",

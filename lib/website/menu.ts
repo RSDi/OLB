@@ -116,6 +116,27 @@ export interface MenuInput {
   children: { label: string; href: string }[];
 }
 
+// A menu as the editor saves it (a draft) → the menu the header shows. Null
+// if nothing usable is left. Hrefs are checked again, so a bad draft can't
+// put a bad link on the page.
+export function menuFromInput(input: MenuInput[]): NavItem[] | null {
+  if (!Array.isArray(input)) return null;
+  const items: NavItem[] = [];
+  for (const m of input) {
+    if (!m || typeof m.label !== "string" || !m.label.trim()) continue;
+    const children = (Array.isArray(m.children) ? m.children : [])
+      .map((c) => ({ label: typeof c?.label === "string" ? c.label : "", href: normalizeMenuHref(c?.href ?? "") }))
+      .filter((c): c is { label: string; href: string } => !!c.label.trim() && !!c.href)
+      .map((c) => link(c.label, c.href));
+    if (children.length) items.push({ label: m.label, children });
+    else {
+      const href = normalizeMenuHref(m.href ?? "");
+      if (href && !(Array.isArray(m.children) && m.children.length)) items.push(link(m.label, href));
+    }
+  }
+  return items.length ? items : null;
+}
+
 export function menuToInput(menu: NavItem[]): MenuInput[] {
   return menu.map((item) =>
     isFolder(item)
