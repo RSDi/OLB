@@ -1,11 +1,12 @@
 "use server";
 
 // Settings → Public Directory: the key in the public Directory's link
-// (/directory/<key>, migration 0119). Super-admins only. The table has no
-// RLS policies, so these go through the service role after the check.
+// (/directory/<key>, migration 0119). Super-admins, and anyone with the
+// Sidebar Links & Public Directory permission (0123). The table has no RLS
+// policies, so these go through the service role after the check.
 
 import { revalidatePath } from "next/cache";
-import { requireSuperAdmin } from "../auth/guards";
+import { requireSiteLinks } from "../auth/guards";
 import { createAdminClient } from "../supabase/admin";
 import { loadNames } from "./registration-data";
 import { keyProblem, randomKey } from "./public-directory-key";
@@ -17,7 +18,7 @@ export interface PublicDirectorySetting {
 }
 
 export async function loadPublicDirectorySetting(): Promise<PublicDirectorySetting | { error: string }> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireSiteLinks();
   if ("error" in gate) return { error: gate.error };
   const { data, error } = await createAdminClient()
     .from("public_directory_link")
@@ -34,7 +35,7 @@ export async function loadPublicDirectorySetting(): Promise<PublicDirectorySetti
 }
 
 async function save(key: string | null): Promise<{ key: string | null } | { error: string }> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireSiteLinks();
   if ("error" in gate) return { error: gate.error };
   if (key !== null) {
     const problem = keyProblem(key);

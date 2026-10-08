@@ -22,6 +22,11 @@ import {
   canManageTravel,
   canSlackDm,
   canManageWebsite,
+  canMemberNotes,
+  canCheckRequirements,
+  canEditContacts,
+  canManageTeams,
+  canManageSiteLinks,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -150,12 +155,53 @@ export async function requireWebsite(): Promise<GateResult> {
   return { userId: caller.userId };
 }
 
-// Adding and editing External Contacts: the board, or the travel coordinator
-// (0110), whom RLS keeps to the travel types. `isStaff` says which.
+// The private Member notes on profiles: the board, or anyone with the Member
+// notes permission (0123).
+export async function requireMemberNotes(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canMemberNotes(caller.member)) return { error: "You don't have permission to change member notes." };
+  return { userId: caller.userId };
+}
+
+// Checking players off on requirements: the board, or anyone with the Check
+// off requirements permission (0123).
+export async function requireRequirementChecks(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canCheckRequirements(caller.member)) {
+    return { error: "You don't have permission to check players off on requirements." };
+  }
+  return { userId: caller.userId };
+}
+
+// Settings → Teams and Volunteer Roles, and filling team spots: a
+// super-admin, or anyone with the Teams & volunteers permission (0123).
+export async function requireTeams(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canManageTeams(caller.member)) return { error: "You don't have permission to manage teams and volunteers." };
+  return { userId: caller.userId };
+}
+
+// Settings → Sidebar Links and Public Directory: a super-admin, or anyone with
+// the Sidebar Links & Public Directory permission (0123).
+export async function requireSiteLinks(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canManageSiteLinks(caller.member)) {
+    return { error: "You don't have permission to change the sidebar links or the public Directory." };
+  }
+  return { userId: caller.userId };
+}
+
+// Adding and editing External Contacts: the board or anyone with the External
+// Contacts permission (0123), or the travel coordinator (0110), whom RLS
+// keeps to the travel types. `isStaff` is true for the first two: every type.
 export async function requireContactEditor(): Promise<{ error: string } | { userId: string; isStaff: boolean }> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };
-  if (isStaff(caller.member)) return { userId: caller.userId, isStaff: true };
+  if (canEditContacts(caller.member)) return { userId: caller.userId, isStaff: true };
   if (canManageTravel(caller.member)) return { userId: caller.userId, isStaff: false };
   return { error: "Board access required." };
 }

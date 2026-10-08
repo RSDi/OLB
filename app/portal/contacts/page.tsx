@@ -12,8 +12,8 @@ export default async function ContactsPage() {
     <ContactsList
       contacts={contacts}
       categories={categories}
-      canEdit={viewer.isStaff}
-      canAdd={viewer.isStaff || viewer.canManageTravel}
+      canEdit={viewer.canEditContacts}
+      canAdd={viewer.canEditContacts || viewer.canManageTravel}
       readsAs={{ coach: viewer.isCoach, travel: viewer.canManageTravel }}
     />
   );

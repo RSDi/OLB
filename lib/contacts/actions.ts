@@ -232,8 +232,11 @@ export async function restoreContact(
 // saved as a new change, marked as a restore, so it can be undone the same
 // way. A type or company that has since been deleted stays as it is now.
 export async function restoreContactVersion(versionId: string): Promise<ContactActionResult> {
-  const gate = await requireStaff();
+  // The board, or anyone with the External Contacts permission (0123); not
+  // the travel coordinator, who doesn't see History.
+  const gate = await requireContactEditor();
   if ("error" in gate) return { error: gate.error };
+  if (!gate.isStaff) return { error: "Only the board can restore a contact's history." };
   const supabase = await createClient({ changeSource: "restore" });
 
   const { data: v } = await supabase.from("contact_versions").select("contact_id, snapshot").eq("id", versionId).maybeSingle();

@@ -5,13 +5,17 @@
 // Travel permission) sees it without changing it (0111). Safe to import from
 // client components.
 
-export function canUseHsSchedule(viewer: { isStaff: boolean } | null | undefined, isCoach: boolean): boolean {
-  return !!viewer && (viewer.isStaff || isCoach);
+// Anyone with the Plan HS Schedule permission plans it too (0123).
+export function canUseHsSchedule(
+  viewer: { isStaff: boolean; canPlanHsSchedule?: boolean } | null | undefined,
+  isCoach: boolean
+): boolean {
+  return !!viewer && (viewer.isStaff || !!viewer.canPlanHsSchedule || isCoach);
 }
 
 // "edit" for the planners, "view" for the travel coordinator, else null.
 export function hsScheduleAccess(
-  viewer: { isStaff: boolean; canManageTravel?: boolean } | null | undefined,
+  viewer: { isStaff: boolean; canPlanHsSchedule?: boolean; canManageTravel?: boolean } | null | undefined,
   isCoach: boolean
 ): "edit" | "view" | null {
   if (canUseHsSchedule(viewer, isCoach)) return "edit";

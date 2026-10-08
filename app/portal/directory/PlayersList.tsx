@@ -280,7 +280,7 @@ export function PlayersList({
         )}
       </div>
 
-      {isStaff && requirements.length > 0 && (
+      {requirements.length > 0 && (
         <div data-tour="directory-requirements" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <ComboSelect
             value={reqId}
@@ -750,7 +750,7 @@ function PlayerRow({
           <ContactLine phone={p.phone} email={ownEmail} label="Player" />
         )}
         {isStaff && staffFacts.length > 0 && <div style={muted}>{staffFacts.join(" · ")}</div>}
-        {isStaff && requirements.length > 0 && (
+        {requirements.length > 0 && (
           <RequirementChips player={p} requirements={requirements} rows={rows} onOpen={onOpenRequirement} />
         )}
         {teams && <TeamPicker player={p} teams={teams} />}

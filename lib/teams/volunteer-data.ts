@@ -3,6 +3,8 @@
 // roles and assignments (0092); only super-admins write.
 
 import { createClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
+import { getViewer } from "../auth/viewer";
 import type { OlbTeam, OlbTeamVolunteer, OlbVolunteerRole } from "./types";
 
 export type TeamWithStaff = OlbTeam & { volunteers: OlbTeamVolunteer[] };
@@ -116,10 +118,14 @@ export interface AssignablePerson {
 }
 
 // Anyone who can fill a role: every member who isn't denied or deleted,
-// whether or not they have a login. Only staff can read them all, and only
-// super-admins assign, so call this for super-admins.
+// whether or not they have a login. For whoever fills team spots: a
+// super-admin, or anyone with the Teams & volunteers permission (0123). RLS
+// lets only the board read every member, so for someone off the board the
+// list comes through the service key, after the check here.
 export async function loadAssignablePeople(): Promise<AssignablePerson[]> {
-  const supabase = await createClient();
+  const viewer = await getViewer();
+  if (!viewer?.canManageTeams) return [];
+  const supabase = viewer.isStaff ? await createClient() : createAdminClient();
   const { data } = await supabase
     .from("members")
     .select("id, full_name, email, phone, volunteer_interests")

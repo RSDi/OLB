@@ -47,6 +47,12 @@ export interface DirectoryViewer {
   canManageRegistrations: boolean;
   // The Slack DMs grant (0118): Slack families from the Directory.
   canSlackDm: boolean;
+  // Board powers, also given by permission (0123): every player with their
+  // fees, waivers and parents' details; the Member notes; checking players
+  // off on requirements.
+  canSeeAllPlayers: boolean;
+  canMemberNotes: boolean;
+  canCheckRequirements: boolean;
 }
 
 // Auth + access guard reused across every directory view. Redirects to
@@ -71,6 +77,9 @@ export async function loadViewer(): Promise<DirectoryViewer | null> {
     isSuperAdmin: viewer.isSuperAdmin,
     canManageRegistrations: viewer.canManageRegistrations,
     canSlackDm: viewer.canSlackDm,
+    canSeeAllPlayers: viewer.canSeeAllPlayers,
+    canMemberNotes: viewer.canMemberNotes,
+    canCheckRequirements: viewer.canCheckRequirements,
   };
 }
 

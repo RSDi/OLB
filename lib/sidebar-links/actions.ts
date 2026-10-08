@@ -1,10 +1,11 @@
 "use server";
 
-// Settings → Sidebar Links. Super-admin only, here and in RLS (migration 0097).
+// Settings → Sidebar Links. Super-admins, and anyone with the Sidebar Links &
+// Public Directory permission, here and in RLS (migrations 0097, 0123).
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { requireSuperAdmin } from "../auth/guards";
+import { requireSiteLinks } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import {
   canOpenInFrame,
@@ -82,7 +83,7 @@ function refresh() {
 }
 
 export async function createSidebarLink(input: SidebarLinkInput): Promise<SidebarLinkResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireSiteLinks();
   if ("error" in gate) return { error: gate.error };
   const c = await clean(input);
   if ("error" in c) return { error: c.error };
@@ -108,7 +109,7 @@ export async function createSidebarLink(input: SidebarLinkInput): Promise<Sideba
 }
 
 export async function updateSidebarLink(id: string, input: SidebarLinkInput): Promise<SidebarLinkResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireSiteLinks();
   if ("error" in gate) return { error: gate.error };
   const c = await clean(input);
   if ("error" in c) return { error: c.error };
@@ -124,7 +125,7 @@ export async function updateSidebarLink(id: string, input: SidebarLinkInput): Pr
 }
 
 export async function deleteSidebarLink(id: string): Promise<SidebarLinkResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireSiteLinks();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { error } = await supabase.from("sidebar_links").delete().eq("id", id);
@@ -136,7 +137,7 @@ export async function deleteSidebarLink(id: string): Promise<SidebarLinkResult> 
 // Swap a link with its neighbour. Renumbers the whole (short) list so ties
 // from hand-edited sort orders can't make a move a no-op.
 export async function moveSidebarLink(id: string, direction: "up" | "down"): Promise<SidebarLinkResult> {
-  const gate = await requireSuperAdmin();
+  const gate = await requireSiteLinks();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const { data, error } = await supabase

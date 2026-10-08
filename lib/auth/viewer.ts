@@ -24,6 +24,15 @@ import {
   canManageTravel,
   canSlackDm,
   canManageWebsite,
+  canSeeAllPlayers,
+  canMemberNotes,
+  canCheckRequirements,
+  canApproveMembers,
+  canEditContacts,
+  canPlanHsSchedule,
+  canManageTeams,
+  canManageSiteLinks,
+  canOpenSettings,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -54,6 +63,22 @@ export interface Viewer {
   // Website grant (0120): edits the public site's menu, page text and
   // pictures in Settings → Website.
   canManageWebsite: boolean;
+  // Board powers, for Board and whoever is given them (0123).
+  canSeeAllPlayers: boolean;
+  canMemberNotes: boolean;
+  canCheckRequirements: boolean;
+  canApproveMembers: boolean;
+  canEditContacts: boolean;
+  // Not counting coaches, who plan it too (viewerIsCoach).
+  canPlanHsSchedule: boolean;
+  // Super-admin powers, for super-admins and whoever is given them (0123).
+  canManageTeams: boolean;
+  canManageSiteLinks: boolean;
+  // Board, or holds a permission whose page is in Settings.
+  canOpenSettings: boolean;
+  // Every permission key they hold (0122), for the help's per-permission
+  // sections. Empty for super-admins, who hold everything anyway.
+  permissions: string[];
   // Staged rollout: sees the nav items and Settings tabs still in preview.
   seesFullUi: boolean;
 }
@@ -131,6 +156,16 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canManageTravel: canManageTravel(member),
     canSlackDm: canSlackDm(member),
     canManageWebsite: canManageWebsite(member),
+    canSeeAllPlayers: canSeeAllPlayers(member),
+    canMemberNotes: canMemberNotes(member),
+    canCheckRequirements: canCheckRequirements(member),
+    canApproveMembers: canApproveMembers(member),
+    canEditContacts: canEditContacts(member),
+    canPlanHsSchedule: canPlanHsSchedule(member),
+    canManageTeams: canManageTeams(member),
+    canManageSiteLinks: canManageSiteLinks(member),
+    canOpenSettings: canOpenSettings(member),
+    permissions: member.permissions ?? [],
     seesFullUi: seesFullUi(user.email),
   };
 });

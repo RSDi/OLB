@@ -158,7 +158,7 @@ export function PlayerDetail({
         )}
         {(p.phone || ownEmail) && <ContactLine phone={p.phone} email={ownEmail} label="Player" />}
         {isStaff && staffFacts.length > 0 && <div style={muted}>{staffFacts.join(" · ")}</div>}
-        {isStaff && requirements.length > 0 && (
+        {requirements.length > 0 && (
           <RequirementChips player={p} requirements={requirements} rows={rows} onOpen={setOpenReq} />
         )}
         {teams && <TeamPicker player={p} teams={teams} />}

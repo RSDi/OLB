@@ -2,7 +2,17 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
-import { canEditSettings, canManageWebsite, isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
+import {
+  canApproveMembers,
+  canEditSettings,
+  canManageSiteLinks,
+  canManageTeams,
+  canManageWebsite,
+  canOpenSettings,
+  isStaff,
+  isSuperAdmin,
+  type MemberLike,
+} from "../../../lib/auth/permissions";
 import { seesFullUi } from "../../../lib/auth/feature-preview";
 import { loadGrants } from "../../../lib/auth/load-grants";
 import { MembersTab } from "./MembersTab";
@@ -112,7 +122,8 @@ export default function SettingsPage() {
         loadGrants(supabase, user.id),
       ]);
       const memberLike = meRow ? ({ ...grants, ...(meRow as MemberLike) } as MemberLike) : null;
-      if (!isStaff(memberLike)) {
+      // The board, and anyone holding a permission whose page is here (0123).
+      if (!canOpenSettings(memberLike)) {
         router.replace("/portal");
         return;
       }
@@ -121,9 +132,18 @@ export default function SettingsPage() {
       setFullUi(seesFullUi(user.email));
       // All board staff land on Members — any of them can work the
       // approval queue (D1) — unless a link asks for the Website tab (the
-      // public site's preview bar links here to publish).
+      // public site's preview bar links here to publish). Someone off the
+      // board lands on the first tab they have.
       const wanted = new URLSearchParams(window.location.search).get("tab");
-      setTab(wanted === "website" && canManageWebsite(memberLike) ? "website" : "members");
+      setTab(
+        wanted === "website" && canManageWebsite(memberLike)
+          ? "website"
+          : canApproveMembers(memberLike)
+          ? "members"
+          : canManageTeams(memberLike)
+          ? "teams"
+          : "sidebar_links"
+      );
       setAuthChecked(true);
     })();
   }, [router]);
@@ -143,9 +163,22 @@ export default function SettingsPage() {
     );
   }
 
-  // Any board member works the approval queue; role/edit/remove inside
-  // the tab stay super-admin-only via canManage.
-  const showMembers = isStaff(me);
+  // Any board member works the approval queue, and so does anyone with the
+  // Approve access requests permission (0123); role/edit/remove inside the
+  // tab stay super-admin-only via canManage.
+  const showMembers = canApproveMembers(me);
+  const teams = canManageTeams(me);
+  const siteLinks = canManageSiteLinks(me);
+  // Someone off the board who holds one of the permissions above sees only
+  // those tabs; the rest of Settings is the board's.
+  const board = isStaff(me);
+  const GRANTED_TABS: Partial<Record<Tab, boolean>> = {
+    members: showMembers,
+    teams,
+    volunteer_roles: teams,
+    sidebar_links: siteLinks,
+    public_directory: siteLinks,
+  };
   // Deleted tab stays super-admin-only until the RLS follow-up lets board
   // members with the undelete grant see + restore soft-deleted rows.
   const showDeleted = isSuperAdmin(me);
@@ -160,8 +193,8 @@ export default function SettingsPage() {
     { key: "assets", label: "Assets", visible: true, tour: "settings-tab-assets" },
     { key: "types", label: "Types", visible: true, tour: "settings-tab-types" },
     { key: "supplies", label: "Supplies", visible: true, tour: "settings-tab-supplies" },
-    { key: "teams", label: "Teams", visible: isSuperAdmin(me), tour: "settings-tab-teams" },
-    { key: "volunteer_roles", label: "Volunteer Roles", visible: isSuperAdmin(me), tour: "settings-tab-volunteer-roles" },
+    { key: "teams", label: "Teams", visible: teams, tour: "settings-tab-teams" },
+    { key: "volunteer_roles", label: "Volunteer Roles", visible: teams, tour: "settings-tab-volunteer-roles" },
     { key: "requirements", label: "Requirements", visible: canEditSettings(me), tour: "settings-tab-requirements" },
     // Any board member writes the templates used when emailing families (0117).
     { key: "email_templates", label: "Email Templates", visible: true, tour: "settings-tab-email-templates" },
@@ -173,9 +206,9 @@ export default function SettingsPage() {
     { key: "event_categories", label: "Event Categories", visible: true, tour: "settings-tab-event-categories" },
     { key: "task_categories", label: "Task Categories", visible: true, tour: "settings-tab-task-categories" },
     { key: "playbooks", label: "Playbooks", visible: true, tour: "settings-tab-playbooks" },
-    { key: "sidebar_links", label: "Sidebar Links", visible: isSuperAdmin(me), tour: "settings-tab-sidebar-links" },
+    { key: "sidebar_links", label: "Sidebar Links", visible: siteLinks, tour: "settings-tab-sidebar-links" },
     // The key in the public Directory's link (0119).
-    { key: "public_directory", label: "Public Directory", visible: isSuperAdmin(me), tour: "settings-tab-public-directory" },
+    { key: "public_directory", label: "Public Directory", visible: siteLinks, tour: "settings-tab-public-directory" },
     { key: "closures", label: "Closures", visible: true, tour: "settings-tab-closures" },
     { key: "contact_categories", label: "Contact Types", visible: true, tour: "settings-tab-contact-categories" },
     { key: "integrations", label: "Integrations", visible: true, tour: "settings-tab-integrations" },
@@ -187,9 +220,12 @@ export default function SettingsPage() {
   const shownTabs = tabs.filter(
     (t) =>
       t.visible &&
+      (board || GRANTED_TABS[t.key]) &&
       (fullUi ||
         RELEASED_TABS.has(t.key) ||
-        (isSuperAdmin(me) && SUPER_ADMIN_RELEASED_TABS.has(t.key)))
+        (isSuperAdmin(me) && SUPER_ADMIN_RELEASED_TABS.has(t.key)) ||
+        // Granted by permission (0123), so released to whoever holds it.
+        GRANTED_TABS[t.key])
   );
 
   return (
@@ -231,8 +267,8 @@ export default function SettingsPage() {
       {tab === "assets" && <AssetsTab me={me} />}
       {tab === "types" && <TypesTab me={me} />}
       {tab === "supplies" && <SuppliesTab me={me} />}
-      {tab === "teams" && isSuperAdmin(me) && <TeamsSettingsTab />}
-      {tab === "volunteer_roles" && isSuperAdmin(me) && <VolunteerRolesTab />}
+      {tab === "teams" && teams && <TeamsSettingsTab />}
+      {tab === "volunteer_roles" && teams && <VolunteerRolesTab />}
       {tab === "requirements" && canEditSettings(me) && <RequirementsTab me={me} />}
       {tab === "email_templates" && <EmailTemplatesTab />}
       {tab === "website" && canManageWebsite(me) && <WebsiteTab />}
@@ -240,8 +276,8 @@ export default function SettingsPage() {
       {tab === "event_categories" && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && <PlaybooksTab me={me} />}
-      {tab === "sidebar_links" && isSuperAdmin(me) && <SidebarLinksTab />}
-      {tab === "public_directory" && isSuperAdmin(me) && <PublicDirectoryTab />}
+      {tab === "sidebar_links" && siteLinks && <SidebarLinksTab />}
+      {tab === "public_directory" && siteLinks && <PublicDirectoryTab />}
       {tab === "closures" && <ClosuresTab me={me} />}
       {tab === "contact_categories" && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && <IntegrationsTab />}

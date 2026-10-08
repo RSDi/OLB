@@ -272,7 +272,7 @@ export function MembersTab({
   // Give or take one permission from one person: an extra on top of their
   // profile, or before 0122 the permission's own column.
   function setPermission(member: Member, p: PermissionDef, on: boolean) {
-    if (!profiles) return updateMember(member.id, { [p.legacyColumn]: on });
+    if (!profiles) return p.legacyColumn ? updateMember(member.id, { [p.legacyColumn]: on }) : undefined;
     const extras = on
       ? [...new Set([...member.extra_permissions, p.key])]
       : member.extra_permissions.filter((k) => k !== p.key);
@@ -438,12 +438,15 @@ export function MembersTab({
     : byStatus(tab);
 
   const ready = { travel: travelReady, slack: slackReady, website: websiteReady };
-  const isOffered = (p: PermissionDef) => !!profiles || !NEEDS[p.key] || ready[NEEDS[p.key]!];
+  // Before 0122 only the permissions with their own column exist.
+  const isOffered = (p: PermissionDef) =>
+    !!profiles || (!!p.legacyColumn && (!NEEDS[p.key] || ready[NEEDS[p.key]!]));
 
   function accessOf(m: Member): MemberAccess {
     if (m.role === "super_admin") return { profile: null, offered: [], source: () => null };
     const offered = permissionsForBase(m.role).filter(isOffered);
-    if (!profiles) return { profile: null, offered, source: (p) => (m[p.legacyColumn] ? "extra" : null) };
+    if (!profiles)
+      return { profile: null, offered, source: (p) => (p.legacyColumn && m[p.legacyColumn] ? "extra" : null) };
     const profile = profileOf(m, profiles);
     const fromProfile = new Set(profile?.permissions ?? []);
     const extras = new Set(m.extra_permissions);
@@ -807,7 +810,8 @@ function AccessTable({
   onSetPermission: (member: Member, p: PermissionDef, on: boolean) => void;
 }) {
   const access = new Map(members.map((m) => [m.id, accessOf(m)]));
-  const holds = (m: Member, p: PermissionDef) => m.role === "super_admin" || !!access.get(m.id)!.source(p);
+  const holds = (m: Member, p: PermissionDef) =>
+    m.role === "super_admin" || (p.group === "board" && m.role === "admin") || !!access.get(m.id)!.source(p);
   const groups = PERMISSION_GROUPS.map((g) => ({ ...g, defs: columns.filter((p) => p.group === g.key) })).filter(
     (g) => g.defs.length > 0
   );
@@ -839,6 +843,13 @@ function AccessTable({
         </td>
       );
     const a = access.get(m.id)!;
+    // Board has every Board power already.
+    if (p.group === "board" && m.role === "admin")
+      return (
+        <td key={p.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Board has this">
+          ✓
+        </td>
+      );
     if (!a.offered.includes(p))
       return (
         <td key={p.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Board members only">

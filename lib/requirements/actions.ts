@@ -2,11 +2,12 @@
 
 // Player requirements (migration 0098). The list is managed in Settings →
 // Requirements by super-admins and board members with the settings grants;
-// any board member marks players off from the Directory. RLS enforces the
-// same split; these guards fail fast with a clear message.
+// any board member, or anyone with the Check off requirements permission
+// (0123), marks players off from the Directory. RLS enforces the same split;
+// these guards fail fast with a clear message.
 
 import { revalidatePath } from "next/cache";
-import { requireSettingsDelete, requireSettingsEdit, requireStaff } from "../auth/guards";
+import { requireRequirementChecks, requireSettingsDelete, requireSettingsEdit } from "../auth/guards";
 import { createClient } from "../supabase/server";
 import { cleanRequirementInput, type RequirementInput } from "./logic";
 import { REQUIREMENT_FILES_BUCKET, type PlayerRequirementStatus } from "./types";
@@ -136,7 +137,7 @@ async function existingFilePath(
 }
 
 export async function markPlayerRequirement(input: MarkPlayerRequirementInput): Promise<RequirementResult> {
-  const gate = await requireStaff();
+  const gate = await requireRequirementChecks();
   if ("error" in gate) return { error: gate.error };
   if (input.status !== "done" && input.status !== "waived") return { error: "Pick a status." };
   const completedOn = input.completedOn.trim();
@@ -176,7 +177,7 @@ export async function markPlayerRequirement(input: MarkPlayerRequirementInput): 
 
 // Back to missing: drops the player's record and any scan.
 export async function clearPlayerRequirement(playerId: string, requirementId: string): Promise<RequirementResult> {
-  const gate = await requireStaff();
+  const gate = await requireRequirementChecks();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const previous = await existingFilePath(supabase, playerId, requirementId);
@@ -199,7 +200,7 @@ export async function discardRequirementUpload(
   requirementId: string,
   path: string
 ): Promise<RequirementResult> {
-  const gate = await requireStaff();
+  const gate = await requireRequirementChecks();
   if ("error" in gate) return { error: gate.error };
   if (!path.startsWith(filePrefix(playerId, requirementId))) return { error: "Not this player's file." };
   const supabase = await createClient();
@@ -213,7 +214,7 @@ export async function getRequirementFileUrl(
   playerId: string,
   requirementId: string
 ): Promise<{ url?: string; error?: string }> {
-  const gate = await requireStaff();
+  const gate = await requireRequirementChecks();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const path = await existingFilePath(supabase, playerId, requirementId);

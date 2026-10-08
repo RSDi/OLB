@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireStaff, requireSuperAdmin } from "./guards";
+import { requireMemberNotes, requireStaff, requireSuperAdmin } from "./guards";
+import { loadGrants } from "./load-grants";
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
-import { isStaff, type MemberLike, type MemberRole, type MemberStatus } from "./permissions";
+import { canApproveMembers, isStaff, type MemberLike, type MemberRole, type MemberStatus } from "./permissions";
 import { sendMembershipApprovedNotification } from "../notifications/membership-decision";
 
 export interface MemberActionResult {
@@ -15,7 +16,8 @@ export interface MemberActionResult {
 
 // Approve / deny / restore a membership request. Any board member (staff)
 // can do this — D1, backed by migration 0050's staff UPDATE policy + column
-// guard. Approval emails the member so they know they're in, if they've signed
+// guard — and so can anyone with the Approve access requests permission
+// (0123). Approval emails the member so they know they're in, if they've signed
 // in to ask.
 export async function setMemberStatus(
   memberId: string,
@@ -27,22 +29,34 @@ export async function setMemberStatus(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in." };
 
-  const { data: meRow } = await supabase
-    .from("members")
-    .select("role, status")
-    .eq("user_id", user.id)
-    .maybeSingle();
-  if (!isStaff((meRow as MemberLike | null) ?? null)) {
-    return { error: "Only board members can review access requests." };
+  const [{ data: meRow }, grants] = await Promise.all([
+    supabase.from("members").select("role, status").eq("user_id", user.id).maybeSingle(),
+    loadGrants(supabase, user.id),
+  ]);
+  const me = meRow ? ({ ...grants, ...(meRow as MemberLike) } as MemberLike) : null;
+  if (!canApproveMembers(me)) {
+    return { error: "Only the board, or someone allowed to approve access requests, can review them." };
   }
 
-  const { data: updated, error } = await supabase
-    .from("members")
-    .update({ status, reviewed_by: user.id, reviewed_at: new Date().toISOString() })
-    .eq("id", memberId)
-    .select("id, user_id, email, full_name, status")
-    .maybeSingle();
-  if (error) return { error: error.message };
+  type Reviewed = { id: string; user_id: string | null; email: string | null; full_name: string | null };
+  let updated: Reviewed | null;
+  if (isStaff(me)) {
+    const { data, error } = await supabase
+      .from("members")
+      .update({ status, reviewed_by: user.id, reviewed_at: new Date().toISOString() })
+      .eq("id", memberId)
+      .select("id, user_id, email, full_name, status")
+      .maybeSingle();
+    if (error) return { error: error.message };
+    updated = data as Reviewed | null;
+  } else {
+    // Not Board: the approve permission (0123) writes only the status, through
+    // review_member(), and only for members, not Board.
+    const { data, error } = await supabase.rpc("review_member", { p_member_id: memberId, p_status: status });
+    if (error) return { error: error.message };
+    updated = ((data as Reviewed[] | null) ?? [])[0] ?? null;
+    if (!updated) return { error: "Member not found, or they're Board: only the board reviews board members." };
+  }
   if (!updated) return { error: "Member not found." };
 
   // Only someone who signed in and asked gets the "you're in" email; a
@@ -369,13 +383,14 @@ export async function hardDeleteMember(id: string): Promise<MemberActionResult> 
   return { success: true };
 }
 
-// Staff-only private notes about a member (members_notes is 1:1 per member,
-// RLS-gated to staff). Upsert on the member_id primary key.
+// Private notes about a member (members_notes is 1:1 per member, RLS-gated to
+// the board and the Member notes permission, 0123). Upsert on the member_id
+// primary key.
 export async function updateMemberNotes(
   memberId: string,
   notes: string
 ): Promise<MemberActionResult> {
-  const gate = await requireStaff();
+  const gate = await requireMemberNotes();
   if ("error" in gate) return { error: gate.error };
   const supabase = await createClient();
   const {

@@ -30,11 +30,11 @@ export default async function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Any board member can action the approval queue (D1), so the whole
-  // staff sees the pending badge.
+  // Any board member can action the approval queue (D1), and so can anyone
+  // with the Approve access requests permission (0123): they see the badge.
   const viewer = await getViewer();
   const [pendingMembersCount, sidebarLinks, preview, hasBalance, isCoach] = await Promise.all([
-    viewer?.isStaff ? getPendingMembersCount() : Promise.resolve(0),
+    viewer?.canApproveMembers ? getPendingMembersCount() : Promise.resolve(0),
     viewer ? getSidebarLinks() : Promise.resolve([]),
     // A super-admin's "Preview as" in progress (banner + way back).
     getPreview(),
@@ -59,6 +59,10 @@ export default async function PortalLayout({
               canManageTravel: viewer.canManageTravel,
               canSlackDm: viewer.canSlackDm,
               canManageWebsite: viewer.canManageWebsite,
+              canOpenSettings: viewer.canOpenSettings,
+              canEditContacts: viewer.canEditContacts,
+              canPlanHsSchedule: viewer.canPlanHsSchedule,
+              permissions: viewer.permissions,
               seesPayments: viewer.canManageFinances || hasBalance,
               isCoach,
             }

@@ -104,6 +104,15 @@ export interface SidebarViewer {
   canSlackDm?: boolean;
   // The Website grant (0120): for the guide's Settings: Website section.
   canManageWebsite?: boolean;
+  // Board, or holds a permission whose page is in Settings (0123): sees the
+  // Settings item, and the pending badge when they can approve.
+  canOpenSettings?: boolean;
+  // The External Contacts and Plan HS Schedule permissions (0123), on top of
+  // the board, coaches and the travel coordinator.
+  canEditContacts?: boolean;
+  canPlanHsSchedule?: boolean;
+  // Every permission key they hold (0122), for the guide.
+  permissions?: string[];
 }
 
 interface PortalSidebarProps {
@@ -151,7 +160,10 @@ export function PortalSidebar({
   const seesPayments = viewer?.seesPayments ?? false;
   const isCoach = viewer?.isCoach ?? false;
   const travel = viewer?.canManageTravel ?? false;
-  const visibleItems = navItems.filter(item => (!item.staffOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || isStaff || isCoach || travel) && (!item.contactsOnly || isStaff || isCoach || travel));
+  const settings = isStaff || !!viewer?.canOpenSettings;
+  const planner = isStaff || isCoach || travel || !!viewer?.canPlanHsSchedule;
+  const contacts = isStaff || isCoach || travel || !!viewer?.canEditContacts;
+  const visibleItems = navItems.filter(item => (!item.staffOnly || settings) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts));
   const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
   const bottomItems = BOTTOM_HREFS
     .map(href => visibleItems.find(item => item.href === href))

@@ -80,6 +80,9 @@ export interface ContactsViewer {
   isCoach: boolean;
   // The travel coordinator: adds and edits the hotels and places to eat.
   canManageTravel: boolean;
+  // The board, or the External Contacts permission (0123): every type, add,
+  // edit and History.
+  canEditContacts: boolean;
 }
 
 // Access guard. The board uses all of /portal/contacts. Coaches read the
@@ -92,7 +95,9 @@ export async function loadContactsViewer(opts?: { edit?: boolean; board?: boolea
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
   const isCoach = await viewerIsCoach(viewer);
-  if (!viewer.isStaff) {
+  // The External Contacts permission (0123) uses it all like the board, but
+  // deleting stays with super-admins.
+  if (!viewer.canEditContacts) {
     if (!isCoach && !viewer.canManageTravel) redirect("/portal");
     if (opts?.board || (opts?.edit && !viewer.canManageTravel)) redirect("/portal/contacts");
   }
@@ -103,6 +108,7 @@ export async function loadContactsViewer(opts?: { edit?: boolean; board?: boolea
     isSuperAdmin: viewer.isSuperAdmin,
     isCoach,
     canManageTravel: viewer.canManageTravel,
+    canEditContacts: viewer.canEditContacts,
   };
 }
 

@@ -31,6 +31,9 @@ export interface MemberLike {
   // Website grant (migration 0120): editing the public club website's menu,
   // page text and pictures. A board member's grant, like the Settings ones.
   can_manage_website?: boolean;
+  // Every permission the person holds (0122): their access profile's plus
+  // their extras. Absent before 0122. Super-admins hold all of them anyway.
+  permissions?: string[];
 }
 
 interface TicketLike {
@@ -113,6 +116,37 @@ export function canManageWebsite(m: MemberLike | null | undefined): boolean {
   if (isSuperAdmin(m)) return true;
   return isStaff(m) && !!m?.can_manage_website;
 }
+
+// --- Permissions given through access profiles (0122, 0123) -----------------
+
+// Holds this permission: a super-admin, or someone whose profile or extras
+// include it. Mirrors public.has_permission().
+export function hasPermission(m: MemberLike | null | undefined, key: string): boolean {
+  if (!m || m.status !== "approved") return false;
+  return m.role === "super_admin" || !!m.permissions?.includes(key);
+}
+
+// Board powers anyone can be given (0123). Board has them all; these mirror
+// the public.can_*() helpers in that migration.
+export const canSeeAllPlayers = (m: MemberLike | null | undefined) =>
+  isStaff(m) || hasPermission(m, "see_all_players");
+export const canMemberNotes = (m: MemberLike | null | undefined) => isStaff(m) || hasPermission(m, "member_notes");
+export const canCheckRequirements = (m: MemberLike | null | undefined) =>
+  isStaff(m) || hasPermission(m, "player_requirements");
+export const canApproveMembers = (m: MemberLike | null | undefined) =>
+  isStaff(m) || hasPermission(m, "approve_members");
+export const canEditContacts = (m: MemberLike | null | undefined) => isStaff(m) || hasPermission(m, "contacts_edit");
+// Coaches plan it too; they're checked separately (viewerIsCoach).
+export const canPlanHsSchedule = (m: MemberLike | null | undefined) => isStaff(m) || hasPermission(m, "hs_schedule");
+
+// Super-admin powers anyone can be given (0123).
+export const canManageTeams = (m: MemberLike | null | undefined) => hasPermission(m, "teams");
+export const canManageSiteLinks = (m: MemberLike | null | undefined) => hasPermission(m, "site_links");
+
+// Someone who isn't Board but holds a permission that lives in Settings opens
+// Settings and sees only those tabs.
+export const canOpenSettings = (m: MemberLike | null | undefined) =>
+  isStaff(m) || canApproveMembers(m) || canManageTeams(m) || canManageSiteLinks(m);
 
 // Add/rename settings items needs the edit grant; (was: any staff).
 export const canManageAreas = canEditSettings;

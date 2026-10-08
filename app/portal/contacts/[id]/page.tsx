@@ -26,11 +26,14 @@ export default async function ContactDetailPage({
   const parentId = !isCompany ? contact.parent?.id ?? null : null;
   const schedule = await getViewer().then(viewerCanUseHsSchedule);
   // Coaches read the contact; the board also edits it, sees what uses it and
-  // its history. The travel coordinator edits the hotels and places to eat
-  // (the database's own test, 0110).
+  // its history, and so does the External Contacts permission (0123), less
+  // what uses it (tasks and playbooks are the board's). The travel
+  // coordinator edits the hotels and places to eat (the database's own test,
+  // 0110).
   const board = viewer.isStaff;
+  const editor = viewer.canEditContacts;
   const canEdit =
-    board ||
+    editor ||
     (viewer.canManageTravel &&
       (await createClient().then((supabase) =>
         supabase
@@ -50,7 +53,7 @@ export default async function ContactDetailPage({
     isCompany && schedule
       ? createClient().then((supabase) => loadContactScheduleHistory(supabase, id))
       : Promise.resolve([]),
-    board ? createClient().then((supabase) => loadLastContactChange(supabase, id)) : Promise.resolve(null),
+    editor ? createClient().then((supabase) => loadLastContactChange(supabase, id)) : Promise.resolve(null),
   ]);
 
   return (
@@ -62,7 +65,7 @@ export default async function ContactDetailPage({
       links={links}
       history={history}
       canEdit={canEdit}
-      canHistory={board}
+      canHistory={editor}
       canDelete={viewer.isSuperAdmin}
       lastChange={lastChange}
     />
