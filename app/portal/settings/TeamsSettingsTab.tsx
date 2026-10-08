@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { Input, Pill } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
-import { createTeam, deleteTeam, updateTeamSettings } from "../../../lib/teams/volunteer-actions";
+import { createTeam, deleteTeam, loadTeamPlayerCounts, updateTeamSettings } from "../../../lib/teams/volunteer-actions";
 import type { TeamSettingsInput } from "../../../lib/teams/types";
 import { AGE_GROUPS, TEAM_COLORS, teamColorHex, teamLabel } from "../../../lib/teams/volunteer-options";
 
@@ -38,19 +38,17 @@ async function fetchTeams(): Promise<TeamsData> {
     .limit(1)
     .maybeSingle();
   if (!board) return { season: null, teams: [], players: new Map(), error: null };
-  const [{ data: teams, error }, { data: roster }] = await Promise.all([
+  const [{ data: teams, error }, counts] = await Promise.all([
     supabase
       .from("olb_teams")
       .select("id, name, age_group, color, division, practice_times, practice_location")
       .eq("board_id", board.id)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true }),
-    supabase.from("olb_players").select("team_id").eq("board_id", board.id),
+    // Through the server: not everyone who sets up teams can read every player.
+    loadTeamPlayerCounts(board.id as string),
   ]);
-  const players = new Map<string, number>();
-  for (const p of (roster as { team_id: string | null }[] | null) ?? []) {
-    if (p.team_id) players.set(p.team_id, (players.get(p.team_id) ?? 0) + 1);
-  }
+  const players = new Map<string, number>("error" in counts ? [] : Object.entries(counts));
   return {
     season: board.season as string,
     teams: (teams as TeamRow[] | null) ?? [],

@@ -66,8 +66,9 @@ export default async function MemberDetailPage({
 
   const [[{ data: memberRow }, everyone, { data: relRows }, { data: playerRows }], notesRes] = await Promise.all([
     batch,
-    // Staff-only private notes (RLS returns nothing for non-staff viewers).
-    viewer.isStaff
+    // Private notes, for the board and the Member notes permission (RLS
+    // returns nothing for anyone else).
+    viewer.canMemberNotes
       ? supabase.from("members_notes").select("notes").eq("member_id", id).maybeSingle()
       : null,
   ]);
@@ -76,9 +77,11 @@ export default async function MemberDetailPage({
   if (!member) notFound();
   if (member.deleted_at) notFound();
 
-  // Non-staff can only view approved members. (RLS already enforces this for
-  // SELECT, but guard explicitly so we render notFound rather than a blank.)
-  if (member.status !== "approved" && !viewer.isStaff) notFound();
+  // Most people can only view approved members. The board, and whoever can see
+  // every player or approve access requests (0123), also open the parents and
+  // people still waiting. (RLS already enforces this for SELECT, but guard
+  // explicitly so we render notFound rather than a blank.)
+  if (member.status !== "approved" && !viewer.canSeeAllPlayers && !viewer.canApproveMembers) notFound();
 
   const allRels = (relRows as RelationshipRow[] | null) ?? [];
   const rels = allRels.filter((r) => r.member_id === id);
@@ -130,7 +133,7 @@ export default async function MemberDetailPage({
   return (
     <MemberDetail
       member={member}
-      isStaff={viewer.isStaff}
+      canNotes={viewer.canMemberNotes}
       notes={notes}
       relationships={visibleRels.map((r) => ({
         relatedId: r.related_member_id,

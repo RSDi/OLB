@@ -76,6 +76,9 @@ export interface Viewer {
   canManageSiteLinks: boolean;
   // Board, or holds a permission whose page is in Settings.
   canOpenSettings: boolean;
+  // Every permission key they hold (0122), for the help's per-permission
+  // sections. Empty for super-admins, who hold everything anyway.
+  permissions: string[];
   // Staged rollout: sees the nav items and Settings tabs still in preview.
   seesFullUi: boolean;
 }
@@ -162,6 +165,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canManageTeams: canManageTeams(member),
     canManageSiteLinks: canManageSiteLinks(member),
     canOpenSettings: canOpenSettings(member),
+    permissions: member.permissions ?? [],
     seesFullUi: seesFullUi(user.email),
   };
 });

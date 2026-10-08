@@ -49,7 +49,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  const req = viewer.isStaff ? await requirements : { requirements: [], rows: [] };
+  const req = viewer.canCheckRequirements ? await requirements : { requirements: [], rows: [] };
   const teams = viewer.canManageRegistrations ? await loadSeasonTeams() : null;
   // The board and the Registrations grant can email the family (0116); the
   // Slack DMs grant can Slack them (0118). Either sees what was sent.
@@ -61,7 +61,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
     <PlayerDetail
       player={player}
       siblings={siblings}
-      isStaff={viewer.isStaff}
+      isStaff={viewer.canSeeAllPlayers}
       requirements={req.requirements}
       requirementRows={req.rows.filter((r) => r.player_id === id)}
       payments={payments}

@@ -45,6 +45,10 @@ export interface GuideSection {
   // A feature still in staged rollout (lib/auth/feature-preview.ts): the
   // section shows only to the accounts that can use it, on top of `audience`.
   preview?: boolean;
+  // A permission (lib/auth/access.ts) whose holders read this section too,
+  // whatever `audience` says: the help for a Board power given to someone
+  // who isn't Board (0123).
+  permission?: string;
   body: string;
 }
 
@@ -68,6 +72,8 @@ export interface GuideViewer {
   canSlackDm?: boolean;
   // Holds the Website grant: sees the "website" sections.
   canManageWebsite?: boolean;
+  // Every permission they hold (0122): sees the sections naming one.
+  permissions?: string[];
 }
 
 export const GUIDE_UPDATED = "October 2026";
@@ -354,6 +360,7 @@ You can only Slack the families of players you can see in the Directory. Slack D
     title: "Player requirements",
     group: "Directory",
     audience: "staff",
+    permission: "player_requirements",
     keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "scanner", "camera", "auto", "pdf", "heic", "iphone photo", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
     body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, a tournament fee, a form. Only the board sees any of this.
 
@@ -384,6 +391,7 @@ Requirements start over each season, since each season has its own roster. The l
     title: "HS Schedule",
     group: "HS Schedule",
     audience: "coaches",
+    permission: "hs_schedule",
     routes: ["/portal/schedule"],
     keywords: ["schedule", "hs schedule", "high school", "season", "weekend", "tournament", "games", "varsity", "jv", "14u", "opponents", "teams coming", "who plays who", "which of our teams", "jv only", "all our teams", "on the fence", "maybe", "confirmed", "not coming", "facility", "secured", "trip", "overnight", "notes", "scores", "results", "record", "compare", "last season", "columns", "spreadsheet", "coaches", "filter", "needs work", "good to go", "waiting", "to do", "hotel", "hotels", "food", "restaurant", "where to eat", "where to stay", "travel", "room block", "rates"],
     body: `The high school season weekend by weekend, laid out like the planning spreadsheet's "HS Schedule" tab, for the coaches and the board. Every season has its own schedule, and the earlier ones stay to look back on. The travel coordinator (the **Travel** permission) sees it too, without changing it.
@@ -425,6 +433,7 @@ Requirements start over each season, since each season has its own roster. The l
     title: "External Contacts",
     group: "External Contacts",
     audience: "coaches",
+    permission: "contacts_edit",
     routes: ["/portal/contacts"],
     keywords: ["contacts", "vendors", "companies", "people", "photographer", "gym", "facility", "rent", "program", "programs", "opponents", "referees", "refs", "scheduler", "athletic director", "coach", "role", "team colors", "also known as", "account number", "billing", "tags", "nchc", "ndii", "phone", "email", "history", "changes", "who changed", "restore", "undo", "coaches can see", "read-only"],
     body: `Everyone outside the club we work with — other programs, gyms we rent, referees, vendors, photographers. The board sees and edits all of it. Coaches see the types the board shares with them (the programs, gyms and referees), read-only.
@@ -650,11 +659,12 @@ Activity is recorded from the day this page went live.`,
 | | Member | Board | Super-admin |
 |---|---|---|---|
 | Directory, Playbooks, Slack Archive | ✓ | ✓ | ✓ |
-| See every player, fees, waivers and volunteer interests | | ✓ | ✓ |
-| Member notes on profiles | | ✓ | ✓ |
-| External Contacts: add, edit, history | | ✓ | ✓ |
-| Approve or deny access requests | | ✓ | ✓ |
-| Check players off on requirements (handbook signature, fees) | | ✓ | ✓ |
+| See every player, fees, waivers and volunteer interests | With **See all players** | ✓ | ✓ |
+| Member notes on profiles | With **Member notes** | ✓ | ✓ |
+| External Contacts: add, edit, history | With **External Contacts** | ✓ | ✓ |
+| Approve or deny access requests | With **Approve access requests** | ✓ | ✓ |
+| Check players off on requirements (handbook signature, fees) | With **Check off requirements** | ✓ | ✓ |
+| Plan the HS Schedule | With **Plan HS Schedule** (coaches always) | ✓ | ✓ |
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
@@ -662,7 +672,8 @@ Activity is recorded from the day this page went live.`,
 | Send families Slack DMs from the Directory, as yourself | With **Slack DMs** | With **Slack DMs** | ✓ |
 | Change the club website's menu, page text and pictures | | With **Settings: Website** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
-| Set up teams and volunteer roles; assign volunteers | | | ✓ |
+| Set up teams and volunteer roles; assign volunteers | With **Teams & volunteers** | With **Teams & volunteers** | ✓ |
+| Change the sidebar links and the public Directory link | With **Sidebar Links & Public Directory** | With **Sidebar Links & Public Directory** | ✓ |
 
 **Coaches** (a member in a leadership volunteer role on a team, like Head coach) also plan the **HS Schedule** with the board, and read the External Contacts types shared with them (a super-admin ticks **Coaches can see** in **Settings → Contact Types**), without changing them.
 
@@ -677,6 +688,7 @@ Activity is recorded from the day this page went live.`,
     title: "Settings: Members",
     group: "Settings",
     audience: "staff",
+    permission: "approve_members",
     routes: ["/portal/settings"],
     keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages", "slack dms", "slack", "website", "access", "permissions", "roles & access", "table", "profile", "access profile", "extras"],
     body: `Where new sign-ups are approved and member accounts are managed.
@@ -700,6 +712,9 @@ Activity is recorded from the day this page went live.`,
 - Tap **Access** on someone's row on the **Approved** tab to see what they can do. The number on the button counts it, and the row lists it under their name. Greyed ticks come from their profile; change those in **Settings → Access Profiles**. Tick any other box to give that one person an **extra** on top of their profile, untick to take it away. Rows with extras show **+ extras**, and rows on a profile the club made show its name.
   - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit the hotels and places to eat in External Contacts and see the HS Schedule, and **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*).
   - **Settings (Board)** (board members only): **Edit**, **Delete** and **Undelete** for Settings items like Requirements, and **Website** to change the club website's menu, page text and pictures (see *Settings: Website*).
+  - **Board powers** (for people who aren't Board; Board has them all): **See all players** (every player, listed or not, with fees, waivers, shirts and parents' details), **Member notes**, **Check off requirements**, **Approve access requests**, **External Contacts** (see, add and edit every contact, and their history) and **Plan HS Schedule**.
+  - **Club setup** (anyone): **Teams & volunteers** to set up teams and volunteer roles and fill team spots (putting someone in a leadership spot makes them a coach), and **Sidebar Links & Public Directory**.
+  - Someone who isn't Board but has **Approve access requests**, **Teams & volunteers** or **Sidebar Links & Public Directory** opens **Settings** and sees only those tabs.
   - Super-admins have all of these already, so their rows have no **Access** button.
 - To see everyone at once, tap **Roles & access** (next to the tabs, on **Approved**). It's a table with a row per person: their profile drop-down, then a box for each permission. Greyed ticks come from the profile; tick or untick any other box to change that person's extras. The number under each column says how many people have it. Super-admins show ✓ everywhere, and **–** means that box is for board members only. Tap **List** to go back.
 - **Remove** a member (demote a super-admin first).
@@ -716,6 +731,7 @@ Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Dire
 
 - **Member** and **Board** are built in. Everyone starts on one of them: Member for members, Board for the board. Tap **Edit permissions** to choose what everyone on it gets. They can't be renamed or deleted.
 - **+ New profile** makes your own. Give it a **Name** and choose what it's **Based on**: **Member**, or **Board** if the people on it should be Board too, with everything Board can do (see *Board roles*). Then tick its permissions.
+- A Member-based profile can also hand out **Board powers** one at a time, like **See all players** or **Approve access requests**, for power users who aren't on the board. **Club setup** (Teams & volunteers; Sidebar Links & Public Directory) works on any profile.
 - Each profile lists what it gives and how many people are on it. **Edit permissions** opens its boxes; tap **Done** to close them.
 - Changes reach everyone on the profile straight away. Take **Payments** off Treasurer and every treasurer loses it.
 - On your own profiles, the **Based on** drop-down switches between Member and Board, **Rename** changes the name and **Delete** removes it. The people on a deleted profile move to Member or Board, whichever it was based on.
@@ -728,8 +744,9 @@ Put someone on a profile with the drop-down on their row in **Settings → Membe
     title: "Settings: Teams",
     group: "Settings",
     audience: "super_admin",
+    permission: "teams",
     keywords: ["teams", "settings", "new team", "age group", "color", "colour", "division", "practice times", "practice location", "season", "delete team"],
-    body: `Set up this season's teams. Open **Settings → Teams**.
+    body: `Set up this season's teams. Open **Settings → Teams**. Super-admins can, and so can anyone with the **Teams & volunteers** permission.
 
 - **+ New team** — give it a **Team name** (e.g. Gold), then pick an **Age group** (10U–18U) and **Team color**, and add the **Division**, **Practice times** and **Practice location**. Separate more than one practice time with a semicolon.
 - Tap the **pencil** to edit a team, or the **trash** can to delete one — its players go back to **No team yet** and its volunteer spots are cleared.
@@ -742,6 +759,7 @@ What you enter here shows on the team's Directory banner and team page. Players 
     title: "Settings: Volunteer Roles",
     group: "Settings",
     audience: "super_admin",
+    permission: "teams",
     keywords: ["volunteer", "roles", "coach", "team parent", "scorekeeper", "video", "photography", "spots", "leadership", "in directory", "assign", "registration answer"],
     body: `The jobs every team can fill — coach, team parent, scorekeeper and so on. Open **Settings → Volunteer Roles**.
 
@@ -858,8 +876,9 @@ Tap the **trash** can to delete a category or a playbook.`,
     title: "Settings: Sidebar Links",
     group: "Settings",
     audience: "super_admin",
+    permission: "site_links",
     keywords: ["sidebar", "links", "link", "schedule", "website", "url", "web address", "new tab", "same tab", "inside the portal", "frame", "iframe", "embed", "menu", "shortcut", "reorder"],
-    body: `Add your own links to the bottom of everyone's sidebar — the season schedule, a sign-up form, the club store. Open **Settings → Sidebar Links**.
+    body: `Add your own links to the bottom of everyone's sidebar — the season schedule, a sign-up form, the club store. Open **Settings → Sidebar Links**. Super-admins can, and so can anyone with the **Sidebar Links & Public Directory** permission.
 
 - **Add link** — type a **Label** (the name people see, like Schedule) and the **Link** (a web address like https://schedule.omahalightningbasketball.com/, or a portal page like /portal/docs). Tap **Add link**.
 - Pick how the link opens:
@@ -875,6 +894,7 @@ Every signed-in member sees the links; only super-admins can change them.`,
     title: "Settings: Public Directory",
     group: "Settings",
     audience: "super_admin",
+    permission: "site_links",
     keywords: ["public directory", "directory link", "share", "link", "key", "no login", "without signing in", "read-only", "roster", "turn off"],
     body: `The public Directory is a read-only copy of the Directory on the club website. It opens without signing in, for anyone you give its private link to. It lists only families who said yes to the directory, shows each player's age (not their birthday) and city and ZIP code (not their street address), and never shows fees or payments. Open **Settings → Public Directory**.
 
@@ -935,6 +955,12 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
 
 export function canSeeGuideSection(section: GuideSection, viewer: GuideViewer | null | undefined): boolean {
   if (section.preview && !viewer?.seesFullUi) return false;
+  if (
+    section.permission &&
+    viewer?.status === "approved" &&
+    viewer.permissions?.includes(section.permission)
+  )
+    return true;
   return canSeeAudience(section.audience, viewer);
 }
 

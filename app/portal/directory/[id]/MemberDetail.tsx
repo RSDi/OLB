@@ -69,7 +69,7 @@ export function MemberDetail({
   allRelationships,
   isSelf,
   isSuperAdmin,
-  isStaff,
+  canNotes,
   notes,
 }: {
   member: DetailMember;
@@ -79,7 +79,8 @@ export function MemberDetail({
   allRelationships: EditFormRelationship[];
   isSelf: boolean;
   isSuperAdmin: boolean;
-  isStaff: boolean;
+  // The board, or the Member notes permission (0123).
+  canNotes: boolean;
   notes: string;
 }) {
   const [editing, setEditing] = useState(false);
@@ -260,7 +261,7 @@ export function MemberDetail({
             </div>
           )}
 
-          {isStaff && <NotesPanel memberId={member.id} initialNotes={notes} />}
+          {canNotes && <NotesPanel memberId={member.id} initialNotes={notes} />}
         </>
       )}
     </>

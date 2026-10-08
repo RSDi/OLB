@@ -143,6 +143,25 @@ test("Settings: Website reaches the Website grant and super-admins, not the rest
   assert.ok(!has(MEMBER));
 });
 
+test("a Board power given to a member brings its section, and only that one", () => {
+  const APPROVER: GuideViewer = { ...MEMBER, permissions: ["approve_members"] };
+  const ids = (v: GuideViewer) => guideSectionsFor(v).map((s) => s.id);
+  assert.ok(ids(APPROVER).includes("settings-members"));
+  assert.ok(!ids(MEMBER).includes("settings-members"));
+  assert.equal(guideSectionForPath("/portal/settings", APPROVER)?.id, "settings-members");
+  // Nothing else of the board's comes with it.
+  assert.deepEqual(
+    guideSectionsFor(APPROVER).filter((s) => s.audience !== "everyone").map((s) => s.id),
+    ["settings-members"]
+  );
+  const TEAMS: GuideViewer = { ...MEMBER, permissions: ["teams"] };
+  assert.ok(ids(TEAMS).includes("settings-teams") && ids(TEAMS).includes("settings-volunteer-roles"));
+  const PLANNER: GuideViewer = { ...MEMBER, permissions: ["hs_schedule"] };
+  assert.equal(guideSectionForPath("/portal/schedule", PLANNER)?.id, "hs-schedule");
+  // A permission is ignored until the account is approved.
+  assert.ok(!ids({ ...APPROVER, status: "pending" }).includes("settings-members"));
+});
+
 test("a pending account is treated as a member", () => {
   const pendingAdmin: GuideViewer = { role: "admin", status: "pending", isStaff: false };
   assert.ok(guideSectionsFor(pendingAdmin).every((s) => s.audience === "everyone"));

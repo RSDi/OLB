@@ -18,9 +18,10 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
   const data = await team;
   if (!data) notFound();
 
-  // Filling roles is super-admin only (0092).
+  // Filling roles: super-admins (0092), and anyone with the Teams &
+  // volunteers permission (0123).
   const full = await getViewer();
-  const canManage = !!full?.isSuperAdmin;
+  const canManage = !!full?.canManageTeams;
   const people = canManage ? await loadAssignablePeople() : [];
 
   // By jersey number; players without one go last, by name.

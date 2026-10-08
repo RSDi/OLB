@@ -8,6 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { requireTeams } from "../auth/guards";
 import { createClient } from "../supabase/server";
+import { createAdminClient } from "../supabase/admin";
 import type { TeamSettingsInput, VolunteerActionResult, VolunteerRoleInput } from "./types";
 
 function revalidate() {
@@ -38,6 +39,24 @@ function cleanRole(input: VolunteerRoleInput) {
 }
 
 // ── Teams ────────────────────────────────────────────────────────────────
+
+// How many players are on each of a season's teams, for Settings → Teams.
+// Someone with the Teams & volunteers permission (0123) who isn't Board can't
+// read every player, so the count comes through the service key, after the
+// check; it returns numbers only.
+export async function loadTeamPlayerCounts(boardId: string): Promise<Record<string, number> | { error: string }> {
+  const gate = await requireTeams();
+  if ("error" in gate) return { error: gate.error };
+  const { data, error } = await createAdminClient()
+    .from("olb_players")
+    .select("team_id")
+    .eq("board_id", boardId)
+    .not("team_id", "is", null);
+  if (error) return { error: error.message };
+  const counts: Record<string, number> = {};
+  for (const p of (data as { team_id: string }[] | null) ?? []) counts[p.team_id] = (counts[p.team_id] ?? 0) + 1;
+  return counts;
+}
 
 export async function createTeam(input: TeamSettingsInput): Promise<VolunteerActionResult> {
   const gate = await requireTeams();

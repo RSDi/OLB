@@ -810,7 +810,8 @@ function AccessTable({
   onSetPermission: (member: Member, p: PermissionDef, on: boolean) => void;
 }) {
   const access = new Map(members.map((m) => [m.id, accessOf(m)]));
-  const holds = (m: Member, p: PermissionDef) => m.role === "super_admin" || !!access.get(m.id)!.source(p);
+  const holds = (m: Member, p: PermissionDef) =>
+    m.role === "super_admin" || (p.group === "board" && m.role === "admin") || !!access.get(m.id)!.source(p);
   const groups = PERMISSION_GROUPS.map((g) => ({ ...g, defs: columns.filter((p) => p.group === g.key) })).filter(
     (g) => g.defs.length > 0
   );
@@ -842,6 +843,13 @@ function AccessTable({
         </td>
       );
     const a = access.get(m.id)!;
+    // Board has every Board power already.
+    if (p.group === "board" && m.role === "admin")
+      return (
+        <td key={p.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Board has this">
+          ✓
+        </td>
+      );
     if (!a.offered.includes(p))
       return (
         <td key={p.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Board members only">
