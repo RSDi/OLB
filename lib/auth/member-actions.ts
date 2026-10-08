@@ -79,6 +79,9 @@ export interface CreateMemberInput {
   birthday: string | null; // YYYY-MM-DD
   role: MemberRole;
   status: MemberStatus;
+  // Their access profile (0122). The database sets the role from it.
+  // Null leaves them on the built-in profile for `role`.
+  accessProfileId?: string | null;
 }
 
 export async function createMember(input: CreateMemberInput): Promise<MemberActionResult> {
@@ -97,6 +100,8 @@ export async function createMember(input: CreateMemberInput): Promise<MemberActi
       role: input.role,
       status: input.status,
       reviewed_at: new Date().toISOString(),
+      // Only sent when a profile was picked, so this still works before 0122.
+      ...(input.accessProfileId ? { access_profile_id: input.accessProfileId } : {}),
     })
     .select("id")
     .single();

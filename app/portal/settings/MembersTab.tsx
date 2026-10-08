@@ -378,6 +378,7 @@ export function MembersTab({
     birthday: string;
     role: MemberRole;
     status: MemberStatus;
+    accessProfileId: string | null;
   }) {
     setError(null);
     const result = await createMember({
@@ -387,6 +388,7 @@ export function MembersTab({
       birthday: input.birthday || null,
       role: input.role,
       status: input.status,
+      accessProfileId: input.accessProfileId,
     });
     if (result.error) {
       setError(result.error);
@@ -529,6 +531,9 @@ export function MembersTab({
               setAdding(false);
               setError(null);
             }}
+            // Starts over on Member once the profiles arrive.
+            key={profiles ? "profiles" : "roles"}
+            profiles={profiles}
             onSubmit={handleCreateMember}
           />
         </div>
@@ -1405,9 +1410,13 @@ function ActionBtn({
 }
 
 function AddMemberForm({
+  profiles,
   onCancel,
   onSubmit,
 }: {
+  // Access profiles (0122) to start them on; null before the migration, when
+  // the form asks for a role instead.
+  profiles: AccessProfile[] | null;
   onCancel: () => void;
   onSubmit: (input: {
     fullName: string;
@@ -1416,27 +1425,34 @@ function AddMemberForm({
     birthday: string;
     role: MemberRole;
     status: MemberStatus;
+    accessProfileId: string | null;
   }) => void | Promise<void>;
 }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [birthday, setBirthday] = useState("");
-  const [role, setRole] = useState<MemberRole>("member");
+  // A profile id, or "super_admin"; before 0122 a role. Starts on Member.
+  const memberProfile = profiles?.find((p) => p.is_builtin && p.base_role === "member");
+  const [access, setAccess] = useState<string>(memberProfile?.id ?? "member");
   const [status, setStatus] = useState<MemberStatus>("approved");
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!fullName.trim()) return;
+    const profile = profiles?.find((p) => p.id === access) ?? null;
+    if (access === "super_admin" && !confirm(`Make ${fullName.trim()} a Super-admin? They'll have full control — managing members, roles, and every setting.`))
+      return;
     startTransition(async () => {
       await onSubmit({
         fullName: fullName.trim(),
         email: email.trim(),
         phone: phone.trim(),
         birthday,
-        role,
+        role: profile ? profile.base_role : (access as MemberRole),
         status,
+        accessProfileId: profile?.id ?? null,
       });
     });
   }
@@ -1487,16 +1503,28 @@ function AddMemberForm({
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Select
-          label="Role"
-          value={role}
-          onChange={(e) => setRole(e.target.value as MemberRole)}
-          disabled={pending}
-        >
-          <option value="member">Member</option>
-          <option value="admin">Board</option>
-          <option value="super_admin">Super-admin</option>
-        </Select>
+        {profiles ? (
+          <Select
+            label="Access profile"
+            help="What they can do: Member, Board, a profile from Settings → Access Profiles, or Super-admin."
+            value={access}
+            onChange={(e) => setAccess(e.target.value)}
+            disabled={pending}
+          >
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+            <option value="super_admin">Super-admin</option>
+          </Select>
+        ) : (
+          <Select label="Role" value={access} onChange={(e) => setAccess(e.target.value)} disabled={pending}>
+            <option value="member">Member</option>
+            <option value="admin">Board</option>
+            <option value="super_admin">Super-admin</option>
+          </Select>
+        )}
         <Select
           label="Status"
           value={status}
