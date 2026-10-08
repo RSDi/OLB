@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import { canEditSettings, canManageWebsite, isStaff, isSuperAdmin, type MemberLike } from "../../../lib/auth/permissions";
 import { seesFullUi } from "../../../lib/auth/feature-preview";
+import { loadGrants } from "../../../lib/auth/load-grants";
 import { MembersTab } from "./MembersTab";
 import { AreasTab } from "./AreasTab";
 import { PrioritiesTab } from "./PrioritiesTab";
@@ -27,6 +28,7 @@ import { EmailTemplatesTab } from "./EmailTemplatesTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
 import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { WebsiteTab } from "./WebsiteTab";
+import { AccessProfilesTab } from "./AccessProfilesTab";
 import { usePageHelp } from "../../components/PageHelp";
 
 // Staged rollout: the tabs released to everyone who can open Settings, and
@@ -35,6 +37,7 @@ import { usePageHelp } from "../../components/PageHelp";
 // Website is released to whoever holds its grant (and super-admins).
 const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "website"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
+  "access_profiles",
   "playbooks",
   "sidebar_links",
   "public_directory",
@@ -46,6 +49,7 @@ const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
 // around") match the open tab. Tabs without one fall back to Members.
 const TAB_HELP: Partial<Record<Tab, string>> = {
   members: "settings-members",
+  access_profiles: "settings-access-profiles",
   teams: "settings-teams",
   volunteer_roles: "settings-volunteer-roles",
   requirements: "settings-requirements",
@@ -60,6 +64,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
 
 type Tab =
   | "members"
+  | "access_profiles"
   | "areas"
   | "priorities"
   | "assets"
@@ -102,23 +107,11 @@ export default function SettingsPage() {
         router.replace("/login");
         return;
       }
-      const { data: meRow } = await supabase
-        .from("members")
-        .select("role, status, can_edit_settings, can_delete_settings, can_undelete_settings")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      // The Website grant (0120), best-effort so Settings loads before it.
-      const { data: websiteRow } = await supabase
-        .from("members")
-        .select("can_manage_website")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const memberLike = meRow
-        ? ({
-            ...(meRow as MemberLike),
-            can_manage_website: !!(websiteRow as Partial<MemberLike> | null)?.can_manage_website,
-          } as MemberLike)
-        : null;
+      const [{ data: meRow }, grants] = await Promise.all([
+        supabase.from("members").select("role, status").eq("user_id", user.id).maybeSingle(),
+        loadGrants(supabase, user.id),
+      ]);
+      const memberLike = meRow ? ({ ...grants, ...(meRow as MemberLike) } as MemberLike) : null;
       if (!isStaff(memberLike)) {
         router.replace("/portal");
         return;
@@ -160,6 +153,8 @@ export default function SettingsPage() {
   // `tour`: the tab button's guided-tour anchor (lib/help/tours.ts).
   const tabs: { key: Tab; label: string; visible: boolean; tour: string }[] = [
     { key: "members", label: "Members", visible: showMembers, tour: "settings-tab-members" },
+    // Named bundles of permissions handed out in Members (0122).
+    { key: "access_profiles", label: "Access Profiles", visible: isSuperAdmin(me), tour: "settings-tab-access-profiles" },
     { key: "areas", label: "Areas", visible: true, tour: "settings-tab-areas" },
     { key: "priorities", label: "Priorities", visible: true, tour: "settings-tab-priorities" },
     { key: "assets", label: "Assets", visible: true, tour: "settings-tab-assets" },
@@ -230,6 +225,7 @@ export default function SettingsPage() {
       {tab === "members" && showMembers && (
         <MembersTab currentUserId={userId} canManage={isSuperAdmin(me)} />
       )}
+      {tab === "access_profiles" && isSuperAdmin(me) && <AccessProfilesTab />}
       {tab === "areas" && <AreasTab me={me} />}
       {tab === "priorities" && <PrioritiesTab me={me} />}
       {tab === "assets" && <AssetsTab me={me} />}

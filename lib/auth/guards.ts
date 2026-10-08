@@ -10,6 +10,7 @@
 //   if ("error" in gate) return { error: gate.error };
 
 import { createClient } from "../supabase/server";
+import { loadGrants } from "./load-grants";
 import {
   isStaff,
   isSuperAdmin,
@@ -41,40 +42,10 @@ async function loadCaller(): Promise<{ userId: string; member: MemberLike | null
     .maybeSingle();
   if (!data) return { userId: user.id, member: null };
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
-  // Settings grants (0057), the Payments grant (0101), the Registrations
-  // grant (0102), the Travel grant (0110), the Slack DMs grant (0118) and the
-  // Website grant (0120),
-  // best-effort so the guards work pre-migration (grants default false → no
-  // access, the safe default). Separate queries, so a missing
-  // later column can't hide an earlier one.
-  const [{ data: g }, { data: f }, { data: r }, { data: t }, { data: s }, { data: w }] = await Promise.all([
-    supabase
-      .from("members")
-      .select("can_edit_settings, can_delete_settings, can_undelete_settings")
-      .eq("id", row.id)
-      .maybeSingle(),
-    supabase.from("members").select("can_manage_finances").eq("id", row.id).maybeSingle(),
-    supabase.from("members").select("can_manage_registrations").eq("id", row.id).maybeSingle(),
-    supabase.from("members").select("can_manage_travel").eq("id", row.id).maybeSingle(),
-    supabase.from("members").select("can_slack_dm").eq("id", row.id).maybeSingle(),
-    supabase.from("members").select("can_manage_website").eq("id", row.id).maybeSingle(),
-  ]);
-  const grants = (g as Partial<MemberLike> | null) ?? {};
-  return {
-    userId: user.id,
-    member: {
-      role: row.role,
-      status: row.status,
-      can_edit_settings: !!grants.can_edit_settings,
-      can_delete_settings: !!grants.can_delete_settings,
-      can_undelete_settings: !!grants.can_undelete_settings,
-      can_manage_finances: !!(f as Partial<MemberLike> | null)?.can_manage_finances,
-      can_manage_registrations: !!(r as Partial<MemberLike> | null)?.can_manage_registrations,
-      can_manage_travel: !!(t as Partial<MemberLike> | null)?.can_manage_travel,
-      can_slack_dm: !!(s as Partial<MemberLike> | null)?.can_slack_dm,
-      can_manage_website: !!(w as Partial<MemberLike> | null)?.can_manage_website,
-    },
-  };
+  // Best-effort, so the guards work ahead of a migration: a missing grant
+  // reads as no access, the safe default.
+  const grants = await loadGrants(supabase, user.id);
+  return { userId: user.id, member: { ...grants, role: row.role, status: row.status } };
 }
 
 export async function requireStaff(): Promise<GateResult> {

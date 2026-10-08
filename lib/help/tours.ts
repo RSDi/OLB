@@ -563,7 +563,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "settings-tabs",
         audience: "super_admin",
         title: "Settings tabs",
-        body: "Members, Teams, Volunteer Roles, Requirements, Playbooks, Sidebar Links, Contact Types and the Audit Log each have their own tab. Tap **ⓘ** on any tab, then **Show me around**, for a walkthrough of that tab.",
+        body: "Members, Access Profiles, Teams, Volunteer Roles, Requirements, Playbooks, Sidebar Links, Contact Types and the Audit Log each have their own tab. Tap **ⓘ** on any tab, then **Show me around**, for a walkthrough of that tab.",
       },
       {
         target: "members-status",
@@ -579,7 +579,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "members-row",
         title: "Each person",
-        body: "On **Pending**, **Approve** lets them in and emails them a sign-in link, and **Deny** turns them away. Super-admins also change the **role** here, tap **Edit** to change a profile (or **Revoke login**), and tap **Access** to choose what someone can manage, like **Payments** or **Slack DMs**, and a board member's Settings powers.",
+        body: "On **Pending**, **Approve** lets them in and emails them a sign-in link, and **Deny** turns them away. Super-admins also pick each person's **access profile** from the drop-down, tap **Edit** to change their details (or **Revoke login**), and tap **Access** to see what they can do and give them **extras** of their own.",
       },
       {
         target: "members-view",
@@ -795,6 +795,31 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "website-drafts",
         title: "Publish",
         body: "When the preview looks right, tap **Publish** up here to put every draft on the live site at once.",
+      },
+    ],
+  },
+  {
+    id: "settings-access-profiles",
+    sectionId: "settings-access-profiles",
+    title: "Access Profiles walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-access-profiles",
+        title: "Settings → Access Profiles",
+        body: "Named sets of permissions, like Treasurer or Registrar, that you give someone in one step from **Settings → Members**.",
+      },
+      {
+        target: "access-profiles-card",
+        click: "settings-tab-access-profiles",
+        title: "Each profile",
+        body: "What it gives and how many people are on it. **Edit permissions** opens its boxes. Changes reach everyone on it straight away. **Member** and **Board** are built in.",
+      },
+      {
+        target: "access-profiles-new",
+        click: "settings-tab-access-profiles",
+        title: "New profile",
+        body: "Name it and choose what it's **Based on**: Member, or Board if the people on it should be Board too. Then tick its permissions.",
       },
     ],
   },
