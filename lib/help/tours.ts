@@ -465,9 +465,14 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "By name, email, phone, account number or type.",
       },
       {
+        target: "contacts-view",
+        title: "Companies or people",
+        body: "**All** shows each company with its people under it. **Companies** shows just the companies; **People** lists everyone, with where they work.",
+      },
+      {
         target: "contacts-filters",
         title: "Filter",
-        body: "Show just **Companies**, just **People**, one type of contact, or one tag (**nchc**, **ndii**…).",
+        body: "**All types** and **All tags** narrow the list to one type of contact or one tag (**nchc**, **ndii**…).",
       },
       {
         target: "contacts-card",

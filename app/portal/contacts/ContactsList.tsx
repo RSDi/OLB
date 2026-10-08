@@ -13,11 +13,15 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { ClearSearchButton, Pill } from "../../components/ui";
+import { FilterSelect, SegButton, SegGroup } from "../../components/FilterControls";
 import type { Contact, ContactCategory, ContactKind } from "./_shared/data";
 import { composeSubtitle, displayName } from "./_shared/format";
 import { groupContacts, placeLabel } from "./_shared/group";
 
 type KindFilter = "all" | ContactKind;
+
+// The tag drop-down's "All tags" (an empty value reads as unpicked).
+const ALL_TAGS = "\u0000all";
 
 // People shown under a company before "+N more".
 const PEOPLE_SHOWN = 6;
@@ -48,7 +52,7 @@ export function ContactsList({
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const contactById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
 
-  // Does one contact match the search box and the type and tag chips?
+  // Does one contact match the search box and the type and tag filters?
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (c: Contact) => {
@@ -166,76 +170,85 @@ export function ContactsList({
         )}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {/* Search */}
-        <div data-tour="contacts-search" style={{ position: "relative", maxWidth: 480 }}>
-          <span
-            style={{
-              position: "absolute",
-              left: 12,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--gw-fg-muted)",
-              display: "flex",
-            }}
-          >
-            <Icons.Search width={14} height={14} />
-          </span>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, role, email, phone, city, type…"
-            style={{
-              width: "100%",
-              height: 40,
-              padding: "0 40px 0 36px",
-              borderRadius: 10,
-              border: "1px solid var(--gw-border)",
-              background: "var(--gw-bg)",
-              color: "var(--gw-fg)",
-              fontSize: 13,
-              fontWeight: 500,
-            }}
-          />
-          {query && <ClearSearchButton onClear={() => setQuery("")} />}
-        </div>
-
-        <div data-tour="contacts-filters" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {/* Kind filter */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <FilterChip active={kind === "all"} label="All" onClick={() => setKind("all")} />
-            <FilterChip active={kind === "company"} label="Companies" onClick={() => setKind("company")} />
-            <FilterChip active={kind === "person"} label="People" onClick={() => setKind("person")} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div data-tour="contacts-search" style={{ position: "relative", flex: "1 1 280px", maxWidth: 480 }}>
+            <span
+              style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--gw-fg-muted)",
+                display: "flex",
+              }}
+            >
+              <Icons.Search width={14} height={14} />
+            </span>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search contacts"
+              aria-label="Search external contacts"
+              style={{
+                width: "100%",
+                height: 40,
+                padding: "0 40px 0 36px",
+                borderRadius: 10,
+                border: "1px solid var(--gw-border)",
+                background: "var(--gw-bg)",
+                color: "var(--gw-fg)",
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            />
+            {query && <ClearSearchButton onClear={() => setQuery("")} />}
           </div>
-
-          {/* Type filter */}
-          {categories.length > 0 && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <FilterChip active={categoryId === "all"} label="All types" onClick={() => setCategoryId("all")} />
-              {categories.map((c) => (
-                <FilterChip
-                  key={c.id}
-                  active={categoryId === c.id}
-                  label={`${c.name}${countByCategory.get(c.id) ? ` · ${countByCategory.get(c.id)}` : ""}`}
-                  onClick={() => setCategoryId(c.id)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Tag filter: tap a tag to show only those, tap it again for all. */}
-          {tagCounts.length > 0 && (
-            <div data-tour="contacts-tags" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em", marginRight: 2 }}>
-                Tags
-              </span>
-              {tagCounts.slice(0, 16).map(([t, n]) => (
-                <FilterChip key={t} small active={tag === t} label={`${t} · ${n}`} onClick={() => setTag(tag === t ? null : t)} />
-              ))}
-            </div>
-          )}
+          <SegGroup label="Show companies or people" data-tour="contacts-view">
+            <SegButton label="All" active={kind === "all"} onClick={() => setKind("all")} />
+            <SegButton label="Companies" active={kind === "company"} onClick={() => setKind("company")} />
+            <SegButton label="People" active={kind === "person"} onClick={() => setKind("person")} />
+          </SegGroup>
         </div>
+
+        {(categories.length > 0 || tagCounts.length > 0) && (
+          <div data-tour="contacts-filters" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {categories.length > 0 && (
+              <FilterSelect
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                aria-label="Show a type"
+                grow
+                active={categoryId !== "all"}
+              >
+                <option value="all">All types</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({countByCategory.get(c.id) ?? 0})
+                  </option>
+                ))}
+              </FilterSelect>
+            )}
+            {tagCounts.length > 0 && (
+              <FilterSelect
+                value={tag ?? ALL_TAGS}
+                onChange={(e) => setTag(e.target.value === ALL_TAGS ? null : e.target.value)}
+                aria-label="Show a tag"
+                grow
+                data-tour="contacts-tags"
+                active={tag !== null}
+              >
+                <option value={ALL_TAGS}>All tags</option>
+                {tagCounts.map(([t, n]) => (
+                  <option key={t} value={t}>
+                    {t} ({n})
+                  </option>
+                ))}
+              </FilterSelect>
+            )}
+          </div>
+        )}
       </div>
 
       {empty ? (
@@ -472,39 +485,6 @@ function PersonCard({ person, company, category }: { person: Contact; company: C
       </div>
       <Icons.ChevronRight width={14} height={14} />
     </Link>
-  );
-}
-
-function FilterChip({
-  active,
-  label,
-  onClick,
-  small,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  small?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      style={{
-        padding: small ? "4px 10px" : "6px 14px",
-        borderRadius: 100,
-        background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
-        color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
-        border: "1px solid",
-        borderColor: active ? "var(--rsd-accent-fill)" : "var(--gw-border)",
-        fontSize: small ? 11 : 12,
-        fontWeight: 700,
-        cursor: "pointer",
-      }}
-    >
-      {label}
-    </button>
   );
 }
 

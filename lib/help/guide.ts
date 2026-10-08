@@ -439,7 +439,7 @@ Requirements start over each season, since each season has its own roster. The l
     body: `Everyone outside the club we work with — other programs, gyms we rent, referees, vendors, photographers. The board sees and edits all of it. Coaches see the types the board shares with them (the programs, gyms and referees), read-only.
 
 - **All** lists each company with the people who work there under it (their role, email and phone), then **People on their own**. **Companies** shows just the companies; **People** lists everyone, each with the company they work at.
-- **Search** by name, role, email, phone, city, account number or type, or by another name a program goes by (like RR). Use the chips to show **Companies**, **People**, one **type**, or one **tag** (tap the tag again to show everyone).
+- **Search** by name, role, email, phone, city, account number or type, or by another name a program goes by (like RR). Beside the search box, **All**, **Companies** and **People** switch what the list shows. Under it, the **All types** and **All tags** drop-downs narrow the list to one type or one tag; set it back to **All types** or **All tags** to show everyone.
 - A person's page shows **Works at**: their company, with its details, and everyone else who works there. A company's page lists **People at this company**, and a program's or gym's page shows **On the HS Schedule**: every weekend it came to or hosted. Numbers are tap-to-call, and tapping an address offers **Apple Maps** or **Google Maps**.
 
 **The board** also:
