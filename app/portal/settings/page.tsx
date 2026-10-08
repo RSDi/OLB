@@ -98,6 +98,96 @@ type Tab =
   | "audit_log"
   | "deleted";
 
+// The groups the side menu sorts the tabs into, in order.
+const GROUPS = [
+  "People & Access",
+  "Facilities & Equipment",
+  "Work & Events",
+  "Communication",
+  "Website & Portal",
+  "System",
+] as const;
+type Group = (typeof GROUPS)[number];
+
+type TabDef = {
+  key: Tab;
+  label: string;
+  group: Group;
+  visible: boolean;
+  // The tab button's guided-tour anchor (lib/help/tours.ts).
+  tour: string;
+  // Extra words the menu's filter box matches, beyond the label and group.
+  keywords: string;
+};
+
+// Every tab this person can open, in menu order. Shared by the first-load
+// pick (a `?tab=` link) and the menu itself.
+function visibleTabs(me: MemberLike, fullUi: boolean): TabDef[] {
+  // Any board member works the approval queue, and so does anyone with the
+  // Approve access requests permission (0123); role/edit/remove inside the
+  // tab stay super-admin-only via canManage.
+  const showMembers = canApproveMembers(me);
+  const teams = canManageTeams(me);
+  const siteLinks = canManageSiteLinks(me);
+  // Someone off the board who holds one of the permissions above sees only
+  // those tabs; the rest of Settings is the board's.
+  const board = isStaff(me);
+  const GRANTED_TABS: Partial<Record<Tab, boolean>> = {
+    members: showMembers,
+    teams,
+    volunteer_roles: teams,
+    sidebar_links: siteLinks,
+    public_directory: siteLinks,
+  };
+  // Deleted tab stays super-admin-only until the RLS follow-up lets board
+  // members with the undelete grant see + restore soft-deleted rows.
+  const showDeleted = isSuperAdmin(me);
+
+  const tabs: TabDef[] = [
+    { key: "members", label: "Members", group: "People & Access", visible: showMembers, tour: "settings-tab-members", keywords: "approve deny pending access requests people accounts users" },
+    // Named bundles of permissions handed out in Members (0122).
+    { key: "access_profiles", label: "Access Profiles", group: "People & Access", visible: isSuperAdmin(me), tour: "settings-tab-access-profiles", keywords: "permissions roles grants treasurer" },
+    { key: "teams", label: "Teams", group: "People & Access", visible: teams, tour: "settings-tab-teams", keywords: "coaches roster squads" },
+    { key: "volunteer_roles", label: "Volunteer Roles", group: "People & Access", visible: teams, tour: "settings-tab-volunteer-roles", keywords: "volunteers parents jobs" },
+    { key: "requirements", label: "Requirements", group: "People & Access", visible: canEditSettings(me), tour: "settings-tab-requirements", keywords: "forms fees players registration hand in pay" },
+    // Planning (lib/planning/access.ts): staged rollout, so only the preview
+    // accounts get the tab until Planning is released.
+    { key: "planning_roles", label: "Planning Roles", group: "People & Access", visible: fullUi, tour: "settings-tab-planning-roles", keywords: "planning" },
+    { key: "areas", label: "Areas", group: "Facilities & Equipment", visible: true, tour: "settings-tab-areas", keywords: "fields rooms locations places" },
+    { key: "assets", label: "Assets", group: "Facilities & Equipment", visible: true, tour: "settings-tab-assets", keywords: "equipment items" },
+    { key: "types", label: "Types", group: "Facilities & Equipment", visible: true, tour: "settings-tab-types", keywords: "asset types kinds categories" },
+    { key: "supplies", label: "Supplies", group: "Facilities & Equipment", visible: true, tour: "settings-tab-supplies", keywords: "stock inventory" },
+    { key: "closures", label: "Closures", group: "Facilities & Equipment", visible: true, tour: "settings-tab-closures", keywords: "closed holidays weather" },
+    { key: "priorities", label: "Priorities", group: "Work & Events", visible: true, tour: "settings-tab-priorities", keywords: "tasks urgent" },
+    { key: "task_categories", label: "Task Categories", group: "Work & Events", visible: true, tour: "settings-tab-task-categories", keywords: "tasks" },
+    { key: "event_categories", label: "Event Categories", group: "Work & Events", visible: true, tour: "settings-tab-event-categories", keywords: "calendar events" },
+    { key: "playbooks", label: "Playbooks", group: "Work & Events", visible: true, tour: "settings-tab-playbooks", keywords: "checklists procedures steps" },
+    // Any board member writes the templates used when emailing families (0117).
+    { key: "email_templates", label: "Email Templates", group: "Communication", visible: true, tour: "settings-tab-email-templates", keywords: "email mail messages families" },
+    { key: "contact_categories", label: "Contact Types", group: "Communication", visible: true, tour: "settings-tab-contact-categories", keywords: "contacts categories" },
+    // The public club website's menu, page text and pictures (0120).
+    { key: "website", label: "Website", group: "Website & Portal", visible: canManageWebsite(me), tour: "settings-tab-website", keywords: "public site pages pictures publish" },
+    { key: "sidebar_links", label: "Sidebar Links", group: "Website & Portal", visible: siteLinks, tour: "settings-tab-sidebar-links", keywords: "links menu" },
+    // The key in the public Directory's link (0119).
+    { key: "public_directory", label: "Public Directory", group: "Website & Portal", visible: siteLinks, tour: "settings-tab-public-directory", keywords: "directory link key" },
+    { key: "integrations", label: "Integrations", group: "System", visible: true, tour: "settings-tab-integrations", keywords: "slack google connect" },
+    // The spreadsheet import, kept for the preview accounts only.
+    { key: "import", label: "Import", group: "System", visible: fullUi, tour: "settings-tab-import", keywords: "spreadsheet upload csv" },
+    { key: "audit_log", label: "Audit Log", group: "System", visible: true, tour: "settings-tab-audit-log", keywords: "history changes who" },
+    { key: "deleted", label: "Deleted", group: "System", visible: showDeleted, tour: "settings-tab-deleted", keywords: "restore undelete trash" },
+  ];
+  return tabs.filter(
+    (t) =>
+      t.visible &&
+      (board || GRANTED_TABS[t.key]) &&
+      (fullUi ||
+        RELEASED_TABS.has(t.key) ||
+        (isSuperAdmin(me) && SUPER_ADMIN_RELEASED_TABS.has(t.key)) ||
+        // Granted by permission (0123), so released to whoever holds it.
+        GRANTED_TABS[t.key])
+  );
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [me, setMe] = useState<MemberLike | null>(null);
@@ -106,6 +196,7 @@ export default function SettingsPage() {
   usePageHelp(TAB_HELP[tab] ?? null);
   const [authChecked, setAuthChecked] = useState(false);
   const [fullUi, setFullUi] = useState(false);
+  const [filter, setFilter] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -127,26 +218,37 @@ export default function SettingsPage() {
         router.replace("/portal");
         return;
       }
+      const preview = seesFullUi(user.email);
       setMe(memberLike);
       setUserId(user.id);
-      setFullUi(seesFullUi(user.email));
-      // All board staff land on Members — any of them can work the
-      // approval queue (D1) — unless a link asks for the Website tab (the
-      // public site's preview bar links here to publish). Someone off the
-      // board lands on the first tab they have.
+      setFullUi(preview);
+      // A `?tab=` link opens that tab when they have it (the public site's
+      // preview bar links to the Website tab to publish). Otherwise all
+      // board staff land on Members — any of them can work the approval
+      // queue (D1) — and someone off the board lands on the first tab they
+      // have.
       const wanted = new URLSearchParams(window.location.search).get("tab");
-      setTab(
-        wanted === "website" && canManageWebsite(memberLike)
-          ? "website"
-          : canApproveMembers(memberLike)
-          ? "members"
-          : canManageTeams(memberLike)
-          ? "teams"
-          : "sidebar_links"
-      );
+      const mine = visibleTabs(memberLike!, preview);
+      const linked = mine.find((t) => t.key === wanted);
+      const landing: Tab = canApproveMembers(memberLike)
+        ? "members"
+        : canManageTeams(memberLike)
+        ? "teams"
+        : "sidebar_links";
+      setTab(linked ? linked.key : mine.some((t) => t.key === landing) ? landing : mine[0]?.key ?? landing);
       setAuthChecked(true);
     })();
   }, [router]);
+
+  // Opens a tab and puts it in the address bar, so the link can be shared
+  // and a reload stays put.
+  const openTab = (key: Tab) => {
+    setTab(key);
+    setFilter("");
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", key);
+    window.history.replaceState(window.history.state, "", url);
+  };
 
   if (!authChecked || !me || !userId) {
     return (
@@ -163,127 +265,92 @@ export default function SettingsPage() {
     );
   }
 
-  // Any board member works the approval queue, and so does anyone with the
-  // Approve access requests permission (0123); role/edit/remove inside the
-  // tab stay super-admin-only via canManage.
-  const showMembers = canApproveMembers(me);
-  const teams = canManageTeams(me);
-  const siteLinks = canManageSiteLinks(me);
-  // Someone off the board who holds one of the permissions above sees only
-  // those tabs; the rest of Settings is the board's.
-  const board = isStaff(me);
-  const GRANTED_TABS: Partial<Record<Tab, boolean>> = {
-    members: showMembers,
-    teams,
-    volunteer_roles: teams,
-    sidebar_links: siteLinks,
-    public_directory: siteLinks,
-  };
-  // Deleted tab stays super-admin-only until the RLS follow-up lets board
-  // members with the undelete grant see + restore soft-deleted rows.
-  const showDeleted = isSuperAdmin(me);
+  const shownTabs = visibleTabs(me, fullUi);
+  const has = (key: Tab) => shownTabs.some((t) => t.key === key);
+  const q = filter.trim().toLowerCase();
+  const matching = q
+    ? shownTabs.filter((t) => `${t.label} ${t.group} ${t.keywords}`.toLowerCase().includes(q))
+    : shownTabs;
 
-  // `tour`: the tab button's guided-tour anchor (lib/help/tours.ts).
-  const tabs: { key: Tab; label: string; visible: boolean; tour: string }[] = [
-    { key: "members", label: "Members", visible: showMembers, tour: "settings-tab-members" },
-    // Named bundles of permissions handed out in Members (0122).
-    { key: "access_profiles", label: "Access Profiles", visible: isSuperAdmin(me), tour: "settings-tab-access-profiles" },
-    { key: "areas", label: "Areas", visible: true, tour: "settings-tab-areas" },
-    { key: "priorities", label: "Priorities", visible: true, tour: "settings-tab-priorities" },
-    { key: "assets", label: "Assets", visible: true, tour: "settings-tab-assets" },
-    { key: "types", label: "Types", visible: true, tour: "settings-tab-types" },
-    { key: "supplies", label: "Supplies", visible: true, tour: "settings-tab-supplies" },
-    { key: "teams", label: "Teams", visible: teams, tour: "settings-tab-teams" },
-    { key: "volunteer_roles", label: "Volunteer Roles", visible: teams, tour: "settings-tab-volunteer-roles" },
-    { key: "requirements", label: "Requirements", visible: canEditSettings(me), tour: "settings-tab-requirements" },
-    // Any board member writes the templates used when emailing families (0117).
-    { key: "email_templates", label: "Email Templates", visible: true, tour: "settings-tab-email-templates" },
-    // The public club website's menu, page text and pictures (0120).
-    { key: "website", label: "Website", visible: canManageWebsite(me), tour: "settings-tab-website" },
-    // Planning (lib/planning/access.ts): staged rollout, so only the preview
-    // accounts get the tab until Planning is released.
-    { key: "planning_roles", label: "Planning Roles", visible: fullUi, tour: "settings-tab-planning-roles" },
-    { key: "event_categories", label: "Event Categories", visible: true, tour: "settings-tab-event-categories" },
-    { key: "task_categories", label: "Task Categories", visible: true, tour: "settings-tab-task-categories" },
-    { key: "playbooks", label: "Playbooks", visible: true, tour: "settings-tab-playbooks" },
-    { key: "sidebar_links", label: "Sidebar Links", visible: siteLinks, tour: "settings-tab-sidebar-links" },
-    // The key in the public Directory's link (0119).
-    { key: "public_directory", label: "Public Directory", visible: siteLinks, tour: "settings-tab-public-directory" },
-    { key: "closures", label: "Closures", visible: true, tour: "settings-tab-closures" },
-    { key: "contact_categories", label: "Contact Types", visible: true, tour: "settings-tab-contact-categories" },
-    { key: "integrations", label: "Integrations", visible: true, tour: "settings-tab-integrations" },
-    // The spreadsheet import, kept for the preview accounts only.
-    { key: "import", label: "Import", visible: fullUi, tour: "settings-tab-import" },
-    { key: "audit_log", label: "Audit Log", visible: true, tour: "settings-tab-audit-log" },
-    { key: "deleted", label: "Deleted", visible: showDeleted, tour: "settings-tab-deleted" },
-  ];
-  const shownTabs = tabs.filter(
-    (t) =>
-      t.visible &&
-      (board || GRANTED_TABS[t.key]) &&
-      (fullUi ||
-        RELEASED_TABS.has(t.key) ||
-        (isSuperAdmin(me) && SUPER_ADMIN_RELEASED_TABS.has(t.key)) ||
-        // Granted by permission (0123), so released to whoever holds it.
-        GRANTED_TABS[t.key])
-  );
-
-  return (
+  const content = (
     <>
-      {/* Outer tabs. Staged rollout: everyone else only gets the released
-          tabs, and no bar at all when that leaves just one. */}
-      {shownTabs.length > 1 && (
-        <div data-tour="settings-tabs" style={{ display: "flex", gap: 2, marginBottom: 24, flexWrap: "wrap" }}>
-          {shownTabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              data-tour={t.tour}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 8,
-                background: tab === t.key ? "var(--gw-bg-elev)" : "transparent",
-                border: "1px solid",
-                borderColor: tab === t.key ? "var(--gw-border)" : "transparent",
-                fontSize: 13,
-                fontWeight: 700,
-                color: tab === t.key ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-                cursor: "pointer",
-                transition: "all 120ms",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {tab === "members" && showMembers && (
+      {tab === "members" && has("members") && (
         <MembersTab currentUserId={userId} canManage={isSuperAdmin(me)} />
       )}
-      {tab === "access_profiles" && isSuperAdmin(me) && <AccessProfilesTab />}
-      {tab === "areas" && <AreasTab me={me} />}
-      {tab === "priorities" && <PrioritiesTab me={me} />}
-      {tab === "assets" && <AssetsTab me={me} />}
-      {tab === "types" && <TypesTab me={me} />}
-      {tab === "supplies" && <SuppliesTab me={me} />}
-      {tab === "teams" && teams && <TeamsSettingsTab />}
-      {tab === "volunteer_roles" && teams && <VolunteerRolesTab />}
-      {tab === "requirements" && canEditSettings(me) && <RequirementsTab me={me} />}
-      {tab === "email_templates" && <EmailTemplatesTab />}
-      {tab === "website" && canManageWebsite(me) && <WebsiteTab />}
-      {tab === "planning_roles" && fullUi && <PlanningRolesTab />}
-      {tab === "event_categories" && <EventCategoriesTab me={me} />}
-      {tab === "task_categories" && <TaskCategoriesTab me={me} />}
-      {tab === "playbooks" && <PlaybooksTab me={me} />}
-      {tab === "sidebar_links" && siteLinks && <SidebarLinksTab />}
-      {tab === "public_directory" && siteLinks && <PublicDirectoryTab />}
-      {tab === "closures" && <ClosuresTab me={me} />}
-      {tab === "contact_categories" && <ContactCategoriesTab me={me} />}
-      {tab === "integrations" && <IntegrationsTab />}
-      {tab === "import" && fullUi && <ImportTab />}
-      {tab === "audit_log" && <AuditLogTab />}
-      {tab === "deleted" && showDeleted && <DeletedTab />}
+      {tab === "access_profiles" && has("access_profiles") && <AccessProfilesTab />}
+      {tab === "areas" && has("areas") && <AreasTab me={me} />}
+      {tab === "priorities" && has("priorities") && <PrioritiesTab me={me} />}
+      {tab === "assets" && has("assets") && <AssetsTab me={me} />}
+      {tab === "types" && has("types") && <TypesTab me={me} />}
+      {tab === "supplies" && has("supplies") && <SuppliesTab me={me} />}
+      {tab === "teams" && has("teams") && <TeamsSettingsTab />}
+      {tab === "volunteer_roles" && has("volunteer_roles") && <VolunteerRolesTab />}
+      {tab === "requirements" && has("requirements") && <RequirementsTab me={me} />}
+      {tab === "email_templates" && has("email_templates") && <EmailTemplatesTab />}
+      {tab === "website" && has("website") && <WebsiteTab />}
+      {tab === "planning_roles" && has("planning_roles") && <PlanningRolesTab />}
+      {tab === "event_categories" && has("event_categories") && <EventCategoriesTab me={me} />}
+      {tab === "task_categories" && has("task_categories") && <TaskCategoriesTab me={me} />}
+      {tab === "playbooks" && has("playbooks") && <PlaybooksTab me={me} />}
+      {tab === "sidebar_links" && has("sidebar_links") && <SidebarLinksTab />}
+      {tab === "public_directory" && has("public_directory") && <PublicDirectoryTab />}
+      {tab === "closures" && has("closures") && <ClosuresTab me={me} />}
+      {tab === "contact_categories" && has("contact_categories") && <ContactCategoriesTab me={me} />}
+      {tab === "integrations" && has("integrations") && <IntegrationsTab />}
+      {tab === "import" && has("import") && <ImportTab />}
+      {tab === "audit_log" && has("audit_log") && <AuditLogTab />}
+      {tab === "deleted" && has("deleted") && <DeletedTab />}
     </>
+  );
+
+  // Staged rollout: everyone else only gets the released tabs, and no menu
+  // at all when that leaves just one.
+  if (shownTabs.length <= 1) return content;
+
+  return (
+    <div className="rsd-settings">
+      {/* The side menu: the tabs sorted into groups, with a box that
+          narrows them by name. On a phone it sits above the tab instead. */}
+      <nav className="rsd-settings-nav" data-tour="settings-tabs" aria-label="Settings">
+        <input
+          type="search"
+          className="rsd-settings-filter"
+          placeholder="Find a setting…"
+          aria-label="Find a setting"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setFilter("");
+            // Enter opens the only (or first) match.
+            if (e.key === "Enter" && matching[0]) openTab(matching[0].key);
+          }}
+        />
+        {matching.length === 0 && <div className="rsd-settings-empty">No settings match “{filter.trim()}”.</div>}
+        {GROUPS.map((g) => {
+          const items = matching.filter((t) => t.group === g);
+          if (items.length === 0) return null;
+          return (
+            <div key={g} className="rsd-settings-group">
+              <div className="rsd-eyebrow rsd-settings-group-label">{g}</div>
+              <div className="rsd-settings-items">
+                {items.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => openTab(t.key)}
+                    data-tour={t.tour}
+                    aria-current={tab === t.key ? "page" : undefined}
+                    className={`gw-press rsd-settings-item${tab === t.key ? " is-active" : ""}`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </nav>
+      <div className="rsd-settings-body">{content}</div>
+    </div>
   );
 }

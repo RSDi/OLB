@@ -217,6 +217,42 @@ main::-webkit-scrollbar-track { background: transparent; }
 .gw-press { transition: background 200ms var(--gw-ease), border-color 200ms var(--gw-ease), color 200ms var(--gw-ease), filter 200ms ease; }
 .gw-press:active { filter: brightness(0.95); }
 
+/* Settings: the grouped side menu beside the open tab (app/portal/settings).
+   On a phone the menu sits above the tab, its items wrapping into rows. */
+.rsd-settings { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; align-items: start; }
+.rsd-settings-nav {
+  position: sticky; top: 16px; max-height: calc(100vh - 120px); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 16px; padding: 4px 4px 12px 0;
+}
+.rsd-settings-filter {
+  width: 100%; height: 36px; padding: 0 12px; font-size: 13px;
+  color: var(--gw-fg); background: var(--gw-bg-elev);
+  border: 1px solid var(--gw-border); border-radius: 8px; outline: none;
+}
+.rsd-settings-filter:focus { border-color: var(--rsd-accent); }
+.rsd-settings-nav > * { flex-shrink: 0; }
+.rsd-settings-empty { font-size: 13px; color: var(--gw-fg-muted); padding: 0 4px; }
+.rsd-settings-group { display: flex; flex-direction: column; gap: 6px; }
+.rsd-settings-group-label { padding: 0 10px; }
+.rsd-settings-items { display: flex; flex-direction: column; gap: 1px; }
+.rsd-settings-item {
+  text-align: left; padding: 7px 10px; border-radius: 8px; cursor: pointer;
+  background: transparent; border: 1px solid transparent;
+  font-size: 13px; font-weight: 700; color: var(--gw-fg-muted);
+}
+.rsd-settings-item:hover { color: var(--gw-fg); background: var(--gw-bg-elev); }
+.rsd-settings-item.is-active {
+  color: var(--gw-fg); background: var(--gw-bg-elev); border-color: var(--gw-border);
+  box-shadow: inset 3px 0 0 var(--rsd-accent);
+}
+@media (max-width: 767px) {
+  .rsd-settings { grid-template-columns: 1fr; gap: 20px; }
+  .rsd-settings-nav { position: static; max-height: none; overflow: visible; gap: 12px; padding: 0; }
+  .rsd-settings-items { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .rsd-settings-item { padding: 8px 12px; }
+  .rsd-settings-item.is-active { box-shadow: none; }
+}
+
 .rsd-eyebrow {
   font-weight: 700;
   font-size: 11px;

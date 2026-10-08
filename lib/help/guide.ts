@@ -690,8 +690,10 @@ Activity is recorded from the day this page went live.`,
     audience: "staff",
     permission: "approve_members",
     routes: ["/portal/settings"],
-    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages", "slack dms", "slack", "website", "access", "permissions", "roles & access", "table", "profile", "access profile", "extras"],
+    keywords: ["settings", "menu", "find a setting", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages", "slack dms", "slack", "website", "access", "permissions", "roles & access", "table", "profile", "access profile", "extras"],
     body: `Where new sign-ups are approved and member accounts are managed.
+
+**Finding your way around Settings.** The menu down the left side sorts Settings into groups: **People & Access**, **Facilities & Equipment**, **Work & Events**, **Communication**, **Website & Portal** and **System**. Type in **Find a setting…** at the top to narrow the menu (try "email" or "roles"), and press Enter to open the first match. The address bar keeps the page you're on, so you can bookmark it or send someone the link. On a phone, the menu sits above the page.
 
 **The red badge** on **Settings** in the sidebar counts access requests waiting for you.
 
@@ -789,6 +791,34 @@ What you enter here shows on the team's Directory banner and team page. Players 
 Use the arrows to change the order (it's the order of the teams in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
   },
   {
+    id: "settings-planning-roles",
+    title: "Settings: Planning Roles",
+    group: "Settings",
+    audience: "staff",
+    preview: true,
+    keywords: ["planning", "roles", "president", "athletic director", "treasurer", "communications", "coaches", "held by", "assign"],
+    body: `The roles Planning's tasks belong to: President, Athletic Director, Treasurer, Communications and Coaches to start. Open **Settings → Planning Roles**.
+
+- **Add role** gives it a name and a **Chip color** (the color its tasks wear on the calendar).
+- **Held by** is who has the role this season. When the board keeps a task in Planning → Review, it's assigned to that person. Leave it as **Nobody named** for a role several people share, like Coaches.
+- **Order** sets the order of the role buttons and of tasks within a month.
+
+Use the **pencil** to edit a role, for example when a new President takes over, and the **trash** can to remove one. A removed role's tasks stay; they just show without a role.`,
+  },
+  {
+    id: "settings-playbooks",
+    title: "Settings: Playbooks",
+    group: "Settings",
+    audience: "super_admin",
+    keywords: ["playbooks", "settings", "categories", "category", "chip", "color", "colour", "sort order", "delete playbook"],
+    body: `Keep the playbook categories tidy and see every playbook in one list. Open **Settings → Playbooks**.
+
+- **Categories** group playbooks and set the colour of their label. **Add category** to make one — give it a **Name**, a **Chip color** and a **Sort order** (lower numbers come first). Tap the **pencil** to change one.
+- **Playbooks** lists every playbook, newest-updated first. Tap one to open it and edit its content.
+
+Tap the **trash** can to delete a category or a playbook.`,
+  },
+  {
     id: "settings-email-templates",
     title: "Settings: Email Templates",
     group: "Settings",
@@ -803,6 +833,20 @@ Use the arrows to change the order (it's the order of the teams in the Directory
 **The waitlist's message.** **Waitlist: teams are full**, marked **Starts waitlist messages**, is what the waitlist's **Message everyone** and **Send a message** start with. Change its words here and the waitlist uses yours. Delete it and the waitlist goes back to the wording it started with.
 
 **Using one.** When you email families from the Directory, a player's page or the registration waitlist, pick it from **Template**. It fills in the subject and message, and you can change anything before you send. Anyone who can email families can use the templates, including people with the **Registrations** permission who aren't on the board.`,
+  },
+  {
+    id: "settings-contact-types",
+    title: "Settings: Contact Types",
+    group: "Settings",
+    audience: "super_admin",
+    keywords: ["contact types", "types", "categories", "external contacts", "vendors", "group", "filter", "slug", "sort order", "coaches can see", "share", "coaches"],
+    body: `The types used to group External Contacts — uniforms, photos, facilities, opponents and so on. Open **Settings → Contact Types**.
+
+- **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
+- Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
+- **Coaches can see** — tick it on a type to let the coaches read its contacts (not change them): the companies of that type and the people at them, as a type chip on the list. Programs, Facilities and Referees start ticked. Coaches see everything on those contacts, notes included.
+- **Travel** — **Hotels** or **Places to eat** makes it a travel type: its contacts show under the HS Schedule's weekends away in their city, and the travel coordinator (the **Travel** permission in Settings → Members) adds and edits them. Hotels and Food start that way.
+- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.`,
   },
   {
     id: "settings-website",
@@ -844,34 +888,6 @@ Pick a page (**Home**, **Philosophy**, **History**, **Summer**, **Programs**, **
 Make a page of your own, like a fall camp or a tryouts page. Under **Pages → New pages**, tap **Add page** and fill in its **Title**, its **Address** (filled in from the title: Fall Camp makes **/fall-camp**), an optional **Banner picture**, and the **Page text**. Save the draft, preview it, publish it, then add it to the **Menu** so people can find it. An address the site already uses can't be taken. Delete a page from the list (and publish) to take it down.`,
   },
   {
-    id: "settings-planning-roles",
-    title: "Settings: Planning Roles",
-    group: "Settings",
-    audience: "staff",
-    preview: true,
-    keywords: ["planning", "roles", "president", "athletic director", "treasurer", "communications", "coaches", "held by", "assign"],
-    body: `The roles Planning's tasks belong to: President, Athletic Director, Treasurer, Communications and Coaches to start. Open **Settings → Planning Roles**.
-
-- **Add role** gives it a name and a **Chip color** (the color its tasks wear on the calendar).
-- **Held by** is who has the role this season. When the board keeps a task in Planning → Review, it's assigned to that person. Leave it as **Nobody named** for a role several people share, like Coaches.
-- **Order** sets the order of the role buttons and of tasks within a month.
-
-Use the **pencil** to edit a role, for example when a new President takes over, and the **trash** can to remove one. A removed role's tasks stay; they just show without a role.`,
-  },
-  {
-    id: "settings-playbooks",
-    title: "Settings: Playbooks",
-    group: "Settings",
-    audience: "super_admin",
-    keywords: ["playbooks", "settings", "categories", "category", "chip", "color", "colour", "sort order", "delete playbook"],
-    body: `Keep the playbook categories tidy and see every playbook in one list. Open **Settings → Playbooks**.
-
-- **Categories** group playbooks and set the colour of their label. **Add category** to make one — give it a **Name**, a **Chip color** and a **Sort order** (lower numbers come first). Tap the **pencil** to change one.
-- **Playbooks** lists every playbook, newest-updated first. Tap one to open it and edit its content.
-
-Tap the **trash** can to delete a category or a playbook.`,
-  },
-  {
     id: "settings-sidebar-links",
     title: "Settings: Sidebar Links",
     group: "Settings",
@@ -904,20 +920,6 @@ Every signed-in member sees the links; only super-admins can change them.`,
 - **Turn off** — nobody can open the page until you save a key again.
 
 Anyone with the link can see parents' names, phone numbers and emails, so share it only with families in the program.`,
-  },
-  {
-    id: "settings-contact-types",
-    title: "Settings: Contact Types",
-    group: "Settings",
-    audience: "super_admin",
-    keywords: ["contact types", "types", "categories", "external contacts", "vendors", "group", "filter", "slug", "sort order", "coaches can see", "share", "coaches"],
-    body: `The types used to group External Contacts — uniforms, photos, facilities, opponents and so on. Open **Settings → Contact Types**.
-
-- **Add type** — give it a **Name** (e.g. Plumbing) and, if you like, a **Sort order** (lower numbers come first). The **Slug** fills itself in from the name.
-- Types show up when someone adds an external contact, and as filter chips on the External Contacts page.
-- **Coaches can see** — tick it on a type to let the coaches read its contacts (not change them): the companies of that type and the people at them, as a type chip on the list. Programs, Facilities and Referees start ticked. Coaches see everything on those contacts, notes included.
-- **Travel** — **Hotels** or **Places to eat** makes it a travel type: its contacts show under the HS Schedule's weekends away in their city, and the travel coordinator (the **Travel** permission in Settings → Members) adds and edits them. Hotels and Food start that way.
-- Tap the **pencil** to rename a type, or the **trash** can to delete it. Contacts of that type aren't deleted — they just lose the grouping.`,
   },
   {
     id: "settings-audit-log",
