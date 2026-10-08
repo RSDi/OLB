@@ -67,25 +67,30 @@ function pickFirstOption(el: HTMLElement) {
   select.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-// A menu that hides its items until opened (Settings' full-screen menu on a
-// phone) marks its opener `data-tour-reveals="<prefix>"`, and the open menu
-// `data-tour-revealed="<prefix>"` with a `data-tour-close` button inside. A
-// step whose element starts with the prefix opens the menu to reach it; any
-// other step closes the menu so it isn't covering the page.
-function findRevealer(target: string): HTMLElement | null {
-  for (const el of document.querySelectorAll<HTMLElement>("[data-tour-reveals]")) {
-    const prefix = el.dataset.tourReveals;
+// A menu that tucks its items away on a phone (Settings' full-screen menu)
+// marks the bar standing in for them `data-tour-stands-in="<prefix>"`. A step
+// whose element starts with the prefix and isn't showing presses the hidden
+// item (the side menu's copy is still on the page, just not shown) and rings
+// the bar instead, so the tour never has to open the menu. The open menu is
+// marked `data-tour-menu` with a `data-tour-close` button, and every step
+// closes it so it isn't covering the page.
+function findStandIn(target: string): HTMLElement | null {
+  for (const el of document.querySelectorAll<HTMLElement>("[data-tour-stands-in]")) {
+    const prefix = el.dataset.tourStandsIn;
     const r = el.getBoundingClientRect();
     if (prefix && target.startsWith(prefix) && r.width > 0 && r.height > 0) return el;
   }
   return null;
 }
 
-function closeRevealedMenus(step: { target?: string; click?: string }) {
-  for (const menu of document.querySelectorAll<HTMLElement>("[data-tour-revealed]")) {
-    const prefix = menu.dataset.tourRevealed ?? "";
-    const wanted = [step.target, step.click].some((id) => id?.startsWith(prefix));
-    if (!wanted) menu.querySelector<HTMLElement>("[data-tour-close]")?.click();
+// A hidden element a stand-in covers for, to press it anyway.
+function findHidden(target: string): HTMLElement | null {
+  return findStandIn(target) ? document.querySelector<HTMLElement>(`[data-tour="${target}"]`) : null;
+}
+
+function closeTourMenus() {
+  for (const menu of document.querySelectorAll<HTMLElement>("[data-tour-menu]")) {
+    menu.querySelector<HTMLElement>("[data-tour-close]")?.click();
   }
 }
 
@@ -218,13 +223,13 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
       const closer = findTarget(step.dismiss);
       if (closer) press(closer);
     }
-    closeRevealedMenus(step);
+    closeTourMenus();
     if (!step.target) return;
     const target = step.target;
     let deadline = Math.max(Date.now() + SETTLED_WAIT_MS, lastNavAt.current + AFTER_NAV_WAIT_MS);
     let clicked = false;
     let picked = false;
-    let revealed = false;
+    let stoodIn = false;
     let timer: ReturnType<typeof setTimeout>;
     const look = () => {
       if (forward && step.pick && !picked) {
@@ -234,8 +239,7 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
           picked = true;
         }
       }
-      const el = findTarget(target);
-      if (el) {
+      const show = (el: HTMLElement) => {
         elRef.current = el;
         const r = el.getBoundingClientRect();
         if (r.top < MARGIN || r.bottom > window.innerHeight - MARGIN) {
@@ -249,22 +253,28 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
           out.delete(index);
           return out;
         });
+      };
+      const el = findTarget(target);
+      if (el) {
+        show(el);
         return;
       }
-      // The element (or the one to click) is in a closed menu: open it.
-      if (!revealed) {
-        const revealer = [target, forward && !clicked ? step.click : undefined]
-          .map((id) => (id && !findTarget(id) ? findRevealer(id) : null))
-          .find((el) => el);
-        if (revealer) {
-          press(revealer);
-          revealed = true;
-          timer = setTimeout(look, 100);
-          return;
+      // The element is tucked into a phone menu: open its page from the
+      // hidden copy and point at the bar that names it.
+      if (!stoodIn) {
+        const hidden = findHidden(target);
+        if (hidden) {
+          press(hidden);
+          stoodIn = true;
         }
       }
+      const standIn = stoodIn ? findStandIn(target) : null;
+      if (standIn) {
+        show(standIn);
+        return;
+      }
       if (forward && step.click && !clicked) {
-        const opener = findTarget(step.click);
+        const opener = findTarget(step.click) ?? findHidden(step.click);
         if (opener) {
           press(opener);
           clicked = true;
