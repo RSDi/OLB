@@ -582,6 +582,13 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "On **Pending**, **Approve** lets them in and emails them a sign-in link, and **Deny** turns them away. Super-admins also change the **role** here, tap **Edit** to change a profile (or **Revoke login**), and tap **Access** to choose what someone can manage, like **Payments** or **Slack DMs**, and a board member's Settings powers.",
       },
       {
+        target: "members-view",
+        click: "members-tab-approved",
+        audience: "super_admin",
+        title: "Roles & access",
+        body: "On **Approved**, switch to **Roles & access** to see everyone's role and what they can manage in one table. Tick or untick a box to change it. The number under each column counts who has it.",
+      },
+      {
         target: "members-add",
         audience: "super_admin",
         title: "Add member",

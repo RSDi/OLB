@@ -138,6 +138,9 @@ export function MembersTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
+  // Approved tab only: one card per person, or every person's role and
+  // access side by side in a table.
+  const [view, setView] = useState<"list" | "table">("list");
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -379,6 +382,11 @@ export function MembersTab({
       )
     : byStatus(tab);
 
+  const ready = { travel: travelReady, slack: slackReady, website: websiteReady };
+  const offeredManage = MANAGE_GRANTS.filter((g) => !g.needs || ready[g.needs]);
+  const offeredSettings = SETTINGS_GRANTS.filter((g) => !g.needs || ready[g.needs]);
+  const showTable = tab === "approved" && canManage && view === "table";
+
   const tabs: { key: TabKey; label: string }[] = [
     { key: "pending", label: "Pending" },
     { key: "approved", label: "Approved" },
@@ -387,7 +395,7 @@ export function MembersTab({
   ];
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div style={{ maxWidth: showTable ? 1100 : 760 }}>
       {/* Header row with Add button */}
       <div
         style={{
@@ -462,46 +470,50 @@ export function MembersTab({
       </div>
 
       {/* Status sub-tabs */}
-      <div data-tour="members-status" style={{ display: "flex", gap: 2, marginBottom: 20 }}>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "8px 16px",
-              borderRadius: 8,
-              background: tab === t.key ? "var(--gw-bg-elev)" : "transparent",
-              border: "1px solid",
-              borderColor: tab === t.key ? "var(--gw-border)" : "transparent",
-              fontSize: 13,
-              fontWeight: 700,
-              color: tab === t.key ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-              cursor: "pointer",
-              transition: "all 120ms",
-            }}
-          >
-            {t.label}
-            {counts[t.key] > 0 && (
-              <span
-                style={{
-                  background: t.key === "pending" ? "var(--rsd-error-fill)" : "var(--gw-bg)",
-                  color: t.key === "pending" ? "#fff" : "var(--gw-fg-muted)",
-                  border: t.key !== "pending" ? "1px solid var(--gw-border)" : "none",
-                  fontSize: 10,
-                  fontWeight: 800,
-                  borderRadius: 100,
-                  padding: "1px 6px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {counts[t.key]}
-              </span>
-            )}
-          </button>
-        ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <div data-tour="members-status" style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              data-tour={t.key === "approved" ? "members-tab-approved" : undefined}
+              onClick={() => setTab(t.key)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "8px 16px",
+                borderRadius: 8,
+                background: tab === t.key ? "var(--gw-bg-elev)" : "transparent",
+                border: "1px solid",
+                borderColor: tab === t.key ? "var(--gw-border)" : "transparent",
+                fontSize: 13,
+                fontWeight: 700,
+                color: tab === t.key ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+                cursor: "pointer",
+                transition: "all 120ms",
+              }}
+            >
+              {t.label}
+              {counts[t.key] > 0 && (
+                <span
+                  style={{
+                    background: t.key === "pending" ? "var(--rsd-error-fill)" : "var(--gw-bg)",
+                    color: t.key === "pending" ? "#fff" : "var(--gw-fg-muted)",
+                    border: t.key !== "pending" ? "1px solid var(--gw-border)" : "none",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    borderRadius: 100,
+                    padding: "1px 6px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {counts[t.key]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        {tab === "approved" && canManage && <ViewToggle view={view} onChange={setView} />}
       </div>
 
       {error && (
@@ -543,6 +555,18 @@ export function MembersTab({
               : "No denied requests"}
           </div>
         </div>
+      ) : showTable ? (
+        <AccessTable
+          members={visibleInTab}
+          totalCount={byStatus(tab).length}
+          filtered={!!q}
+          currentUserId={currentUserId}
+          actingId={acting}
+          manageGrants={offeredManage}
+          settingsGrants={offeredSettings}
+          onSetRole={changeRole}
+          onSetGrant={(m, key, value) => setGrant(m.id, key, value)}
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {q && (
@@ -614,6 +638,202 @@ export function MembersTab({
     </div>
   );
 }
+
+// List / Roles & access switch on the Approved tab.
+function ViewToggle({ view, onChange }: { view: "list" | "table"; onChange: (v: "list" | "table") => void }) {
+  const opt = (v: "list" | "table", label: string) => (
+    <button
+      onClick={() => onChange(v)}
+      aria-pressed={view === v}
+      style={{
+        padding: "5px 12px",
+        borderRadius: 7,
+        border: "none",
+        background: view === v ? "var(--gw-bg-elev)" : "transparent",
+        boxShadow: view === v ? "0 0 0 1px var(--gw-border)" : "none",
+        color: view === v ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div
+      data-tour="members-view"
+      role="group"
+      aria-label="View"
+      style={{
+        marginLeft: "auto",
+        display: "inline-flex",
+        gap: 2,
+        padding: 2,
+        borderRadius: 9,
+        background: "var(--gw-bg)",
+        border: "1px solid var(--gw-border)",
+      }}
+    >
+      {opt("list", "List")}
+      {opt("table", "Roles & access")}
+    </div>
+  );
+}
+
+// Every approved person's role and grants on one grid, so a super-admin can
+// see at a glance who holds what and change it in place. Super-admins hold
+// every grant already; Settings grants only apply to Board.
+function AccessTable({
+  members,
+  totalCount,
+  filtered,
+  currentUserId,
+  actingId,
+  manageGrants,
+  settingsGrants,
+  onSetRole,
+  onSetGrant,
+}: {
+  members: Member[];
+  totalCount: number;
+  filtered: boolean;
+  currentUserId: string;
+  actingId: string | null;
+  manageGrants: GrantDef[];
+  settingsGrants: GrantDef[];
+  onSetRole: (member: Member, role: MemberRole) => void;
+  onSetGrant: (member: Member, key: GrantKey, value: boolean) => void;
+}) {
+  const holds = (m: Member, g: GrantDef, board: boolean) =>
+    m.role === "super_admin" || ((!board || m.role === "admin") && m[g.key]);
+  const count = (g: GrantDef, board: boolean) => members.filter((m) => holds(m, g, board)).length;
+  const groupTh: React.CSSProperties = {
+    textAlign: "center",
+    borderLeft: "1px solid var(--gw-border)",
+    paddingBottom: 4,
+  };
+  const colTh = (first: boolean): React.CSSProperties => ({
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    borderLeft: first ? "1px solid var(--gw-border)" : undefined,
+  });
+  const stickyName: React.CSSProperties = {
+    position: "sticky",
+    left: 0,
+    zIndex: 1,
+    background: "var(--gw-bg-elev)",
+  };
+  const cell = (m: Member, g: GrantDef, board: boolean, first: boolean) => {
+    const style: React.CSSProperties = {
+      textAlign: "center",
+      borderLeft: first ? "1px solid var(--gw-border)" : undefined,
+    };
+    if (m.role === "super_admin")
+      return (
+        <td key={g.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Super-admins have everything">
+          ✓
+        </td>
+      );
+    if (board && m.role !== "admin")
+      return (
+        <td key={g.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Board members only">
+          –
+        </td>
+      );
+    return (
+      <td key={g.key} style={style}>
+        <input
+          type="checkbox"
+          checked={m[g.key]}
+          disabled={actingId === m.id}
+          onChange={(e) => onSetGrant(m, g.key, e.target.checked)}
+          aria-label={`${memberDisplayName(m)}: ${board ? "Settings " : ""}${g.label}`}
+          title={g.desc}
+          style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--rsd-accent-fill)" }}
+        />
+      </td>
+    );
+  };
+  return (
+    <div data-tour="members-table">
+      {filtered && (
+        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, marginBottom: 8 }}>
+          {members.length} of {totalCount} match
+        </div>
+      )}
+      <div className="rsd-card" style={{ padding: 0, overflowX: "auto" }}>
+        <table className="rsd-tbl" style={{ minWidth: 0 }}>
+          <thead>
+            <tr>
+              <th style={{ ...stickyName, borderBottom: 0 }} />
+              <th style={{ borderBottom: 0 }} />
+              {manageGrants.length > 0 && (
+                <th colSpan={manageGrants.length} style={groupTh}>
+                  Can manage
+                </th>
+              )}
+              {settingsGrants.length > 0 && (
+                <th colSpan={settingsGrants.length} style={groupTh}>
+                  Settings (Board)
+                </th>
+              )}
+            </tr>
+            <tr>
+              <th style={stickyName}>Name</th>
+              <th>Role</th>
+              {manageGrants.map((g, i) => (
+                <th key={g.key} style={colTh(i === 0)} title={g.desc}>
+                  {g.label}
+                  <div style={{ fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>{count(g, false)}</div>
+                </th>
+              ))}
+              {settingsGrants.map((g, i) => (
+                <th key={g.key} style={colTh(i === 0)} title={g.desc}>
+                  {g.label}
+                  <div style={{ fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>{count(g, true)}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {members.map((m) => {
+              const isSelf = m.user_id === currentUserId;
+              return (
+                <tr key={m.id} style={{ opacity: actingId === m.id ? 0.5 : 1 }}>
+                  <td style={{ ...stickyName, fontWeight: 700, whiteSpace: "nowrap" }}>
+                    {memberDisplayName(m)}
+                    {isSelf && (
+                      <span className="rsd-chip rsd-chip-mute" style={{ marginLeft: 6 }}>
+                        You
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    {isSelf ? (
+                      <span style={{ fontSize: 12, fontWeight: 700 }}>{ROLE_LABEL[m.role]}</span>
+                    ) : (
+                      <RoleSelect role={m.role} disabled={actingId === m.id} onChange={(r) => onSetRole(m, r)} />
+                    )}
+                  </td>
+                  {manageGrants.map((g, i) => cell(m, g, false, i === 0))}
+                  {settingsGrants.map((g, i) => cell(m, g, true, i === 0))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const ROLE_LABEL: Record<MemberRole, string> = {
+  member: "Member",
+  admin: "Board",
+  super_admin: "Super-admin",
+};
 
 // Compact permission-group picker for the member row. Super-admin only (the
 // row only renders it when canManage). Lets a super-admin move anyone directly
