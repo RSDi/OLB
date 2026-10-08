@@ -790,7 +790,8 @@ function WeekendRow({
 }
 
 // A team's count. Solid: games set. "3?" underlined dashes: not sure yet.
-// A small amber dot: teams on the fence. Hover (or tap) for the card.
+// A small amber dot (in the grid): teams on the fence. Hover (or tap) for
+// the card.
 function LevelCell({
   w,
   level,
@@ -831,9 +832,9 @@ function LevelCell({
       style={{
         position: "relative",
         width: mobile ? "auto" : "100%",
-        minWidth: mobile ? 56 : undefined,
-        height: mobile ? 44 : 40,
-        padding: mobile ? "0 10px" : 0,
+        minWidth: mobile ? 44 : undefined,
+        height: mobile ? 32 : 40,
+        padding: mobile ? "0 9px" : 0,
         borderRadius: 8,
         border: "1px solid",
         borderColor: active ? "var(--gw-fg)" : empty ? "transparent" : "var(--gw-border)",
@@ -844,13 +845,13 @@ function LevelCell({
         flexDirection: mobile ? "row" : "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: mobile ? 6 : 0,
+        gap: mobile ? 5 : 0,
       }}
     >
       {mobile && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)" }}>{level.label}</span>}
       <span
         style={{
-          fontSize: 15,
+          fontSize: mobile ? 14 : 15,
           fontWeight: 800,
           fontVariantNumeric: "tabular-nums",
           lineHeight: 1,
@@ -862,7 +863,8 @@ function LevelCell({
         {count ?? (unsure ? "?" : "–")}
         {unsure && count != null ? "?" : ""}
       </span>
-      {tentative.length > 0 && <FenceDot style={{ position: "absolute", top: 4, right: 4 }} />}
+      {/* On a phone the card's "on the fence" line says it once for the weekend. */}
+      {tentative.length > 0 && !mobile && <FenceDot style={{ position: "absolute", top: 4, right: 4 }} />}
     </button>
   );
 }
@@ -896,7 +898,59 @@ function WeekendCard({
 }) {
   const st = STATUS_STYLE[w.status];
   const quiet = w.status === "off" || w.status === "canceled";
+  const bar = st.bar === "transparent" ? "var(--gw-border)" : st.bar;
+  const past = w.ends_on < today;
+
+  // An off or canceled weekend is one slim line: nothing to plan there.
+  if (quiet) {
+    return (
+      <button
+        type="button"
+        id={`wm-${w.id}`}
+        onClick={onEvent}
+        className="rsd-card"
+        style={{
+          flexDirection: "row",
+          alignItems: "baseline",
+          gap: 8,
+          padding: "9px 12px",
+          borderLeft: `5px solid ${bar}`,
+          background: flash ? "var(--rsd-accent-bg)" : undefined,
+          opacity: past ? 0.85 : 1,
+          textAlign: "left",
+          color: "var(--gw-fg-muted)",
+          cursor: "pointer",
+          minWidth: 0,
+        }}
+      >
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--gw-fg)", whiteSpace: "nowrap" }}>
+          {formatWeekendDates(w.starts_on, w.ends_on)}
+        </span>
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontSize: 12.5,
+            fontWeight: 600,
+            fontStyle: w.status === "off" ? "italic" : "normal",
+            textDecoration: w.status === "canceled" ? "line-through" : "none",
+          }}
+        >
+          {w.event || "—"}
+          {w.location && <span style={{ fontWeight: 500, textDecoration: "none" }}> · {w.location}</span>}
+        </span>
+        {w.status === "canceled" && <StatusChip status={w.status} small />}
+      </button>
+    );
+  }
+
   const line = teamLine(opponents.filter((o) => o.weekend_id === w.id), contacts);
+  // The first two teams coming by name, then how many more.
+  const coming = line.names.length + line.more;
+  const shownNames = line.names.slice(0, 2);
   return (
     <div
       id={`wm-${w.id}`}
@@ -904,54 +958,61 @@ function WeekendCard({
       style={{
         gap: 8,
         padding: 14,
-        borderLeft: `5px solid ${st.bar === "transparent" ? "var(--gw-border)" : st.bar}`,
+        borderLeft: `5px solid ${bar}`,
         background: flash ? "var(--rsd-accent-bg)" : undefined,
-        opacity: w.ends_on < today ? 0.85 : 1,
+        opacity: past ? 0.85 : 1,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
-        <span style={{ fontSize: 13, fontWeight: 800 }}>
-          {formatWeekendDates(w.starts_on, w.ends_on)}{" "}
-          <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{formatWeekdays(w.starts_on, w.ends_on)}</span>
+      {/* The top of the card opens the weekend. */}
+      <button
+        type="button"
+        onClick={onEvent}
+        aria-label={`Open ${w.event || "this weekend"}, ${formatWeekendDates(w.starts_on, w.ends_on)}`}
+        style={{ display: "flex", flexDirection: "column", gap: 4, background: "none", border: "none", padding: 0, textAlign: "left", color: "inherit", cursor: "pointer", width: "100%" }}
+      >
+        <span style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline", width: "100%" }}>
+          <span style={{ fontSize: 13, fontWeight: 800 }}>
+            {formatWeekendDates(w.starts_on, w.ends_on)}{" "}
+            <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{formatWeekdays(w.starts_on, w.ends_on)}</span>
+          </span>
+          {/* The green bar already says Facility secured; the chip flags what still needs work. */}
+          {w.status !== "planned" && w.status !== "secured" && <StatusChip status={w.status} small />}
         </span>
-        {w.status !== "planned" && <StatusChip status={w.status} small />}
-      </div>
-      <button type="button" onClick={onEvent} style={{ background: "none", border: "none", padding: 0, textAlign: "left", color: "inherit", cursor: "pointer" }}>
-        <span style={{ fontSize: 15, fontWeight: 800, textDecoration: w.status === "canceled" ? "line-through" : "none", color: quiet ? "var(--gw-fg-muted)" : "var(--gw-fg)" }}>
+        <span style={{ fontSize: 15, fontWeight: 800, color: "var(--gw-fg)", lineHeight: 1.3 }}>
           {w.event || "—"}
+          {w.details && (
+            <span title="Has more details" style={{ display: "inline-block", marginLeft: 6, color: "var(--gw-fg-muted)", verticalAlign: -1 }}>
+              <Icons.FileText width={12} height={12} />
+            </span>
+          )}
         </span>
       </button>
-      {(w.location || w.trip || w.notes) && (
+      {(w.location || w.trip || near) && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+          {(w.location || w.trip) && <span>{[w.location, w.trip].filter(Boolean).join(" · ")}</span>}
+          {near && <TravelChip near={near} active={travelOpen} onOpen={onTravel} />}
+        </div>
+      )}
+      {w.notes && <div style={{ fontSize: 12, color: "var(--gw-fg)", lineHeight: 1.4 }}>{w.notes}</div>}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+        {levels.map((l) => (
+          <LevelCell
+            key={l.id}
+            w={w}
+            level={l}
+            summary={summarizeCell(gamesAt(w.id, l.id), cellOpponents(w.id, l.id, opponents, levelPlays(gamesAt(w.id, l.id))))}
+            quiet={quiet}
+            active={false}
+            onOpen={onOpen}
+            mobile
+          />
+        ))}
+      </div>
+      {(coming > 0 || line.fence > 0) && (
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          {[w.location, w.trip, w.notes].filter(Boolean).join(" · ")}
-        </div>
-      )}
-      {near && (
-        <div>
-          <TravelChip near={near} active={travelOpen} onOpen={onTravel} />
-        </div>
-      )}
-      {!quiet && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {levels.map((l) => (
-            <LevelCell
-              key={l.id}
-              w={w}
-              level={l}
-              summary={summarizeCell(gamesAt(w.id, l.id), cellOpponents(w.id, l.id, opponents, levelPlays(gamesAt(w.id, l.id))))}
-              quiet={quiet}
-              active={false}
-              onOpen={onOpen}
-              mobile
-            />
-          ))}
-        </div>
-      )}
-      {(line.names.length > 0 || line.fence > 0) && (
-        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          {line.names.join(" · ")}
-          {line.more > 0 && ` +${line.more}`}
-          {line.fence > 0 && <span style={{ color: "#8A6100", fontWeight: 700 }}>{line.names.length ? " · " : ""}{line.fence} on the fence</span>}
+          {shownNames.join(", ")}
+          {coming > shownNames.length && ` +${coming - shownNames.length}`}
+          {line.fence > 0 && <span style={{ color: "#8A6100", fontWeight: 700 }}>{coming ? " · " : ""}{line.fence} on the fence</span>}
         </div>
       )}
     </div>
