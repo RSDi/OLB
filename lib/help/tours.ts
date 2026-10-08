@@ -206,7 +206,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "directory-teams",
         title: "Pick a team",
-        body: "Tap a team to show just that team, with its division, practice times and location, and who's coaching. **All teams** shows everyone; **No team yet** shows players who haven't been placed.",
+        body: "Pick a team from this drop-down to show just that team, with its division, practice times and location, and who's coaching. **All teams** shows everyone; **No team yet** shows players who haven't been placed.",
       },
       {
         target: "directory-email",
@@ -229,7 +229,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "directory-place",
         audience: "registrations",
         title: "Put players on teams",
-        body: "Pick a team from a player's **Team** drop-down and they move there right away. The **No team yet** chip shows who still needs one.",
+        body: "Pick a team from a player's **Team** drop-down and they move there right away. Pick **No team yet** from the team drop-down at the top to see who still needs one.",
       },
       {
         target: "directory-player-link",
@@ -1121,7 +1121,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         route: "/portal/directory",
         target: "directory-teams",
         title: "One team at a time",
-        body: "Tap a team to see who's missing on just that team — the counts follow along. Handy for handing a coach their list.",
+        body: "Pick a team to see who's missing on just that team — the counts follow along. Handy for handing a coach their list.",
       },
       {
         route: "/portal/directory",

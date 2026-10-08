@@ -49,6 +49,8 @@ function sortName(p: DirectoryPlayer): string {
 
 type View = "team" | "age";
 const NO_TEAM = "none";
+// The team, age group and requirement drop-downs share one look.
+const filterSelect = { height: 34, padding: "0 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" } as const;
 // The board's requirement filter: who's still missing it, who's handled it.
 type ReqShow = "missing" | "done" | "waived" | "all";
 
@@ -176,6 +178,8 @@ export function PlayersList({
     }));
   }, [sections, pickedReq, rows, reqShow]);
 
+  const showTeamFilter = view === "team" && teams.length > 0;
+  const showGroupFilter = view === "age" && groupNames.length > 1;
   const pickedTeam = view === "team" && teamId !== "all" ? teams.find((t) => t.id === teamId) ?? null : null;
   const shown = shownSections.reduce((n, g) => n + g.players.length, 0);
   const reqTotal = reqCounts.done + reqCounts.waived + reqCounts.missing;
@@ -243,80 +247,85 @@ export function PlayersList({
             )}
           </div>
         </div>
-
-        {view === "team" ? (
-          teams.length > 0 && (
-            <div data-tour="directory-teams" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <TeamChip label="All teams" active={teamId === "all"} onClick={() => setTeamId("all")} />
-              {teams.map((t) => (
-                <TeamChip
-                  key={t.id}
-                  label={teamLabel(t)}
-                  color={t.color}
-                  count={countByTeam.get(t.id) ?? 0}
-                  active={teamId === t.id}
-                  onClick={() => setTeamId(t.id)}
-                />
-              ))}
-              {(countByTeam.get(NO_TEAM) ?? 0) > 0 && (
-                <TeamChip
-                  label="No team yet"
-                  count={countByTeam.get(NO_TEAM) ?? 0}
-                  active={teamId === NO_TEAM}
-                  onClick={() => setTeamId(NO_TEAM)}
-                />
-              )}
-            </div>
-          )
-        ) : (
-          groupNames.length > 1 && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <FilterTab label="All ages" active={group === "all"} onClick={() => setGroup("all")} />
-              {groupNames.map((g) => (
-                <FilterTab key={g} label={g} active={group === g} onClick={() => setGroup(g)} />
-              ))}
-            </div>
-          )
-        )}
       </div>
 
-      {requirements.length > 0 && (
-        <div data-tour="directory-requirements" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <ComboSelect
-            value={reqId}
-            onChange={(e) => {
-              setReqId(e.target.value);
-              setReqShow("missing");
-            }}
-            aria-label="Filter by requirement"
-            data-tour="requirement-filter"
-            className="rsd-chip"
-            style={{ height: 34, padding: "0 12px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-          >
-            <option value="all">All requirements</option>
-            {requirements.map((r) => (
-              <option key={r.id} value={r.id}>
-                {requirementLabel(r)}
-              </option>
-            ))}
-          </ComboSelect>
-          {pickedReq && (
-            <div
-              role="group"
-              aria-label={`Show players by ${pickedReq.name}`}
-              data-tour="requirement-status"
-              style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
+      {(showTeamFilter || showGroupFilter || requirements.length > 0) && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {showTeamFilter && (
+            <ComboSelect
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+              aria-label="Show a team"
+              data-tour="directory-teams"
+              className="rsd-chip"
+              style={filterSelect}
             >
-              <SegButton label={`Missing ${reqCounts.missing}`} active={reqShow === "missing"} onClick={() => setReqShow("missing")} />
-              <SegButton
-                label={`${doneWord(pickedReq.kind)} ${reqCounts.done}`}
-                active={reqShow === "done"}
-                onClick={() => setReqShow("done")}
-              />
-              {(reqCounts.waived > 0 || reqShow === "waived") && (
-                <SegButton label={`Waived ${reqCounts.waived}`} active={reqShow === "waived"} onClick={() => setReqShow("waived")} />
+              <option value="all">All teams</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {teamLabel(t)} ({countByTeam.get(t.id) ?? 0})
+                </option>
+              ))}
+              {(countByTeam.get(NO_TEAM) ?? 0) > 0 && (
+                <option value={NO_TEAM}>No team yet ({countByTeam.get(NO_TEAM)})</option>
               )}
-              <SegButton label="All" active={reqShow === "all"} onClick={() => setReqShow("all")} />
+            </ComboSelect>
+          )}
+          {showGroupFilter && (
+            <ComboSelect
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+              aria-label="Show an age group"
+              className="rsd-chip"
+              style={filterSelect}
+            >
+              <option value="all">All ages</option>
+              {groupNames.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </ComboSelect>
+          )}
+          {requirements.length > 0 && (
+            <div data-tour="directory-requirements" style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <ComboSelect
+                value={reqId}
+                onChange={(e) => {
+                  setReqId(e.target.value);
+                  setReqShow("missing");
+                }}
+                aria-label="Filter by requirement"
+                data-tour="requirement-filter"
+                className="rsd-chip"
+                style={filterSelect}
+              >
+                <option value="all">All requirements</option>
+                {requirements.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {requirementLabel(r)}
+                  </option>
+                ))}
+              </ComboSelect>
+              {pickedReq && (
+                <div
+                  role="group"
+                  aria-label={`Show players by ${pickedReq.name}`}
+                  data-tour="requirement-status"
+                  style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
+                >
+                  <SegButton label={`Missing ${reqCounts.missing}`} active={reqShow === "missing"} onClick={() => setReqShow("missing")} />
+                  <SegButton
+                    label={`${doneWord(pickedReq.kind)} ${reqCounts.done}`}
+                    active={reqShow === "done"}
+                    onClick={() => setReqShow("done")}
+                  />
+                  {(reqCounts.waived > 0 || reqShow === "waived") && (
+                    <SegButton label={`Waived ${reqCounts.waived}`} active={reqShow === "waived"} onClick={() => setReqShow("waived")} />
+                  )}
+                  <SegButton label="All" active={reqShow === "all"} onClick={() => setReqShow("all")} />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -570,47 +579,6 @@ function RegistrationsLink({ counts }: { counts: { waiting: number; waitlist: nu
   );
 }
 
-function TeamChip({
-  label,
-  color,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  color?: string | null;
-  count?: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        height: 34,
-        padding: "0 14px",
-        borderRadius: 100,
-        background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
-        color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
-        border: "1px solid",
-        borderColor: active ? "var(--rsd-accent-fill)" : "var(--gw-border)",
-        fontSize: 12,
-        fontWeight: 700,
-        cursor: "pointer",
-      }}
-    >
-      {color !== undefined && <TeamDot color={color} />}
-      {label}
-      {count !== undefined && <span style={{ fontWeight: 600, opacity: 0.65 }}>{count}</span>}
-    </button>
-  );
-}
-
 function SegButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
@@ -640,29 +608,6 @@ function Empty({ text }: { text: string }) {
     <div className="rsd-card" style={{ padding: "40px 24px", textAlign: "center" }}>
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>{text}</div>
     </div>
-  );
-}
-
-function FilterTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      style={{
-        padding: "6px 14px",
-        borderRadius: 8,
-        background: active ? "var(--gw-bg-elev)" : "transparent",
-        border: "1px solid",
-        borderColor: active ? "var(--gw-border)" : "transparent",
-        fontSize: 12,
-        fontWeight: 700,
-        color: active ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-        cursor: "pointer",
-      }}
-    >
-      {label}
-    </button>
   );
 }
 
