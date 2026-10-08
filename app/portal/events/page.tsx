@@ -67,29 +67,35 @@ export default async function PlanningPage({
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <PlanningTabs view={effectiveView} planner={planner && ready} role={role} pendingCount={pendingCount} />
-        {staff && (
-          <Link
-            href="/portal/events/new"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 20px",
-              borderRadius: 100,
-              background: "var(--rsd-accent-fill)",
-              color: "var(--rsd-accent-fill-on)",
-              fontSize: 13,
-              fontWeight: 700,
-              textDecoration: "none",
-            }}
-          >
-            <Icons.Plus width={14} height={14} />
-            New event
-          </Link>
-        )}
-      </div>
+      {(planner && ready) || staff ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          {planner && ready ? <PlanningTabs view={effectiveView} role={role} pendingCount={pendingCount} /> : <span />}
+          {staff && (
+            <Link
+              href="/portal/events/new"
+              className="gw-press"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 14px",
+                borderRadius: 100,
+                border: "1px solid var(--rsd-accent-fill)",
+                background: "var(--rsd-accent-fill)",
+                color: "var(--rsd-accent-fill-on)",
+                fontSize: 12,
+                fontWeight: 700,
+                lineHeight: 1,
+                whiteSpace: "nowrap",
+                textDecoration: "none",
+              }}
+            >
+              <Icons.Plus width={13} height={13} />
+              New event
+            </Link>
+          )}
+        </div>
+      ) : null}
 
       {planner && !ready && <MigrationNotice />}
 

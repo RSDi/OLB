@@ -3,7 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPlanningTasks, sortTasks } from "../../../../lib/planning/data";
 import { seasonLabel } from "../../../../lib/planning/season";
 import type { PlanningRole, ReviewStatus } from "../../../../lib/planning/types";
-import { planningHref, RoleFilter } from "./nav";
+import { LinkSelect } from "./LinkSelect";
+import { FilterRow, planningHref, RoleFilter } from "./nav";
 import { ReviewList, type ReviewShow } from "./ReviewList";
 import { SeasonSender } from "./SeasonSender";
 
@@ -55,22 +56,29 @@ export async function ReviewView({
     <>
       <p style={{ margin: 0, fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.6, maxWidth: 680 }}>
         Each season starts as a copy of the template. Keep what the board will do this season and toss what it
-        won&apos;t. Kept tasks show on Upcoming and the Year view, and in Opportunities, assigned to whoever holds the
+        won&apos;t. Kept tasks show on the Calendar and the Year view, and in Opportunities, assigned to whoever holds the
         role.
       </p>
 
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", marginRight: 4 }}>Season</span>
-        {seasons.map((s) => (
-          <Link
-            key={s}
-            href={planningHref({ view: "review", season: s, role, show: show === "pending" ? null : show })}
-            style={seasonPill(s === season)}
-          >
-            {seasonLabel(s)}
-          </Link>
-        ))}
-      </div>
+      <FilterRow>
+        {seasons.length > 1 && (
+          <LinkSelect
+            label="Season"
+            value={String(season)}
+            active={false}
+            options={seasons.map((s) => ({
+              value: String(s),
+              label: `${seasonLabel(s)} season`,
+              href: planningHref({ view: "review", season: s, role, show: show === "pending" ? null : show }),
+            }))}
+          />
+        )}
+        <RoleFilter
+          roles={roles}
+          active={role}
+          hrefFor={(r) => planningHref({ view: "review", season, role: r, show: show === "pending" ? null : show })}
+        />
+      </FilterRow>
 
       <div data-tour="planning-review-show" style={{ display: "flex", gap: 2, flexWrap: "wrap", borderBottom: "1px solid var(--gw-border)" }}>
         {SHOW.map((s) => {
@@ -94,12 +102,6 @@ export async function ReviewView({
           );
         })}
       </div>
-
-      <RoleFilter
-        roles={roles}
-        active={role}
-        hrefFor={(r) => planningHref({ view: "review", season, role: r, show: show === "pending" ? null : show })}
-      />
 
       {shown.length > 0 ? (
         <ReviewList key={`${season}-${show}-${role ?? ""}`} tasks={shown} show={show} />
@@ -139,18 +141,4 @@ export async function ReviewView({
       </div>
     </>
   );
-}
-
-function seasonPill(on: boolean): React.CSSProperties {
-  return {
-    padding: "5px 12px",
-    borderRadius: 100,
-    fontSize: 12,
-    fontWeight: 700,
-    textDecoration: "none",
-    border: "1px solid",
-    borderColor: on ? "var(--gw-fg)" : "var(--gw-border)",
-    background: on ? "var(--gw-bg-elev)" : "transparent",
-    color: on ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-  };
 }
