@@ -678,7 +678,7 @@ Activity is recorded from the day this page went live.`,
     group: "Settings",
     audience: "staff",
     routes: ["/portal/settings"],
-    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages", "slack dms", "slack", "website"],
+    keywords: ["settings", "members", "approve", "deny", "pending", "access request", "badge", "not signed up", "restore", "invite", "add member", "role", "revoke", "login", "family", "spouse", "parents", "children", "grants", "payments", "treasurer", "registrations", "manages", "slack dms", "slack", "website", "access", "permissions", "roles & access", "table"],
     body: `Where new sign-ups are approved and member accounts are managed.
 
 **The red badge** on **Settings** in the sidebar counts access requests waiting for you.
@@ -697,8 +697,11 @@ Activity is recorded from the day this page went live.`,
 - **Edit** anyone's profile: name, nickname, phone, birthday, photo and email, plus their **Family** links (spouse, parents and children). The same **✎ Edit** is on each member's Directory profile.
 - Change someone's **role** (Member / Board / Super-admin) from the drop-down on the **Approved** tab.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
-- Next to **Manages:** on the **Approved** tab, turn on **Payments** to let someone see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to let someone review new registrations, put players on teams and edit players, **Travel** to let the travel coordinator add and edit the hotels and places to eat in External Contacts and see the HS Schedule, and **Slack DMs** to let someone send families Slack DMs from the Directory as themselves (see *Slack DMs to families*). They all work for members and board alike. Tap one again to take it away.
-- Next to **Settings:** on a board member's row, **Website** lets them change the club website's menu, page text and pictures (see *Settings: Website*). Tap it again to take it away.
+- Tap **Access** on someone's row on the **Approved** tab to choose what else they can do. The number on the button counts what they have, and the row lists it under their name. Tick a box to give it, untick to take it away:
+  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit the hotels and places to eat in External Contacts and see the HS Schedule, and **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*).
+  - **Settings (Board)** (board members only): **Edit**, **Delete** and **Undelete** for Settings items like Requirements, and **Website** to change the club website's menu, page text and pictures (see *Settings: Website*).
+  - Super-admins have all of these already, so their rows have no **Access** button.
+- To see everyone at once, tap **Roles & access** (next to the tabs, on **Approved**). It's a table with a row per person: their role drop-down, then a box for each permission. Tick or untick a box to change it. The number under each column says how many people have it. Super-admins show ✓ everywhere, and **–** means that box is for board members only. Tap **List** to go back.
 - **Remove** a member (demote a super-admin first).
 
 Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Directory only** (no email), **No login** (access revoked).`,
@@ -739,7 +742,7 @@ What you enter here shows on the team's Directory banner and team page. Players 
     group: "Settings",
     audience: "staff",
     keywords: ["requirements", "settings", "handbook", "signature", "fee", "tournament fee", "amount", "due date", "applies to", "teams", "retire", "active", "scan upload"],
-    body: `Choose what players need to hand in or pay. Open **Settings → Requirements**. Super-admins can always use this tab. A board member can too once a super-admin turns on their **Settings: Edit** chip in **Settings → Members**.
+    body: `Choose what players need to hand in or pay. Open **Settings → Requirements**. Super-admins can always use this tab. A board member can too once a super-admin ticks **Edit** under **Settings (Board)** in their **Access** panel in **Settings → Members**.
 
 - **Add requirement** — give it a **Name** (what the board sees on each player, like Handbook signature) and a **Description** if it helps.
 - **Type** — **Task / form** is marked **Done**; **Fee** is marked **Paid** and asks for an **Amount**.
@@ -772,7 +775,7 @@ Use the arrows to change the order (it's the order of the chips in the Directory
     group: "Settings",
     audience: "website",
     keywords: ["website", "public site", "club website", "menu", "navigation", "nav", "folder", "page text", "words", "wording", "pictures", "photos", "images", "upload", "flyer", "banner", "footer", "home page", "philosophy", "history", "summer", "programs", "coaches", "sponsors", "logos", "buttons", "new page", "add a page", "address", "draft", "preview", "publish", "discard", "reset", "original", "description"],
-    body: `Change the public club website without a developer: the menu across the top, the words, pictures and buttons on its pages, the lists of programs, coaches and sponsors, and pages of your own. Open **Settings → Website**. Super-admins can always use it; a super-admin turns it on for a board member with **Website** next to **Settings:** in **Settings → Members**.
+    body: `Change the public club website without a developer: the menu across the top, the words, pictures and buttons on its pages, the lists of programs, coaches and sponsors, and pages of your own. Open **Settings → Website**. Super-admins can always use it; a super-admin turns it on for a board member by ticking **Website** in their **Access** panel in **Settings → Members**.
 
 **Draft, preview, publish**
 

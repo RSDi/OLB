@@ -57,6 +57,33 @@ type GrantKey =
   | "can_slack_dm"
   | "can_manage_website";
 
+// What each grant lets someone do, for the Access panel on a member's row.
+// `needs` names the migration-gated grants, offered only once their column
+// loads.
+interface GrantDef {
+  key: GrantKey;
+  label: string;
+  desc: string;
+  needs?: "travel" | "slack" | "website";
+}
+
+// Any approved member, board or not (the Treasurer; whoever runs
+// registrations; the travel coordinator; coaches). Super-admins hold them all.
+const MANAGE_GRANTS: GrantDef[] = [
+  { key: "can_manage_finances", label: "Payments", desc: "See every family's balance and record payments" },
+  { key: "can_manage_registrations", label: "Registrations", desc: "Review registrations, put players on teams and edit players" },
+  { key: "can_manage_travel", label: "Travel", desc: "Add and edit the hotels and places to eat in External Contacts", needs: "travel" },
+  { key: "can_slack_dm", label: "Slack DMs", desc: "Send families Slack DMs from the Directory, as themselves", needs: "slack" },
+];
+
+// Board only: what they may change in Settings.
+const SETTINGS_GRANTS: GrantDef[] = [
+  { key: "can_edit_settings", label: "Edit", desc: "Add and change Settings items, like Requirements" },
+  { key: "can_delete_settings", label: "Delete", desc: "Delete Settings items" },
+  { key: "can_undelete_settings", label: "Undelete", desc: "Restore deleted Settings items" },
+  { key: "can_manage_website", label: "Website", desc: "Change the club website's menu, page text and pictures", needs: "website" },
+];
+
 // Pending splits in two: people who signed in and asked (the approval queue),
 // and registered parents pre-created from a player registration who haven't
 // signed up yet. A super-admin can approve either; the first gets in on their
@@ -111,6 +138,9 @@ export function MembersTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState("");
+  // Approved tab only: one card per person, or every person's role and
+  // access side by side in a table.
+  const [view, setView] = useState<"list" | "table">("list");
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -352,6 +382,11 @@ export function MembersTab({
       )
     : byStatus(tab);
 
+  const ready = { travel: travelReady, slack: slackReady, website: websiteReady };
+  const offeredManage = MANAGE_GRANTS.filter((g) => !g.needs || ready[g.needs]);
+  const offeredSettings = SETTINGS_GRANTS.filter((g) => !g.needs || ready[g.needs]);
+  const showTable = tab === "approved" && canManage && view === "table";
+
   const tabs: { key: TabKey; label: string }[] = [
     { key: "pending", label: "Pending" },
     { key: "approved", label: "Approved" },
@@ -360,7 +395,7 @@ export function MembersTab({
   ];
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div style={{ maxWidth: showTable ? 1100 : 760 }}>
       {/* Header row with Add button */}
       <div
         style={{
@@ -435,46 +470,50 @@ export function MembersTab({
       </div>
 
       {/* Status sub-tabs */}
-      <div data-tour="members-status" style={{ display: "flex", gap: 2, marginBottom: 20 }}>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "8px 16px",
-              borderRadius: 8,
-              background: tab === t.key ? "var(--gw-bg-elev)" : "transparent",
-              border: "1px solid",
-              borderColor: tab === t.key ? "var(--gw-border)" : "transparent",
-              fontSize: 13,
-              fontWeight: 700,
-              color: tab === t.key ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-              cursor: "pointer",
-              transition: "all 120ms",
-            }}
-          >
-            {t.label}
-            {counts[t.key] > 0 && (
-              <span
-                style={{
-                  background: t.key === "pending" ? "var(--rsd-error-fill)" : "var(--gw-bg)",
-                  color: t.key === "pending" ? "#fff" : "var(--gw-fg-muted)",
-                  border: t.key !== "pending" ? "1px solid var(--gw-border)" : "none",
-                  fontSize: 10,
-                  fontWeight: 800,
-                  borderRadius: 100,
-                  padding: "1px 6px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {counts[t.key]}
-              </span>
-            )}
-          </button>
-        ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <div data-tour="members-status" style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              data-tour={t.key === "approved" ? "members-tab-approved" : undefined}
+              onClick={() => setTab(t.key)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "8px 16px",
+                borderRadius: 8,
+                background: tab === t.key ? "var(--gw-bg-elev)" : "transparent",
+                border: "1px solid",
+                borderColor: tab === t.key ? "var(--gw-border)" : "transparent",
+                fontSize: 13,
+                fontWeight: 700,
+                color: tab === t.key ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+                cursor: "pointer",
+                transition: "all 120ms",
+              }}
+            >
+              {t.label}
+              {counts[t.key] > 0 && (
+                <span
+                  style={{
+                    background: t.key === "pending" ? "var(--rsd-error-fill)" : "var(--gw-bg)",
+                    color: t.key === "pending" ? "#fff" : "var(--gw-fg-muted)",
+                    border: t.key !== "pending" ? "1px solid var(--gw-border)" : "none",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    borderRadius: 100,
+                    padding: "1px 6px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {counts[t.key]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        {tab === "approved" && canManage && <ViewToggle view={view} onChange={setView} />}
       </div>
 
       {error && (
@@ -516,6 +555,18 @@ export function MembersTab({
               : "No denied requests"}
           </div>
         </div>
+      ) : showTable ? (
+        <AccessTable
+          members={visibleInTab}
+          totalCount={byStatus(tab).length}
+          filtered={!!q}
+          currentUserId={currentUserId}
+          actingId={acting}
+          manageGrants={offeredManage}
+          settingsGrants={offeredSettings}
+          onSetRole={changeRole}
+          onSetGrant={(m, key, value) => setGrant(m.id, key, value)}
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {q && (
@@ -587,6 +638,202 @@ export function MembersTab({
     </div>
   );
 }
+
+// List / Roles & access switch on the Approved tab.
+function ViewToggle({ view, onChange }: { view: "list" | "table"; onChange: (v: "list" | "table") => void }) {
+  const opt = (v: "list" | "table", label: string) => (
+    <button
+      onClick={() => onChange(v)}
+      aria-pressed={view === v}
+      style={{
+        padding: "5px 12px",
+        borderRadius: 7,
+        border: "none",
+        background: view === v ? "var(--gw-bg-elev)" : "transparent",
+        boxShadow: view === v ? "0 0 0 1px var(--gw-border)" : "none",
+        color: view === v ? "var(--gw-fg)" : "var(--gw-fg-muted)",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div
+      data-tour="members-view"
+      role="group"
+      aria-label="View"
+      style={{
+        marginLeft: "auto",
+        display: "inline-flex",
+        gap: 2,
+        padding: 2,
+        borderRadius: 9,
+        background: "var(--gw-bg)",
+        border: "1px solid var(--gw-border)",
+      }}
+    >
+      {opt("list", "List")}
+      {opt("table", "Roles & access")}
+    </div>
+  );
+}
+
+// Every approved person's role and grants on one grid, so a super-admin can
+// see at a glance who holds what and change it in place. Super-admins hold
+// every grant already; Settings grants only apply to Board.
+function AccessTable({
+  members,
+  totalCount,
+  filtered,
+  currentUserId,
+  actingId,
+  manageGrants,
+  settingsGrants,
+  onSetRole,
+  onSetGrant,
+}: {
+  members: Member[];
+  totalCount: number;
+  filtered: boolean;
+  currentUserId: string;
+  actingId: string | null;
+  manageGrants: GrantDef[];
+  settingsGrants: GrantDef[];
+  onSetRole: (member: Member, role: MemberRole) => void;
+  onSetGrant: (member: Member, key: GrantKey, value: boolean) => void;
+}) {
+  const holds = (m: Member, g: GrantDef, board: boolean) =>
+    m.role === "super_admin" || ((!board || m.role === "admin") && m[g.key]);
+  const count = (g: GrantDef, board: boolean) => members.filter((m) => holds(m, g, board)).length;
+  const groupTh: React.CSSProperties = {
+    textAlign: "center",
+    borderLeft: "1px solid var(--gw-border)",
+    paddingBottom: 4,
+  };
+  const colTh = (first: boolean): React.CSSProperties => ({
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    borderLeft: first ? "1px solid var(--gw-border)" : undefined,
+  });
+  const stickyName: React.CSSProperties = {
+    position: "sticky",
+    left: 0,
+    zIndex: 1,
+    background: "var(--gw-bg-elev)",
+  };
+  const cell = (m: Member, g: GrantDef, board: boolean, first: boolean) => {
+    const style: React.CSSProperties = {
+      textAlign: "center",
+      borderLeft: first ? "1px solid var(--gw-border)" : undefined,
+    };
+    if (m.role === "super_admin")
+      return (
+        <td key={g.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Super-admins have everything">
+          ✓
+        </td>
+      );
+    if (board && m.role !== "admin")
+      return (
+        <td key={g.key} style={{ ...style, color: "var(--gw-fg-muted)" }} title="Board members only">
+          –
+        </td>
+      );
+    return (
+      <td key={g.key} style={style}>
+        <input
+          type="checkbox"
+          checked={m[g.key]}
+          disabled={actingId === m.id}
+          onChange={(e) => onSetGrant(m, g.key, e.target.checked)}
+          aria-label={`${memberDisplayName(m)}: ${board ? "Settings " : ""}${g.label}`}
+          title={g.desc}
+          style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--rsd-accent-fill)" }}
+        />
+      </td>
+    );
+  };
+  return (
+    <div data-tour="members-table">
+      {filtered && (
+        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, marginBottom: 8 }}>
+          {members.length} of {totalCount} match
+        </div>
+      )}
+      <div className="rsd-card" style={{ padding: 0, overflowX: "auto" }}>
+        <table className="rsd-tbl" style={{ minWidth: 0 }}>
+          <thead>
+            <tr>
+              <th style={{ ...stickyName, borderBottom: 0 }} />
+              <th style={{ borderBottom: 0 }} />
+              {manageGrants.length > 0 && (
+                <th colSpan={manageGrants.length} style={groupTh}>
+                  Can manage
+                </th>
+              )}
+              {settingsGrants.length > 0 && (
+                <th colSpan={settingsGrants.length} style={groupTh}>
+                  Settings (Board)
+                </th>
+              )}
+            </tr>
+            <tr>
+              <th style={stickyName}>Name</th>
+              <th>Role</th>
+              {manageGrants.map((g, i) => (
+                <th key={g.key} style={colTh(i === 0)} title={g.desc}>
+                  {g.label}
+                  <div style={{ fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>{count(g, false)}</div>
+                </th>
+              ))}
+              {settingsGrants.map((g, i) => (
+                <th key={g.key} style={colTh(i === 0)} title={g.desc}>
+                  {g.label}
+                  <div style={{ fontWeight: 600, letterSpacing: 0, textTransform: "none" }}>{count(g, true)}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {members.map((m) => {
+              const isSelf = m.user_id === currentUserId;
+              return (
+                <tr key={m.id} style={{ opacity: actingId === m.id ? 0.5 : 1 }}>
+                  <td style={{ ...stickyName, fontWeight: 700, whiteSpace: "nowrap" }}>
+                    {memberDisplayName(m)}
+                    {isSelf && (
+                      <span className="rsd-chip rsd-chip-mute" style={{ marginLeft: 6 }}>
+                        You
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    {isSelf ? (
+                      <span style={{ fontSize: 12, fontWeight: 700 }}>{ROLE_LABEL[m.role]}</span>
+                    ) : (
+                      <RoleSelect role={m.role} disabled={actingId === m.id} onChange={(r) => onSetRole(m, r)} />
+                    )}
+                  </td>
+                  {manageGrants.map((g, i) => cell(m, g, false, i === 0))}
+                  {settingsGrants.map((g, i) => cell(m, g, true, i === 0))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const ROLE_LABEL: Record<MemberRole, string> = {
+  member: "Member",
+  admin: "Board",
+  super_admin: "Super-admin",
+};
 
 // Compact permission-group picker for the member row. Super-admin only (the
 // row only renders it when canManage). Lets a super-admin move anyone directly
@@ -660,218 +907,312 @@ function MemberRow({
   onEdit: () => void;
 }) {
   const rowAvatar = resolveAvatarUrl(member);
+  const [accessOpen, setAccessOpen] = useState(false);
+  const ready = { travel: travelReady, slack: slackReady, website: websiteReady };
+  const offered = (defs: GrantDef[]) => defs.filter((g) => !g.needs || ready[g.needs]);
+  const showAccess = tab === "approved" && canManage && member.role !== "super_admin";
+  const manageGrants = showAccess ? offered(MANAGE_GRANTS) : [];
+  // Settings grants only mean anything on Board; setRole clears them otherwise.
+  const settingsGrants = showAccess && member.role === "admin" ? offered(SETTINGS_GRANTS) : [];
+  const granted = [
+    ...manageGrants.filter((g) => member[g.key]).map((g) => g.label),
+    ...settingsGrants.filter((g) => member[g.key]).map((g) => `Settings: ${g.label}`),
+  ];
   return (
     <div
       data-tour="members-row"
       className="rsd-card"
       style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
+        gap: 0,
         padding: "14px 18px",
         opacity: acting ? 0.5 : 1,
         transition: "opacity 150ms",
       }}
     >
-      {/* Avatar */}
-      <div
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          flexShrink: 0,
-          background: "var(--gw-bg-elev)",
-          border: "1px solid var(--gw-border)",
-          overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {rowAvatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={rowAvatar} alt="" width={40} height={40} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
-        ) : (
-          <Icons.User width={18} height={18} style={{ color: "var(--gw-fg-muted)" }} />
-        )}
-      </div>
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, lineHeight: 1.2, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gw-fg)" }}>
-            {memberDisplayName(member)}
-          </span>
-          {member.role === "super_admin" && (
-            <span className="rsd-chip rsd-chip-accent">Super-admin</span>
-          )}
-          {member.role === "admin" && <span className="rsd-chip rsd-chip-mute">Board</span>}
-          {isSelf && <span className="rsd-chip rsd-chip-mute">You</span>}
-          {member.access_revoked_at ? (
-            <span className="rsd-chip rsd-chip-warn">No login</span>
-          ) : !member.email ? (
-            <span className="rsd-chip rsd-chip-mute">Directory only</span>
-          ) : !member.user_id ? (
-            <span className="rsd-chip rsd-chip-warn">Invited</span>
-          ) : null}
-        </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        {/* Avatar */}
         <div
           style={{
-            fontSize: 12,
-            color: "var(--gw-fg-muted)",
-            fontWeight: 500,
-            marginTop: 2,
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            flexShrink: 0,
+            background: "var(--gw-bg-elev)",
+            border: "1px solid var(--gw-border)",
+            overflow: "hidden",
             display: "flex",
-            gap: 8,
             alignItems: "center",
-            flexWrap: "wrap",
+            justifyContent: "center",
           }}
         >
-          {member.email && (
+          {rowAvatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={rowAvatar} alt="" width={40} height={40} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
+          ) : (
+            <Icons.User width={18} height={18} style={{ color: "var(--gw-fg-muted)" }} />
+          )}
+        </div>
+
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, lineHeight: 1.2, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gw-fg)" }}>
+              {memberDisplayName(member)}
+            </span>
+            {member.role === "super_admin" && (
+              <span className="rsd-chip rsd-chip-accent">Super-admin</span>
+            )}
+            {member.role === "admin" && <span className="rsd-chip rsd-chip-mute">Board</span>}
+            {isSelf && <span className="rsd-chip rsd-chip-mute">You</span>}
+            {member.access_revoked_at ? (
+              <span className="rsd-chip rsd-chip-warn">No login</span>
+            ) : !member.email ? (
+              <span className="rsd-chip rsd-chip-mute">Directory only</span>
+            ) : !member.user_id ? (
+              <span className="rsd-chip rsd-chip-warn">Invited</span>
+            ) : null}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--gw-fg-muted)",
+              fontWeight: 500,
+              marginTop: 2,
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            {member.email && (
+              <>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {member.email}
+                </span>
+                <span style={{ flexShrink: 0 }}>·</span>
+              </>
+            )}
+            <span style={{ flexShrink: 0 }}>
+              {tab === "pending"
+                ? `Requested ${timeAgo(member.requested_at)}`
+                : `Reviewed ${timeAgo(member.reviewed_at ?? member.requested_at)}`}
+            </span>
+          </div>
+          {showAccess && granted.length > 0 && !accessOpen && (
+            <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 4 }}>
+              <span style={{ fontWeight: 700 }}>Access:</span> {granted.join(", ")}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {canManage && (
+            <ActionBtn onClick={onEdit} disabled={acting} color="var(--gw-fg)" bgColor="var(--gw-bg-elev)">
+              Edit
+            </ActionBtn>
+          )}
+          {tab === "pending" && (
             <>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {member.email}
-              </span>
-              <span style={{ flexShrink: 0 }}>·</span>
+              <ActionBtn onClick={onApprove} disabled={acting} color="var(--rsd-accent)" bgColor="var(--rsd-accent-bg)">
+                Approve
+              </ActionBtn>
+              <ActionBtn onClick={onDeny} disabled={acting} color="var(--gw-error)" bgColor="var(--gw-error-bg)">
+                Deny
+              </ActionBtn>
             </>
           )}
-          <span style={{ flexShrink: 0 }}>
-            {tab === "pending"
-              ? `Requested ${timeAgo(member.requested_at)}`
-              : `Reviewed ${timeAgo(member.reviewed_at ?? member.requested_at)}`}
-          </span>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-        {canManage && (
-          <ActionBtn onClick={onEdit} disabled={acting} color="var(--gw-fg)" bgColor="var(--gw-bg-elev)">
-            Edit
-          </ActionBtn>
-        )}
-        {tab === "pending" && (
-          <>
-            <ActionBtn onClick={onApprove} disabled={acting} color="var(--rsd-accent)" bgColor="var(--rsd-accent-bg)">
-              Approve
-            </ActionBtn>
-            <ActionBtn onClick={onDeny} disabled={acting} color="var(--gw-error)" bgColor="var(--gw-error-bg)">
-              Deny
-            </ActionBtn>
-          </>
-        )}
-        {tab === "approved" && canManage && (
-          <>
-            {!isSelf && (
-              <RoleSelect role={member.role} disabled={acting} onChange={onSetRole} />
-            )}
-            {!isSelf && member.role !== "super_admin" && (
-              <ActionBtn
-                onClick={onRemove}
-                disabled={acting}
-                color="var(--gw-error)"
-                bgColor="var(--gw-error-bg)"
-              >
+          {tab === "approved" && canManage && (
+            <>
+              {!isSelf && (
+                <RoleSelect role={member.role} disabled={acting} onChange={onSetRole} />
+              )}
+              {member.role !== "super_admin" && (
+                <AccessButton count={granted.length} open={accessOpen} onClick={() => setAccessOpen((o) => !o)} />
+              )}
+              {!isSelf && member.role !== "super_admin" && (
+                <ActionBtn
+                  onClick={onRemove}
+                  disabled={acting}
+                  color="var(--gw-error)"
+                  bgColor="var(--gw-error-bg)"
+                >
+                  Remove
+                </ActionBtn>
+              )}
+            </>
+          )}
+          {tab === "denied" && (
+            <>
+              <ActionBtn onClick={onApprove} disabled={acting} color="var(--rsd-accent)" bgColor="var(--rsd-accent-bg)">
+                Approve
+              </ActionBtn>
+              <ActionBtn onClick={onRestore} disabled={acting} color="var(--gw-fg-muted)" bgColor="var(--gw-bg-elev)">
+                Restore to pending
+              </ActionBtn>
+              {canManage && (
+              <ActionBtn onClick={onRemove} disabled={acting} color="var(--gw-error)" bgColor="var(--gw-error-bg)">
                 Remove
               </ActionBtn>
-            )}
-          </>
-        )}
-        {/* Settings grants — what this board member may change in Settings. */}
-        {tab === "approved" && canManage && member.role === "admin" && (
-          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "flex-end", marginTop: 2 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
-              Settings:
-            </span>
-            <GrantChip label="Edit" on={member.can_edit_settings} disabled={acting} onClick={() => onSetGrant("can_edit_settings", !member.can_edit_settings)} />
-            <GrantChip label="Delete" on={member.can_delete_settings} disabled={acting} onClick={() => onSetGrant("can_delete_settings", !member.can_delete_settings)} />
-            <GrantChip label="Undelete" on={member.can_undelete_settings} disabled={acting} onClick={() => onSetGrant("can_undelete_settings", !member.can_undelete_settings)} />
-            {websiteReady && (
-              <GrantChip
-                label="Website"
-                title={
-                  member.can_manage_website
-                    ? "Can change the club website's menu, page text and pictures in Settings → Website — tap to revoke"
-                    : "Tap to let them change the club website's menu, page text and pictures in Settings → Website"
-                }
-                on={member.can_manage_website}
-                disabled={acting}
-                onClick={() => onSetGrant("can_manage_website", !member.can_manage_website)}
-              />
-            )}
-          </div>
-        )}
-        {/* Payments, Registrations, Travel and Slack DMs grants — any approved
-            member, board or not (the Treasurer; whoever runs registrations; the
-            travel coordinator; coaches). Super-admins always have them all. */}
-        {tab === "approved" && canManage && member.role !== "super_admin" && (
-          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", width: "100%", justifyContent: "flex-end", marginTop: 2 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
-              Manages:
-            </span>
-            <GrantChip
-              label="Payments"
-              title={member.can_manage_finances ? "Can see every family's balance and record payments — tap to revoke" : "Tap to let them see every family's balance and record payments"}
-              on={member.can_manage_finances}
-              disabled={acting}
-              onClick={() => onSetGrant("can_manage_finances", !member.can_manage_finances)}
-            />
-            <GrantChip
-              label="Registrations"
-              title={
-                member.can_manage_registrations
-                  ? "Can review registrations, put players on teams and edit players — tap to revoke"
-                  : "Tap to let them review registrations, put players on teams and edit players"
-              }
-              on={member.can_manage_registrations}
-              disabled={acting}
-              onClick={() => onSetGrant("can_manage_registrations", !member.can_manage_registrations)}
-            />
-            {travelReady && (
-              <GrantChip
-                label="Travel"
-                title={
-                  member.can_manage_travel
-                    ? "Keeps the hotels and places to eat in External Contacts — tap to revoke"
-                    : "Tap to let them add and edit the hotels and places to eat in External Contacts"
-                }
-                on={member.can_manage_travel}
-                disabled={acting}
-                onClick={() => onSetGrant("can_manage_travel", !member.can_manage_travel)}
-              />
-            )}
-            {slackReady && (
-              <GrantChip
-                label="Slack DMs"
-                title={
-                  member.can_slack_dm
-                    ? "Can send Slack DMs to families from the Directory, as themselves — tap to revoke"
-                    : "Tap to let them send Slack DMs to the families of the players they can see in the Directory, as themselves"
-                }
-                on={member.can_slack_dm}
-                disabled={acting}
-                onClick={() => onSetGrant("can_slack_dm", !member.can_slack_dm)}
-              />
-            )}
-          </div>
-        )}
-        {tab === "denied" && (
-          <>
-            <ActionBtn onClick={onApprove} disabled={acting} color="var(--rsd-accent)" bgColor="var(--rsd-accent-bg)">
-              Approve
-            </ActionBtn>
-            <ActionBtn onClick={onRestore} disabled={acting} color="var(--gw-fg-muted)" bgColor="var(--gw-bg-elev)">
-              Restore to pending
-            </ActionBtn>
-            {canManage && (
-            <ActionBtn onClick={onRemove} disabled={acting} color="var(--gw-error)" bgColor="var(--gw-error-bg)">
-              Remove
-            </ActionBtn>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
+      {showAccess && accessOpen && (
+        <AccessPanel
+          member={member}
+          manageGrants={manageGrants}
+          settingsGrants={settingsGrants}
+          disabled={acting}
+          onSetGrant={onSetGrant}
+        />
+      )}
     </div>
+  );
+}
+
+// Opens a member's Access panel; shows how many grants they hold.
+function AccessButton({ count, open, onClick }: { count: number; open: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-expanded={open}
+      title="What this person can manage"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "6px 12px",
+        borderRadius: 8,
+        background: open ? "var(--gw-bg)" : "var(--gw-bg-elev)",
+        color: "var(--gw-fg)",
+        border: "1px solid var(--gw-border)",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+    >
+      Access
+      {count > 0 && (
+        <span
+          style={{
+            minWidth: 18,
+            padding: "1px 6px",
+            borderRadius: 100,
+            background: "var(--rsd-accent-fill)",
+            color: "var(--rsd-accent-fill-on)",
+            fontSize: 11,
+            lineHeight: "16px",
+            textAlign: "center",
+          }}
+        >
+          {count}
+        </span>
+      )}
+      <span aria-hidden style={{ fontSize: 10, color: "var(--gw-fg-muted)" }}>{open ? "▲" : "▼"}</span>
+    </button>
+  );
+}
+
+// The grants a super-admin can hand out, as labelled switches with what each
+// one does. Grouped so the list can keep growing without crowding the row.
+function AccessPanel({
+  member,
+  manageGrants,
+  settingsGrants,
+  disabled,
+  onSetGrant,
+}: {
+  member: Member;
+  manageGrants: GrantDef[];
+  settingsGrants: GrantDef[];
+  disabled: boolean;
+  onSetGrant: (key: GrantKey, value: boolean) => void;
+}) {
+  const group = (title: string, defs: GrantDef[]) =>
+    defs.length > 0 && (
+      <div>
+        <div
+          style={{
+            fontSize: 10.5,
+            fontWeight: 700,
+            color: "var(--gw-fg-muted)",
+            textTransform: "uppercase",
+            letterSpacing: ".04em",
+            marginBottom: 6,
+          }}
+        >
+          {title}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 6 }}>
+          {defs.map((g) => (
+            <GrantToggle
+              key={g.key}
+              def={g}
+              on={member[g.key]}
+              disabled={disabled}
+              onChange={(v) => onSetGrant(g.key, v)}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  return (
+    <div
+      data-tour="members-access"
+      style={{
+        marginTop: 12,
+        paddingTop: 12,
+        borderTop: "1px solid var(--gw-border)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+      }}
+    >
+      {group("Can manage", manageGrants)}
+      {group("Settings (Board)", settingsGrants)}
+    </div>
+  );
+}
+
+function GrantToggle({
+  def,
+  on,
+  disabled,
+  onChange,
+}: {
+  def: GrantDef;
+  on: boolean;
+  disabled: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <label
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        padding: "8px 10px",
+        borderRadius: 10,
+        border: `1px solid ${on ? "var(--rsd-accent-fill)" : "var(--gw-border)"}`,
+        background: "var(--gw-bg)",
+        cursor: disabled ? "not-allowed" : "pointer",
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={on}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ marginTop: 2, accentColor: "var(--rsd-accent-fill)" }}
+      />
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg)" }}>{def.label}</span>
+        <span style={{ display: "block", fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.35 }}>{def.desc}</span>
+      </span>
+    </label>
   );
 }
 
@@ -909,43 +1250,6 @@ function ActionBtn({
     </button>
   );
 }
-
-// A grant toggle for a board member — green when held, outline when not.
-function GrantChip({
-  label,
-  title,
-  on,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  title?: string;
-  on: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title ?? (on ? `Can ${label.toLowerCase()} — tap to revoke` : `Tap to allow ${label.toLowerCase()}`)}
-      style={{
-        padding: "5px 11px",
-        borderRadius: 100,
-        fontSize: 11.5,
-        fontWeight: 700,
-        cursor: disabled ? "not-allowed" : "pointer",
-        background: on ? "var(--rsd-accent-fill)" : "var(--gw-bg)",
-        color: on ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
-        border: `1px solid ${on ? "var(--rsd-accent-fill)" : "var(--gw-border)"}`,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {on ? "✓ " : ""}{label}
-    </button>
-  );
-}
-
 
 function AddMemberForm({
   onCancel,
