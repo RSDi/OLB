@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { placePlayer } from "../../../../lib/teams/actions";
-import { teamLabel } from "../../../../lib/teams/volunteer-options";
+import { teamColorHex, teamLabel } from "../../../../lib/teams/volunteer-options";
 import type { DirectoryParent, DirectoryPlayer } from "./data";
 import type { PlayerRequirement, Requirement } from "../../../../lib/requirements/types";
 import { doneWord, requirementLabel, rowKey, stateFor } from "../../../../lib/requirements/logic";
@@ -175,12 +175,14 @@ export function TeamPicker({
   teams,
 }: {
   player: Pick<DirectoryPlayer, "id" | "full_name" | "team_id">;
-  teams: { id: string; name: string; age_group: string | null }[];
+  teams: { id: string; name: string; age_group: string | null; color?: string | null }[];
 }) {
   const router = useRouter();
   const [value, setValue] = useState(player.team_id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const picked = teams.find((t) => t.id === value) ?? null;
 
   async function change(teamId: string) {
     setValue(teamId);
@@ -196,39 +198,54 @@ export function TeamPicker({
 
   return (
     <div data-tour="directory-place" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-      <label
-        htmlFor={`team-${player.id}`}
-        style={{ fontSize: 10, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".06em" }}
-      >
-        Team
-      </label>
-      <ComboSelect
-        id={`team-${player.id}`}
-        value={value}
-        onChange={(e) => change(e.target.value)}
-        disabled={busy}
-        className="rsd-select-sm"
-        style={{
-          height: 32,
-          padding: "0 10px",
-          borderRadius: 8,
-          border: "1px solid",
-          borderColor: value ? "var(--gw-border)" : "var(--rsd-accent-line)",
-          background: value ? "var(--gw-bg-elev)" : "var(--rsd-accent-bg)",
-          color: "var(--gw-fg)",
-          fontSize: 12,
-          fontWeight: 600,
-          cursor: busy ? "wait" : "pointer",
-          maxWidth: "100%",
-        }}
-      >
-        <option value="">No team yet</option>
-        {teams.map((t) => (
-          <option key={t.id} value={t.id}>
-            {teamLabel(t)}
-          </option>
-        ))}
-      </ComboSelect>
+      {/* A chip like the requirement chips: the team's color and name, or an
+          accent "No team yet" until they're placed. Tap it to change. */}
+      <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+        {picked && (
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: 10,
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: teamColorHex(picked.color ?? null),
+              boxShadow: "inset 0 0 0 1px rgba(0,0,0,.2)",
+              pointerEvents: "none",
+              zIndex: 1,
+            }}
+          />
+        )}
+        <ComboSelect
+          id={`team-${player.id}`}
+          aria-label={`Team for ${player.full_name}`}
+          value={value}
+          onChange={(e) => change(e.target.value)}
+          disabled={busy}
+          className="rsd-chip rsd-select-sm"
+          style={{
+            height: 28,
+            padding: `0 22px 0 ${picked ? 24 : 10}px`,
+            borderRadius: 100,
+            border: "1px solid",
+            borderColor: picked ? "var(--gw-border)" : "var(--rsd-accent-line)",
+            background: picked ? "var(--gw-bg)" : "var(--rsd-accent-bg)",
+            color: "var(--gw-fg)",
+            fontSize: 11,
+            fontWeight: 700,
+            cursor: busy ? "wait" : "pointer",
+            maxWidth: "100%",
+          }}
+        >
+          <option value="">No team yet</option>
+          {teams.map((t) => (
+            <option key={t.id} value={t.id}>
+              {teamLabel(t)}
+            </option>
+          ))}
+        </ComboSelect>
+      </span>
       {busy && <span style={muted}>Saving…</span>}
       {error && (
         <span role="alert" style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-error)" }}>

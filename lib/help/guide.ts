@@ -287,9 +287,9 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **Approved** lists every registration that's been approved, newest first, with who approved it and when. Tap a name to open the player's page.
 
-**Putting players on teams.** In the Directory, every player has a **Team** drop-down. Pick a team and the player moves there right away. Pick **No team yet** to take them off their team. Pick **No team yet** from the **All teams** drop-down at the top to see who still needs a team.
+**Putting players on teams.** In the Directory, every player has a team chip showing their team (or **No team yet**). Tap it and pick a team, and the player moves there right away. Pick **No team yet** to take them off their team. Pick **No team yet** from the **All teams** drop-down at the top to see who still needs a team.
 
-**Editing a player.** On a player's page, the **Team** drop-down works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number** and **Age group**. Tap **Save**.
+**Editing a player.** On a player's page, the team chip works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number** and **Age group**. Tap **Save**.
 
 **Taking a player off the roster.** In **Edit player**, **Take off the roster** removes a player who isn't in the program this season. Their parents stay as members. If the player has charges or payments on the Payments page, the Treasurer voids those first.`,
   },
@@ -754,7 +754,7 @@ Put someone on a profile with the drop-down on their row in **Settings → Membe
 - Tap the **pencil** to edit a team, or the **trash** can to delete one — its players go back to **No team yet** and its volunteer spots are cleared.
 - **Staff & volunteers →** opens the team's page in the Directory, where you assign coaches and volunteers.
 
-What you enter here shows on the team's Directory banner and team page. Players are put on teams in the Directory, with the **Team** drop-down on each player.`,
+What you enter here shows on the team's Directory banner and team page. Players are put on teams in the Directory, with the team chip on each player.`,
   },
   {
     id: "settings-volunteer-roles",

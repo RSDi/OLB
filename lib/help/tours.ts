@@ -229,7 +229,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "directory-place",
         audience: "registrations",
         title: "Put players on teams",
-        body: "Pick a team from a player's **Team** drop-down and they move there right away. Pick **No team yet** from the team drop-down at the top to see who still needs one.",
+        body: "Tap a player's team chip and pick a team, and they move there right away. Pick **No team yet** from the team drop-down at the top to see who still needs one.",
       },
       {
         target: "directory-player-link",

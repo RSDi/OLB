@@ -60,7 +60,7 @@ export function PlayerDetail({
   payments: PaymentsData | null;
   canManageFinances: boolean;
   // The season's teams, for the Registrations grant; null for everyone else.
-  teams: { id: string; name: string; age_group: string | null }[] | null;
+  teams: { id: string; name: string; age_group: string | null; color?: string | null }[] | null;
   // The board and the Registrations grant: Email family, and what was sent.
   canEmail: boolean;
   // The Slack DMs grant (0118): Slack family. They see what was sent too.
