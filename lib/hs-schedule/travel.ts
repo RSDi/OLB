@@ -75,8 +75,13 @@ export function placesNear(location: string | null | undefined, places: TravelPl
   const here = placeKey(city);
   const near = places
     .filter((p) => !isClosed(p) && (placeKey(p.city) === here || p.tags.some((t) => placeKey(t) === here)))
-    // In town first, then by name.
-    .sort((a, b) => Number(placeKey(b.city) === here) - Number(placeKey(a.city) === here) || a.name.localeCompare(b.name));
+    // The ones with notes (where we've been) first, then in town, then by name.
+    .sort(
+      (a, b) =>
+        Number(!!b.notes?.trim()) - Number(!!a.notes?.trim()) ||
+        Number(placeKey(b.city) === here) - Number(placeKey(a.city) === here) ||
+        a.name.localeCompare(b.name)
+    );
   const hotels = near.filter((p) => p.kind === "hotel");
   const food = near.filter((p) => p.kind === "food");
   return hotels.length || food.length ? { city, hotels, food } : null;

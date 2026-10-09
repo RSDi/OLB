@@ -58,6 +58,11 @@ test("places show by their city or a tag with the weekend's city", () => {
   assert.equal(placesNear(null, PLACES), null);
 });
 
+test("places with notes come first, ahead of the ones in town", () => {
+  const withNotes = [...PLACES, place({ id: "wdm", name: "Hampton Inn West Des Moines", city: "West Des Moines", tags: ["des moines"], notes: "Block of 12 at $119." })];
+  assert.deepEqual(placesNear("Des Moines, IA", withNotes)!.hotels.map((p) => p.id), ["wdm", "dm", "hie", "sb"]);
+});
+
 test("the Hotels and Food types, by the names people give them", () => {
   assert.equal(travelKind("Hotels"), "hotel");
   assert.equal(travelKind(" lodging "), "hotel");

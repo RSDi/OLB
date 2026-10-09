@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Icons } from "../../../components/icons";
 import { formatWeekendDates } from "../../../../lib/hs-schedule/logic";
 import type { HsWeekend } from "../../../../lib/hs-schedule/types";
-import type { PlacesNear, TravelPlace } from "../../../../lib/hs-schedule/travel";
+import { placeKey, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
 import { externalHref, telHref } from "../../contacts/_shared/format";
 
 const WIDTH = 384;
@@ -180,8 +180,8 @@ export function TravelPopover({
       >
         <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid var(--gw-border)", display: "flex", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--gw-fg-muted)" }}>
-              {formatWeekendDates(weekend.starts_on, weekend.ends_on)} · {weekend.event || "Weekend"}
+            <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--gw-fg-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {weekend.event || "Weekend"} · {formatWeekendDates(weekend.starts_on, weekend.ends_on)}
             </div>
             <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.3, marginTop: 2 }}>Where to stay and eat near {near.city}</div>
           </div>
@@ -208,9 +208,8 @@ export function TravelPopover({
             fontWeight: 600,
           }}
         >
-          <span>From External Contacts</span>
           <Link href="/portal/contacts" style={{ color: "var(--gw-fg)", fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}>
-            Open <Icons.ChevronRight width={12} height={12} />
+            Add or edit places in External Contacts <Icons.ChevronRight width={12} height={12} />
           </Link>
         </div>
       </div>
@@ -224,13 +223,13 @@ export function TravelPopover({
 export function TravelPlaces({ near }: { near: PlacesNear }) {
   return (
     <>
-      {near.hotels.length > 0 && <Section title="Hotels" icon={<Icons.Bed width={13} height={13} />} places={near.hotels} />}
-      {near.food.length > 0 && <Section title="Places to eat" icon={<Icons.Utensils width={12} height={12} />} places={near.food} />}
+      {near.hotels.length > 0 && <Section title="Hotels" icon={<Icons.Bed width={13} height={13} />} places={near.hotels} city={near.city} />}
+      {near.food.length > 0 && <Section title="Places to eat" icon={<Icons.Utensils width={12} height={12} />} places={near.food} city={near.city} />}
     </>
   );
 }
 
-function Section({ title, icon, places }: { title: string; icon: React.ReactNode; places: TravelPlace[] }) {
+function Section({ title, icon, places, city }: { title: string; icon: React.ReactNode; places: TravelPlace[]; city: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", paddingTop: 10 }}>
       <div
@@ -248,47 +247,64 @@ function Section({ title, icon, places }: { title: string; icon: React.ReactNode
         {icon} {title} ({places.length})
       </div>
       {places.map((p, i) => (
-        <PlaceItem key={p.id} place={p} first={i === 0} />
+        <PlaceItem key={p.id} place={p} first={i === 0} city={city} />
       ))}
     </div>
   );
 }
 
-function PlaceItem({ place, first }: { place: TravelPlace; first: boolean }) {
-  const where = [place.city, place.state].filter(Boolean).join(", ");
+function PlaceItem({ place, first, city }: { place: TravelPlace; first: boolean; city: string }) {
+  // Its city only when it's not the weekend's (a hotel in a nearby town).
+  const where = placeKey(place.city) === placeKey(city) ? "" : [place.city, place.state].filter(Boolean).join(", ");
   const site = externalHref(place.website);
+  const website = site && (
+    <a href={site} target="_blank" rel="noopener noreferrer" style={reachLink}>
+      Website <Icons.ExternalLink width={11} height={11} />
+    </a>
+  );
+  // The place's own phone and email: on their own when nobody's named, and
+  // as the front desk under the people who are.
+  const desk = place.phone || place.email;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 5, padding: "10px 0", borderTop: first ? "none" : "1px solid var(--gw-border)" }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <Link href={`/portal/contacts/${place.id}`} style={{ fontSize: 13.5, fontWeight: 800, color: "var(--gw-fg)", textDecoration: "none" }}>
-          {place.name}
+        <Link
+          href={`/portal/contacts/${place.id}`}
+          title={`Open ${place.name} in External Contacts`}
+          style={{ fontSize: 13.5, fontWeight: 800, color: "var(--gw-fg)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3 }}
+        >
+          {place.name} <Icons.ChevronRight width={12} height={12} style={{ color: "var(--gw-fg-muted)" }} />
         </Link>
         {where && <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{where}</span>}
-        {site && (
-          <a
-            href={site}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 700, color: "var(--gw-fg)", display: "inline-flex", alignItems: "center", gap: 3 }}
-          >
-            Website <Icons.ExternalLink width={11} height={11} />
-          </a>
-        )}
       </div>
       {place.notes && (
         <div style={{ fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap", color: "var(--gw-fg)", overflowWrap: "anywhere" }}>{place.notes}</div>
       )}
-      {place.people.length > 0
-        ? place.people.map((person) => (
-            <Reach key={person.id} name={person.name} title={person.title} phone={person.phone ?? person.mobile_phone} email={person.email} />
-          ))
-        : (place.phone || place.email) && <Reach name={null} title={null} phone={place.phone} email={place.email} />}
+      {place.people.map((person) => (
+        <Reach key={person.id} name={person.name} title={person.title} phone={person.phone ?? person.mobile_phone} email={person.email} />
+      ))}
+      {(desk || website) && (
+        <Reach name={place.people.length > 0 && desk ? "Front desk" : null} title={null} phone={place.phone} email={place.email} extra={website} />
+      )}
     </div>
   );
 }
 
 // Who to call there: a name, then tap-to-call and tap-to-email.
-function Reach({ name, title, phone, email }: { name: string | null; title: string | null; phone: string | null; email: string | null }) {
+function Reach({
+  name,
+  title,
+  phone,
+  email,
+  extra,
+}: {
+  name: string | null;
+  title: string | null;
+  phone: string | null;
+  email: string | null;
+  // At the end of the line, like the place's website.
+  extra?: React.ReactNode;
+}) {
   const tel = telHref(phone);
   return (
     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "3px 12px", fontSize: 12 }}>
@@ -311,6 +327,7 @@ function Reach({ name, title, phone, email }: { name: string | null; title: stri
           <Icons.Mail width={11} height={11} /> {email}
         </a>
       )}
+      {extra}
     </div>
   );
 }
