@@ -79,7 +79,11 @@ export default async function SlackArchiveChannelPage({
           </div>
         </div>
       ) : (
-        <MessageList threads={threads} channelId={slackChannelId} />
+        <MessageList
+          threads={threads}
+          channelId={slackChannelId}
+          canSaveNotes={viewer.isStaff || viewer.canManageRegistrations}
+        />
       )}
     </div>
   );

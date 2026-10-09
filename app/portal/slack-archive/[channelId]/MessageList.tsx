@@ -14,6 +14,11 @@ import { DateJumpCalendar } from "./DateJumpCalendar";
 import { FilePreviewModal, type PreviewKind } from "./FilePreviewModal";
 import { FilterDropdown } from "../_shared/FilterDropdown";
 import { SlackText } from "../_shared/SlackText";
+import { SaveToNotesSheet } from "./SaveToNotesSheet";
+
+// Save to player notes (0124): which message, and how many replies it has.
+type SaveTarget = { ts: string; author: string; replyCount: number };
+type OnSave = ((target: SaveTarget) => void) | null;
 
 function isVideoFile(f: ArchivedFile): boolean {
   return (f.mimetype ?? "").startsWith("video/") || /\.(mp4|mov|webm|m4v|ogv)$/i.test(f.name || "");
@@ -88,7 +93,19 @@ function countAuthors(threads: ArchiveThread[]): { name: string; count: number }
     .sort((a, b) => b.count - a.count);
 }
 
-export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; channelId: string }) {
+export function MessageList({
+  threads,
+  channelId,
+  canSaveNotes = false,
+}: {
+  threads: ArchiveThread[];
+  channelId: string;
+  // The board and the Registrations grant: a Save to player notes button on
+  // each message.
+  canSaveNotes?: boolean;
+}) {
+  const [saving, setSaving] = useState<SaveTarget | null>(null);
+  const onSave: OnSave = canSaveNotes ? setSaving : null;
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [openDropdown, setOpenDropdown] = useState<null | "author">(null);
@@ -160,24 +177,55 @@ export function MessageList({ threads, channelId }: { threads: ArchiveThread[]; 
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {g.threads.map((t) => (
-                <ThreadCard key={t.parent.id} thread={t} channelId={channelId} linkedTs={linkedTs} />
+                <ThreadCard key={t.parent.id} thread={t} channelId={channelId} linkedTs={linkedTs} onSave={onSave} />
               ))}
             </div>
           </div>
         ))}
       </div>
+
+      {saving && (
+        <SaveToNotesSheet
+          channelId={channelId}
+          ts={saving.ts}
+          author={saving.author}
+          replyCount={saving.replyCount}
+          onClose={() => setSaving(null)}
+        />
+      )}
     </div>
   );
 }
 
-function ThreadCard({ thread, channelId, linkedTs }: { thread: ArchiveThread; channelId: string; linkedTs: string | null }) {
+function ThreadCard({
+  thread,
+  channelId,
+  linkedTs,
+  onSave,
+}: {
+  thread: ArchiveThread;
+  channelId: string;
+  linkedTs: string | null;
+  onSave: OnSave;
+}) {
   return (
     <div className="rsd-card" style={{ padding: "14px 18px", gap: 10 }}>
-      <MessageRow message={thread.parent} channelId={channelId} linked={thread.parent.ts === linkedTs} />
+      <MessageRow
+        message={thread.parent}
+        channelId={channelId}
+        linked={thread.parent.ts === linkedTs}
+        onSave={onSave && (() => onSave({ ts: thread.parent.ts, author: thread.parent.author_name ?? "Unknown", replyCount: thread.replies.length }))}
+      />
       {thread.replies.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginLeft: 20, paddingLeft: 14, borderLeft: "2px solid var(--gw-border)" }}>
           {thread.replies.map((r) => (
-            <MessageRow key={r.id} message={r} channelId={channelId} linked={r.ts === linkedTs} />
+            <MessageRow
+              key={r.id}
+              message={r}
+              channelId={channelId}
+              linked={r.ts === linkedTs}
+              onSave={onSave && (() => onSave({ ts: r.ts, author: r.author_name ?? "Unknown", replyCount: 0 }))}
+            />
           ))}
         </div>
       )}
@@ -185,7 +233,17 @@ function ThreadCard({ thread, channelId, linkedTs }: { thread: ArchiveThread; ch
   );
 }
 
-function MessageRow({ message, channelId, linked }: { message: ArchiveMessage; channelId: string; linked: boolean }) {
+function MessageRow({
+  message,
+  channelId,
+  linked,
+  onSave,
+}: {
+  message: ArchiveMessage;
+  channelId: string;
+  linked: boolean;
+  onSave: (() => void) | null;
+}) {
   const time = new Date(message.posted_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ });
   const messageText = decodeSlackEntities(message.message_text);
   const [playingFile, setPlayingFile] = useState<ArchiveMessageFile | null>(null);
@@ -222,13 +280,29 @@ function MessageRow({ message, channelId, linked }: { message: ArchiveMessage; c
         <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
           {time}{message.edited ? " (edited)" : ""}
         </span>
+        {onSave && (
+          <button
+            type="button"
+            onClick={onSave}
+            title="Save to player notes"
+            aria-label="Save to player notes"
+            className="gw-press"
+            style={{
+              marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4,
+              background: "none", border: "none", cursor: "pointer", padding: 2,
+              color: "var(--gw-fg-muted)", fontSize: 11, fontWeight: 700,
+            }}
+          >
+            <Icons.FileText width={13} height={13} /> Save to notes
+          </button>
+        )}
         <button
           type="button"
           onClick={copyLink}
           title={linkCopied ? "Link copied!" : "Copy link to this message"}
           className="gw-press"
           style={{
-            marginLeft: "auto", display: "inline-flex", alignItems: "center",
+            marginLeft: onSave ? 0 : "auto", display: "inline-flex", alignItems: "center",
             background: "none", border: "none", cursor: "pointer", padding: 2,
             color: linkCopied ? "var(--rsd-accent)" : "var(--gw-fg-muted)",
           }}
