@@ -60,6 +60,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/search":      { title: "Search",       subtitle: "" },
   "/portal/search/log":  { title: "Search log",   subtitle: "Search" },
   "/portal/activity":    { title: "Activity",     subtitle: "Super-admin" },
+  "/portal/roadmap":     { title: "Roadmap",      subtitle: "" },
 };
 
 // Below this the full-width sidebar crowds the page (or doesn't fit

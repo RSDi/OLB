@@ -25,6 +25,7 @@ const PREVIEW_ROUTES = [
   "/portal/review",
   "/portal/reelnotes",
   "/portal/activity",
+  "/portal/roadmap",
   // The guide itself: no "i" needed.
   "/portal/guide",
 ];
