@@ -11,9 +11,9 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Icons } from "../../../components/icons";
-import { Pill } from "../../../components/ui";
+import { ClearSearchButton, Pill } from "../../../components/ui";
 import {
   WEEKEND_STATUSES,
   cellOpponents,
@@ -55,7 +55,7 @@ import { WeekendSheet } from "./WeekendSheet";
 import { WeekendDetails } from "./WeekendDetails";
 import { TravelChip, TravelPopover } from "./TravelPopover";
 import { placesNear, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
-import { FilterMultiSelect, FilterSelect, type MultiOption } from "../../../components/FilterControls";
+import { FilterMenu, FilterMultiSelect, FilterSelect, MenuHeading, MenuRow, type MultiOption } from "../../../components/FilterControls";
 
 export interface CompareWeekend {
   id: string;
@@ -112,10 +112,51 @@ export function ScheduleView({
     setLoaded(schedule);
     dispatch({ type: "reset", state: fromServer(schedule) });
   }
-  const [showHidden, setShowHidden] = useState(false);
-  // The weekends drop-down above the grid: show only the weekends that match
-  // any of what's ticked. None ticked shows every weekend.
-  const [filters, setFilters] = useState<ReadonlySet<WeekendFilter>>(() => new Set());
+  // ─── What's showing, kept in the page's address ───────────────────────────
+  // ?show=tentative,unsure (the weekends drop-down: any of what's ticked),
+  // ?q= (the search box), ?team=JV1 (just one of our teams), ?hidden=1 and
+  // ?past=1 (View). A link carries them, and Back undoes the last change.
+  const params = useSearchParams();
+  const pathname = usePathname();
+  const setParams = useCallback(
+    (changes: Record<string, string | null>, replace = false) => {
+      const next = new URLSearchParams(window.location.search);
+      for (const [k, v] of Object.entries(changes)) {
+        if (v) next.set(k, v);
+        else next.delete(k);
+      }
+      const qs = next.toString();
+      window.history[replace ? "replaceState" : "pushState"](null, "", `${pathname}${qs ? `?${qs}` : ""}`);
+    },
+    [pathname]
+  );
+  const showParam = params.get("show") ?? "";
+  const filters = useMemo<ReadonlySet<WeekendFilter>>(
+    () => new Set(showParam.split(",").filter((f): f is WeekendFilter => FILTER_KEYS.has(f))),
+    [showParam]
+  );
+  const setFilters = (next: ReadonlySet<WeekendFilter>) => setParams({ show: [...next].join(",") || null });
+  const showHidden = params.get("hidden") === "1";
+  const setShowHidden = (on: boolean) => setParams({ hidden: on ? "1" : null });
+  const showPast = params.get("past") === "1";
+  const setShowPast = (on: boolean) => setParams({ past: on ? "1" : null });
+  // The search box types into its own state (so the cursor doesn't jump) and
+  // keeps the address in step; Back brings an earlier search back.
+  const qParam = params.get("q") ?? "";
+  const [query, setQuery] = useState(qParam);
+  const [lastQ, setLastQ] = useState(qParam);
+  if (qParam !== lastQ) {
+    setLastQ(qParam);
+    setQuery(qParam);
+  }
+  const typeQuery = (v: string) => {
+    // The first letter of a search is a step Back can undo; the rest of the
+    // typing updates that step.
+    const continuing = !!query && !!v;
+    setQuery(v);
+    setLastQ(v);
+    setParams({ q: v || null }, continuing);
+  };
   const [cell, setCell] = useState<CellTarget | null>(null);
   // Where to stay and eat: the weekend whose card is open, and what opened it.
   const [travel, setTravel] = useState<{ weekendId: string; anchor: HTMLElement } | null>(null);
@@ -127,7 +168,12 @@ export function ScheduleView({
   const contacts = useMemo(() => new Map<string, HsContactRef>(schedule.contacts.map((c) => [c.id, c])), [schedule.contacts]);
   const levels = useMemo(() => [...state.levels].sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label)), [state.levels]);
   const hiddenCount = levels.filter((l) => l.hidden).length;
-  const shownLevels = useMemo(() => levels.filter((l) => showHidden || !l.hidden), [levels, showHidden]);
+  // ?team=JV1: just that team of ours, its column and the weekends it plays.
+  const teamLevel = levels.find((l) => l.label === params.get("team")) ?? null;
+  const shownLevels = useMemo(
+    () => (teamLevel ? [teamLevel] : levels.filter((l) => showHidden || !l.hidden)),
+    [levels, showHidden, teamLevel]
+  );
   const weekends = useMemo(() => sortWeekends(state.weekends), [state.weekends]);
   const facts = useMemo(
     () => weekendFacts(weekends, state.games, state.opponents, new Set(shownLevels.map((l) => l.id))),
@@ -137,11 +183,41 @@ export function ScheduleView({
   // A weekend whose card is open stays put while it's edited, even once it
   // no longer matches.
   const openWeekendId = cell?.weekend.id ?? null;
-  const shownWeekends = useMemo(
-    () => weekends.filter((w) => w.id === openWeekendId || matchesWeekendFilters(w, filters, facts)),
-    [weekends, filters, facts, openWeekendId]
+  // The search: the event, where, the trip, notes, details, the facility and
+  // the teams coming.
+  const haystack = useMemo(() => {
+    const out = new Map<string, string>();
+    for (const w of weekends) {
+      const teams = state.opponents
+        .filter((o) => o.weekend_id === w.id)
+        .map((o) => (o.contact_id && contacts.get(o.contact_id)?.name) || o.name);
+      const facility = w.facility_contact_id ? contacts.get(w.facility_contact_id)?.name : null;
+      out.set(w.id, [w.event, w.location, w.trip, w.notes, w.details, facility, ...teams].filter(Boolean).join("\n").toLowerCase());
+    }
+    return out;
+  }, [weekends, state.opponents, contacts]);
+  const q = query.trim().toLowerCase();
+  const playsTeam = useCallback(
+    (w: HsWeekend) =>
+      !!teamLevel &&
+      state.games.some((g) => g.weekend_id === w.id && g.level_id === teamLevel.id && ((g.games ?? 0) > 0 || g.unsure)),
+    [teamLevel, state.games]
   );
-  const filtering = filters.size > 0;
+  const shownWeekends = useMemo(
+    () =>
+      weekends.filter(
+        (w) =>
+          w.id === openWeekendId ||
+          (matchesWeekendFilters(w, filters, facts) && (!q || haystack.get(w.id)!.includes(q)) && (!teamLevel || playsTeam(w)))
+      ),
+    [weekends, filters, facts, openWeekendId, q, haystack, teamLevel, playsTeam]
+  );
+  const filtering = filters.size > 0 || !!q || !!teamLevel;
+  const clearFilters = () => {
+    setQuery("");
+    setLastQ("");
+    setParams({ show: null, q: null, team: null });
+  };
   // The hotels and places to eat near each weekend away.
   const nearBy = useMemo(() => {
     const out = new Map<string, PlacesNear>();
@@ -162,13 +238,12 @@ export function ScheduleView({
     () => levelTotals(levels, shownWeekends, state.games, state.opponents),
     [levels, shownWeekends, state.games, state.opponents]
   );
-  const toggleFilter = (f: WeekendFilter) =>
-    setFilters((cur) => {
-      const next = new Set(cur);
-      if (next.has(f)) next.delete(f);
-      else next.add(f);
-      return next;
-    });
+  const toggleFilter = (f: WeekendFilter) => {
+    const next = new Set(filters);
+    if (next.has(f)) next.delete(f);
+    else next.add(f);
+    setFilters(next);
+  };
   // While filtering, the totals add up just the weekends showing, and say so.
   const totalNote = filtering ? `for the ${shownWeekends.length} weekend${shownWeekends.length === 1 ? "" : "s"} showing` : null;
   const shownTotals = shownLevels.map((l) => totals.get(l.id)!);
@@ -239,8 +314,8 @@ export function ScheduleView({
   // not started, shows every month.
   const thisMonth = monthKey(today);
   const underWay = weekends.some((w) => w.ends_on < today) && weekends.some((w) => w.ends_on >= today);
-  const foldable = underWay && byMonth.some((m) => m.key < thisMonth);
-  const [showPast, setShowPast] = useState(false);
+  // While searching or filtering, every month with a match shows.
+  const foldable = underWay && !filtering && byMonth.some((m) => m.key < thisMonth);
   const [openPast, setOpenPast] = useState<ReadonlySet<string>>(() => new Set());
   const isFolded = (key: string) => foldable && key < thisMonth && !showPast && !openPast.has(key);
   const toggleMonth = (key: string) =>
@@ -384,57 +459,108 @@ export function ScheduleView({
         )}
       </div>
 
-      {/* ─── Which weekends, and view options ─── */}
-      {(weekends.length > 0 || hiddenCount > 0 || foldable) && (
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {weekends.length > 0 && (
-            <WeekendFilterSelect
-              filters={filters}
-              counts={filterCounts}
-              total={weekends.length}
-              onToggle={toggleFilter}
-              onClear={() => setFilters(new Set())}
-            />
-          )}
-          {seasons.length > 1 && weekends.length > 0 && (
-            <FilterSelect
-              value={compare?.season ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                router.push(`/portal/schedule?season=${season.season}${v ? `&compare=${v}` : ""}`);
-              }}
-              aria-label="Compare with another season"
-              data-tour="schedule-compare"
-              grow
-              active={!!compare}
-            >
-              <option value="">Compare with…</option>
-              {seasons
-                .filter((s) => s.season !== season.season)
-                .map((s) => (
-                  <option key={s.id} value={s.season}>
-                    Compare with {seasonLabel(s.season)}
+      {/* ─── Search, which weekends and which team, and the View menu ─── */}
+      {(weekends.length > 0 || hiddenCount > 0) && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {weekends.length > 0 && (
+              <div data-tour="schedule-search" style={{ position: "relative", flex: "1 1 240px", maxWidth: 380 }}>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--gw-fg-muted)", display: "flex" }}>
+                  <Icons.Search width={14} height={14} />
+                </span>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => typeQuery(e.target.value)}
+                  placeholder="Search events, places, teams"
+                  aria-label="Search the schedule"
+                  style={{
+                    width: "100%",
+                    height: 36,
+                    padding: "0 40px 0 34px",
+                    borderRadius: 10,
+                    border: "1px solid var(--gw-border)",
+                    background: "var(--gw-bg)",
+                    color: "var(--gw-fg)",
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                />
+                {query && <ClearSearchButton onClear={() => typeQuery("")} />}
+              </div>
+            )}
+            {weekends.length > 0 && (
+              <WeekendFilterSelect
+                filters={filters}
+                counts={filterCounts}
+                total={weekends.length}
+                onToggle={toggleFilter}
+                onClear={() => setFilters(new Set())}
+              />
+            )}
+            {weekends.length > 0 && levels.length > 1 && (
+              <FilterSelect
+                value={teamLevel?.label ?? ALL_TEAMS}
+                onChange={(e) => setParams({ team: e.target.value === ALL_TEAMS ? null : e.target.value })}
+                aria-label="Just one of our teams"
+                data-tour="schedule-team"
+                grow
+                active={!!teamLevel}
+              >
+                <option value={ALL_TEAMS}>All our teams</option>
+                {levels.map((l) => (
+                  <option key={l.id} value={l.label}>
+                    {l.label}
+                    {l.hidden ? " (hidden)" : ""}
                   </option>
                 ))}
-            </FilterSelect>
-          )}
-          {hiddenCount > 0 && (
-            <ToggleChip
-              on={showHidden}
-              onClick={() => setShowHidden((v) => !v)}
-              title={showHidden ? "Hide the hidden teams again" : "Show the teams hidden in Season settings"}
-            >
-              <Icons.Eye width={13} height={13} /> Hidden teams {hiddenCount}
-            </ToggleChip>
-          )}
-          {foldable && (
-            <ToggleChip
-              on={showPast}
-              onClick={() => setShowPast((v) => !v)}
-              title={showPast ? "Fold the months that are over again" : "Open every month that's over"}
-            >
-              <Icons.Calendar width={13} height={13} /> Past months
-            </ToggleChip>
+              </FilterSelect>
+            )}
+            {((hiddenCount > 0 && !teamLevel) || foldable || (seasons.length > 1 && weekends.length > 0)) && (
+              <FilterMenu
+                label="View"
+                icon={<Icons.Eye width={13} height={13} />}
+                active={showHidden || showPast || !!compare}
+                data-tour="schedule-compare"
+              >
+                {hiddenCount > 0 && !teamLevel && (
+                  <MenuRow label={`Show hidden teams (${hiddenCount})`} checked={showHidden} onPick={() => setShowHidden(!showHidden)} />
+                )}
+                {foldable && <MenuRow label="Show past months" checked={showPast} onPick={() => setShowPast(!showPast)} />}
+                {seasons.length > 1 && weekends.length > 0 && (
+                  <>
+                    <MenuHeading>Compare with</MenuHeading>
+                    {[null, ...seasons.filter((x) => x.season !== season.season)].map((x) => (
+                      <MenuRow
+                        key={x?.id ?? "none"}
+                        radio
+                        label={x ? seasonLabel(x.season) : "No other season"}
+                        checked={(compare?.season ?? null) === (x?.season ?? null)}
+                        onPick={() => {
+                          const next = new URLSearchParams(window.location.search);
+                          next.set("season", String(season.season));
+                          if (x) next.set("compare", String(x.season));
+                          else next.delete("compare");
+                          router.push(`${pathname}?${next.toString()}`);
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+              </FilterMenu>
+            )}
+          </div>
+          {filtering && (
+            <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }} aria-live="polite">
+              {shownWeekends.length} of {weekends.length} weekends ·{" "}
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{ background: "none", border: "none", padding: 0, color: "var(--gw-fg)", fontWeight: 700, fontSize: 12, cursor: "pointer", textDecoration: "underline" }}
+              >
+                Clear
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -478,7 +604,7 @@ export function ScheduleView({
       ) : shownWeekends.length === 0 ? (
         <div className="rsd-card" style={{ textAlign: "center", padding: "32px 24px", gap: 10, alignItems: "center" }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>No weekends match</div>
-          <Pill variant="ghost" size="sm" onClick={() => setFilters(new Set())}>
+          <Pill variant="ghost" size="sm" onClick={clearFilters}>
             Show every weekend
           </Pill>
         </div>
@@ -800,37 +926,6 @@ function MonthHeading({
       style={{ ...row, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", width: "100%" }}
     >
       {body}
-    </button>
-  );
-}
-
-// A chip that turns something on, beside the drop-downs above the schedule.
-function ToggleChip({ on, onClick, title, children }: { on: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={on}
-      onClick={onClick}
-      title={title}
-      className="rsd-chip"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        height: 34,
-        padding: "0 14px",
-        borderRadius: 100,
-        border: "1px solid",
-        borderColor: on ? "var(--rsd-accent-fill)" : "var(--gw-border)",
-        background: on ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
-        color: on ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
-        fontSize: 12,
-        fontWeight: 700,
-        cursor: "pointer",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
     </button>
   );
 }
@@ -1272,6 +1367,12 @@ function SeasonArrow({ href, label, children }: { href: string | null; label: st
 // work, what's waiting, what's good to go), the weekends with a "3?", or the
 // ones with a team on the fence, each with how many weekends it has. Tick
 // more than one to see them together.
+// The team drop-down's "All our teams" (an empty value reads as unpicked).
+const ALL_TEAMS = "\u0000all";
+
+// What ?show= may hold.
+const FILTER_KEYS: ReadonlySet<string> = new Set<string>([...WEEKEND_STATUSES.map((s) => s.value), "unsure", "fence"]);
+
 function WeekendFilterSelect({
   filters,
   counts,
@@ -1306,7 +1407,7 @@ function WeekendFilterSelect({
   const picked = options.filter((o) => filters.has(o.value));
   const summary =
     picked.length === 0
-      ? `All weekends (${total})`
+      ? "All weekends"
       : picked.length === 1
         ? `${picked[0].label} (${picked[0].count})`
         : `${picked[0].label} +${picked.length - 1}`;

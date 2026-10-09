@@ -504,6 +504,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "The colors are the spreadsheet's: **Tentative**, **Need to secure facility**, **Final details in process** and **Facility secured**. Tick one or more here to show just those weekends, or **Not sure yet** (a dashed **3?**) or **Teams on the fence** (an amber dot). **All weekends** shows every one.",
       },
       {
+        target: "schedule-search",
+        title: "Search, or just one team",
+        body: "Type an event, a place or a team coming (**Lincoln**). Beside it, **All our teams** narrows to one of ours (**JV1**): just its column and the weekends it plays. **Clear** under them shows everything again.",
+      },
+      {
         target: "schedule-grid",
         title: "A row per weekend",
         body: "The dates, where and the trip, the event with the teams coming, a column per team of ours with its games, and the notes.",
@@ -543,8 +548,8 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "schedule-compare",
         dismiss: "schedule-popover-done",
-        title: "Compare with another season",
-        body: "Pick a season to put its same weekend beside each row: what we did a year ago, at a glance.",
+        title: "View",
+        body: "**Compare with** puts another season's same weekend beside each row: what we did a year ago, at a glance. **Show hidden teams** and **Show past months** open what's folded away.",
       },
       {
         target: "schedule-season-settings",

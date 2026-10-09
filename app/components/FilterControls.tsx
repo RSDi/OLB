@@ -23,7 +23,7 @@ export function FilterSelect({
         position: "relative",
         display: "inline-flex",
         alignItems: "center",
-        ...(grow ? { flex: "1 1 0", minWidth: 0, maxWidth: 220 } : null),
+        ...(grow ? { flex: "1 1 0", minWidth: GROW_MIN, maxWidth: 220 } : null),
       }}
     >
       {leading && (
@@ -49,6 +49,11 @@ export function FilterSelect({
     </span>
   );
 }
+
+// A drop-down that shares its row (`grow`) never gets narrower than this:
+// when the row is full it wraps to the next line instead of squeezing to an
+// empty pill.
+const GROW_MIN = 120;
 
 export interface MultiOption {
   value: string;
@@ -119,7 +124,7 @@ export function FilterMultiSelect({
         alignItems: "center",
         // The list hangs off the chip, so never stretch to a taller row.
         alignSelf: "center",
-        ...(grow ? { flex: "1 1 0", minWidth: 0, maxWidth: 220 } : null),
+        ...(grow ? { flex: "1 1 0", minWidth: GROW_MIN, maxWidth: 220 } : null),
       }}
     >
       {leading && (
@@ -339,5 +344,165 @@ export function SegButton({ label, active, onClick }: { label: string; active: b
     >
       {label}
     </button>
+  );
+}
+
+// A chip that opens a small menu of switches, like the HS Schedule's View:
+// tick rows (MenuRow) and radio rows, which change things without closing it.
+export function FilterMenu({
+  label,
+  active,
+  icon,
+  children,
+  ...rest
+}: {
+  label: string;
+  active: boolean;
+  icon?: ReactNode;
+  children: ReactNode;
+  "data-tour"?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const menuId = useId();
+  useEffect(() => {
+    if (!open) return;
+    function outside(e: PointerEvent) {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function key(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", key);
+    };
+  }, [open]);
+  return (
+    <span ref={wrapRef} data-tour={rest["data-tour"]} style={{ position: "relative", display: "inline-flex", alignSelf: "center" }}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        className="rsd-chip"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          height: 34,
+          padding: "0 10px 0 14px",
+          borderRadius: 100,
+          border: "1px solid",
+          borderColor: active ? "var(--rsd-accent-fill)" : "var(--gw-border)",
+          background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+          color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {icon}
+        {label}
+        <Icons.ChevronDown width={11} height={11} style={{ opacity: 0.6 }} />
+      </button>
+      {open && (
+        <div
+          id={menuId}
+          role="menu"
+          aria-label={label}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            right: 0,
+            zIndex: 90,
+            minWidth: 220,
+            maxWidth: "calc(100vw - 32px)",
+            background: "var(--gw-bg-elev)",
+            border: "1px solid var(--gw-border)",
+            borderRadius: 10,
+            boxShadow: "0 12px 28px rgba(0,0,0,.14)",
+            padding: 4,
+            boxSizing: "border-box",
+          }}
+        >
+          {children}
+        </div>
+      )}
+    </span>
+  );
+}
+
+// A row in a FilterMenu: a tick box (or a round radio) and its label.
+export function MenuRow({
+  label,
+  checked,
+  radio,
+  onPick,
+}: {
+  label: string;
+  checked: boolean;
+  radio?: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role={radio ? "menuitemradio" : "menuitemcheckbox"}
+      aria-checked={checked}
+      onClick={onPick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        width: "100%",
+        padding: "7px 9px",
+        border: "none",
+        borderRadius: 7,
+        background: "transparent",
+        color: "var(--gw-fg)",
+        fontSize: 13,
+        fontWeight: checked ? 700 : 500,
+        textAlign: "left",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--gw-bg)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 16,
+          height: 16,
+          flexShrink: 0,
+          borderRadius: radio ? 8 : 4,
+          border: "1.5px solid",
+          borderColor: checked ? "var(--rsd-accent-fill)" : "var(--gw-border)",
+          background: checked ? "var(--rsd-accent-fill)" : "transparent",
+          color: "var(--rsd-accent-fill-on)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxSizing: "border-box",
+        }}
+      >
+        {checked && (radio ? <span style={{ width: 6, height: 6, borderRadius: 3, background: "currentColor" }} /> : <Icons.Check width={11} height={11} />)}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+// A small heading inside a FilterMenu.
+export function MenuHeading({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ padding: "8px 9px 3px", fontSize: 10.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--gw-fg-muted)" }}>
+      {children}
+    </div>
   );
 }
