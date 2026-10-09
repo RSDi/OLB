@@ -969,18 +969,19 @@ export const GUIDE_TOURS: GuideTour[] = [
     id: "activity",
     sectionId: "activity",
     title: "Activity walkthrough",
-    route: "/portal/activity",
+    route: "/portal/settings",
     steps: [
       {
-        target: "nav-activity",
-        sidebar: true,
-        title: "Activity",
+        target: "members-tab-activity",
+        click: "settings-tab-members",
+        title: "Settings → Members → Activity",
         body: "Who's using the portal and how: sign-ins, sessions and the pages people open. Only you can see it for now.",
       },
       {
         target: "activity-kpis",
+        click: "members-tab-activity",
         title: "At a glance",
-        body: "Sign-ins this week, how many people were active today and this week, and how many previews there have been this month.",
+        body: "Sign-ins this week, how many people were active today and this week, and how many previews there have been this month. These show on **Approved** too.",
       },
       {
         target: "activity-daily",
@@ -988,25 +989,25 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "How many members opened the portal each day for the last 30 days. Hover over or tap a bar for that day's numbers.",
       },
       {
-        target: "activity-members",
-        title: "Members",
-        body: "Everyone with a login, most recently seen first: last sign-in, last seen and the page they were on. Tap a row to see each time they signed in, and every page they opened.",
-      },
-      {
-        target: "activity-search",
-        interactive: true,
-        title: "Find someone",
-        body: "Search by name or email.",
-      },
-      {
-        target: "activity-preview",
-        title: "Preview as",
-        body: "See the portal exactly as this member does. A yellow bar shows while you're previewing; **Exit preview** takes you back. Anything you change during a preview really happens, as them.",
-      },
-      {
         target: "activity-previews",
         title: "Every preview, recorded",
         body: "Who previewed whom, when and for how long. Tap one to see the pages opened during it.",
+      },
+      {
+        target: "members-last-seen",
+        click: "members-tab-approved",
+        title: "Each member",
+        body: "On **Approved**, everyone is listed most recently seen first: when they were last on, the page they were on, and their sessions in the last 30 days. Change their access profile from the same row.",
+      },
+      {
+        target: "members-activity-button",
+        title: "Their sessions",
+        body: "Tap **Activity** for their sessions each day and their latest sign-ins. Tap a session to see every page they opened, or **All sessions →** for the full list.",
+      },
+      {
+        target: "members-preview",
+        title: "Preview as",
+        body: "See the portal exactly as this member does. A yellow bar shows while you're previewing; **Exit preview** takes you back. Anything you change during a preview really happens, as them.",
       },
     ],
   },

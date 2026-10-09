@@ -661,13 +661,15 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
     preview: true,
     routes: ["/portal/activity"],
     keywords: ["activity", "usage", "stats", "statistics", "sign-ins", "logins", "last seen", "sessions", "page views", "who's using", "audit", "trail", "preview as", "view as", "impersonate", "see what they see", "exit preview"],
-    body: `Who's using the portal and how. Open **Activity** near the bottom of the sidebar. Only you can see it for now — not other super-admins.
+    body: `Who's using the portal and how. It's in **Settings → Members**: the **Activity** tab, and each person's row on **Approved**. Only you can see it for now — not other super-admins.
 
-**At a glance.** The tiles count **Sign-ins · 7 days**, people **Active · 24 hours** and **Active · 7 days**, and **Previews · 30 days**. **People each day** charts how many members opened the portal each day for the last 30 days — hover over (or tap) a bar for that day's numbers. **Most visited pages** lists the pages people open most.
+**At a glance.** On **Approved** and **Activity**, the tiles count **Sign-ins · 7 days**, people **Active · 24 hours** and **Active · 7 days**, and **Previews · 30 days**.
 
-**Members.** Everyone with a portal login, most recently seen first, then approved members who haven't signed up yet (marked **Not signed up**, or **Directory only** when there's no email): their role, **Last sign-in**, **Last seen** (when, and the page they were on) and **Sessions · 30d**. Search by name or email, or tap **Seen in 30 days** or **Never signed in** to narrow the list.
+**The Activity tab.** **People each day** charts how many members opened the portal each day for the last 30 days — hover over (or tap) a bar for that day's numbers. **Most visited pages** lists the pages people open most, and **Previews** lists every preview.
 
-**Sessions.** Tap a member to see each time they signed in: when, how long, how many pages and on what device. Tap a session to see every page they opened, in order, with how long they stayed on each. A long gap shows as **idle**.
+**Each member.** With activity on, **Approved** lists the most recently seen first. Under each name: when they were **Last seen** and the page they were on, and their sessions in the last 30 days — or **Never signed in**. Change their access profile from the same row.
+
+**Sessions.** Tap **Activity** on a member's row to see their sessions each day for the last 30 days and their latest sessions: when, how many pages and how long. Tap a session to see every page they opened, in order, with how long they stayed on each (a long gap shows as **idle**), or **All sessions →** for every one, with the device. **Members · Activity** at the top of those pages takes you back.
 
 **Preview as.** Tap **Preview as** on a member's row, then **Start preview**, to see the portal exactly as they do — the same pages, buttons and players. It's the quickest way to check what a parent or coach can see.
 
@@ -676,11 +678,11 @@ If the page has been open a long time and pictures stop loading, tap **Reload pr
 - A preview ends by itself after 2 hours. **Sign out** during a preview ends it and signs you out.
 - You can preview anyone with a portal login, other super-admins included — but not yourself, or people who are waiting for approval or have had their login revoked.
 - You can also preview someone marked **Not signed up**. The first preview sets up their portal login (no email goes out), and it's theirs when they sign in with that email. It has no password yet, and they don't need to know it was set up: **Continue with Slack**, **Email me a sign-in code** and **Request access** all work as usual (Request access emails them a code to confirm it's them, then saves the password they chose). After that, Settings no longer shows them as **Invited**. Members with no email (**Directory only**) can't be previewed.
-- While you're previewing, Activity is hidden (you're seeing exactly what they see) and you can't start another preview until you exit.
+- While you're previewing, activity is hidden (you're seeing exactly what they see) and you can't start another preview until you exit.
 
 **Previews** lists every preview — who previewed whom, when and for how long — and each one's pages show in that member's sessions, marked **Preview**. Previews don't count toward a member's own sign-ins or last seen.
 
-Activity is recorded from the day this page went live.`,
+Activity is recorded from the day it went live.`,
   },
   {
     id: "admin-roles",

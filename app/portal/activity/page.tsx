@@ -1,15 +1,14 @@
-// Activity (super-admins): who's using the portal — sign-ins, sessions, the
-// pages people open, usage over the last 30 days — and "Preview as", to see
-// the portal exactly as one member does. Data: lib/activity/queries.ts.
+// A member's sign-in sessions, page by page (super-admins). The overview
+// lives in Settings → Members: its Activity tab, and the activity on each
+// Approved row. Data: lib/activity/queries.ts.
 //
-//   /portal/activity                 overview + members
+//   /portal/activity                 → Settings → Members → Activity
 //   /portal/activity?u=<user>        that member's sessions
 //   /portal/activity?u=<user>&sid=…  one session, page by page
 
 import { redirect } from "next/navigation";
 import { getViewer } from "../../../lib/auth/viewer";
-import { loadActivityOverview, loadSessionEvents, loadUserSessions } from "../../../lib/activity/queries";
-import { ActivityOverview } from "./ActivityOverview";
+import { loadSessionEvents, loadUserSessions } from "../../../lib/activity/queries";
 import { SessionTimeline, SessionsList } from "./SessionViews";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +53,5 @@ export default async function ActivityPage({
     return <SessionsList userId={userId} name={name} sessions={sessions} now={asOf} error={error} />;
   }
 
-  const data = await loadActivityOverview();
-  return <ActivityOverview data={data} viewerUserId={viewer.userId} />;
+  redirect("/portal/settings?tab=members&show=activity");
 }
