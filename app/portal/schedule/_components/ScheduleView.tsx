@@ -169,7 +169,12 @@ export function ScheduleView({
       else next.add(f);
       return next;
     });
-  const totalLabel = filtering ? `Total for these ${shownWeekends.length} weekend${shownWeekends.length === 1 ? "" : "s"}` : "Total games";
+  // While filtering, the totals add up just the weekends showing, and say so.
+  const totalNote = filtering ? `for the ${shownWeekends.length} weekend${shownWeekends.length === 1 ? "" : "s"} showing` : null;
+  const shownTotals = shownLevels.map((l) => totals.get(l.id)!);
+  const anyUnsure = shownTotals.some((t) => t.unsure > 0);
+  const anyRecord = shownTotals.some((t) => recordLabel(t));
+  const recordTitle = shownTotals.some((t) => t.ties > 0) ? "Record (W–L–T)" : "Record (W–L)";
   const gamesAt = useCallback(
     (w: string, l: string) => state.games.find((g) => g.weekend_id === w && g.level_id === l),
     [state.games]
@@ -458,23 +463,48 @@ export function ScheduleView({
                 ))}
               </tbody>
               <tfoot>
+                {/* Total games, then (when there are any) how many aren't settled and the record. */}
                 <tr>
                   <td colSpan={3 + (comparing ? 1 : 0)} style={{ ...footCell, textAlign: "right" }}>
-                    {totalLabel}
+                    Total games
+                    {totalNote && <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "none", letterSpacing: 0 }}>{totalNote}</div>}
                   </td>
-                  {shownLevels.map((l) => {
-                    const t = totals.get(l.id)!;
-                    const rec = recordLabel(t);
-                    return (
-                      <td key={l.id} style={{ ...footCell, textAlign: "center" }} title={t.unsure ? `${t.unsure} of them not sure yet` : undefined}>
-                        <div style={{ fontSize: 14, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{t.games}</div>
-                        {t.unsure > 0 && <div style={{ fontSize: 10, color: "#8A6100", fontWeight: 700 }}>{t.unsure}?</div>}
-                        {rec && <div style={{ fontSize: 10, color: "var(--gw-fg-muted)", fontWeight: 700 }}>{rec}</div>}
-                      </td>
-                    );
-                  })}
+                  {shownLevels.map((l) => (
+                    <td key={l.id} style={{ ...footCell, textAlign: "center", color: "var(--gw-fg)", fontSize: 14, fontVariantNumeric: "tabular-nums" }}>
+                      {totals.get(l.id)!.games}
+                    </td>
+                  ))}
                   <td style={footCell} />
                 </tr>
+                {anyUnsure && (
+                  <tr>
+                    <td colSpan={3 + (comparing ? 1 : 0)} style={{ ...footSub, textAlign: "right" }}>
+                      Not sure yet
+                    </td>
+                    {shownLevels.map((l) => {
+                      const t = totals.get(l.id)!;
+                      return (
+                        <td key={l.id} style={{ ...footSub, textAlign: "center", padding: "0 2px 8px", whiteSpace: "nowrap", color: "#8A6100", fontVariantNumeric: "tabular-nums" }}>
+                          {t.unsure || ""}
+                        </td>
+                      );
+                    })}
+                    <td style={footSub} />
+                  </tr>
+                )}
+                {anyRecord && (
+                  <tr>
+                    <td colSpan={3 + (comparing ? 1 : 0)} style={{ ...footSub, textAlign: "right" }}>
+                      {recordTitle}
+                    </td>
+                    {shownLevels.map((l) => (
+                      <td key={l.id} style={{ ...footSub, textAlign: "center", padding: "0 2px 8px", whiteSpace: "nowrap", color: "var(--gw-fg)", fontVariantNumeric: "tabular-nums" }}>
+                        {recordLabel(totals.get(l.id)!) ?? ""}
+                      </td>
+                    ))}
+                    <td style={footSub} />
+                  </tr>
+                )}
               </tfoot>
             </table>
           </div>
@@ -503,17 +533,28 @@ export function ScheduleView({
                 ))}
               </div>
             ))}
-            <div className="rsd-card" style={{ gap: 8, padding: 14 }}>
-              <div style={monthLabel}>{totalLabel}</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <div className="rsd-card" style={{ gap: 10, padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                <span style={monthLabel}>Total games</span>
+                {totalNote && <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{totalNote}</span>}
+                {anyRecord && (
+                  <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 600, marginLeft: "auto" }}>{recordTitle} under each</span>
+                )}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(58px, 1fr))", gap: 6 }}>
                 {shownLevels.map((l) => {
                   const t = totals.get(l.id)!;
+                  const rec = recordLabel(t);
                   return (
-                    <span key={l.id} className="rsd-chip rsd-chip-mute" style={{ fontSize: 12 }}>
-                      {l.label} {t.games}
-                      {t.unsure ? ` (${t.unsure}?)` : ""}
-                      {recordLabel(t) ? ` · ${recordLabel(t)}` : ""}
-                    </span>
+                    <div
+                      key={l.id}
+                      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, padding: "6px 4px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg-elev)" }}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)" }}>{l.label}</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{t.games}</span>
+                      {t.unsure > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: "#8A6100", whiteSpace: "nowrap" }}>{t.unsure} not sure</span>}
+                      {rec && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--gw-fg-muted)", fontVariantNumeric: "tabular-nums" }}>{rec}</span>}
+                    </div>
                   );
                 })}
               </div>
@@ -1169,6 +1210,16 @@ function Th({ children, style, title }: { children: React.ReactNode; style?: Rea
 const cellBase: React.CSSProperties = {
   padding: "9px 12px",
   borderBottom: "1px solid var(--gw-border)",
+  verticalAlign: "top",
+};
+
+// The rows under Total games: smaller, closer.
+const footSub: React.CSSProperties = {
+  padding: "0 12px 8px",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--gw-fg-muted)",
+  background: "var(--gw-bg)",
   verticalAlign: "top",
 };
 
