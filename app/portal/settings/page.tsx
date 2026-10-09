@@ -26,7 +26,6 @@ import { VolunteerRolesTab } from "./VolunteerRolesTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
 import { TaskCategoriesTab } from "./TaskCategoriesTab";
 import { PlaybooksTab } from "./PlaybooksTab";
-import { ClosuresTab } from "./ClosuresTab";
 import { ContactCategoriesTab } from "./ContactCategoriesTab";
 import { AuditLogTab } from "./AuditLogTab";
 import { DeletedTab } from "./DeletedTab";
@@ -92,7 +91,6 @@ type Tab =
   | "playbooks"
   | "sidebar_links"
   | "public_directory"
-  | "closures"
   | "contact_categories"
   | "integrations"
   | "import"
@@ -158,7 +156,6 @@ function visibleTabs(me: MemberLike, fullUi: boolean): TabDef[] {
     { key: "assets", label: "Assets", group: "Facilities & Equipment", visible: true, tour: "settings-tab-assets", keywords: "equipment items" },
     { key: "types", label: "Types", group: "Facilities & Equipment", visible: true, tour: "settings-tab-types", keywords: "asset types kinds categories" },
     { key: "supplies", label: "Supplies", group: "Facilities & Equipment", visible: true, tour: "settings-tab-supplies", keywords: "stock inventory" },
-    { key: "closures", label: "Closures", group: "Facilities & Equipment", visible: true, tour: "settings-tab-closures", keywords: "closed holidays weather" },
     { key: "priorities", label: "Priorities", group: "Work & Events", visible: true, tour: "settings-tab-priorities", keywords: "tasks urgent" },
     { key: "task_categories", label: "Task Categories", group: "Work & Events", visible: true, tour: "settings-tab-task-categories", keywords: "tasks" },
     { key: "event_categories", label: "Event Categories", group: "Work & Events", visible: true, tour: "settings-tab-event-categories", keywords: "calendar events" },
@@ -314,7 +311,6 @@ export default function SettingsPage() {
       {tab === "playbooks" && has("playbooks") && <PlaybooksTab me={me} />}
       {tab === "sidebar_links" && has("sidebar_links") && <SidebarLinksTab />}
       {tab === "public_directory" && has("public_directory") && <PublicDirectoryTab />}
-      {tab === "closures" && has("closures") && <ClosuresTab me={me} />}
       {tab === "contact_categories" && has("contact_categories") && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && has("integrations") && <IntegrationsTab />}
       {tab === "import" && has("import") && <ImportTab />}

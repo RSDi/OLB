@@ -51,7 +51,6 @@ export const SITE_PAGES: { href: string; label: string }[] = [
   { href: "/sponsors", label: "Sponsors" },
   { href: "/contact", label: "Contact" },
   { href: "/assistance", label: "Assistance" },
-  { href: "/meeting-times", label: "Meeting Times" },
   { href: "/player-registration", label: "Player Registration" },
 ];
 
