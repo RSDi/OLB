@@ -20,6 +20,7 @@ import {
   registrant,
 } from "../teams/registration-receipt";
 import type { RegistrationInput } from "../teams/registration-form";
+import { loadEmailText } from "./registration-email-text";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -64,8 +65,9 @@ export async function sendRegistrationEmails(inputs: RegistrationInput[], confir
   const checkAddress = (process.env.MAIL_CHECK_ADDRESS ?? "").split("|").map((s) => s.trim()).filter(Boolean);
   const from = mailFrom();
 
-  const subject = receiptSubject(r);
-  const text = who ? receiptText(r, who, { checkAddress }) : "";
+  const t = await loadEmailText();
+  const subject = receiptSubject(r, t);
+  const text = who ? receiptText(r, who, { checkAddress }, t) : "";
   const [receiptSent] = await Promise.all([
     who
       ? send(
@@ -75,7 +77,7 @@ export async function sendRegistrationEmails(inputs: RegistrationInput[], confir
             to: [who.email],
             reply_to: mailReplyTo(),
             subject,
-            html: receiptHtml(r, who, { logoUrl: `${site}/email/olb-logo.png`, checkAddress }),
+            html: receiptHtml(r, who, { logoUrl: `${site}/email/olb-logo.png`, checkAddress }, t),
             text,
           },
           "registration receipt"
@@ -105,11 +107,12 @@ export async function sendReceipt(input: RegistrationInput, to: string, first: s
   const r = receipt([input]);
   const who = { email: to, first };
   const checkAddress = (process.env.MAIL_CHECK_ADDRESS ?? "").split("|").map((s) => s.trim()).filter(Boolean);
-  const subject = receiptSubject(r);
-  const text = receiptText(r, who, { checkAddress });
+  const t = await loadEmailText();
+  const subject = receiptSubject(r, t);
+  const text = receiptText(r, who, { checkAddress }, t);
   const ok = await send(
     apiKey,
-    { from: mailFrom(), to: [to], reply_to: mailReplyTo(), subject, html: receiptHtml(r, who, { logoUrl: `${siteUrl()}/email/olb-logo.png`, checkAddress }), text },
+    { from: mailFrom(), to: [to], reply_to: mailReplyTo(), subject, html: receiptHtml(r, who, { logoUrl: `${siteUrl()}/email/olb-logo.png`, checkAddress }, t), text },
     "registration receipt"
   );
   return ok ? { to, subject, text } : { error: "The email didn't go through. Try again in a minute." };

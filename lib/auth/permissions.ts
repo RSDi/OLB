@@ -152,7 +152,7 @@ export const canManageSiteLinks = (m: MemberLike | null | undefined) => hasPermi
 // Someone who isn't Board but holds a permission that lives in Settings opens
 // Settings and sees only those tabs.
 export const canOpenSettings = (m: MemberLike | null | undefined) =>
-  isStaff(m) || canApproveMembers(m) || canManageTeams(m) || canManageSiteLinks(m);
+  isStaff(m) || canApproveMembers(m) || canManageTeams(m) || canManageSiteLinks(m) || canManageRegistrations(m);
 
 // Add/rename settings items needs the edit grant; (was: any staff).
 export const canManageAreas = canEditSettings;

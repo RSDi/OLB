@@ -7,6 +7,7 @@ import {
   canEditSettings,
   canManageSiteLinks,
   canManageTeams,
+  canManageRegistrations,
   canManageWebsite,
   canOpenSettings,
   isStaff,
@@ -34,6 +35,7 @@ import { ImportTab } from "./ImportTab";
 import { SidebarLinksTab } from "./SidebarLinksTab";
 import { RequirementsTab } from "./RequirementsTab";
 import { EmailTemplatesTab } from "./EmailTemplatesTab";
+import { RegistrationEmailsTab } from "./RegistrationEmailsTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
 import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { WebsiteTab } from "./WebsiteTab";
@@ -45,7 +47,7 @@ import { Icons } from "../../components/icons";
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
 // Website is released to whoever holds its grant (and super-admins).
-const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "website"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "access_profiles",
   "playbooks",
@@ -64,6 +66,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   volunteer_roles: "settings-volunteer-roles",
   requirements: "settings-requirements",
   email_templates: "settings-email-templates",
+  registration_emails: "settings-registration-emails",
   website: "settings-website",
   playbooks: "settings-playbooks",
   sidebar_links: "settings-sidebar-links",
@@ -84,6 +87,7 @@ type Tab =
   | "volunteer_roles"
   | "requirements"
   | "email_templates"
+  | "registration_emails"
   | "website"
   | "planning_roles"
   | "event_categories"
@@ -137,6 +141,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean): TabDef[] {
     volunteer_roles: teams,
     sidebar_links: siteLinks,
     public_directory: siteLinks,
+    registration_emails: canManageRegistrations(me),
   };
   // Deleted tab stays super-admin-only until the RLS follow-up lets board
   // members with the undelete grant see + restore soft-deleted rows.
@@ -162,6 +167,9 @@ function visibleTabs(me: MemberLike, fullUi: boolean): TabDef[] {
     { key: "playbooks", label: "Playbooks", group: "Work & Events", visible: true, tour: "settings-tab-playbooks", keywords: "checklists procedures steps" },
     // Any board member writes the templates used when emailing families (0117).
     { key: "email_templates", label: "Email Templates", group: "Communication", visible: true, tour: "settings-tab-email-templates", keywords: "email mail messages families" },
+    // The words in the registration form's emails (0127): the board reads,
+    // super-admins and the Registrations permission change them.
+    { key: "registration_emails", label: "Registration Emails", group: "Communication", visible: true, tour: "settings-tab-registration-emails", keywords: "registration receipt code email wording confirmation" },
     { key: "contact_categories", label: "Contact Types", group: "Communication", visible: true, tour: "settings-tab-contact-categories", keywords: "contacts categories" },
     // The public club website's menu, page text and pictures (0120).
     { key: "website", label: "Website", group: "Website & Portal", visible: canManageWebsite(me), tour: "settings-tab-website", keywords: "public site pages pictures publish" },
@@ -304,6 +312,7 @@ export default function SettingsPage() {
       {tab === "volunteer_roles" && has("volunteer_roles") && <VolunteerRolesTab />}
       {tab === "requirements" && has("requirements") && <RequirementsTab me={me} />}
       {tab === "email_templates" && has("email_templates") && <EmailTemplatesTab />}
+      {tab === "registration_emails" && has("registration_emails") && <RegistrationEmailsTab canEdit={canManageRegistrations(me)} />}
       {tab === "website" && has("website") && <WebsiteTab />}
       {tab === "planning_roles" && has("planning_roles") && <PlanningRolesTab />}
       {tab === "event_categories" && has("event_categories") && <EventCategoriesTab me={me} />}

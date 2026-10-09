@@ -4,6 +4,8 @@
 // carries on without it.
 
 import { mailFrom, mailReplyTo } from "./mail";
+import { loadEmailText } from "./registration-email-text";
+import { codeEmail } from "../teams/registration-email-text";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -14,12 +16,8 @@ export async function sendRegistrationCode({ to, code }: { to: string; code: str
     return false;
   }
   const from = mailFrom();
-  const body = `
-    <p>Here's your code for Omaha Lightning Basketball registration:</p>
-    <p style="font-size:28px;font-weight:700;letter-spacing:6px;margin:16px 0">${code}</p>
-    <p>Type it into the registration form. It works for 10 minutes.</p>
-    <p style="color:#6b7280">Didn't ask for this? You can ignore this email. Nobody can see your family's details without the code.</p>
-  `;
+  // The words as Settings → Registration Emails left them (0127).
+  const mail = codeEmail(code, await loadEmailText());
   const res = await fetch(RESEND_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
@@ -27,9 +25,9 @@ export async function sendRegistrationCode({ to, code }: { to: string; code: str
       from,
       to: [to],
       reply_to: mailReplyTo(),
-      subject: `${code} is your Omaha Lightning registration code`,
-      html: body,
-      text: `Your Omaha Lightning Basketball registration code is ${code}. It works for 10 minutes.`,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
     }),
   }).catch(() => null);
   if (!res?.ok) {

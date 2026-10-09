@@ -871,6 +871,22 @@ Tap the **trash** can to delete a category or a playbook.`,
 **Using one.** When you email families from the Directory, a player's page or the registration waitlist, pick it from **Template**. It fills in the subject and message, and you can change anything before you send. Anyone who can email families can use the templates, including people with the **Registrations** permission who aren't on the board.`,
   },
   {
+    id: "settings-registration-emails",
+    title: "Settings: Registration Emails",
+    group: "Settings",
+    audience: "messaging",
+    keywords: ["registration emails", "receipt", "confirmation", "code email", "wording", "subject", "what happens next", "sign-off", "reset to original", "registration form"],
+    body: `The words in the emails the registration form sends. Open **Settings → Registration Emails**. Every board member can read them; super-admins and anyone with the **Registrations** permission can change them.
+
+- Pick **Registration receipt** (sent to whoever filled in the form, as soon as they send it) or **Email code** (the 6-digit code the form emails first).
+- Change the **Subject**, **Headline**, **Opening**, **Note under the fees**, **What happens next** (one step per line, numbered for you) or **Sign-off**, then tap **Save**. The next email uses the new words. **Undo my edits** throws away what you haven't saved.
+- **{player}** becomes the players' first names, **{parent}** the first name of whoever registered, **{season}** the season, **{teams}** "a team" or "teams", and in the code email **{code}** the code.
+- The **Preview** shows the email for a made-up family as you type.
+- Under each field it says whether it's the **Original wording** or when it was changed and by whom. **Reset to original** puts the original back.
+
+The layout, each family's players and fees, and the Venmo and check instructions stay the same.`,
+  },
+  {
     id: "settings-contact-types",
     title: "Settings: Contact Types",
     group: "Settings",
