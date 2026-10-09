@@ -96,3 +96,21 @@ export async function sendRegistrationEmails(inputs: RegistrationInput[], confir
   ]);
   return receiptSent && who ? { to: who.email, subject, text } : null;
 }
+
+// Just the receipt, for one saved registration, to the address given (the
+// Registrations page's Send receipt). True when Resend took it.
+export async function sendReceipt(input: RegistrationInput, to: string, first: string | null): Promise<SentReceipt | { error: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return { error: "Email isn't set up for the site yet, so nothing was sent." };
+  const r = receipt([input]);
+  const who = { email: to, first };
+  const checkAddress = (process.env.MAIL_CHECK_ADDRESS ?? "").split("|").map((s) => s.trim()).filter(Boolean);
+  const subject = receiptSubject(r);
+  const text = receiptText(r, who, { checkAddress });
+  const ok = await send(
+    apiKey,
+    { from: mailFrom(), to: [to], reply_to: mailReplyTo(), subject, html: receiptHtml(r, who, { logoUrl: `${siteUrl()}/email/olb-logo.png`, checkAddress }), text },
+    "registration receipt"
+  );
+  return ok ? { to, subject, text } : { error: "The email didn't go through. Try again in a minute." };
+}
