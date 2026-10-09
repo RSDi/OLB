@@ -137,6 +137,23 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons, and the
 **Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, tap **ⓘ** on that page and then **Show me around** (in Settings, it's for the tab you're on), or press **Show me around** next to a section's title below.`,
   },
   {
+    id: "install-app",
+    title: "Install the portal as an app",
+    group: "Getting started",
+    audience: "everyone",
+    keywords: ["install", "app", "home screen", "dock", "add to home screen", "add to dock", "iphone", "ipad", "android", "chrome", "safari", "edge", "pwa", "icon", "shortcut", "desktop"],
+    body: `You can put the portal on your phone's home screen or your computer's dock, so it opens in its own window like any other app, straight to the portal.
+
+- **iPhone or iPad (Safari):** tap the **Share** button, then **Add to Home Screen**, then **Add**.
+- **Android (Chrome):** tap the **⋮** menu, then **Add to Home screen** (or **Install app**), then **Install**.
+- **Mac (Safari):** choose **File** → **Add to Dock**, then **Add**.
+- **Computer (Chrome or Edge):** click the install icon at the right end of the address bar, or open the **⋮** menu and choose **Cast, save, and share** → **Install page as app**.
+
+**Sign in once inside the app.** On an iPhone or iPad the app doesn't share your sign-in with Safari, so you'll sign in again the first time you open it. **Email and password** or typing in an emailed sign-in code works best there.
+
+Links to other websites open in a small browser window on top of the app. Close it to get back to the portal.`,
+  },
+  {
     id: "ask-a-question",
     title: "Asking a question (Search page)",
     group: "Getting started",
