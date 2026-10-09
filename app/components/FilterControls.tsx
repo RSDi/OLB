@@ -353,12 +353,16 @@ export function FilterMenu({
   label,
   active,
   icon,
+  round,
   children,
   ...rest
 }: {
   label: string;
   active: boolean;
   icon?: ReactNode;
+  // A round 32px button with just the icon (label is its name), like the
+  // schedule's ⋯ beside the gear.
+  round?: boolean;
   children: ReactNode;
   "data-tour"?: string;
 }) {
@@ -387,9 +391,23 @@ export function FilterMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        className="rsd-chip"
+        aria-label={round ? label : undefined}
+        title={round ? label : undefined}
+        className={round ? "gw-press" : "rsd-chip"}
         onClick={() => setOpen((o) => !o)}
-        style={{
+        style={round ? {
+          width: 32,
+          height: 32,
+          borderRadius: 100,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: "1px solid var(--gw-border)",
+          background: "var(--gw-bg-elev)",
+          color: "var(--gw-fg)",
+          padding: 0,
+          cursor: "pointer",
+        } : {
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
@@ -407,8 +425,8 @@ export function FilterMenu({
         }}
       >
         {icon}
-        {label}
-        <Icons.ChevronDown width={11} height={11} style={{ opacity: 0.6 }} />
+        {!round && label}
+        {!round && <Icons.ChevronDown width={11} height={11} style={{ opacity: 0.6 }} />}
       </button>
       {open && (
         <div
@@ -493,6 +511,38 @@ export function MenuRow({
       >
         {checked && (radio ? <span style={{ width: 6, height: 6, borderRadius: 3, background: "currentColor" }} /> : <Icons.Check width={11} height={11} />)}
       </span>
+      {label}
+    </button>
+  );
+}
+
+// A row in a FilterMenu that does something (Print, Copy link).
+export function MenuAction({ icon, label, onPick }: { icon?: ReactNode; label: string; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onPick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        width: "100%",
+        padding: "8px 9px",
+        border: "none",
+        borderRadius: 7,
+        background: "transparent",
+        color: "var(--gw-fg)",
+        fontSize: 13,
+        fontWeight: 600,
+        textAlign: "left",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--gw-bg)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      {icon && <span style={{ display: "inline-flex", color: "var(--gw-fg-muted)" }}>{icon}</span>}
       {label}
     </button>
   );

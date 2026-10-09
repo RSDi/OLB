@@ -34,7 +34,7 @@ import {
   weekendFilterCounts,
   type WeekendFilter,
 } from "../../../../lib/hs-schedule/logic";
-import { seasonLabel } from "../../../../lib/planning/season";
+import { seasonLabel, seasonOf } from "../../../../lib/planning/season";
 import type {
   HsContactOption,
   HsContactRef,
@@ -55,7 +55,7 @@ import { WeekendSheet } from "./WeekendSheet";
 import { WeekendDetails } from "./WeekendDetails";
 import { TravelChip, TravelPopover } from "./TravelPopover";
 import { placesNear, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
-import { FilterMenu, FilterMultiSelect, FilterSelect, MenuHeading, MenuRow, type MultiOption } from "../../../components/FilterControls";
+import { FilterMenu, FilterMultiSelect, FilterSelect, MenuAction, MenuHeading, MenuRow, type MultiOption } from "../../../components/FilterControls";
 
 export interface CompareWeekend {
   id: string;
@@ -163,6 +163,8 @@ export function ScheduleView({
   const [sheet, setSheet] = useState<SheetState>(null);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const currentSeason = seasonOf(today);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const contacts = useMemo(() => new Map<string, HsContactRef>(schedule.contacts.map((c) => [c.id, c])), [schedule.contacts]);
@@ -409,6 +411,27 @@ export function ScheduleView({
   }, [target]);
 
   const comparing = compare ? seasonLabel(compare.season) : null;
+  // The grid's columns, shared by the headings and the weekends below them.
+  const gridHeadRef = useRef<HTMLDivElement>(null);
+  const gridTable: React.CSSProperties = {
+    width: "100%",
+    tableLayout: "fixed",
+    borderCollapse: "separate",
+    borderSpacing: 0,
+    minWidth: 826 + shownLevels.length * 56 + (comparing ? 180 : 0),
+  };
+  const gridCols = (
+    <colgroup>
+      <col style={{ width: 104 }} />
+      <col style={{ width: 164 }} />
+      <col />
+      {comparing && <col style={{ width: 180 }} />}
+      {shownLevels.map((l) => (
+        <col key={l.id} style={{ width: 56 }} />
+      ))}
+      <col style={{ width: 168 }} />
+    </colgroup>
+  );
   const sheetWeekend = sheet?.kind === "weekend" && sheet.id ? weekends.find((w) => w.id === sheet.id) ?? null : null;
   const seasonIndex = seasons.findIndex((s) => s.season === season.season);
   const older = seasons[seasonIndex + 1];
@@ -417,51 +440,95 @@ export function ScheduleView({
   return (
     <>
       {/* ─── Season and actions ─── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }} data-tour="schedule-seasons">
-          <SeasonArrow href={older ? `/portal/schedule?season=${older.season}` : null} label={older ? `Back to ${seasonLabel(older.season)}` : "No earlier season"}>
-            <Icons.ChevronLeft width={16} height={16} />
-          </SeasonArrow>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-.02em", minWidth: 96, textAlign: "center" }}>
-            {seasonLabel(season.season)}
-          </h2>
-          <SeasonArrow href={newer ? `/portal/schedule?season=${newer.season}` : null} label={newer ? `On to ${seasonLabel(newer.season)}` : "No later season"}>
-            <Icons.ChevronRight width={16} height={16} />
-          </SeasonArrow>
-        </div>
-        {canEdit ? (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              type="button"
-              onClick={() => setSheet({ kind: "season" })}
-              data-tour="schedule-season-settings"
-              aria-label="Season settings"
-              title="Season settings"
-              className="gw-press"
-              style={{ ...roundButton, cursor: "pointer" }}
-            >
-              <Icons.Cog width={15} height={15} />
-            </button>
-            <span data-tour="schedule-add-weekend" style={{ display: "inline-flex" }}>
-              <Pill variant="accent" size="sm" onClick={() => setSheet({ kind: "weekend", id: null })}>
-                <Icons.Plus width={13} height={13} /> Add weekend
-              </Pill>
-            </span>
+      <div className="hs-no-print" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }} data-tour="schedule-seasons">
+            <SeasonArrow href={older ? `/portal/schedule?season=${older.season}` : null} label={older ? `Back to ${seasonLabel(older.season)}` : "No earlier season"}>
+              <Icons.ChevronLeft width={16} height={16} />
+            </SeasonArrow>
+            <SeasonPicker season={season.season} seasons={seasons} current={currentSeason} />
+            {newer || !isStaff ? (
+              <SeasonArrow href={newer ? `/portal/schedule?season=${newer.season}` : null} label={newer ? `On to ${seasonLabel(newer.season)}` : "No later season"}>
+                <Icons.ChevronRight width={16} height={16} />
+              </SeasonArrow>
+            ) : (
+              // The newest season: the board starts the next one from here.
+              <button
+                type="button"
+                onClick={() => setSheet({ kind: "new-season" })}
+                aria-label={`Start ${seasonLabel(season.season + 1)}`}
+                title={`Start ${seasonLabel(season.season + 1)}`}
+                className="gw-press"
+                style={{ ...roundButton, borderStyle: "dashed", cursor: "pointer" }}
+              >
+                <Icons.Plus width={15} height={15} />
+              </button>
+            )}
+            <SeasonTag season={season.season} current={currentSeason} />
           </div>
-        ) : (
-          <span
-            className="rsd-chip rsd-chip-mute"
-            title="The coaches and the board keep the schedule up to date."
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}
-          >
-            <Icons.Eye width={13} height={13} /> View only
-          </span>
+          {/* On a phone these wrap under the season; they keep to the right. */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: "auto" }}>
+            <FilterMenu label="More" round icon={<Icons.More width={16} height={16} />} active={false} data-tour="schedule-more">
+              <MenuAction icon={<Icons.Printer width={14} height={14} />} label="Print" onPick={() => window.print()} />
+              <MenuAction
+                icon={<Icons.Link width={14} height={14} />}
+                label={copied ? "Link copied" : "Copy link"}
+                onPick={() => {
+                  void navigator.clipboard?.writeText(window.location.href).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  });
+                }}
+              />
+            </FilterMenu>
+            {canEdit ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSheet({ kind: "season" })}
+                  data-tour="schedule-season-settings"
+                  aria-label="Season settings"
+                  title="Season settings"
+                  className="gw-press"
+                  style={{ ...roundButton, cursor: "pointer" }}
+                >
+                  <Icons.Cog width={15} height={15} />
+                </button>
+                <span data-tour="schedule-add-weekend" style={{ display: "inline-flex" }}>
+                  <Pill variant="accent" size="sm" onClick={() => setSheet({ kind: "weekend", id: null })}>
+                    <Icons.Plus width={13} height={13} /> Add weekend
+                  </Pill>
+                </span>
+              </>
+            ) : (
+              <span
+                className="rsd-chip rsd-chip-mute"
+                title="The coaches and the board keep the schedule up to date."
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}
+              >
+                <Icons.Eye width={13} height={13} /> View only
+              </span>
+            )}
+          </div>
+        </div>
+        {season.notes?.trim() && (
+          <SeasonNotes notes={season.notes.trim()} onEdit={canEdit ? () => setSheet({ kind: "season" }) : undefined} />
         )}
+      </div>
+
+      {/* On paper: what this is, and what's showing. */}
+      <div className="hs-print-only" style={{ display: "none", fontSize: 12 }}>
+        <strong style={{ fontSize: 16 }}>HS Schedule {seasonLabel(season.season)}</strong>
+        {filtering && ` · ${shownWeekends.length} of ${weekends.length} weekends`}
+        {teamLevel && ` · ${teamLevel.label} only`}
+        {q && ` · "${query.trim()}"`}
+        {` · printed ${new Date(today + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`}
+        {season.notes?.trim() && <div style={{ marginTop: 2 }}>{season.notes.trim()}</div>}
       </div>
 
       {/* ─── Search, which weekends and which team, and the View menu ─── */}
       {(weekends.length > 0 || hiddenCount > 0) && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div className="hs-no-print" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {weekends.length > 0 && (
               <div data-tour="schedule-search" style={{ position: "relative", flex: "1 1 240px", maxWidth: 380 }}>
@@ -611,22 +678,37 @@ export function ScheduleView({
       ) : (
         <>
           {/* ─── Desktop: the grid ─── */}
-          <div className="rsd-card gw-desktop-table" style={{ padding: 0, gap: 0, overflowX: "auto" }} data-tour="schedule-grid">
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 826 + shownLevels.length * 56 + (comparing ? 180 : 0) }}>
-              <thead>
-                <tr>
-                  <Th style={{ width: 104 }}>Weekend</Th>
-                  <Th style={{ width: 164 }}>Where</Th>
-                  <Th>Event</Th>
-                  {comparing && <Th style={{ width: 180 }}>{comparing}</Th>}
-                  {shownLevels.map((l) => (
-                    <Th key={l.id} style={{ width: 56, textAlign: "center", padding: "10px 3px", letterSpacing: ".01em" }} title={levelTitle(l)}>
-                      <span style={{ color: "var(--gw-fg)", opacity: l.hidden ? 0.55 : 1 }}>{l.label}</span>
-                    </Th>
-                  ))}
-                  <Th style={{ width: 168 }}>Notes</Th>
-                </tr>
-              </thead>
+          {/* The column headings stay at the top of the screen as the weekends
+              scroll by: their own table, with the same columns, kept in step
+              with the grid when it scrolls sideways. */}
+          <div className="rsd-card gw-desktop-table hs-grid" style={{ padding: 0, gap: 0 }} data-tour="schedule-grid">
+            <div ref={gridHeadRef} className="hs-grid-head" style={{ position: "sticky", top: 0, zIndex: 4, overflow: "hidden", borderRadius: "16px 16px 0 0" }}>
+              <table style={gridTable}>
+                {gridCols}
+                <thead>
+                  <tr>
+                    <Th style={{ color: "var(--gw-fg)" }} title="The season, and each weekend's dates">{seasonLabel(season.season)}</Th>
+                    <Th>Where</Th>
+                    <Th>Event</Th>
+                    {comparing && <Th>{comparing}</Th>}
+                    {shownLevels.map((l) => (
+                      <Th key={l.id} style={{ textAlign: "center", padding: "10px 3px", letterSpacing: ".01em" }} title={levelTitle(l)}>
+                        <span style={{ color: "var(--gw-fg)", opacity: l.hidden ? 0.55 : 1 }}>{l.label}</span>
+                      </Th>
+                    ))}
+                    <Th>Notes</Th>
+                  </tr>
+                </thead>
+              </table>
+            </div>
+            <div
+              style={{ overflowX: "auto" }}
+              onScroll={(e) => {
+                if (gridHeadRef.current) gridHeadRef.current.scrollLeft = e.currentTarget.scrollLeft;
+              }}
+            >
+            <table style={gridTable}>
+              {gridCols}
               <tbody>
                 {byMonth.map((m) => (
                   <MonthRows
@@ -708,6 +790,7 @@ export function ScheduleView({
                 )}
               </tfoot>
             </table>
+            </div>
           </div>
 
           {/* ─── Phone: a card per weekend ─── */}
@@ -1350,8 +1433,129 @@ const roundButton: React.CSSProperties = {
   padding: 0,
 };
 
+// The season's name, which opens the list of seasons to jump to.
+function SeasonPicker({ season, seasons, current }: { season: number; seasons: HsSeason[]; current: number }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const key = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", key);
+    };
+  }, [open]);
+  const list = [...seasons].sort((a, b) => b.season - a.season);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        title="Pick a season"
+        style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: "0 4px", cursor: "pointer", color: "var(--gw-fg)" }}
+      >
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: "-.02em" }}>{seasonLabel(season)}</h2>
+        <Icons.ChevronDown width={14} height={14} style={{ color: "var(--gw-fg-muted)" }} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          aria-label="Seasons"
+          style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 90, minWidth: 190, background: "var(--gw-bg-elev)", border: "1px solid var(--gw-border)", borderRadius: 10, boxShadow: "0 12px 28px rgba(0,0,0,.14)", padding: 4 }}
+        >
+          {list.map((x) => (
+            <Link
+              key={x.id}
+              role="menuitem"
+              href={`/portal/schedule?season=${x.season}`}
+              onClick={() => setOpen(false)}
+              aria-current={x.season === season ? "page" : undefined}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "7px 9px", borderRadius: 7, fontSize: 13, fontWeight: x.season === season ? 800 : 500, color: "var(--gw-fg)", textDecoration: "none", background: x.season === season ? "var(--gw-bg)" : "transparent" }}
+            >
+              {seasonLabel(x.season)}
+              {x.season === current && <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--gw-fg-muted)" }}>This season</span>}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Beside the season's name: whether it's this season, or which way it is.
+function SeasonTag({ season, current }: { season: number; current: number }) {
+  const label = season === current ? "This season" : season < current ? "Past season" : season === current + 1 ? "Next season" : "Later season";
+  const on = season === current;
+  return (
+    <span
+      style={{
+        marginLeft: 8,
+        fontSize: 10.5,
+        fontWeight: 800,
+        padding: "2px 8px",
+        borderRadius: 100,
+        whiteSpace: "nowrap",
+        background: on ? "var(--rsd-accent-fill)" : "transparent",
+        color: on ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
+        border: on ? "1px solid var(--rsd-accent-fill)" : "1px solid var(--gw-border)",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+// The season's notes from Season settings, one line with "more" when longer.
+function SeasonNotes({ notes, onEdit }: { notes: string; onEdit?: () => void }) {
+  const [more, setMore] = useState(false);
+  const long = notes.length > 90 || notes.includes("\n");
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 12.5, color: "var(--gw-fg-muted)", fontWeight: 500, minWidth: 0 }} data-tour="schedule-season-notes">
+      <span
+        style={
+          more
+            ? { whiteSpace: "pre-wrap", lineHeight: 1.45 }
+            : { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }
+        }
+      >
+        {notes}
+      </span>
+      {long && (
+        <button type="button" onClick={() => setMore((m) => !m)} style={inlineLink}>
+          {more ? "less" : "more"}
+        </button>
+      )}
+      {onEdit && (
+        <button type="button" onClick={onEdit} style={inlineLink}>
+          Edit
+        </button>
+      )}
+    </div>
+  );
+}
+
+const inlineLink: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  padding: 0,
+  fontSize: 12,
+  fontWeight: 700,
+  color: "var(--gw-fg)",
+  cursor: "pointer",
+  textDecoration: "underline",
+  flexShrink: 0,
+};
+
 function SeasonArrow({ href, label, children }: { href: string | null; label: string; children: React.ReactNode }) {
-  const style: React.CSSProperties = { ...roundButton, color: href ? "var(--gw-fg)" : "var(--gw-fg-faint)" };
+  // With nowhere to go it fades right back, so it doesn't read as a button.
+  const style: React.CSSProperties = href ? roundButton : { ...roundButton, opacity: 0.35, borderStyle: "dashed", cursor: "not-allowed" };
   return href ? (
     <Link href={href} aria-label={label} title={label} style={style}>
       {children}
