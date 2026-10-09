@@ -411,6 +411,30 @@ export function ScheduleView({
   }, [target]);
 
   const comparing = compare ? seasonLabel(compare.season) : null;
+  // The weekend we're in, or else the next one coming (not an off one).
+  const nowWeekend = useMemo(() => {
+    const live = weekends.filter((w) => w.status !== "off" && w.status !== "canceled");
+    const during = live.find((w) => w.starts_on <= today && today <= w.ends_on);
+    if (during) return { id: during.id, label: "This weekend" };
+    const next = live.find((w) => w.starts_on > today);
+    return next ? { id: next.id, label: "Next" } : null;
+  }, [weekends, today]);
+  const nowTagOf = (id: string) => (nowWeekend?.id === id ? nowWeekend.label : null);
+  // The season's usual days ("Thu–Sat"), said once in the heading; a
+  // weekend on other days says its own.
+  const usualDays = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const w of weekends) {
+      const d = formatWeekdays(w.starts_on, w.ends_on);
+      n.set(d, (n.get(d) ?? 0) + 1);
+    }
+    let best = "";
+    let most = 0;
+    for (const [d, c] of n) if (c > most) [best, most] = [d, c];
+    return most >= 2 ? best : "";
+  }, [weekends]);
+  // The Notes column only when a weekend showing has notes or a facility.
+  const showNotes = shownWeekends.some((w) => w.notes?.trim() || w.facility_contact_id);
   // The grid's columns, shared by the headings and the weekends below them.
   const gridHeadRef = useRef<HTMLDivElement>(null);
   const gridTable: React.CSSProperties = {
@@ -418,18 +442,18 @@ export function ScheduleView({
     tableLayout: "fixed",
     borderCollapse: "separate",
     borderSpacing: 0,
-    minWidth: 826 + shownLevels.length * 56 + (comparing ? 180 : 0),
+    minWidth: 858 - (showNotes ? 0 : 168) + shownLevels.length * 56 + (comparing ? 180 : 0),
   };
   const gridCols = (
     <colgroup>
-      <col style={{ width: 104 }} />
+      <col style={{ width: 136 }} />
       <col style={{ width: 164 }} />
       <col />
       {comparing && <col style={{ width: 180 }} />}
       {shownLevels.map((l) => (
         <col key={l.id} style={{ width: 56 }} />
       ))}
-      <col style={{ width: 168 }} />
+      {showNotes && <col style={{ width: 168 }} />}
     </colgroup>
   );
   const sheetWeekend = sheet?.kind === "weekend" && sheet.id ? weekends.find((w) => w.id === sheet.id) ?? null : null;
@@ -687,7 +711,10 @@ export function ScheduleView({
                 {gridCols}
                 <thead>
                   <tr>
-                    <Th style={{ color: "var(--gw-fg)" }} title="The season, and each weekend's dates">{seasonLabel(season.season)}</Th>
+                    <Th style={{ color: "var(--gw-fg)" }} title="The season, and each weekend's dates (on its usual days unless it says otherwise)">
+                      {seasonLabel(season.season)}
+                      {usualDays && <span style={{ color: "var(--gw-fg-muted)", fontWeight: 700 }}> · {usualDays}</span>}
+                    </Th>
                     <Th>Where</Th>
                     <Th>Event</Th>
                     {comparing && <Th>{comparing}</Th>}
@@ -696,7 +723,7 @@ export function ScheduleView({
                         <span style={{ color: "var(--gw-fg)", opacity: l.hidden ? 0.55 : 1 }}>{l.label}</span>
                       </Th>
                     ))}
-                    <Th>Notes</Th>
+                    {showNotes && <Th>Notes</Th>}
                   </tr>
                 </thead>
               </table>
@@ -716,7 +743,7 @@ export function ScheduleView({
                     id={`m-${m.key}`}
                     head={monthHead(m)}
                     rows={isFolded(m.key) ? [] : m.rows}
-                    span={4 + shownLevels.length + (comparing ? 1 : 0)}
+                    span={3 + (showNotes ? 1 : 0) + shownLevels.length + (comparing ? 1 : 0)}
                     render={(w) => (
                       <WeekendRow
                         key={w.id}
@@ -740,6 +767,9 @@ export function ScheduleView({
                         near={nearBy.get(w.id) ?? null}
                         travelOpen={travel?.weekendId === w.id}
                         onTravel={(el) => toggleTravel(w.id, el)}
+                        nowTag={nowTagOf(w.id)}
+                        usualDays={usualDays}
+                        showNotes={showNotes}
                       />
                     )}
                   />
@@ -757,7 +787,7 @@ export function ScheduleView({
                       {totals.get(l.id)!.games}
                     </td>
                   ))}
-                  <td style={footCell} />
+                  {showNotes && <td style={footCell} />}
                 </tr>
                 {anyUnsure && (
                   <tr>
@@ -772,7 +802,7 @@ export function ScheduleView({
                         </td>
                       );
                     })}
-                    <td style={footSub} />
+                    {showNotes && <td style={footSub} />}
                   </tr>
                 )}
                 {anyRecord && (
@@ -785,7 +815,7 @@ export function ScheduleView({
                         {recordLabel(totals.get(l.id)!) ?? ""}
                       </td>
                     ))}
-                    <td style={footSub} />
+                    {showNotes && <td style={footSub} />}
                   </tr>
                 )}
               </tfoot>
@@ -816,6 +846,7 @@ export function ScheduleView({
                     near={nearBy.get(w.id) ?? null}
                     travelOpen={travel?.weekendId === w.id}
                     onTravel={(el) => toggleTravel(w.id, el)}
+                    nowTag={nowTagOf(w.id)}
                   />
                 ))}
               </div>
@@ -1055,6 +1086,9 @@ function WeekendRow({
   near,
   travelOpen,
   onTravel,
+  nowTag,
+  usualDays,
+  showNotes,
 }: {
   w: HsWeekend;
   levels: HsLevel[];
@@ -1063,6 +1097,12 @@ function WeekendRow({
   gamesAt: (w: string, l: string) => HsGames | undefined;
   today: string;
   flash: boolean;
+  // "This weekend" or "Next" by the date, for the one we're in or coming up.
+  nowTag: string | null;
+  // The season's usual days ("Thu–Sat"): a weekend on other days says so.
+  usualDays: string;
+  // The Notes column, when any weekend showing has notes or a facility.
+  showNotes: boolean;
   active: string | null;
   compare: { id: string; starts_on: string; ends_on: string; event: string; status: HsWeekend["status"] }[] | null;
   onEvent: () => void;
@@ -1079,18 +1119,28 @@ function WeekendRow({
   const mine = opponents.filter((o) => o.weekend_id === w.id);
   const line = teamLine(mine, contacts);
   const facility = w.facility_contact_id ? contacts.get(w.facility_contact_id) : undefined;
+  const days = formatWeekdays(w.starts_on, w.ends_on);
   return (
     <tr
       id={`w-${w.id}`}
+      className="hs-row"
+      // Anywhere in the row but a button or link opens the weekend.
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest("button, a")) onEvent();
+      }}
       style={{
         background: flash ? "var(--rsd-accent-bg)" : st.tint,
         transition: "background-color 600ms ease",
         opacity: past && !flash ? 0.82 : 1,
+        cursor: "pointer",
       }}
     >
       <td style={{ ...cellBase, fontVariantNumeric: "tabular-nums" }}>
-        <div style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap" }}>{formatWeekendDates(w.starts_on, w.ends_on)}</div>
-        <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{formatWeekdays(w.starts_on, w.ends_on)}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "2px 6px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap" }}>{formatWeekendDates(w.starts_on, w.ends_on)}</span>
+          {nowTag && <NowTag label={nowTag} />}
+        </div>
+        {days !== usualDays && <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{days}</div>}
       </td>
       <td style={cellBase}>
         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{w.location ?? ""}</div>
@@ -1163,27 +1213,68 @@ function WeekendRow({
       )}
       {levels.map((l) => (
         <td key={l.id} style={{ ...cellBase, padding: 3, textAlign: "center", opacity: l.hidden ? 0.6 : 1 }}>
-          <LevelCell
-            w={w}
-            level={l}
-            summary={summarizeCell(gamesAt(w.id, l.id), cellOpponents(w.id, l.id, opponents, levelPlays(gamesAt(w.id, l.id))))}
-            quiet={quiet}
-            active={active === l.id}
-            onHoverIn={onHoverIn}
-            onHoverOut={onHoverOut}
-            onOpen={onOpen}
-          />
+          {/* Off and canceled weekends leave our teams' cells empty. */}
+          {!quiet && (
+            <LevelCell
+              w={w}
+              level={l}
+              summary={summarizeCell(gamesAt(w.id, l.id), cellOpponents(w.id, l.id, opponents, levelPlays(gamesAt(w.id, l.id))))}
+              record={past ? cellRecord(mine, l.id) : null}
+              quiet={quiet}
+              active={active === l.id}
+              onHoverIn={onHoverIn}
+              onHoverOut={onHoverOut}
+              onOpen={onOpen}
+            />
+          )}
         </td>
       ))}
-      <td style={{ ...cellBase, fontSize: 12, lineHeight: 1.4, color: "var(--gw-fg)" }}>
-        {w.notes}
-        {facility && (
-          <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, display: "flex", gap: 4, alignItems: "center", marginTop: 2 }}>
-            <Icons.MapPin width={10} height={10} /> {facility.name}
-          </div>
-        )}
-      </td>
+      {showNotes && (
+        <td style={{ ...cellBase, fontSize: 12, lineHeight: 1.4, color: "var(--gw-fg)" }}>
+          {w.notes}
+          {facility && (
+            <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, display: "flex", gap: 4, alignItems: "center", marginTop: 2 }}>
+              <Icons.MapPin width={10} height={10} /> {facility.name}
+            </div>
+          )}
+        </td>
+      )}
     </tr>
+  );
+}
+
+// A team of ours' results on a weekend that's over: "2–1" (or "2–1–1"),
+// or null when nothing has a score.
+function cellRecord(opps: HsOpponent[], levelId: string): string | null {
+  let w = 0;
+  let l = 0;
+  let t = 0;
+  for (const o of opps) {
+    if (o.level_id !== levelId || o.our_score == null || o.their_score == null) continue;
+    if (o.our_score > o.their_score) w++;
+    else if (o.our_score < o.their_score) l++;
+    else t++;
+  }
+  return recordLabel({ wins: w, losses: l, ties: t });
+}
+
+// "This weekend" / "Next", under a weekend's dates.
+function NowTag({ label }: { label: string }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        fontSize: 10,
+        fontWeight: 800,
+        padding: "1px 7px",
+        borderRadius: 100,
+        background: "var(--rsd-accent-fill)",
+        color: "var(--rsd-accent-fill-on)",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </span>
   );
 }
 
@@ -1194,6 +1285,7 @@ function LevelCell({
   w,
   level,
   summary,
+  record,
   quiet,
   active,
   onHoverIn,
@@ -1204,6 +1296,8 @@ function LevelCell({
   w: HsWeekend;
   level: HsLevel;
   summary: ReturnType<typeof summarizeCell>;
+  // A weekend that's over with scores: the result ("2–1") in place of the count.
+  record?: string | null;
   quiet: boolean;
   active: boolean;
   onHoverIn?: (w: HsWeekend, l: HsLevel, el: HTMLElement) => void;
@@ -1215,7 +1309,10 @@ function LevelCell({
   const empty = count == null && !unsure && tentative.length === 0;
   const label = empty
     ? `${level.label}: nothing entered`
-    : `${level.label}: ${count ?? "no"} game${count === 1 ? "" : "s"}${unsure ? ", not sure yet" : ""}, ${confirmed.length} coming, ${tentative.length} on the fence`;
+    : `${level.label}: ${count ?? "no"} game${count === 1 ? "" : "s"}${record ? `, went ${record}` : ""}${unsure ? ", not sure yet" : ""}, ${confirmed.length} coming, ${tentative.length} on the fence`;
+  // In the grid a plain count is just the number; the box shows when the
+  // cell needs a look (not sure, a team on the fence), is open, or on hover.
+  const boxed = mobile || active || unsure || tentative.length > 0;
   return (
     <button
       type="button"
@@ -1227,16 +1324,17 @@ function LevelCell({
       onFocus={(e) => onHoverIn?.(w, level, e.currentTarget)}
       onBlur={() => onHoverOut?.()}
       onClick={(e) => onOpen(w, level, e.currentTarget, true)}
+      className={mobile ? undefined : "hs-cell"}
       style={{
         position: "relative",
         width: mobile ? "auto" : "100%",
         minWidth: mobile ? 44 : undefined,
-        height: mobile ? 32 : 40,
+        height: 32,
         padding: mobile ? "0 9px" : 0,
         borderRadius: 8,
         border: "1px solid",
-        borderColor: active ? "var(--gw-fg)" : empty ? "transparent" : "var(--gw-border)",
-        background: empty ? "transparent" : "var(--gw-bg-elev)",
+        borderColor: active ? "var(--gw-fg)" : empty || !boxed ? "transparent" : "var(--gw-border)",
+        background: empty || !boxed ? "transparent" : "var(--gw-bg-elev)",
         color: empty || quiet ? "var(--gw-fg-faint)" : "var(--gw-fg)",
         cursor: "pointer",
         display: "inline-flex",
@@ -1249,7 +1347,7 @@ function LevelCell({
       {mobile && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)" }}>{level.label}</span>}
       <span
         style={{
-          fontSize: mobile ? 14 : 15,
+          fontSize: mobile ? 14 : record ? 13 : 15,
           fontWeight: 800,
           fontVariantNumeric: "tabular-nums",
           lineHeight: 1,
@@ -1258,8 +1356,12 @@ function LevelCell({
           color: unsure ? "#8A6100" : undefined,
         }}
       >
-        {count ?? (unsure ? "?" : "–")}
-        {unsure && count != null ? "?" : ""}
+        {record ?? (
+          <>
+            {count ?? (unsure ? "?" : "–")}
+            {unsure && count != null ? "?" : ""}
+          </>
+        )}
       </span>
       {/* On a phone the card's "on the fence" line says it once for the weekend. */}
       {tentative.length > 0 && !mobile && <FenceDot style={{ position: "absolute", top: 4, right: 4 }} />}
@@ -1280,6 +1382,7 @@ function WeekendCard({
   near,
   travelOpen,
   onTravel,
+  nowTag,
 }: {
   w: HsWeekend;
   levels: HsLevel[];
@@ -1293,6 +1396,7 @@ function WeekendCard({
   near: PlacesNear | null;
   travelOpen: boolean;
   onTravel: (el: HTMLElement) => void;
+  nowTag: string | null;
 }) {
   const st = STATUS_STYLE[w.status];
   const quiet = w.status === "off" || w.status === "canceled";
@@ -1372,6 +1476,12 @@ function WeekendCard({
           <span style={{ fontSize: 13, fontWeight: 800 }}>
             {formatWeekendDates(w.starts_on, w.ends_on)}{" "}
             <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{formatWeekdays(w.starts_on, w.ends_on)}</span>
+            {nowTag && (
+              <>
+                {" "}
+                <NowTag label={nowTag} />
+              </>
+            )}
           </span>
           {/* The green bar already says Facility secured; the chip flags what still needs work. */}
           {w.status !== "planned" && w.status !== "secured" && <StatusChip status={w.status} small />}
