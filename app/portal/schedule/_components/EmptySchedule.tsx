@@ -25,7 +25,7 @@ export function EmptySchedule({ isStaff, current }: { isStaff: boolean; current:
           </div>
         )}
       </div>
-      {creating && <NewSeasonSheet seasons={[]} onClose={() => setCreating(false)} />}
+      {creating && <NewSeasonSheet seasons={[]} current={current} onClose={() => setCreating(false)} />}
     </>
   );
 }
