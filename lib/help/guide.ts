@@ -307,14 +307,15 @@ Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdr
     title: "Notes on players",
     group: "Directory",
     audience: "messaging",
-    keywords: ["notes", "note", "log", "history", "document", "record", "screenshot", "screenshots", "attachment", "attach", "file", "pdf", "photo", "text messages", "texts", "link", "slack archive", "no show", "no-show"],
+    keywords: ["notes", "note", "log", "history", "document", "record", "screenshot", "screenshots", "attachment", "attach", "file", "pdf", "photo", "text messages", "texts", "link", "slack archive", "save to notes", "thread", "no show", "no-show"],
     body: `You see this if you're on the board or have the **Registrations** permission. Families never see notes.
 
 Every player's page has a **Notes** card: a running log of what happened with the family, newest first, with who wrote each note and when. While a player is off the roster, the same notes show on their registration on the **New**, **Waitlist** and **Removed** tabs, and they follow the player back onto the roster when they're approved.
 
 - Tap **Add a note**, write what happened, and tap **Save note**.
 - **Attach screenshots or files** adds pictures or PDFs (up to 10 per note, 10 MB each), such as screenshots of a text exchange. You can also paste a screenshot straight into the note, or drag files onto it. iPhone photos are turned into regular pictures so everyone can open them. Tap a picture or file on a saved note to open it.
-- Links work. Paste a link and it opens from the note. For a link to a Slack Archive message, open the message in the Slack Archive and copy the address from your browser. To show words instead of the address, write [the words](the link).
+- **From Slack.** In the Slack Archive, tap **Save to notes** on a message, type the player's name and pick them, and tap **Save note**. On a thread's first message, **Include the replies** brings the whole thread. The note gets each message with who wrote it and when, its pictures and PDFs as attachments, and a link back to the message. Videos stay in the Slack Archive; the note names them.
+- Links work. Paste a link and it opens from the note. For a link to one Slack Archive message, tap the link icon on the message to copy it; opening it jumps to the message and highlights it. To show words instead of the address, write [the words](the link).
 - Whoever wrote a note can **Edit** its words or **Delete** it (with its attachments). Super-admins can too.`,
   },
   {
@@ -595,7 +596,8 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - **Filter** shows only the threads a certain person posted in.
 - Photos and videos show right in the message: tap a photo to see it full size, or tap ▶ to play a video. Audio clips open in a preview, and other files open in a new tab. Files linked from outside Slack, like Google Docs, show a ↗ and open where they're kept.
 - The **link** icon on a message copies a direct link you can share. Opening one (or **View in conversation** in the Photo Album, or a search result) takes you to that message, highlighted in yellow.
-- **Photos →** opens the Photo Album for just that channel.`,
+- **Photos →** opens the Photo Album for just that channel.
+- Board members and people with the **Registrations** permission also see **Save to notes** on each message, to copy it (or a whole thread) into a player's notes. See *Notes on players*.`,
   },
   {
     id: "slack-archive-search",
