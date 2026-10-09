@@ -146,7 +146,7 @@ export function RegisterForm() {
     return (
       <>
         <p className={auth.note}>
-          One last step — we sent a code to <strong>{finish.email}</strong> to confirm it&apos;s you. Type it in and
+          One last step — we sent a code to <strong>{finish.email}</strong>{" "}to confirm it&apos;s you. Type it in and
           you&apos;re in. It can take a minute to arrive. If the email shows a sign-in button instead of a code,
           tapping the button works too.
         </p>

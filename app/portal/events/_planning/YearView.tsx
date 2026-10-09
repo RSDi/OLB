@@ -114,7 +114,7 @@ export async function YearView({
       {!built && (
         <div className="rsd-card" style={{ gap: 12, padding: "16px 20px" }}>
           <div style={{ fontSize: 14, fontWeight: 700 }}>
-            {seasonLabel(season)} hasn&apos;t been sent to Review yet
+            {seasonLabel(season)}{" "}hasn&apos;t been sent to Review yet
           </div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.6, maxWidth: 640 }}>
             Sending it copies the template&apos;s {monthlyLines} monthly tasks into Review, where the board keeps or

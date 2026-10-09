@@ -40,7 +40,7 @@ export function PreviewBanner({ preview }: { preview: PreviewInfo }) {
     >
       <EyeIcon />
       <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        Previewing as {preview.targetName} — you&apos;re seeing exactly what they see
+        Previewing as {preview.targetName}{" "}— you&apos;re seeing exactly what they see
         {/* Server and browser clocks format in different time zones. */}
         <span className="rsd-preview-until" style={{ fontWeight: 600 }} suppressHydrationWarning> · ends by itself at {until}</span>
       </span>

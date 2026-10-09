@@ -297,7 +297,7 @@ export function ScheduleView({
       </div>
 
       {/* ─── Which weekends, and view options ─── */}
-      {(weekends.length > 0 || seasons.length > 1 || hiddenCount > 0) && (
+      {(weekends.length > 0 || hiddenCount > 0) && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {weekends.length > 0 && (
             <WeekendFilterSelect
@@ -308,7 +308,7 @@ export function ScheduleView({
               onClear={() => setFilters(new Set())}
             />
           )}
-          {seasons.length > 1 && (
+          {seasons.length > 1 && weekends.length > 0 && (
             <FilterSelect
               value={compare?.season ?? ""}
               onChange={(e) => {
@@ -374,17 +374,27 @@ export function ScheduleView({
       )}
 
       {weekends.length === 0 ? (
-        <div className="rsd-card" style={{ textAlign: "center", padding: "40px 24px", gap: 8 }}>
+        <div className="rsd-card" style={{ textAlign: "center", padding: "40px 24px", gap: 8, alignItems: "center" }}>
           <div style={{ fontWeight: 700, fontSize: 16 }}>No weekends yet</div>
-          <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>
-            {canEdit ? (
-              <>
-                Press <strong>Add weekend</strong> to add the season&apos;s weekends one at a time.
-              </>
-            ) : (
-              "The coaches and the board haven't added this season's weekends yet."
-            )}
+          <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.5, maxWidth: 440 }}>
+            {!canEdit
+              ? "The coaches and the board haven't added this season's weekends yet."
+              : levels.length === 0
+                ? "Add our teams (V, JV1…) first: a column each on the schedule. Then add the season's weekends one at a time."
+                : "Add the season's weekends one at a time."}
           </div>
+          {canEdit && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 6 }}>
+              {levels.length === 0 && (
+                <Pill variant="accent" size="sm" onClick={() => setSheet({ kind: "season" })}>
+                  <Icons.Cog width={13} height={13} /> Season settings
+                </Pill>
+              )}
+              <Pill variant={levels.length === 0 ? "ghost" : "accent"} size="sm" onClick={() => setSheet({ kind: "weekend", id: null })}>
+                <Icons.Plus width={13} height={13} /> Add weekend
+              </Pill>
+            </div>
+          )}
         </div>
       ) : shownWeekends.length === 0 ? (
         <div className="rsd-card" style={{ textAlign: "center", padding: "32px 24px", gap: 10, alignItems: "center" }}>

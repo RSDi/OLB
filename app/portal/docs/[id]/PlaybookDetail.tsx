@@ -751,7 +751,7 @@ function ProcedureEditor({
         </div>
       )}
       <div style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
-        Completion is always logged to this procedure&apos;s history. With notify off it&apos;s just logged — no Slack. Use <code>{"{person}"}</code> for the runner&apos;s name; the bot must be invited to the channel.
+        Completion is always logged to this procedure&apos;s history. With notify off it&apos;s just logged — no Slack. Use <code>{"{person}"}</code>{" "}for the runner&apos;s name; the bot must be invited to the channel.
       </div>
       {error && <div style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600 }}>{error}</div>}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
