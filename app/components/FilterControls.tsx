@@ -4,9 +4,32 @@
 // list, the same chip with tick boxes to pick several, and a segmented switch
 // for a few views of the same list.
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ComboSelect, type ComboSelectProps } from "./ComboSelect";
 import { Icons } from "./icons";
+
+// A list hangs off its chip's left (or right) edge, so a chip near the other
+// side of a phone would push it off the screen. Slide it back to 16px from
+// the edge once it's open.
+function useKeepInView(ref: RefObject<HTMLElement | null>, open: boolean) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!open || !el) return;
+    function fit() {
+      if (!el) return;
+      el.style.transform = "";
+      const r = el.getBoundingClientRect();
+      const vw = document.documentElement.clientWidth;
+      let dx = 0;
+      if (r.right > vw - 16) dx = vw - 16 - r.right;
+      if (r.left + dx < 16) dx = 16 - r.left;
+      if (dx) el.style.transform = `translateX(${Math.round(dx)}px)`;
+    }
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [ref, open]);
+}
 
 // `leading` sits inside the chip before the label, like a team's color dot.
 // `grow` shares the row with its neighbours instead of sizing to the longest
@@ -95,8 +118,10 @@ export function FilterMultiSelect({
   const [activeRow, setActiveRow] = useState(-1);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const active = selected.size > 0;
+  useKeepInView(listRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -185,6 +210,7 @@ export function FilterMultiSelect({
       </button>
       {open && (
         <div
+          ref={listRef}
           id={listId}
           role="listbox"
           aria-multiselectable
@@ -368,7 +394,9 @@ export function FilterMenu({
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLSpanElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  useKeepInView(menuRef, open);
   useEffect(() => {
     if (!open) return;
     function outside(e: PointerEvent) {
@@ -430,6 +458,7 @@ export function FilterMenu({
       </button>
       {open && (
         <div
+          ref={menuRef}
           id={menuId}
           role="menu"
           aria-label={label}
