@@ -1044,6 +1044,35 @@ function MonthHeading({
   );
 }
 
+// An off or canceled weekend's name as the spreadsheet wrote it, shouting
+// ("THANKSGIVING - - OFF"), reads in normal case without the "OFF" the row
+// already says. Only for display: the name itself isn't changed.
+function eventName(w: Pick<HsWeekend, "event" | "status">): string {
+  const name = w.event.trim();
+  if (!name) return "—";
+  if (w.status !== "off" && w.status !== "canceled") return name;
+  if (name !== name.toUpperCase() || !/[A-Z]/.test(name)) return name;
+  const plain = name.replace(/[\s\-–—:]*(off|canceled|cancelled)\s*$/i, "").trim() || name;
+  const lower = plain.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+// The details icon's tooltip: the details themselves, a few lines' worth.
+function detailsTip(details: string): string {
+  const d = details.trim();
+  return d.length > 280 ? `${d.slice(0, 277)}…` : d;
+}
+
+// The teams line's tooltip: every team coming, then the maybes.
+function teamsTip(opps: HsOpponent[], contacts: Map<string, HsContactRef>): string {
+  const names = (status: HsOpponent["status"]) => [
+    ...new Set(opps.filter((o) => o.status === status).map((o) => (o.contact_id && contacts.get(o.contact_id)?.name) || o.name)),
+  ];
+  const yes = names("confirmed");
+  const maybe = names("tentative").filter((n) => !yes.includes(n));
+  return [yes.length && `Coming: ${yes.join(", ")}`, maybe.length && `On the fence: ${maybe.join(", ")}`].filter(Boolean).join("\n");
+}
+
 // The teams under an event: the confirmed ones by name, then how many are on
 // the fence.
 function teamLine(opps: HsOpponent[], contacts: Map<string, HsContactRef>): { names: string[]; more: number; fence: number } {
@@ -1118,6 +1147,7 @@ function WeekendRow({
   const quiet = w.status === "off" || w.status === "canceled";
   const mine = opponents.filter((o) => o.weekend_id === w.id);
   const line = teamLine(mine, contacts);
+  const coming = line.names.length + line.more;
   const facility = w.facility_contact_id ? contacts.get(w.facility_contact_id) : undefined;
   const days = formatWeekdays(w.starts_on, w.ends_on);
   return (
@@ -1172,24 +1202,26 @@ function WeekendRow({
                 lineHeight: 1.35,
               }}
             >
-              {w.event || "—"}
+              {eventName(w)}
             </span>
             {w.details && (
-              <span title="Has more details" style={{ display: "inline-block", marginLeft: 5, color: "var(--gw-fg-muted)", verticalAlign: -1 }}>
+              <span title={detailsTip(w.details)} style={{ display: "inline-block", marginLeft: 5, color: "var(--gw-fg-muted)", verticalAlign: -1 }}>
                 <Icons.FileText width={11} height={11} />
               </span>
             )}
           </button>
-          {w.status !== "planned" && <StatusChip status={w.status} small />}
+          {/* Secured and off weekends already say so with their color; the
+              chip is for the ones that still need something. */}
+          {w.status !== "planned" && w.status !== "secured" && w.status !== "off" && <StatusChip status={w.status} small short />}
         </div>
-        {(line.names.length > 0 || line.fence > 0) && (
-          <div style={{ marginTop: 1, lineHeight: 1.3 }}>
+        {(coming > 0 || line.fence > 0) && (
+          <div style={{ marginTop: 1, lineHeight: 1.3 }} title={teamsTip(mine, contacts)}>
             <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.3 }}>
-              {line.names.join(" · ")}
-              {line.more > 0 && ` +${line.more}`}
+              {line.names.slice(0, 2).join(", ")}
+              {coming > 2 && ` +${coming - 2}`}
               {line.fence > 0 && (
                 <span style={{ color: "#8A6100", fontWeight: 700 }}>
-                  {line.names.length ? " · " : ""}
+                  {coming ? " · " : ""}
                   {line.fence} on the fence
                 </span>
               )}
@@ -1441,7 +1473,7 @@ function WeekendCard({
             textDecoration: w.status === "canceled" ? "line-through" : "none",
           }}
         >
-          {w.event || "—"}
+          {eventName(w)}
           {w.location && <span style={{ fontWeight: 500, textDecoration: "none" }}> · {w.location}</span>}
         </span>
         {w.status === "canceled" && <StatusChip status={w.status} small />}
@@ -1487,7 +1519,7 @@ function WeekendCard({
           {w.status !== "planned" && w.status !== "secured" && <StatusChip status={w.status} small />}
         </span>
         <span style={{ fontSize: 15, fontWeight: 800, color: "var(--gw-fg)", lineHeight: 1.3 }}>
-          {w.event || "—"}
+          {eventName(w)}
           {w.details && (
             <span title="Has more details" style={{ display: "inline-block", marginLeft: 6, color: "var(--gw-fg-muted)", verticalAlign: -1 }}>
               <Icons.FileText width={12} height={12} />
