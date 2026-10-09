@@ -522,7 +522,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "schedule-popover",
         click: "schedule-cell",
         title: "The team's card",
-        body: "The teams this one of ours plays: **Coming**, **On the fence** and **Not coming**, each with the other teams of ours it plays in parentheses. **For our other teams** lists the rest coming that weekend. **Weekend details** opens the whole weekend.",
+        body: "This team of ours and its games, then the teams it plays: **Coming** and **On the fence**, with the other teams of ours each plays in parentheses, and a line for the ones **Not coming**. **For our other teams** lists the rest coming that weekend. **Weekend details** opens the whole weekend.",
       },
       {
         target: "schedule-popover-games",

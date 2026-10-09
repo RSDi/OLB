@@ -536,7 +536,8 @@ function TeamsEditor({
       })}
       <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 8, borderTop: "1px solid var(--gw-border)" }}>
         <TeamAdder options={options} knownTeams={knownTeams} taken={taken} onAdd={add} placeholder="Add a team coming…" />
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Add as</span>
           <StatusSwitch value={addStatus} onChange={setAddStatus} name="the new team" />
           <ComboSelect
             value={addLevel}
