@@ -27,6 +27,15 @@ export type RegistrationExtra = {
   payment_option?: string;
   // The email whose code the family typed back before sending (0103).
   email_confirmed?: string | null;
+  // Moved off the roster back to the waitlist: where they were
+  // (lib/teams/waitlist-player.ts).
+  from_roster?: {
+    team: string | null;
+    age_group: string | null;
+    jersey_number: string | null;
+    shirt_size: string | null;
+    moved_at: string;
+  };
 };
 
 export type RegistrationParentAnswers = {

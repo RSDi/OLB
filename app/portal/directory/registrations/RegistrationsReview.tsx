@@ -32,6 +32,8 @@ import { ContactLine, formatDate, muted } from "../_shared/PlayerParts";
 import { ComposeSheet, SentMessages } from "../_shared/Messaging";
 import { WAITLIST_TEMPLATE } from "../../../../lib/teams/email-templates";
 import { ErrorNote, capStyle } from "../../payments/parts";
+import { PlayerNotes } from "../_shared/PlayerNotes";
+import type { PlayerNote } from "../../../../lib/teams/player-notes";
 
 const TABS: { key: RegistrationTab; label: string }[] = [
   { key: "waiting", label: "Waiting" },
@@ -46,10 +48,13 @@ export function RegistrationsReview({
   tab,
   counts,
   registrations,
+  notes,
 }: {
   tab: RegistrationTab;
   counts: Record<RegistrationTab, number>;
   registrations: PendingRegistration[];
+  // Notes on each family (0124), by registration; none on Approved.
+  notes: Record<string, PlayerNote[]>;
 }) {
   const [compose, setCompose] = useState<PendingRegistration[] | null>(null);
 
@@ -136,7 +141,9 @@ export function RegistrationsReview({
           ))}
         </div>
       ) : (
-        registrations.map((r) => <RegistrationCard key={r.id} reg={r} tab={tab} onMessage={() => setCompose([r])} />)
+        registrations.map((r) => (
+          <RegistrationCard key={r.id} reg={r} tab={tab} notes={notes[r.id] ?? []} onMessage={() => setCompose([r])} />
+        ))
       )}
 
       {compose && (
@@ -199,7 +206,17 @@ function WaitlistTools({ registrations, onMessageAll }: { registrations: Pending
 
 // ─── One registration ───────────────────────────────────────────────────────
 
-function RegistrationCard({ reg, tab, onMessage }: { reg: PendingRegistration; tab: RegistrationTab; onMessage: () => void }) {
+function RegistrationCard({
+  reg,
+  tab,
+  notes,
+  onMessage,
+}: {
+  reg: PendingRegistration;
+  tab: RegistrationTab;
+  notes: PlayerNote[];
+  onMessage: () => void;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -352,6 +369,8 @@ function RegistrationCard({ reg, tab, onMessage }: { reg: PendingRegistration; t
         </div>
       )}
 
+      <PlayerNotes owner={{ registrationId: reg.id }} notes={notes} framed={false} />
+
       {tab === "waitlist" && reg.messages.length > 0 && (
         <SentMessages messages={reg.messages} style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 12 }} />
       )}
@@ -499,6 +518,12 @@ function WaitlistStatus({
         <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg)" }}>
           On the waitlist{since ? ` since ${since}` : ""}
           {reg.reviewed_by_name ? ` · by ${reg.reviewed_by_name}` : ""}
+          {reg.extra.from_roster && (
+            <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>
+              {" · "}
+              Moved off the roster{reg.extra.from_roster.team ? ` (was on ${reg.extra.from_roster.team})` : ""}
+            </span>
+          )}
         </span>
         <label data-tour="waitlist-contacted" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
           <input type="checkbox" checked={contacted} disabled={busy !== null} onChange={(e) => onContacted(e.target.checked)} />

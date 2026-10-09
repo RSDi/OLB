@@ -222,7 +222,8 @@ function toRecord(reg: { first_name: string; last_name: string; dob: string | nu
     email: blank(x.athlete_email),
     registrationFee: blank(x.fee_tier),
     paymentMethod: blank(x.payment_option),
-    shirtSize: null,
+    // Back from the roster: the shirt size they had (lib/teams/waitlist-player.ts).
+    shirtSize: blank(x.from_roster?.shirt_size),
     waiverSigned: x.waiver_agreed === true,
     waiverSignedOn: x.signature_date || null,
     directoryOptin: x.directory_optin !== false,
@@ -265,6 +266,8 @@ export async function approveRegistration(id: string): Promise<{ error?: string 
   if (error) return { error: error.message };
 
   await chargeRegistrationFee(admin, reg.board_id, playerId, (reg.extra as Extra | null)?.fee_tier ?? null, gate.userId);
+  // Notes written while they were on the waitlist (0124) follow them onto the roster.
+  await admin.from("olb_player_notes").update({ player_id: playerId }).eq("registration_id", id);
   refresh();
   return {};
 }

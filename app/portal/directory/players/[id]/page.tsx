@@ -7,6 +7,7 @@ import { AccessDenied } from "../../_shared/AccessDenied";
 import { loadPlayerMessages, loadPlayers, loadRequirements, loadViewer } from "../../_shared/data";
 import { PlayerDetail } from "./PlayerDetail";
 import { loadSeasonTeams } from "../../../../../lib/teams/volunteer-data";
+import { loadPlayerNotes } from "../../../../../lib/teams/player-note-data";
 
 // One player: everything on their Directory card, their parents and brothers
 // and sisters, and their family's payments. Payments show to anyone with the
@@ -14,7 +15,8 @@ import { loadSeasonTeams } from "../../../../../lib/teams/volunteer-data";
 // opened balances to families. Who can see the player at all is RLS's call,
 // the same as the Directory. Anyone with the Registrations permission can also
 // put the player on a team, edit them, or take them off the roster; they and
-// the board can email the family, and the Slack DMs grant can Slack them.
+// the board can email the family and keep notes on them, and the Slack DMs
+// grant can Slack them.
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // Started before the viewer check on purpose — see loadViewer().
@@ -56,6 +58,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const canEmail = viewer.isStaff || viewer.canManageRegistrations;
   const canSlack = viewer.canSlackDm;
   const messages = canEmail || canSlack ? await loadPlayerMessages(id) : [];
+  // Notes (0124): the board and the Registrations grant.
+  const canNote = viewer.isStaff || viewer.canManageRegistrations;
+  const notes = canNote ? await loadPlayerNotes(id, { userId: viewer.userId, isSuperAdmin: viewer.isSuperAdmin }) : null;
 
   return (
     <PlayerDetail
@@ -70,6 +75,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       canEmail={canEmail}
       canSlack={canSlack}
       messages={messages}
+      notes={notes}
     />
   );
 }

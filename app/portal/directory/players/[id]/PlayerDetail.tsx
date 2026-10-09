@@ -24,6 +24,8 @@ import { SlackComposeSheet } from "../../_shared/SlackMessaging";
 import { SlackLogo } from "../../../../components/SlackLogo";
 import { FAMILY_MESSAGE, playerOwnEmail, playerTarget, type SentMessage } from "../../../../../lib/teams/family-mail";
 import { sendPlayerMessage } from "../../../../../lib/teams/player-message-actions";
+import type { PlayerNote } from "../../../../../lib/teams/player-notes";
+import { PlayerNotes } from "../../_shared/PlayerNotes";
 
 const cap: React.CSSProperties = {
   fontSize: 11,
@@ -50,6 +52,7 @@ export function PlayerDetail({
   canEmail,
   canSlack,
   messages,
+  notes,
 }: {
   player: DirectoryPlayer;
   siblings: DirectoryPlayer[];
@@ -66,6 +69,9 @@ export function PlayerDetail({
   // The Slack DMs grant (0118): Slack family. They see what was sent too.
   canSlack: boolean;
   messages: SentMessage[];
+  // Notes on the player (0124), for the board and the Registrations grant;
+  // null for everyone else.
+  notes: PlayerNote[] | null;
 }) {
   const [openReq, setOpenReq] = useState<Requirement | null>(null);
   const [editing, setEditing] = useState(false);
@@ -201,6 +207,8 @@ export function PlayerDetail({
           </div>
         )}
       </div>
+
+      {notes && <PlayerNotes owner={{ playerId: p.id }} notes={notes} />}
 
       {(canEmail || canSlack) && messages.length > 0 && (
         <div className="rsd-card" style={{ padding: "14px 20px" }}>

@@ -293,7 +293,24 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **Editing a player.** On a player's page, the team chip works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number** and **Age group**. Tap **Save**.
 
+**Moving a player back to the waitlist.** For a family that lost their spot (they didn't show, or stopped answering). On the player's page, tap **Edit player**, then **Move to the waitlist**, add a line on why if you like, and tap **Move to the waitlist** again. They leave their team and the Directory and show on the **Waitlist** tab with "Moved off the roster" and the team they were on. Their notes and the emails sent to them go with them, and the registration fee Approve added comes off Payments. If the family has paid anything, or has any other charge, the Treasurer refunds or voids it first. When a spot opens, **Approve** puts them back under **No team yet**. Log what happened in the player's **Notes** first (see *Notes on players*).
+
 **Taking a player off the roster.** In **Edit player**, **Take off the roster** removes a player who isn't in the program this season. Their parents stay as members. If the player has charges or payments on the Payments page, the Treasurer voids those first.`,
+  },
+  {
+    id: "player-notes",
+    title: "Notes on players",
+    group: "Directory",
+    audience: "messaging",
+    keywords: ["notes", "note", "log", "history", "document", "record", "screenshot", "screenshots", "attachment", "attach", "file", "pdf", "photo", "text messages", "texts", "link", "slack archive", "no show", "no-show"],
+    body: `You see this if you're on the board or have the **Registrations** permission. Families never see notes.
+
+Every player's page has a **Notes** card: a running log of what happened with the family, newest first, with who wrote each note and when. While a player is on the waitlist, the same notes show on their registration on the **Waiting** and **Waitlist** tabs, and they follow the player back onto the roster when they're approved.
+
+- Tap **Add a note**, write what happened, and tap **Save note**.
+- **Attach screenshots or files** adds pictures or PDFs (up to 10 per note, 10 MB each), such as screenshots of a text exchange. You can also paste a screenshot straight into the note, or drag files onto it. iPhone photos are turned into regular pictures so everyone can open them. Tap a picture or file on a saved note to open it.
+- Links work. Paste a link and it opens from the note. For a link to a Slack Archive message, open the message in the Slack Archive and copy the address from your browser. To show words instead of the address, write [the words](the link).
+- Whoever wrote a note can **Edit** its words or **Delete** it (with its attachments). Super-admins can too.`,
   },
   {
     id: "email-families",

@@ -89,6 +89,12 @@ export function canManageRegistrations(m: MemberLike | null | undefined): boolea
   return m.role === "super_admin" || !!m.can_manage_registrations;
 }
 
+// Notes on players (0124): the board, or the Registrations permission.
+// Mirrors public.can_player_notes().
+export function canPlayerNotes(m: MemberLike | null | undefined): boolean {
+  return isStaff(m) || canManageRegistrations(m);
+}
+
 // --- Travel --------------------------------------------------------------------
 // The travel coordinator: reading, adding and editing the External Contacts
 // of the travel types (Hotels, Food). Mirrors public.can_manage_travel() (0110).
