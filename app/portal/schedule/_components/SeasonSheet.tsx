@@ -105,16 +105,16 @@ export function SeasonSheet({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-tour="schedule-columns">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <span style={cap}>Columns: our teams</span>
+          <span style={cap}>Our teams</span>
           {!adding && (
             <Pill variant="light" size="sm" onClick={() => setAdding(true)}>
-              <Icons.Plus width={12} height={12} /> Add column
+              <Icons.Plus width={12} height={12} /> Add team
             </Pill>
           )}
         </div>
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
-          One column per team we field this season, like the spreadsheet&apos;s V, JV1, JV2, 14U A. A hidden column
-          keeps its games but folds away, like the spreadsheet&apos;s hidden 14U and 12U.
+          Each team we field this season, like the spreadsheet&apos;s V, JV1, JV2, 14U A: one column on the schedule
+          each. A hidden team keeps its games but folds away, like the spreadsheet&apos;s hidden 14U and 12U.
         </div>
         {adding && (
           <LevelForm
@@ -137,7 +137,7 @@ export function SeasonSheet({
             onSave={(input) => run(() => saveLevel(season.id, l.id, input))}
             onMove={(d) => run(() => moveLevel(l.id, d))}
             onDelete={() => {
-              if (!confirm(`Delete the ${l.label} column and every game and team entered under it?`)) return;
+              if (!confirm(`Delete ${l.label} and every game and team entered under it?`)) return;
               void run(() => deleteLevel(l.id));
             }}
           />
@@ -153,7 +153,7 @@ export function SeasonSheet({
             <>
               <div style={{ fontSize: 13, lineHeight: 1.5 }}>
                 Start {seasonLabel(next)} from this season: the same weekends a year on (same days of the week), the same
-                events, places, columns and games, and the teams that came, now on the fence. Scores and canceled weekends
+                events, places, teams of ours and games, and the teams that came, now on the fence. Scores and canceled weekends
                 aren&apos;t carried.
               </div>
               <div>
@@ -306,7 +306,7 @@ function LevelForm({
       )}
       <label style={{ display: "inline-flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
         <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.target.checked)} style={{ accentColor: "var(--rsd-accent-fill)" }} />
-        Hidden (fold this column away)
+        Hidden (fold this team away)
       </label>
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <Pill variant="ghost" size="sm" onClick={onCancel}>
@@ -318,7 +318,7 @@ function LevelForm({
           disabled={!label.trim()}
           onClick={() => onSave({ label: label.trim(), name: name.trim() || null, team_id: teamId || null, hidden })}
         >
-          {initial ? "Save column" : "Add column"}
+          {initial ? "Save team" : "Add team"}
         </Pill>
       </div>
     </div>
