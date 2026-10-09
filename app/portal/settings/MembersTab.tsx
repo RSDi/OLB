@@ -18,6 +18,10 @@ import {
 } from "../../../lib/auth/member-actions";
 import { MemberEditForm } from "./MemberEditForm";
 import { ComboSelect } from "../../components/ComboSelect";
+import { ActivityTab, LastSeenLine, MemberActivityPanel, UsageStrip, canPreview } from "../activity/ActivityOverview";
+import { PreviewButton } from "../activity/PreviewButton";
+import { fetchActivityOverview } from "../activity/load-actions";
+import type { ActivityOverview, RosterMember } from "../../../lib/activity/queries";
 import {
   PERMISSIONS,
   PERMISSION_GROUPS,
@@ -84,7 +88,10 @@ interface MemberAccess {
 // and registered parents pre-created from a player registration who haven't
 // signed up yet. A super-admin can approve either; the first gets in on their
 // next sign-in, the second as soon as they sign up.
-type TabKey = MemberStatus | "invited";
+// "activity": the club-wide usage numbers (super-admins on the staged-rollout
+// list, lib/auth/feature-preview.ts).
+type TabKey = MemberStatus | "invited" | "activity";
+const TAB_KEYS: TabKey[] = ["pending", "approved", "denied", "invited", "activity"];
 
 function inTab(m: Member, t: TabKey): boolean {
   if (t === "invited") return m.status === "pending" && !m.user_id;
@@ -113,11 +120,16 @@ function timeAgo(date: string) {
 export function MembersTab({
   currentUserId,
   canManage,
+  showActivity = false,
 }: {
   currentUserId: string;
   // Super-admins manage roles, edit details, and remove members; board
   // admins (canManage=false) work the approve/deny queue only.
   canManage: boolean;
+  // Sign-ins, sessions and "Preview as": the Activity tab, the usage
+  // numbers, and each Approved row's last visit. Super-admins on the
+  // staged-rollout list only.
+  showActivity?: boolean;
 }) {
   const [members, setMembers] = useState<Member[]>([]);
   // The Travel grant needs migration 0110; until then it isn't offered.
@@ -131,7 +143,20 @@ export function MembersTab({
   const [profiles, setProfiles] = useState<AccessProfile[] | null>(null);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<TabKey>("pending");
+  // `?show=` picks the tab, so a link (or the old Activity page) opens it.
+  const [tab, setTabState] = useState<TabKey>(() => {
+    const wanted = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("show");
+    const key = TAB_KEYS.find((k) => k === wanted);
+    return key && (key !== "activity" || showActivity) ? key : "pending";
+  });
+  const setTab = (key: TabKey) => {
+    setTabState(key);
+    const url = new URL(window.location.href);
+    url.searchParams.set("show", key);
+    window.history.replaceState(window.history.state, "", url);
+  };
+  const [activity, setActivity] = useState<ActivityOverview | null>(null);
+  const [activityError, setActivityError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -202,6 +227,15 @@ export function MembersTab({
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!showActivity) return;
+    fetchActivityOverview().then((r) => {
+      if ("error" in r) setActivityError(r.error);
+      else setActivity(r.data);
+    });
+  }, [showActivity]);
+  const activityOf = new Map<string, RosterMember>((activity?.members ?? []).map((a) => [a.memberId, a]));
 
   async function setStatus(id: string, status: MemberStatus) {
     setActing(id);
@@ -424,12 +458,21 @@ export function MembersTab({
     setActing(null);
   }
 
-  const byStatus = (t: TabKey) => members.filter((m) => inTab(m, t));
+  // With activity on, Approved lists the most recently seen first.
+  const lastSeen = (m: Member) => {
+    const at = activityOf.get(m.id)?.lastSeenAt;
+    return at ? Date.parse(at) : 0;
+  };
+  const byStatus = (t: TabKey) => {
+    const rows = members.filter((m) => inTab(m, t));
+    return t === "approved" && activity ? [...rows].sort((a, b) => lastSeen(b) - lastSeen(a)) : rows;
+  };
   const counts = {
     pending: byStatus("pending").length,
     approved: byStatus("approved").length,
     denied: byStatus("denied").length,
     invited: byStatus("invited").length,
+    activity: 0,
   };
   const q = query.trim().toLowerCase();
   const visibleInTab = q
@@ -493,10 +536,12 @@ export function MembersTab({
     { key: "approved", label: "Approved" },
     { key: "denied", label: "Denied" },
     { key: "invited", label: "Not signed up" },
+    ...(showActivity ? [{ key: "activity" as const, label: "Activity" }] : []),
   ];
+  const usage = showActivity && (tab === "approved" || tab === "activity");
 
   return (
-    <div style={{ maxWidth: showTable ? 1100 : 760 }}>
+    <div style={{ maxWidth: showTable ? 1100 : tab === "activity" ? 960 : 760 }}>
       {/* Header row with Add button */}
       <div
         style={{
@@ -539,8 +584,10 @@ export function MembersTab({
         </div>
       )}
 
+      {usage && activity && <UsageStrip data={activity} />}
+
       {/* Search */}
-      <div data-tour="members-search" style={{ position: "relative", marginBottom: 14 }}>
+      <div data-tour="members-search" style={{ position: "relative", marginBottom: 14, display: tab === "activity" ? "none" : undefined }}>
         <span
           style={{
             position: "absolute",
@@ -579,7 +626,7 @@ export function MembersTab({
           {tabs.map((t) => (
             <button
               key={t.key}
-              data-tour={t.key === "approved" ? "members-tab-approved" : undefined}
+              data-tour={t.key === "approved" ? "members-tab-approved" : t.key === "activity" ? "members-tab-activity" : undefined}
               onClick={() => setTab(t.key)}
               style={{
                 display: "flex",
@@ -598,7 +645,7 @@ export function MembersTab({
               }}
             >
               {t.label}
-              {counts[t.key] > 0 && (
+              {t.key !== "activity" && counts[t.key] > 0 && (
                 <span
                   style={{
                     background: t.key === "pending" ? "var(--rsd-error-fill)" : "var(--gw-bg)",
@@ -641,7 +688,15 @@ export function MembersTab({
         </div>
       )}
 
-      {loading ? (
+      {tab === "activity" ? (
+        activity ? (
+          <ActivityTab data={activity} />
+        ) : (
+          <div style={{ padding: "40px 0", textAlign: "center", color: activityError ? "var(--gw-error)" : "var(--gw-fg-muted)", fontSize: 13 }}>
+            {activityError ?? "Loading…"}
+          </div>
+        )
+      ) : loading ? (
         <div style={{ padding: "40px 0", textAlign: "center", color: "var(--gw-fg-muted)", fontSize: 13 }}>
           Loading…
         </div>
@@ -728,6 +783,9 @@ export function MembersTab({
                 access={accessOf(member)}
                 profilesOn={!!profiles}
                 picker={picker(member)}
+                activity={tab === "approved" ? activityOf.get(member.id) : undefined}
+                activityNow={activity?.asOf ?? 0}
+                currentUserId={currentUserId}
                 onApprove={() => setStatus(member.id, "approved")}
                 onDeny={() => setStatus(member.id, "denied")}
                 onRestore={() => setStatus(member.id, "pending")}
@@ -1016,6 +1074,9 @@ function MemberRow({
   access,
   profilesOn,
   picker,
+  activity,
+  activityNow,
+  currentUserId,
   onApprove,
   onDeny,
   onRestore,
@@ -1031,6 +1092,10 @@ function MemberRow({
   access: MemberAccess;
   profilesOn: boolean;
   picker: React.ReactNode;
+  // Their sign-ins and sessions, on the Approved tab when Activity is on.
+  activity?: RosterMember;
+  activityNow: number;
+  currentUserId: string;
   onApprove: () => void;
   onDeny: () => void;
   onRestore: () => void;
@@ -1039,7 +1104,10 @@ function MemberRow({
   onEdit: () => void;
 }) {
   const rowAvatar = resolveAvatarUrl(member);
-  const [accessOpen, setAccessOpen] = useState(false);
+  // One panel open under the row at a time: what they can do, or their
+  // sessions.
+  const [panel, setPanel] = useState<"access" | "activity" | null>(null);
+  const accessOpen = panel === "access";
   const showAccess = tab === "approved" && canManage && member.role !== "super_admin";
   const granted = showAccess
     ? access.offered
@@ -1141,6 +1209,11 @@ function MemberRow({
                 : `Reviewed ${timeAgo(member.reviewed_at ?? member.requested_at)}`}
             </span>
           </div>
+          {activity && (
+            <div data-tour="members-last-seen" style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 2 }}>
+              <LastSeenLine m={activity} now={activityNow} />
+            </div>
+          )}
           {showAccess && granted.length > 0 && !accessOpen && (
             <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, marginTop: 4 }}>
               <span style={{ fontWeight: 700 }}>Access:</span> {granted.join(", ")}
@@ -1169,7 +1242,15 @@ function MemberRow({
             <>
               {!isSelf && picker}
               {member.role !== "super_admin" && (
-                <AccessButton count={granted.length} open={accessOpen} onClick={() => setAccessOpen((o) => !o)} />
+                <AccessButton count={granted.length} open={accessOpen} onClick={() => setPanel(accessOpen ? null : "access")} />
+              )}
+              {activity?.userId && (
+                <PanelButton label="Activity" open={panel === "activity"} onClick={() => setPanel(panel === "activity" ? null : "activity")} />
+              )}
+              {activity && canPreview(activity, currentUserId) && (
+                <span data-tour="members-preview" style={{ display: "inline-flex" }}>
+                  <PreviewButton memberId={member.id} name={activity.name} email={activity.userId ? null : activity.email} />
+                </span>
               )}
               {!isSelf && member.role !== "super_admin" && (
                 <ActionBtn
@@ -1203,7 +1284,36 @@ function MemberRow({
       {showAccess && accessOpen && (
         <AccessPanel access={access} profilesOn={profilesOn} extras={extras} disabled={acting} onSetPermission={onSetPermission} />
       )}
+      {panel === "activity" && activity?.userId && <MemberActivityPanel userId={activity.userId} />}
     </div>
+  );
+}
+
+// Opens a member's Activity panel: their sessions.
+function PanelButton({ label, open, onClick }: { label: string; open: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-expanded={open}
+      data-tour="members-activity-button"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "6px 12px",
+        borderRadius: 8,
+        background: open ? "var(--gw-bg)" : "var(--gw-bg-elev)",
+        color: "var(--gw-fg)",
+        border: "1px solid var(--gw-border)",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+      <span aria-hidden style={{ fontSize: 10, color: "var(--gw-fg-muted)" }}>{open ? "▲" : "▼"}</span>
+    </button>
   );
 }
 

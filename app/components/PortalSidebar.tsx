@@ -56,9 +56,6 @@ const NAV: NavItem[] = [
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true, tour: "nav-settings" },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
-  // Sign-ins, page views, usage and "Preview as": super-admin only, and
-  // still in staged rollout (lib/auth/feature-preview.ts).
-  { href: "/portal/activity", label: "Activity", icon: <Icons.Activity width={16} height={16}/>, superAdminOnly: true, previewOnly: true, tour: "nav-activity" },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
   // bottom of the nav, above Settings (BOTTOM_HREFS).
   { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/>, tour: "nav-guide" },
@@ -66,7 +63,7 @@ const NAV: NavItem[] = [
 
 // Pinned to the bottom of the nav, below the custom links, in this order.
 const SETTINGS_HREF = "/portal/settings";
-const BOTTOM_HREFS = ["/portal/activity", "/portal/guide", SETTINGS_HREF];
+const BOTTOM_HREFS = ["/portal/guide", SETTINGS_HREF];
 
 // Wordmark in the sidebar's brand block (Lightning theme).
 const BRAND = { name: "OLB", tagline: "MEMBER PORTAL" };

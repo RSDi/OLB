@@ -143,7 +143,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean): TabDef[] {
   const showDeleted = isSuperAdmin(me);
 
   const tabs: TabDef[] = [
-    { key: "members", label: "Members", group: "People & Access", visible: showMembers, tour: "settings-tab-members", keywords: "approve deny pending access requests people accounts users" },
+    { key: "members", label: "Members", group: "People & Access", visible: showMembers, tour: "settings-tab-members", keywords: "approve deny pending access requests people accounts users activity usage sign-ins sessions last seen preview as" },
     // Named bundles of permissions handed out in Members (0122).
     { key: "access_profiles", label: "Access Profiles", group: "People & Access", visible: isSuperAdmin(me), tour: "settings-tab-access-profiles", keywords: "permissions roles grants treasurer" },
     { key: "teams", label: "Teams", group: "People & Access", visible: teams, tour: "settings-tab-teams", keywords: "coaches roster squads" },
@@ -292,7 +292,7 @@ export default function SettingsPage() {
   const content = (
     <>
       {tab === "members" && has("members") && (
-        <MembersTab currentUserId={userId} canManage={isSuperAdmin(me)} />
+        <MembersTab currentUserId={userId} canManage={isSuperAdmin(me)} showActivity={isSuperAdmin(me) && fullUi} />
       )}
       {tab === "access_profiles" && has("access_profiles") && <AccessProfilesTab />}
       {tab === "areas" && has("areas") && <AreasTab me={me} />}

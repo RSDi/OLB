@@ -1,18 +1,17 @@
 "use client";
-// The Activity page's front view: usage at a glance, every member with a
-// login (last sign-in, last seen, sessions) plus approved members not signed
-// up yet, the most-visited pages, and the "Preview as" log. Rows open that
-// member's sessions (?u=<user id>).
+// Activity, inside Settings → Members (super-admins on the staged-rollout
+// list): the usage numbers, the Activity tab (people each day, most-visited
+// pages, the "Preview as" log), and the activity on each Approved row (last
+// seen, and a panel of their sessions that open page by page on
+// /portal/activity?u=<user id>).
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ClearSearchButton, KpiCard } from "../../components/ui";
-import { PreviewButton } from "./PreviewButton";
-import type { ActivityOverview as Overview, RosterMember } from "../../../lib/activity/queries";
+import { KpiCard } from "../../components/ui";
+import { fetchMemberSessions } from "./load-actions";
+import type { ActivityOverview as Overview, RosterMember, SessionSummary } from "../../../lib/activity/queries";
 import { previewBlocker } from "../../../lib/activity/preview-rules";
 import {
-  ROLE_LABELS,
   fmtDateTime,
   fmtDay,
   fmtDuration,
@@ -20,8 +19,6 @@ import {
   pathLabel,
   relTime,
 } from "../../../lib/activity/paths";
-
-type Filter = "all" | "active" | "never";
 
 const muted = { fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 } as const;
 
@@ -118,206 +115,6 @@ function DailyChart({ daily, now }: { daily: Overview["daily"]; now: number }) {
         <span>{fmtDay(days[0].day)}</span>
         <span>Today</span>
       </div>
-    </div>
-  );
-}
-
-function Roster({ members, viewerUserId, now }: { members: RosterMember[]; viewerUserId: string; now: number }) {
-  const router = useRouter();
-  const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-
-  const rows = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    const month = now - 30 * 86400_000;
-    return members
-      .filter((m) => !needle || m.name.toLowerCase().includes(needle) || (m.email ?? "").toLowerCase().includes(needle))
-      .filter((m) =>
-        filter === "active"
-          ? !!m.lastSeenAt && Date.parse(m.lastSeenAt) >= month
-          : filter === "never"
-          ? !m.lastLoginAt && !m.lastSeenAt
-          : true
-      )
-      .sort((a, b) => {
-        // Most recently seen first; never-seen last, by name.
-        const at = a.lastSeenAt ? Date.parse(a.lastSeenAt) : 0;
-        const bt = b.lastSeenAt ? Date.parse(b.lastSeenAt) : 0;
-        return bt - at || a.name.localeCompare(b.name);
-      });
-  }, [members, q, filter, now]);
-
-  const counts = {
-    all: members.length,
-    active: members.filter((m) => m.lastSeenAt && now - Date.parse(m.lastSeenAt) < 30 * 86400_000).length,
-    never: members.filter((m) => !m.lastLoginAt && !m.lastSeenAt).length,
-  };
-  const canPreview = (m: RosterMember) =>
-    previewBlocker(
-      { user_id: m.userId, email: m.email, role: m.role, status: m.status, access_revoked_at: m.revoked ? "revoked" : null },
-      viewerUserId
-    ) === null;
-  // The guided tour points at the first "Preview as" button.
-  const firstPreviewable = rows.find(canPreview);
-
-  return (
-    <div className="rsd-card" data-tour="activity-members">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Members</h2>
-          <div style={muted}>Everyone with a portal login, and approved members who haven&apos;t signed up yet. Tap a row to see their sessions.</div>
-        </div>
-        <div style={{ position: "relative" }}>
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search name or email"
-            aria-label="Search members"
-            data-tour="activity-search"
-            style={{
-              padding: "8px 40px 8px 12px",
-              borderRadius: 10,
-              border: "1px solid var(--gw-border)",
-              background: "var(--gw-bg)",
-              fontSize: 13,
-              minWidth: 220,
-            }}
-          />
-          {q && <ClearSearchButton onClear={() => setQ("")} />}
-        </div>
-      </div>
-      <div role="tablist" aria-label="Show" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {(
-          [
-            ["all", "All"],
-            ["active", "Seen in 30 days"],
-            ["never", "Never signed in"],
-          ] as [Filter, string][]
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={filter === key}
-            onClick={() => setFilter(key)}
-            className="gw-press"
-            style={{
-              padding: "6px 12px",
-              borderRadius: 100,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              border: "1px solid",
-              borderColor: filter === key ? "var(--gw-fg)" : "var(--gw-border)",
-              background: filter === key ? "var(--gw-fg)" : "transparent",
-              color: filter === key ? "var(--gw-bg-elev)" : "var(--gw-fg-muted)",
-            }}
-          >
-            {label} · {counts[key]}
-          </button>
-        ))}
-      </div>
-      <table className="rsd-tbl">
-        <thead>
-          <tr>
-            <th>Member</th>
-            <th>Role</th>
-            <th>Last sign-in</th>
-            <th>Last seen</th>
-            <th className="num">Sessions · 30d</th>
-            <th aria-label="Actions" />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 && (
-            <tr>
-              <td colSpan={6} style={{ textAlign: "center", color: "var(--gw-fg-muted)" }}>
-                Nobody matches.
-              </td>
-            </tr>
-          )}
-          {rows.map((m) => {
-            return (
-              <tr
-                key={m.memberId}
-                onClick={m.userId ? () => router.push(`/portal/activity?u=${m.userId}`) : undefined}
-                style={{ cursor: m.userId ? "pointer" : "default" }}
-              >
-                <td>
-                  <div style={{ display: "flex", flexDirection: "column", padding: "8px 0" }}>
-                    {m.userId ? (
-                      <Link
-                        href={`/portal/activity?u=${m.userId}`}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}
-                      >
-                        {m.name}
-                      </Link>
-                    ) : (
-                      <span style={{ fontWeight: 700 }}>{m.name}</span>
-                    )}
-                    <span style={{ ...muted, fontWeight: 500 }}>
-                      {m.email}
-                      {!m.userId && (
-                        <>
-                          {" "}
-                          <Chip>{m.email?.trim() ? "Not signed up" : "Directory only"}</Chip>
-                        </>
-                      )}
-                      {m.revoked && (
-                        <>
-                          {" "}
-                          <Chip tone="bad">No login</Chip>
-                        </>
-                      )}
-                      {m.status !== "approved" && (
-                        <>
-                          {" "}
-                          <Chip>{m.status === "pending" ? "Awaiting approval" : "Denied"}</Chip>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </td>
-                <td>
-                  <Chip tone={m.role === "super_admin" ? "warn" : m.role === "admin" ? "ok" : "mute"}>
-                    {ROLE_LABELS[m.role] ?? m.role}
-                  </Chip>
-                </td>
-                <td style={{ whiteSpace: "nowrap" }}>
-                  <When iso={m.lastLoginAt} now={now} empty={<Chip>Not yet</Chip>} />
-                </td>
-                <td style={{ maxWidth: 280 }}>
-                  {m.lastSeenAt ? (
-                    <div style={{ display: "flex", flexDirection: "column", padding: "8px 0" }}>
-                      <When iso={m.lastSeenAt} now={now} empty={null} />
-                      {m.lastSeenPath && (
-                        <span
-                          title={m.lastSeenPath}
-                          style={{ ...muted, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                        >
-                          {pathLabel(m.lastSeenPath)}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span style={muted}>—</span>
-                  )}
-                </td>
-                <td className="num">{m.sessions30d}</td>
-                <td
-                  style={{ textAlign: "right" }}
-                  onClick={(e) => e.stopPropagation()}
-                  data-tour={m === firstPreviewable ? "activity-preview" : undefined}
-                >
-                  {canPreview(m) && <PreviewButton memberId={m.memberId} name={m.name} email={m.userId ? null : m.email} />}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </div>
   );
 }
@@ -424,15 +221,28 @@ function Previews({ previews, now }: { previews: Overview["previews"]; now: numb
   );
 }
 
-export function ActivityOverview({ data, viewerUserId }: { data: Overview; viewerUserId: string }) {
+// Settings → Members → Activity: the club-wide numbers that don't belong to
+// one person. Each member's own activity is on their Approved row.
+export function ActivityTab({ data }: { data: Overview }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--rsd-gap)" }}>
+      <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 560 }}>
+        How the portal is being used. Each member&apos;s last visit, sessions and <strong>Preview as</strong> are on
+        their row on the <strong>Approved</strong> tab.
+      </div>
+      <DailyChart daily={data.daily} now={data.asOf} />
+      <div style={{ display: "flex", gap: "var(--rsd-gap)", flexWrap: "wrap", alignItems: "flex-start" }}>
+        <TopPages pages={data.topPages} />
+        <Previews previews={data.previews} now={data.asOf} />
+      </div>
+    </div>
+  );
+}
+
+// The four usage numbers, above the Approved and Activity tabs.
+export function UsageStrip({ data }: { data: Overview }) {
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 560 }}>
-          Who&apos;s using the portal and how — sign-ins, sessions and the pages people open. Use{" "}
-          <strong>Preview as</strong> to see the portal exactly as a member does.
-        </div>
-      </div>
       {data.error && (
         <div
           role="alert"
@@ -443,23 +253,148 @@ export function ActivityOverview({ data, viewerUserId }: { data: Overview; viewe
             padding: "12px 16px",
             fontSize: 13,
             fontWeight: 600,
+            marginBottom: 14,
           }}
         >
           {data.error}
         </div>
       )}
-      <div className="rsd-kpi-grid" data-tour="activity-kpis">
+      <div className="rsd-kpi-grid" data-tour="activity-kpis" style={{ marginBottom: 14 }}>
         <KpiCard label="Sign-ins · 7 days" value={data.kpis.logins7d} />
         <KpiCard label="Active · 24 hours" value={data.kpis.active24h} sub="People who opened the portal" />
         <KpiCard label="Active · 7 days" value={data.kpis.active7d} sub={`of ${data.members.filter((m) => m.userId).length} with a login`} />
         <KpiCard label="Previews · 30 days" value={data.kpis.previews30d} />
       </div>
-      <DailyChart daily={data.daily} now={data.asOf} />
-      <Roster members={data.members} viewerUserId={viewerUserId} now={data.asOf} />
-      <div style={{ display: "flex", gap: "var(--rsd-gap)", flexWrap: "wrap", alignItems: "flex-start" }}>
-        <TopPages pages={data.topPages} />
-        <Previews previews={data.previews} now={data.asOf} />
+    </>
+  );
+}
+
+// Whether a member's row offers "Preview as" (the server action checks too).
+export function canPreview(m: RosterMember, viewerUserId: string): boolean {
+  return (
+    previewBlocker(
+      { user_id: m.userId, email: m.email, role: m.role, status: m.status, access_revoked_at: m.revoked ? "revoked" : null },
+      viewerUserId
+    ) === null
+  );
+}
+
+// The line under a member's name on the Approved tab.
+export function LastSeenLine({ m, now }: { m: RosterMember; now: number }) {
+  if (!m.lastSeenAt)
+    return (
+      <span style={{ color: m.userId ? "var(--gw-fg-muted)" : "#7A4B00" }}>
+        {m.lastLoginAt ? <>Signed in <When iso={m.lastLoginAt} now={now} empty={null} /></> : "Never signed in"}
+      </span>
+    );
+  return (
+    <span>
+      Last seen <When iso={m.lastSeenAt} now={now} empty={null} />
+      {m.lastSeenPath && <> on {pathLabel(m.lastSeenPath)}</>}
+      {" · "}
+      {m.sessions30d} {m.sessions30d === 1 ? "session" : "sessions"} in 30 days
+    </span>
+  );
+}
+
+// A member's own activity, opened from their Approved row: sessions each day
+// for the last 30 days, then their latest sessions. Each opens page by page
+// on the session pages.
+export function MemberActivityPanel({ userId }: { userId: string }) {
+  const [state, setState] = useState<
+    { status: "loading" } | { status: "error"; error: string } | { status: "ok"; sessions: SessionSummary[]; asOf: number }
+  >({ status: "loading" });
+  useEffect(() => {
+    let live = true;
+    fetchMemberSessions(userId).then((r) => {
+      if (!live) return;
+      setState("error" in r ? { status: "error", error: r.error } : { status: "ok", sessions: r.sessions, asOf: r.asOf });
+    });
+    return () => {
+      live = false;
+    };
+  }, [userId]);
+
+  const wrap = (children: React.ReactNode) => (
+    <div
+      data-tour="members-activity"
+      style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--gw-border)", display: "flex", flexDirection: "column", gap: 10 }}
+    >
+      {children}
+    </div>
+  );
+  if (state.status === "loading") return wrap(<div style={muted}>Loading…</div>);
+  if (state.status === "error") return wrap(<div style={{ ...muted, color: "var(--gw-error)" }}>{state.error}</div>);
+
+  const { sessions, asOf } = state;
+  const own = sessions.filter((s) => !s.isPreview);
+  const perDay = new Map<string, number>();
+  for (const s of own) {
+    const day = lastDays(1, Date.parse(s.startedAt))[0];
+    perDay.set(day, (perDay.get(day) ?? 0) + 1);
+  }
+  const days = lastDays(30, asOf).map((day) => ({ day, n: perDay.get(day) ?? 0 }));
+  const max = Math.max(1, ...days.map((d) => d.n));
+  const recent = sessions.slice(0, 5);
+
+  return wrap(
+    <>
+      <div>
+        <div style={{ ...muted, marginBottom: 4 }}>Sessions each day, last 30 days</div>
+        <div
+          role="img"
+          aria-label={`${own.filter((s) => asOf - Date.parse(s.startedAt) < 30 * 86400_000).length} sessions in the last 30 days`}
+          style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 40, borderBottom: "1px solid var(--gw-border)" }}
+        >
+          {days.map((d) => (
+            <div
+              key={d.day}
+              title={`${fmtDay(d.day)}: ${d.n} ${d.n === 1 ? "session" : "sessions"}`}
+              style={{
+                flex: 1,
+                height: d.n ? `${Math.max(8, (d.n / max) * 100)}%` : 0,
+                background: "#A67C00",
+                borderRadius: "3px 3px 0 0",
+              }}
+            />
+          ))}
+        </div>
       </div>
+      {recent.length === 0 ? (
+        <div style={muted}>No sessions yet.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {recent.map((s) => (
+            <Link
+              key={s.sid}
+              href={`/portal/activity?u=${userId}&sid=${s.sid}`}
+              className="rsd-dash-row"
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                padding: "6px 4px",
+                fontSize: 13,
+                color: "var(--gw-fg)",
+                textDecoration: "none",
+                borderBottom: "1px solid var(--gw-border)",
+              }}
+            >
+              <span style={{ fontWeight: 700, display: "inline-flex", gap: 6, alignItems: "center" }}>
+                <span title={fmtDateTime(s.startedAt)}>{relTime(s.startedAt, asOf)}</span>
+                {s.isPreview && <Chip tone="warn">Preview</Chip>}
+              </span>
+              <span style={{ ...muted, fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
+                {s.pageViews} {s.pageViews === 1 ? "page" : "pages"} ·{" "}
+                {fmtDuration(Date.parse(s.lastEventAt) - Date.parse(s.startedAt))}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+      <Link href={`/portal/activity?u=${userId}`} style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}>
+        All sessions →
+      </Link>
     </>
   );
 }

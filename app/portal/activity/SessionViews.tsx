@@ -77,7 +77,7 @@ export function SessionsList({
 }) {
   return (
     <>
-      <Crumbs items={[{ label: "Activity", href: "/portal/activity" }, { label: name }]} />
+      <Crumbs items={[{ label: "Members · Activity", href: "/portal/settings?tab=members&show=activity" }, { label: name }]} />
       {error && <ErrorNote message={error} />}
       <div className="rsd-card">
         <div>
@@ -187,7 +187,7 @@ export function SessionTimeline({
     <>
       <Crumbs
         items={[
-          { label: "Activity", href: "/portal/activity" },
+          { label: "Members · Activity", href: "/portal/settings?tab=members&show=activity" },
           { label: name, href: `/portal/activity?u=${userId}` },
           { label: "Session" },
         ]}
