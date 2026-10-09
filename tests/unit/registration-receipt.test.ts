@@ -60,3 +60,26 @@ test("the club's notice says who, how much and where to review it", () => {
   assert.match(text, /Father: Chris Carter · chris@example\.com · 402-555-0100/);
   assert.match(text, /portal\/directory\/registrations/);
 });
+
+test("a saved registration's receipt goes back to the family; any other address is a test", async () => {
+  const { savedInput, registrationEmails, greetingFor } = await import("../../lib/teams/registration-receipt.ts");
+  const saved = savedInput({
+    first_name: "Weston",
+    last_name: "Douglas",
+    extra: {
+      fee_tier: "8u-12u - $375.00",
+      payment_option: "Venmo",
+      needs_uniform: true,
+      father: { first: "Brad", last: "Douglas", email: "brad@example.com" },
+      mother: { first: "Anna", last: "Douglas", email: "anna@example.com" },
+      printed_name: "Anna Douglas",
+      email_confirmed: "anna@example.com",
+    },
+  });
+  assert.deepEqual(registrant(saved, "anna@example.com"), { email: "anna@example.com", first: "Anna" });
+  assert.deepEqual(registrationEmails(saved, "anna@example.com").sort(), ["anna@example.com", "anna@example.com", "brad@example.com"].sort());
+  assert.ok(!registrationEmails(saved, "anna@example.com").includes("tester@example.com"));
+  assert.equal(greetingFor(saved, "BRAD@example.com", "Anna"), "Brad");
+  assert.equal(greetingFor(saved, "tester@example.com", "Anna"), "Anna");
+  assert.equal(receipt([saved]).totalCents, 37500);
+});

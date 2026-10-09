@@ -4,6 +4,7 @@
 // pure, so tests can run it; lib/notifications/registration-receipt.ts sends.
 
 import { SEASON_LABEL, isHighSchoolTier, joinNames, tierParts, type RegistrationInput } from "./registration-form.ts"; // explicit extension so node --test can load this file
+import type { RegistrationExtra } from "./roster-logic.ts";
 
 export const VENMO_HANDLE = "OmahaLightning-Basketball";
 export const VENMO_URL = `https://venmo.com/u/${VENMO_HANDLE}`;
@@ -44,6 +45,46 @@ export function registrant(input: RegistrationInput, confirmedEmail: string | nu
   if (signed) return { email: signed.email!, first: signed.first };
   const first = parents.find((p) => p.email);
   return first ? { email: first.email!, first: first.first } : null;
+}
+
+// A saved registration (olb_registrations) back as the form's answers, for
+// sending its receipt again from the Registrations page.
+export function savedInput(reg: { first_name: string; last_name: string; extra: RegistrationExtra | null }): RegistrationInput {
+  const x = reg.extra ?? {};
+  return {
+    athlete_first: reg.first_name,
+    athlete_last: reg.last_name,
+    athlete_email: x.athlete_email ?? "",
+    needs_uniform: x.needs_uniform ?? null,
+    needs_grays: x.needs_grays ?? null,
+    fee_tier: x.fee_tier ?? "",
+    payment_option: x.payment_option ?? "",
+    father_first: x.father?.first ?? "",
+    father_last: x.father?.last ?? "",
+    father_email: x.father?.email ?? "",
+    father_phone: x.father?.phone ?? "",
+    mother_first: x.mother?.first ?? "",
+    mother_last: x.mother?.last ?? "",
+    mother_email: x.mother?.email ?? "",
+    mother_phone: x.mother?.phone ?? "",
+    printed_name: x.printed_name ?? "",
+    signature_mode: x.signature_name ? "type" : "draw",
+    signature_name: x.signature_name ?? "",
+  } as RegistrationInput;
+}
+
+// The emails on a registration: a receipt sent to one of these is the
+// family's and is kept; anything else is a test.
+export function registrationEmails(input: RegistrationInput, confirmedEmail: string | null): string[] {
+  return [confirmedEmail, input.father_email, input.mother_email, input.athlete_email].map(clean).filter((e): e is string => !!e);
+}
+
+// "Hi Anna" for whichever parent owns the address; else the registrant's name.
+export function greetingFor(input: RegistrationInput, email: string, fallback: string | null): string | null {
+  const e = clean(email);
+  if (e && clean(input.mother_email) === e) return input.mother_first?.trim() || fallback;
+  if (e && clean(input.father_email) === e) return input.father_first?.trim() || fallback;
+  return fallback;
 }
 
 export interface ReceiptPlayer {

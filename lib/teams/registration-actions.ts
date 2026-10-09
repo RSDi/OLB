@@ -10,7 +10,8 @@ import { CODE_MINUTES, CODES_PER_HOUR, VERIFIED_HOURS, checkCode, hashCode, newC
 import { findFamily } from "./registration-prefill";
 import { sendRegistrationCode } from "../notifications/registration-code";
 import { sendFamilyEmails } from "../notifications/registration-message";
-import { sendRegistrationEmails } from "../notifications/registration-receipt";
+import { sendReceipt, sendRegistrationEmails } from "../notifications/registration-receipt";
+import { greetingFor, registrant, registrationEmails, savedInput } from "./registration-receipt";
 import { ALL_RECIPIENTS, fillMessage, groupFamilies, messageHtml, type Recipient, type WaitlistRegistration } from "./waitlist";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { centralToday } from "../finances/data";
@@ -459,4 +460,37 @@ export async function sendRegistrationMessage(
 function refresh() {
   revalidatePath("/portal/directory", "layout");
   revalidatePath("/portal/payments");
+}
+
+// The registration receipt, sent (again) from the Registrations page: to the
+// person who registered by default, or to any address for a test. Sent to an
+// email on the registration, a copy is kept under Messages sent the same way
+// the form keeps it (no sender: the registration form); a test isn't kept.
+export async function sendRegistrationReceipt(id: string, rawTo: string): Promise<{ sent?: string; kept?: boolean; error?: string }> {
+  const gate = await requireRegistrations();
+  if ("error" in gate) return { error: gate.error };
+  const to = rawTo?.trim().toLowerCase();
+  if (!to || !looksLikeEmail(to)) return { error: "That email doesn't look right." };
+
+  // Read under the caller's own access (0102).
+  const db = await createClient();
+  const { data } = await db.from("olb_registrations").select("id, first_name, last_name, extra").eq("id", id).maybeSingle();
+  const reg = data as { id: string; first_name: string; last_name: string; extra: Extra | null } | null;
+  if (!reg) return { error: "That registration isn't there any more. Refresh the page." };
+
+  const input = savedInput(reg);
+  const confirmed = reg.extra?.email_confirmed ?? null;
+  const first = greetingFor(input, to, registrant(input, confirmed)?.first ?? null);
+  const res = await sendReceipt(input, to, first);
+  if ("error" in res) return { error: res.error };
+
+  const kept = registrationEmails(input, confirmed).includes(to);
+  if (kept) {
+    const { error } = await createAdminClient()
+      .from("olb_registration_messages")
+      .insert({ registration_id: id, subject: res.subject.slice(0, 200), body: res.text.slice(0, 5000), sent_to: [to], sent_by: null });
+    if (error) console.warn(`[registrations] keeping a copy of the receipt failed: ${error.message}`);
+  }
+  refresh();
+  return { sent: to, kept };
 }

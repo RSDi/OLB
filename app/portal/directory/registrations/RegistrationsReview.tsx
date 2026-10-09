@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { MapLink } from "../../../components/MapLink";
-import { Pill, Textarea } from "../../../components/ui";
+import { Input, Pill, Textarea } from "../../../components/ui";
 import { ageFromDob } from "../../../../lib/teams/age";
 import {
   approveRegistration,
@@ -12,6 +12,7 @@ import {
   removeRegistration,
   restoreToWaitlist,
   sendRegistrationMessage,
+  sendRegistrationReceipt,
   setRegistrationContacted,
   updateRegistrationNote,
   waitlistRegistration,
@@ -31,6 +32,7 @@ import {
 import { formatDollars, registrationFeeCents, registrationTier } from "../../../../lib/finances/logic";
 import { ContactLine, formatDate, muted } from "../_shared/PlayerParts";
 import { ComposeSheet, SentMessages } from "../_shared/Messaging";
+import { registrant, savedInput } from "../../../../lib/teams/registration-receipt";
 import { WAITLIST_TEMPLATE } from "../../../../lib/teams/email-templates";
 import { ErrorNote, capStyle } from "../../payments/parts";
 import { PlayerNotes } from "../_shared/PlayerNotes";
@@ -383,6 +385,8 @@ function RegistrationCard({
         <SentMessages messages={reg.messages} style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 12 }} />
       )}
 
+      <ReceiptSender reg={reg} />
+
       {error && <ErrorNote text={error} />}
 
       {tab === "waiting" && noting && (
@@ -644,6 +648,7 @@ function ApprovedRow({ reg, border }: { reg: PendingRegistration; border: boolea
         )}
         {team && <span className="rsd-chip rsd-chip-mute">{team}</span>}
         {tier && <span style={muted}>{tier}</span>}
+        <ReceiptSender reg={reg} compact />
       </div>
       <span style={muted}>
         {[
@@ -653,6 +658,59 @@ function ApprovedRow({ reg, border }: { reg: PendingRegistration; border: boolea
           .filter(Boolean)
           .join(" · ")}
       </span>
+    </div>
+  );
+}
+
+// Send receipt: the email the form sends when a family registers, sent again
+// for this registration. It starts addressed to whoever registered; change
+// the address to send a test, which isn't kept under Messages sent.
+function ReceiptSender({ reg, compact }: { reg: PendingRegistration; compact?: boolean }) {
+  const router = useRouter();
+  const start = registrant(savedInput(reg), reg.extra.email_confirmed ?? null)?.email ?? "";
+  const [open, setOpen] = useState(false);
+  const [to, setTo] = useState(start);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function send() {
+    setBusy(true);
+    setStatus(null);
+    const res = await sendRegistrationReceipt(reg.id, to);
+    setBusy(false);
+    if (res.error) return setStatus({ ok: false, text: res.error });
+    setStatus({ ok: true, text: `Sent to ${res.sent}.${res.kept ? " A copy is kept under Messages sent." : " A test, so no copy is kept."}` });
+    setOpen(false);
+    router.refresh();
+  }
+
+  if (!open)
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap", ...(compact ? {} : { alignSelf: "flex-start" }) }}>
+        <button type="button" onClick={() => { setOpen(true); setStatus(null); }} style={linkButton}>
+          Send receipt
+        </button>
+        {status && <span style={{ ...muted, color: status.ok ? "var(--gw-fg)" : "var(--gw-error)", fontWeight: 600 }}>{status.text}</span>}
+      </span>
+    );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 12, background: "var(--gw-bg)", border: "1px solid var(--gw-border)", width: compact ? "100%" : undefined }}>
+      <Input
+        label="Send the registration receipt to"
+        help="Starts with whoever registered. Use another address to send yourself a test; only a send to the family is kept under Messages sent."
+        type="email"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+      />
+      {status && !status.ok && <ErrorNote text={status.text} />}
+      <div style={{ display: "flex", gap: 8 }}>
+        <Pill variant="dark" onClick={send} disabled={busy || !to.trim()}>
+          {busy ? "Sending…" : "Send"}
+        </Pill>
+        <Pill variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
+          Cancel
+        </Pill>
+      </div>
     </div>
   );
 }
