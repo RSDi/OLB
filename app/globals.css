@@ -1893,3 +1893,26 @@ main::-webkit-scrollbar-track { background: transparent; }
   }
   [data-theme="lightning"] .rsd-chip { background: transparent; color: #1A1A1A; border-color: #BDBDBD; }
 }
+
+/* The HS Schedule on paper (⋯ → Print): just the grid, landscape, in color,
+   with a line saying which season and what's showing. Scoped to that page so
+   nothing else prints differently. */
+.hs-print-only { display: none; }
+@page hs { size: landscape; margin: 10mm; }
+@media print {
+  body:has(.hs-grid) .rsd-sidebar,
+  body:has(.hs-grid) .rsd-topbar,
+  body:has(.hs-grid) .hs-no-print,
+  body:has(.hs-grid) .gw-mobile-cards { display: none !important; }
+  body:has(.hs-grid) .rsd-app { display: block !important; height: auto !important; }
+  body:has(.hs-grid) .rsd-app main { display: block !important; overflow: visible !important; padding: 0 !important; }
+  /* The whole document on the landscape page (set on the root, so there's
+     no blank first page before the switch). */
+  html:has(.hs-grid), html:has(.hs-grid) body { page: hs; }
+  body:has(.hs-grid) .hs-print-only { display: block !important; margin-bottom: 8px; }
+  body:has(.hs-grid) .gw-desktop-table { display: block !important; zoom: 0.8; border: none; }
+  .hs-grid, .hs-grid * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .hs-grid-head { position: static !important; }
+  .hs-grid > div { overflow: visible !important; }
+  .hs-grid tr { break-inside: avoid; }
+}

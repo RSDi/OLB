@@ -496,7 +496,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "schedule-seasons",
         title: "One season at a time",
-        body: "The arrows move between seasons; the earlier ones stay to look back on.",
+        body: "The arrows move between seasons, and tapping the season's name lists them all; the earlier ones stay to look back on. The tag says whether it's this season, and the season's notes sit just below.",
       },
       {
         target: "schedule-legend",
@@ -550,6 +550,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         dismiss: "schedule-popover-done",
         title: "View",
         body: "**Compare with** puts another season's same weekend beside each row: what we did a year ago, at a glance. **Show hidden teams** and **Show past months** open what's folded away.",
+      },
+      {
+        target: "schedule-more",
+        title: "Print or share",
+        body: "**Print** puts the grid on landscape pages; **Copy link** copies the schedule as you're seeing it, filters and all.",
       },
       {
         target: "schedule-season-settings",
