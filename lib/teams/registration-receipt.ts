@@ -151,8 +151,7 @@ export function receiptHtml(r: Receipt, who: Registrant, o: ReceiptOptions): str
 <tr><td style="padding:24px 36px 8px;">${label("What happens next")}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 ${step(1, `The club reviews your registration and places ${kids} on ${r.players.length > 1 ? "teams" : "a team"}.`)}
-${step(2, "You&rsquo;ll get an email to sign in to the parent portal, where you can see your balance, the team directory and schedules.")}
-${step(3, "Your coach reaches out with practice times and what to bring.")}
+${step(2, "A board member will contact you with instructions for joining our team communication platform, Slack.")}
 </table></td></tr>
 <tr><td style="padding:12px 36px 32px;"><p style="margin:0;font-size:14.5px;line-height:1.6;color:#333;">Questions? Just reply to this email.<br><strong>Go Lightning!</strong></p></td></tr>
 <tr><td style="background:#000;padding:22px 36px;"><div style="height:3px;background:#fbcb44;border-radius:2px;margin-bottom:14px;"></div>
@@ -175,6 +174,10 @@ export function receiptText(r: Receipt, who: Registrant, o: Pick<ReceiptOptions,
     r.payment === "Venmo"
       ? `You chose Venmo. If you haven't paid yet, send ${money(r.totalCents)} to @${VENMO_HANDLE} (${VENMO_URL}) with ${kids} in the note. Paying by check instead? ${check[0].toUpperCase()}${check.slice(1)}`
       : `You chose check. If you haven't paid yet, send ${money(r.totalCents)}: ${check}`,
+    "",
+    "WHAT HAPPENS NEXT",
+    `1. The club reviews your registration and places ${kids} on ${r.players.length > 1 ? "teams" : "a team"}.`,
+    "2. A board member will contact you with instructions for joining our team communication platform, Slack.",
     "",
     "Questions? Just reply to this email. Go Lightning!",
   ].join("\n");

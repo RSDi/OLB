@@ -42,6 +42,11 @@ test("the receipt lists each player, the total and how to pay", () => {
   assert.match(html, /reply to this email for the mailing address/);
   assert.match(receiptHtml(r, who, { logoUrl: "x", checkAddress: ["Treasurer", "1 Main St"] }), /Treasurer<br>1 Main St/);
   assert.match(receiptText(r, who, { checkAddress: [] }), /Total: \$900\.00/);
+  // What happens next: placement, then Slack. No portal sign-in yet.
+  assert.match(html, /places Sam and Evan on teams/);
+  assert.match(html, /joining our team communication platform, Slack/);
+  assert.doesNotMatch(html, /portal/i);
+  assert.match(receiptText(r, who, { checkAddress: [] }), /2\. A board member will contact you/);
   // Names are escaped.
   assert.match(receiptHtml(receipt([input({ athlete_first: "<b>" })]), who, { logoUrl: "x", checkAddress: [] }), /&lt;b&gt;/);
 });
