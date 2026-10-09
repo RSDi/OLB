@@ -1,5 +1,6 @@
 // Registrations from the public form, for the Directory's banner and its
-// Registrations page: Waiting (to review), Waitlist (0115) and Approved. Runs
+// Registrations page: New (to review), Waitlist (0115), Approved, and
+// Removed (families who withdrew or were taken off the roster, and tests). Runs
 // under the viewer's own access: only people with the Registrations
 // permission get rows back (0102).
 
@@ -7,8 +8,9 @@ import { createClient } from "../supabase/server";
 import { matchRoster, type RegistrationExtra, type RosterMatch } from "./roster-logic";
 import type { SentMessage } from "./family-mail";
 
-export type RegistrationTab = "waiting" | "waitlist" | "approved";
-const STATUS: Record<RegistrationTab, string> = { waiting: "pending", waitlist: "waitlisted", approved: "approved" };
+// "waiting" is the New tab; the key stays for old links.
+export type RegistrationTab = "waiting" | "waitlist" | "approved" | "removed";
+const STATUS: Record<RegistrationTab, string> = { waiting: "pending", waitlist: "waitlisted", approved: "approved", removed: "rejected" };
 
 export interface RosterPlayer {
   id: string;
@@ -64,12 +66,12 @@ export async function countRegistrations(): Promise<Record<RegistrationTab, numb
     const { count: n } = await db.from("olb_registrations").select("id", { count: "exact", head: true }).eq("status", STATUS[tab]);
     return n ?? 0;
   };
-  const [waiting, waitlist, approved] = await Promise.all([count("waiting"), count("waitlist"), count("approved")]);
-  return { waiting, waitlist, approved };
+  const [waiting, waitlist, approved, removed] = await Promise.all([count("waiting"), count("waitlist"), count("approved"), count("removed")]);
+  return { waiting, waitlist, approved, removed };
 }
 
-// Waiting and Waitlist oldest first (the order they came in, so the waitlist
-// reads first in line first); Approved newest approval first.
+// New and Waitlist oldest first (the order they came in, so the waitlist
+// reads first in line first); Approved and Removed newest first.
 export async function loadRegistrations(tab: RegistrationTab): Promise<PendingRegistration[]> {
   const db = await createClient();
   const { data } = await db
@@ -79,13 +81,13 @@ export async function loadRegistrations(tab: RegistrationTab): Promise<PendingRe
         "player:olb_players(id, full_name, team:olb_teams(name, age_group))"
     )
     .eq("status", STATUS[tab])
-    .order(tab === "approved" ? "reviewed_at" : "created_at", { ascending: tab !== "approved" });
+    .order(tab === "approved" || tab === "removed" ? "reviewed_at" : "created_at", { ascending: tab === "waiting" || tab === "waitlist" });
   const rows = (data as unknown as Row[] | null) ?? [];
   if (rows.length === 0) return [];
 
   const [roster, messages] = await Promise.all([
     tab === "approved" ? Promise.resolve([] as (RosterPlayer & { board_id: string })[]) : loadRoster(rows),
-    tab === "waitlist" ? loadMessages(rows.map((r) => r.id)) : Promise.resolve([] as (RegistrationMessage & { registration_id: string; sent_by: string | null })[]),
+    tab === "waitlist" || tab === "removed" ? loadMessages(rows.map((r) => r.id)) : Promise.resolve([] as (RegistrationMessage & { registration_id: string; sent_by: string | null })[]),
   ]);
   const names = await loadNames([
     ...rows.flatMap((r) => [r.reviewed_by, r.contacted_by]),

@@ -191,7 +191,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "directory-registrations-link",
         audience: "registrations",
         title: "Registrations",
-        body: "Opens registrations from the form: **Waiting** to review, the **Waitlist** and **Approved**. When some are waiting, a yellow bar at the top says how many.",
+        body: "Opens registrations from the form: **New** to review, the **Waitlist**, **Approved** and **Removed**. When some are new, a yellow bar at the top says how many.",
       },
       {
         target: "directory-search",
@@ -267,8 +267,8 @@ export const GUIDE_TOURS: GuideTour[] = [
       },
       {
         target: "registrations-tabs",
-        title: "Waiting, Waitlist, Approved",
-        body: "**Waiting** is the review queue. **Waitlist** keeps families you can't place yet, so you can reach them and approve them when a spot opens. **Approved** is the history.",
+        title: "New, Waitlist, Approved, Removed",
+        body: "**New** is the review queue. **Waitlist** keeps families you can't place yet, so you can reach them and approve them when a spot opens. **Approved** is the history. **Removed** keeps families who withdrew or were taken off the roster; you can still approve them.",
       },
       {
         target: "registration-card",

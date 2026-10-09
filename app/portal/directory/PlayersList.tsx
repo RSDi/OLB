@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { MapLink } from "../../components/MapLink";
 import { ClearSearchButton } from "../../components/ui";
@@ -49,6 +50,8 @@ function sortName(p: DirectoryPlayer): string {
 
 type View = "team" | "age";
 const NO_TEAM = "none";
+// Team filter entries that open a Registrations tab instead of filtering.
+const OFF_ROSTER_TABS: Record<string, string> = { __waitlist: "waitlist", __removed: "removed" };
 // The board's requirement filter: who's still missing it, who's handled it.
 type ReqShow = "missing" | "done" | "waived" | "all";
 
@@ -81,9 +84,10 @@ export function PlayersList({
   canEmail: boolean;
   // The Slack DMs grant (0118): Slack families, to the players in view.
   canSlack: boolean;
-  // Waiting and waitlisted registrations; null without the grant.
-  registrations: { waiting: number; waitlist: number } | null;
+  // New, waitlisted and removed registrations; null without the grant.
+  registrations: { waiting: number; waitlist: number; removed: number } | null;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>("team");
   const [teamId, setTeamId] = useState("all");
@@ -252,7 +256,13 @@ export function PlayersList({
           {showTeamFilter && (
             <FilterSelect
               value={teamId}
-              onChange={(e) => setTeamId(e.target.value)}
+              onChange={(e) => {
+                // The Waitlist and Removed aren't on the roster: they open on
+                // the Registrations page.
+                const tab = OFF_ROSTER_TABS[e.target.value];
+                if (tab) router.push(`/portal/directory/registrations?tab=${tab}`);
+                else setTeamId(e.target.value);
+              }}
               aria-label="Show a team"
               data-tour="directory-teams"
               active={teamId !== "all"}
@@ -267,6 +277,10 @@ export function PlayersList({
               {(countByTeam.get(NO_TEAM) ?? 0) > 0 && (
                 <option value={NO_TEAM}>No team yet ({countByTeam.get(NO_TEAM)})</option>
               )}
+              {registrations && registrations.waitlist > 0 && (
+                <option value="__waitlist">On the waitlist ({registrations.waitlist}) ›</option>
+              )}
+              {registrations && registrations.removed > 0 && <option value="__removed">Removed ({registrations.removed}) ›</option>}
             </FilterSelect>
           )}
           {showGroupFilter && (
@@ -544,7 +558,7 @@ function RegistrationsBanner({ count }: { count: number }) {
 // Always there for the Registrations grant, so the Waitlist and Approved
 // tabs are a tap away even when nothing is waiting.
 function RegistrationsLink({ counts }: { counts: { waiting: number; waitlist: number } }) {
-  const detail = [counts.waiting > 0 && `${counts.waiting} waiting`, counts.waitlist > 0 && `${counts.waitlist} on waitlist`]
+  const detail = [counts.waiting > 0 && `${counts.waiting} new`, counts.waitlist > 0 && `${counts.waitlist} on waitlist`]
     .filter(Boolean)
     .join(" · ");
   return (

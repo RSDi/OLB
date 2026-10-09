@@ -10,6 +10,7 @@ import {
   approveRegistration,
   moveRegistrationToWaiting,
   removeRegistration,
+  restoreToWaitlist,
   sendRegistrationMessage,
   setRegistrationContacted,
   updateRegistrationNote,
@@ -36,14 +37,16 @@ import { PlayerNotes } from "../_shared/PlayerNotes";
 import type { PlayerNote } from "../../../../lib/teams/player-notes";
 
 const TABS: { key: RegistrationTab; label: string }[] = [
-  { key: "waiting", label: "Waiting" },
+  { key: "waiting", label: "New" },
   { key: "waitlist", label: "Waitlist" },
   { key: "approved", label: "Approved" },
+  { key: "removed", label: "Removed" },
 ];
 
-// Registrations from the public form, in three tabs: Waiting to be reviewed
+// Registrations from the public form, in four tabs: New, to be reviewed
 // (Approve, or Waitlist), the Waitlist (families to reach and approve when a
-// spot opens), and Approved, a history.
+// spot opens), Approved, a history, and Removed (withdrew, taken off the
+// roster, or a test), which can still be approved or waitlisted.
 export function RegistrationsReview({
   tab,
   counts,
@@ -118,10 +121,11 @@ export function RegistrationsReview({
       {tab === "waitlist" && registrations.length > 0 && <WaitlistTools registrations={registrations} onMessageAll={() => setCompose(registrations)} />}
 
       <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
-        {tab === "waiting" && (registrations.length === 0 ? "Nothing waiting" : `${registrations.length} waiting, oldest first`)}
+        {tab === "waiting" && (registrations.length === 0 ? "Nothing new" : `${registrations.length} new, oldest first`)}
         {tab === "waitlist" &&
           (registrations.length === 0 ? "Nobody on the waitlist" : `${registrations.length} on the waitlist, in the order they registered`)}
         {tab === "approved" && (registrations.length === 0 ? "None approved yet" : `${registrations.length} approved, newest first`)}
+        {tab === "removed" && (registrations.length === 0 ? "Nobody removed" : `${registrations.length} removed, newest first`)}
       </span>
 
       {registrations.length === 0 ? (
@@ -131,7 +135,9 @@ export function RegistrationsReview({
               ? "No new registrations. When a family fills in the registration form, it shows up here."
               : tab === "waitlist"
                 ? "When you put a registration on the waitlist, it shows up here so you can reach the family and approve them later."
-                : "Registrations you approve are listed here."}
+                : tab === "removed"
+                  ? "Families who withdrew or were taken off the roster show up here, so there's always a record."
+                  : "Registrations you approve are listed here."}
           </div>
         </div>
       ) : tab === "approved" ? (
@@ -328,6 +334,8 @@ function RegistrationCard({
         />
       )}
 
+      {tab === "removed" && <RemovedStatus reg={reg} />}
+
       {reg.match && <MatchNote reg={reg} />}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
@@ -371,7 +379,7 @@ function RegistrationCard({
 
       <PlayerNotes owner={{ registrationId: reg.id }} notes={notes} framed={false} />
 
-      {tab === "waitlist" && reg.messages.length > 0 && (
+      {(tab === "waitlist" || tab === "removed") && reg.messages.length > 0 && (
         <SentMessages messages={reg.messages} style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 12 }} />
       )}
 
@@ -434,12 +442,12 @@ function RegistrationCard({
               disabled={busy !== null}
               style={linkButton}
             >
-              {busy === "back" ? "Moving…" : "Move back to Waiting"}
+              {busy === "back" ? "Moving…" : "Move back to New"}
             </button>
             <button
               type="button"
               onClick={() =>
-                run("remove", () => removeRegistration(reg.id), `Remove ${name}'s registration? It won't show on any tab. Use this for tests and families who withdrew.`)
+                run("remove", () => removeRegistration(reg.id), `Move ${name} to the Removed tab? Use this for tests and families who withdrew. Approve still works from there.`)
               }
               disabled={busy !== null}
               style={{ ...linkButton, color: "var(--gw-error)" }}
@@ -447,6 +455,16 @@ function RegistrationCard({
               {busy === "remove" ? "Removing…" : "Remove"}
             </button>
           </>
+        )}
+        {tab === "removed" && (
+          <button
+            type="button"
+            onClick={() => run("restore", () => restoreToWaitlist(reg.id))}
+            disabled={busy !== null}
+            style={linkButton}
+          >
+            {busy === "restore" ? "Moving…" : "Move to the waitlist"}
+          </button>
         )}
         {tab === "waiting" && (
           <span style={{ ...muted, flex: "1 1 240px" }}>
@@ -518,12 +536,7 @@ function WaitlistStatus({
         <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg)" }}>
           On the waitlist{since ? ` since ${since}` : ""}
           {reg.reviewed_by_name ? ` · by ${reg.reviewed_by_name}` : ""}
-          {reg.extra.from_roster && (
-            <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>
-              {" · "}
-              Moved off the roster{reg.extra.from_roster.team ? ` (was on ${reg.extra.from_roster.team})` : ""}
-            </span>
-          )}
+          <FromRoster reg={reg} />
         </span>
         <label data-tour="waitlist-contacted" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
           <input type="checkbox" checked={contacted} disabled={busy !== null} onChange={(e) => onContacted(e.target.checked)} />
@@ -562,6 +575,43 @@ function WaitlistStatus({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// Taken off the roster from Edit player: the team they were on.
+function FromRoster({ reg }: { reg: PendingRegistration }) {
+  const was = reg.extra.from_roster;
+  if (!was) return null;
+  return (
+    <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}>
+      {" · "}
+      Taken off the roster{was.team ? ` (was on ${was.team}${was.jersey_number ? `, #${was.jersey_number}` : ""})` : ""}
+    </span>
+  );
+}
+
+// When it was removed, by whom, and why.
+function RemovedStatus({ reg }: { reg: PendingRegistration }) {
+  const when = reg.reviewed_at ? formatDate(reg.reviewed_at.slice(0, 10)) : null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        padding: "10px 12px",
+        borderRadius: 10,
+        background: "var(--gw-bg)",
+        border: "1px solid var(--gw-border)",
+      }}
+    >
+      <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--gw-fg)" }}>
+        Removed{when ? ` ${when}` : ""}
+        {reg.reviewed_by_name ? ` · by ${reg.reviewed_by_name}` : ""}
+        <FromRoster reg={reg} />
+      </span>
+      {reg.notes && <span style={{ ...muted, fontSize: 12.5, whiteSpace: "pre-wrap" }}>{reg.notes}</span>}
     </div>
   );
 }

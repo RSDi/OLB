@@ -17,7 +17,8 @@ export default async function DirectoryPage() {
   const playerList = await players;
   const req = viewer.canCheckRequirements ? await requirements : { requirements: [], rows: [] };
   const playerIds = new Set(playerList.map((p) => p.id));
-  // Waiting and waitlisted registrations, for the Registrations button.
+  // New, waitlisted and removed registrations, for the Registrations button
+  // and the team filter.
   const registrations = viewer.canManageRegistrations ? await countRegistrations() : null;
 
   // Everyone filters by team; the board (staff) and anyone holding a

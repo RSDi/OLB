@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input, Pill, Select, Textarea } from "../../../../components/ui";
-import { moveToWaitlist, removePlayer, updatePlayer } from "../../../../../lib/teams/actions";
+import { moveOffRoster, updatePlayer, type OffRoster } from "../../../../../lib/teams/actions";
 import { AGE_GROUPS } from "../../../../../lib/teams/volunteer-options";
 import type { DirectoryPlayer } from "../../_shared/data";
 import { ErrorNote, Sheet } from "../../../payments/parts";
@@ -18,7 +18,9 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
   const [ageGroup, setAgeGroup] = useState(p.age_group ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [waitlisting, setWaitlisting] = useState(false);
+  // Remove from team…: open, and where they go.
+  const [removing, setRemoving] = useState(false);
+  const [to, setTo] = useState<OffRoster>("waitlisted");
   const [why, setWhy] = useState("");
   const groups = p.age_group && !AGE_GROUPS.includes(p.age_group) ? [p.age_group, ...AGE_GROUPS] : AGE_GROUPS;
 
@@ -33,26 +35,14 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
   }
 
   async function remove() {
-    if (!confirm(`Take ${p.full_name} off the roster? They leave the Directory and their team, and their parents stay as members.`)) return;
     setBusy(true);
     setError(null);
-    const res = await removePlayer(p.id);
+    const res = await moveOffRoster(p.id, to, why);
     if (res.error) {
       setBusy(false);
       return setError(res.error);
     }
-    router.push("/portal/directory");
-  }
-
-  async function waitlist() {
-    setBusy(true);
-    setError(null);
-    const res = await moveToWaitlist(p.id, why);
-    if (res.error) {
-      setBusy(false);
-      return setError(res.error);
-    }
-    router.push("/portal/directory/registrations?tab=waitlist");
+    router.push(`/portal/directory/registrations?tab=${to === "waitlisted" ? "waitlist" : "removed"}`);
   }
 
   return (
@@ -100,60 +90,69 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
           alignItems: "flex-start",
         }}
       >
-        {waitlisting ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, alignSelf: "stretch" }}>
+        {removing ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, alignSelf: "stretch" }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: "var(--gw-fg)" }}>Where does {p.full_name.split(" ")[0]} go?</span>
+            {(
+              [
+                ["waitlisted", "Waitlist", "Lost their spot (didn't show, stopped answering). They can be approved again when a spot opens."],
+                ["rejected", "Withdrawn", "Not playing this season. They go on the Removed tab, so there's still a record."],
+              ] as [OffRoster, string, string][]
+            ).map(([value, label, help]) => (
+              <label
+                key={value}
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "flex-start",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: `1px solid ${to === value ? "var(--rsd-accent)" : "var(--gw-border)"}`,
+                  background: to === value ? "var(--rsd-accent-bg)" : "var(--gw-bg)",
+                  cursor: "pointer",
+                }}
+              >
+                <input type="radio" name="off-roster" checked={to === value} onChange={() => setTo(value)} style={{ marginTop: 3 }} />
+                <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>{label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>{help}</span>
+                </span>
+              </label>
+            ))}
             <Textarea
-              label="Why they're going back on the waitlist (optional)"
-              help="Shows on the Waitlist tab. Families don't see it. For the full story, with screenshots, add a note on the player first; it moves with them."
+              label="Why (optional)"
+              help="Shows on their registration. Families don't see it. For the full story, with screenshots, add a note on the player; it moves with them."
               value={why}
               maxLength={500}
               rows={2}
               onChange={(e) => setWhy(e.target.value)}
-              placeholder="e.g. Didn't come to practice and didn't answer for two weeks."
+              placeholder={to === "waitlisted" ? "e.g. Didn't come to practice and didn't answer for two weeks." : "e.g. Moved away."}
             />
+            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+              They leave their team and the Directory, with their notes. What they owe on Payments comes off. If the
+              family has paid something, the Treasurer refunds it first. <strong>Approve</strong> brings them back.
+            </span>
             <div style={{ display: "flex", gap: 8 }}>
-              <Pill variant="dark" onClick={waitlist} disabled={busy}>
-                {busy ? "Moving…" : "Move to the waitlist"}
+              <Pill variant="dark" onClick={remove} disabled={busy}>
+                {busy ? "Moving…" : to === "waitlisted" ? "Move to the waitlist" : "Mark withdrawn"}
               </Pill>
-              <Pill variant="ghost" onClick={() => setWaitlisting(false)} disabled={busy}>
+              <Pill variant="ghost" onClick={() => setRemoving(false)} disabled={busy}>
                 Cancel
               </Pill>
             </div>
           </div>
         ) : (
-          <span data-tour="player-waitlist" style={{ display: "inline-flex" }}>
-            <Pill variant="light" onClick={() => setWaitlisting(true)} disabled={busy}>
-              Move to the waitlist
-            </Pill>
-          </span>
+          <>
+            <span data-tour="player-remove" style={{ display: "inline-flex" }}>
+              <Pill variant="light" onClick={() => setRemoving(true)} disabled={busy}>
+                Remove from team…
+              </Pill>
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+              Off the roster, to the Waitlist or as withdrawn. Nothing is deleted.
+            </span>
+          </>
         )}
-        <span style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)", lineHeight: 1.5, marginBottom: 8 }}>
-          For a family that lost their spot. They leave their team and the Directory and go on Registrations → Waitlist,
-          with their notes. Their registration fee comes off Payments. <strong>Approve</strong> brings them back.
-        </span>
-        <button
-          type="button"
-          onClick={remove}
-          disabled={busy}
-          data-tour="player-remove"
-          className="gw-press"
-          style={{
-            border: "1px solid var(--gw-error)",
-            background: "var(--gw-error-bg)",
-            color: "var(--gw-error)",
-            borderRadius: 100,
-            padding: "8px 14px",
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: busy ? "wait" : "pointer",
-          }}
-        >
-          Take off the roster
-        </button>
-        <span style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
-          For a player who isn&apos;t in the program this season. A player with charges or payments on the Payments page
-          stays until the Treasurer voids them.
-        </span>
       </div>
     </Sheet>
   );
