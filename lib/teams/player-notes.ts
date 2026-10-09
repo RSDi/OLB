@@ -18,9 +18,31 @@ export interface NoteAttachment {
   size: number;
 }
 
+// Messages saved from the Slack Archive (0125), kept on the note as they
+// were, so the note shows them the way the archive does: a thread's first
+// message, then its replies. A file with a path is one of the note's
+// attachments; one without stayed in the archive.
+export interface SlackSnapshot {
+  channel_id: string;
+  channel_label: string;
+  // The message it was saved from, for the link back.
+  ts: string;
+  messages: {
+    ts: string;
+    author_name: string | null;
+    posted_at: string;
+    message_text: string;
+    edited: boolean;
+    reactions: { name: string; count: number; users: { name: string | null }[] }[];
+    files: { name: string; type: string; path: string | null }[];
+  }[];
+}
+
 export interface PlayerNote {
   id: string;
   body: string;
+  // Saved from the Slack Archive; null for a note written here.
+  slack: SlackSnapshot | null;
   attachments: (NoteAttachment & { url: string | null })[];
   created_at: string;
   updated_at: string;

@@ -1,63 +1,59 @@
 // Saving a Slack Archive message to a player's notes (lib/teams/slack-note.ts):
-// the note's words and which files come along.
+// the messages kept on the note, and which files come along.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pickNoteFiles, slackNoteBody, slackToMarkdown } from "../../lib/teams/slack-note.ts";
+import { dropFailedCopies, slackSnapshot, type ArchivedNoteMessage } from "../../lib/teams/slack-note.ts";
 
-const msg = (text: string, files: { name: string; mimetype: string; size: number; storage_path: string | null }[] = []) => ({
+const msg = (ts: string, files: ArchivedNoteMessage["files"] = []): ArchivedNoteMessage => ({
+  ts,
   author_name: "Pat Coach",
   posted_at: "2026-10-03T14:14:00Z",
-  message_text: text,
+  message_text: "*No reply* :eyes:",
+  edited: null,
+  reactions: [{ name: "+1", count: 1, users: [{ name: "Sam" }] }],
   files,
 });
 
-test("Slack's bold and strike become markdown; entities are decoded", () => {
-  assert.equal(slackToMarkdown("*No reply* in ~two~ weeks &amp; counting"), "**No reply** in ~~two~~ weeks & counting");
-  assert.equal(slackToMarkdown("2 * 3 = 6"), "2 * 3 = 6");
-  assert.equal(slackToMarkdown("_italic_ stays"), "_italic_ stays");
-});
-
-test("pictures and PDFs come along; videos and missing files are named instead", () => {
-  const { copy, skipped } = pickNoteFiles([
-    msg("a", [
-      { name: "texts.png", mimetype: "image/png", size: 1000, storage_path: "C1/1.2/F1-texts.png" },
-      { name: "clip.mov", mimetype: "video/quicktime", size: 1000, storage_path: "C1/1.2/F2-clip.mov" },
-      { name: "lost.jpg", mimetype: "image/jpeg", size: 1000, storage_path: null },
-      { name: "huge.pdf", mimetype: "application/pdf", size: 20 * 1024 * 1024, storage_path: "C1/1.2/F3-huge.pdf" },
-    ]),
-  ]);
-  assert.deepEqual(copy.map((f) => [f.name, f.ext]), [["texts.png", "png"]]);
-  assert.deepEqual(skipped, ["clip.mov", "lost.jpg", "huge.pdf"]);
-});
-
-test("the note quotes each message under who wrote it and when, with a link back", () => {
-  const body = slackNoteBody({
-    comment: "The board's discussion.",
-    channelLabel: "board",
-    href: "/portal/slack-archive/C1#msg-1.2",
-    messages: [msg("First line\nSecond line"), msg("")],
-    skipped: ["clip.mov"],
-  });
-  assert.equal(
-    body,
-    [
-      "The board's discussion.",
-      "From Slack, #board ([open in the Slack Archive](/portal/slack-archive/C1#msg-1.2)):",
-      "**Pat Coach** · Oct 3, 2026, 9:14 AM\n> First line\n> Second line",
-      "**Pat Coach** · Oct 3, 2026, 9:14 AM\n> _(attachments only)_",
-      "_Not copied (open the Slack Archive for these): clip.mov_",
-    ].join("\n\n")
+test("each message keeps its text, reactions and its own files", () => {
+  let n = 0;
+  const { snapshot, copy } = slackSnapshot(
+    {
+      channelId: "C1",
+      channelLabel: "#board",
+      ts: "1.1",
+      messages: [
+        msg("1.1", [
+          { name: "texts.png", mimetype: "image/png", size: 1000, storage_path: "C1/1.1/F1-texts.png" },
+          { name: "clip.mov", mimetype: "video/quicktime", size: 1000, storage_path: "C1/1.1/F2-clip.mov" },
+        ]),
+        msg("1.2", [
+          { name: "lost.jpg", mimetype: "image/jpeg", size: 1000, storage_path: null },
+          { name: "huge.pdf", mimetype: "application/pdf", size: 20 * 1024 * 1024, storage_path: "C1/1.2/F3-huge.pdf" },
+          { name: "form.pdf", mimetype: "application/pdf", size: 1000, storage_path: "C1/1.2/F4-form.pdf" },
+        ]),
+      ],
+    },
+    (ext) => `note/${++n}.${ext}`
   );
+  assert.equal(snapshot.channel_label, "board");
+  assert.equal(snapshot.messages[0].message_text, "*No reply* :eyes:");
+  assert.equal(snapshot.messages[0].edited, false);
+  assert.deepEqual(snapshot.messages[0].reactions, [{ name: "+1", count: 1, users: [{ name: "Sam" }] }]);
+  assert.deepEqual(snapshot.messages[0].files, [
+    { name: "texts.png", type: "image/png", path: "note/1.png" },
+    { name: "clip.mov", type: "video/quicktime", path: null },
+  ]);
+  assert.deepEqual(snapshot.messages[1].files.map((f) => f.path), [null, null, "note/2.pdf"]);
+  assert.deepEqual(copy.map((c) => [c.storage_path, c.path]), [
+    ["C1/1.1/F1-texts.png", "note/1.png"],
+    ["C1/1.2/F4-form.pdf", "note/2.pdf"],
+  ]);
 });
 
-test("a long thread is cut short to fit a note", () => {
-  const body = slackNoteBody({
-    comment: "",
-    channelLabel: "board",
-    href: "/x",
-    messages: Array.from({ length: 50 }, () => msg("x".repeat(400))),
-    skipped: [],
-  });
-  assert.ok(body.length <= 10000);
-  assert.ok(body.endsWith("_…more in the Slack Archive._"));
+test("a copy that failed stays named, not linked", () => {
+  const { snapshot } = slackSnapshot(
+    { channelId: "C1", channelLabel: "board", ts: "1.1", messages: [msg("1.1", [{ name: "a.png", mimetype: "image/png", size: 1, storage_path: "x" }])] },
+    () => "note/a.png"
+  );
+  assert.equal(dropFailedCopies(snapshot, new Set(["note/a.png"])).messages[0].files[0].path, null);
 });

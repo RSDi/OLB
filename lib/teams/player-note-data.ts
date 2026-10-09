@@ -4,7 +4,7 @@
 
 import { createClient } from "../supabase/server";
 import { loadNames } from "./registration-data";
-import { PLAYER_NOTE_FILES_BUCKET, type NoteAttachment, type PlayerNote } from "./player-notes";
+import { PLAYER_NOTE_FILES_BUCKET, type NoteAttachment, type PlayerNote, type SlackSnapshot } from "./player-notes";
 
 const SIGNED_URL_TTL_SECONDS = 3600;
 
@@ -13,6 +13,7 @@ interface Row {
   player_id: string | null;
   registration_id: string | null;
   body: string;
+  slack: SlackSnapshot | null;
   attachments: NoteAttachment[] | null;
   created_at: string;
   updated_at: string;
@@ -43,7 +44,7 @@ async function loadRows(column: "player_id" | "registration_id", ids: string[]):
   const db = await createClient();
   const { data } = await db
     .from("olb_player_notes")
-    .select("id, player_id, registration_id, body, attachments, created_at, updated_at, created_by")
+    .select("id, player_id, registration_id, body, slack, attachments, created_at, updated_at, created_by")
     .in(column, ids)
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
@@ -65,6 +66,7 @@ async function withLinks(rows: Row[], viewer: NoteViewer): Promise<{ row: Row; n
     note: {
       id: row.id,
       body: row.body,
+      slack: row.slack ?? null,
       attachments: (row.attachments ?? []).map((a) => ({ ...a, url: urls.get(a.path) ?? null })),
       created_at: row.created_at,
       updated_at: row.updated_at,
@@ -73,4 +75,14 @@ async function withLinks(rows: Row[], viewer: NoteViewer): Promise<{ row: Row; n
       can_edit: row.created_by === viewer.userId || viewer.isSuperAdmin,
     },
   }));
+}
+
+// How many notes each player on the roster has, for the Directory's notes
+// chip. Players with none are left out.
+export async function countPlayerNotes(): Promise<Record<string, number>> {
+  const db = await createClient();
+  const { data } = await db.from("olb_player_notes").select("player_id").not("player_id", "is", null).is("deleted_at", null);
+  const counts: Record<string, number> = {};
+  for (const r of (data as { player_id: string }[] | null) ?? []) counts[r.player_id] = (counts[r.player_id] ?? 0) + 1;
+  return counts;
 }

@@ -3,6 +3,7 @@ import { loadPlayers, loadRequirements, loadViewer } from "./_shared/data";
 import { PlayersList } from "./PlayersList";
 import { holdsLeadershipRole, loadTeamsWithStaff } from "../../../lib/teams/volunteer-data";
 import { countRegistrations } from "../../../lib/teams/registration-data";
+import { countPlayerNotes } from "../../../lib/teams/player-note-data";
 
 export default async function DirectoryPage() {
   // Started before the viewer check on purpose — see loadViewer().
@@ -20,6 +21,9 @@ export default async function DirectoryPage() {
   // New, waitlisted and removed registrations, for the Registrations button
   // and the team filter.
   const registrations = viewer.canManageRegistrations ? await countRegistrations() : null;
+  // Notes on players (0124), for a chip on their card: the board and the
+  // Registrations grant.
+  const noteCounts = viewer.isStaff || viewer.canManageRegistrations ? await countPlayerNotes() : null;
 
   // Everyone filters by team; the board (staff) and anyone holding a
   // leadership role (coaches) can also switch to age groups.
@@ -38,6 +42,7 @@ export default async function DirectoryPage() {
       canEmail={viewer.isStaff || viewer.canManageRegistrations}
       canSlack={viewer.canSlackDm}
       registrations={registrations}
+      noteCounts={noteCounts}
     />
   );
 }

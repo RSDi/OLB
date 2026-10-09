@@ -1,11 +1,17 @@
 "use client";
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { MarkdownView } from "../../../components/MarkdownView";
 import { Pill, Textarea } from "../../../components/ui";
 import { ErrorNote, capStyle } from "../../payments/parts";
 import { muted } from "./PlayerParts";
+import { SlackText } from "../../slack-archive/_shared/SlackText";
+import { CHURCH_TZ } from "../../../../lib/dates/today";
+import { messageHref } from "../../../../lib/slack-archive/anchors";
+import { resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";
+import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
 import { addPlayerNote, deletePlayerNote, discardNoteUploads, openNoteFile, updatePlayerNote } from "../../../../lib/teams/player-note-actions";
 import { uploadNoteFile } from "../../../../lib/teams/player-note-upload";
 import {
@@ -16,6 +22,7 @@ import {
   type NoteAttachment,
   type NoteOwner,
   type PlayerNote,
+  type SlackSnapshot,
 } from "../../../../lib/teams/player-notes";
 
 // Notes on a player (0124), for the board and the Registrations grant: a log
@@ -63,7 +70,7 @@ export function PlayerNotes({
   );
 
   return framed ? (
-    <div className="rsd-card" data-tour="player-notes" style={{ padding: "16px 20px", gap: 12 }}>
+    <div id="notes" className="rsd-card" data-tour="player-notes" style={{ padding: "16px 20px", gap: 12, scrollMarginTop: 16 }}>
       {body}
     </div>
   ) : (
@@ -326,7 +333,9 @@ function NoteItem({ note, border }: { note: PlayerNote; border: boolean }) {
         )
       )}
 
-      {note.attachments.length > 0 && (
+      {note.slack && <SlackNote slack={note.slack} attachments={note.attachments} onOpen={open} />}
+
+      {!note.slack && note.attachments.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {note.attachments.map((a) => (
             <a
@@ -348,6 +357,115 @@ function NoteItem({ note, border }: { note: PlayerNote; border: boolean }) {
       )}
 
       {error && <ErrorNote text={error} />}
+    </div>
+  );
+}
+
+// ─── Saved from the Slack Archive ──────────────────────────────────────────
+
+// The messages the way the Slack Archive shows them: a thread's first
+// message, then its replies under a line, each with who wrote it and when,
+// Slack's formatting and emoji, its pictures, and reactions.
+function SlackNote({
+  slack,
+  attachments,
+  onOpen,
+}: {
+  slack: SlackSnapshot;
+  attachments: PlayerNote["attachments"];
+  onOpen: (path: string) => void;
+}) {
+  const urls = new Map(attachments.map((a) => [a.path, a.url]));
+  const [first, ...replies] = slack.messages;
+  if (!first) return null;
+  const row = (m: SlackSnapshot["messages"][number]) => <SlackNoteMessage key={m.ts} message={m} urls={urls} onOpen={onOpen} />;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", borderRadius: 12, border: "1px solid var(--gw-border)", background: "var(--gw-bg)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", ...muted }}>
+        <span>From Slack · #{slack.channel_label}</span>
+        <Link href={messageHref(slack.channel_id, slack.ts)} className="rsd-link" style={{ fontSize: 12, marginLeft: "auto" }}>
+          Open in the Slack Archive ›
+        </Link>
+      </div>
+      {row(first)}
+      {replies.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginLeft: 20, paddingLeft: 14, borderLeft: "2px solid var(--gw-border)" }}>
+          {replies.map(row)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SlackNoteMessage({
+  message: m,
+  urls,
+  onOpen,
+}: {
+  message: SlackSnapshot["messages"][number];
+  urls: Map<string, string | null>;
+  onOpen: (path: string) => void;
+}) {
+  const when = new Date(m.posted_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: CHURCH_TZ });
+  const text = decodeSlackEntities(m.message_text);
+  const pictures = m.files.filter((f) => f.path && isShowableImage(f.type) && urls.get(f.path));
+  const others = m.files.filter((f) => !pictures.includes(f));
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>{m.author_name ?? "Unknown"}</span>
+        <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+          {when}
+          {m.edited ? " (edited)" : ""}
+        </span>
+      </div>
+      {text && (
+        <div className="rsd-slack-msg-text" style={{ fontSize: 13.5, color: "var(--gw-fg)", lineHeight: 1.5 }}>
+          <SlackText text={text} />
+        </div>
+      )}
+      {pictures.length > 0 && (
+        <div className="rsd-slack-media-row">
+          {pictures.map((f) => (
+            <button key={f.path} type="button" className="rsd-slack-media" onClick={() => onOpen(f.path!)} title={f.name} aria-label={`View ${f.name}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URLs */}
+              <img src={urls.get(f.path!)!} alt={f.name} loading="lazy" />
+            </button>
+          ))}
+        </div>
+      )}
+      {others.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {others.map((f, i) =>
+            f.path ? (
+              <button key={f.path} type="button" className="rsd-chip rsd-chip-mute gw-press" onClick={() => onOpen(f.path!)} style={{ cursor: "pointer", border: "none" }}>
+                <Icons.FileText width={12} height={12} /> {f.name}
+              </button>
+            ) : (
+              <span key={`${f.name}-${i}`} className="rsd-chip rsd-chip-mute" title="Not copied to the note. Open the Slack Archive to see it.">
+                {f.name} · in the Slack Archive
+              </span>
+            )
+          )}
+        </div>
+      )}
+      {m.reactions.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {m.reactions.map((r) => {
+            const names = r.users.map((u) => u.name ?? "Someone").join(", ");
+            const glyph = resolveEmojiShortcode(r.name.split("::")[0]);
+            return (
+              <span
+                key={r.name}
+                title={names}
+                style={{ fontSize: 11, fontWeight: 600, color: "var(--gw-fg-muted)", background: "var(--gw-bg-elev)", borderRadius: 6, padding: "2px 6px" }}
+              >
+                {glyph ? <span style={{ fontSize: 13 }}>{glyph}</span> : `:${r.name}:`} {r.count} — {names}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

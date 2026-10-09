@@ -11,9 +11,8 @@ import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { requirePlayerNotes } from "../auth/guards";
 import { PLAYER_NOTE_FILES_BUCKET, cleanAttachments, cleanNoteBody, type NoteAttachment, type NoteOwner } from "./player-notes";
-import { pickNoteFiles, slackNoteBody, type SlackNoteMessage } from "./slack-note";
+import { dropFailedCopies, slackSnapshot, type ArchivedNoteMessage } from "./slack-note";
 import { ARCHIVE_FILES_BUCKET } from "../slack-archive/files";
-import { messageHref } from "../slack-archive/anchors";
 import { teamLabel } from "./volunteer-options";
 
 type Result = { error?: string };
@@ -81,9 +80,9 @@ export async function updatePlayerNote(id: string, body: string): Promise<Result
   const gate = await requirePlayerNotes();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
-  const { data: note } = await db.from("olb_player_notes").select("attachments").eq("id", id).is("deleted_at", null).maybeSingle();
+  const { data: note } = await db.from("olb_player_notes").select("attachments, slack").eq("id", id).is("deleted_at", null).maybeSingle();
   const clean = cleanNoteBody(body);
-  if (!clean && !((note?.attachments as NoteAttachment[] | null) ?? []).length) {
+  if (!clean && !note?.slack && !((note?.attachments as NoteAttachment[] | null) ?? []).length) {
     return { error: "A note needs some words or an attachment. Use Delete to take it off." };
   }
   const { data, error } = await db
@@ -179,11 +178,12 @@ export async function listNoteTargets(): Promise<{ targets?: NoteTarget[]; error
 }
 
 // One archived message, or a thread's first message with its replies, as a
-// note on a player: who wrote what and when, a link back to the message, and
-// its pictures and PDFs copied in as attachments. The messages are read with
-// the viewer's own access, so only channels they can see in the archive can
-// be saved; the archive's files are private to the server, so copying them
-// runs with the service role.
+// note on a player: the messages kept as they are (0125), so the note shows
+// them the way the archive does, with their pictures and PDFs copied in as
+// the note's attachments and a link back. The line the saver adds is the
+// note's body. The messages are read with the viewer's own access, so only
+// channels they can see in the archive can be saved; the archive's files are
+// private to the server, so copying them runs with the service role.
 export async function saveSlackToNotes(input: {
   channelId: string;
   ts: string;
@@ -197,7 +197,7 @@ export async function saveSlackToNotes(input: {
   const board = await ownerBoard(db, input.owner);
   if (!board) return { error: "That player isn't there any more. Refresh the page." };
 
-  const columns = "ts, author_name, posted_at, message_text, files";
+  const columns = "ts, author_name, posted_at, message_text, edited, reactions, files";
   const [{ data: channel }, { data: first }, { data: replies }] = await Promise.all([
     db.from("slack_archive_channels").select("label").eq("slack_channel_id", input.channelId).maybeSingle(),
     db.from("slack_archive_messages").select(columns).eq("channel_id", input.channelId).eq("ts", input.ts).maybeSingle(),
@@ -212,32 +212,33 @@ export async function saveSlackToNotes(input: {
       : Promise.resolve({ data: [] }),
   ]);
   if (!channel || !first) return { error: "That message isn't in the archive any more. Refresh the page." };
-  const messages = [first, ...((replies as unknown[] | null) ?? [])] as (SlackNoteMessage & { ts: string })[];
 
   const id = crypto.randomUUID();
-  const { copy, skipped } = pickNoteFiles(messages);
+  const built = slackSnapshot(
+    {
+      channelId: input.channelId,
+      channelLabel: (channel as { label: string }).label,
+      ts: input.ts,
+      messages: [first, ...((replies as unknown[] | null) ?? [])] as ArchivedNoteMessage[],
+    },
+    (ext) => `${id}/${crypto.randomUUID()}.${ext}`
+  );
   const admin = createAdminClient();
+  const failed = new Set<string>();
   const attachments: NoteAttachment[] = [];
-  for (const f of copy) {
-    const path = `${id}/${crypto.randomUUID()}.${f.ext}`;
-    const { error } = await admin.storage.from(ARCHIVE_FILES_BUCKET).copy(f.storage_path, path, { destinationBucket: PLAYER_NOTE_FILES_BUCKET });
-    if (error) skipped.push(f.name);
-    else attachments.push({ path, name: f.name, type: f.type, size: f.size });
+  for (const f of built.copy) {
+    const { error } = await admin.storage.from(ARCHIVE_FILES_BUCKET).copy(f.storage_path, f.path, { destinationBucket: PLAYER_NOTE_FILES_BUCKET });
+    if (error) failed.add(f.path);
+    else attachments.push({ path: f.path, name: f.name, type: f.type, size: f.size });
   }
 
-  const body = slackNoteBody({
-    comment: cleanNoteBody(input.comment),
-    channelLabel: (channel as { label: string }).label,
-    href: messageHref(input.channelId, input.ts),
-    messages,
-    skipped,
-  });
   const { error } = await db.from("olb_player_notes").insert({
     id,
     board_id: board,
     player_id: "playerId" in input.owner ? input.owner.playerId : null,
     registration_id: "registrationId" in input.owner ? input.owner.registrationId : null,
-    body,
+    body: cleanNoteBody(input.comment),
+    slack: dropFailedCopies(built.snapshot, failed),
     attachments,
     created_by: gate.userId,
   });
