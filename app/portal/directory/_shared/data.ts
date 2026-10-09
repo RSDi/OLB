@@ -3,6 +3,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/server";
+import { createAdminClient } from "../../../../lib/supabase/admin";
 import { getViewer } from "../../../../lib/auth/viewer";
 import { loadNames } from "../../../../lib/teams/registration-data";
 import type { SentMessage } from "../../../../lib/teams/family-mail";
@@ -216,7 +217,30 @@ export async function loadPlayerMessages(playerId: string): Promise<SentMessage[
   const withVia = await read("id, subject, body, sent_to, sent_at, sent_by, via");
   const { data } = withVia.error ? await read("id, subject, body, sent_to, sent_at, sent_by") : withVia;
   const rows = (data as (Omit<SentMessage, "sent_by_name"> & { sent_by: string | null })[] | null) ?? [];
-  if (rows.length === 0) return [];
-  const names = await loadNames(rows.map((r) => r.sent_by));
-  return rows.map(({ sent_by, ...m }) => ({ ...m, sent_by_name: sent_by ? names.get(sent_by) ?? null : null }));
+  const fromRegistration = await loadRegistrationMessages(playerId);
+  if (rows.length === 0 && fromRegistration.length === 0) return [];
+  const names = await loadNames([...rows, ...fromRegistration].map((r) => r.sent_by));
+  return [...rows, ...fromRegistration]
+    .map(({ sent_by, ...m }) => ({
+      ...m,
+      // No sender: the registration form's receipt, sent by the website.
+      sent_by_name: sent_by ? names.get(sent_by) ?? null : "the registration form",
+    }))
+    .sort((a, b) => b.sent_at.localeCompare(a.sent_at));
+}
+
+// Emails kept on the registration(s) this player was approved from: the
+// receipt sent when the family registered, and waitlist messages. The page
+// only asks for the board and the Registrations grant (canEmail), so this
+// reads with the service role, narrowed to this player's registrations.
+async function loadRegistrationMessages(playerId: string) {
+  const db = createAdminClient();
+  const { data: regs } = await db.from("olb_registrations").select("id").eq("player_id", playerId);
+  const ids = ((regs as { id: string }[] | null) ?? []).map((r) => r.id);
+  if (ids.length === 0) return [];
+  const { data } = await db
+    .from("olb_registration_messages")
+    .select("id, subject, body, sent_to, sent_at, sent_by")
+    .in("registration_id", ids);
+  return ((data as (Omit<SentMessage, "sent_by_name"> & { sent_by: string | null })[] | null) ?? []).map((m) => ({ ...m, via: "email" as const }));
 }

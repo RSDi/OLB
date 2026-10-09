@@ -44,11 +44,19 @@ async function send(apiKey: string, payload: Record<string, unknown>, what: stri
   return true;
 }
 
-export async function sendRegistrationEmails(inputs: RegistrationInput[], confirmedEmail: string | null): Promise<void> {
+// The receipt as sent, so it can be kept on the registration (and, once
+// approved, the player's page); null when it didn't go out.
+export interface SentReceipt {
+  to: string;
+  subject: string;
+  text: string;
+}
+
+export async function sendRegistrationEmails(inputs: RegistrationInput[], confirmedEmail: string | null): Promise<SentReceipt | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("[notify] RESEND_API_KEY not set — skipping registration receipt and club notice");
-    return;
+    return null;
   }
   const r = receipt(inputs);
   const who = registrant(inputs[0], confirmedEmail);
@@ -56,7 +64,9 @@ export async function sendRegistrationEmails(inputs: RegistrationInput[], confir
   const checkAddress = (process.env.MAIL_CHECK_ADDRESS ?? "").split("|").map((s) => s.trim()).filter(Boolean);
   const from = mailFrom();
 
-  await Promise.all([
+  const subject = receiptSubject(r);
+  const text = who ? receiptText(r, who, { checkAddress }) : "";
+  const [receiptSent] = await Promise.all([
     who
       ? send(
           apiKey,
@@ -64,9 +74,9 @@ export async function sendRegistrationEmails(inputs: RegistrationInput[], confir
             from,
             to: [who.email],
             reply_to: mailReplyTo(),
-            subject: receiptSubject(r),
+            subject,
             html: receiptHtml(r, who, { logoUrl: `${site}/email/olb-logo.png`, checkAddress }),
-            text: receiptText(r, who, { checkAddress }),
+            text,
           },
           "registration receipt"
         )
@@ -84,4 +94,5 @@ export async function sendRegistrationEmails(inputs: RegistrationInput[], confir
       "registration notice"
     ),
   ]);
+  return receiptSent && who ? { to: who.email, subject, text } : null;
 }
