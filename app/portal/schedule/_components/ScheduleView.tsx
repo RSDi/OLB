@@ -189,23 +189,6 @@ export function ScheduleView({
     return [...seen.values()];
   }, [knownTeams, state.opponents]);
 
-  // Opened from a contact's page: #w-<weekend id> scrolls to it and marks it.
-  useEffect(() => {
-    const m = window.location.hash.match(/^#w-([0-9a-f-]{36})$/i);
-    if (!m) return;
-    // The grid's row, or on a phone the weekend's card.
-    const el = [document.getElementById(`w-${m[1]}`), document.getElementById(`wm-${m[1]}`)].find(
-      (x) => x && x.offsetParent !== null
-    );
-    if (!el) return;
-    el.scrollIntoView({ block: "center" });
-    const on = requestAnimationFrame(() => setFlash(m[1]));
-    const off = setTimeout(() => setFlash(null), 2400);
-    return () => {
-      cancelAnimationFrame(on);
-      clearTimeout(off);
-    };
-  }, []);
 
   // ─── The team cell's card: hover to peek, click to keep it open ──────────
   const clearTimer = () => {
@@ -249,6 +232,106 @@ export function ScheduleView({
     }
     return out;
   }, [shownWeekends]);
+
+  // ─── Months ───────────────────────────────────────────────────────────────
+  // While a season is under way, the months that are over fold to a line
+  // (tap one to open it, or Past months for all); a season that's over, or
+  // not started, shows every month.
+  const thisMonth = monthKey(today);
+  const underWay = weekends.some((w) => w.ends_on < today) && weekends.some((w) => w.ends_on >= today);
+  const foldable = underWay && byMonth.some((m) => m.key < thisMonth);
+  const [showPast, setShowPast] = useState(false);
+  const [openPast, setOpenPast] = useState<ReadonlySet<string>>(() => new Set());
+  const isFolded = (key: string) => foldable && key < thisMonth && !showPast && !openPast.has(key);
+  const toggleMonth = (key: string) =>
+    setOpenPast((cur) => {
+      const next = new Set(cur);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const monthInfo = useMemo(
+    () =>
+      new Map(
+        byMonth.map((m) => {
+          const off = m.rows.filter((w) => w.status === "off").length;
+          const canceled = m.rows.filter((w) => w.status === "canceled").length;
+          const live = m.rows.length - off - canceled;
+          const count = [
+            live > 0 && `${live} weekend${live === 1 ? "" : "s"}`,
+            off > 0 && `${off} off`,
+            canceled > 0 && `${canceled} canceled`,
+          ]
+            .filter(Boolean)
+            .join(", ");
+          const t = levelTotals(shownLevels, m.rows, state.games, state.opponents);
+          const records = shownLevels
+            .map((l) => {
+              const r = recordLabel(t.get(l.id)!);
+              return r ? `${l.label} ${r}` : null;
+            })
+            .filter(Boolean)
+            .join(", ");
+          return [m.key, { count, records }] as const;
+        })
+      ),
+    [byMonth, shownLevels, state.games, state.opponents]
+  );
+  const monthHead = (m: { key: string; heading: string }) => {
+    const info = monthInfo.get(m.key)!;
+    const past = foldable && m.key < thisMonth;
+    return (
+      <MonthHeading
+        heading={m.heading}
+        count={info.count}
+        records={isFolded(m.key) ? info.records : ""}
+        current={m.key === thisMonth}
+        folded={past ? isFolded(m.key) : null}
+        onToggle={() => (showPast ? setShowPast(false) : toggleMonth(m.key))}
+      />
+    );
+  };
+
+  // Opened from a contact's page: #w-<weekend id> scrolls to it and marks it
+  // (opening its month first if it's folded). Otherwise, mid-season, the
+  // page scrolls to this month when it's out of sight.
+  const [target, setTarget] = useState<string | null>(null);
+  useEffect(() => {
+    const m = window.location.hash.match(/^#w-([0-9a-f-]{36})$/i);
+    const w = m ? weekends.find((x) => x.id === m[1]) : null;
+    if (w) {
+      const k = monthKey(w.starts_on);
+      const raf = requestAnimationFrame(() => {
+        setOpenPast((cur) => (cur.has(k) ? cur : new Set([...cur, k])));
+        setTarget(w.id);
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+    if (!underWay) return;
+    const month = byMonth.find((x) => x.key >= thisMonth);
+    if (!month || month === byMonth[0]) return;
+    const el = [document.getElementById(`m-${month.key}`), document.getElementById(`mm-${month.key}`)].find(
+      (x) => x && x.offsetParent !== null
+    );
+    const box = el?.closest("main") ?? null;
+    if (el && box && el.getBoundingClientRect().top > box.getBoundingClientRect().bottom - 120) el.scrollIntoView({ block: "start" });
+    // On first load only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!target) return;
+    // The grid's row, or on a phone the weekend's card.
+    const el = [document.getElementById(`w-${target}`), document.getElementById(`wm-${target}`)].find(
+      (x) => x && x.offsetParent !== null
+    );
+    el?.scrollIntoView({ block: "center" });
+    const on = requestAnimationFrame(() => setFlash(target));
+    const off = setTimeout(() => setFlash(null), 2400);
+    return () => {
+      cancelAnimationFrame(on);
+      clearTimeout(off);
+    };
+  }, [target]);
 
   const comparing = compare ? seasonLabel(compare.season) : null;
   const sheetWeekend = sheet?.kind === "weekend" && sheet.id ? weekends.find((w) => w.id === sheet.id) ?? null : null;
@@ -302,7 +385,7 @@ export function ScheduleView({
       </div>
 
       {/* ─── Which weekends, and view options ─── */}
-      {(weekends.length > 0 || hiddenCount > 0) && (
+      {(weekends.length > 0 || hiddenCount > 0 || foldable) && (
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           {weekends.length > 0 && (
             <WeekendFilterSelect
@@ -336,31 +419,22 @@ export function ScheduleView({
             </FilterSelect>
           )}
           {hiddenCount > 0 && (
-            <button
-              type="button"
-              aria-pressed={showHidden}
+            <ToggleChip
+              on={showHidden}
               onClick={() => setShowHidden((v) => !v)}
               title={showHidden ? "Hide the hidden teams again" : "Show the teams hidden in Season settings"}
-              className="rsd-chip"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                height: 34,
-                padding: "0 14px",
-                borderRadius: 100,
-                border: "1px solid",
-                borderColor: showHidden ? "var(--rsd-accent-fill)" : "var(--gw-border)",
-                background: showHidden ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
-                color: showHidden ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
             >
               <Icons.Eye width={13} height={13} /> Hidden teams {hiddenCount}
-            </button>
+            </ToggleChip>
+          )}
+          {foldable && (
+            <ToggleChip
+              on={showPast}
+              onClick={() => setShowPast((v) => !v)}
+              title={showPast ? "Fold the months that are over again" : "Open every month that's over"}
+            >
+              <Icons.Calendar width={13} height={13} /> Past months
+            </ToggleChip>
           )}
         </div>
       )}
@@ -431,8 +505,9 @@ export function ScheduleView({
                 {byMonth.map((m) => (
                   <MonthRows
                     key={m.key}
-                    heading={m.heading}
-                    rows={m.rows}
+                    id={`m-${m.key}`}
+                    head={monthHead(m)}
+                    rows={isFolded(m.key) ? [] : m.rows}
                     span={4 + shownLevels.length + (comparing ? 1 : 0)}
                     render={(w) => (
                       <WeekendRow
@@ -513,8 +588,11 @@ export function ScheduleView({
           <div className="gw-mobile-cards" style={{ gap: 14 }}>
             {byMonth.map((m) => (
               <div key={m.key} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={monthLabel}>{m.heading}</div>
-                {m.rows.map((w) => (
+                {/* Stays at the top of the screen while its weekends scroll by. */}
+                <div id={`mm-${m.key}`} style={{ position: "sticky", top: 0, zIndex: 3, background: "var(--gw-bg)", padding: "4px 0" }}>
+                  {monthHead(m)}
+                </div>
+                {!isFolded(m.key) && m.rows.map((w) => (
                   <WeekendCard
                     key={w.id}
                     w={w}
@@ -649,25 +727,111 @@ export function ScheduleView({
 // ─── Rows ───────────────────────────────────────────────────────────────────
 
 function MonthRows({
-  heading,
+  id,
+  head,
   rows,
   span,
   render,
 }: {
-  heading: string;
+  id: string;
+  head: React.ReactNode;
   rows: HsWeekend[];
   span: number;
   render: (w: HsWeekend) => React.ReactNode;
 }) {
   return (
     <>
-      <tr>
-        <td colSpan={span} style={{ ...monthLabel, padding: "14px 14px 6px", background: "var(--gw-bg)", borderBottom: "1px solid var(--gw-border)" }}>
-          {heading}
+      <tr id={id}>
+        <td colSpan={span} style={{ padding: "8px 14px 4px", background: "var(--gw-bg)", borderBottom: "1px solid var(--gw-border)" }}>
+          {head}
         </td>
       </tr>
       {rows.map(render)}
     </>
+  );
+}
+
+// A month's heading: its name, how many weekends (and off), "This month",
+// and for a month that's over, a fold with its records while folded.
+function MonthHeading({
+  heading,
+  count,
+  records,
+  current,
+  folded,
+  onToggle,
+}: {
+  heading: string;
+  count: string;
+  records: string;
+  current: boolean;
+  // null: not a month that folds.
+  folded: boolean | null;
+  onToggle: () => void;
+}) {
+  const body = (
+    <>
+      {folded !== null && (
+        <Icons.ChevronRight
+          width={12}
+          height={12}
+          style={{ flexShrink: 0, transform: folded ? "none" : "rotate(90deg)", transition: "transform 120ms" }}
+        />
+      )}
+      <span style={monthLabel}>{heading}</span>
+      {count && <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--gw-fg-muted)" }}>· {count}</span>}
+      {records && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--gw-fg)" }}>· {records}</span>}
+      {current && (
+        <span style={{ fontSize: 10.5, fontWeight: 800, padding: "1px 8px", borderRadius: 100, background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)" }}>
+          This month
+        </span>
+      )}
+    </>
+  );
+  const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", color: "var(--gw-fg-muted)" };
+  return folded === null ? (
+    <div style={row}>{body}</div>
+  ) : (
+    <button
+      type="button"
+      aria-expanded={!folded}
+      onClick={onToggle}
+      title={folded ? "Show this month's weekends" : "Fold this month"}
+      style={{ ...row, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", width: "100%" }}
+    >
+      {body}
+    </button>
+  );
+}
+
+// A chip that turns something on, beside the drop-downs above the schedule.
+function ToggleChip({ on, onClick, title, children }: { on: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      title={title}
+      className="rsd-chip"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        height: 34,
+        padding: "0 14px",
+        borderRadius: 100,
+        border: "1px solid",
+        borderColor: on ? "var(--rsd-accent-fill)" : "var(--gw-border)",
+        background: on ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
+        color: on ? "var(--rsd-accent-fill-on)" : "var(--gw-fg)",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
