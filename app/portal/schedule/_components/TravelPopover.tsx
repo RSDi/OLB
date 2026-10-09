@@ -28,7 +28,18 @@ function summary(near: PlacesNear): string {
 }
 
 // "🛏 3 🍴 1" under the weekend's Where.
-export function TravelChip({ near, active, onOpen }: { near: PlacesNear; active: boolean; onOpen: (el: HTMLElement) => void }) {
+// `small` fits it on one line beside the trip, in the grid.
+export function TravelChip({
+  near,
+  active,
+  onOpen,
+  small,
+}: {
+  near: PlacesNear;
+  active: boolean;
+  onOpen: (el: HTMLElement) => void;
+  small?: boolean;
+}) {
   const text = summary(near);
   return (
     <button
@@ -41,13 +52,14 @@ export function TravelChip({ near, active, onOpen }: { near: PlacesNear; active:
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 8,
-        padding: "3px 9px",
+        gap: small ? 6 : 8,
+        padding: small ? "0 7px" : "3px 9px",
+        lineHeight: small ? "18px" : undefined,
         borderRadius: 100,
         border: `1px solid ${active ? "var(--rsd-accent-fill)" : "var(--gw-border)"}`,
         background: active ? "var(--rsd-accent-bg)" : "var(--gw-bg-elev)",
         color: "var(--gw-fg)",
-        fontSize: 11.5,
+        fontSize: small ? 11 : 11.5,
         fontWeight: 800,
         cursor: "pointer",
         fontVariantNumeric: "tabular-nums",
