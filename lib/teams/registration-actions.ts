@@ -10,6 +10,7 @@ import { CODE_MINUTES, CODES_PER_HOUR, VERIFIED_HOURS, checkCode, hashCode, newC
 import { findFamily } from "./registration-prefill";
 import { sendRegistrationCode } from "../notifications/registration-code";
 import { sendFamilyEmails } from "../notifications/registration-message";
+import { sendRegistrationEmails } from "../notifications/registration-receipt";
 import { ALL_RECIPIENTS, fillMessage, groupFamilies, messageHtml, type Recipient, type WaitlistRegistration } from "./waitlist";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { centralToday } from "../finances/data";
@@ -140,6 +141,9 @@ export async function createRegistrations(
       : null;
   const { error } = await db.from("olb_registrations").insert(inputs.map((input) => toRow(board.id, input, onIt(input))));
   if (error) return "Something went wrong saving your registration. Please try again.";
+  // The receipt to whoever filled the form in, and a notice to the club.
+  // Best effort: the registration is saved either way.
+  await sendRegistrationEmails(inputs, confirmed).catch((e) => console.error("[notify] registration emails failed", e));
   return null;
 }
 
