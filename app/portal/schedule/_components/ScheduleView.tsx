@@ -558,6 +558,7 @@ export function ScheduleView({
           games={state.games}
           opponents={state.opponents}
           contacts={contacts}
+          near={nearBy.get(sheetWeekend.id) ?? null}
           onClose={() => setSheet(null)}
         />
       )}

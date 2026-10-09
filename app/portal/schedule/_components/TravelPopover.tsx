@@ -191,8 +191,7 @@ export function TravelPopover({
         </div>
 
         <div ref={bodyRef} style={{ overflowY: "auto", padding: "4px 14px 12px", display: "flex", flexDirection: "column" }}>
-          {near.hotels.length > 0 && <Section title="Hotels" icon={<Icons.Bed width={13} height={13} />} places={near.hotels} />}
-          {near.food.length > 0 && <Section title="Places to eat" icon={<Icons.Utensils width={12} height={12} />} places={near.food} />}
+          <TravelPlaces near={near} />
         </div>
 
         <div
@@ -217,6 +216,17 @@ export function TravelPopover({
       </div>
     </>,
     document.body
+  );
+}
+
+// The hotels, then the places to eat: the card's list, and the same list in
+// the weekend's details for the travel coordinator.
+export function TravelPlaces({ near }: { near: PlacesNear }) {
+  return (
+    <>
+      {near.hotels.length > 0 && <Section title="Hotels" icon={<Icons.Bed width={13} height={13} />} places={near.hotels} />}
+      {near.food.length > 0 && <Section title="Places to eat" icon={<Icons.Utensils width={12} height={12} />} places={near.food} />}
+    </>
   );
 }
 
