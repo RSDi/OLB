@@ -1,7 +1,7 @@
 "use server";
 // The roster, from the Directory: putting a player on a team, Edit player,
 // and taking a player off the roster. For anyone with the Registrations
-// permission (0102); RLS and remove_olb_player() check it again.
+// permission (0102); RLS checks it again.
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
@@ -50,31 +50,22 @@ export async function updatePlayer(playerId: string, input: PlayerEdit): Promise
   return {};
 }
 
-// Takes a player off the roster for good, with their parent links and
-// requirement check-offs. Refused while they have charges or payments that
-// aren't voided.
-export async function removePlayer(playerId: string): Promise<Result> {
-  const gate = await requireRegistrations();
-  if ("error" in gate) return { error: gate.error };
-  const db = await createClient();
-  const { error } = await db.rpc("remove_olb_player", { p_player_id: playerId });
-  if (error) return { error: error.message };
-  refresh();
-  return {};
-}
-
-// Off the roster and back onto the waitlist (Registrations → Waitlist), for a
-// family that didn't show and lost their spot. Their registration goes back
-// to waitlisted, or one is written from the roster for a player who came in
-// from the spreadsheet. Notes and the emails sent to the family move with
-// them. The registration fee Approve added comes off; a player with a
-// payment, or any other charge that isn't voided, stays until the Treasurer
-// sorts it out on the Payments page. Approve puts them back on the roster.
+// Off the roster (Edit player → Remove from team…), never deleted: the
+// player's registration goes to the Waitlist, for a family that lost their
+// spot, or to Removed, for one that isn't playing this season. A player from
+// the spreadsheet has no registration, so one is written from the roster.
+// Notes and the emails sent to the family move with them, and what they owe
+// on Payments comes off. A family that has paid something stays until the
+// Treasurer refunds it. Approve, from either tab, puts them back on the
+// roster.
 //
 // The checks run with the caller's own access; the move itself touches
 // registrations, notes, messages and Payments, so it runs with the service
 // role.
-export async function moveToWaitlist(playerId: string, note: string): Promise<Result> {
+export type OffRoster = "waitlisted" | "rejected";
+
+export async function moveOffRoster(playerId: string, to: OffRoster, note: string): Promise<Result> {
+  if (to !== "waitlisted" && to !== "rejected") return { error: "Pick the Waitlist or Withdrawn." };
   const gate = await requireRegistrations();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
@@ -94,13 +85,10 @@ export async function moveToWaitlist(playerId: string, note: string): Promise<Re
   const p = player as unknown as RosterPlayerFull | null;
   if (!p) return { error: "That player isn't there any more. Refresh the page." };
 
-  const [{ data: charges }, { data: payments }] = await Promise.all([
-    admin.from("olb_charges").select("id, category").eq("player_id", playerId).is("voided_at", null),
-    admin.from("olb_payments").select("id").eq("player_id", playerId).is("voided_at", null),
-  ]);
-  if ((payments ?? []).length > 0 || (charges ?? []).some((c) => c.category !== "registration")) {
+  const { data: payments } = await admin.from("olb_payments").select("id").eq("player_id", playerId).is("voided_at", null);
+  if ((payments ?? []).length > 0) {
     return {
-      error: `${p.full_name} has payments or charges on the Payments page. The Treasurer refunds or voids them first, then you can move them to the waitlist.`,
+      error: `The family has paid something for ${p.full_name}. The Treasurer refunds it and voids the payment in Payments on this page first.`,
     };
   }
 
@@ -121,7 +109,7 @@ export async function moveToWaitlist(playerId: string, note: string): Promise<Re
     const { error } = await admin
       .from("olb_registrations")
       .update({
-        status: "waitlisted",
+        status: to,
         notes: cleanNote,
         reviewed_by: gate.userId,
         reviewed_at: now,
@@ -137,10 +125,10 @@ export async function moveToWaitlist(playerId: string, note: string): Promise<Re
   } else {
     const { data: created, error } = await admin
       .from("olb_registrations")
-      .insert(registrationFromPlayer(p, cleanNote, gate.userId, now))
+      .insert({ ...registrationFromPlayer(p, cleanNote, gate.userId, now), status: to })
       .select("id")
       .single();
-    if (error || !created) return { error: error?.message ?? "Moving to the waitlist didn't work. Try again." };
+    if (error || !created) return { error: error?.message ?? "Taking them off the roster didn't work. Try again." };
     registrationId = created.id;
     undo = async () => admin.from("olb_registrations").delete().eq("id", created.id);
   }
@@ -156,7 +144,8 @@ export async function moveToWaitlist(playerId: string, note: string): Promise<Re
     await admin.from("olb_registration_messages").insert((sent ?? []).map((m) => ({ ...m, registration_id: registrationId })));
   }
 
-  // The registration fee (and anything already voided) goes with the player.
+  // Nothing's been paid, so what they owe (the registration fee, anything
+  // else) goes with the player, voided lines too.
   await admin.from("olb_charges").delete().eq("player_id", playerId);
   await admin.from("olb_payments").delete().eq("player_id", playerId);
   const { error: delErr } = await admin.from("olb_players").delete().eq("id", playerId);

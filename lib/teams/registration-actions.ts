@@ -321,15 +321,20 @@ export async function updateRegistrationNote(id: string, note: string): Promise<
   return setStatus(id, "waitlisted", { notes: cleanNote(note) }, false);
 }
 
-// Back to Waiting, to review again (Approve works from the Waitlist too).
+// Back to New, to review again (Approve works from the Waitlist too).
 export async function moveRegistrationToWaiting(id: string): Promise<Result> {
   return setStatus(id, "waitlisted", { status: "pending" }, false);
 }
 
-// Off the list for good: a test, or a family that withdrew. Kept in the
-// database, shown nowhere.
+// To the Removed tab: a test, or a family that withdrew. Approve or Move to
+// the waitlist brings it back.
 export async function removeRegistration(id: string): Promise<Result> {
   return setStatus(id, ["pending", "waitlisted"], { status: "rejected" }, true);
+}
+
+// Removed → Waitlist.
+export async function restoreToWaitlist(id: string): Promise<Result> {
+  return setStatus(id, "rejected", { status: "waitlisted" }, true);
 }
 
 // "Contacted Oct 3 by Rachel", or cleared.

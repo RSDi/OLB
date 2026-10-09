@@ -268,10 +268,10 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     group: "Directory",
     audience: "registrations",
     routes: ["/portal/directory/registrations"],
-    keywords: ["registration", "registrations", "register", "sign up", "approve", "waitlist", "wait list", "not this season", "contacted", "message", "email families", "recipients", "dad", "mom", "player email", "spreadsheet", "csv", "new player", "team", "place", "put on a team", "no team yet", "roster", "edit player", "remove player", "take off the roster", "jersey", "age group", "birthday", "registration form", "cognito", "code", "email confirmed", "wizard"],
+    keywords: ["registration", "registrations", "register", "sign up", "approve", "waitlist", "wait list", "not this season", "contacted", "message", "email families", "recipients", "dad", "mom", "player email", "spreadsheet", "csv", "new player", "team", "place", "put on a team", "no team yet", "roster", "edit player", "remove player", "take off the roster", "remove from team", "withdrawn", "removed", "new", "jersey", "age group", "birthday", "registration form", "cognito", "code", "email confirmed", "wizard"],
     body: `You see this if you have the **Registrations** permission (a super-admin turns it on in Settings → Members).
 
-**New registrations.** The **Registrations** button at the top of the Directory opens registrations from the form any time, with how many are waiting and on the waitlist. When some are waiting, a yellow bar also says how many; tap **Review registrations** to see them. The page has three tabs: **Waiting** (to review, oldest first), **Waitlist** and **Approved**. Each registration shows the player, the fee for their age group, how the family said they'd pay, the waiver, the homeschool answer, whether they need a uniform, and each parent's phone, email and what they can help with.
+**New registrations.** The **Registrations** button at the top of the Directory opens registrations from the form any time, with how many are new and on the waitlist. When some are new, a yellow bar also says how many; tap **Review registrations** to see them. The page has four tabs: **New** (to review, oldest first), **Waitlist**, **Approved** and **Removed**. Each registration shows the player, the fee for their age group, how the family said they'd pay, the waiver, the homeschool answer, whether they need a uniform, and each parent's phone, email and what they can help with.
 
 - **Approve** adds the player to the Directory under **No team yet** and puts their registration fee on the family's Payments account. Their parents are set up so they can sign in with the email on the form.
 - **Waitlist** keeps a family you can't place yet. Add a note on why if you like ("14u is full"); families don't see it. Nothing is added to the Directory or Payments.
@@ -285,17 +285,22 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 - **Contacted** marks that someone has reached out, with the date and who, so two people don't both call. Sending a message ticks it for you.
 - **Email from my app** opens your own email app addressed to the parents instead. **Copy all emails** copies every parent's email to paste into Bcc, and **Download spreadsheet** saves the waitlist as a file for Excel or Google Sheets.
 - The Directory has the same thing for players already on the roster: see *Emailing families*.
-- When a spot opens, **Approve** works right from the waitlist. **Move back to Waiting** puts a registration back in the review queue, and **Remove** takes it off every tab (for a test, or a family that withdrew).
+- When a spot opens, **Approve** works right from the waitlist. **Move back to New** puts a registration back in the review queue, and **Remove** moves it to the **Removed** tab (for a test, or a family that withdrew).
 
 **Approved** lists every registration that's been approved, newest first, with who approved it and when. Tap a name to open the player's page.
+
+**Removed** keeps families who withdrew or were taken off the roster, newest first, with who removed them, when, why, and the team they were on. Nothing is ever deleted: **Approve** puts them back under **No team yet**, and **Move to the waitlist** puts them on the Waitlist.
 
 **Putting players on teams.** In the Directory, every player has a team chip showing their team (or **No team yet**). Tap it and pick a team, and the player moves there right away. Pick **No team yet** to take them off their team. Pick **No team yet** from the **All teams** drop-down at the top to see who still needs a team.
 
 **Editing a player.** On a player's page, the team chip works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number** and **Age group**. Tap **Save**.
 
-**Moving a player back to the waitlist.** For a family that lost their spot (they didn't show, or stopped answering). On the player's page, tap **Edit player**, then **Move to the waitlist**, add a line on why if you like, and tap **Move to the waitlist** again. They leave their team and the Directory and show on the **Waitlist** tab with "Moved off the roster" and the team they were on. Their notes and the emails sent to them go with them, and the registration fee Approve added comes off Payments. If the family has paid anything, or has any other charge, the Treasurer refunds or voids it first. When a spot opens, **Approve** puts them back under **No team yet**. Log what happened in the player's **Notes** first (see *Notes on players*).
+**Taking a player off their team.** For a family that lost their spot, or a player who isn't in the program this season. On the player's page, tap **Edit player**, then **Remove from team…**, and pick where they go:
 
-**Taking a player off the roster.** In **Edit player**, **Take off the roster** removes a player who isn't in the program this season. Their parents stay as members. If the player has charges or payments on the Payments page, the Treasurer voids those first.`,
+- **Waitlist**: they lost their spot (they didn't show, or stopped answering). They show on the **Waitlist** tab and can be approved again when a spot opens.
+- **Withdrawn**: they aren't playing this season. They show on the **Removed** tab.
+
+Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdrawn**. They leave their team and the Directory, with "Taken off the roster" and the team they were on. Their notes and the emails sent to them go with them, and what they owe on Payments comes off. If the family has already paid something, the Treasurer refunds it and voids the payment first (the **Void** button is on the player's Payments card). Log what happened in the player's **Notes** first (see *Notes on players*). To find them later, pick **On the waitlist** or **Removed** from the **All teams** drop-down in the Directory.`,
   },
   {
     id: "player-notes",
@@ -305,7 +310,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     keywords: ["notes", "note", "log", "history", "document", "record", "screenshot", "screenshots", "attachment", "attach", "file", "pdf", "photo", "text messages", "texts", "link", "slack archive", "no show", "no-show"],
     body: `You see this if you're on the board or have the **Registrations** permission. Families never see notes.
 
-Every player's page has a **Notes** card: a running log of what happened with the family, newest first, with who wrote each note and when. While a player is on the waitlist, the same notes show on their registration on the **Waiting** and **Waitlist** tabs, and they follow the player back onto the roster when they're approved.
+Every player's page has a **Notes** card: a running log of what happened with the family, newest first, with who wrote each note and when. While a player is off the roster, the same notes show on their registration on the **New**, **Waitlist** and **Removed** tabs, and they follow the player back onto the roster when they're approved.
 
 - Tap **Add a note**, write what happened, and tap **Save note**.
 - **Attach screenshots or files** adds pictures or PDFs (up to 10 per note, 10 MB each), such as screenshots of a text exchange. You can also paste a screenshot straight into the note, or drag files onto it. iPhone photos are turned into regular pictures so everyone can open them. Tap a picture or file on a saved note to open it.
