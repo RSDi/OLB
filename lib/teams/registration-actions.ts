@@ -10,6 +10,7 @@ import { CODE_MINUTES, CODES_PER_HOUR, VERIFIED_HOURS, checkCode, hashCode, newC
 import { findFamily } from "./registration-prefill";
 import { sendRegistrationCode } from "../notifications/registration-code";
 import { sendFamilyEmails } from "../notifications/registration-message";
+import { sendRegistrationEmails } from "../notifications/registration-receipt";
 import { ALL_RECIPIENTS, fillMessage, groupFamilies, messageHtml, type Recipient, type WaitlistRegistration } from "./waitlist";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { centralToday } from "../finances/data";
@@ -138,8 +139,27 @@ export async function createRegistrations(
     confirmed && [input.father_email, input.mother_email, input.athlete_email].some((e) => e?.trim().toLowerCase() === confirmed)
       ? confirmed
       : null;
-  const { error } = await db.from("olb_registrations").insert(inputs.map((input) => toRow(board.id, input, onIt(input))));
+  const { data: saved, error } = await db
+    .from("olb_registrations")
+    .insert(inputs.map((input) => toRow(board.id, input, onIt(input))))
+    .select("id");
   if (error) return "Something went wrong saving your registration. Please try again.";
+  // The receipt to whoever filled the form in, and a notice to the club.
+  // Best effort: the registration is saved either way. A copy of the receipt
+  // is kept on each registration, under Messages sent (sent_by empty: the
+  // website sent it), and shows on the player's page once approved.
+  const sent = await sendRegistrationEmails(inputs, confirmed).catch((e) => {
+    console.error("[notify] registration emails failed", e);
+    return null;
+  });
+  const ids = ((saved as { id: string }[] | null) ?? []).map((r) => r.id);
+  if (sent && ids.length) {
+    const now = new Date().toISOString();
+    const { error: logError } = await db.from("olb_registration_messages").insert(
+      ids.map((id) => ({ registration_id: id, subject: sent.subject.slice(0, 200), body: sent.text.slice(0, 5000), sent_to: [sent.to], sent_by: null, sent_at: now }))
+    );
+    if (logError) console.warn(`[registrations] keeping a copy of the receipt failed: ${logError.message}`);
+  }
   return null;
 }
 
