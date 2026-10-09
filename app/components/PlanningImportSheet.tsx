@@ -480,7 +480,7 @@ function SeasonPreview({
         <div style={{ paddingLeft: 28 }}>
           <Check checked={replace} onChange={onReplace}>
             <span style={{ fontWeight: 600, fontSize: 13 }}>
-              {season.label} is already on the schedule ({season.existingWeekends} weekends). Replace it with the
+              {season.label} is already on the schedule ({season.existingWeekends}{" "}weekends). Replace it with the
               spreadsheet&apos;s version
             </span>
           </Check>

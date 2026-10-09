@@ -112,7 +112,7 @@ function PreviewConfirm({
         </p>
         {email && (
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            {first} hasn&apos;t signed up yet, so this sets up their portal login first. No email is sent. When they
+            {first}{" "}hasn&apos;t signed up yet, so this sets up their portal login first. No email is sent. When they
             sign in with {email}, it&apos;s theirs.
           </p>
         )}
