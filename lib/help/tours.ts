@@ -549,7 +549,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "schedule-season-settings",
         title: "Season settings",
-        body: "The gear opens the season's notes and columns (add, rename, reorder or hide one). The board can start next season from this one here, or add a **New season**.",
+        body: "The gear opens the season's notes and our teams, a column each (add, rename, reorder or hide one). The board can start next season from this one here, or add a **New season**.",
       },
       {
         target: "schedule-add-weekend",

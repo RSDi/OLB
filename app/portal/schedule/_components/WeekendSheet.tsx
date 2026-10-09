@@ -2,8 +2,10 @@
 // A weekend's details in a sheet: its dates, event, where, trip, status,
 // notes (the venue and game times) and the Facilities contact, plus every
 // team of ours with its games and every team coming, each with the teams of
-// ours it plays (TeamChips). The fields save with "Save"; games and teams
-// save as you change them, like the grid.
+// ours it plays (TeamChips). On a weekend already on the schedule the fields
+// fold into a summary line with Edit, so the games and teams come first.
+// The fields save with "Save details"; games and teams save as you change
+// them, like the grid.
 
 import { useState } from "react";
 import { Icons } from "../../../components/icons";
@@ -41,6 +43,7 @@ import type {
   HsWeekendStatus,
 } from "../../../../lib/hs-schedule/types";
 import { Dot, StatusSwitch } from "./CellPopover";
+import { StatusChip } from "./status";
 import type { ScheduleAction } from "./store";
 import { TeamAdder, type TeamPick } from "./TeamAdder";
 import { ComboSelect } from "../../../components/ComboSelect";
@@ -87,6 +90,8 @@ export function WeekendSheet({
   const [facilityId, setFacilityId] = useState(weekend?.facility_contact_id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A new weekend starts with its fields open; one already there, folded.
+  const [editing, setEditing] = useState(!weekend);
 
   const facilities = options.filter((o) => o.category && FACILITY_TYPES.includes(o.category.toLowerCase()));
   const trips = [...new Set([...TRIP_TYPES, ...(weekend?.trip ? [weekend.trip] : [])])];
@@ -109,7 +114,24 @@ export function WeekendSheet({
     setBusy(false);
     if (res.error || !res.data) return setError(res.error ?? "Couldn't save.");
     dispatch({ type: "weekend", row: res.data });
+    setEditing(false);
     onSaved(res.data);
+  }
+
+  // Put the fields back as saved and fold them away.
+  function cancelEdit() {
+    if (!weekend) return;
+    setStartsOn(weekend.starts_on);
+    setEndsOn(weekend.ends_on);
+    setEvent(weekend.event);
+    setDetails(weekend.details ?? "");
+    setLocation(weekend.location ?? "");
+    setTrip(weekend.trip ?? "");
+    setStatus(weekend.status);
+    setNotes(weekend.notes ?? "");
+    setFacilityId(weekend.facility_contact_id ?? "");
+    setError(null);
+    setEditing(false);
   }
 
   async function remove() {
@@ -134,19 +156,29 @@ export function WeekendSheet({
       onClose={onClose}
       tour="schedule-weekend-sheet"
       footer={
-        <>
-          {weekend && (
-            <Pill variant="ghost" size="md" onClick={remove} disabled={busy} style={{ color: "var(--gw-error)", marginRight: "auto" }}>
-              <Icons.Trash width={14} height={14} /> Delete
+        !weekend ? (
+          <>
+            <Pill variant="ghost" size="md" onClick={onClose} disabled={busy}>
+              Cancel
             </Pill>
-          )}
+            <Pill variant="accent" size="md" onClick={save} disabled={busy}>
+              {busy ? "Saving…" : "Add weekend"}
+            </Pill>
+          </>
+        ) : editing ? (
+          <>
+            <Pill variant="ghost" size="md" onClick={cancelEdit} disabled={busy}>
+              Cancel
+            </Pill>
+            <Pill variant="accent" size="md" onClick={save} disabled={busy}>
+              {busy ? "Saving…" : "Save details"}
+            </Pill>
+          </>
+        ) : (
           <Pill variant="ghost" size="md" onClick={onClose} disabled={busy}>
-            {weekend ? "Close" : "Cancel"}
+            Close
           </Pill>
-          <Pill variant="accent" size="md" onClick={save} disabled={busy}>
-            {busy ? "Saving…" : weekend ? "Save" : "Add weekend"}
-          </Pill>
-        </>
+        )
       }
     >
       {error && (
@@ -154,67 +186,76 @@ export function WeekendSheet({
           {error}
         </div>
       )}
-      <Input label="Event" value={event} onChange={(e) => setEvent(e.target.value)} placeholder="e.g. Missouri River Shootout" autoFocus={!weekend} />
-      <div style={grid2}>
-        <Input
-          label="First day"
-          type="date"
-          value={startsOn}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (!v) return;
-            // Keep the weekend's length when its start moves.
-            setEndsOn(addDays(v, Math.max(0, daysBetween(startsOn, endsOn))));
-            setStartsOn(v);
-          }}
+      {editing ? (
+        <>
+        <Input label="Event" value={event} onChange={(e) => setEvent(e.target.value)} placeholder="e.g. Missouri River Shootout" autoFocus={!weekend} />
+        <div style={grid2}>
+          <Input
+            label="First day"
+            type="date"
+            value={startsOn}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (!v) return;
+              // Keep the weekend's length when its start moves.
+              setEndsOn(addDays(v, Math.max(0, daysBetween(startsOn, endsOn))));
+              setStartsOn(v);
+            }}
+            style={{ minWidth: 0 }}
+          />
+          <Input label="Last day" type="date" value={endsOn} min={startsOn} onChange={(e) => e.target.value && setEndsOn(e.target.value)} style={{ minWidth: 0 }} />
+        </div>
+        {span > 14 && (
+          <div style={{ fontSize: 12, color: "var(--gw-error)", fontWeight: 600, marginTop: -8 }}>
+            {formatWeekendDates(input.starts_on, input.ends_on)} is more than two weeks: two weeks at most.
+          </div>
+        )}
+        <div style={grid2}>
+          <Input label="Where" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Omaha, NE" />
+          <Select label="Trip" value={trip} onChange={(e) => setTrip(e.target.value)}>
+            <option value="">—</option>
+            {trips.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Select
+          label="Status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value as HsWeekendStatus)}
+          help="The spreadsheet's colors: need to secure facility (yellow), final details in process (pale yellow), facility secured (green)."
+        >
+          {WEEKEND_STATUSES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </Select>
+        <Textarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Venue, game times… e.g. Secured IA West Fieldhouse" />
+        {facilities.length > 0 && (
+          <Select label="Facility (External Contacts)" value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
+            <option value="">— None —</option>
+            {facilities.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </Select>
+        )}
+        <Textarea
+          label="Details"
+          value={details}
+          onChange={(e) => setDetails(e.target.value)}
+          rows={details.length > 200 ? 5 : 3}
+          placeholder="Anything else: who might come, who to call, what's still open."
         />
-        <Input label="Last day" type="date" value={endsOn} min={startsOn} onChange={(e) => e.target.value && setEndsOn(e.target.value)} />
-      </div>
-      <div style={{ fontSize: 12, color: span > 14 ? "var(--gw-error)" : "var(--gw-fg-muted)", fontWeight: 600, marginTop: -8 }}>
-        {formatWeekendDates(input.starts_on, input.ends_on)} · {formatWeekdays(input.starts_on, input.ends_on)}
-        {span > 14 && " · two weeks at most"}
-      </div>
-      <div style={grid2}>
-        <Input label="Where" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Omaha, NE" />
-        <Select label="Trip" value={trip} onChange={(e) => setTrip(e.target.value)}>
-          <option value="">—</option>
-          {trips.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <Select
-        label="Status"
-        value={status}
-        onChange={(e) => setStatus(e.target.value as HsWeekendStatus)}
-        help="The spreadsheet's colors: need to secure facility (yellow), final details in process (pale yellow), facility secured (green)."
-      >
-        {WEEKEND_STATUSES.map((s) => (
-          <option key={s.value} value={s.value}>
-            {s.label}
-          </option>
-        ))}
-      </Select>
-      <Textarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Venue, game times… e.g. Secured IA West Fieldhouse" />
-      {facilities.length > 0 && (
-        <Select label="Facility (External Contacts)" value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
-          <option value="">— None —</option>
-          {facilities.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
-          ))}
-        </Select>
+
+        </>
+      ) : (
+        weekend && <FieldsSummary weekend={weekend} contacts={contacts} onEdit={() => setEditing(true)} />
       )}
-      <Textarea
-        label="Details"
-        value={details}
-        onChange={(e) => setDetails(e.target.value)}
-        rows={details.length > 200 ? 5 : 3}
-        placeholder="Anything else: who might come, who to call, what's still open."
-      />
 
       {weekend ? (
         <>
@@ -230,6 +271,11 @@ export function WeekendSheet({
             dispatch={dispatch}
             onError={setError}
           />
+          <div style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 14 }}>
+            <Pill variant="ghost" size="sm" onClick={remove} disabled={busy} style={{ color: "var(--gw-error)" }}>
+              <Icons.Trash width={13} height={13} /> Delete this weekend
+            </Pill>
+          </div>
         </>
       ) : (
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
@@ -263,33 +309,89 @@ function GamesEditor({
     } else dispatch({ type: "games", weekendId: weekend.id, levelId: level.id, row: res.data ?? null });
   };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }} data-tour="schedule-weekend-games">
       <span style={cap}>Games for each of our teams</span>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(118px, 1fr))", gap: 8 }}>
-        {levels.map((l) => {
-          const g = games.find((x) => x.weekend_id === weekend.id && x.level_id === l.id);
-          return (
-            <div key={l.id} style={{ border: "1px solid var(--gw-border)", borderRadius: 10, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 4, opacity: l.hidden ? 0.7 : 1 }}>
-              <span style={{ fontSize: 12, fontWeight: 800 }}>
-                {l.label}
-                {l.hidden && <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}> (hidden)</span>}
-              </span>
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <GamesInput
-                  label={`${l.label} games`}
-                  value={g?.games ?? null}
-                  onSave={(n) => save(l, { games: n, unsure: !!g?.unsure })}
-                />
-                <label style={{ display: "inline-flex", gap: 4, alignItems: "center", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                  <input type="checkbox" checked={!!g?.unsure} onChange={(e) => save(l, { games: g?.games ?? null, unsure: e.target.checked })} style={{ accentColor: "var(--rsd-accent-fill)" }} />
-                  Not sure
-                </label>
-              </div>
-              {g?.note && <span style={{ fontSize: 11, color: "var(--gw-fg-muted)" }}>{g.note}</span>}
+      {levels.map((l) => {
+        const g = games.find((x) => x.weekend_id === weekend.id && x.level_id === l.id);
+        const n = g?.games ?? null;
+        return (
+          <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 40, borderBottom: "1px solid var(--gw-border)", opacity: l.hidden ? 0.7 : 1 }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 800 }}>
+              {l.label}
+              {l.hidden && <span style={{ fontWeight: 500, color: "var(--gw-fg-muted)" }}> (hidden)</span>}
+              {g?.note && <span style={{ display: "block", fontSize: 11, fontWeight: 500, color: "var(--gw-fg-muted)" }}>{g.note}</span>}
+            </span>
+            <div style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--gw-border)", borderRadius: 9, overflow: "hidden" }}>
+              <button
+                type="button"
+                aria-label={`${l.label}: one game fewer`}
+                disabled={n == null}
+                onClick={() => save(l, { games: n == null || n <= 0 ? null : n - 1, unsure: !!g?.unsure })}
+                style={stepBtn}
+              >
+                −
+              </button>
+              <span style={{ minWidth: 30, textAlign: "center", fontSize: 14, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{n ?? "–"}</span>
+              <button
+                type="button"
+                aria-label={`${l.label}: one game more`}
+                onClick={() => save(l, { games: Math.min(30, (n ?? 0) + 1), unsure: !!g?.unsure })}
+                style={stepBtn}
+              >
+                +
+              </button>
             </div>
-          );
-        })}
+            <label style={{ display: "inline-flex", gap: 5, alignItems: "center", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <input
+                type="checkbox"
+                checked={!!g?.unsure}
+                onChange={(e) => save(l, { games: n, unsure: e.target.checked })}
+                style={{ accentColor: "var(--rsd-accent-fill)" }}
+              />
+              Not sure
+            </label>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// The fields of a weekend already on the schedule, folded to a line or two.
+function FieldsSummary({
+  weekend,
+  contacts,
+  onEdit,
+}: {
+  weekend: HsWeekend;
+  contacts: Map<string, HsContactRef>;
+  onEdit: () => void;
+}) {
+  const facility = weekend.facility_contact_id ? contacts.get(weekend.facility_contact_id) : undefined;
+  const meta = [formatWeekdays(weekend.starts_on, weekend.ends_on), weekend.location, weekend.trip].filter(Boolean).join(" · ");
+  return (
+    <div
+      data-tour="schedule-weekend-fields"
+      style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, border: "1px solid var(--gw-border)", borderRadius: 10, background: "var(--gw-bg)" }}
+    >
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 12.5, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
+          <StatusChip status={weekend.status} small />
+          <span>{meta}</span>
+        </div>
+        {weekend.notes && <div style={{ fontSize: 13, lineHeight: 1.4 }}>{weekend.notes}</div>}
+        {facility && (
+          <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, display: "flex", gap: 4, alignItems: "center" }}>
+            <Icons.MapPin width={11} height={11} /> {facility.name}
+          </div>
+        )}
+        {weekend.details && (
+          <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{weekend.details}</div>
+        )}
       </div>
+      <Pill variant="light" size="sm" onClick={onEdit}>
+        <Icons.Pencil width={12} height={12} /> Edit
+      </Pill>
     </div>
   );
 }
@@ -358,17 +460,28 @@ function TeamsEditor({
     if (res.error || !res.data) onError(res.error ?? "Couldn't add the team.");
     else dispatch({ type: "opponent", row: res.data });
   };
+  const counts = { confirmed: 0, tentative: 0, declined: 0 };
+  for (const p of programs) counts[p.status]++;
   // A team already here gets more of our teams with its chips, not a second line.
   const taken = new Set(programs.map((p) => p.key));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-tour="schedule-weekend-teams">
-      <span style={cap}>Teams coming ({programs.length})</span>
+      <span style={cap}>Teams coming</span>
       {programs.length === 0 ? (
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>None yet.</div>
       ) : (
-        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          Under each, tap the teams of ours it plays. <strong>All</strong> is every team we bring.
+        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.45 }}>
+          <span style={{ fontWeight: 700, color: "var(--gw-fg)" }}>
+            {[
+              `${counts.confirmed} coming`,
+              counts.tentative > 0 && `${counts.tentative} on the fence`,
+              counts.declined > 0 && `${counts.declined} not coming`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+          . Under each, tap the teams of ours it plays; <strong>All</strong> is every team we bring.
         </div>
       )}
       {programs.map((p) => {
@@ -393,27 +506,30 @@ function TeamsEditor({
                 {results && <span style={{ fontWeight: 600, color: "var(--gw-fg-muted)" }}> · {results}</span>}
               </span>
               <StatusSwitch value={p.status} onChange={(s) => setStatus(p, s)} name={name} />
+            </div>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, paddingLeft: 16 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <TeamChips
+                  weekendId={weekend.id}
+                  program={p}
+                  name={name}
+                  levels={chipLevels}
+                  playing={playing}
+                  status={p.status}
+                  keepOne
+                  dispatch={dispatch}
+                  onError={onError}
+                />
+              </div>
               <button
                 type="button"
                 aria-label={`Remove ${name}`}
+                title={`Take ${name} off this weekend`}
                 onClick={() => remove(p, name)}
-                style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               >
-                <Icons.Trash width={13} height={13} />
+                <Icons.Trash width={12} height={12} />
               </button>
-            </div>
-            <div style={{ paddingLeft: 16 }}>
-              <TeamChips
-                weekendId={weekend.id}
-                program={p}
-                name={name}
-                levels={chipLevels}
-                playing={playing}
-                status={p.status}
-                keepOne
-                dispatch={dispatch}
-                onError={onError}
-              />
             </div>
           </div>
         );
@@ -441,39 +557,18 @@ function TeamsEditor({
   );
 }
 
-// A number box that saves when you leave it (or press Enter).
-function GamesInput({ label, value, onSave }: { label: string; value: number | null; onSave: (n: number | null) => void }) {
-  const [text, setText] = useState(value?.toString() ?? "");
-  const [last, setLast] = useState(value);
-  if (value !== last) {
-    // Changed elsewhere (the grid): show the new number.
-    setLast(value);
-    setText(value?.toString() ?? "");
-  }
-  const commit = () => {
-    const n = text === "" ? null : Math.min(30, Number(text));
-    if (n !== value) onSave(n);
-  };
-  return (
-    <input
-      aria-label={label}
-      inputMode="numeric"
-      value={text}
-      placeholder="–"
-      onChange={(e) => setText(e.target.value.replace(/\D/g, "").slice(0, 2))}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          commit();
-        }
-      }}
-      style={{ width: 44, height: 28, textAlign: "center", borderRadius: 7, border: "1px solid var(--gw-border)", background: "var(--gw-bg)", color: "var(--gw-fg)", fontWeight: 800, fontSize: 13 }}
-    />
-  );
-}
+const grid2: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12 };
 
-const grid2: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
+const stepBtn: React.CSSProperties = {
+  width: 32,
+  height: 30,
+  border: "none",
+  background: "var(--gw-bg)",
+  color: "var(--gw-fg)",
+  fontSize: 16,
+  fontWeight: 700,
+  cursor: "pointer",
+};
 
 const cap: React.CSSProperties = {
   fontSize: 11,

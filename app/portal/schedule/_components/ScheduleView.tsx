@@ -335,7 +335,7 @@ export function ScheduleView({
               type="button"
               aria-pressed={showHidden}
               onClick={() => setShowHidden((v) => !v)}
-              title={showHidden ? "Hide the hidden columns again" : "Show the columns hidden in Season settings"}
+              title={showHidden ? "Hide the hidden teams again" : "Show the teams hidden in Season settings"}
               className="rsd-chip"
               style={{
                 display: "inline-flex",
@@ -354,7 +354,7 @@ export function ScheduleView({
                 whiteSpace: "nowrap",
               }}
             >
-              <Icons.Eye width={13} height={13} /> Hidden columns {hiddenCount}
+              <Icons.Eye width={13} height={13} /> Hidden teams {hiddenCount}
             </button>
           )}
         </div>
