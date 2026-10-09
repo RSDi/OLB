@@ -688,6 +688,35 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-registration-emails",
+    sectionId: "settings-registration-emails",
+    title: "Registration Emails walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-registration-emails",
+        title: "Settings → Registration Emails",
+        body: "The words in the emails the registration form sends: the receipt families get, and the 6-digit code email.",
+      },
+      {
+        target: "registration-emails-pick",
+        click: "settings-tab-registration-emails",
+        title: "Pick an email",
+        body: "**Registration receipt** goes to whoever filled in the form. **Email code** is the code the form emails first.",
+      },
+      {
+        target: "registration-emails-fields",
+        title: "Change the words",
+        body: "Edit any field and tap **Save**; the next email uses the new words. **{player}**, **{parent}**, **{season}** and **{teams}** fill themselves in. **Reset to original** puts a field back.",
+      },
+      {
+        target: "registration-emails-preview",
+        title: "Preview",
+        body: "Shows the email for a made-up family as you type, before anything is saved.",
+      },
+    ],
+  },
+  {
     id: "settings-email-templates",
     sectionId: "settings-email-templates",
     title: "Email Templates walkthrough",

@@ -5,6 +5,7 @@
 
 import { SEASON_LABEL, isHighSchoolTier, joinNames, tierParts, type RegistrationInput } from "./registration-form.ts"; // explicit extension so node --test can load this file
 import type { RegistrationExtra } from "./roster-logic.ts";
+import { emailText, fillTokens, type EmailText } from "./registration-email-text.ts";
 
 export const VENMO_HANDLE = "OmahaLightning-Basketball";
 export const VENMO_URL = `https://venmo.com/u/${VENMO_HANDLE}`;
@@ -135,8 +136,32 @@ export interface ReceiptOptions {
   checkAddress: string[];
 }
 
-export function receiptSubject(r: Receipt): string {
-  return `You're registered: ${joinNames(r.players.map((p) => p.first))} for the ${SEASON_LABEL} season`;
+// The tokens the receipt's editable words can use (Settings → Registration
+// Emails).
+function receiptVars(r: Receipt, who: Registrant | null): Record<string, string> {
+  return {
+    player: joinNames(r.players.map((p) => p.first)),
+    parent: who?.first ?? "",
+    season: SEASON_LABEL,
+    teams: r.players.length > 1 ? "teams" : "a team",
+  };
+}
+
+export function receiptSubject(r: Receipt, t: EmailText = emailText()): string {
+  return fillTokens(t["receipt.subject"], receiptVars(r, null));
+}
+
+// The editable words, filled in: text for one family's receipt.
+function receiptWords(r: Receipt, who: Registrant, t: EmailText) {
+  const fill = (s: string) => fillTokens(s, receiptVars(r, who));
+  const lines = (s: string) => fill(s).split("\n").map((l) => l.trim()).filter(Boolean);
+  return {
+    headline: fill(t["receipt.headline"]),
+    intro: fill(t["receipt.intro"]),
+    uniformNote: fill(t["receipt.uniform_note"]).trim(),
+    steps: lines(t["receipt.next_steps"]),
+    closing: lines(t["receipt.closing"]),
+  };
 }
 
 // Gold label above a section, as on the site.
@@ -147,7 +172,18 @@ const step = (n: number, text: string) =>
   `<tr><td valign="top" style="width:30px;padding:4px 0;"><div style="width:22px;height:22px;border-radius:100px;background:#fbcb44;font-size:12px;font-weight:800;text-align:center;line-height:22px;">${n}</div></td>` +
   `<td style="padding:4px 0 10px;font-size:14.5px;line-height:1.55;color:#333;">${text}</td></tr>`;
 
-export function receiptHtml(r: Receipt, who: Registrant, o: ReceiptOptions): string {
+// The opening, with the players' names in bold.
+function introHtml(r: Receipt, who: Registrant, t: EmailText): string {
+  const MARK = "\u0001";
+  const filled = fillTokens(t["receipt.intro"], { ...receiptVars(r, who), player: MARK });
+  return esc(filled)
+    .split(MARK)
+    .join(`<strong>${esc(receiptVars(r, who).player)}</strong>`)
+    .replace(/\n/g, "<br>");
+}
+
+export function receiptHtml(r: Receipt, who: Registrant, o: ReceiptOptions, t: EmailText = emailText()): string {
+  const w = receiptWords(r, who, t);
   const kids = esc(joinNames(r.players.map((p) => p.first)));
   const total = money(r.totalCents);
   const rows = r.players
@@ -179,37 +215,37 @@ export function receiptHtml(r: Receipt, who: Registrant, o: ReceiptOptions): str
 <tr><td align="center" style="padding:32px 32px 8px;"><img src="${esc(o.logoUrl)}" width="300" alt="Omaha Lightning Basketball" style="display:block;width:300px;max-width:100%;height:auto;"></td></tr>
 <tr><td style="padding:24px 36px 8px;">
 <div style="display:inline-block;background:#fbcb44;color:#000;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:100px;">${esc(SEASON_LABEL)} season</div>
-<h1 style="margin:16px 0 8px;font-size:30px;line-height:1.15;font-weight:800;">You&rsquo;re registered!</h1>
-<p style="margin:0;font-size:16px;line-height:1.6;color:#333;">${who.first ? `Hi ${esc(who.first)}, thanks` : "Thanks"} for registering <strong>${kids}</strong> with Omaha Lightning Basketball. We&rsquo;ve got everything we need, and a coach will be in touch about team placement.</p>
+<h1 style="margin:16px 0 8px;font-size:30px;line-height:1.15;font-weight:800;">${esc(w.headline)}</h1>
+<p style="margin:0;font-size:16px;line-height:1.6;color:#333;">${introHtml(r, who, t)}</p>
 </td></tr>
 <tr><td style="padding:24px 36px 4px;">${label("Your registration")}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e3d9;border-radius:12px;">${rows}
 <tr><td style="padding:14px 16px;background:#000;color:#fbcb44;font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:0 0 0 11px;">${r.players.length > 1 ? "Total registration fees" : "Registration fee"}</td>
 <td align="right" style="padding:14px 16px;background:#000;color:#fbcb44;font-size:20px;font-weight:800;border-radius:0 0 11px 0;">${total}</td></tr></table>
-<p style="margin:10px 2px 0;font-size:12.5px;line-height:1.5;color:#777;">Uniform sizes and costs come separately, once teams are set.</p>
+${w.uniformNote ? `<p style="margin:10px 2px 0;font-size:12.5px;line-height:1.5;color:#777;">${esc(w.uniformNote)}</p>` : ""}
 </td></tr>
 <tr><td style="padding:24px 36px 4px;">${label("How to pay")}${pay}</td></tr>
 <tr><td style="padding:24px 36px 8px;">${label("What happens next")}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-${step(1, `The club reviews your registration and places ${kids} on ${r.players.length > 1 ? "teams" : "a team"}.`)}
-${step(2, "A board member will contact you with instructions for joining our team communication platform, Slack.")}
+${w.steps.map((line, i) => step(i + 1, esc(line))).join("\n")}
 </table></td></tr>
-<tr><td style="padding:12px 36px 32px;"><p style="margin:0;font-size:14.5px;line-height:1.6;color:#333;">Questions? Just reply to this email.<br><strong>Go Lightning!</strong></p></td></tr>
+<tr><td style="padding:12px 36px 32px;"><p style="margin:0;font-size:14.5px;line-height:1.6;color:#333;">${w.closing.map((l, i) => (i === w.closing.length - 1 && i > 0 ? `<strong>${esc(l)}</strong>` : esc(l))).join("<br>")}</p></td></tr>
 <tr><td style="background:#000;padding:22px 36px;"><div style="height:3px;background:#fbcb44;border-radius:2px;margin-bottom:14px;"></div>
 <div style="font-size:13px;line-height:1.6;color:#d8d4c6;"><strong style="color:#fbcb44;">Omaha Lightning Basketball</strong><br>omahalightningbasketball.com &middot; You&rsquo;re getting this because you registered a player.</div></td></tr>
 </table></td></tr></table></body></html>`;
 }
 
-export function receiptText(r: Receipt, who: Registrant, o: Pick<ReceiptOptions, "checkAddress">): string {
+export function receiptText(r: Receipt, who: Registrant, o: Pick<ReceiptOptions, "checkAddress">, t: EmailText = emailText()): string {
+  const w = receiptWords(r, who, t);
   const kids = joinNames(r.players.map((p) => p.first));
   const check = `make your check out to ${CHECK_PAYEE} and ${o.checkAddress.length ? `mail it to:\n${o.checkAddress.join("\n")}` : "reply to this email for the mailing address."}`;
   return [
-    `${who.first ? `Hi ${who.first}, thanks` : "Thanks"} for registering ${kids} with Omaha Lightning Basketball for the ${SEASON_LABEL} season. A coach will be in touch about team placement.`,
+    w.intro,
     "",
     "YOUR REGISTRATION",
     ...r.players.map((p) => `${p.name}: ${playerFacts(p)}: ${money(p.cents)}`),
     `Total: ${money(r.totalCents)}`,
-    "Uniform sizes and costs come separately, once teams are set.",
+    ...(w.uniformNote ? [w.uniformNote] : []),
     "",
     "HOW TO PAY",
     r.payment === "Venmo"
@@ -217,10 +253,9 @@ export function receiptText(r: Receipt, who: Registrant, o: Pick<ReceiptOptions,
       : `You chose check. If you haven't paid yet, send ${money(r.totalCents)}: ${check}`,
     "",
     "WHAT HAPPENS NEXT",
-    `1. The club reviews your registration and places ${kids} on ${r.players.length > 1 ? "teams" : "a team"}.`,
-    "2. A board member will contact you with instructions for joining our team communication platform, Slack.",
+    ...w.steps.map((l, i) => `${i + 1}. ${l}`),
     "",
-    "Questions? Just reply to this email. Go Lightning!",
+    ...w.closing,
   ].join("\n");
 }
 
