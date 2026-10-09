@@ -6,6 +6,7 @@
 
 import { createAdminClient } from "../supabase/admin";
 import { mailFrom, mailReplyTo } from "./mail";
+import { sendPushToSuperAdmins } from "./push";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -21,6 +22,13 @@ export interface LowStockInfo {
 }
 
 export async function sendLowStockNotification(info: LowStockInfo) {
+  await sendPushToSuperAdmins({
+    title: `Low stock: ${info.supplyName}`,
+    body: `${info.onHand} ${info.unit} left (reorder at ${info.threshold}).`,
+    url: "/portal/settings",
+    tag: `low-stock-${info.supplyName}`,
+  });
+
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("[notify] RESEND_API_KEY not set — skipping low-stock email");

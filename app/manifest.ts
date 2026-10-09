@@ -8,8 +8,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/portal",
-    name: "Omaha Lightning Basketball",
-    short_name: "Lightning",
+    name: "OLB - Portal",
+    short_name: "OLB - Portal",
     description: "The Omaha Lightning member portal for families, coaches and the board.",
     start_url: "/portal",
     scope: "/",

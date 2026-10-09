@@ -3,6 +3,7 @@
 // degradation (no-ops if RESEND_API_KEY is missing or there's no recipient).
 
 import { mailFrom, mailReplyTo } from "./mail";
+import { sendPushToEmails } from "./push";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -21,6 +22,13 @@ export async function sendRequestDecisionNotification({
   note?: string | null;
   summary: string;
 }) {
+  await sendPushToEmails([to], {
+    title: decision === "approved" ? "Your request was approved" : "An update on your request",
+    body: summary.length > 140 ? `${summary.slice(0, 137)}…` : summary,
+    url: `/portal/tasks/${ticketId}`,
+    tag: `request-${ticketId}`,
+  });
+
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("[notify] RESEND_API_KEY not set — skipping decision email");

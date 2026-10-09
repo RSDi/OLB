@@ -4,6 +4,7 @@
 
 import { createAdminClient } from "../supabase/admin";
 import { mailFrom, mailReplyTo } from "./mail";
+import { sendPushToSuperAdmins } from "./push";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -14,6 +15,13 @@ export async function sendAccessRequestNotification({
   email: string;
   fullName: string | null;
 }) {
+  await sendPushToSuperAdmins({
+    title: "New portal access request",
+    body: fullName ? `${fullName} (${email})` : email,
+    url: "/portal/settings",
+    tag: `access-${email.toLowerCase()}`,
+  });
+
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn(

@@ -9,6 +9,8 @@ import type { MemberRole, MemberStatus } from "../../lib/auth/permissions";
 import { sidebarFrameHref, sidebarLinkMode, type SidebarLink } from "../../lib/sidebar-links/url";
 import { PREVIEW_EXIT_PATH } from "../../lib/activity/preview-cookie";
 import { recordSignOut } from "./ActivityBeacon";
+import { createPortal } from "react-dom";
+import { NotificationsSheet, turnOffPushOnThisDevice } from "./NotificationsSheet";
 
 interface NavItem {
   href: string;
@@ -257,6 +259,8 @@ export function PortalSidebar({
     );
   };
 
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
   async function handleSignOut() {
     // During a "Preview as", signing out ends the preview on the server —
     // a normal sign-out here would sign the member out of all their devices.
@@ -265,6 +269,7 @@ export function PortalSidebar({
       return;
     }
     await recordSignOut();
+    await turnOffPushOnThisDevice();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");
@@ -404,6 +409,34 @@ export function PortalSidebar({
             </span>
             {!c && "Collapse"}
           </button>
+        )}
+        {isApproved && !previewing && (
+          <button
+            onClick={() => setNotificationsOpen(true)}
+            data-tour="sidebar-notifications"
+            title={c ? "Notifications" : undefined}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: c ? "center" : "flex-start",
+              gap: isMobile ? 14 : 10,
+              padding: isMobile ? "14px 14px" : "10px 12px",
+              borderRadius: 10, width: "100%",
+              color: "var(--rsd-frame-fg-3)", fontWeight: 700,
+              fontSize: isMobile ? 15 : 13,
+              minHeight: isMobile ? 48 : undefined,
+              background: "none", border: "none", cursor: "pointer", transition: "color 150ms",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = "var(--rsd-frame-fg)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "var(--rsd-frame-fg-3)")}
+          >
+            <span style={{ display: "flex", transform: isMobile ? "scale(1.15)" : undefined }}>
+              <Icons.Bell width={16} height={16}/>
+            </span>
+            {!c && "Notifications"}
+          </button>
+        )}
+        {notificationsOpen && createPortal(
+          <NotificationsSheet onClose={() => setNotificationsOpen(false)} />,
+          document.body,
         )}
         <button
           onClick={handleSignOut}

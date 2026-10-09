@@ -118,6 +118,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **Payments** — what you owe for the season and what you've paid. It appears once the Treasurer has your family's balance ready.
 - **Slack Archive** — past messages, photos and files from the club's Slack.
 - **User Guide** — this page, near the bottom of the sidebar.
+- **Notifications** — turn on notifications for your phone or computer (see **Notifications** below).
 - **Sign out** — at the very bottom.
 
 Coaches and board members also see the **HS Schedule** and **External Contacts** (the travel coordinator does too), and board members **Settings**, just below **User Guide**.
@@ -142,7 +143,7 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons, and the
     group: "Getting started",
     audience: "everyone",
     keywords: ["install", "app", "home screen", "dock", "add to home screen", "add to dock", "iphone", "ipad", "android", "chrome", "safari", "edge", "pwa", "icon", "shortcut", "desktop"],
-    body: `You can put the portal on your phone's home screen or your computer's dock, so it opens in its own window like any other app, straight to the portal.
+    body: `You can put the portal on your phone's home screen or your computer's dock, so it opens in its own window like any other app, straight to the portal. It shows up as **OLB - Portal**.
 
 - **iPhone or iPad (Safari):** tap the **Share** button, then **Add to Home Screen**, then **Add**.
 - **Android (Chrome):** tap the **⋮** menu, then **Add to Home screen** (or **Install app**), then **Install**.
@@ -152,6 +153,28 @@ On a computer, **Collapse** (bottom of the sidebar) shrinks it to icons, and the
 **Sign in once inside the app.** On an iPhone or iPad the app doesn't share your sign-in with Safari, so you'll sign in again the first time you open it. **Email and password** or typing in an emailed sign-in code works best there.
 
 Links to other websites open in a small browser window on top of the app. Close it to get back to the portal.`,
+  },
+  {
+    id: "notifications",
+    title: "Notifications",
+    group: "Getting started",
+    audience: "everyone",
+    keywords: ["notifications", "notify", "push", "alert", "alerts", "bell", "phone", "badge", "turn on", "turn off", "test", "blocked", "iphone", "android"],
+    body: `The portal can send a notification to your phone or computer when something needs you. You still get the emails too.
+
+**What you'll hear about**
+
+- An answer on a request you made.
+- A new task in an area your team looks after.
+- For super-admins: every new task, new access requests, and supplies running low.
+
+**Turn them on.** Tap **Notifications** near the bottom of the sidebar, then **Turn on notifications**, and say **Allow** when your browser asks. Tap **Send a test** to make sure it works. Do this on each phone or computer you want notifications on.
+
+**On an iPhone or iPad**, notifications only work from the app on your Home Screen. Add it first (see **Install the portal as an app** above), open it from the Home Screen, then turn notifications on there.
+
+**Turn them off** with **Turn off** in the same place. Signing out also turns them off on that device, so a shared phone or computer doesn't keep getting yours.
+
+**Blocked?** If you said no when your browser asked, it won't ask again. Allow notifications for the site in your browser or phone settings, then come back and tap **Turn on notifications**.`,
   },
   {
     id: "ask-a-question",
