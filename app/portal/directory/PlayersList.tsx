@@ -67,6 +67,7 @@ export function PlayersList({
   canEmail,
   canSlack,
   registrations,
+  noteCounts,
 }: {
   players: DirectoryPlayer[];
   isStaff: boolean;
@@ -86,6 +87,9 @@ export function PlayersList({
   canSlack: boolean;
   // New, waitlisted and removed registrations; null without the grant.
   registrations: { waiting: number; waitlist: number; removed: number } | null;
+  // Notes on each player (0124), for the board and the Registrations grant;
+  // null for everyone else.
+  noteCounts: Record<string, number> | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -448,6 +452,7 @@ export function PlayersList({
                     requirements={requirements}
                     rows={rows}
                     onOpenRequirement={(requirement) => setOpen({ player: p, requirement })}
+                    notes={noteCounts?.[p.id] ?? 0}
                   />
                 ))}
               </div>
@@ -605,6 +610,7 @@ function PlayerRow({
   requirements,
   rows,
   onOpenRequirement,
+  notes,
 }: {
   player: DirectoryPlayer;
   isStaff: boolean;
@@ -614,6 +620,8 @@ function PlayerRow({
   requirements: Requirement[];
   rows: Map<string, PlayerRequirement>;
   onOpenRequirement: (r: Requirement) => void;
+  // How many notes the player has (0124); 0 shows nothing.
+  notes: number;
 }) {
   const age = ageFromDob(p.dob);
   const born = formatDate(p.dob);
@@ -651,6 +659,19 @@ function PlayerRow({
           </Link>
           {p.team && <span className="rsd-chip rsd-chip-mute">{teamLabel(p.team)}</span>}
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
+          {notes > 0 && (
+            <Link
+              href={`/portal/directory/players/${p.id}#notes`}
+              prefetch={false}
+              className="rsd-chip rsd-chip-mute"
+              data-tour="directory-player-notes"
+              title="Open their notes"
+              style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}
+            >
+              <Icons.FileText width={11} height={11} />
+              {notes === 1 ? "1 note" : `${notes} notes`}
+            </Link>
+          )}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
           {/* Only people who can see an opted-out player get it at all: the
               board, the Treasurer, and the player's own parents (0101). */}
