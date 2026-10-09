@@ -407,11 +407,11 @@ export function ScheduleView({
         <>
           {/* ─── Desktop: the grid ─── */}
           <div className="rsd-card gw-desktop-table" style={{ padding: 0, gap: 0, overflowX: "auto" }} data-tour="schedule-grid">
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 780 + shownLevels.length * 56 + (comparing ? 180 : 0) }}>
+            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, minWidth: 826 + shownLevels.length * 56 + (comparing ? 180 : 0) }}>
               <thead>
                 <tr>
                   <Th style={{ width: 104 }}>Weekend</Th>
-                  <Th style={{ width: 118 }}>Where</Th>
+                  <Th style={{ width: 164 }}>Where</Th>
                   <Th>Event</Th>
                   {comparing && <Th style={{ width: 180 }}>{comparing}</Th>}
                   {shownLevels.map((l) => (
@@ -711,10 +711,11 @@ function WeekendRow({
       </td>
       <td style={cellBase}>
         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{w.location ?? ""}</div>
-        {w.trip && <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{w.trip}</div>}
-        {near && (
-          <div style={{ marginTop: 6 }}>
-            <TravelChip near={near} active={travelOpen} onOpen={onTravel} />
+        {/* The trip, with the hotels and places to eat beside it. */}
+        {(w.trip || near) && (
+          <div style={{ display: "flex", alignItems: "center", gap: "2px 6px", flexWrap: "wrap", marginTop: 1 }}>
+            {w.trip && <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{w.trip}</span>}
+            {near && <TravelChip near={near} active={travelOpen} onOpen={onTravel} small />}
           </div>
         )}
       </td>
