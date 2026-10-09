@@ -23,6 +23,7 @@ import {
   canSlackDm,
   canManageWebsite,
   canMemberNotes,
+  canPlayerNotes,
   canCheckRequirements,
   canEditContacts,
   canManageTeams,
@@ -161,6 +162,14 @@ export async function requireMemberNotes(): Promise<GateResult> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };
   if (!canMemberNotes(caller.member)) return { error: "You don't have permission to change member notes." };
+  return { userId: caller.userId };
+}
+
+// Notes on players (0124): the board, or the Registrations permission.
+export async function requirePlayerNotes(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canPlayerNotes(caller.member)) return { error: "You don't have permission to add notes on players." };
   return { userId: caller.userId };
 }
 
