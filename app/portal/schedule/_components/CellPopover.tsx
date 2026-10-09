@@ -8,8 +8,10 @@
 // "not sure yet"), each team's Yes / Maybe / No, which of our teams it plays
 // (TeamChips), scores, and "Add a team".
 //
-// It opens below the cell, or above it when there's more room there, and
-// never over it. On a phone it opens as a sheet from the bottom instead.
+// It opens below the cell's row, or above it when there's more room there,
+// so it never covers the event and the teams coming; it starts at the cell
+// and runs right, over our other teams. On a phone it opens as a sheet from
+// the bottom instead.
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
@@ -128,10 +130,12 @@ export function CellPopover({
         return;
       }
       const r = target.anchor.getBoundingClientRect();
+      // Above or below the whole row, not just the cell.
+      const row = target.anchor.closest("tr")?.getBoundingClientRect() ?? r;
       // Its full height, however much of it shows now.
       const natural = el.offsetHeight - body.clientHeight + body.scrollHeight;
-      const roomBelow = window.innerHeight - r.bottom - 14;
-      const roomAbove = r.top - 14;
+      const roomBelow = window.innerHeight - row.bottom - 14;
+      const roomAbove = row.top - 14;
       let s = !fresh && side.current?.anchor === target.anchor ? side.current.side : null;
       if (!s) {
         s =
@@ -144,8 +148,8 @@ export function CellPopover({
       }
       const cap = 560;
       const maxHeight = s === "below" ? Math.min(roomBelow, cap) : s === "above" ? Math.min(roomAbove, cap) : window.innerHeight - 16;
-      const top = s === "below" ? r.bottom + 6 : s === "above" ? r.top - 6 - Math.min(natural, maxHeight) : 8;
-      const left = Math.min(Math.max(8, r.left + r.width / 2 - WIDTH / 2), window.innerWidth - WIDTH - 8);
+      const top = s === "below" ? row.bottom + 6 : s === "above" ? row.top - 6 - Math.min(natural, maxHeight) : 8;
+      const left = Math.min(Math.max(8, r.left), window.innerWidth - WIDTH - 8);
       setPos({ top, left, maxHeight, sheet: false });
     };
     place(false);
@@ -247,10 +251,19 @@ export function CellPopover({
         {/* Header */}
         <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid var(--gw-border)", display: "flex", gap: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--gw-fg-muted)" }}>
-              {levelTitle(level)} · {formatWeekendDates(weekend.starts_on, weekend.ends_on)}
+            <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--gw-fg-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {weekend.event || "Weekend"} · {formatWeekendDates(weekend.starts_on, weekend.ends_on)}
             </div>
-            <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.3, marginTop: 2 }}>{weekend.event || "Weekend"}</div>
+            <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1.3, marginTop: 2 }}>
+              {levelTitle(level)}
+              {summary.count != null && (
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {" "}
+                  · {summary.count} game{summary.count === 1 ? "" : "s"}
+                  {summary.unsure ? "?" : ""}
+                </span>
+              )}
+            </div>
           </div>
           {(target.pinned || sheet) && (
             <button type="button" aria-label="Close" onClick={onClose} style={iconBtn}>
@@ -362,30 +375,32 @@ function Viewer({
   // Nothing split by team yet: every team here is down for all our teams.
   const unsplit = list.length > 0 && list.every((o) => o.level_id === null);
   // "(also JV1, JV2)": the other teams of ours it plays.
+  // A team down for all our teams says nothing; one split by team says the
+  // others it plays, or that it's just this one.
   const alsoOf = (o: HsOpponent): string | null => {
-    if (o.level_id === null) return "all our teams";
+    if (o.level_id === null) return null;
     const p = byKey.get(opponentKey(o));
     const also = p ? teamsLabel(p, level.id) : "";
-    if (!also) return null;
-    return o.status === "declined" ? also : `also ${also}`;
+    if (!also) return playing.size > 1 ? `${level.label} only` : null;
+    return `also ${also}`;
   };
   return (
     <>
-      <div style={{ fontSize: 13, fontWeight: 600, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
-        {summary.count != null ? (
-          <span>
-            <strong style={{ fontSize: 15 }}>{summary.count}</strong> game{summary.count === 1 ? "" : "s"}
-          </span>
-        ) : (
-          <span style={{ color: "var(--gw-fg-muted)" }}>{summary.unsure ? "Games not settled" : "No games entered"}</span>
-        )}
-        {summary.unsure && summary.count != null && <FenceTag>not sure yet</FenceTag>}
-        {summary.tbd > 0 && (
-          <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            · {summary.tbd} opponent{summary.tbd === 1 ? "" : "s"} still to name
-          </span>
-        )}
-      </div>
+      {/* The games are in the title; say here what the number doesn't. */}
+      {(summary.count == null || summary.unsure || summary.tbd > 0) && (
+        <div style={{ fontSize: 13, fontWeight: 600, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+          {summary.count == null && (
+            <span style={{ color: "var(--gw-fg-muted)" }}>{summary.unsure ? "Games not settled" : "No games entered"}</span>
+          )}
+          {summary.unsure && summary.count != null && <FenceTag>games not sure yet</FenceTag>}
+          {summary.tbd > 0 && (
+            <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+              {summary.count == null ? "· " : ""}
+              {summary.tbd} opponent{summary.tbd === 1 ? "" : "s"} still to name
+            </span>
+          )}
+        </div>
+      )}
       {games?.note && <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>{games.note}</div>}
       {unsplit && playing.size > 1 && (
         <div style={hint}>
@@ -410,14 +425,19 @@ function Viewer({
         </div>
       ) : (
         <>
-          <Section title={past ? "Played" : "Coming"} rows={summary.confirmed} tone="confirmed" contacts={contacts} alsoOf={alsoOf} sayAll={!unsplit} />
-          <Section title={past ? "Were on the fence" : "On the fence"} rows={summary.tentative} tone="tentative" contacts={contacts} alsoOf={alsoOf} sayAll={!unsplit} />
-          <Section title={past ? "Didn't come" : "Not coming"} rows={summary.declined} tone="declined" contacts={contacts} alsoOf={alsoOf} sayAll={!unsplit} />
+          <Section title={past ? "Played" : "Coming"} rows={summary.confirmed} tone="confirmed" contacts={contacts} alsoOf={alsoOf} />
+          <Section title={past ? "Were on the fence" : "On the fence"} rows={summary.tentative} tone="tentative" contacts={contacts} alsoOf={alsoOf} />
+          {summary.declined.length > 0 && (
+            <div style={{ ...hint, marginTop: 2 }}>
+              <strong style={{ fontWeight: 700 }}>{past ? "Didn't come" : "Not coming"}:</strong>{" "}
+              {summary.declined.map((o) => (o.contact_id && contacts.get(o.contact_id)?.name) || o.name).join(", ")}
+            </div>
+          )}
         </>
       )}
       {others.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={cap}>For our other teams ({others.length})</span>
+          <span style={cap}>For our other teams {others.length}</span>
           {others.map((p) => (
             <TeamRow
               key={p.key}
@@ -441,24 +461,18 @@ function Section({
   tone,
   contacts,
   alsoOf,
-  sayAll,
 }: {
   title: string;
   rows: HsOpponent[];
   tone: HsOpponentStatus;
   contacts: Map<string, HsContactRef>;
   alsoOf: (o: HsOpponent) => string | null;
-  // Say "all our teams" by the title when every one here is; off when the
-  // card has already said so.
-  sayAll: boolean;
 }) {
   if (rows.length === 0) return null;
-  // Every one here is down for all our teams: say it once, not on each.
-  const allHere = rows.every((o) => o.level_id === null);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <span style={cap}>
-        {title} ({rows.length}){allHere && sayAll ? " · all our teams" : ""}
+        {title} {rows.length}
       </span>
       {rows.map((o) => {
         const c = o.contact_id ? contacts.get(o.contact_id) : undefined;
@@ -469,7 +483,7 @@ function Section({
             contactId={o.contact_id}
             contact={c}
             tone={tone}
-            also={allHere && o.level_id === null ? null : alsoOf(o)}
+            also={alsoOf(o)}
             result={resultLabel(o)}
           />
         );
@@ -622,6 +636,11 @@ function Editor({
   const n = games?.games ?? null;
   const taken = new Set(list.map(opponentKey));
   const byKey = new Map(programs.map((p) => [p.key, p]));
+  const counts = { confirmed: 0, tentative: 0, declined: 0 };
+  for (const o of list) counts[o.status]++;
+  // Coming, then on the fence, then the ones not coming at the bottom.
+  const rank: Record<HsOpponentStatus, number> = { confirmed: 0, tentative: 1, declined: 2 };
+  const sorted = [...list].sort((a, b) => rank[a.status] - rank[b.status]);
 
   return (
     <>
@@ -664,7 +683,8 @@ function Editor({
       {/* Add a team */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }} data-tour="schedule-popover-add">
         <TeamAdder options={options} knownTeams={knownTeams} taken={taken} onAdd={add} />
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--gw-fg-muted)" }}>Add as</span>
           <StatusSwitch value={addStatus} onChange={setAddStatus} name="the new team" />
           <label style={{ display: "inline-flex", gap: 5, alignItems: "center", fontSize: 11.5, fontWeight: 600, cursor: "pointer", color: "var(--gw-fg-muted)" }}>
             <input type="checkbox" checked={addAll} onChange={(e) => setAddAll(e.target.checked)} style={{ accentColor: "var(--rsd-accent-fill)" }} />
@@ -679,10 +699,19 @@ function Editor({
           <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>None yet. Add one above.</div>
         ) : (
           <div style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.45 }}>
-            Under each, tap the teams of ours it plays, or <strong>All</strong>.
+            <span style={{ fontWeight: 700, color: "var(--gw-fg)" }}>
+              {[
+                `${counts.confirmed} coming`,
+                counts.tentative > 0 && `${counts.tentative} on the fence`,
+                counts.declined > 0 && `${counts.declined} not coming`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+            . Tap the teams of ours each plays, or <strong>All</strong>.
           </div>
         )}
-        {list.map((o, i) => {
+        {sorted.map((o, i) => {
           const name = (o.contact_id && contacts.get(o.contact_id)?.name) || o.name;
           const program = byKey.get(opponentKey(o));
           return (
@@ -692,33 +721,39 @@ function Editor({
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={name}>
                   {name}
                 </span>
-                <button type="button" aria-label={`Remove ${name}`} onClick={() => remove(o)} style={iconBtn}>
-                  <Icons.Trash width={13} height={13} />
-                </button>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", paddingLeft: 14 }}>
-                <StatusSwitch value={o.status} onChange={(s) => patch(o, { status: s })} name={name} />
                 {(past || o.our_score != null) && o.level_id && (
                   <button type="button" onClick={() => setScoring(scoring === o.id ? null : o.id)} style={{ ...textBtn, fontSize: 11 }}>
                     {resultLabel(o) ?? "Score"}
                   </button>
                 )}
+                <StatusSwitch value={o.status} onChange={(s) => patch(o, { status: s })} name={name} />
               </div>
-              {program && (
-                // The tour points at the first team's chips.
-                <div style={{ paddingLeft: 14 }} data-tour={i === 0 ? "schedule-popover-teams" : undefined}>
-                  <TeamChips
-                    weekendId={weekend.id}
-                    program={program}
-                    name={name}
-                    levels={chipLevels}
-                    playing={playing}
-                    status={o.status}
-                    dispatch={dispatch}
-                    onError={onError}
-                  />
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 6, paddingLeft: 14 }}>
+                {/* The tour points at the first team's chips. */}
+                <div style={{ flex: 1, minWidth: 0 }} data-tour={i === 0 ? "schedule-popover-teams" : undefined}>
+                  {program && (
+                    <TeamChips
+                      weekendId={weekend.id}
+                      program={program}
+                      name={name}
+                      levels={chipLevels}
+                      playing={playing}
+                      status={o.status}
+                      dispatch={dispatch}
+                      onError={onError}
+                    />
+                  )}
                 </div>
-              )}
+                <button
+                  type="button"
+                  aria-label={`Remove ${name}`}
+                  title={`Take ${name} off this weekend`}
+                  onClick={() => remove(o)}
+                  style={{ ...iconBtn, width: 26, height: 26 }}
+                >
+                  <Icons.Trash width={12} height={12} />
+                </button>
+              </div>
               {scoring === o.id && (
                 <ScoreInputs
                   o={o}
