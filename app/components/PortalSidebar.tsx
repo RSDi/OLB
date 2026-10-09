@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Icons } from "./icons";
 import { createClient } from "../../lib/supabase/client";
@@ -67,15 +68,6 @@ const BOTTOM_HREFS = ["/portal/guide", SETTINGS_HREF];
 
 // Wordmark in the sidebar's brand block (Lightning theme).
 const BRAND = { name: "OLB", tagline: "MEMBER PORTAL" };
-
-// Filled lightning bolt for the brand tile. Icons in ./icons are stroke-only.
-function BoltMark({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M14 2 5 13.5h6L10 22l9-11.5h-6L14 2z" fill="currentColor" />
-    </svg>
-  );
-}
 
 // Trimmed viewer shape — sidebar only needs role/status to decide which nav
 // items to show. Layout fetches the full viewer once per request and hands
@@ -297,13 +289,14 @@ export function PortalSidebar({
         textDecoration: "none",
         flexShrink: 0,
       }}>
-        <span style={{
-          width: 34, height: 34, flexShrink: 0, borderRadius: 9,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: "var(--rsd-accent)", color: "var(--rsd-accent-on)",
-        }}>
-          <BoltMark />
-        </span>
+        {/* The club's bolt logo on gold, the same as the site's icon. */}
+        <Image
+          src="/email/olb-bolt.png"
+          alt=""
+          width={34}
+          height={34}
+          style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 9, display: "block" }}
+        />
         {!c && (
           <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{
