@@ -719,35 +719,38 @@ function WeekendRow({
         )}
       </td>
       <td style={{ ...cellBase, borderLeft: `4px solid ${st.bar}`, paddingLeft: 12 }}>
-        <button
-          type="button"
-          onClick={onEvent}
-          data-tour="schedule-event"
-          style={{ display: "block", background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", color: "inherit", width: "100%", whiteSpace: "normal" }}
-          title="Open this weekend"
-        >
-          <span
-            style={{
-              fontSize: 13.5,
-              fontWeight: quiet ? 600 : 800,
-              fontStyle: w.status === "off" ? "italic" : "normal",
-              textDecoration: w.status === "canceled" ? "line-through" : "none",
-              color: quiet ? "var(--gw-fg-muted)" : "var(--gw-fg)",
-              lineHeight: 1.35,
-            }}
+        {/* The event, with how it stands beside it on the same line. */}
+        <div style={{ display: "flex", alignItems: "center", gap: "2px 8px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={onEvent}
+            data-tour="schedule-event"
+            style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", color: "inherit", whiteSpace: "normal" }}
+            title="Open this weekend"
           >
-            {w.event || "—"}
-          </span>
-          {w.details && (
-            <span title="Has more details" style={{ display: "inline-block", marginLeft: 5, color: "var(--gw-fg-muted)", verticalAlign: -1 }}>
-              <Icons.FileText width={11} height={11} />
+            <span
+              style={{
+                fontSize: 13.5,
+                fontWeight: quiet ? 600 : 800,
+                fontStyle: w.status === "off" ? "italic" : "normal",
+                textDecoration: w.status === "canceled" ? "line-through" : "none",
+                color: quiet ? "var(--gw-fg-muted)" : "var(--gw-fg)",
+                lineHeight: 1.35,
+              }}
+            >
+              {w.event || "—"}
             </span>
-          )}
-        </button>
-        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 3 }}>
+            {w.details && (
+              <span title="Has more details" style={{ display: "inline-block", marginLeft: 5, color: "var(--gw-fg-muted)", verticalAlign: -1 }}>
+                <Icons.FileText width={11} height={11} />
+              </span>
+            )}
+          </button>
           {w.status !== "planned" && <StatusChip status={w.status} small />}
-          {(line.names.length > 0 || line.fence > 0) && (
-            <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.4 }}>
+        </div>
+        {(line.names.length > 0 || line.fence > 0) && (
+          <div style={{ marginTop: 1, lineHeight: 1.3 }}>
+            <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.3 }}>
               {line.names.join(" · ")}
               {line.more > 0 && ` +${line.more}`}
               {line.fence > 0 && (
@@ -757,8 +760,8 @@ function WeekendRow({
                 </span>
               )}
             </span>
-          )}
-        </div>
+          </div>
+        )}
       </td>
       {compare && (
         <td style={{ ...cellBase, fontSize: 12, color: "var(--gw-fg-muted)" }}>
