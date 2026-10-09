@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   // (the manifest lives in app/manifest.ts).
   appleWebApp: {
     capable: true,
-    title: "Lightning",
+    title: "OLB - Portal",
     statusBarStyle: "default",
   },
 };

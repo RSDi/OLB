@@ -5,6 +5,7 @@
 
 import { createAdminClient } from "../supabase/admin";
 import { mailFrom, mailReplyTo } from "./mail";
+import { sendPushToEmails } from "./push";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -27,19 +28,12 @@ export async function sendNewTicketNotification({
   priorityLabel: string | null;
   description: string;
 }) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.warn("[notify] RESEND_API_KEY not set — skipping new-ticket email");
-    return;
-  }
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     console.warn(
       "[notify] SUPABASE_SERVICE_ROLE_KEY not set — skipping new-ticket email (need it to look up super-admin recipients)"
     );
     return;
   }
-  const from = mailFrom("OLB Portal");
-
   const admin = createAdminClient();
 
   // Super-admins always get a copy.
@@ -88,6 +82,20 @@ export async function sendNewTicketNotification({
     console.warn("[notify] No super-admin recipients found for new ticket");
     return;
   }
+
+  await sendPushToEmails(to, {
+    title: `New ${categoryName ?? "task"} task${areaName ? ` — ${areaName}` : ""}`,
+    body: description.length > 140 ? `${description.slice(0, 137)}…` : description,
+    url: `/portal/tasks/${ticketId}`,
+    tag: `task-${ticketId}`,
+  });
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[notify] RESEND_API_KEY not set — skipping new-ticket email");
+    return;
+  }
+  const from = mailFrom("OLB Portal");
 
   const submitterLine = submitterName ?? submitterEmail ?? "(anonymous)";
   const subject = `New ${categoryName ?? "task"} task${areaName ? ` — ${areaName}` : ""} (${priorityLabel ?? "no priority"})`;
