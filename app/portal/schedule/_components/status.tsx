@@ -14,10 +14,17 @@ export const STATUS_STYLE: Record<HsWeekendStatus, { bar: string; tint: string; 
   off: { bar: "#D4D4D8", tint: "rgba(212, 212, 216, 0.22)", ink: "var(--gw-fg-muted)" },
 };
 
-export function StatusChip({ status, small }: { status: HsWeekendStatus; small?: boolean }) {
+// Shorter words for the grid, where the long ones crowd the event's line.
+const SHORT: Partial<Record<HsWeekendStatus, string>> = {
+  need_facility: "Need facility",
+  in_process: "Final details",
+};
+
+export function StatusChip({ status, small, short }: { status: HsWeekendStatus; small?: boolean; short?: boolean }) {
   const st = STATUS_STYLE[status];
   return (
     <span
+      title={short && SHORT[status] ? weekendStatusLabel(status) : undefined}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -35,7 +42,7 @@ export function StatusChip({ status, small }: { status: HsWeekendStatus; small?:
       {status !== "planned" && (
         <span aria-hidden style={{ width: 6, height: 6, borderRadius: 3, background: st.bar, flexShrink: 0 }} />
       )}
-      {weekendStatusLabel(status)}
+      {(short && SHORT[status]) || weekendStatusLabel(status)}
     </span>
   );
 }
