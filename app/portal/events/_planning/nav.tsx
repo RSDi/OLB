@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { PlanningRole } from "../../../../lib/planning/types";
+import { LinkSelect } from "./LinkSelect";
 
 export type PlanningView = "upcoming" | "past" | "all" | "year" | "review" | "template";
 
@@ -30,7 +31,7 @@ export function planningHref(p: {
 }
 
 const tabStyle = (active: boolean): React.CSSProperties => ({
-  padding: "8px 16px",
+  padding: "8px 14px",
   borderRadius: 8,
   background: active ? "var(--gw-bg-elev)" : "transparent",
   border: "1px solid",
@@ -44,39 +45,35 @@ const tabStyle = (active: boolean): React.CSSProperties => ({
   gap: 8,
 });
 
+// The board's tabs: Calendar (Upcoming, Past or All, picked under it), Year,
+// Review and Template. Everyone else only has the calendar, so no tabs.
 export function PlanningTabs({
   view,
-  planner,
   role,
   pendingCount,
 }: {
   view: PlanningView;
-  planner: boolean;
   role: string | null;
   pendingCount: number;
 }) {
   // `tour`: the tab's guided-tour anchor (lib/help/tours.ts).
   const tabs: { key: PlanningView; label: string; tour: string }[] = [
-    { key: "upcoming", label: "Upcoming", tour: "planning-tab-upcoming" },
-    { key: "past", label: "Past", tour: "planning-tab-past" },
-    { key: "all", label: "All", tour: "planning-tab-all" },
-    ...(planner
-      ? ([
-          { key: "year", label: "Year", tour: "planning-tab-year" },
-          { key: "review", label: "Review", tour: "planning-tab-review" },
-          { key: "template", label: "Template", tour: "planning-tab-template" },
-        ] as const)
-      : []),
+    { key: "upcoming", label: "Calendar", tour: "planning-tab-calendar" },
+    { key: "year", label: "Year", tour: "planning-tab-year" },
+    { key: "review", label: "Review", tour: "planning-tab-review" },
+    { key: "template", label: "Template", tour: "planning-tab-template" },
   ];
+  const isOn = (k: PlanningView) => (k === "upcoming" ? CALENDAR_VIEWS.includes(view) : view === k);
   return (
     <div data-tour="planning-tabs" style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
       {tabs.map((t) => (
         <Link
           key={t.key}
           data-tour={t.tour}
-          href={planningHref({ view: t.key, role: t.key === "template" ? null : role })}
-          style={tabStyle(view === t.key)}
-          aria-current={view === t.key ? "page" : undefined}
+          // The calendar tab keeps Past or All when you're already on it.
+          href={planningHref({ view: t.key === "upcoming" && isOn("upcoming") ? view : t.key, role: t.key === "template" ? null : role })}
+          style={tabStyle(isOn(t.key))}
+          aria-current={isOn(t.key) ? "page" : undefined}
         >
           {t.label}
           {t.key === "review" && pendingCount > 0 && (
@@ -100,7 +97,12 @@ export function PlanningTabs({
   );
 }
 
-// "Everyone · President · Athletic Director · …": show one role's tasks.
+// A row of chip drop-downs above a view.
+export function FilterRow({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>{children}</div>;
+}
+
+// "All roles", "President", …: show one role's tasks.
 export function RoleFilter({
   roles,
   active,
@@ -111,28 +113,17 @@ export function RoleFilter({
   hrefFor: (roleId: string | null) => string;
 }) {
   if (roles.length === 0) return null;
-  const pill = (on: boolean): React.CSSProperties => ({
-    padding: "5px 12px",
-    borderRadius: 100,
-    fontSize: 12,
-    fontWeight: 700,
-    textDecoration: "none",
-    border: "1px solid",
-    borderColor: on ? "var(--rsd-accent)" : "var(--gw-border)",
-    background: on ? "var(--rsd-accent-fill)" : "transparent",
-    color: on ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
-  });
   return (
-    <div data-tour="planning-roles" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }} aria-label="Show tasks for">
-      <Link href={hrefFor(null)} style={pill(active === null)}>
-        Everyone
-      </Link>
-      {roles.map((r) => (
-        <Link key={r.id} href={hrefFor(r.id)} style={pill(active === r.id)}>
-          {r.name}
-        </Link>
-      ))}
-    </div>
+    <LinkSelect
+      label="Show tasks for"
+      data-tour="planning-roles"
+      value={active ?? ""}
+      active={active !== null}
+      options={[
+        { value: "", label: "All roles", href: hrefFor(null) },
+        ...roles.map((r) => ({ value: r.id, label: r.name, href: hrefFor(r.id) })),
+      ]}
+    />
   );
 }
 

@@ -16,7 +16,7 @@ import { RoleChip } from "./chips";
 import { dayNum, monthShort } from "./format";
 import { MeetingRow } from "./MeetingRow";
 import { buildMonths, loadEvents, occurrencesBetween, type MonthBlock } from "./months";
-import { planningHref, RoleFilter } from "./nav";
+import { FilterRow, planningHref, RoleFilter } from "./nav";
 import { PlanningTaskRow } from "./PlanningTaskRow";
 import { SeasonSender } from "./SeasonSender";
 
@@ -82,40 +82,34 @@ export async function YearView({
 
   return (
     <>
-      <div data-tour="planning-season" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <Link
-          href={planningHref({ view: "year", season: season - 1, role })}
-          className="gw-press"
-          style={seasonStep}
-          aria-label={`Show ${seasonLabel(season - 1)}`}
-        >
-          <Icons.ChevronLeft width={14} height={14} /> {seasonLabel(season - 1)}
-        </Link>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>{seasonLabel(season)} season</h2>
-          {which && <span className="rsd-chip rsd-chip-accent">{which}</span>}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div data-tour="planning-season" style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+          <SeasonArrow href={planningHref({ view: "year", season: season - 1, role })} label={`Back to ${seasonLabel(season - 1)}`}>
+            <Icons.ChevronLeft width={16} height={16} />
+          </SeasonArrow>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, minWidth: 96, textAlign: "center", padding: "0 4px" }}>
+            {seasonLabel(season)}
+          </h2>
+          <SeasonArrow href={planningHref({ view: "year", season: season + 1, role })} label={`On to ${seasonLabel(season + 1)}`}>
+            <Icons.ChevronRight width={16} height={16} />
+          </SeasonArrow>
         </div>
-        <Link
-          href={planningHref({ view: "year", season: season + 1, role })}
-          className="gw-press"
-          style={seasonStep}
-          aria-label={`Show ${seasonLabel(season + 1)}`}
-        >
-          {seasonLabel(season + 1)} <Icons.ChevronRight width={14} height={14} />
-        </Link>
+        {which && <span className="rsd-chip rsd-chip-accent">{which}</span>}
         {season !== currentSeason && (
           <Link href={planningHref({ view: "year", role })} style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none" }}>
             Back to this season
           </Link>
         )}
+      </div>
+
+      <FilterRow>
+        <RoleFilter roles={roles} active={role} hrefFor={(r) => planningHref({ view: "year", season, role: r })} />
         {tasks.length > 0 && (
-          <span style={{ marginLeft: "auto", fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
             {done} of {tasks.length} tasks done
           </span>
         )}
-      </div>
-
-      <RoleFilter roles={roles} active={role} hrefFor={(r) => planningHref({ view: "year", season, role: r })} />
+      </FilterRow>
 
       {!built && (
         <div className="rsd-card" style={{ gap: 12, padding: "16px 20px" }}>
@@ -124,7 +118,7 @@ export async function YearView({
           </div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.6, maxWidth: 640 }}>
             Sending it copies the template&apos;s {monthlyLines} monthly tasks into Review, where the board keeps or
-            tosses each one. What you keep shows up here and on Upcoming.
+            tosses each one. What you keep shows up here and on the Calendar.
           </div>
           <SeasonSender seasons={[season]} initial={season} built={[...builtSeasons]} />
         </div>
@@ -176,18 +170,31 @@ export async function YearView({
   );
 }
 
-const seasonStep: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 4,
-  padding: "6px 12px",
-  borderRadius: 100,
-  border: "1px solid var(--gw-border)",
-  fontSize: 12,
-  fontWeight: 700,
-  color: "var(--gw-fg-muted)",
-  textDecoration: "none",
-};
+// The round arrows beside the season's name, like the HS Schedule's.
+function SeasonArrow({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      title={label}
+      className="gw-press"
+      style={{
+        width: 32,
+        height: 32,
+        flexShrink: 0,
+        borderRadius: 100,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: "1px solid var(--gw-border)",
+        background: "var(--gw-bg-elev)",
+        color: "var(--gw-fg)",
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
 
 function MonthCard({ block, current, draftTopics }: { block: MonthBlock; current: MonthKey; draftTopics: number }) {
   const rel = relativeMonth(block.key, current);

@@ -28,7 +28,8 @@ import {
   type Occurrence,
   type SeriesInMonth,
 } from "./months";
-import { planningHref, RoleFilter, type PlanningView } from "./nav";
+import { LinkSelect } from "./LinkSelect";
+import { FilterRow, planningHref, RoleFilter, type PlanningView } from "./nav";
 
 const monthHeaderStyle: React.CSSProperties = {
   padding: "8px 18px",
@@ -112,13 +113,20 @@ export async function CalendarView({
 
   return (
     <>
-      {planner && (
-        <RoleFilter
-          roles={roles}
-          active={role}
-          hrefFor={(r) => planningHref({ view, role: r })}
+      <FilterRow>
+        <LinkSelect
+          label="Which months"
+          data-tour="planning-when"
+          value={view}
+          active={view !== "upcoming"}
+          options={[
+            { value: "upcoming", label: "Upcoming", href: planningHref({ view: "upcoming", role }) },
+            { value: "past", label: "Past", href: planningHref({ view: "past", role }) },
+            { value: "all", label: "All months", href: planningHref({ view: "all", role }) },
+          ]}
         />
-      )}
+        {planner && <RoleFilter roles={roles} active={role} hrefFor={(r) => planningHref({ view, role: r })} />}
+      </FilterRow>
       <div className="rsd-card" style={{ gap: 0, padding: 0, overflow: "hidden" }}>
         <div
           style={{

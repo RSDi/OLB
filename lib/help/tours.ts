@@ -1151,11 +1151,16 @@ export const GUIDE_TOURS: GuideTour[] = [
         part: "The calendar",
         target: "planning-tabs",
         title: "Planning's tabs",
-        body: "**Upcoming** starts with this month, **Past** starts with last month and goes back, and **All** is everything. **Year**, **Review** and **Template** are the board's.",
+        body: "**Calendar** is the months one after another, **Year** is a season on a page, **Review** is where the board picks a season's tasks, and **Template** is what they come from.",
+      },
+      {
+        target: "planning-when",
+        click: "planning-tab-calendar",
+        title: "Upcoming, Past or All months",
+        body: "**Upcoming** starts with this month, **Past** starts with last month and goes back, and **All months** is everything.",
       },
       {
         target: "planning-month",
-        click: "planning-tab-upcoming",
         title: "A month at a time",
         body: "Each month shows its board meeting, its events, and the tasks the board kept for it under **To do**. A practice that repeats is one line, with how many times it meets that month.",
       },
@@ -1172,7 +1177,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "planning-roles",
         title: "One role at a time",
-        body: "Show just the President's tasks, the Athletic Director's, and so on. **Everyone** shows them all again.",
+        body: "Pick the President, the Athletic Director and so on to see just their tasks. **All roles** shows them all again.",
       },
       {
         target: "planning-season",

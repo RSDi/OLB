@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { FilterSelect } from "../../../components/FilterControls";
 import { Icons } from "../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../components/ui";
 import {
@@ -95,30 +96,21 @@ export function TemplateEditor({
       </p>
 
       {roles.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {[null, ...roles.map((r) => r.id)].map((id) => {
-            const on = roleFilter === id;
-            return (
-              <button
-                key={id ?? "all"}
-                type="button"
-                onClick={() => setRoleFilter(id)}
-                style={{
-                  padding: "5px 12px",
-                  borderRadius: 100,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  border: "1px solid",
-                  borderColor: on ? "var(--rsd-accent)" : "var(--gw-border)",
-                  background: on ? "var(--rsd-accent-fill)" : "transparent",
-                  color: on ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
-                  cursor: "pointer",
-                }}
-              >
-                {id ? roleById.get(id)?.name : "Everyone"}
-              </button>
-            );
-          })}
+        <div style={{ display: "flex" }}>
+          <FilterSelect
+            value={roleFilter ?? ""}
+            onChange={(e) => setRoleFilter(e.target.value || null)}
+            aria-label="Show tasks for"
+            grow
+            active={roleFilter !== null}
+          >
+            <option value="">All roles</option>
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </FilterSelect>
         </div>
       )}
 
