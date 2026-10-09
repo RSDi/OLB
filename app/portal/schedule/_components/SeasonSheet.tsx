@@ -1,8 +1,10 @@
 "use client";
-// A season's settings: its notes, its columns (the teams we field,
-// in order, each with a short label, an optional longer name, the Directory
-// team it is, and whether it's folded away), starting next season from this
-// one, and deleting it. Adding and deleting seasons is the board's.
+// A season's settings: our teams first (a column each on the schedule, in
+// order, each with a short label, an optional longer name, the Directory
+// team it is, and whether it's folded away, with an eye to fold it in one
+// tap), then the season's notes, then starting next season from this one
+// and deleting it. Teams save as you change them; the notes have their own
+// Save notes. Adding and deleting seasons is the board's.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -75,19 +77,9 @@ export function SeasonSheet({
       onClose={onClose}
       tour="schedule-season-sheet"
       footer={
-        <>
-          <Pill variant="ghost" size="md" onClick={onClose} disabled={busy}>
-            Close
-          </Pill>
-          <Pill
-            variant="accent"
-            size="md"
-            disabled={busy}
-            onClick={() => run(() => updateSeason(season.id, { notes }))}
-          >
-            Save
-          </Pill>
-        </>
+        <Pill variant="ghost" size="md" onClick={onClose} disabled={busy}>
+          Close
+        </Pill>
       }
     >
       {error && (
@@ -95,14 +87,6 @@ export function SeasonSheet({
           {error}
         </div>
       )}
-      <Textarea label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Anything about the season as a whole: game limits, who's the scheduler…" />
-      {season.imported_from && (
-        <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          Imported from {season.imported_from}
-          {season.imported_at && ` on ${new Date(season.imported_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`}.
-        </div>
-      )}
-
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-tour="schedule-columns">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
           <span style={cap}>Our teams</span>
@@ -113,8 +97,7 @@ export function SeasonSheet({
           )}
         </div>
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
-          Each team we field this season, like the spreadsheet&apos;s V, JV1, JV2, 14U A: one column on the schedule
-          each. A hidden team keeps its games but folds away, like the spreadsheet&apos;s hidden 14U and 12U.
+          A column each on the schedule. Hidden teams keep their games but fold away.
         </div>
         {adding && (
           <LevelForm
@@ -135,6 +118,9 @@ export function SeasonSheet({
             teams={teams}
             busy={busy}
             onSave={(input) => run(() => saveLevel(season.id, l.id, input))}
+            onToggleHidden={() =>
+              run(() => saveLevel(season.id, l.id, { label: l.label, name: l.name, team_id: l.team_id, hidden: !l.hidden }))
+            }
             onMove={(d) => run(() => moveLevel(l.id, d))}
             onDelete={() => {
               if (!confirm(`Delete ${l.label} and every game and team entered under it?`)) return;
@@ -144,43 +130,58 @@ export function SeasonSheet({
         ))}
       </div>
 
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--gw-border)", paddingTop: 14 }}>
+        <Textarea
+          label="Notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={3}
+          placeholder="Anything about the season as a whole: game limits, who's the scheduler…"
+        />
+        {notes !== (season.notes ?? "") && (
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <Pill variant="ghost" size="sm" disabled={busy} onClick={() => setNotes(season.notes ?? "")}>
+              Cancel
+            </Pill>
+            <Pill variant="accent" size="sm" disabled={busy} onClick={() => run(() => updateSeason(season.id, { notes }))}>
+              Save notes
+            </Pill>
+          </div>
+        )}
+      </div>
+
       {isStaff && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px solid var(--gw-border)", paddingTop: 14 }}>
           <span style={cap}>Next season</span>
           {nextExists ? (
             <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>{seasonLabel(next)} is already on the schedule.</div>
           ) : (
-            <>
-              <div style={{ fontSize: 13, lineHeight: 1.5 }}>
-                Start {seasonLabel(next)} from this season: the same weekends a year on (same days of the week), the same
-                events, places, teams of ours and games, and the teams that came, now on the fence. Scores and canceled weekends
-                aren&apos;t carried.
-              </div>
-              <div>
-                <Pill
-                  variant="light"
-                  size="sm"
-                  disabled={busy}
-                  onClick={async () => {
-                    const made = await run(() => createSeason({ season: next, fromSeasonId: season.id }));
-                    if (made) {
-                      onClose();
-                      router.push(`/portal/schedule?season=${next}`);
-                    }
-                  }}
-                >
-                  Start {seasonLabel(next)} from {seasonLabel(season.season)}
-                </Pill>
-              </div>
-            </>
+            <div style={{ fontSize: 12.5, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+              {`Start ${seasonLabel(next)} with the same weekends a year on, our teams and games, and the teams that came now on the fence. Scores and canceled weekends aren't carried.`}
+            </div>
           )}
-          <div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {!nextExists && (
+              <Pill
+                variant="light"
+                size="sm"
+                disabled={busy}
+                onClick={async () => {
+                  const made = await run(() => createSeason({ season: next, fromSeasonId: season.id }));
+                  if (made) {
+                    onClose();
+                    router.push(`/portal/schedule?season=${next}`);
+                  }
+                }}
+              >
+                {`Start ${seasonLabel(next)} from ${seasonLabel(season.season)}`}
+              </Pill>
+            )}
             <Pill variant="ghost" size="sm" disabled={busy} onClick={onNewSeason}>
               <Icons.Plus width={12} height={12} /> New season
             </Pill>
           </div>
-          <span style={{ ...cap, marginTop: 8 }}>Delete</span>
-          <div>
+          <div style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 14, marginTop: 6 }}>
             <Pill
               variant="ghost"
               size="sm"
@@ -200,6 +201,13 @@ export function SeasonSheet({
           </div>
         </div>
       )}
+
+      {season.imported_from && (
+        <div style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+          Imported from {season.imported_from}
+          {season.imported_at && ` on ${new Date(season.imported_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`}.
+        </div>
+      )}
     </SideSheet>
   );
 }
@@ -213,6 +221,7 @@ function LevelRow({
   teams,
   busy,
   onSave,
+  onToggleHidden,
   onMove,
   onDelete,
 }: {
@@ -222,6 +231,7 @@ function LevelRow({
   teams: DirectoryTeam[];
   busy: boolean;
   onSave: (input: LevelInput) => void;
+  onToggleHidden: () => void;
   onMove: (d: -1 | 1) => void;
   onDelete: () => void;
 }) {
@@ -243,10 +253,10 @@ function LevelRow({
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", border: "1px solid var(--gw-border)", borderRadius: 10, opacity: level.hidden ? 0.7 : 1 }}>
       <div style={{ display: "flex", flexDirection: "column" }}>
-        <button type="button" aria-label="Move left" disabled={first || busy} onClick={() => onMove(-1)} style={arrowBtn}>
+        <button type="button" aria-label={`Move ${level.label} up`} disabled={first || busy} onClick={() => onMove(-1)} style={arrowBtn}>
           <Icons.ChevronUp width={12} height={12} />
         </button>
-        <button type="button" aria-label="Move right" disabled={last || busy} onClick={() => onMove(1)} style={arrowBtn}>
+        <button type="button" aria-label={`Move ${level.label} down`} disabled={last || busy} onClick={() => onMove(1)} style={arrowBtn}>
           <Icons.ChevronDown width={12} height={12} />
         </button>
       </div>
@@ -262,6 +272,17 @@ function LevelRow({
         </div>
         {team && <div style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>Directory team: {team.name}</div>}
       </div>
+      <button
+        type="button"
+        aria-pressed={level.hidden}
+        aria-label={level.hidden ? `Show ${level.label} on the schedule` : `Hide ${level.label} on the schedule`}
+        title={level.hidden ? "Hidden: tap to show it on the schedule" : "Tap to fold it away on the schedule"}
+        disabled={busy}
+        onClick={onToggleHidden}
+        style={iconBtn}
+      >
+        {level.hidden ? <Icons.EyeOff width={13} height={13} /> : <Icons.Eye width={13} height={13} />}
+      </button>
       <button type="button" aria-label={`Edit ${level.label}`} onClick={() => setEditing(true)} style={iconBtn}>
         <Icons.Pencil width={13} height={13} />
       </button>
