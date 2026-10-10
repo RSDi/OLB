@@ -11,7 +11,8 @@ import { findFamily } from "./registration-prefill";
 import { sendRegistrationCode } from "../notifications/registration-code";
 import { sendFamilyEmails } from "../notifications/registration-message";
 import { sendReceipt, sendRegistrationEmails } from "../notifications/registration-receipt";
-import { greetingFor, registrant, registrationEmails, savedInput } from "./registration-receipt";
+import { clubNoticeSubject, greetingFor, receipt, registrant, registrationEmails, savedInput } from "./registration-receipt";
+import { sendPushToPermission } from "../notifications/push";
 import { ALL_RECIPIENTS, fillMessage, groupFamilies, messageHtml, type Recipient, type WaitlistRegistration } from "./waitlist";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { centralToday } from "../finances/data";
@@ -145,6 +146,14 @@ export async function createRegistrations(
     .insert(inputs.map((input) => toRow(board.id, input, onIt(input))))
     .select("id");
   if (error) return "Something went wrong saving your registration. Please try again.";
+  // A push notification to the super-admins and the Registrations permission,
+  // whether or not email is set up.
+  await sendPushToPermission("registrations", {
+    title: clubNoticeSubject(receipt(inputs)),
+    body: familyLine(inputs[0]),
+    url: "/portal/directory/registrations",
+    tag: `registration-${(saved as { id: string }[] | null)?.[0]?.id ?? Date.now()}`,
+  });
   // The receipt to whoever filled the form in, and a notice to the club.
   // Best effort: the registration is saved either way. A copy of the receipt
   // is kept on each registration, under Messages sent (sent_by empty: the
@@ -493,4 +502,11 @@ export async function sendRegistrationReceipt(id: string, rawTo: string): Promis
   }
   refresh();
   return { sent: to, kept };
+}
+
+// "From Tom & Anna Smith", for the new-registration notification.
+function familyLine(input: RegistrationInput): string {
+  const name = (first?: string, last?: string) => [first?.trim(), last?.trim()].filter(Boolean).join(" ");
+  const parents = [name(input.father_first, input.father_last), name(input.mother_first, input.mother_last)].filter(Boolean);
+  return parents.length ? `From ${parents.join(" & ")}` : "Tap to review it.";
 }

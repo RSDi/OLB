@@ -143,7 +143,7 @@ export function NotificationsSheet({ onClose }: { onClose: () => void }) {
     <SideSheet eyebrow="This device" title="Notifications" busy={busy} width={440} onClose={onClose} footer={footer} tour="notifications-sheet">
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--gw-fg-muted)" }}>
         Get a notification on this phone or computer when something needs you: an answer on your request, a new task for
-        your team, and, for super-admins, new access requests and low supplies. You still get the emails too.
+        your team, new registrations if you handle them, and, for super-admins, new access requests and low supplies. You still get the emails too.
       </p>
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, fontWeight: 700 }}>{statusText(state)}</p>
       {message && (

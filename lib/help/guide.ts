@@ -167,6 +167,7 @@ Links to other websites open in a small browser window on top of the app. Close 
 - An answer on a request you made.
 - A new task in an area your team looks after.
 - For super-admins: every new task, new access requests, and supplies running low.
+- For super-admins and anyone with the **Registrations** permission: each new registration from the website.
 
 **Turn them on.** Tap **Notifications** near the bottom of the sidebar, then **Turn on notifications**, and say **Allow** when your browser asks. Tap **Send a test** to make sure it works. Do this on each phone or computer you want notifications on.
 
