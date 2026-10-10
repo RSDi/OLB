@@ -11,6 +11,7 @@
 
 import webpush from "web-push";
 import { createAdminClient } from "../supabase/admin";
+import { PERMISSIONS, type PermissionKey } from "../auth/access";
 
 export interface PushMessage {
   title: string;
@@ -60,6 +61,45 @@ export async function sendPushToEmails(emails: (string | null | undefined)[], me
     await sendPushToUsers(userIds, message);
   } catch (err) {
     console.error("[push] recipient lookup failed:", err);
+  }
+}
+
+// To the super-admins and everyone who holds this permission (e.g.
+// "registrations"), worked out like public.my_permissions() (0122): their
+// access profile's permissions (the built-in one for their role when none is
+// set) plus their extras. Before 0122, the permission's old member column.
+export async function sendPushToPermission(permission: PermissionKey, message: PushMessage) {
+  if (!pushConfigured()) return;
+  try {
+    const admin = createAdminClient();
+    const approved = (columns: string) =>
+      admin.from("members").select(columns).eq("status", "approved").is("deleted_at", null).not("user_id", "is", null);
+    const userIds: string[] = [];
+
+    const [{ data: members, error }, { data: profiles }] = await Promise.all([
+      approved("user_id, role, access_profile_id, extra_permissions"),
+      admin.from("access_profiles").select("id, base_role, is_builtin, permissions"),
+    ]);
+    if (!error && profiles) {
+      type Profile = { id: string; base_role: string; is_builtin: boolean; permissions: string[] | null };
+      const byId = new Map((profiles as Profile[]).map((p) => [p.id, p]));
+      const builtin = new Map((profiles as Profile[]).filter((p) => p.is_builtin).map((p) => [p.base_role, p]));
+      type Row = { user_id: string; role: string; access_profile_id: string | null; extra_permissions: string[] | null };
+      for (const m of (members as unknown as Row[]) ?? []) {
+        const profile = (m.access_profile_id && byId.get(m.access_profile_id)) || builtin.get(m.role);
+        const holds = [...(m.extra_permissions ?? []), ...(profile?.permissions ?? [])].includes(permission);
+        if (m.role === "super_admin" || holds) userIds.push(m.user_id);
+      }
+    } else {
+      const column = PERMISSIONS.find((p) => p.key === permission)?.legacyColumn;
+      const { data: legacy } = await approved(`user_id, role${column ? `, ${column}` : ""}`);
+      for (const m of (legacy as unknown as Record<string, unknown>[]) ?? []) {
+        if (m.role === "super_admin" || (column && m[column])) userIds.push(m.user_id as string);
+      }
+    }
+    await sendPushToUsers(userIds, message);
+  } catch (err) {
+    console.error(`[push] ${permission} lookup failed:`, err);
   }
 }
 
