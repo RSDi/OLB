@@ -178,6 +178,7 @@ export const RESERVED_SLUGS = [
   "register",
   "reset-password",
   "directory",
+  "roadmap",
   "search",
   "sponsors-1",
   "new-folder",
