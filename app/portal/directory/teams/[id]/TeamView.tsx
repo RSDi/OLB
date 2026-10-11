@@ -85,6 +85,7 @@ export function TeamView({
       <section style={{ background: "var(--rsd-frame)", color: "var(--rsd-frame-fg)", borderRadius: 18, overflow: "hidden" }}>
         <div style={{ height: 8, background: hex }} />
         <div
+          className="rsd-team-hero"
           style={{
             padding: "22px 24px",
             display: "flex",
@@ -101,6 +102,7 @@ export function TeamView({
               </span>
             )}
             <h1
+              className="rsd-team-hero-name"
               style={{
                 margin: 0,
                 fontFamily: "var(--rsd-display)",
@@ -117,8 +119,8 @@ export function TeamView({
           {spots.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontFamily: "var(--rsd-display)" }}>
-                <span style={{ fontSize: 44, fontWeight: 800, lineHeight: 1, color: "var(--rsd-accent-fill)" }}>{filled}</span>
-                <span style={{ fontSize: 22, fontWeight: 700, color: "var(--rsd-frame-fg-3)" }}>/ {spots.length}</span>
+                <span className="rsd-team-hero-count" style={{ fontSize: 44, fontWeight: 800, lineHeight: 1, color: "var(--rsd-accent-fill)" }}>{filled}</span>
+                <span className="rsd-team-hero-total" style={{ fontSize: 22, fontWeight: 700, color: "var(--rsd-frame-fg-3)" }}>/ {spots.length}</span>
               </div>
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-frame-fg-2)" }}>volunteer spots filled</span>
             </div>
@@ -439,6 +441,7 @@ function Picker({
       }}
     >
       <div
+        className="rsd-sheet rsd-sheet-solo"
         style={{
           width: "min(460px, 100vw)",
           height: "100%",
@@ -471,6 +474,7 @@ function Picker({
             type="button"
             aria-label="Close"
             onClick={onClose}
+            className="rsd-tap"
             style={{
               width: 36,
               height: 36,

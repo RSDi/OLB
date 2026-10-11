@@ -412,6 +412,7 @@ function IconBtn({
   const bg = danger ? "var(--gw-error-bg)" : "var(--gw-bg-elev)";
   return (
     <button
+      className="rsd-tap"
       type="button"
       onClick={onClick}
       disabled={disabled}

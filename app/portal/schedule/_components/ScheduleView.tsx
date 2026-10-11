@@ -827,8 +827,10 @@ export function ScheduleView({
           <div className="gw-mobile-cards" style={{ gap: 14 }}>
             {byMonth.map((m) => (
               <div key={m.key} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {/* Stays at the top of the screen while its weekends scroll by. */}
-                <div id={`mm-${m.key}`} style={{ position: "sticky", top: 0, zIndex: 3, background: "var(--gw-bg)", padding: "4px 0" }}>
+                {/* Stays at the top of the screen while its weekends scroll by.
+                    rsd-sched-month-sticky (globals.css) sticks it flush with
+                    the real top, past <main>'s padding. */}
+                <div id={`mm-${m.key}`} className="rsd-sched-month-sticky" style={{ position: "sticky", top: 0, zIndex: 3, background: "var(--gw-bg)", padding: "4px 0" }}>
                   {monthHead(m)}
                 </div>
                 {!isFolded(m.key) && m.rows.map((w) => (

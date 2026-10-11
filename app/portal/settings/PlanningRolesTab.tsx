@@ -306,6 +306,7 @@ function IconBtn({
 }) {
   return (
     <button
+      className="rsd-tap"
       type="button"
       onClick={onClick}
       disabled={disabled}

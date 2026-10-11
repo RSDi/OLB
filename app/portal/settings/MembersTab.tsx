@@ -1293,6 +1293,7 @@ function MemberRow({
 function PanelButton({ label, open, onClick }: { label: string; open: boolean; onClick: () => void }) {
   return (
     <button
+      className="rsd-tap"
       onClick={onClick}
       aria-expanded={open}
       data-tour="members-activity-button"
@@ -1321,6 +1322,7 @@ function PanelButton({ label, open, onClick }: { label: string; open: boolean; o
 function AccessButton({ count, open, onClick }: { count: number; open: boolean; onClick: () => void }) {
   return (
     <button
+      className="rsd-tap"
       onClick={onClick}
       aria-expanded={open}
       title="What this person can manage"
@@ -1499,6 +1501,7 @@ function ActionBtn({
 }) {
   return (
     <button
+      className="rsd-tap"
       onClick={onClick}
       disabled={disabled}
       style={{

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icons } from "./icons";
 import { ComboSelect } from "./ComboSelect";
+import { useKeepInView } from "./useKeepInView";
 
 // On-brand date + time picker replacing the native <input type="datetime-local">
 // (whose calendar is off-theme and whose time scroller is painful). Value is the
@@ -80,6 +81,10 @@ export function DateTimePicker({
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  // The calendar hangs off the field's left edge; a field near a phone's
+  // right edge would push it off the screen.
+  const popRef = useRef<HTMLDivElement>(null);
+  useKeepInView(popRef, open);
   const parsed = parseValue(value);
 
   const today = new Date();
@@ -214,6 +219,7 @@ export function DateTimePicker({
 
       {open && (
         <div
+          ref={popRef}
           style={{
             position: "absolute",
             top: "100%",

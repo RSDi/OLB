@@ -599,6 +599,46 @@ main::-webkit-scrollbar-track { background: transparent; }
     padding-left: 0 !important;
     border-top: 1px solid rgba(44,4,8,.15);
   }
+
+  /* ── Phone polish (375–390px). Desktop is untouched. ── */
+
+  /* Tap targets: buttons marked rsd-tap (Settings row and icon buttons,
+     Pill size="sm", the search / "i" panel / sheet / tour close buttons) get
+     at least 40px each way. Their inline width/height stay the desktop size;
+     min-* wins over them. */
+  .rsd-tap { min-height: 40px; min-width: 40px; touch-action: manipulation; }
+  /* A small round control that should keep its look (the search's clear ×):
+     an invisible ring around it takes the tap. Keep 6px+ clear of neighbours. */
+  .rsd-tap-halo { position: relative; touch-action: manipulation; }
+  .rsd-tap-halo::after { content: ""; position: absolute; inset: -6px; border-radius: 100px; }
+
+  /* Right-hand sheets (SideSheet, the Payments Sheet, the Directory's
+     requirement sheet and volunteer picker): the visible height on iOS (100%
+     of a fixed inset:0 can run under the browser bars), 16px sides, and the
+     last row kept above the home indicator. -solo is a sheet that scrolls as
+     one box; -head/-body/-foot are SideSheet's pinned header and footer. */
+  .rsd-sheet { height: 100dvh !important; max-height: 100dvh; }
+  .rsd-sheet-solo { padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important; }
+  .rsd-sheet-head { padding: 16px 16px 12px !important; }
+  .rsd-sheet-body { padding: 16px !important; }
+  .rsd-sheet-body:last-child { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important; }
+  .rsd-sheet-foot { padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important; }
+
+  /* Schedule's phone month headers stick flush with the real top of <main>,
+     past its 16px padding, so weekend cards can't show above a stuck header.
+     Same trade-off as .rsd-slack-sticky-bar: 16px more room above at rest. */
+  .rsd-sched-month-sticky { top: -16px !important; padding-top: 20px !important; }
+
+  /* Dashboard KPIs: an odd tile out in the 2-up grid (5 for the board) takes
+     the whole last row instead of sitting alone in half of it. */
+  .rsd-kpi-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  /* Directory team page hero: the 52px name and 44px count shrink so the
+     hero isn't half the screen. */
+  .rsd-team-hero { padding: 18px 16px !important; gap: 14px !important; }
+  .rsd-team-hero-name { font-size: 34px !important; overflow-wrap: anywhere; }
+  .rsd-team-hero-count { font-size: 30px !important; }
+  .rsd-team-hero-total { font-size: 17px !important; }
 }
 
 /* Rendered markdown (playbooks, version snapshots, etc.).

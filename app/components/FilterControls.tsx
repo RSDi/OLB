@@ -4,32 +4,10 @@
 // list, the same chip with tick boxes to pick several, and a segmented switch
 // for a few views of the same list.
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ComboSelect, type ComboSelectProps } from "./ComboSelect";
 import { Icons } from "./icons";
-
-// A list hangs off its chip's left (or right) edge, so a chip near the other
-// side of a phone would push it off the screen. Slide it back to 16px from
-// the edge once it's open.
-function useKeepInView(ref: RefObject<HTMLElement | null>, open: boolean) {
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!open || !el) return;
-    function fit() {
-      if (!el) return;
-      el.style.transform = "";
-      const r = el.getBoundingClientRect();
-      const vw = document.documentElement.clientWidth;
-      let dx = 0;
-      if (r.right > vw - 16) dx = vw - 16 - r.right;
-      if (r.left + dx < 16) dx = 16 - r.left;
-      if (dx) el.style.transform = `translateX(${Math.round(dx)}px)`;
-    }
-    fit();
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  }, [ref, open]);
-}
+import { useKeepInView } from "./useKeepInView";
 
 // `leading` sits inside the chip before the label, like a team's color dot.
 // `grow` shares the row with its neighbours instead of sizing to the longest

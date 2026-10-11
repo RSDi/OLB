@@ -441,6 +441,7 @@ function SmallBtn({
 }) {
   return (
     <button
+      className="rsd-tap"
       onClick={onClick}
       disabled={disabled}
       style={{

@@ -41,7 +41,7 @@ export function Pill({ children, variant = "light", size = "md", onClick, style,
     ? { background: "transparent", color: "var(--gw-fg)", borderColor: "var(--gw-border)" }
     : { background: "var(--gw-bg-elev)", color: "var(--gw-fg)", borderColor: "var(--gw-border)" };
   return (
-    <button type={type} form={form} disabled={disabled} onClick={onClick} className="gw-press" style={{
+    <button type={type} form={form} disabled={disabled} onClick={onClick} className={size === "sm" ? "gw-press rsd-tap" : "gw-press"} style={{
       fontWeight: 700, fontSize: fs, lineHeight: 1,
       borderRadius: 100, padding: pad, border: "1px solid",
       display: "inline-flex", alignItems: "center", gap: 8,
