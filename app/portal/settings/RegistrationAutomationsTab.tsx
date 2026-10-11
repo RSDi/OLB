@@ -214,18 +214,24 @@ export function RegistrationAutomationsTab() {
 
       <div
         data-tour="automations-save"
+        // Sits at the end of the page; only with unsaved changes does it
+        // float over the list, so it never covers anything for nothing.
         style={{
           display: "flex",
           gap: 8,
           alignItems: "center",
-          position: "sticky",
-          bottom: 12,
-          padding: "10px 12px",
-          borderRadius: 14,
-          background: "var(--gw-bg-elev)",
-          border: "1px solid var(--gw-border)",
-          boxShadow: "var(--gw-shadow-2)",
           alignSelf: "flex-start",
+          ...(dirty
+            ? {
+                position: "sticky",
+                bottom: 12,
+                padding: "10px 12px",
+                borderRadius: 14,
+                background: "var(--gw-bg-elev)",
+                border: "1px solid var(--gw-border)",
+                boxShadow: "var(--gw-shadow-2)",
+              }
+            : {}),
         }}
       >
         <Pill variant="accent" onClick={() => save()} disabled={busy || !dirty}>
