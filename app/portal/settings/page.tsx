@@ -8,6 +8,7 @@ import {
   canManageSiteLinks,
   canManageTeams,
   canManageRegistrations,
+  canManageUniforms,
   canManageWebsite,
   canOpenSettings,
   isStaff,
@@ -36,6 +37,8 @@ import { SidebarLinksTab } from "./SidebarLinksTab";
 import { RequirementsTab } from "./RequirementsTab";
 import { EmailTemplatesTab } from "./EmailTemplatesTab";
 import { RegistrationEmailsTab } from "./RegistrationEmailsTab";
+import { RegistrationAutomationsTab } from "./RegistrationAutomationsTab";
+import { UniformsTab } from "./UniformsTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
 import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { WebsiteTab } from "./WebsiteTab";
@@ -88,6 +91,8 @@ type Tab =
   | "requirements"
   | "email_templates"
   | "registration_emails"
+  | "registration_automations"
+  | "uniforms"
   | "website"
   | "planning_roles"
   | "event_categories"
@@ -125,7 +130,7 @@ type TabDef = {
 
 // Every tab this person can open, in menu order. Shared by the first-load
 // pick (a `?tab=` link) and the menu itself.
-function visibleTabs(me: MemberLike, fullUi: boolean): TabDef[] {
+function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false): TabDef[] {
   // Any board member works the approval queue, and so does anyone with the
   // Approve access requests permission (0123); role/edit/remove inside the
   // tab stay super-admin-only via canManage.
@@ -142,6 +147,8 @@ function visibleTabs(me: MemberLike, fullUi: boolean): TabDef[] {
     sidebar_links: siteLinks,
     public_directory: siteLinks,
     registration_emails: canManageRegistrations(me),
+    registration_automations: workflowOn && canManageRegistrations(me),
+    uniforms: workflowOn && canManageUniforms(me),
   };
   // Deleted tab stays super-admin-only until the RLS follow-up lets board
   // members with the undelete grant see + restore soft-deleted rows.
@@ -170,6 +177,10 @@ function visibleTabs(me: MemberLike, fullUi: boolean): TabDef[] {
     // The words in the registration form's emails (0127): the board reads,
     // super-admins and the Registrations permission change them.
     { key: "registration_emails", label: "Registration Emails", group: "Communication", visible: true, tour: "settings-tab-registration-emails", keywords: "registration receipt code email wording confirmation" },
+    // The registration workflow (0130): the preview accounts, and while the
+    // workflow is switched on, whoever holds the permission.
+    { key: "registration_automations", label: "Registration Automations", group: "Communication", visible: (fullUi || workflowOn) && canManageRegistrations(me), tour: "settings-tab-registration-automations", keywords: "registration workflow automatic emails waitlist offer slack handbook checklist switch" },
+    { key: "uniforms", label: "Uniforms", group: "People & Access", visible: (fullUi || workflowOn) && canManageUniforms(me), tour: "settings-tab-uniforms", keywords: "jersey shorts grays warm-ups sizes try-on order" },
     { key: "contact_categories", label: "Contact Types", group: "Communication", visible: true, tour: "settings-tab-contact-categories", keywords: "contacts categories" },
     // The public club website's menu, page text and pictures (0120).
     { key: "website", label: "Website", group: "Website & Portal", visible: canManageWebsite(me), tour: "settings-tab-website", keywords: "public site pages pictures publish" },
@@ -202,6 +213,8 @@ export default function SettingsPage() {
   usePageHelp(TAB_HELP[tab] ?? null);
   const [authChecked, setAuthChecked] = useState(false);
   const [fullUi, setFullUi] = useState(false);
+  // The registration workflow is switched on (0130).
+  const [workflowOn, setWorkflowOn] = useState(false);
   const [filter, setFilter] = useState("");
   // The phone's full-screen menu.
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -232,10 +245,12 @@ export default function SettingsPage() {
         router.replace("/login");
         return;
       }
-      const [{ data: meRow }, grants] = await Promise.all([
+      const [{ data: meRow }, grants, { data: workflow }] = await Promise.all([
         supabase.from("members").select("role, status").eq("user_id", user.id).maybeSingle(),
         loadGrants(supabase, user.id),
+        supabase.from("olb_onboarding_settings").select("board_id").eq("enabled", true).limit(1),
       ]);
+      const on = (workflow?.length ?? 0) > 0;
       const memberLike = meRow ? ({ ...grants, ...(meRow as MemberLike) } as MemberLike) : null;
       // The board, and anyone holding a permission whose page is here (0123).
       if (!canOpenSettings(memberLike)) {
@@ -246,13 +261,14 @@ export default function SettingsPage() {
       setMe(memberLike);
       setUserId(user.id);
       setFullUi(preview);
+      setWorkflowOn(on);
       // A `?tab=` link opens that tab when they have it (the public site's
       // preview bar links to the Website tab to publish). Otherwise all
       // board staff land on Members — any of them can work the approval
       // queue (D1) — and someone off the board lands on the first tab they
       // have.
       const wanted = new URLSearchParams(window.location.search).get("tab");
-      const mine = visibleTabs(memberLike!, preview);
+      const mine = visibleTabs(memberLike!, preview, on);
       const linked = mine.find((t) => t.key === wanted);
       const landing: Tab = canApproveMembers(memberLike)
         ? "members"
@@ -290,7 +306,7 @@ export default function SettingsPage() {
     );
   }
 
-  const shownTabs = visibleTabs(me, fullUi);
+  const shownTabs = visibleTabs(me, fullUi, workflowOn);
   const has = (key: Tab) => shownTabs.some((t) => t.key === key);
   const q = filter.trim().toLowerCase();
   const matching = q
@@ -313,6 +329,8 @@ export default function SettingsPage() {
       {tab === "requirements" && has("requirements") && <RequirementsTab me={me} />}
       {tab === "email_templates" && has("email_templates") && <EmailTemplatesTab />}
       {tab === "registration_emails" && has("registration_emails") && <RegistrationEmailsTab canEdit={canManageRegistrations(me)} />}
+      {tab === "registration_automations" && has("registration_automations") && <RegistrationAutomationsTab />}
+      {tab === "uniforms" && has("uniforms") && <UniformsTab />}
       {tab === "website" && has("website") && <WebsiteTab />}
       {tab === "planning_roles" && has("planning_roles") && <PlanningRolesTab />}
       {tab === "event_categories" && has("event_categories") && <EventCategoriesTab me={me} />}

@@ -344,6 +344,44 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdrawn**. They leave their team and the Directory, with "Taken off the roster" and the team they were on. Their notes and the emails sent to them go with them, and what they owe on Payments comes off. If the family has already paid something, the Treasurer refunds it and voids the payment first (the **Void** button is on the player's Payments card). Log what happened in the player's **Notes** first (see *Notes on players*). To find them later, pick **On the waitlist** or **Removed** from the **All teams** drop-down in the Directory.`,
   },
   {
+    id: "registration-workflow",
+    title: "The registration workflow",
+    group: "Directory",
+    audience: "registrations",
+    preview: true,
+    keywords: ["onboarding", "workflow", "checklist", "family checklist", "offer", "offer a spot", "waitlist form", "join the waitlist", "coach thumbs up", "clinic", "announce teams", "waiting for you", "ask me first", "gone quiet", "slack", "handbook", "uniform sizes"],
+    body: `The registration workflow takes the follow-up off your plate: the waitlist form, spot offers, each family's checklist and the reminder emails. It runs only while it's switched on in **Settings → Registration Automations**. Switched off, registration works the way it always has.
+
+**The waitlist form.** New families join at **/waitlist** on the website. It asks his name and birthday, whether he's homeschooled, whether he's played before, friends on Lightning and how they heard about us. They land on the **Waitlist** tab with their answers on the card.
+
+**Offer a spot.** On a waitlist card, tick **Seen at a clinic** and **Coach 👍** as you learn about the player. When a spot opens, tap **Offer a spot**, read the email over (change anything you like, but keep {link}), and tap **Send the offer**. The family gets a private link that opens the registration form with their son filled in. It's good for the number of days set in Settings. **+3 days** gives them longer and **Take back** stops the link. If it runs out, you get a notification and the family gets a kind close-out (when that email is on).
+
+**The registration form.** While the workflow is on, the form also asks each player's uniform sizes (from Settings → Uniforms) and has each player and a parent sign the handbook. Approving the registration checks off **Handbook signature** for you.
+
+**The family checklist.** Every family gets a private checklist page: their spot, the handbook, the fee with a Venmo button, Slack, uniform sizes, the parent meeting and their team. Each automatic email links to it, and it updates itself as the Treasurer records payments and families join Slack.
+
+**The Onboarding tab** shows every family from **Waitlist** to **Offered**, **Registered**, **Ready** and **On a team**. On each family, **$ H S U** turn green as the fee is paid, the handbook is signed, they join Slack and their uniform sizes are in. **Gone quiet** lists anyone you haven't heard from in two weeks.
+
+- **Waiting for you** lists emails set to **Ask me first**. Tap one to read it, **Change the words** if you like, then **Send** or **Skip**. **Send all** sends every one as it is.
+- **Announce teams** emails each family whose players are all on a team: their team, coach and practice times (when **Your team** is on).`,
+  },
+  {
+    id: "uniforms-page",
+    title: "Uniforms",
+    group: "Directory",
+    audience: "registrations",
+    permission: "uniforms",
+    preview: true,
+    routes: ["/portal/directory/uniforms"],
+    keywords: ["uniforms", "jersey", "jerseys", "shorts", "grays", "warm-ups", "sizes", "try-on", "order", "vendor", "order sheet"],
+    body: `For whoever runs uniforms (the **Uniforms** permission) and people with **Registrations**. Open it from the Onboarding tab or Settings → Uniforms.
+
+- The table counts how many of each size of each item families picked on the registration form.
+- **Players** lists everyone on the roster with their sizes. Change one at try-on and it's marked confirmed ✓. A red box means they need a size and don't have one; **Missing a size** shows just those players.
+- **Download order sheet** saves every item, size and player as a spreadsheet for the vendor.
+- **Mark ordered and add charges** puts each sized item's price on the family's Payments account, once. Items with no price yet aren't charged.`,
+  },
+  {
     id: "player-notes",
     title: "Notes on players",
     group: "Directory",
@@ -604,6 +642,19 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 **Parents can see their balance** is off to start with, so you can enter the season's payments first. Switch it **On** and every family sees their own balance under **Payments** in their sidebar, with how to pay. Nobody sees another family's.
 
 **Download spreadsheet** saves every charge, credit and payment as a CSV file for Excel or Google Sheets. Charges are positive; credits and payments are negative, so the Amount column adds up to what's still owed.`,
+  },
+  {
+    id: "payments-venmo",
+    title: "Matching Venmo",
+    group: "Payments",
+    audience: "finance",
+    preview: true,
+    keywords: ["venmo", "statement", "match", "import", "csv", "record payments"],
+    body: `Record a month of Venmo payments at once. On **Payments**, tap **Match Venmo** and pick the statement you downloaded from Venmo (Statements → download as CSV).
+
+- Each payment that came in is listed with who sent it, the note and the amount. Where the note names a player (or the sender's last name and a player's first name), that player is filled in. Siblings named together are both filled in.
+- Fix any guess: tap **×** to take a player off, or pick one from **+ player**. Untick any you don't want to record.
+- **Record** records each one like **Record payment** does, split across the family's players by what each owes, with the Venmo number in its reference. A payment already recorded from a statement shows **Already recorded** and can't be recorded twice.`,
   },
   {
     id: "your-balance",
@@ -926,6 +977,38 @@ Tap the **trash** can to delete a category or a playbook.`,
 - Under each field it says whether it's the **Original wording** or when it was changed and by whom. **Reset to original** puts the original back.
 
 The layout, each family's players and fees, and the Venmo and check instructions stay the same.`,
+  },
+  {
+    id: "settings-registration-automations",
+    title: "Settings: Registration Automations",
+    group: "Settings",
+    audience: "registrations",
+    preview: true,
+    keywords: ["registration automations", "workflow", "switch", "pause", "automatic emails", "ask me first", "off", "on", "approve automatically", "slack invite link", "handbook link", "parent meeting", "first practice", "clinic details", "offer days"],
+    body: `The switches for the registration workflow. Only people with the **Registrations** permission can open it.
+
+- **Use the new registration workflow** turns everything on or off. Off, registration works exactly the way it always has. What families already sent is kept either way.
+- **Pause all automatic emails** holds every email without changing their switches.
+- Each automatic email has **Off**, **Ask me first** or **On**. Everything starts **Off**. **Ask me first** holds each one on the Onboarding tab until someone taps **Send**. Tap **Words** to change an email's subject and words, with a preview for a made-up family. **Reset to original** puts the original words back.
+- **Approve families who register from an offer link** and **Approve returning families** approve those registrations without waiting in **New**.
+- **Links and dates**: the handbook link (with one, families sign the handbook on the form), the Slack invite link and the day it runs out (you'll get a reminder a week before), how long offer links last, the parent meeting, the first practice and the clinic details. The emails and family checklists use them.
+
+Tap **Save** when you're done.`,
+  },
+  {
+    id: "settings-uniforms",
+    title: "Settings: Uniforms",
+    group: "Settings",
+    audience: "registrations",
+    permission: "uniforms",
+    preview: true,
+    keywords: ["uniforms", "uniform items", "jersey", "shorts", "grays", "warm-ups", "price", "sizes", "try-on", "order deadline", "charge families"],
+    body: `The season's uniform items. Open **Settings → Uniforms**.
+
+- **+ Add item**: give it a name, pick **Who gets it** (everyone who needs a uniform, high school grays, or optional like warm-ups), a **Price** (leave it blank until you know) and its **Sizes**, separated by commas. **Edit** changes one; **Remove** takes it off the form and **Put back** returns it.
+- **Try-on night**, **Order deadline** and **Charge families** (when you mark the order placed, or when each registration is approved). Tap **Save**.
+
+While the registration workflow is on, families pick a size for each item on the registration form.`,
   },
   {
     id: "settings-contact-types",

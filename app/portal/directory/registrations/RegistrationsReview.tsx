@@ -37,6 +37,9 @@ import { WAITLIST_TEMPLATE } from "../../../../lib/teams/email-templates";
 import { ErrorNote, capStyle } from "../../payments/parts";
 import { PlayerNotes } from "../_shared/PlayerNotes";
 import type { PlayerNote } from "../../../../lib/teams/player-notes";
+import type { OnboardingBoard as Board, WaitlistInfo } from "../../../../lib/onboarding/board-data";
+import { OnboardingBoard } from "./OnboardingBoard";
+import { WorkflowPanel } from "./WorkflowPanel";
 
 const TABS: { key: RegistrationTab; label: string }[] = [
   { key: "waiting", label: "New" },
@@ -54,14 +57,23 @@ export function RegistrationsReview({
   counts,
   registrations,
   notes,
+  showOnboarding = false,
+  board = null,
+  waitlistInfo = null,
 }: {
-  tab: RegistrationTab;
+  tab: RegistrationTab | "onboarding";
   counts: Record<RegistrationTab, number>;
   registrations: PendingRegistration[];
   // Notes on each family (0124), by registration; none on Approved.
   notes: Record<string, PlayerNote[]>;
+  // The registration workflow (0130), for the preview accounts: its
+  // Onboarding tab, and each waitlist card's offer and family answers.
+  showOnboarding?: boolean;
+  board?: Board | null;
+  waitlistInfo?: Record<string, WaitlistInfo> | null;
 }) {
   const [compose, setCompose] = useState<PendingRegistration[] | null>(null);
+  const tabs = showOnboarding ? [...TABS, { key: "onboarding" as const, label: "Onboarding" }] : TABS;
 
   return (
     <>
@@ -80,7 +92,7 @@ export function RegistrationsReview({
           data-tour="registrations-tabs"
           style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)", flexWrap: "wrap" }}
         >
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <Link
               key={t.key}
               href={t.key === "waiting" ? "/portal/directory/registrations" : `/portal/directory/registrations?tab=${t.key}`}
@@ -104,7 +116,7 @@ export function RegistrationsReview({
               }}
             >
               {t.label}
-              <span style={{ fontWeight: 600, opacity: 0.65 }}>{counts[t.key]}</span>
+              {t.key !== "onboarding" && <span style={{ fontWeight: 600, opacity: 0.65 }}>{counts[t.key]}</span>}
             </Link>
           ))}
         </div>
@@ -120,17 +132,19 @@ export function RegistrationsReview({
         </a>
       </div>
 
+      {tab === "onboarding" && <OnboardingBoard board={board} />}
+
       {tab === "waitlist" && registrations.length > 0 && <WaitlistTools registrations={registrations} onMessageAll={() => setCompose(registrations)} />}
 
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
+      {tab !== "onboarding" && <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
         {tab === "waiting" && (registrations.length === 0 ? "Nothing new" : `${registrations.length} new, oldest first`)}
         {tab === "waitlist" &&
           (registrations.length === 0 ? "Nobody on the waitlist" : `${registrations.length} on the waitlist, in the order they registered`)}
         {tab === "approved" && (registrations.length === 0 ? "None approved yet" : `${registrations.length} approved, newest first`)}
         {tab === "removed" && (registrations.length === 0 ? "Nobody removed" : `${registrations.length} removed, newest first`)}
-      </span>
+      </span>}
 
-      {registrations.length === 0 ? (
+      {tab === "onboarding" ? null : registrations.length === 0 ? (
         <div className="rsd-card" style={{ padding: "40px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
             {tab === "waiting"
@@ -150,7 +164,7 @@ export function RegistrationsReview({
         </div>
       ) : (
         registrations.map((r) => (
-          <RegistrationCard key={r.id} reg={r} tab={tab} notes={notes[r.id] ?? []} onMessage={() => setCompose([r])} />
+          <RegistrationCard key={r.id} reg={r} tab={tab} notes={notes[r.id] ?? []} onMessage={() => setCompose([r])} workflow={waitlistInfo?.[r.id] ?? null} />
         ))
       )}
 
@@ -219,11 +233,13 @@ function RegistrationCard({
   tab,
   notes,
   onMessage,
+  workflow,
 }: {
   reg: PendingRegistration;
   tab: RegistrationTab;
   notes: PlayerNote[];
   onMessage: () => void;
+  workflow: WaitlistInfo | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -315,12 +331,18 @@ function RegistrationCard({
           )}
           <ContactLine phone={x.athlete_phone ?? null} email={x.athlete_email ?? null} label="Player" />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, marginLeft: "auto" }}>
-          <span style={{ fontSize: 24, fontWeight: 800, lineHeight: 1, color: "var(--gw-fg)", fontVariantNumeric: "tabular-nums" }}>
-            {fee ?? "No fee picked"}
+        {workflow?.fromForm ? (
+          <span className="rsd-chip rsd-chip-accent" style={{ marginLeft: "auto" }}>
+            From the waitlist form
           </span>
-          {fee && <span style={muted}>{tier ? `${tier} registration fee` : "Registration fee"}</span>}
-        </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, marginLeft: "auto" }}>
+            <span style={{ fontSize: 24, fontWeight: 800, lineHeight: 1, color: "var(--gw-fg)", fontVariantNumeric: "tabular-nums" }}>
+              {fee ?? "No fee picked"}
+            </span>
+            {fee && <span style={muted}>{tier ? `${tier} registration fee` : "Registration fee"}</span>}
+          </div>
+        )}
       </div>
 
       {tab === "waitlist" && (
@@ -336,18 +358,20 @@ function RegistrationCard({
         />
       )}
 
+      {tab === "waitlist" && workflow && <WorkflowPanel regId={reg.id} name={reg.first_name.trim()} info={workflow} />}
+
       {tab === "removed" && <RemovedStatus reg={reg} />}
 
       {reg.match && <MatchNote reg={reg} />}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+      {!workflow?.fromForm && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
         {facts.map(([label, value]) => (
           <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ ...capStyle, fontSize: 10 }}>{label}</span>
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)" }}>{value}</span>
           </div>
         ))}
-      </div>
+      </div>}
 
       {parents.length > 0 && (
         <div
@@ -385,7 +409,7 @@ function RegistrationCard({
         <SentMessages messages={reg.messages} style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 12 }} />
       )}
 
-      <ReceiptSender reg={reg} />
+      {!workflow?.fromForm && <ReceiptSender reg={reg} />}
 
       {error && <ErrorNote text={error} />}
 
@@ -412,11 +436,13 @@ function RegistrationCard({
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <span data-tour="registration-approve" style={{ display: "inline-flex" }}>
-          <Pill variant="accent" onClick={() => run("approve", () => approveRegistration(reg.id))} disabled={busy !== null}>
-            {busy === "approve" ? "Approving…" : "Approve"}
-          </Pill>
-        </span>
+        {!workflow?.fromForm && (
+          <span data-tour="registration-approve" style={{ display: "inline-flex" }}>
+            <Pill variant="accent" onClick={() => run("approve", () => approveRegistration(reg.id))} disabled={busy !== null}>
+              {busy === "approve" ? "Approving…" : "Approve"}
+            </Pill>
+          </span>
+        )}
         {tab === "waiting" && !noting && (
           <span data-tour="registration-waitlist" style={{ display: "inline-flex" }}>
             <Pill variant="ghost" onClick={() => setNoting(true)} disabled={busy !== null}>

@@ -24,13 +24,14 @@ import { AccountDetail } from "./AccountDetail";
 import { ChargeDialog } from "./ChargeDialog";
 import { PaymentDialog } from "./PaymentDialog";
 import { BalanceChip, ErrorNote, SegButton, SegGroup } from "./parts";
+import { VenmoMatch } from "./VenmoMatch";
 
 type Show = "owes" | "paid" | "all";
 type Open = { kind: "payment"; account: Account } | { kind: ChargeKind; account: Account } | null;
 
 // The Treasurer's view: the season's totals, every family's balance, and
 // recording what comes in.
-export function TreasurerView({ data, openPlayerId = null }: { data: PaymentsData; openPlayerId?: string | null }) {
+export function TreasurerView({ data, openPlayerId = null, venmo = false }: { data: PaymentsData; openPlayerId?: string | null; venmo?: boolean }) {
   const router = useRouter();
   const accounts = useMemo(() => buildAccounts(data.players, data.charges, data.payments), [data]);
   // "Open in Payments" from a player page lands here with that family open.
@@ -42,6 +43,8 @@ export function TreasurerView({ data, openPlayerId = null }: { data: PaymentsDat
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Match Venmo (0130), with the registration workflow.
+  const [matching, setMatching] = useState(false);
 
   useEffect(() => {
     if (linked) document.getElementById(`family-${linked}`)?.scrollIntoView({ block: "start" });
@@ -237,8 +240,15 @@ export function TreasurerView({ data, openPlayerId = null }: { data: PaymentsDat
           <Pill size="sm" variant="ghost" onClick={download}>
             <Icons.Download width={13} height={13} /> Download spreadsheet
           </Pill>
+          {venmo && !matching && (
+            <Pill size="sm" variant="ghost" onClick={() => setMatching(true)}>
+              Match Venmo
+            </Pill>
+          )}
         </div>
       </div>
+
+      {matching && <VenmoMatch onClose={() => setMatching(false)} />}
 
       {needFee.length > 0 && (
         <div

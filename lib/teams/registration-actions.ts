@@ -16,6 +16,10 @@ import { sendPushToPermission } from "../notifications/push";
 import { ALL_RECIPIENTS, fillMessage, groupFamilies, messageHtml, type Recipient, type WaitlistRegistration } from "./waitlist";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { centralToday } from "../finances/data";
+import { registrationFullName } from "./roster-logic";
+import { cleanInputExtras, type InputExtras } from "../onboarding/form-extras";
+import { loadFormExtras, loadSettings } from "../onboarding/server";
+import { afterApprove, afterSubmit } from "../onboarding/hooks";
 
 // ─── The public form ────────────────────────────────────────────────────────
 //
@@ -106,10 +110,28 @@ export async function verifyRegistrationEmail(
 // the Directory's New registrations page and Approve. `verifiedEmail` marks
 // the rows "email confirmed" when its code was typed back in the last few
 // hours.
+//
+// Sent twice (a double tap, a retry after a slow answer, or the same players
+// entered again), it saves them once: the form's one-time submit key finds
+// a registration already saved from it, and a player already waiting with
+// the same name and birthday from the last day is left out. Nothing is
+// emailed again either.
+//
+// With the registration workflow on (0130): the handbook signatures and
+// uniform sizes, an offer link's spot, the family's checklist, and approval
+// on the spot when the Registrations person has turned that on.
+export interface SubmitOptions {
+  submissionKey?: string;
+  offerToken?: string;
+  // Per player, in the same order as the inputs.
+  extras?: (InputExtras | undefined)[];
+}
+
 export async function createRegistrations(
   inputs: RegistrationInput[],
   honeypot: string,
   verifiedEmail: string | null,
+  opts: SubmitOptions = {}
 ): Promise<string | null> {
   if (honeypot && honeypot.trim()) return null; // bot
   if (!Array.isArray(inputs) || inputs.length === 0) return "Add a player to register.";
@@ -122,6 +144,30 @@ export async function createRegistrations(
   const db = createAdminClient();
   const { data: board } = await db.from("olb_boards").select("id").eq("season", REGISTRATION_SEASON).maybeSingle();
   if (!board) return "Registration isn't open yet — please check back soon.";
+
+  const submissionKey = cleanKey(opts.submissionKey);
+  if (submissionKey) {
+    const { data: already } = await db.from("olb_registrations").select("id").eq("board_id", board.id).eq("extra->>submission_key", submissionKey).limit(1);
+    if (already?.length) return null;
+  }
+  const fresh = await notAlreadyWaiting(db, board.id, inputs);
+  if (fresh.length === 0) return null;
+  const extrasFor = (input: RegistrationInput) => opts.extras?.[inputs.indexOf(input)];
+
+  // The registration workflow (0130): nothing changes here while it's off.
+  const settings = await loadSettings(db, board.id);
+  const workflow = settings.enabled ? await loadFormExtras(db) : null;
+  const saved: Record<string, unknown>[] = [];
+  const kept: { sizes: Record<string, string>; handbook: InputExtras["handbook"] }[] = [];
+  for (const input of fresh) {
+    if (!workflow) {
+      kept.push({ sizes: {}, handbook: null });
+      continue;
+    }
+    const c = cleanInputExtras(input, extrasFor(input), workflow);
+    if ("error" in c) return fresh.length > 1 ? `${input.athlete_first.trim()}: ${c.error}` : c.error;
+    kept.push(c);
+  }
 
   let confirmed: string | null = null;
   const checked = verifiedEmail?.trim().toLowerCase();
@@ -136,33 +182,60 @@ export async function createRegistrations(
     if (code) confirmed = checked;
   }
 
+  // A spot offered from the waitlist (0130): the offered player's waitlist
+  // registration becomes this registration, keeping its place and notes.
+  const offer = settings.enabled && opts.offerToken ? await openOffer(db, board.id, opts.offerToken) : null;
+  if (settings.enabled && opts.offerToken && !offer) return "That offer link has run out or was already used. Reply to the email it came in and we'll sort it out.";
+
   // Marked confirmed only where that email is one of the registration's own.
   const onIt = (input: RegistrationInput) =>
     confirmed && [input.father_email, input.mother_email, input.athlete_email].some((e) => e?.trim().toLowerCase() === confirmed)
       ? confirmed
       : null;
-  const { data: saved, error } = await db
-    .from("olb_registrations")
-    .insert(inputs.map((input) => toRow(board.id, input, onIt(input))))
-    .select("id");
-  if (error) return "Something went wrong saving your registration. Please try again.";
+  const rows = fresh.map((input, i) => {
+    const row = toRow(board.id, input, onIt(input), submissionKey);
+    if (workflow) Object.assign(row.extra, workflowExtra(kept[i], workflow));
+    return row;
+  });
+  const offered = offer ? Math.max(0, fresh.findIndex((x) => x.athlete_first.trim().toLowerCase() === offer.first_name.trim().toLowerCase())) : -1;
+  const ids: string[] = [];
+  if (offer && offered >= 0) {
+    const row = rows[offered];
+    const { data: moved, error } = await db
+      .from("olb_registrations")
+      .update({ ...row, extra: { ...row.extra, intake: offer.extra?.intake ?? null, offer_id: offer.id } })
+      .eq("id", offer.registration_id)
+      .eq("status", "waitlisted")
+      .select("id");
+    if (error || !moved?.length) return "Something went wrong saving your registration. Please try again.";
+    await db.from("olb_onboarding_offers").update({ status: "used", closed_at: new Date().toISOString() }).eq("id", offer.id);
+  }
+  const toInsert = rows.filter((_, i) => i !== offered);
+  if (toInsert.length) {
+    const { data, error } = await db.from("olb_registrations").insert(toInsert).select("id");
+    if (error) return "Something went wrong saving your registration. Please try again.";
+    saved.push(...((data as { id: string }[] | null) ?? []));
+  }
+  // In the order the players were entered.
+  let n = 0;
+  for (let i = 0; i < rows.length; i++) ids.push(i === offered ? offer!.registration_id : ((saved[n++] as { id: string }).id));
+
   // A push notification to the super-admins and the Registrations permission,
   // whether or not email is set up.
   await sendPushToPermission("registrations", {
-    title: clubNoticeSubject(receipt(inputs)),
-    body: familyLine(inputs[0]),
+    title: clubNoticeSubject(receipt(fresh)),
+    body: familyLine(fresh[0]),
     url: "/portal/directory/registrations",
-    tag: `registration-${(saved as { id: string }[] | null)?.[0]?.id ?? Date.now()}`,
+    tag: `registration-${ids[0] ?? Date.now()}`,
   });
   // The receipt to whoever filled the form in, and a notice to the club.
   // Best effort: the registration is saved either way. A copy of the receipt
   // is kept on each registration, under Messages sent (sent_by empty: the
   // website sent it), and shows on the player's page once approved.
-  const sent = await sendRegistrationEmails(inputs, confirmed).catch((e) => {
+  const sent = await sendRegistrationEmails(fresh, confirmed).catch((e) => {
     console.error("[notify] registration emails failed", e);
     return null;
   });
-  const ids = ((saved as { id: string }[] | null) ?? []).map((r) => r.id);
   if (sent && ids.length) {
     const now = new Date().toISOString();
     const { error: logError } = await db.from("olb_registration_messages").insert(
@@ -170,7 +243,97 @@ export async function createRegistrations(
     );
     if (logError) console.warn(`[registrations] keeping a copy of the receipt failed: ${logError.message}`);
   }
+
+  if (settings.enabled && submissionKey) {
+    await afterSubmit(db, settings, {
+      submissionKey,
+      email: confirmed ?? (registrant(fresh[0], null)?.email ?? null),
+      regIds: ids,
+      sizes: ids.map((regId, i) => ({ regId, sizes: kept[i].sizes })),
+    });
+    // Approved on the spot, when the Registrations person turned it on:
+    // families from an offer link, and families who played last season.
+    for (let i = 0; i < ids.length; i++) {
+      const fromOffer = i === offered && settings.auto_approve_offer;
+      const returning = settings.auto_approve_returning && (await playedBefore(db, board.id, fresh[i]));
+      if (fromOffer || returning) {
+        const { data: reg } = await db.from("olb_registrations").select("*").eq("id", ids[i]).maybeSingle();
+        if (reg) {
+          const res = await approveLoaded(db, reg, null);
+          if (res.error) console.warn(`[registrations] approving ${ids[i]} automatically failed: ${res.error}`);
+        }
+      }
+    }
+  }
   return null;
+}
+
+// The family's checklist link (0130), for the "You're registered!" screen:
+// found by the form's own submit key, which only that browser knows. Null
+// with the workflow off.
+export async function checklistLinkFor(rawKey: string): Promise<string | null> {
+  const key = cleanKey(rawKey);
+  if (!key) return null;
+  const db = createAdminClient();
+  const { data } = await db.from("olb_onboarding_families").select("token").eq("submission_key", key).maybeSingle();
+  return (data as { token: string } | null) ? `/family/${(data as { token: string }).token}` : null;
+}
+
+function cleanKey(raw: string | undefined | null): string | null {
+  const k = raw?.trim();
+  return k && /^[A-Za-z0-9-]{8,80}$/.test(k) ? k : null;
+}
+
+// The players not already waiting for review: the same name and birthday
+// sent in the last day counts as already sent.
+async function notAlreadyWaiting(db: ReturnType<typeof createAdminClient>, boardId: string, inputs: RegistrationInput[]): Promise<RegistrationInput[]> {
+  const { data } = await db
+    .from("olb_registrations")
+    .select("first_name, last_name, dob")
+    .eq("board_id", boardId)
+    .eq("status", "pending")
+    .gte("created_at", new Date(Date.now() - 86_400_000).toISOString());
+  const key = (first: string, last: string, dob: string | null) => `${first.trim().toLowerCase()}|${last.trim().toLowerCase()}|${dob ?? ""}`;
+  const waiting = new Set(((data as { first_name: string; last_name: string; dob: string | null }[] | null) ?? []).map((r) => key(r.first_name, r.last_name, r.dob)));
+  return inputs.filter((i) => !waiting.has(key(i.athlete_first, i.athlete_last, i.athlete_dob || null)));
+}
+
+// What the workflow keeps on the registration: the handbook signatures and
+// the sizes by item name, readable on their own.
+function workflowExtra(kept: { sizes: Record<string, string>; handbook: InputExtras["handbook"] }, workflow: NonNullable<Awaited<ReturnType<typeof loadFormExtras>>>) {
+  const names = new Map(workflow.items.map((i) => [i.id, i.name]));
+  return {
+    handbook: kept.handbook ? { ...kept.handbook, signed_on: centralToday(), url: workflow.handbookUrl } : null,
+    uniform_sizes: Object.fromEntries(Object.entries(kept.sizes).map(([id, size]) => [names.get(id) ?? id, size])),
+  };
+}
+
+interface OpenOffer {
+  id: string;
+  registration_id: string;
+  first_name: string;
+  extra: { intake?: unknown } | null;
+}
+
+async function openOffer(db: ReturnType<typeof createAdminClient>, boardId: string, token: string): Promise<OpenOffer | null> {
+  if (!/^[A-Za-z0-9_-]{24,80}$/.test(token)) return null;
+  const { data } = await db
+    .from("olb_onboarding_offers")
+    .select("id, registration_id, status, expires_at, reg:olb_registrations(first_name, status, extra)")
+    .eq("token", token)
+    .eq("board_id", boardId)
+    .maybeSingle();
+  const o = data as unknown as { id: string; registration_id: string; status: string; expires_at: string; reg: { first_name: string; status: string; extra: OpenOffer["extra"] } | null } | null;
+  if (!o || o.status !== "open" || new Date(o.expires_at).getTime() < Date.now() || o.reg?.status !== "waitlisted") return null;
+  return { id: o.id, registration_id: o.registration_id, first_name: o.reg.first_name, extra: o.reg.extra };
+}
+
+// On a past season's roster with the same name (and birthday, when both
+// have one): a returning player.
+async function playedBefore(db: ReturnType<typeof createAdminClient>, boardId: string, input: RegistrationInput): Promise<boolean> {
+  const name = registrationFullName(input.athlete_first, input.athlete_last).replace(/[%_\\]/g, (c) => `\\${c}`);
+  const { data } = await db.from("olb_players").select("dob").neq("board_id", boardId).ilike("full_name", name).limit(10);
+  return ((data as { dob: string | null }[] | null) ?? []).some((p) => !p.dob || !input.athlete_dob || p.dob === input.athlete_dob);
 }
 
 function inputProblem(input: RegistrationInput): string | null {
@@ -187,7 +350,7 @@ function inputProblem(input: RegistrationInput): string | null {
   return null;
 }
 
-function toRow(boardId: string, input: RegistrationInput, confirmedEmail: string | null) {
+function toRow(boardId: string, input: RegistrationInput, confirmedEmail: string | null, submissionKey: string | null = null) {
   const fatherName = [input.father_first, input.father_last].map((s) => s?.trim()).filter(Boolean).join(" ");
   const motherName = [input.mother_first, input.mother_last].map((s) => s?.trim()).filter(Boolean).join(" ");
   const naless = (s: string) => (s && s.trim().toUpperCase() !== "N/A" ? s.trim() : "");
@@ -221,7 +384,8 @@ function toRow(boardId: string, input: RegistrationInput, confirmedEmail: string
       donation_interest: input.donation_interest,
       payment_option: input.payment_option,
       email_confirmed: confirmedEmail,
-    },
+      ...(submissionKey ? { submission_key: submissionKey } : {}),
+    } as Record<string, unknown>,
   };
 }
 
@@ -278,8 +442,26 @@ export async function approveRegistration(id: string): Promise<{ error?: string 
   const { data: reg } = await db.from("olb_registrations").select("*").eq("id", id).maybeSingle();
   if (!reg) return { error: "That registration isn't there any more. Refresh the page." };
   if (reg.status === "approved") return {};
+  // Joined from the waitlist form (0130): there's no registration to apply
+  // yet, so the family gets an offer link to fill it in.
+  if ((reg.extra as { source?: string } | null)?.source === "waitlist_form") {
+    return { error: "This family joined from the waitlist form and hasn't filled in the registration yet. Use Offer a spot to send them the form." };
+  }
+  const res = await approveLoaded(createAdminClient(), reg, gate.userId);
+  if (res.error) return { error: res.error };
+  refresh();
+  return {};
+}
 
-  const admin = createAdminClient();
+// Approve, for a registration already read: by a person (userId), or on
+// its own when the registration workflow approves automatically (null).
+async function approveLoaded(
+  admin: ReturnType<typeof createAdminClient>,
+  reg: { id: string; board_id: string; status: string; first_name: string; last_name: string; dob: string | null; extra: Extra | null },
+  userId: string | null
+): Promise<{ error?: string }> {
+  const id = reg.id;
+  if (reg.status === "approved") return {};
   let playerId: string;
   try {
     const applied = await applyRegistration(admin, reg.board_id, toRecord(reg));
@@ -289,16 +471,17 @@ export async function approveRegistration(id: string): Promise<{ error?: string 
     return { error: err instanceof Error ? err.message : "Approving didn't work. Try again." };
   }
 
-  const { error } = await db
+  const { error } = await admin
     .from("olb_registrations")
-    .update({ status: "approved", reviewed_by: gate.userId, reviewed_at: new Date().toISOString(), player_id: playerId })
+    .update({ status: "approved", reviewed_by: userId, reviewed_at: new Date().toISOString(), player_id: playerId })
     .eq("id", id);
   if (error) return { error: error.message };
 
-  await chargeRegistrationFee(admin, reg.board_id, playerId, (reg.extra as Extra | null)?.fee_tier ?? null, gate.userId);
+  await chargeRegistrationFee(admin, reg.board_id, playerId, reg.extra?.fee_tier ?? null, userId);
   // Notes written while they were on the waitlist (0124) follow them onto the roster.
   await admin.from("olb_player_notes").update({ player_id: playerId }).eq("registration_id", id);
-  refresh();
+  // The registration workflow (0130), when it's on.
+  await afterApprove(admin, id, playerId, userId);
   return {};
 }
 
@@ -310,7 +493,7 @@ async function chargeRegistrationFee(
   boardId: string,
   playerId: string,
   feeTier: string | null,
-  userId: string,
+  userId: string | null,
 ) {
   const cents = registrationFeeCents(feeTier);
   if (cents == null || cents <= 0) return;

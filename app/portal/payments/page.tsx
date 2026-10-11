@@ -3,6 +3,7 @@ import { getViewer } from "../../../lib/auth/viewer";
 import { loadPaymentsData, myPlayerIds } from "../../../lib/finances/data";
 import { FamilyView } from "./FamilyView";
 import { TreasurerView } from "./TreasurerView";
+import { workflowEnabled } from "../../../lib/onboarding/board-data";
 
 // Payments (migration 0101). Anyone with the Payments grant (the Treasurer;
 // super-admins always) sees every family and records what comes in. A parent
@@ -16,7 +17,10 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   if (viewer.canManageFinances) {
     const data = await loadPaymentsData();
     if (!data) return <Notice title="No season yet" body="Payments start once this season's roster is set up." />;
-    return <TreasurerView data={data} openPlayerId={family ?? null} />;
+    // Match Venmo (0130): the preview accounts, and while the registration
+    // workflow is on.
+    const venmo = viewer.seesFullUi || (await workflowEnabled());
+    return <TreasurerView data={data} openPlayerId={family ?? null} venmo={venmo} />;
   }
 
   if (viewer.status !== "approved") {

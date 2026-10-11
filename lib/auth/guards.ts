@@ -19,6 +19,7 @@ import {
   canUndeleteSettings,
   canManageFinances,
   canManageRegistrations,
+  canManageUniforms,
   canManageTravel,
   canSlackDm,
   canManageWebsite,
@@ -119,6 +120,16 @@ export async function requireRegistrations(): Promise<GateResult> {
   if (!caller) return { error: "You must be signed in." };
   if (!canManageRegistrations(caller.member)) {
     return { error: "You don't have permission to manage registrations." };
+  }
+  return { userId: caller.userId };
+}
+
+// Uniforms (0130): the uniform items, sizes and order.
+export async function requireUniforms(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canManageUniforms(caller.member)) {
+    return { error: "You don't have permission to manage uniforms." };
   }
   return { userId: caller.userId };
 }

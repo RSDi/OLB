@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import "../../components/olb.css";
 import RegistrationFlow from "./RegistrationFlow";
+import s from "./wizard.module.css";
+import { createAdminClient } from "../../../lib/supabase/admin";
+import { loadFormExtras } from "../../../lib/onboarding/server";
+import { loadOfferSeed } from "../../../lib/onboarding/offers";
+import type { FormExtras } from "../../../lib/onboarding/form-extras";
 
 export const metadata: Metadata = { title: "Player Registration" };
 
@@ -10,10 +15,34 @@ export const metadata: Metadata = { title: "Player Registration" };
 // wait on the Directory's New registrations page
 // (/portal/directory/registrations) for someone with the Registrations
 // permission to approve.
-export default function PlayerRegistrationPage() {
+//
+// With the registration workflow on (0130), the form also asks for uniform
+// sizes and the handbook signatures, and an offer link (?offer=…) starts
+// with the offered player filled in. With it off, the page is as before.
+export default async function PlayerRegistrationPage({ searchParams }: { searchParams: Promise<{ offer?: string }> }) {
+  const { offer: token } = await searchParams;
+  let config: FormExtras | null = null;
+  try {
+    config = await loadFormExtras(createAdminClient());
+  } catch (e) {
+    console.error("[registration] loading the workflow's questions failed", e);
+  }
+  const offer = config ? await loadOfferSeed(token) : null;
   return (
     <div className="olb-root">
-      <RegistrationFlow />
+      {offer === "expired" ? (
+        <div className={s.wrap}>
+          <div className={s.card}>
+            <h2 className={s.question}>That offer link has run out</h2>
+            <p className={s.lead}>
+              It may have passed its date, or the registration was already sent. Reply to the email it came in, or email{" "}
+              <strong>lightningbasketballomaha@gmail.com</strong>, and we&apos;ll sort it out.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <RegistrationFlow config={config} offer={offer} />
+      )}
     </div>
   );
 }
