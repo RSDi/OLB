@@ -483,7 +483,10 @@ main::-webkit-scrollbar-track { background: transparent; }
   /* Top bar: a little less space between the round buttons (search, "i",
      notifications) so the page title gets the room. */
   .rsd-topbar-actions { gap: 6px !important; }
-  .rsd-card { overflow-x: auto !important; }
+  /* Only a card holding a table scrolls sideways on a phone. Scrolling every
+     card also clipped what pops out of one (filter menus, date pickers, "i"
+     tips), since overflow-x: auto turns overflow-y to auto as well. */
+  .rsd-card:has(table) { overflow-x: auto !important; }
   .rsd-tbl  { min-width: 520px; }
   input, textarea, select { font-size: 16px !important; }
   /* Chip-style dropdowns (status/priority/assignee) keep the 11px chip size so
