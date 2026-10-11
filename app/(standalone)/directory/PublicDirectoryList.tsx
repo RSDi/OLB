@@ -253,8 +253,8 @@ export function PublicDirectoryList({
             >
               {s.team && <TeamDot color={s.team.color} />}
               {s.title}
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: 0 }}>
-                {s.players.length}
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: 0, textTransform: "none" }}>
+                · {s.players.length} {s.players.length === 1 ? "player" : "players"}
               </span>
             </h2>
             <div className="rsd-card" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
