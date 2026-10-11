@@ -216,6 +216,7 @@ export function LinkedContacts({
                         color: "var(--gw-fg-muted)",
                         fontWeight: 500,
                         marginTop: 1,
+                        overflowWrap: "anywhere",
                       }}
                     >
                       {sub}

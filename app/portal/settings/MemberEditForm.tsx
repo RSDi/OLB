@@ -165,7 +165,7 @@ export function MemberEditForm({
           The short name shown around the portal (the full name only appears on their Directory page). Defaults to the first name if blank.
         </span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="form-col-2">
         <Input
           label="Phone"
           type="tel"

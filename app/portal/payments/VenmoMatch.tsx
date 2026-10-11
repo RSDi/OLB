@@ -131,7 +131,7 @@ export function VenmoMatch({ onClose }: { onClose: () => void }) {
               </tbody>
             </table>
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <Pill size="sm" variant="accent" onClick={record} disabled={busy || picked.length === 0}>
               {busy ? "Recording…" : `Record ${picked.length} ${picked.length === 1 ? "payment" : "payments"}`}
             </Pill>

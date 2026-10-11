@@ -236,12 +236,12 @@ export function EventForm({
         rows={3}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="form-col-2" style={{ gap: 14 }}>
         <DateTimePicker label="Start *" value={startAt} onChange={setStartAt} required />
         <DateTimePicker label="End (optional)" value={endAt} onChange={setEndAt} placeholder="No end time" />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="form-col-2" style={{ gap: 14 }}>
         <Select label="Area (optional)" value={areaId} onChange={(e) => setAreaId(e.target.value)}>
           <option value="">— No area —</option>
           {areas.map((a) => (
@@ -511,7 +511,7 @@ export function EventForm({
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
+      <div style={{ display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
         <div>
           {isEdit && canDelete && (
             <Pill variant="ghost" size="sm" onClick={handleDelete} disabled={pending}>
@@ -519,7 +519,7 @@ export function EventForm({
             </Pill>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
           <Pill
             variant="ghost"
             size="md"

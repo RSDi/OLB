@@ -180,7 +180,7 @@ export function TypesTab({ me }: { me: MemberLike }) {
               }}
             >
               {editingType === r.type ? (
-                <div style={{ display: "flex", flex: 1, gap: 8, alignItems: "center" }}>
+                <div style={{ display: "flex", flex: 1, minWidth: 0, gap: 8, alignItems: "center" }}>
                   <input
                     value={draftName}
                     onChange={(e) => setDraftName(e.target.value)}
@@ -196,6 +196,7 @@ export function TypesTab({ me }: { me: MemberLike }) {
                     }}
                     style={{
                       flex: 1,
+                      minWidth: 0,
                       height: 36,
                       padding: "0 12px",
                       border: "1px solid var(--rsd-accent)",

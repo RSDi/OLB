@@ -1594,7 +1594,7 @@ function AddMemberForm({
         disabled={pending}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="form-col-2">
         <Input
           label="Phone"
           type="tel"
@@ -1612,7 +1612,7 @@ function AddMemberForm({
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="form-col-2">
         {profiles ? (
           <Select
             label="Access profile"

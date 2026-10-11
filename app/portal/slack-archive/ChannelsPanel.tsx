@@ -213,7 +213,8 @@ function AddChannelForm({
 
   return (
     <form onSubmit={handleSubmit} className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      {/* form-col-2 (globals.css): two columns, stacked on a phone. */}
+      <div className="form-col-2">
         <Input
           label="Label"
           value={label}

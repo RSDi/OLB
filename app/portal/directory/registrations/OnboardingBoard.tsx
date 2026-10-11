@@ -88,7 +88,7 @@ export function OnboardingBoard({ board }: { board: Board | null }) {
           <div style={{ fontSize: 13.5, fontWeight: 800 }}>Gone quiet</div>
           <div style={muted}>Nothing heard in two weeks or more. A quick personal note usually does it.</div>
           {board.quiet.map((c) => (
-            <div key={`q-${c.id}`} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 13 }}>
+            <div key={`q-${c.id}`} style={{ display: "flex", gap: "2px 8px", alignItems: "baseline", flexWrap: "wrap", fontSize: 13 }}>
               <strong>{c.title}</strong>
               <span style={muted}>{c.meta}</span>
               {c.href && (
@@ -204,10 +204,10 @@ function HeldEmails({ emails }: { emails: HeldEmail[] }) {
                 setOpenId(openId === e.id ? null : e.id);
                 setEdit(null);
               }}
-              style={{ border: "none", background: "none", padding: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", cursor: "pointer", textAlign: "left", flex: "1 1 200px" }}
+              style={{ border: "none", background: "none", padding: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", cursor: "pointer", textAlign: "left", flex: "1 1 200px", minWidth: 0 }}
             >
               {e.subject}
-              <span style={{ ...muted, display: "block" }}>To {e.to.join(", ")}</span>
+              <span style={{ ...muted, display: "block", overflowWrap: "anywhere" }}>To {e.to.join(", ")}</span>
             </button>
             <Pill size="sm" variant="accent" onClick={() => act(e.id, () => sendHeldEmail(e.id, openId === e.id && edit ? edit : undefined))} disabled={busy !== null}>
               {busy === e.id ? "Sending…" : e.status === "failed" ? "Try again" : "Send"}
@@ -225,7 +225,7 @@ function HeldEmails({ emails }: { emails: HeldEmail[] }) {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {e.error && <span style={{ ...muted, color: "var(--gw-error)" }}>{e.error}</span>}
-                <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.55, border: "1px solid var(--gw-border)", borderRadius: 10, padding: "10px 12px", background: "var(--gw-bg)" }}>{e.body}</div>
+                <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13, lineHeight: 1.55, border: "1px solid var(--gw-border)", borderRadius: 10, padding: "10px 12px", background: "var(--gw-bg)" }}>{e.body}</div>
                 <button
                   type="button"
                   onClick={() => setEdit({ subject: e.subject, body: e.body })}

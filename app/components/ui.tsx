@@ -64,7 +64,7 @@ export function KpiCard({ label, value, sub, accent, href }: {
   };
   const body = (
     <>
-      <span className="rsd-eyebrow" style={accent ? { color: "var(--rsd-kpi-accent-label)" } : undefined}>{label}</span>
+      <span className="rsd-eyebrow rsd-kpi-label" style={accent ? { color: "var(--rsd-kpi-accent-label)" } : undefined}>{label}</span>
       <span style={{
         fontFamily: "var(--rsd-display)",
         fontWeight: 700,
@@ -89,8 +89,8 @@ export function SectionHeader({ title, subtitle, action }: {
   title: string; subtitle?: string; action?: ReactNode;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
         <h2 style={{ margin: 0, fontWeight: 700, fontSize: 18, color: "var(--gw-fg)", lineHeight: 1.2 }}>{title}</h2>
         {subtitle && <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>{subtitle}</p>}
       </div>

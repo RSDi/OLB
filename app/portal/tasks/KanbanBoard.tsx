@@ -66,6 +66,8 @@ export function KanbanBoard({
         gap: 12,
         alignItems: "start",
         overflowX: "auto",
+        // On a phone the lanes scroll sideways; settle on a lane's edge.
+        scrollSnapType: "x proximity",
       }}
     >
       {COLUMNS.map((col) => {
@@ -94,6 +96,7 @@ export function KanbanBoard({
               borderRadius: 12,
               padding: 10,
               minHeight: 140,
+              scrollSnapAlign: "start",
               display: "flex",
               flexDirection: "column",
               gap: 8,

@@ -342,7 +342,7 @@ export function SegGroup({ label, children, ...rest }: { label: string; children
       role="group"
       aria-label={label}
       {...rest}
-      style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
+      style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)", flexWrap: "wrap", maxWidth: "100%" }}
     >
       {children}
     </div>

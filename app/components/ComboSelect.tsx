@@ -161,13 +161,17 @@ function Combo(props: ComboSelectProps) {
       const bottomEdge = vv ? vv.offsetTop + vv.height : window.innerHeight;
       const below = bottomEdge - r.bottom;
       const up = below < 220 && r.top > below;
-      const width = Math.max(r.width, 160);
+      // Never wider than the screen (less 8px each side), so on a phone a
+      // long option can't push the list past the right edge.
+      const room = window.innerWidth - 16;
+      const width = Math.min(Math.max(r.width, 160), room);
       const left = Math.max(8, Math.min(r.left, window.innerWidth - Math.min(width, 360) - 8));
+      const maxWidth = Math.max(width, Math.min(360, window.innerWidth - left - 8));
       const maxHeight = Math.max(120, Math.min(280, (up ? r.top : below) - 12));
       setPos({
         left,
         minWidth: width,
-        maxWidth: Math.max(width, 360),
+        maxWidth,
         maxHeight,
         ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
       });

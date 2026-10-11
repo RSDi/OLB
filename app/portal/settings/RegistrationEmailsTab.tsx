@@ -170,7 +170,7 @@ export function RegistrationEmailsTab({ canEdit }: { canEdit: boolean }) {
       {loading ? (
         <div style={{ padding: "40px 0", textAlign: "center", color: "var(--gw-fg-muted)", fontSize: 13 }}>Loading…</div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 16, alignItems: "start" }}>
           <div className="rsd-card" data-tour="registration-emails-fields" style={{ gap: 14, padding: "16px 18px" }}>
             {fields.map((f) => {
               const value = current[f.key];

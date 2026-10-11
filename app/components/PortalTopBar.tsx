@@ -123,7 +123,7 @@ export function PortalTopBar({
       )}
 
       {/* Right actions */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+      <div className="rsd-topbar-actions" style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
         {actions}
         {variant === "pill" && onSearchClick && (
           <PillTrigger onClick={onSearchClick} />

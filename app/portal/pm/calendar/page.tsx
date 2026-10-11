@@ -137,7 +137,7 @@ export default async function PmCalendarPage({
 
       {/* Month nav + area filter */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <Link
             href={`/portal/pm/calendar?month=${monthParam(prevMonth)}${baseFilter}`}
             style={navBtnStyle}
@@ -226,7 +226,7 @@ export default async function PmCalendarPage({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
+            gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
             background: "var(--gw-bg-elev)",
             borderBottom: "1px solid var(--gw-border)",
           }}
@@ -234,8 +234,10 @@ export default async function PmCalendarPage({
           {DOW_LABELS.map((d) => (
             <div
               key={d}
+              className="rsd-pm-cal-dow"
               style={{
                 padding: "10px 12px",
+                overflow: "hidden",
                 fontSize: 11,
                 fontWeight: 700,
                 color: "var(--gw-fg-muted)",
@@ -252,7 +254,7 @@ export default async function PmCalendarPage({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
+            gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
             gridAutoRows: "minmax(110px, auto)",
           }}
         >
@@ -267,6 +269,7 @@ export default async function PmCalendarPage({
             return (
               <div
                 key={iso}
+                className="rsd-pm-cal-day"
                 style={{
                   padding: 8,
                   borderRight: rowEnd ? "none" : "1px solid var(--gw-border)",

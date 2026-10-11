@@ -138,7 +138,7 @@ export function RoadmapView({
       {sheet?.kind === "link" && <LinkSheet linkKey={linkKey} onClose={() => setSheet(null)} onDone={flash} />}
 
       {toast && (
-        <div role="status" style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 80, padding: "10px 16px", borderRadius: 100, background: "var(--gw-ink)", color: "#fff", fontSize: 13, fontWeight: 600, boxShadow: "var(--gw-shadow-3)" }}>
+        <div role="status" style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", width: "max-content", maxWidth: "calc(100vw - 32px)", textAlign: "center", zIndex: 80, padding: "10px 16px", borderRadius: 100, background: "var(--gw-ink)", color: "#fff", fontSize: 13, fontWeight: 600, boxShadow: "var(--gw-shadow-3)" }}>
           {toast}
         </div>
       )}

@@ -398,7 +398,7 @@ function SupplyForm({
           onChange={(e) => setReorderThreshold(e.target.value)}
         />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="form-col-2">
         <Select
           label="Reorder from (vendor)"
           value={reorderContactId}

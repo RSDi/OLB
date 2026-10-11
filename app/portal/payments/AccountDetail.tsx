@@ -177,7 +177,7 @@ function Line({
   const crossed: React.CSSProperties = voided ? { textDecoration: "line-through", color: "var(--gw-fg-muted)" } : {};
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--gw-border)" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0, ...crossed }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0, overflowWrap: "anywhere", ...crossed }}>
         <span style={{ fontSize: 13.5, fontWeight: 700 }}>
           {title}
           {voided && " (voided)"}

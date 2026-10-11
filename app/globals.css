@@ -442,12 +442,15 @@ main::-webkit-scrollbar-track { background: transparent; }
 
 @media (max-width: 768px) {
   .rsd-preview-until { display: none; }
+  /* minmax(0, 1fr), not 1fr: a 1fr track grows to its widest item's
+     min-content (the top bar, a wide page), which pushed the whole app wider
+     than the phone screen. Same fix as .rsd-settings. */
   .rsd-app {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: 56px 1fr !important;
     grid-template-areas: "topbar" "main" !important;
   }
-  .rsd-app.sidebar-collapsed { grid-template-columns: 1fr !important; }
+  .rsd-app.sidebar-collapsed { grid-template-columns: minmax(0, 1fr) !important; }
   .rsd-app .rsd-sidebar {
     position: fixed !important;
     top: 0 !important; bottom: 0 !important; left: 0 !important;
@@ -469,7 +472,17 @@ main::-webkit-scrollbar-track { background: transparent; }
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
     gap: 14px !important;
   }
-  .rsd-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .rsd-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  /* Phone KPI tiles (KpiCard in ui.tsx), 2-up: the desktop 24px padding and
+     45px numbers made each tile tall and left ~115px for the label, so
+     labels like "Active · 24 hours" broke awkwardly. Tighter padding and
+     numbers, a closer gap, and a label that wraps onto readable lines. */
+  .rsd-app { --rsd-kpi-pad: 14px; --rsd-kpi-num: 24px; }
+  .rsd-kpi-grid { gap: 10px !important; } /* the base rule sits below this block */
+  .rsd-kpi-label { line-height: 1.25; letter-spacing: 0.05em; overflow-wrap: anywhere; }
+  /* Top bar: a little less space between the round buttons (search, "i",
+     notifications) so the page title gets the room. */
+  .rsd-topbar-actions { gap: 6px !important; }
   .rsd-card { overflow-x: auto !important; }
   .rsd-tbl  { min-width: 520px; }
   input, textarea, select { font-size: 16px !important; }
@@ -517,12 +530,13 @@ main::-webkit-scrollbar-track { background: transparent; }
 }
 .form-col-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …): a long <select> option can't widen its column. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
 .form-col-3 {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -530,7 +544,7 @@ main::-webkit-scrollbar-track { background: transparent; }
 @media (max-width: 767px) {
   /* Sidebar portal on mobile */
   .rsd-app {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: 64px 1fr;
     grid-template-areas: "topbar" "main";
   }
@@ -556,7 +570,13 @@ main::-webkit-scrollbar-track { background: transparent; }
 
   /* Form column grids → stacked */
   .form-col-2,
-  .form-col-3 { grid-template-columns: 1fr; }
+  .form-col-3 { grid-template-columns: minmax(0, 1fr); }
+
+  /* PM calendar: seven ~49px columns on a phone. */
+  .rsd-pm-cal-dow { padding: 8px 4px !important; font-size: 10px !important; letter-spacing: 0 !important; text-align: center !important; }
+  .rsd-pm-cal-day { padding: 4px !important; }
+  /* Task comment replies: a shallower indent leaves room for the text. */
+  :root { --rsd-comment-indent: 12px; }
 
   /* Public page section padding */
   .gw-hero    { padding: 56px 20px 48px !important; }

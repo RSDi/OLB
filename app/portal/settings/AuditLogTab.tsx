@@ -161,7 +161,7 @@ function AuditEntry({ row, actorName }: { row: AuditRow; actorName: string }) {
       {row.action === "update" && changes.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {changes.map((c) => (
-            <div key={c.field} style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+            <div key={c.field} style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, overflowWrap: "anywhere" }}>
               <span style={{ fontWeight: 700, color: "var(--gw-fg)" }}>{c.field}</span>:{" "}
               <span style={{ textDecoration: "line-through", opacity: 0.7 }}>{c.old}</span>
               {" → "}

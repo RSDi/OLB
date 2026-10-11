@@ -218,7 +218,8 @@ function CommentNode({
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
-  const indent = Math.min(depth, MAX_VISIBLE_DEPTH) * INDENT_PX;
+  // Each level steps in by --rsd-comment-indent (a phone can set it smaller).
+  const indent = `calc(${Math.min(depth, MAX_VISIBLE_DEPTH)} * var(--rsd-comment-indent, ${INDENT_PX}px))`;
 
   // Author may delete their own reply-free comment; a super-admin may delete
   // any comment along with its whole reply subtree. (`children` only holds
@@ -263,7 +264,7 @@ function CommentNode({
           display: "flex",
           gap: 12,
           padding: "14px 18px",
-          paddingLeft: 18 + indent,
+          paddingLeft: `calc(18px + ${indent})`,
         }}
       >
         <div
@@ -329,6 +330,7 @@ function CommentNode({
                 color: "var(--gw-fg)",
                 lineHeight: 1.6,
                 whiteSpace: "pre-wrap",
+                overflowWrap: "anywhere",
               }}
             >
               {comment.body}

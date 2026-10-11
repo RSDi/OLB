@@ -326,7 +326,7 @@ export function PlayersList({
                   role="group"
                   aria-label={`Show players by ${pickedReq.name}`}
                   data-tour="requirement-status"
-                  style={{ display: "inline-flex", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
+                  style={{ display: "inline-flex", flexWrap: "wrap", maxWidth: "100%", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
                 >
                   <SegButton label={`Missing ${reqCounts.missing}`} active={reqShow === "missing"} onClick={() => setReqShow("missing")} />
                   <SegButton

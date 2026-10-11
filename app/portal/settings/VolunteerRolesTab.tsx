@@ -191,7 +191,7 @@ export function VolunteerRolesTab() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 12 }}>
         <Legend tag="Leadership">
           People in these roles can switch the Directory to age groups (10U–18U), like the board does.
         </Legend>

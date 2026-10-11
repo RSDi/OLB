@@ -100,7 +100,7 @@ function PreviewConfirm({
         aria-labelledby="preview-confirm-title"
         onClick={(e) => e.stopPropagation()}
         className="rsd-card"
-        style={{ width: "100%", maxWidth: 460, boxShadow: "var(--gw-shadow-3)" }}
+        style={{ width: "100%", maxWidth: 460, maxHeight: "calc(100dvh - 32px)", overflowY: "auto", boxShadow: "var(--gw-shadow-3)" }}
       >
         <h2 id="preview-confirm-title" style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
           Preview as {name}?
@@ -111,7 +111,7 @@ function PreviewConfirm({
           ends by itself after 2 hours.
         </p>
         {email && (
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--gw-fg-muted)", fontWeight: 500, overflowWrap: "anywhere" }}>
             {first}{" "}hasn&apos;t signed up yet, so this sets up their portal login first. No email is sent. When they
             sign in with {email}, it&apos;s theirs.
           </p>
