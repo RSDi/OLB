@@ -213,5 +213,10 @@ test("on Settings the ⓘ panel offers the open tab's walkthrough", () => {
   const map = src.match(/const TAB_HELP[^=]*= \{([^}]*)\}/)?.[1] ?? "";
   const ids = [...map.matchAll(/: "([a-z0-9-]+)"/g)].map((m) => m[1]);
   assert.ok(ids.length >= 8);
-  for (const id of ids) assert.ok(tourForSection(id, SUPER), `${id} should have a walkthrough`);
+  // A tab still in staged rollout has a preview section, so its walkthrough
+  // is checked as an account on the staged-rollout list.
+  for (const id of ids) {
+    const preview = GUIDE_SECTIONS.find((s) => s.id === id)?.preview;
+    assert.ok(tourForSection(id, preview ? { ...SUPER, seesFullUi: true } : SUPER), `${id} should have a walkthrough`);
+  }
 });

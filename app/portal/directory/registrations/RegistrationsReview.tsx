@@ -97,6 +97,7 @@ export function RegistrationsReview({
               key={t.key}
               href={t.key === "waiting" ? "/portal/directory/registrations" : `/portal/directory/registrations?tab=${t.key}`}
               scroll={false}
+              data-tour={t.key === "waitlist" ? "registrations-tab-waitlist" : t.key === "onboarding" ? "registrations-tab-onboarding" : undefined}
               role="tab"
               aria-selected={tab === t.key}
               style={{
