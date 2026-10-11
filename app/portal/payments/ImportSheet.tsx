@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pill } from "../../components/ui";
+import { ComboSelect } from "../../components/ComboSelect";
 import { previewFinanceImport, runFinanceImport, undoFinanceImport } from "../../../lib/finances/import-actions";
 import type { ImportPreview } from "../../../lib/finances/import-sheet";
 import { formatAmount } from "../../../lib/finances/logic";
@@ -10,7 +11,8 @@ import { sub } from "./club-parts";
 
 const selectStyle: React.CSSProperties = {
   height: 36,
-  maxWidth: 220,
+  width: 240,
+  maxWidth: "100%",
   padding: "0 8px",
   borderRadius: 8,
   border: "1px solid var(--gw-border)",
@@ -149,14 +151,14 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
               {preview.teams.map((t) => (
                 <label key={t.name} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", fontSize: 13.5, fontWeight: 600 }}>
                   {t.name}
-                  <select aria-label={`Team for ${t.name}`} value={teams[t.name] ?? ""} onChange={(e) => setTeams({ ...teams, [t.name]: e.target.value })} style={selectStyle}>
+                  <ComboSelect aria-label={`Team for ${t.name}`} value={teams[t.name] ?? ""} onChange={(e) => setTeams({ ...teams, [t.name]: e.target.value })} style={selectStyle}>
                     <option value="">No team (keep the name)</option>
                     {preview.siteTeams.map((st) => (
                       <option key={st.id} value={st.id}>
                         {st.name}
                       </option>
                     ))}
-                  </select>
+                  </ComboSelect>
                 </label>
               ))}
             </div>
@@ -165,7 +167,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
           {preview.workers.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={capStyle}>Nelson&apos;s toward registration: whose fees</span>
-              <div style={sub}>Matched by name. Pick the player for anyone it couldn&apos;t match, like a parent with more than one kid.</div>
+              <div style={sub}>Matched by name. Pick the player for anyone it couldn&apos;t match, like a parent with more than one kid: type a first or last name to find them.</div>
               {preview.workers.map((w) => (
                 <label key={w.name} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", fontSize: 13.5, fontWeight: 600 }}>
                   <span>
@@ -174,7 +176,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
                       · {w.shifts} {w.shifts === 1 ? "shift" : "shifts"}, {formatAmount(w.cents)}
                     </span>
                   </span>
-                  <select aria-label={`Whose fees for ${w.name}`} value={workers[w.name] ?? "skip"} onChange={(e) => setWorkers({ ...workers, [w.name]: e.target.value })} style={selectStyle}>
+                  <ComboSelect aria-label={`Whose fees for ${w.name}`} value={workers[w.name] ?? "skip"} onChange={(e) => setWorkers({ ...workers, [w.name]: e.target.value })} style={selectStyle}>
                     <option value="skip">Leave out</option>
                     <option value="fund">Buckets for Bucks</option>
                     {preview.players.map((p) => (
@@ -182,7 +184,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
                         {p.name}
                       </option>
                     ))}
-                  </select>
+                  </ComboSelect>
                 </label>
               ))}
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13.5, fontWeight: 600, marginTop: 4 }}>
