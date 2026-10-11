@@ -259,7 +259,7 @@ main::-webkit-scrollbar-track { background: transparent; }
 }
 .rsd-settings-picker, .rsd-settings-sheet { display: none; }
 @media (max-width: 767px) {
-  .rsd-settings { grid-template-columns: 1fr; gap: 14px; }
+  .rsd-settings { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .rsd-settings-nav { display: none; }
   .rsd-settings-picker {
     display: flex; align-items: center; gap: 12px; width: 100%;
