@@ -95,6 +95,15 @@ export function canPlayerNotes(m: MemberLike | null | undefined): boolean {
   return isStaff(m) || canManageRegistrations(m);
 }
 
+// --- Uniforms ------------------------------------------------------------------
+// The registration workflow's uniforms (0130): items, prices and sizes, and
+// the uniform order. The uniforms permission, or Registrations. Mirrors
+// public.can_manage_uniforms().
+
+export function canManageUniforms(m: MemberLike | null | undefined): boolean {
+  return hasPermission(m, "uniforms") || canManageRegistrations(m);
+}
+
 // --- Travel --------------------------------------------------------------------
 // The travel coordinator: reading, adding and editing the External Contacts
 // of the travel types (Hotels, Food). Mirrors public.can_manage_travel() (0110).

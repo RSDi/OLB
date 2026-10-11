@@ -27,6 +27,8 @@ import {
   type RegistrationState,
 } from "../../../lib/teams/registration-form";
 import { ComboSelect } from "../../components/ComboSelect";
+import { HandbookFields, SizeFields } from "./WorkflowFields";
+import { extrasProblem, itemsFor, kidExtras, needsSizesStep, type ExtrasState, type FormExtras } from "../../../lib/onboarding/form-extras";
 
 export interface WizardApi {
   sendCode: (email: string, honeypot: string) => Promise<{ sent: boolean; error?: string }>;
@@ -54,6 +56,12 @@ export function RegistrationWizard({
   onVerified,
   honeypot,
   onHoneypot,
+  config = null,
+  extras,
+  onExtras,
+  seed,
+  startEmail,
+  banner,
 }: {
   state: RegistrationState;
   onChange: (next: RegistrationState) => void;
@@ -63,10 +71,18 @@ export function RegistrationWizard({
   onVerified: (email: string) => void;
   honeypot: string;
   onHoneypot: (v: string) => void;
+  // The registration workflow's extra questions (0130); null while it's off.
+  config?: FormExtras | null;
+  extras: ExtrasState;
+  onExtras: (next: ExtrasState) => void;
+  // Where a new family starts: a spot offer fills in the player (0130).
+  seed?: () => RegistrationState;
+  startEmail?: string;
+  banner?: string | null;
 }) {
   const [stage, setStage] = useState<Stage>("email");
   const [mode, setMode] = useState<Mode>("new");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(startEmail ?? "");
   const [code, setCode] = useState("");
   const [family, setFamily] = useState<FamilyPrefill | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
@@ -84,7 +100,7 @@ export function RegistrationWizard({
   const f = state.family;
   const kids = state.kids;
   const fromFile = new Set(family?.players.map((p) => p.key) ?? []);
-  const steps = buildSteps(mode, state, fromFile);
+  const steps = buildSteps(mode, state, fromFile, config);
   const at = Math.max(0, steps.indexOf(stepId));
 
   // A new step: back to the top of the card, with the first box ready to type
@@ -110,7 +126,7 @@ export function RegistrationWizard({
     setStepId(id);
   }
   function next(after?: RegistrationState) {
-    const list = after ? buildSteps(mode, after, fromFile) : steps;
+    const list = after ? buildSteps(mode, after, fromFile, config) : steps;
     if (backToSummary) {
       setBackToSummary(false);
       return go("summary");
@@ -179,7 +195,7 @@ export function RegistrationWizard({
     setMode("new");
     setFamily(null);
     setNotice(message);
-    const fresh = emptyRegistration();
+    const fresh = seed ? seed() : emptyRegistration();
     onChange(fresh);
     setStage("steps");
     setStepId(`name:${fresh.kids[0].key}`);
@@ -195,7 +211,7 @@ export function RegistrationWizard({
     onChange(filled);
     setMode("returning");
     setStage("steps");
-    const list = buildSteps("returning", filled, new Set(family.players.map((p) => p.key)));
+    const list = buildSteps("returning", filled, new Set(family.players.map((p) => p.key)), config);
     setStepId(list[0]);
   }
 
@@ -203,7 +219,7 @@ export function RegistrationWizard({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const problem = registrationProblem(state);
+    const problem = registrationProblem(state) ?? extrasProblem(state.kids, extras, config);
     if (problem) return setError(problem);
     setBusy(true);
     const res = await onSubmit();
@@ -235,6 +251,7 @@ export function RegistrationWizard({
               so it only takes a minute.
             </Question>
             <div className={s.body}>
+              {banner && <p className={s.note} style={{ fontWeight: 600 }}>{banner}</p>}
               <label className={s.field}>
                 Your email
                 <input
@@ -388,11 +405,14 @@ export function RegistrationWizard({
             setError={setError}
             submit={submit}
             backLabel={backToSummary ? "Back to review" : "Back"}
+            config={config}
+            extras={extras}
+            onExtras={onExtras}
           />
         )}
       </div>
 
-      {stage === "email" && (
+      {stage === "email" && !banner && (
         <p className="olb-sub" style={{ textAlign: "center", marginTop: 18, lineHeight: 1.6 }}>
           This registration is for current Lightning players and their brothers and sisters. New to Lightning? Join the
           waitlist on our <Link href="/programs">Programs</Link> page. Questions? Email{" "}
@@ -405,7 +425,7 @@ export function RegistrationWizard({
 
 // ─── Which steps, in what order ─────────────────────────────────────────────
 
-function buildSteps(mode: Mode, st: RegistrationState, fromFile: Set<string>): string[] {
+function buildSteps(mode: Mode, st: RegistrationState, fromFile: Set<string>, config: FormExtras | null): string[] {
   const out: string[] = [];
   const kidSteps = (k: KidAnswers) => [`name:${k.key}`, `dob:${k.key}`, `first:${k.key}`];
   if (mode === "new") {
@@ -418,10 +438,13 @@ function buildSteps(mode: Mode, st: RegistrationState, fromFile: Set<string>): s
   }
   out.push("fees", "uniform");
   if (st.kids.some((k) => isHighSchoolTier(k.fee_tier))) out.push("grays");
+  if (config && needsSizesStep(st.kids, config.items)) out.push("sizes");
   out.push("homeschool");
   if (st.family.father_first.trim()) out.push("help-father");
   if (st.family.mother_first.trim()) out.push("help-mother");
-  out.push("directory", "waiver", "donation", "payment", "summary");
+  out.push("directory", "waiver");
+  if (config?.handbookUrl) out.push("handbook");
+  out.push("donation", "payment", "summary");
   return out;
 }
 
@@ -451,6 +474,9 @@ interface StepProps {
   setError: (e: string | null) => void;
   submit: (e: React.FormEvent) => void;
   backLabel: string;
+  config: FormExtras | null;
+  extras: ExtrasState;
+  onExtras: (next: ExtrasState) => void;
 }
 
 function Step(p: StepProps) {
@@ -912,6 +938,40 @@ function Step(p: StepProps) {
     );
   }
 
+  // ── The registration workflow's questions (0130) ──
+  if (kind === "sizes" && p.config) {
+    const config = p.config;
+    const problem = kids
+      .flatMap((k) => itemsFor(k, config.items).filter((i) => i.who !== "optional" && !kidExtras(p.extras, k.key).sizes[i.id]).map((i) => `${many ? `${kidFirst(k)}: p` : "P"}lease pick a ${i.name.toLowerCase()} size.`))[0];
+    return (
+      <form onSubmit={continueWith(!problem, problem ?? "")}>
+        <Question title={many ? "Uniform sizes" : `${names}'s uniform size`}>
+          Pick your best guess.{config.tryOn ? ` We'll do a try-on (${config.tryOn}) before we order.` : " We'll do a try-on before we order."}
+        </Question>
+        <div className={s.body}>
+          <SizeFields kids={kids} config={config} x={p.extras} onX={p.onExtras} />
+        </div>
+        {actions(<ContinueButton />)}
+      </form>
+    );
+  }
+
+  if (kind === "handbook" && p.config) {
+    const x = p.extras;
+    const ok = kids.every((k) => kidExtras(x, k.key).handbook_player_name.trim()) && !!x.family.handbook_parent_name.trim() && x.family.handbook_agreed;
+    return (
+      <form onSubmit={continueWith(ok, "Each player and a parent type their name, then check the box.")}>
+        <Question title="The Player Handbook">
+          Read it together. {many ? "Each player" : names}{" "}and a parent sign that you&apos;ll follow it.
+        </Question>
+        <div className={s.body}>
+          <HandbookFields kids={kids} config={p.config} x={x} onX={p.onExtras} />
+        </div>
+        {actions(<ContinueButton />)}
+      </form>
+    );
+  }
+
   // ── Helping out ──
   if (kind === "help-father" || kind === "help-mother") {
     const who: Parent = kind === "help-father" ? "father" : "mother";
@@ -1121,6 +1181,21 @@ function Step(p: StepProps) {
           <Summary title="Waiver" onChange={() => p.change("waiver")}>
             <Line>{f.waiver_agreed && f.printed_name.trim() ? `Agreed and signed by ${f.printed_name.trim()}` : "Not signed yet"}</Line>
           </Summary>
+          {p.config?.handbookUrl && (
+            <Summary title="Handbook" onChange={() => p.change("handbook")}>
+              <Line>{p.extras.family.handbook_agreed && p.extras.family.handbook_parent_name.trim() ? `Signed by ${[...kids.map((k) => kidExtras(p.extras, k.key).handbook_player_name.trim()), p.extras.family.handbook_parent_name.trim()].filter(Boolean).join(", ")}` : "Not signed yet"}</Line>
+            </Summary>
+          )}
+          {p.config && needsSizesStep(kids, p.config.items) && (
+            <Summary title="Uniform sizes" onChange={() => p.change("sizes")}>
+              {kids.map((k) => {
+                const picked = itemsFor(k, p.config!.items)
+                  .map((i) => (kidExtras(p.extras, k.key).sizes[i.id] ? `${i.name} ${kidExtras(p.extras, k.key).sizes[i.id]}` : null))
+                  .filter(Boolean);
+                return picked.length ? <Line key={k.key}>{many ? `${kidFirst(k)}: ` : ""}{picked.join(" · ")}</Line> : null;
+              })}
+            </Summary>
+          )}
           <Summary title="Paying" onChange={() => p.change("payment")}>
             <Line>
               {f.payment_option || "Not picked"} · ${total}

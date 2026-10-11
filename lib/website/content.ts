@@ -185,6 +185,9 @@ export const RESERVED_SLUGS = [
   "new-dropdown",
   "resources",
   "favicon.ico",
+  // The registration workflow's public pages (0130).
+  "waitlist",
+  "family",
 ];
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

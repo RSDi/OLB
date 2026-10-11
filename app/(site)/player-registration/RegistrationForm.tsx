@@ -18,6 +18,8 @@ import {
   type RegistrationState,
 } from "../../../lib/teams/registration-form";
 import { ComboSelect } from "../../components/ComboSelect";
+import { HandbookFields, SizeFields } from "./WorkflowFields";
+import { extrasProblem, needsSizesStep, type ExtrasState, type FormExtras } from "../../../lib/onboarding/form-extras";
 
 const radioLbl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, cursor: "pointer" };
 const cbLbl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, cursor: "pointer" };
@@ -43,6 +45,9 @@ export default function RegistrationForm({
   honeypot,
   onHoneypot,
   today,
+  config = null,
+  extras,
+  onExtras,
 }: {
   state: RegistrationState;
   onChange: (next: RegistrationState) => void;
@@ -51,6 +56,10 @@ export default function RegistrationForm({
   honeypot: string;
   onHoneypot: (v: string) => void;
   today: string;
+  // The registration workflow's extra questions (0130); null while it's off.
+  config?: FormExtras | null;
+  extras: ExtrasState;
+  onExtras: (next: ExtrasState) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,6 +78,8 @@ export default function RegistrationForm({
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    const problem = extrasProblem(state.kids, extras, config);
+    if (problem) return setError(problem);
     setBusy(true);
     const res = await onSubmit();
     setBusy(false);
@@ -166,6 +177,22 @@ export default function RegistrationForm({
             <span className="olb-sub" style={{ fontSize: 12, marginTop: 8, display: "block" }}>Date: {today}</span>
           </div>
         </div>
+
+        {config && needsSizesStep(state.kids, config.items) && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={qLabel}>Uniform sizes *</span>
+            <span className="olb-sub" style={{ fontSize: 12, marginTop: -6 }}>Pick your best guess. We&apos;ll do a try-on before we order.</span>
+            <SizeFields kids={state.kids} config={config} x={extras} onX={onExtras} />
+          </div>
+        )}
+
+        {config?.handbookUrl && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={qLabel}>Player Handbook *</span>
+            <span className="olb-sub" style={{ fontSize: 12, marginTop: -6 }}>Read it together. Each player and a parent sign that you&apos;ll follow it.</span>
+            <HandbookFields kids={state.kids} config={config} x={extras} onX={onExtras} />
+          </div>
+        )}
 
         <div>
           <span style={qLabel}>Would you consider supporting Omaha Lightning Basketball with a donation?</span>

@@ -26,6 +26,8 @@ const PREVIEW_ROUTES = [
   "/portal/reelnotes",
   "/portal/activity",
   "/portal/roadmap",
+  // The registration workflow's Uniforms page (0130).
+  "/portal/directory/uniforms",
   // The guide itself: no "i" needed.
   "/portal/guide",
 ];
