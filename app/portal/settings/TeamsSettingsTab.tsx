@@ -355,23 +355,27 @@ export function IconBtn({
   title,
   danger,
   disabled,
+  size = 32,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   title: string;
   danger?: boolean;
   disabled?: boolean;
+  /** Square size in px; 32 by default, larger for phone tap targets. */
+  size?: number;
 }) {
   return (
     <button
+      className="rsd-tap"
       type="button"
       onClick={onClick}
       title={title}
       aria-label={title}
       disabled={disabled}
       style={{
-        width: 32,
-        height: 32,
+        width: size,
+        height: size,
         borderRadius: 8,
         border: "1px solid var(--gw-border)",
         background: "var(--gw-bg-elev)",

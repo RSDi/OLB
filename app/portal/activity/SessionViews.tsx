@@ -12,7 +12,9 @@ const IDLE_MS = 30 * 60 * 1000; // gaps this long get an "idle" divider
 
 const muted = { fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 } as const;
 
-function Chip({ children, tone = "mute" }: { children: React.ReactNode; tone?: "mute" | "warn" | "ok" }) {
+// `wrap` lets a long chip (one carrying a person's name) break onto more
+// lines instead of pushing past the edge of a phone screen.
+function Chip({ children, tone = "mute", wrap = false }: { children: React.ReactNode; tone?: "mute" | "warn" | "ok"; wrap?: boolean }) {
   const t = {
     mute: { background: "var(--gw-bg)", color: "var(--gw-fg-muted)" },
     warn: { background: "#FEF3C7", color: "#7A4B00" },
@@ -26,7 +28,7 @@ function Chip({ children, tone = "mute" }: { children: React.ReactNode; tone?: "
         borderRadius: 100,
         fontSize: 11,
         fontWeight: 700,
-        whiteSpace: "nowrap",
+        ...(wrap ? { whiteSpace: "normal", overflowWrap: "anywhere", minWidth: 0, maxWidth: "100%" } : { whiteSpace: "nowrap" }),
         ...t,
       }}
     >
@@ -62,6 +64,22 @@ function ErrorNote({ message }: { message: string }) {
   );
 }
 
+const sessionHref = (userId: string, sid: string) => `/portal/activity?u=${userId}&sid=${sid}`;
+
+// A session's "Preview" / "Active now" notes, in the table's last column or
+// a phone card's bottom line.
+function SessionChips({ s, now, wrap = false }: { s: SessionSummary; now: number; wrap?: boolean }) {
+  const preview = s.isPreview;
+  const active = now - Date.parse(s.lastEventAt) < ACTIVE_MS;
+  if (wrap && !preview && !active) return null;
+  return (
+    <span style={wrap ? { display: "flex", flexWrap: "wrap", gap: 6 } : { display: "inline-flex", gap: 6 }}>
+      {preview && <Chip tone="warn" wrap={wrap}>Preview · by {s.previewedBy}</Chip>}
+      {active && <Chip tone="ok">Active now</Chip>}
+    </span>
+  );
+}
+
 export function SessionsList({
   userId,
   name,
@@ -87,41 +105,59 @@ export function SessionsList({
         {sessions.length === 0 ? (
           <div style={muted}>No sessions recorded yet. Activity is recorded from the day this page went live.</div>
         ) : (
-          <table className="rsd-tbl">
-            <thead>
-              <tr>
-                <th>Started</th>
-                <th>Length</th>
-                <th className="num">Pages</th>
-                <th>Device</th>
-                <th aria-label="Notes" />
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((s) => {
-                const href = `/portal/activity?u=${userId}&sid=${s.sid}`;
-                return (
-                  <tr key={s.sid}>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <Link href={href} style={{ color: "var(--gw-fg)", fontWeight: 700, textDecoration: "none" }}>
-                        {fmtDateTime(s.startedAt)}
-                      </Link>{" "}
-                      <span style={{ ...muted, fontWeight: 500 }}>· {relTime(s.startedAt, now)}</span>
-                    </td>
-                    <td>{fmtDuration(Date.parse(s.lastEventAt) - Date.parse(s.startedAt))}</td>
-                    <td className="num">{s.pageViews}</td>
-                    <td>{parseUserAgent(s.device)}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <span style={{ display: "inline-flex", gap: 6 }}>
-                        {s.isPreview && <Chip tone="warn">Preview · by {s.previewedBy}</Chip>}
-                        {now - Date.parse(s.lastEventAt) < ACTIVE_MS && <Chip tone="ok">Active now</Chip>}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <>
+            {/* Phones: one card per session (the table needs sideways scrolling there). */}
+            <div className="gw-mobile-cards" style={{ gap: 0 }}>
+              {sessions.map((s) => (
+                <Link
+                  key={s.sid}
+                  href={sessionHref(userId, s.sid)}
+                  style={{ display: "flex", flexDirection: "column", gap: 6, padding: "12px 0", minHeight: 36, borderTop: "1px solid var(--gw-border)", color: "var(--gw-fg)", textDecoration: "none" }}
+                >
+                  <div style={{ fontSize: 14 }}>
+                    <span style={{ fontWeight: 700 }}>{fmtDateTime(s.startedAt)}</span>{" "}
+                    <span style={{ ...muted, fontWeight: 500 }}>· {relTime(s.startedAt, now)}</span>
+                  </div>
+                  <div style={{ ...muted, fontWeight: 500 }}>
+                    {fmtDuration(Date.parse(s.lastEventAt) - Date.parse(s.startedAt))} · {s.pageViews} {s.pageViews === 1 ? "page" : "pages"} · {parseUserAgent(s.device)}
+                  </div>
+                  <SessionChips s={s} now={now} wrap />
+                </Link>
+              ))}
+            </div>
+            <table className="rsd-tbl gw-desktop-table">
+              <thead>
+                <tr>
+                  <th>Started</th>
+                  <th>Length</th>
+                  <th className="num">Pages</th>
+                  <th>Device</th>
+                  <th aria-label="Notes" />
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((s) => {
+                  const href = sessionHref(userId, s.sid);
+                  return (
+                    <tr key={s.sid}>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        <Link href={href} style={{ color: "var(--gw-fg)", fontWeight: 700, textDecoration: "none" }}>
+                          {fmtDateTime(s.startedAt)}
+                        </Link>{" "}
+                        <span style={{ ...muted, fontWeight: 500 }}>· {relTime(s.startedAt, now)}</span>
+                      </td>
+                      <td>{fmtDuration(Date.parse(s.lastEventAt) - Date.parse(s.startedAt))}</td>
+                      <td className="num">{s.pageViews}</td>
+                      <td>{parseUserAgent(s.device)}</td>
+                      <td style={{ textAlign: "right" }}>
+                        <SessionChips s={s} now={now} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     </>
@@ -144,7 +180,7 @@ function eventLabel(e: TrailEvent): React.ReactNode {
     case "logout":
       return <Chip>Signed out</Chip>;
     case "preview_start":
-      return <Chip tone="warn">Preview started by {by}</Chip>;
+      return <Chip tone="warn" wrap>Preview started by {by}</Chip>;
     case "preview_stop": {
       const why = e.meta.reason === "expired" ? " (timed out)" : e.meta.reason === "logout" ? " (signed out)" : "";
       return <Chip tone="warn">Preview ended{why}</Chip>;
@@ -196,7 +232,7 @@ export function SessionTimeline({
       <div className="rsd-card" style={{ gap: 12 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{name}</h2>
-          {isPreview && <Chip tone="warn">Preview session · by {session?.previewedBy ?? "a super-admin"}</Chip>}
+          {isPreview && <Chip tone="warn" wrap>Preview session · by {session?.previewedBy ?? "a super-admin"}</Chip>}
           {last && now - Date.parse(last.at) < ACTIVE_MS && <Chip tone="ok">Active now</Chip>}
         </div>
         {first && last && (
@@ -209,7 +245,7 @@ export function SessionTimeline({
             ].map(([label, value]) => (
               <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <span className="rsd-eyebrow">{label}</span>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>{value}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, overflowWrap: "anywhere" }}>{value}</span>
               </div>
             ))}
           </div>
