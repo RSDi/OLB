@@ -118,7 +118,7 @@ export function UniformsTab() {
         )}
       </div>
       {!editing && (
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8 }} data-tour="uniform-add">
           <Pill size="sm" variant="accent" onClick={() => setEditing({ name: "", who: "all", price: "", sizes: DEFAULT_SIZES.join(", "), sort_order: nextSort })}>
             + Add item
           </Pill>
@@ -139,7 +139,7 @@ export function UniformsTab() {
         </div>
       )}
 
-      <div className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
+      <div className="rsd-card" style={{ gap: 14, padding: "16px 18px" }} data-tour="uniform-dates">
         <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0 }}>Try-on and the order</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
           <Input label="Try-on night" value={general.try_on} onChange={(e) => setGeneral({ ...general, try_on: e.target.value })} placeholder="Mon, Sep 14 at 6pm in the gym" />

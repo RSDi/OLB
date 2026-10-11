@@ -717,6 +717,142 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-registration-automations",
+    sectionId: "settings-registration-automations",
+    title: "Registration Automations walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-registration-automations",
+        title: "Settings → Registration Automations",
+        body: "The switches for the registration workflow: the waitlist form, spot offers, the family checklist and the automatic emails.",
+      },
+      {
+        target: "automations-switch",
+        click: "settings-tab-registration-automations",
+        title: "One switch",
+        body: "**Use the new registration workflow** turns it all on or off. Off, registration works exactly the way it always has. **Pause all automatic emails** holds every email without changing anything else.",
+      },
+      {
+        target: "automations-emails",
+        title: "Each email has its own switch",
+        body: "**Off** sends nothing. **Ask me first** holds each email on the Registrations page's **Onboarding** tab until someone taps **Send**. **On** sends it. Everything starts **Off**; **Ask me first** is a good way to begin.",
+      },
+      {
+        target: "automations-words",
+        title: "Change the words",
+        body: "**Words** opens an email's subject and words, with a preview for a made-up family. Words in braces, like {player}, fill in each family's details. **Reset to original** puts the original back.",
+      },
+      {
+        target: "automations-approve",
+        title: "Approving on its own",
+        body: "Turn these on to approve families who register from an offer link, or who played last season, without waiting in **New**. Leave them off and every registration waits for a person.",
+      },
+      {
+        target: "automations-links",
+        title: "Links and dates",
+        body: "The handbook link (with one, families sign the handbook on the form), the Slack invite link and the day it runs out, how long offer links last, the parent meeting, first practice and clinic details. The emails and checklists use these.",
+      },
+      {
+        target: "automations-save",
+        title: "Save",
+        body: "Nothing changes until you tap **Save**. **Undo my changes** puts back what was saved.",
+      },
+      {
+        title: "Then try it",
+        body: "Open **/waitlist** on the website and join as a test family. With **Waitlist reply** on **Ask me first**, the reply waits on **Directory → Registrations → Onboarding** for you to read.",
+      },
+    ],
+  },
+  {
+    id: "registration-workflow",
+    sectionId: "registration-workflow",
+    title: "Registration workflow walkthrough",
+    route: "/portal/directory/registrations",
+    steps: [
+      {
+        target: "registrations-tabs",
+        title: "Registrations",
+        body: "With the registration workflow on, this page does the follow-up for you: families from the waitlist form, spot offers, and the **Onboarding** tab.",
+      },
+      {
+        target: "waitlist-workflow",
+        click: "registrations-tab-waitlist",
+        title: "A waitlist family",
+        body: "What they told us on the waitlist form. Tick **Seen at a clinic** and **Coach 👍** as you learn about the player; the Onboarding tab puts thumbs-up families first.",
+      },
+      {
+        target: "waitlist-offer",
+        title: "Offer a spot",
+        body: "When a spot opens, tap **Offer a spot**, read the email over (keep {link} in it) and tap **Send the offer**. The family gets a private link with their son filled in. A check-in and a close-out follow if their switches are on.",
+      },
+      {
+        target: "onboarding-held",
+        click: "registrations-tab-onboarding",
+        title: "Waiting for you",
+        body: "Emails set to **Ask me first**. Tap one to read it, **Change the words** if you like, then **Send** or **Skip**.",
+      },
+      {
+        target: "onboarding-board",
+        title: "Every family in one view",
+        body: "From **Waitlist** to **On a team**. **$ H S U** turn green as the fee is paid, the handbook is signed, they join Slack and their uniform sizes are in. **Gone quiet** below lists anyone you haven't heard from in two weeks.",
+      },
+      {
+        target: "onboarding-announce",
+        title: "Announce teams",
+        body: "Once coaches have placed players, tap **Announce teams** to email each family their team, coach and practice times. A family is told once per team.",
+      },
+    ],
+  },
+  {
+    id: "settings-uniforms",
+    sectionId: "settings-uniforms",
+    alsoSections: ["uniforms-page"],
+    title: "Uniforms walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-uniforms",
+        title: "Settings → Uniforms",
+        body: "The season's uniform items. Families pick a size for each one on the registration form while the workflow is on.",
+      },
+      {
+        target: "uniform-items",
+        click: "settings-tab-uniforms",
+        title: "The items",
+        body: "Each item's price and sizes. **Edit** changes one, **Remove** takes it off the form (**Put back** returns it). Leave a price blank until you know it.",
+      },
+      {
+        target: "uniform-add",
+        title: "Add an item",
+        body: "**+ Add item**: name it, pick **Who gets it** (everyone who needs a uniform, high school grays, or optional like warm-ups), the price and the sizes, separated by commas.",
+      },
+      {
+        target: "uniform-dates",
+        title: "Try-on and the order",
+        body: "Set the try-on night and the order deadline, and choose when families are charged: when you mark the order placed, or when each registration is approved. Tap **Save**.",
+      },
+      {
+        target: "uniforms-counts",
+        route: "/portal/directory/uniforms",
+        title: "The Uniforms page",
+        body: "How many of each size to order, counted from what families picked. **Download order sheet** saves it for the vendor.",
+      },
+      {
+        target: "uniforms-players",
+        route: "/portal/directory/uniforms",
+        title: "Try-on night",
+        body: "Every player's sizes. Change one at try-on and it's marked confirmed ✓. **Missing a size** shows who still needs one.",
+      },
+      {
+        target: "uniforms-order",
+        route: "/portal/directory/uniforms",
+        title: "Charge families",
+        body: "**Mark ordered and add charges** puts each sized item's price on the family's Payments account, once.",
+      },
+    ],
+  },
+  {
     id: "settings-email-templates",
     sectionId: "settings-email-templates",
     title: "Email Templates walkthrough",

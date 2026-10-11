@@ -119,7 +119,7 @@ export function RegistrationAutomationsTab() {
           <h3 style={h3}>Automatic emails</h3>
           <p style={sub}>Ask me first holds each email on Directory → Registrations → Onboarding, where you read it and press Send or Skip.</p>
         </div>
-        {AUTOMATIONS.map((a) => {
+        {AUTOMATIONS.map((a, i) => {
           const mode: Mode = draft.modes[a.key] ?? "off";
           const c = tab.counts[a.key];
           return (
@@ -133,7 +133,7 @@ export function RegistrationAutomationsTab() {
                   </div>
                 </div>
                 <Segmented value={mode} onChange={(m) => setMode(a.key, m)} label={a.label} />
-                <button type="button" onClick={() => setEditing(editing === a.key ? null : a.key)} style={linkBtn}>
+                <button type="button" data-tour={i === 0 ? "automations-words" : undefined} onClick={() => setEditing(editing === a.key ? null : a.key)} style={linkBtn}>
                   {editing === a.key ? "Close" : "Words"}
                 </button>
               </div>
@@ -155,7 +155,7 @@ export function RegistrationAutomationsTab() {
         </div>
       </div>
 
-      <div className="rsd-card" style={card}>
+      <div className="rsd-card" style={card} data-tour="automations-approve">
         <h3 style={h3}>Approving on its own</h3>
         <Toggle
           on={draft.auto_approve_offer}
@@ -171,7 +171,7 @@ export function RegistrationAutomationsTab() {
         />
       </div>
 
-      <div className="rsd-card" style={card}>
+      <div className="rsd-card" style={card} data-tour="automations-links">
         <h3 style={h3}>Links and dates</h3>
         <p style={sub}>The emails and each family&apos;s checklist use these. Leave anything blank to leave it out.</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
@@ -213,6 +213,7 @@ export function RegistrationAutomationsTab() {
       </div>
 
       <div
+        data-tour="automations-save"
         style={{
           display: "flex",
           gap: 8,

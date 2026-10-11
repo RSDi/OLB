@@ -70,6 +70,8 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   requirements: "settings-requirements",
   email_templates: "settings-email-templates",
   registration_emails: "settings-registration-emails",
+  registration_automations: "settings-registration-automations",
+  uniforms: "settings-uniforms",
   website: "settings-website",
   playbooks: "settings-playbooks",
   sidebar_links: "settings-sidebar-links",
