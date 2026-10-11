@@ -106,6 +106,7 @@ export function Sheet({
       }}
     >
       <div
+        className="rsd-sheet rsd-sheet-solo"
         style={{
           width: "min(480px, 100vw)",
           height: "100%",
@@ -129,6 +130,7 @@ export function Sheet({
             aria-label="Close"
             onClick={onClose}
             disabled={busy}
+            className="rsd-tap"
             style={{
               width: 36,
               height: 36,

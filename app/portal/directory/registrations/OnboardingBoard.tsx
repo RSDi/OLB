@@ -17,6 +17,9 @@ export function OnboardingBoard({ board }: { board: Board | null }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ error?: string; notice?: string } | null>(null);
+  // Phone only: which stage's cards show under the stage tabs. Null means
+  // "the first stage with anyone in it".
+  const [stageKey, setStageKey] = useState<string | null>(null);
 
   if (!board || !board.enabled) {
     return (
@@ -68,7 +71,13 @@ export function OnboardingBoard({ board }: { board: Board | null }) {
       {message?.error && <ErrorNote text={message.error} />}
       {message?.notice && <span style={{ ...muted, fontWeight: 700, color: "var(--gw-fg)" }}>{message.notice}</span>}
 
-      <div data-tour="onboarding-board" style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(170px, 1fr))", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+      {/* Phone: stage tabs with counts, then that stage's cards full width.
+          Five board columns don't fit side by side at phone width. */}
+      <div className="gw-mobile-cards" data-tour="onboarding-board" style={{ gap: 10 }}>
+        <MobileStages columns={board.columns} stageKey={stageKey} onPick={setStageKey} />
+      </div>
+
+      <div className="gw-desktop-table" data-tour="onboarding-board" style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(170px, 1fr))", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
         {board.columns.map((col) => (
           <div key={col.key} style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
             <div style={{ ...capStyle, fontSize: 10.5, display: "flex", justifyContent: "space-between" }}>
@@ -88,7 +97,7 @@ export function OnboardingBoard({ board }: { board: Board | null }) {
           <div style={{ fontSize: 13.5, fontWeight: 800 }}>Gone quiet</div>
           <div style={muted}>Nothing heard in two weeks or more. A quick personal note usually does it.</div>
           {board.quiet.map((c) => (
-            <div key={`q-${c.id}`} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 13 }}>
+            <div key={`q-${c.id}`} style={{ display: "flex", gap: "2px 8px", alignItems: "baseline", flexWrap: "wrap", fontSize: 13 }}>
               <strong>{c.title}</strong>
               <span style={muted}>{c.meta}</span>
               {c.href && (
@@ -101,6 +110,61 @@ export function OnboardingBoard({ board }: { board: Board | null }) {
         </div>
       )}
     </div>
+  );
+}
+
+function MobileStages({
+  columns,
+  stageKey,
+  onPick,
+}: {
+  columns: Board["columns"];
+  stageKey: string | null;
+  onPick: (key: string) => void;
+}) {
+  if (columns.length === 0) return null;
+  const selected =
+    columns.find((c) => c.key === stageKey) ?? columns.find((c) => c.cards.length > 0) ?? columns[0];
+  return (
+    <>
+      <div role="tablist" aria-label="Stages" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {columns.map((col) => {
+          const on = col.key === selected.key;
+          return (
+            <button
+              key={col.key}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              onClick={() => onPick(col.key)}
+              style={{
+                minHeight: 36,
+                padding: "0 12px",
+                borderRadius: 100,
+                border: `1px solid ${on ? "var(--gw-fg)" : "var(--gw-border)"}`,
+                background: on ? "var(--gw-fg)" : "var(--gw-bg-elev)",
+                color: on ? "var(--gw-bg)" : "var(--gw-fg)",
+                fontSize: 12.5,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              {col.label}
+              <span style={{ fontVariantNumeric: "tabular-nums", opacity: on ? 0.8 : 0.6 }}>{col.cards.length}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div role="tabpanel" aria-label={selected.label} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {selected.cards.length === 0 && <div style={{ ...muted, padding: "8px 2px" }}>Nobody here</div>}
+        {selected.cards.map((c) => (
+          <Card key={c.id} card={c} />
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -204,10 +268,10 @@ function HeldEmails({ emails }: { emails: HeldEmail[] }) {
                 setOpenId(openId === e.id ? null : e.id);
                 setEdit(null);
               }}
-              style={{ border: "none", background: "none", padding: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", cursor: "pointer", textAlign: "left", flex: "1 1 200px" }}
+              style={{ border: "none", background: "none", padding: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", cursor: "pointer", textAlign: "left", flex: "1 1 200px", minWidth: 0 }}
             >
               {e.subject}
-              <span style={{ ...muted, display: "block" }}>To {e.to.join(", ")}</span>
+              <span style={{ ...muted, display: "block", overflowWrap: "anywhere" }}>To {e.to.join(", ")}</span>
             </button>
             <Pill size="sm" variant="accent" onClick={() => act(e.id, () => sendHeldEmail(e.id, openId === e.id && edit ? edit : undefined))} disabled={busy !== null}>
               {busy === e.id ? "Sending…" : e.status === "failed" ? "Try again" : "Send"}
@@ -225,7 +289,7 @@ function HeldEmails({ emails }: { emails: HeldEmail[] }) {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {e.error && <span style={{ ...muted, color: "var(--gw-error)" }}>{e.error}</span>}
-                <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.55, border: "1px solid var(--gw-border)", borderRadius: 10, padding: "10px 12px", background: "var(--gw-bg)" }}>{e.body}</div>
+                <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 13, lineHeight: 1.55, border: "1px solid var(--gw-border)", borderRadius: 10, padding: "10px 12px", background: "var(--gw-bg)" }}>{e.body}</div>
                 <button
                   type="button"
                   onClick={() => setEdit({ subject: e.subject, body: e.body })}

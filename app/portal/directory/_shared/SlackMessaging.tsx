@@ -260,7 +260,7 @@ export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: Mail
           {sample && /\{(name|player)\}/i.test(body) && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={capStyle}>How it reads for {sample.name}</span>
-              <div style={{ ...muted, whiteSpace: "pre-wrap", lineHeight: 1.55, padding: "10px 12px", borderRadius: 10, background: "var(--gw-bg)", border: "1px solid var(--gw-border)" }}>
+              <div style={{ ...muted, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.55, padding: "10px 12px", borderRadius: 10, background: "var(--gw-bg)", border: "1px solid var(--gw-border)" }}>
                 {fillDm(body, { name: sample.name, players: sample.players.map((first_name) => ({ first_name })) })}
               </div>
             </div>

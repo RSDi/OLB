@@ -263,6 +263,7 @@ function CategoryRow({
       className="rsd-card"
       style={{
         flexDirection: "row",
+        flexWrap: "wrap",
         alignItems: "center",
         gap: 14,
         padding: "12px 18px",
@@ -353,27 +354,34 @@ function CategoryForm({
 
   return (
     <form data-tour="contact-types-form" onSubmit={handleSubmit} className="rsd-card" style={{ gap: 14, padding: "16px 18px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
-        <Input
-          label="Name *"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Plumbing"
-          autoFocus
-          required
-        />
-        <Input
-          label="Slug"
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          placeholder="auto from name"
-        />
-        <Input
-          label="Sort order"
-          type="number"
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value)}
-        />
+      {/* 2 : 1 : 1 across on a wide screen; on a phone Sort order drops to its own line. */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ flex: "2 1 160px", minWidth: 0 }}>
+          <Input
+            label="Name *"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Plumbing"
+            autoFocus
+            required
+          />
+        </div>
+        <div style={{ flex: "1 1 80px", minWidth: 0 }}>
+          <Input
+            label="Slug"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="auto from name"
+          />
+        </div>
+        <div style={{ flex: "1 1 80px", minWidth: 0 }}>
+          <Input
+            label="Sort order"
+            type="number"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          />
+        </div>
       </div>
       {sharing && (
         <label style={{ display: "inline-flex", alignItems: "flex-start", gap: 8, fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>
@@ -428,6 +436,7 @@ function IconBtn({
   const bg = danger ? "var(--gw-error-bg)" : "var(--gw-bg-elev)";
   return (
     <button
+      className="rsd-tap"
       onClick={onClick}
       disabled={disabled}
       title={title}

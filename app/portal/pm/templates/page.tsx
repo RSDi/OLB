@@ -54,7 +54,7 @@ export default async function PmTemplatesPage() {
           gap: 12,
         }}
       >
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link
             href="/portal/pm"
             style={{

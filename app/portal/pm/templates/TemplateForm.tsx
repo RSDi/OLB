@@ -189,7 +189,7 @@ export function TemplateForm({
         rows={3}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div className="form-col-2" style={{ gap: 14 }}>
         <Select label="Area" value={areaId} onChange={(e) => setAreaId(e.target.value)}>
           <option value="">— Choose an area —</option>
           {areas.map((a) => (
@@ -413,6 +413,7 @@ export function TemplateForm({
               placeholder={`Step ${i + 1}`}
               style={{
                 flex: 1,
+                minWidth: 0,
                 height: 36,
                 padding: "0 12px",
                 border: "1px solid var(--gw-border)",
@@ -495,7 +496,7 @@ export function TemplateForm({
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
+      <div style={{ display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
         <div>
           {isEdit && canDelete && (
             <Pill variant="ghost" size="sm" onClick={handleDelete} disabled={pending}>
@@ -503,7 +504,7 @@ export function TemplateForm({
             </Pill>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
           <Pill
             variant="ghost"
             size="md"

@@ -94,6 +94,11 @@ export default async function PmCalendarPage({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const agendaDays = days
+    .filter((d) => d.getMonth() === month.zeroIdx)
+    .map((d) => ({ date: d, iso: isoDate(d), items: byDate.get(isoDate(d)) ?? [] }))
+    .filter((d) => d.items.length > 0);
+
   const prevMonth = month.zeroIdx === 0
     ? { year: month.year - 1, zeroIdx: 11 }
     : { year: month.year, zeroIdx: month.zeroIdx - 1 };
@@ -137,7 +142,7 @@ export default async function PmCalendarPage({
 
       {/* Month nav + area filter */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <Link
             href={`/portal/pm/calendar?month=${monthParam(prevMonth)}${baseFilter}`}
             style={navBtnStyle}
@@ -221,12 +226,48 @@ export default async function PmCalendarPage({
         </div>
       </div>
 
+      {/* Phone: an agenda list of the month's days that have items. The
+          7-column grid below is too narrow to read at phone width. */}
+      <div className="gw-mobile-cards" style={{ gap: 12 }}>
+        {agendaDays.length === 0 ? (
+          <div className="rsd-card" style={{ padding: "20px 16px", textAlign: "center", fontSize: 13, color: "var(--gw-fg-muted)" }}>
+            Nothing scheduled in {monthLabel(month)}.
+          </div>
+        ) : (
+          agendaDays.map(({ date, iso, items }) => {
+            const isToday = date.getTime() === today.getTime();
+            const isPast = date < today;
+            return (
+              <div key={iso} style={{ display: "flex", flexDirection: "column", gap: 6, opacity: isPast && !isToday ? 0.7 : 1 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: 8,
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: isToday ? "var(--rsd-accent)" : "var(--gw-fg)",
+                  }}
+                >
+                  <span>{date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
+                  {isToday && <span style={{ fontSize: 11, fontWeight: 700 }}>Today</span>}
+                  <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: "var(--gw-fg-muted)" }}>{items.length}</span>
+                </div>
+                {items.map((inst) => (
+                  <AgendaRow key={inst.id} instance={inst} />
+                ))}
+              </div>
+            );
+          })
+        )}
+      </div>
+
       {/* Calendar grid */}
-      <div className="rsd-card" style={{ padding: 0, overflow: "hidden", gap: 0 }}>
+      <div className="rsd-card gw-desktop-table" style={{ padding: 0, overflow: "hidden", gap: 0 }}>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
+            gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
             background: "var(--gw-bg-elev)",
             borderBottom: "1px solid var(--gw-border)",
           }}
@@ -234,8 +275,10 @@ export default async function PmCalendarPage({
           {DOW_LABELS.map((d) => (
             <div
               key={d}
+              className="rsd-pm-cal-dow"
               style={{
                 padding: "10px 12px",
+                overflow: "hidden",
                 fontSize: 11,
                 fontWeight: 700,
                 color: "var(--gw-fg-muted)",
@@ -252,7 +295,7 @@ export default async function PmCalendarPage({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
+            gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
             gridAutoRows: "minmax(110px, auto)",
           }}
         >
@@ -267,6 +310,7 @@ export default async function PmCalendarPage({
             return (
               <div
                 key={iso}
+                className="rsd-pm-cal-day"
                 style={{
                   padding: 8,
                   borderRight: rowEnd ? "none" : "1px solid var(--gw-border)",
@@ -359,6 +403,48 @@ function CalendarPill({ instance }: { instance: InstanceRow }) {
       }}
     >
       {instance.title}
+    </Link>
+  );
+}
+
+// Phone agenda row: the same link and priority color as CalendarPill, at
+// full width so the whole title reads and the tap target is comfortable.
+function AgendaRow({ instance }: { instance: InstanceRow }) {
+  const chipClass = instance.priority?.chip_class ?? "rsd-chip-mute";
+  const isClosed = instance.status === "done" || instance.status === "skipped";
+  return (
+    <Link
+      href={`/portal/pm/${instance.id}`}
+      className={`rsd-chip ${chipClass}`}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: 2,
+        minHeight: 44,
+        justifyContent: "center",
+        padding: "8px 12px",
+        borderRadius: 10,
+        textDecoration: "none",
+        opacity: isClosed ? 0.55 : 1,
+        whiteSpace: "normal",
+      }}
+    >
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: 700,
+          lineHeight: 1.3,
+          overflowWrap: "anywhere",
+          textDecorationLine: instance.status === "done" ? "line-through" : "none",
+        }}
+      >
+        {instance.title}
+      </span>
+      <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>
+        {instance.area?.name ?? "no area"}
+        {instance.priority?.label ? ` · ${instance.priority.label}` : ""}
+      </span>
     </Link>
   );
 }

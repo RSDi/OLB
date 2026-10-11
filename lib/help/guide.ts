@@ -360,7 +360,7 @@ Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdr
 
 **The family checklist.** Every family gets a private checklist page: their spot, the handbook, the fee with a Venmo button, Slack, uniform sizes, the parent meeting and their team. Each automatic email links to it, and it updates itself as the Treasurer records payments and families join Slack.
 
-**The Onboarding tab** shows every family from **Waitlist** to **Offered**, **Registered**, **Ready** and **On a team**. On each family, **$ H S U** turn green as the fee is paid, the handbook is signed, they join Slack and their uniform sizes are in. **Gone quiet** lists anyone you haven't heard from in two weeks.
+**The Onboarding tab** shows every family from **Waitlist** to **Offered**, **Registered**, **Ready** and **On a team**. On each family, **$ H S U** turn green as the fee is paid, the handbook is signed, they join Slack and their uniform sizes are in. **Gone quiet** lists anyone you haven't heard from in two weeks. On a phone, the stages show as buttons across the top, each with how many families are in it. Tap one to see those families. It opens on the first stage that has anyone in it.
 
 - **Waiting for you** lists emails set to **Ask me first**. Tap one to read it, **Change the words** if you like, then **Send** or **Skip**. **Send all** sends every one as it is.
 - **Announce teams** emails each family whose players are all on a team: their team, coach and practice times (when **Your team** is on).`,

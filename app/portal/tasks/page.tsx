@@ -465,7 +465,7 @@ export default async function PortalMaintenancePage({
                     color: "var(--gw-fg)",
                   }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.45 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.45, overflowWrap: "anywhere" }}>
                     {t.category && (
                       <span
                         className={`rsd-chip rsd-chip-dot ${t.category.chip_class}`}

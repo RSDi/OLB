@@ -165,7 +165,7 @@ export function ContactForm({
 
       <div className="rsd-card" style={{ gap: 14 }}>
         <h3 style={SECTION_TITLE}>Identity</h3>
-        <div style={GRID_2}>
+        <div className="form-col-2">
           <Input
             label={kind === "company" ? "Company name *" : "Full name *"}
             value={name}
@@ -181,7 +181,7 @@ export function ContactForm({
             placeholder="What we usually call them"
           />
         </div>
-        <div style={GRID_2}>
+        <div className="form-col-2">
           <Select
             label="Type"
             value={categoryId ?? ""}
@@ -210,7 +210,7 @@ export function ContactForm({
           )}
         </div>
         {kind === "person" ? (
-          <div style={GRID_2}>
+          <div className="form-col-2">
             <Input
               label="Role"
               value={title}
@@ -219,7 +219,7 @@ export function ContactForm({
             />
           </div>
         ) : (
-          <div style={GRID_2}>
+          <div className="form-col-2">
             <Input label="City" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Des Moines" />
             <Input
               label="State"
@@ -234,7 +234,7 @@ export function ContactForm({
 
       <div className="rsd-card" style={{ gap: 14 }}>
         <h3 style={SECTION_TITLE}>Contact info</h3>
-        <div style={GRID_2}>
+        <div className="form-col-2">
           <Input
             label="Email"
             type="email"
@@ -250,7 +250,7 @@ export function ContactForm({
             placeholder="(555) 123-4567"
           />
         </div>
-        <div style={GRID_2}>
+        <div className="form-col-2">
           <Input
             label="Other email"
             type="email"
@@ -259,7 +259,7 @@ export function ContactForm({
             placeholder="A second address, if they have one"
           />
         </div>
-        <div style={GRID_2}>
+        <div className="form-col-2">
           <Input
             label="Mobile / direct"
             type="tel"
@@ -287,7 +287,7 @@ export function ContactForm({
       {kind === "company" && (
         <div className="rsd-card" style={{ gap: 14 }}>
           <h3 style={SECTION_TITLE}>Another program</h3>
-          <div style={GRID_2}>
+          <div className="form-col-2">
             <Input
               label="Team colors"
               value={teamColors}
@@ -308,7 +308,7 @@ export function ContactForm({
 
       <div className="rsd-card" style={{ gap: 14 }}>
         <h3 style={SECTION_TITLE}>Account & billing</h3>
-        <div style={GRID_2}>
+        <div className="form-col-2">
           <Input
             label="Account number"
             value={accountNumber}
@@ -321,7 +321,7 @@ export function ContactForm({
             onChange={(e) => setCustomerId(e.target.value)}
           />
         </div>
-        <div style={GRID_2}>
+        <div className="form-col-2">
           <Input
             label="Payment terms"
             value={paymentTerms}
@@ -420,11 +420,6 @@ const SECTION_TITLE: React.CSSProperties = {
   letterSpacing: ".04em",
 };
 
-const GRID_2: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 12,
-};
 
 function KindToggle({
   label,

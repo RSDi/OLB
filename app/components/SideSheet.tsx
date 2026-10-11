@@ -1,7 +1,8 @@
 "use client";
 // A right-hand sheet over the page (full width on a phone), in the style of
 // the Payments and Directory sheets. Closes on the ✕, a click outside it, or
-// Escape, unless it's busy saving.
+// Escape, unless it's busy saving. The rsd-sheet* classes (globals.css)
+// tighten its padding on a phone and keep the footer above the home bar.
 
 import { useEffect, type ReactNode } from "react";
 import { Icons } from "./icons";
@@ -59,6 +60,7 @@ export function SideSheet({
     >
       <div
         data-tour={tour}
+        className="rsd-sheet"
         style={{
           width: `min(${width}px, 100vw)`,
           height: "100%",
@@ -70,6 +72,7 @@ export function SideSheet({
         }}
       >
         <div
+          className="rsd-sheet-head"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -100,6 +103,7 @@ export function SideSheet({
             aria-label="Close"
             onClick={onClose}
             disabled={busy}
+            className="rsd-tap"
             style={{
               width: 36,
               height: 36,
@@ -117,11 +121,12 @@ export function SideSheet({
             <Icons.X width={16} height={16} />
           </button>
         </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="rsd-sheet-body" style={{ flex: 1, overflowY: "auto", padding: "16px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
           {children}
         </div>
         {footer && (
           <div
+            className="rsd-sheet-foot"
             style={{
               borderTop: "1px solid var(--gw-border)",
               padding: "12px 24px",

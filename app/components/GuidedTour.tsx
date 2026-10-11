@@ -413,6 +413,12 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
             top: place.top,
             left: place.left,
             width: place.width,
+            // Never taller than the screen: the step text scrolls inside so
+            // Back / Next stay on screen. No overflow here, or the arrow on
+            // the edge would be clipped.
+            maxHeight: Math.max(0, viewport.h - MARGIN * 2),
+            display: "flex",
+            flexDirection: "column",
             background: "var(--gw-bg-elev)",
             border: "1px solid var(--gw-border)",
             borderRadius: 14,
@@ -436,7 +442,7 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
               }}
             />
           )}
-          <div style={{ padding: "14px 18px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ padding: "14px 18px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
             <span
               style={{
                 fontSize: 11,
@@ -452,7 +458,7 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
               type="button"
               onClick={finish}
               aria-label="Close tour"
-              className="gw-press"
+              className="gw-press rsd-tap"
               style={{
                 width: 28,
                 height: 28,
@@ -470,7 +476,7 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
               <Icons.X width={13} height={13} />
             </button>
           </div>
-          <div style={{ padding: "6px 18px 0" }}>
+          <div style={{ padding: "6px 18px 0", flex: "1 1 auto", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" }}>
             {part && (
               <div
                 style={{
@@ -505,6 +511,7 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
               justifyContent: "space-between",
               gap: 8,
               padding: "12px 18px 14px",
+              flexShrink: 0,
             }}
           >
             {!isLast ? (

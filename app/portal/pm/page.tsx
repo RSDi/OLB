@@ -78,7 +78,7 @@ export default async function PmInstancesPage({
           gap: 12,
         }}
       >
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link
             href="/portal/pm/calendar"
             style={{
@@ -190,7 +190,7 @@ export default async function PmInstancesPage({
                     flexWrap: "wrap",
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 240 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 14, fontWeight: 700, color: "var(--gw-fg)" }}>
                         {inst.title}

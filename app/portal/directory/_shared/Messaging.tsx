@@ -251,7 +251,7 @@ export function ComposeSheet({
           {preview && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={capStyle}>How it reads for {firstNames(preview.players)}</span>
-              <div style={{ ...muted, whiteSpace: "pre-wrap", lineHeight: 1.55, padding: "10px 12px", borderRadius: 10, background: "var(--gw-bg)", border: "1px solid var(--gw-border)" }}>
+              <div style={{ ...muted, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.55, padding: "10px 12px", borderRadius: 10, background: "var(--gw-bg)", border: "1px solid var(--gw-border)" }}>
                 {fillMessage(body, preview.players)}
               </div>
             </div>
@@ -289,7 +289,7 @@ export function SentMessages({ messages, style }: { messages: SentMessage[]; sty
               {new Date(m.sent_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
               {m.sent_by_name ? ` · by ${m.sent_by_name}` : ""} · to {m.sent_to.join(", ")}
             </span>
-            <div style={{ ...muted, whiteSpace: "pre-wrap", lineHeight: 1.55, padding: "8px 10px", borderRadius: 8, background: "var(--gw-bg)" }}>{m.body}</div>
+            <div style={{ ...muted, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.55, padding: "8px 10px", borderRadius: 8, background: "var(--gw-bg)" }}>{m.body}</div>
           </div>
         ))}
       </div>

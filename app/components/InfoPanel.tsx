@@ -45,7 +45,7 @@ export function InfoPanel({
         display: "flex",
         alignItems: "flex-start",
         justifyContent: "center",
-        padding: "8vh 16px 16px",
+        padding: "8dvh 16px 16px",
         animation: "gw-fade-in 160ms ease",
         overflowY: "auto",
       }}
@@ -65,7 +65,7 @@ export function InfoPanel({
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          maxHeight: "84vh",
+          maxHeight: "84dvh",
         }}
       >
         <div
@@ -86,7 +86,7 @@ export function InfoPanel({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="gw-press"
+            className="gw-press rsd-tap"
             style={{
               width: 30,
               height: 30,

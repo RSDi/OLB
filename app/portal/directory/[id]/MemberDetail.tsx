@@ -460,9 +460,7 @@ function ProfileCard({
               style={{
                 color: "var(--gw-fg)",
                 textDecoration: "none",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                overflowWrap: "anywhere",
                 display: "block",
               }}
             >
@@ -703,7 +701,7 @@ function EditForm({
         placeholder="e.g. Jeff (defaults to your first name)"
         disabled={pending}
       />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="form-col-2">
         <Input
           label="Phone"
           type="tel"

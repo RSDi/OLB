@@ -142,6 +142,7 @@ export function GlobalSearch({ open, onClose }: Props) {
             inputRef.current?.focus();
           }}
           aria-label="Clear search"
+          className="rsd-tap-halo"
           style={{
             display: "flex",
             alignItems: "center",
@@ -163,6 +164,7 @@ export function GlobalSearch({ open, onClose }: Props) {
       <button
         onClick={onClose}
         aria-label="Close search"
+        className="rsd-tap"
         style={{
           display: "flex",
           alignItems: "center",

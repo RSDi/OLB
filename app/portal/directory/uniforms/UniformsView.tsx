@@ -46,6 +46,41 @@ export function UniformsView({ data }: { data: UniformPage }) {
     URL.revokeObjectURL(url);
   }
 
+  // One player's size picker for one item, plus its confirmed / charged
+  // marks. Shared by the desktop table and the phone cards.
+  function sizeControl(p: UniformPage["players"][number], i: UniformPage["items"][number], height: number) {
+    const cur = p.sizes[i.id];
+    const needed = p.needs?.includes(i.id) ?? false;
+    return (
+      <>
+        <select
+          aria-label={`${p.name}'s ${i.name} size`}
+          value={cur?.size ?? ""}
+          disabled={busy !== null || cur?.charged}
+          onChange={(e) => act(`${p.id}-${i.id}`, () => setUniformSize({ playerId: p.id, itemId: i.id, size: e.target.value, confirm: true }))}
+          style={{
+            height,
+            borderRadius: 8,
+            border: `1px solid ${needed && !cur ? "var(--gw-error)" : "var(--gw-border)"}`,
+            background: "var(--gw-bg)",
+            color: "var(--gw-fg)",
+            padding: "0 8px",
+            fontSize: 13,
+          }}
+        >
+          <option value="">{needed ? "Needs a size" : "—"}</option>
+          {i.sizes.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        {cur?.confirmed && <span title="Confirmed at try-on" style={{ marginLeft: 6, color: "var(--gw-success)", fontWeight: 800 }}>✓</span>}
+        {cur?.charged && <span title="On the family's Payments account" style={{ marginLeft: 6, ...muted, fontSize: 11 }}>charged</span>}
+      </>
+    );
+  }
+
   if (data.items.length === 0) {
     return (
       <div className="rsd-card" style={{ padding: "32px 24px", textAlign: "center", gap: 8 }}>
@@ -171,7 +206,26 @@ export function UniformsView({ data }: { data: UniformPage }) {
       </div>
 
       <div className="rsd-card" data-tour="uniforms-players" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
+        {/* Phones: one card per player, the item pickers wrapping below the name. */}
+        <div className="gw-mobile-cards">
+          {shown.map((p, n) => (
+            <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", borderTop: n ? "1px solid var(--gw-border)" : "none" }}>
+              <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
+                <div style={{ ...muted, fontSize: 11.5 }}>{p.team ?? "No team yet"}</div>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 16px" }}>
+                {data.items.map((i) => (
+                  <div key={i.id} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                    <span style={{ ...capStyle, fontSize: 10 }}>{i.name}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", whiteSpace: "nowrap" }}>{sizeControl(p, i, 36)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="gw-desktop-table" style={{ overflowX: "auto" }}>
           <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13 }}>
             <thead>
               <tr>
@@ -190,38 +244,11 @@ export function UniformsView({ data }: { data: UniformPage }) {
                     <div style={{ fontWeight: 700 }}>{p.name}</div>
                     <div style={{ ...muted, fontSize: 11.5 }}>{p.team ?? "No team yet"}</div>
                   </td>
-                  {data.items.map((i) => {
-                    const cur = p.sizes[i.id];
-                    const needed = p.needs?.includes(i.id) ?? false;
-                    return (
-                      <td key={i.id} style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
-                        <select
-                          aria-label={`${p.name}'s ${i.name} size`}
-                          value={cur?.size ?? ""}
-                          disabled={busy !== null || cur?.charged}
-                          onChange={(e) => act(`${p.id}-${i.id}`, () => setUniformSize({ playerId: p.id, itemId: i.id, size: e.target.value, confirm: true }))}
-                          style={{
-                            height: 32,
-                            borderRadius: 8,
-                            border: `1px solid ${needed && !cur ? "var(--gw-error)" : "var(--gw-border)"}`,
-                            background: "var(--gw-bg)",
-                            color: "var(--gw-fg)",
-                            padding: "0 8px",
-                            fontSize: 13,
-                          }}
-                        >
-                          <option value="">{needed ? "Needs a size" : "—"}</option>
-                          {i.sizes.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                        {cur?.confirmed && <span title="Confirmed at try-on" style={{ marginLeft: 6, color: "var(--gw-success)", fontWeight: 800 }}>✓</span>}
-                        {cur?.charged && <span title="On the family's Payments account" style={{ marginLeft: 6, ...muted, fontSize: 11 }}>charged</span>}
-                      </td>
-                    );
-                  })}
+                  {data.items.map((i) => (
+                    <td key={i.id} style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
+                      {sizeControl(p, i, 32)}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

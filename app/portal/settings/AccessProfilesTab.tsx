@@ -288,7 +288,7 @@ function ProfileCard({
             }}
             style={{ display: "flex", gap: 8, alignItems: "center", flex: 1, minWidth: 220 }}
           >
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <Input aria-label="Profile name" value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={60} />
             </div>
             <Pill variant="ghost" size="sm" onClick={() => { setName(profile.name); setRenaming(false); }}>
@@ -441,6 +441,7 @@ function SmallBtn({
 }) {
   return (
     <button
+      className="rsd-tap"
       onClick={onClick}
       disabled={disabled}
       style={{

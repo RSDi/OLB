@@ -112,7 +112,7 @@ export function VolunteerRolesTab() {
         </div>
       ) : (
         <div className="rsd-card" style={{ padding: 0, gap: 0, overflowX: "auto" }}>
-          <div style={{ ...grid, borderTop: "none", paddingTop: 12, paddingBottom: 10 }}>
+          <div className="gw-desktop-table" style={{ ...grid, borderTop: "none", paddingTop: 12, paddingBottom: 10 }}>
             <span style={cap}>Order</span>
             <span style={cap}>Role</span>
             <span style={cap}>Spots per team</span>
@@ -126,72 +126,22 @@ export function VolunteerRolesTab() {
                 <RoleForm initial={r} submitLabel="Save" onCancel={() => setEditingId(null)} onSubmit={(v) => save(r.id, v)} />
               </div>
             ) : (
-              <div key={r.id} data-tour="roles-row" style={{ ...grid, opacity: acting === r.id ? 0.5 : 1 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <OrderBtn label={`Move ${r.name} up`} disabled={i === 0 || !!acting} onClick={() => run(r.id, () => moveVolunteerRole(r.id, "up"))}>
-                    <Icons.ChevronUp width={13} height={13} />
-                  </OrderBtn>
-                  <OrderBtn
-                    label={`Move ${r.name} down`}
-                    disabled={i === rows.length - 1 || !!acting}
-                    onClick={() => run(r.id, () => moveVolunteerRole(r.id, "down"))}
-                  >
-                    <Icons.ChevronDown width={13} height={13} />
-                  </OrderBtn>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800 }}>{r.name}</span>
-                  {r.description && <span style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)" }}>{r.description}</span>}
-                  {r.registration_interest && (
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
-                      Suggests people who signed up for “{r.registration_interest}”
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <StepBtn
-                    label={`Fewer ${r.name} spots`}
-                    disabled={r.spots_per_team <= 1 || !!acting}
-                    onClick={() => run(r.id, () => updateVolunteerRole(r.id, { ...toInput(r), spots_per_team: r.spots_per_team - 1 }))}
-                  >
-                    −
-                  </StepBtn>
-                  <span style={{ fontSize: 15, fontWeight: 800, minWidth: 16, textAlign: "center" }}>{r.spots_per_team}</span>
-                  <StepBtn
-                    label={`More ${r.name} spots`}
-                    disabled={r.spots_per_team >= 10 || !!acting}
-                    onClick={() => run(r.id, () => updateVolunteerRole(r.id, { ...toInput(r), spots_per_team: r.spots_per_team + 1 }))}
-                  >
-                    +
-                  </StepBtn>
-                </div>
-                <Switch
-                  label={`${r.name}: leadership`}
-                  on={r.is_leadership}
-                  disabled={!!acting}
-                  onClick={() => run(r.id, () => updateVolunteerRole(r.id, { ...toInput(r), is_leadership: !r.is_leadership }))}
-                />
-                <Switch
-                  label={`${r.name}: show in Directory`}
-                  on={r.show_in_directory}
-                  disabled={!!acting}
-                  onClick={() => run(r.id, () => updateVolunteerRole(r.id, { ...toInput(r), show_in_directory: !r.show_in_directory }))}
-                />
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                  <IconBtn title="Edit" disabled={!!acting} onClick={() => setEditingId(r.id)}>
-                    <Icons.Pencil width={14} height={14} />
-                  </IconBtn>
-                  <IconBtn title="Delete" danger disabled={!!acting} onClick={() => remove(r)}>
-                    <Icons.Trash width={14} height={14} />
-                  </IconBtn>
-                </div>
-              </div>
+              <RoleRow
+                key={r.id}
+                role={r}
+                first={i === 0}
+                last={i === rows.length - 1}
+                acting={acting}
+                run={run}
+                onEdit={() => setEditingId(r.id)}
+                onRemove={() => remove(r)}
+              />
             )
           )}
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 12 }}>
         <Legend tag="Leadership">
           People in these roles can switch the Directory to age groups (10U–18U), like the board does.
         </Legend>
@@ -201,6 +151,120 @@ export function VolunteerRolesTab() {
         </Legend>
       </div>
     </div>
+  );
+}
+
+// One role, drawn twice from the same controls: a grid row on desktop and a
+// stacked card on phones (CSS shows one or the other).
+function RoleRow({
+  role: r,
+  first,
+  last,
+  acting,
+  run,
+  onEdit,
+  onRemove,
+}: {
+  role: OlbVolunteerRole;
+  first: boolean;
+  last: boolean;
+  acting: string | null;
+  run: (id: string, action: () => Promise<{ error?: string }>) => Promise<boolean>;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const busy = !!acting;
+  const patch = (p: Partial<VolunteerRoleInput>) => run(r.id, () => updateVolunteerRole(r.id, { ...toInput(r), ...p }));
+  const move = (dir: "up" | "down") => run(r.id, () => moveVolunteerRole(r.id, dir));
+
+  const info = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+      <span style={{ fontSize: 14, fontWeight: 800 }}>{r.name}</span>
+      {r.description && <span style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)" }}>{r.description}</span>}
+      {r.registration_interest && (
+        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
+          Suggests people who signed up for “{r.registration_interest}”
+        </span>
+      )}
+    </div>
+  );
+  const spots = (size?: number) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <StepBtn label={`Fewer ${r.name} spots`} size={size} disabled={r.spots_per_team <= 1 || busy} onClick={() => patch({ spots_per_team: r.spots_per_team - 1 })}>
+        −
+      </StepBtn>
+      <span style={{ fontSize: 15, fontWeight: 800, minWidth: 16, textAlign: "center" }}>{r.spots_per_team}</span>
+      <StepBtn label={`More ${r.name} spots`} size={size} disabled={r.spots_per_team >= 10 || busy} onClick={() => patch({ spots_per_team: r.spots_per_team + 1 })}>
+        +
+      </StepBtn>
+    </div>
+  );
+  const lead = (
+    <Switch label={`${r.name}: leadership`} on={r.is_leadership} disabled={busy} onClick={() => patch({ is_leadership: !r.is_leadership })} />
+  );
+  const dir = (
+    <Switch
+      label={`${r.name}: show in Directory`}
+      on={r.show_in_directory}
+      disabled={busy}
+      onClick={() => patch({ show_in_directory: !r.show_in_directory })}
+    />
+  );
+  const actions = (size?: number) => (
+    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <IconBtn title="Edit" size={size} disabled={busy} onClick={onEdit}>
+        <Icons.Pencil width={14} height={14} />
+      </IconBtn>
+      <IconBtn title="Delete" size={size} danger disabled={busy} onClick={onRemove}>
+        <Icons.Trash width={14} height={14} />
+      </IconBtn>
+    </div>
+  );
+  const order = (size?: number) => [
+    <OrderBtn key="up" label={`Move ${r.name} up`} size={size} disabled={first || busy} onClick={() => move("up")}>
+      <Icons.ChevronUp width={13} height={13} />
+    </OrderBtn>,
+    <OrderBtn key="down" label={`Move ${r.name} down`} size={size} disabled={last || busy} onClick={() => move("down")}>
+      <Icons.ChevronDown width={13} height={13} />
+    </OrderBtn>,
+  ];
+  const opacity = acting === r.id ? 0.5 : 1;
+
+  return (
+    <>
+      <div data-tour="roles-row" className="gw-desktop-table" style={{ ...grid, opacity }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>{order()}</div>
+        {info}
+        {spots()}
+        {lead}
+        {dir}
+        {actions()}
+      </div>
+      <div data-tour="roles-row" className="gw-mobile-cards" style={{ gap: 10, padding: "14px 16px", borderTop: "1px solid var(--gw-border)", opacity }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <div style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{info}</div>
+          {actions(TAP)}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", columnGap: 18, rowGap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={cap}>Spots</span>
+            {spots(TAP)}
+          </div>
+          <label style={switchRow}>
+            <span style={cap}>Leadership</span>
+            {lead}
+          </label>
+          <label style={switchRow}>
+            <span style={cap}>In Directory</span>
+            {dir}
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={cap}>Order</span>
+            {order(TAP)}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -318,7 +382,19 @@ function Switch({ label, on, disabled, onClick }: { label: string; on: boolean; 
   );
 }
 
-function StepBtn({ label, disabled, onClick, children }: { label: string; disabled: boolean; onClick: () => void; children: React.ReactNode }) {
+function StepBtn({
+  label,
+  disabled,
+  onClick,
+  children,
+  size = 30,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  size?: number;
+}) {
   return (
     <button
       type="button"
@@ -326,8 +402,8 @@ function StepBtn({ label, disabled, onClick, children }: { label: string; disabl
       disabled={disabled}
       onClick={onClick}
       style={{
-        width: 30,
-        height: 30,
+        width: size,
+        height: size,
         borderRadius: 8,
         border: "1px solid var(--gw-border)",
         background: "var(--gw-bg-elev)",
@@ -343,7 +419,20 @@ function StepBtn({ label, disabled, onClick, children }: { label: string; disabl
   );
 }
 
-function OrderBtn({ label, disabled, onClick, children }: { label: string; disabled: boolean; onClick: () => void; children: React.ReactNode }) {
+function OrderBtn({
+  label,
+  disabled,
+  onClick,
+  children,
+  size,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  /** Square tap-target size (phone cards); omitted, it's the slim 26×20 desktop arrow. */
+  size?: number;
+}) {
   return (
     <button
       type="button"
@@ -351,11 +440,11 @@ function OrderBtn({ label, disabled, onClick, children }: { label: string; disab
       disabled={disabled}
       onClick={onClick}
       style={{
-        width: 26,
-        height: 20,
-        borderRadius: 6,
-        border: "none",
-        background: "transparent",
+        width: size ?? 26,
+        height: size ?? 20,
+        borderRadius: size ? 8 : 6,
+        border: size ? "1px solid var(--gw-border)" : "none",
+        background: size ? "var(--gw-bg-elev)" : "transparent",
         color: "var(--gw-fg-muted)",
         display: "flex",
         alignItems: "center",
@@ -397,6 +486,18 @@ const cap: React.CSSProperties = {
   letterSpacing: ".1em",
   textTransform: "uppercase",
   color: "var(--gw-fg-muted)",
+};
+
+// Phone tap-target size for the card list's buttons.
+const TAP = 36;
+
+// A labeled switch on the phone card: the whole row (≥36px tall) taps it.
+const switchRow: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  minHeight: TAP,
+  cursor: "pointer",
 };
 
 const checkLabel: React.CSSProperties = {

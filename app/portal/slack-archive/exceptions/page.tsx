@@ -118,7 +118,7 @@ export default async function SlackArchiveExceptionsPage() {
                     </div>
                   )}
                 </Link>
-                <div style={{ color: "var(--gw-error)", marginTop: 6, fontWeight: 600, fontSize: 12.5 }}>
+                <div style={{ color: "var(--gw-error)", marginTop: 6, fontWeight: 600, fontSize: 12.5, overflowWrap: "anywhere" }}>
                   {f.file.name || "(unnamed attachment)"} — {f.file.error}
                 </div>
                 <div style={{ marginTop: 2, fontSize: 12.5 }}>

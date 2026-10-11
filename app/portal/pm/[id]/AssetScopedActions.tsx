@@ -293,7 +293,7 @@ function AssetCard({
                     gap: 8,
                   }}
                 >
-                  <span style={{ flex: 1, fontSize: 13, color: "var(--gw-fg)", fontWeight: 600 }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--gw-fg)", fontWeight: 600 }}>
                     {s.name}
                   </span>
                   <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
@@ -356,7 +356,7 @@ function AssetCard({
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {isClosed ? (
               <Pill variant="ghost" size="sm" onClick={handleReopen} disabled={pending}>
                 <Icons.Undo width={12} height={12} /> Reopen

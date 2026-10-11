@@ -176,6 +176,7 @@ export function RequirementDialog({
       }}
     >
       <div
+        className="rsd-sheet rsd-sheet-solo"
         style={{
           width: "min(460px, 100vw)",
           height: "100%",
@@ -205,6 +206,7 @@ export function RequirementDialog({
             aria-label="Close"
             onClick={cancel}
             disabled={!!busy}
+            className="rsd-tap"
             style={{
               width: 36,
               height: 36,

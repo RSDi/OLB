@@ -443,7 +443,7 @@ export function SummaryRow({ label, value }: { label: string; value: string }) {
       <span style={{ flex: "0 0 110px", fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".03em" }}>
         {label}
       </span>
-      <span style={{ flex: 1, fontSize: 14, color: "var(--gw-fg)", fontWeight: 500 }}>{value}</span>
+      <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere", fontSize: 14, color: "var(--gw-fg)", fontWeight: 500 }}>{value}</span>
     </div>
   );
 }

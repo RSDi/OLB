@@ -383,7 +383,7 @@ function FamilyRow({
             </Pill>
           </div>
           {a.parents.length > 0 && (
-            <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", display: "flex", flexDirection: "column", gap: 2, overflowWrap: "anywhere" }}>
               {a.parents.map((pa) => (
                 <span key={pa.id}>
                   <Link

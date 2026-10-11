@@ -4,10 +4,15 @@
 // a form field or control. For whole-page docs use the top-bar info panel.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icons } from "./icons";
+import { useKeepInView } from "./useKeepInView";
 
 export function HelpTip({ text, label, children }: { text?: string; label?: string; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  // Centred under the "i", so an "i" near a phone's edge would push half the
+  // tip off the screen: slide it back to 8px from the edge.
+  const tipRef = useRef<HTMLSpanElement>(null);
+  useKeepInView(tipRef, open, 8);
 
   useEffect(() => {
     if (!open) return;
@@ -52,6 +57,7 @@ export function HelpTip({ text, label, children }: { text?: string; label?: stri
       </button>
       {open && (
         <span
+          ref={tipRef}
           role="tooltip"
           style={{
             position: "absolute",
@@ -60,7 +66,7 @@ export function HelpTip({ text, label, children }: { text?: string; label?: stri
             transform: "translateX(-50%)",
             zIndex: 50,
             width: "max-content",
-            maxWidth: 240,
+            maxWidth: "min(240px, calc(100vw - 16px))",
             padding: "8px 10px",
             borderRadius: 8,
             background: "var(--gw-ink)",

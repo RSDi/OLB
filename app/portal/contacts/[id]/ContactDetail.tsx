@@ -160,7 +160,7 @@ export function ContactDetail({ contact, people, company, coworkers, links, hist
           {/* Contact info */}
           <div className="rsd-card" style={{ gap: 14 }}>
             <h3 style={SECTION_TITLE}>Contact info</h3>
-            <div style={GRID_2}>
+            <div className="form-col-2">
               <ContactRow
                 icon={<Icons.Mail width={14} height={14} />}
                 label="Email"
@@ -225,7 +225,7 @@ export function ContactDetail({ contact, people, company, coworkers, links, hist
             contact.tax_id) && (
             <div className="rsd-card" style={{ gap: 14 }}>
               <h3 style={SECTION_TITLE}>Account & billing</h3>
-              <div style={GRID_2}>
+              <div className="form-col-2">
                 <Field label="Account number" value={contact.account_number ?? "—"} />
                 <Field label="Customer ID" value={contact.customer_id ?? "—"} />
                 <Field label="Payment terms" value={contact.payment_terms ?? "—"} />
@@ -392,11 +392,6 @@ const SECTION_TITLE: React.CSSProperties = {
   letterSpacing: ".04em",
 };
 
-const GRID_2: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 12,
-};
 
 function groupLinks(links: ResolvedLink[]): Record<string, ResolvedLink[]> {
   const out: Record<string, ResolvedLink[]> = {
@@ -468,6 +463,7 @@ function NotesBlock({ title, body }: { title: string; body: string | null }) {
           color: "var(--gw-fg)",
           lineHeight: 1.6,
           whiteSpace: "pre-wrap",
+          overflowWrap: "anywhere",
         }}
       >
         {body}

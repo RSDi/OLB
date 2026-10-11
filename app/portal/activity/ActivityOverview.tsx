@@ -129,7 +129,9 @@ function TopPages({ pages }: { pages: Overview["topPages"] }) {
       {pages.length === 0 ? (
         <div style={muted}>No visits recorded yet.</div>
       ) : (
-        <table className="rsd-tbl">
+        // Fits a phone: the page name gives way (ellipsis) instead of the
+        // table holding the card wider than the screen.
+        <table className="rsd-tbl" style={{ minWidth: 0 }}>
           <thead>
             <tr>
               <th>Page</th>
@@ -140,7 +142,12 @@ function TopPages({ pages }: { pages: Overview["topPages"] }) {
           <tbody>
             {pages.map((p) => (
               <tr key={p.page}>
-                <td title={p.page}>{pathLabel(p.page)}</td>
+                <td
+                  title={p.page}
+                  style={{ maxWidth: 0, width: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                >
+                  {pathLabel(p.page)}
+                </td>
                 <td className="num">{p.views}</td>
                 <td className="num">{p.people}</td>
               </tr>

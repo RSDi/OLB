@@ -174,7 +174,7 @@ export function RegistrationAutomationsTab() {
       <div className="rsd-card" style={card} data-tour="automations-links">
         <h3 style={h3}>Links and dates</h3>
         <p style={sub}>The emails and each family&apos;s checklist use these. Leave anything blank to leave it out.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: 14 }}>
           <Input
             label="Player Handbook link"
             help="With a link here, families sign the handbook on the registration form. Blank: no handbook step."
@@ -333,7 +333,7 @@ function WordsEditor({ email, saved, onSaved }: { email: WorkflowEmail; saved: R
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14, paddingTop: 4 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 14, paddingTop: 4 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <Input label="Subject" value={subject} maxLength={200} onChange={(e) => setSubject(e.target.value)} />
         <Textarea
