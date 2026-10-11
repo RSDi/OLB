@@ -414,8 +414,8 @@ export function PlayersList({
                 >
                   {g.team && <TeamDot color={g.team.color} />}
                   {g.title}
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: 0 }}>
-                    {g.players.length}
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: 0, textTransform: "none" }}>
+                    · {g.players.length} {g.players.length === 1 ? "player" : "players"}
                   </span>
                   {g.team && (
                     <Link
