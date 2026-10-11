@@ -104,6 +104,15 @@ export function canManageUniforms(m: MemberLike | null | undefined): boolean {
   return hasPermission(m, "uniforms") || canManageRegistrations(m);
 }
 
+// --- Club finances (0131) -------------------------------------------------------
+// The Snapshot (money in and out, budget vs paid, no family details): the
+// board, whoever is given "See club finances", and Payments. Mirrors
+// public.can_view_finances().
+
+export function canViewFinances(m: MemberLike | null | undefined): boolean {
+  return isStaff(m) || hasPermission(m, "finances_view") || canManageFinances(m);
+}
+
 // --- Travel --------------------------------------------------------------------
 // The travel coordinator: reading, adding and editing the External Contacts
 // of the travel types (Hotels, Food). Mirrors public.can_manage_travel() (0110).

@@ -6,17 +6,16 @@ import { NCHC_TEXT, US_STATES, WAIVER_INTRO, WAIVER_ITEMS } from "./content";
 import { VOLUNTEER_OPTIONS } from "../../../lib/teams/volunteer-options";
 import {
   AGE_CUTOFF_LABEL,
-  FEE_TIERS,
   MAX_PLAYERS,
   PAYMENT_OPTIONS,
   isHighSchoolTier,
   kidFirst,
   newKid,
-  suggestedTier,
   type FamilyAnswers,
   type KidAnswers,
   type RegistrationState,
 } from "../../../lib/teams/registration-form";
+import { useFeeTiers } from "./fee-tiers";
 import { ComboSelect } from "../../components/ComboSelect";
 import { HandbookFields, SizeFields } from "./WorkflowFields";
 import { extrasProblem, needsSizesStep, type ExtrasState, type FormExtras } from "../../../lib/onboarding/form-extras";
@@ -237,7 +236,8 @@ function KidFields({
   onChange: (patch: Partial<KidAnswers>) => void;
   onRemove?: () => void;
 }) {
-  const suggestion = suggestedTier(k.athlete_dob);
+  const fees = useFeeTiers();
+  const suggestion = fees.suggest(k.athlete_dob);
   const n = (field: string) => `${field}-${k.key}`;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18, ...(index > 0 ? { borderTop: "1px solid var(--olb-stroke)", paddingTop: 18 } : {}) }}>
@@ -269,7 +269,7 @@ function KidFields({
             value={k.athlete_dob}
             onChange={(e) => {
               const dob = e.target.value;
-              const tier = suggestedTier(dob);
+              const tier = fees.suggest(dob);
               // Pick the fee for their age, unless one was already chosen by hand.
               onChange({ athlete_dob: dob, ...(tier && (!k.fee_tier || k.fee_tier === suggestion) ? { fee_tier: tier } : {}) });
             }}
@@ -309,7 +309,7 @@ function KidFields({
       <div>
         <span style={qLabel}>Registration Fee *</span>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
-          {FEE_TIERS.map((t) => (
+          {fees.texts.map((t) => (
             <label key={t} style={radioLbl}>
               <input type="radio" name={n("fee")} checked={k.fee_tier === t} onChange={() => onChange({ fee_tier: t, ...(isHighSchoolTier(t) ? {} : { needs_grays: null }) })} /> {t}
             </label>

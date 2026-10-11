@@ -14,6 +14,7 @@ import type { Viewport } from "next";
 import { getPendingMembersCount, getViewer, viewerIsCoach } from "../../lib/auth/viewer";
 import { getSidebarLinks } from "../../lib/sidebar-links/queries";
 import { parentHasBalance } from "../../lib/finances/data";
+import { financesEnabled } from "../../lib/finances/club-data";
 import { getPreview } from "../../lib/activity/preview";
 import { PortalShell } from "./PortalShell";
 
@@ -33,7 +34,7 @@ export default async function PortalLayout({
   // Any board member can action the approval queue (D1), and so can anyone
   // with the Approve access requests permission (0123): they see the badge.
   const viewer = await getViewer();
-  const [pendingMembersCount, sidebarLinks, preview, hasBalance, isCoach] = await Promise.all([
+  const [pendingMembersCount, sidebarLinks, preview, hasBalance, isCoach, booksOn] = await Promise.all([
     viewer?.canApproveMembers ? getPendingMembersCount() : Promise.resolve(0),
     viewer ? getSidebarLinks() : Promise.resolve([]),
     // A super-admin's "Preview as" in progress (banner + way back).
@@ -43,6 +44,9 @@ export default async function PortalLayout({
     // HS Schedule and External Contacts in the sidebar, and the coaches' help:
     // a coach (the board sees them anyway, so it isn't asked for them).
     viewerIsCoach(viewer),
+    // Payments in the sidebar for the board and "See club finances", while
+    // club finances (0131) is on: they see the Snapshot there.
+    viewer?.canViewFinances && !viewer.canManageFinances && !viewer.seesFullUi ? financesEnabled() : Promise.resolve(!!viewer?.seesFullUi),
   ]);
 
   return (
@@ -63,7 +67,7 @@ export default async function PortalLayout({
               canEditContacts: viewer.canEditContacts,
               canPlanHsSchedule: viewer.canPlanHsSchedule,
               permissions: viewer.permissions,
-              seesPayments: viewer.canManageFinances || hasBalance,
+              seesPayments: viewer.canManageFinances || hasBalance || (viewer.canViewFinances && booksOn),
               isCoach,
             }
           : null

@@ -7,7 +7,6 @@ import { NCHC_TEXT, US_STATES, WAIVER_INTRO, WAIVER_ITEMS } from "./content";
 import { VOLUNTEER_OPTIONS } from "../../../lib/teams/volunteer-options";
 import {
   AGE_CUTOFF_LABEL,
-  FEE_TIERS,
   MAX_PLAYERS,
   PAYMENT_OPTIONS,
   SEASON_LABEL,
@@ -19,7 +18,6 @@ import {
   looksLikeEmail,
   newKid,
   registrationProblem,
-  suggestedTier,
   tierParts,
   type FamilyAnswers,
   type FamilyPrefill,
@@ -28,6 +26,7 @@ import {
 } from "../../../lib/teams/registration-form";
 import { ComboSelect } from "../../components/ComboSelect";
 import { HandbookFields, SizeFields } from "./WorkflowFields";
+import { useFeeTiers } from "./fee-tiers";
 import { extrasProblem, itemsFor, kidExtras, needsSizesStep, type ExtrasState, type FormExtras } from "../../../lib/onboarding/form-extras";
 
 export interface WizardApi {
@@ -481,6 +480,7 @@ interface StepProps {
 
 function Step(p: StepProps) {
   const { id, state, up, upKid, next } = p;
+  const fees = useFeeTiers();
   const f = state.family;
   const kids = state.kids;
   const many = kids.length > 1;
@@ -558,7 +558,7 @@ function Step(p: StepProps) {
               value={kid.athlete_dob}
               onChange={(e) => {
                 const dob = e.target.value;
-                const tier = suggestedTier(dob);
+                const tier = fees.suggest(dob);
                 upKid(kid.key, { athlete_dob: dob, ...(tier ? { fee_tier: tier } : {}) });
               }}
             />
@@ -745,7 +745,7 @@ function Step(p: StepProps) {
                     className="olb-input"
                     type="date"
                     value={k.athlete_dob}
-                    onChange={(e) => upKid(k.key, { athlete_dob: e.target.value, fee_tier: suggestedTier(e.target.value) ?? k.fee_tier })}
+                    onChange={(e) => upKid(k.key, { athlete_dob: e.target.value, fee_tier: fees.suggest(e.target.value) ?? k.fee_tier })}
                   />
                 </label>
                 <div className={s.row2}>
@@ -847,7 +847,7 @@ function Step(p: StepProps) {
                   {p.editing === k.key || !parts ? (
                     <ComboSelect className="olb-select" aria-label={`Fee for ${kidFirst(k)}`} value={k.fee_tier} onChange={(e) => setTier(k, e.target.value)} style={{ maxWidth: 220, height: 44 }}>
                       <option value="">Pick one</option>
-                      {FEE_TIERS.map((t) => (
+                      {fees.texts.map((t) => (
                         <option key={t} value={t}>
                           {t}
                         </option>

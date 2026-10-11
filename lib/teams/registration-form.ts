@@ -5,6 +5,7 @@
 // server, and pure, so tests can run it.
 
 import { ageFromDob } from "./age.ts"; // explicit extension so node --test can load this file
+import { DEFAULT_FEE_TIERS, tierForAge, tierText, type FeeTier } from "../finances/fees.ts";
 
 // The season the form registers for, and the board it lands on.
 export const REGISTRATION_SEASON = "2026-2027";
@@ -13,7 +14,9 @@ export const SEASON_LABEL = "2026-27";
 export const AGE_CUTOFF = "2026-08-01";
 export const AGE_CUTOFF_LABEL = "August 1, 2026";
 
-export const FEE_TIERS = ["8u-12u - $375.00", "14u - $400.00", "16u-18u - $525.00"];
+// The built-in tiers. Settings → Fees (0131) can set the season's own; the
+// form gets those as feeTierTexts(…) from the page.
+export const FEE_TIERS = DEFAULT_FEE_TIERS.map(tierText);
 export const PAYMENT_OPTIONS = ["Venmo", "Check"];
 export const MAX_PLAYERS = 6;
 
@@ -132,11 +135,11 @@ export function ageOnCutoff(dob: string | null | undefined): number | null {
   return dob ? ageFromDob(dob, new Date(`${AGE_CUTOFF}T00:00:00`)) : null;
 }
 
-// The tier a birthday puts a player in: 12 and under, 13–14, 15 and up.
-export function suggestedTier(dob: string | null | undefined): string | null {
-  const age = ageOnCutoff(dob);
-  if (age == null) return null;
-  return age <= 12 ? FEE_TIERS[0] : age <= 14 ? FEE_TIERS[1] : FEE_TIERS[2];
+// The tier a birthday puts a player in (built-in: 12 and under, 13–14, 15
+// and up), as the form shows it.
+export function suggestedTier(dob: string | null | undefined, tiers: FeeTier[] = DEFAULT_FEE_TIERS): string | null {
+  const tier = tierForAge(ageOnCutoff(dob), tiers);
+  return tier ? tierText(tier) : null;
 }
 
 // "8u-12u - $375.00" → { label: "8u–12u", dollars: 375 }.
@@ -146,9 +149,10 @@ export function tierParts(tier: string): { label: string; dollars: number } | nu
   return { label: m[1].replace("-", "–"), dollars: Number(m[2].replace(/,/g, "")) };
 }
 
-// High school (16u–18u) players are also asked about the gray alternate uniform.
+// High school (16u–18u) players are also asked about the gray alternate
+// uniform. Settings → Fees may name the tier differently ("HS", "High school").
 export function isHighSchoolTier(tier: string): boolean {
-  return tier.startsWith("16u");
+  return tier.startsWith("16u") || /^(hs|high school|varsity)\b/i.test(tier);
 }
 
 // ─── Words ──────────────────────────────────────────────────────────────────

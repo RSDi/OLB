@@ -20,6 +20,7 @@ import {
   canDeleteSettings,
   canUndeleteSettings,
   canManageFinances,
+  canViewFinances,
   canManageRegistrations,
   canManageTravel,
   canSlackDm,
@@ -51,6 +52,8 @@ export interface Viewer {
   canUndeleteSettings: boolean;
   // Payments grant (0101): every family's balance, and recording payments.
   canManageFinances: boolean;
+  // Club finances (0131): the Snapshot, for the board and "See club finances".
+  canViewFinances: boolean;
   // Registrations grant (0102): the registrations queue, team placement and
   // editing players.
   canManageRegistrations: boolean;
@@ -152,6 +155,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canDeleteSettings: canDeleteSettings(member),
     canUndeleteSettings: canUndeleteSettings(member),
     canManageFinances: canManageFinances(member),
+    canViewFinances: canViewFinances(member),
     canManageRegistrations: canManageRegistrations(member),
     canManageTravel: canManageTravel(member),
     canSlackDm: canSlackDm(member),

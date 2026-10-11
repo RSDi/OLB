@@ -9,6 +9,7 @@ import {
   canManageTeams,
   canManageRegistrations,
   canManageUniforms,
+  canManageFinances,
   canManageWebsite,
   canOpenSettings,
   isStaff,
@@ -39,6 +40,7 @@ import { EmailTemplatesTab } from "./EmailTemplatesTab";
 import { RegistrationEmailsTab } from "./RegistrationEmailsTab";
 import { RegistrationAutomationsTab } from "./RegistrationAutomationsTab";
 import { UniformsTab } from "./UniformsTab";
+import { FeesTab } from "./FeesTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
 import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { WebsiteTab } from "./WebsiteTab";
@@ -72,6 +74,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   registration_emails: "settings-registration-emails",
   registration_automations: "settings-registration-automations",
   uniforms: "settings-uniforms",
+  fees: "settings-fees",
   website: "settings-website",
   playbooks: "settings-playbooks",
   sidebar_links: "settings-sidebar-links",
@@ -95,6 +98,7 @@ type Tab =
   | "registration_emails"
   | "registration_automations"
   | "uniforms"
+  | "fees"
   | "website"
   | "planning_roles"
   | "event_categories"
@@ -132,7 +136,7 @@ type TabDef = {
 
 // Every tab this person can open, in menu order. Shared by the first-load
 // pick (a `?tab=` link) and the menu itself.
-function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false): TabDef[] {
+function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financesOn = false): TabDef[] {
   // Any board member works the approval queue, and so does anyone with the
   // Approve access requests permission (0123); role/edit/remove inside the
   // tab stay super-admin-only via canManage.
@@ -151,6 +155,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false): TabDe
     registration_emails: canManageRegistrations(me),
     registration_automations: workflowOn && canManageRegistrations(me),
     uniforms: workflowOn && canManageUniforms(me),
+    fees: financesOn && canManageFinances(me),
   };
   // Deleted tab stays super-admin-only until the RLS follow-up lets board
   // members with the undelete grant see + restore soft-deleted rows.
@@ -183,6 +188,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false): TabDe
     // workflow is switched on, whoever holds the permission.
     { key: "registration_automations", label: "Registration Automations", group: "Communication", visible: (fullUi || workflowOn) && canManageRegistrations(me), tour: "settings-tab-registration-automations", keywords: "registration workflow automatic emails waitlist offer slack handbook checklist switch" },
     { key: "uniforms", label: "Uniforms", group: "People & Access", visible: (fullUi || workflowOn) && canManageUniforms(me), tour: "settings-tab-uniforms", keywords: "jersey shorts grays warm-ups sizes try-on order" },
+    { key: "fees", label: "Fees", group: "People & Access", visible: (fullUi || financesOn) && canManageFinances(me), tour: "settings-tab-fees", keywords: "registration fee tiers coach kid comp fundraising nelson's due date budget club finances" },
     { key: "contact_categories", label: "Contact Types", group: "Communication", visible: true, tour: "settings-tab-contact-categories", keywords: "contacts categories" },
     // The public club website's menu, page text and pictures (0120).
     { key: "website", label: "Website", group: "Website & Portal", visible: canManageWebsite(me), tour: "settings-tab-website", keywords: "public site pages pictures publish" },
@@ -217,6 +223,8 @@ export default function SettingsPage() {
   const [fullUi, setFullUi] = useState(false);
   // The registration workflow is switched on (0130).
   const [workflowOn, setWorkflowOn] = useState(false);
+  // Club finances is switched on (0131).
+  const [financesOn, setFinancesOn] = useState(false);
   const [filter, setFilter] = useState("");
   // The phone's full-screen menu.
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -247,12 +255,14 @@ export default function SettingsPage() {
         router.replace("/login");
         return;
       }
-      const [{ data: meRow }, grants, { data: workflow }] = await Promise.all([
+      const [{ data: meRow }, grants, { data: workflow }, { data: finances }] = await Promise.all([
         supabase.from("members").select("role, status").eq("user_id", user.id).maybeSingle(),
         loadGrants(supabase, user.id),
         supabase.from("olb_onboarding_settings").select("board_id").eq("enabled", true).limit(1),
+        supabase.from("olb_finance_settings").select("board_id").eq("enabled", true).limit(1),
       ]);
       const on = (workflow?.length ?? 0) > 0;
+      const booksOn = (finances?.length ?? 0) > 0;
       const memberLike = meRow ? ({ ...grants, ...(meRow as MemberLike) } as MemberLike) : null;
       // The board, and anyone holding a permission whose page is here (0123).
       if (!canOpenSettings(memberLike)) {
@@ -264,13 +274,14 @@ export default function SettingsPage() {
       setUserId(user.id);
       setFullUi(preview);
       setWorkflowOn(on);
+      setFinancesOn(booksOn);
       // A `?tab=` link opens that tab when they have it (the public site's
       // preview bar links to the Website tab to publish). Otherwise all
       // board staff land on Members — any of them can work the approval
       // queue (D1) — and someone off the board lands on the first tab they
       // have.
       const wanted = new URLSearchParams(window.location.search).get("tab");
-      const mine = visibleTabs(memberLike!, preview, on);
+      const mine = visibleTabs(memberLike!, preview, on, booksOn);
       const linked = mine.find((t) => t.key === wanted);
       const landing: Tab = canApproveMembers(memberLike)
         ? "members"
@@ -308,7 +319,7 @@ export default function SettingsPage() {
     );
   }
 
-  const shownTabs = visibleTabs(me, fullUi, workflowOn);
+  const shownTabs = visibleTabs(me, fullUi, workflowOn, financesOn);
   const has = (key: Tab) => shownTabs.some((t) => t.key === key);
   const q = filter.trim().toLowerCase();
   const matching = q
@@ -333,6 +344,7 @@ export default function SettingsPage() {
       {tab === "registration_emails" && has("registration_emails") && <RegistrationEmailsTab canEdit={canManageRegistrations(me)} />}
       {tab === "registration_automations" && has("registration_automations") && <RegistrationAutomationsTab />}
       {tab === "uniforms" && has("uniforms") && <UniformsTab />}
+      {tab === "fees" && has("fees") && <FeesTab />}
       {tab === "website" && has("website") && <WebsiteTab />}
       {tab === "planning_roles" && has("planning_roles") && <PlanningRolesTab />}
       {tab === "event_categories" && has("event_categories") && <EventCategoriesTab me={me} />}

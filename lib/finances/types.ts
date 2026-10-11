@@ -5,24 +5,32 @@
 export type ChargeKind = "charge" | "credit";
 
 // What a family owes for…
-export type ChargeCategory = "registration" | "uniform" | "tournament" | "refund" | "other";
+export type ChargeCategory = "registration" | "uniform" | "tournament" | "refund" | "other" | "program" | "team_cost" | "merch";
 // …and what's taken off.
-export type CreditCategory = "covered" | "scholarship" | "adjustment";
+export type CreditCategory = "covered" | "scholarship" | "adjustment" | "coach_comp" | "fundraising";
 
 export type PaymentMethod = "venmo" | "check" | "cash" | "card" | "other";
 
-export const CHARGE_CATEGORIES: { key: ChargeCategory; label: string }[] = [
+// club: added with club finances (0131); offered only once that's set up.
+export const CHARGE_CATEGORIES: { key: ChargeCategory; label: string; club?: true }[] = [
   { key: "registration", label: "Registration fee" },
   { key: "uniform", label: "Uniform" },
   { key: "tournament", label: "Tournament" },
+  // Club finances (0131).
+  { key: "team_cost", label: "Team cost", club: true },
+  { key: "program", label: "Clinic or workout", club: true },
+  { key: "merch", label: "Shirts and gear", club: true },
   { key: "refund", label: "Refund paid out" },
   { key: "other", label: "Other" },
 ];
 
-export const CREDIT_CATEGORIES: { key: CreditCategory; label: string }[] = [
+export const CREDIT_CATEGORIES: { key: CreditCategory; label: string; club?: true }[] = [
   { key: "covered", label: "Covered by the club" },
   { key: "scholarship", label: "Scholarship" },
   { key: "adjustment", label: "Adjustment" },
+  // Club finances (0131).
+  { key: "coach_comp", label: "Coach's kid", club: true },
+  { key: "fundraising", label: "Fundraising credit", club: true },
 ];
 
 export const PAYMENT_METHODS: { key: PaymentMethod; label: string }[] = [

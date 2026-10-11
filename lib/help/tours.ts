@@ -805,6 +805,105 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "club-books",
+    sectionId: "payments-budget",
+    alsoSections: ["payments-income", "payments-programs", "payments-fundraising", "payments-snapshot"],
+    title: "Club books walkthrough",
+    route: "/portal/payments",
+    steps: [
+      {
+        target: "payments-tab-budget",
+        title: "The club's books",
+        body: "Next to **Families**: what the club spends (**Budget**), what comes in from outside families (**Income**), clinics (**Programs**), **Fundraising** and the **Snapshot**.",
+      },
+      {
+        target: "budget-add",
+        click: "payments-tab-budget",
+        title: "Record an expense",
+        body: "**Add a cost** puts a line in the budget: its group, what it's for, the vendor, the budget, and the team or month. Then tap the line and **Record a payment** with the check number.",
+      },
+      {
+        target: "budget-line-actions",
+        click: "budget-line",
+        title: "Split across team",
+        body: "A team cost the families pay, like regionals: **Split across team** charges each player picked an even share (or the same amount each) on their family's account.",
+      },
+      {
+        target: "budget-view",
+        title: "By group, team or month",
+        body: "See the same budget by **Group**, by **Team** (what each team costs) or by **Month** (gym rent).",
+      },
+      {
+        target: "income-add",
+        click: "payments-tab-income",
+        title: "Income",
+        body: "**Add income** for donations, sponsors, the tournament we host and shirts sold. Put in what's **Expected** and tap **It came in** when it does.",
+      },
+      {
+        target: "programs-add",
+        click: "payments-tab-programs",
+        title: "Clinics and workouts",
+        body: "**Add a program** with its prices, then switch it **Open**: families sign up on its own page, and roster players' fees land on their family's account.",
+      },
+      {
+        target: "fundraising-log",
+        click: "payments-tab-fundraising",
+        title: "Log a Nelson's shift",
+        body: "Who worked, the hours, and what it earned (hours × the rate if you leave it blank).",
+      },
+      {
+        target: "fundraising-where",
+        title: "Their choice",
+        body: "**Toward registration** credits the player's family account; the **General program fund** sends it to Buckets for Bucks instead.",
+      },
+      {
+        target: "snapshot-totals",
+        click: "payments-tab-snapshot",
+        title: "The Snapshot",
+        body: "Money in, money out, budget vs paid, teams, clinics and funds, live. The board and anyone with **See club finances** see this page, with no family names.",
+      },
+    ],
+  },
+  {
+    id: "settings-fees",
+    sectionId: "settings-fees",
+    title: "Fees walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-fees",
+        title: "Settings → Fees",
+        body: "What families are charged this season, and the switch for the club's books on Payments.",
+      },
+      {
+        target: "fees-switch",
+        click: "settings-tab-fees",
+        title: "The club's books",
+        body: "On adds Budget, Income, Programs, Fundraising and Snapshot to Payments. Off hides them again; nothing is lost.",
+      },
+      {
+        target: "fees-tiers",
+        title: "Registration fees",
+        body: "Each tier's name, the oldest age it covers and the fee. Leave the age blank on the oldest tier. The form suggests one by birthday.",
+      },
+      {
+        target: "fees-comp",
+        title: "Coaches' kids",
+        body: "**Comp coaches' kids** takes the fee off a coach's player with a **Coach's kid** credit, so it still shows on their account. Turn it off next season and nothing already given changes.",
+      },
+      {
+        target: "fees-more",
+        title: "Fundraising and due dates",
+        body: "What a fundraiser hour earns, and the date balances are due (a family can have its own on Payments).",
+      },
+      {
+        target: "fees-save",
+        title: "Save",
+        body: "Tap **Save**. New registrations use the new fees right away.",
+      },
+    ],
+  },
+  {
     id: "settings-uniforms",
     sectionId: "settings-uniforms",
     alsoSections: ["uniforms-page"],

@@ -188,6 +188,8 @@ export const RESERVED_SLUGS = [
   // The registration workflow's public pages (0130).
   "waitlist",
   "family",
+  // Clinic and workout sign-ups (0131).
+  "sign-up",
 ];
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

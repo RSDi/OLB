@@ -19,6 +19,7 @@ export type PermissionKey =
   | "travel"
   | "slack_dm"
   | "uniforms"
+  | "finances_view"
   | "settings_edit"
   | "settings_delete"
   | "settings_undelete"
@@ -65,6 +66,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "travel", label: "Travel", desc: "Add and edit the hotels and places to eat in External Contacts", group: "manage", legacyColumn: "can_manage_travel" },
   { key: "slack_dm", label: "Slack DMs", desc: "Send families Slack DMs from the Directory, as themselves", group: "manage", legacyColumn: "can_slack_dm" },
   { key: "uniforms", label: "Uniforms", desc: "Set the uniform items, prices and sizes, and run the uniform order", group: "manage" },
+  { key: "finances_view", label: "See club finances", desc: "See the club's Snapshot: money in and out, budget vs paid, teams and programs. No family names or balances", group: "board" },
   { key: "settings_edit", label: "Edit", desc: "Add and change Settings items, like Requirements", group: "settings", legacyColumn: "can_edit_settings" },
   { key: "settings_delete", label: "Delete", desc: "Delete Settings items", group: "settings", legacyColumn: "can_delete_settings" },
   { key: "settings_undelete", label: "Undelete", desc: "Restore deleted Settings items", group: "settings", legacyColumn: "can_undelete_settings" },
