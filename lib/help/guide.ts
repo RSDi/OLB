@@ -1096,7 +1096,7 @@ While the registration workflow is on, families pick a size for each item on the
 - **Comp coaches' kids**: a head or assistant coach's player keeps the fee on their account with a **Coach's kid** credit taking it off (all of it, or **How much to take off**). Coaches put on a team after their kid was approved show up here; tap **Comp them now**.
 - **A fundraiser hour earns** and **Balances due by** (shown on every family's balance unless you give a family its own date on Payments).
 
-Tap **Save**.`,
+Tap **Save**. **Show me around** here walks the whole setup, from this tab through importing the spreadsheet, Nelson's shifts, clinics and the Snapshot to who can see it. Each Payments tab has its own walkthrough under the **i** too.`,
   },
   {
     id: "settings-contact-types",

@@ -37,7 +37,7 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
         </span>
       </div>
 
-      <Section title="Money in" tour="snapshot-in">
+      <Section title="Money in" data-tour="snapshot-in">
         <Row label="Families' payments" value={s.moneyIn.families} />
         <Row label="Clinic and workout sign-ups" value={s.moneyIn.programs} />
         <Row label="Donations, sponsors and events" value={s.moneyIn.income} note={s.budget.incomeExpected ? `${formatAmount(s.budget.incomeExpected)} expected` : undefined} />
@@ -46,7 +46,7 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
       </Section>
 
       {s.groups.length > 0 && (
-        <Section title="Spending vs budget" tour="snapshot-groups">
+        <Section title="Spending vs budget" data-tour="snapshot-groups">
           {s.groups.map((g) => (
             <div key={g.name} style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
               <span style={{ fontSize: 13.5, fontWeight: 700 }}>{g.name}</span>
@@ -116,9 +116,9 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
   );
 }
 
-function Section({ title, tour, children }: { title: string; tour?: string; children: React.ReactNode }) {
+function Section({ title, children, ...rest }: { title: string; children: React.ReactNode; "data-tour"?: string }) {
   return (
-    <div className="rsd-card" style={{ gap: 10, padding: "16px 18px" }} data-tour={tour}>
+    <div className="rsd-card" style={{ gap: 10, padding: "16px 18px" }} data-tour={rest["data-tour"]}>
       <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0 }}>{title}</h3>
       {children}
     </div>
