@@ -8,6 +8,7 @@ import { formatAmount } from "../../../lib/finances/logic";
 import { overBudget, type Spend } from "../../../lib/finances/club-logic";
 import { EXPENSE_METHODS } from "../../../lib/finances/club-types";
 import { SegButton, SegGroup, capStyle } from "./parts";
+import { usePageHelp } from "../../components/PageHelp";
 
 export type PaymentsTab = "families" | "budget" | "income" | "programs" | "fundraising" | "snapshot" | "balance";
 
@@ -21,8 +22,19 @@ const TABS: Record<PaymentsTab, { label: string; tour: string }> = {
   balance: { label: "Your balance", tour: "payments-tab-balance" },
 };
 
+// The User Guide section for each tab, so the top-bar "i" (and its "Show me
+// around") match the open tab. Families and Your balance keep the page's own.
+const TAB_HELP: Partial<Record<PaymentsTab, string>> = {
+  budget: "payments-budget",
+  income: "payments-income",
+  programs: "payments-programs",
+  fundraising: "payments-fundraising",
+  snapshot: "payments-snapshot",
+};
+
 // Payments' tabs, as links so each has its own address.
 export function PaymentsTabs({ tabs, active }: { tabs: PaymentsTab[]; active: PaymentsTab }) {
+  usePageHelp(TAB_HELP[active] ?? null);
   // On a phone the tabs scroll sideways: keep the open one in view.
   const current = useRef<HTMLAnchorElement>(null);
   useEffect(() => current.current?.scrollIntoView({ block: "nearest", inline: "nearest" }), [active]);
