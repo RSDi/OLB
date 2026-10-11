@@ -20,13 +20,16 @@ export function ChargeDialog({
   account,
   kind,
   onClose,
+  club = false,
 }: {
   account: Account;
   kind: ChargeKind;
   onClose: () => void;
+  // Club finances (0131) is set up: its categories are offered too.
+  club?: boolean;
 }) {
   const router = useRouter();
-  const categories = kind === "credit" ? CREDIT_CATEGORIES : CHARGE_CATEGORIES;
+  const categories = (kind === "credit" ? CREDIT_CATEGORIES : CHARGE_CATEGORIES).filter((c) => club || !c.club);
   const [category, setCategory] = useState<string>(kind === "credit" ? "covered" : "uniform");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");

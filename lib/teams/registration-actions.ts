@@ -15,6 +15,7 @@ import { clubNoticeSubject, greetingFor, receipt, registrant, registrationEmails
 import { sendPushToPermission } from "../notifications/push";
 import { ALL_RECIPIENTS, fillMessage, groupFamilies, messageHtml, type Recipient, type WaitlistRegistration } from "./waitlist";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
+import { coachKidIds, compFor, loadFinanceSettings } from "../finances/club-data";
 import { centralToday } from "../finances/data";
 import { registrationFullName } from "./roster-logic";
 import { cleanInputExtras, type InputExtras } from "../onboarding/form-extras";
@@ -516,7 +517,16 @@ async function chargeRegistrationFee(
     entry_date: centralToday(),
     created_by: userId,
   });
-  if (error) console.warn(`[registrations] registration fee for player ${playerId}: ${error.message}`);
+  if (error) return console.warn(`[registrations] registration fee for player ${playerId}: ${error.message}`);
+  // A coach's kid, while Settings → Fees comps them (0131).
+  try {
+    const settings = await loadFinanceSettings(db, boardId);
+    if (settings.comp_coach_kids && (await coachKidIds(db, boardId, [playerId])).has(playerId)) {
+      await compFor(db, boardId, playerId, cents, settings.coach_comp_cents, userId);
+    }
+  } catch (e) {
+    console.warn(`[registrations] coach's kid comp for player ${playerId}`, e);
+  }
 }
 
 // ─── The waitlist (0115) ────────────────────────────────────────────────────

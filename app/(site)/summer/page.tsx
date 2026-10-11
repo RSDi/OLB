@@ -4,6 +4,8 @@ import { Picture } from "../_components/Picture";
 import { Block, Section } from "../_components/Section";
 import { Highlight, Large, Text } from "../_components/Text";
 import { getSiteContent } from "../../../lib/website/queries";
+import { createAdminClient } from "../../../lib/supabase/admin";
+import { openPrograms } from "../../../lib/finances/club-data";
 
 export const metadata: Metadata = { title: "Summer 2026" };
 
@@ -14,6 +16,15 @@ export default async function SummerPage() {
   // The heading, status and flyer from Settings → Website.
   const content = await getSiteContent();
   const flyer = content.image("summer.flyer");
+  // An open clinic on Payments → Programs (0131) takes the place of the
+  // Cognito form; otherwise the button goes to Cognito as before.
+  let signup: string | null = null;
+  try {
+    const open = (await openPrograms(createAdminClient())).find((p) => p.kind === "clinic");
+    if (open) signup = `/sign-up/${open.id}`;
+  } catch {
+    signup = null;
+  }
   return (
     <Section theme="white" height={{ minHeight: "0", padding: "0" }} rows={[45, 38]}>
       <Block m="2/2/11/8" d="2/3/9/11">
@@ -53,9 +64,15 @@ export default async function SummerPage() {
         </Text>
       </Block>
       <Block m="28/4/31/8" d="24/5/26/10" align="center">
-        <Button href={REGISTRATION_URL} newTab hover="tilt">
-          Join the Waitlist!
-        </Button>
+        {signup ? (
+          <Button href={signup} hover="tilt">
+            Sign up!
+          </Button>
+        ) : (
+          <Button href={REGISTRATION_URL} newTab hover="tilt">
+            Join the Waitlist!
+          </Button>
+        )}
       </Block>
       <Block m="31/2/45/10" d="2/13/27/26" align="center">
         <Picture

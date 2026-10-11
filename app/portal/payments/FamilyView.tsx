@@ -3,11 +3,12 @@ import { useMemo } from "react";
 import { balanceState, buildAccounts, formatAmount } from "../../../lib/finances/logic";
 import { PAYMENT_INSTRUCTIONS, type PaymentsData } from "../../../lib/finances/types";
 import { AccountDetail } from "./AccountDetail";
-import { capStyle } from "./parts";
+import { capStyle, formatDay } from "./parts";
 
 // A parent's own balance: what's owed for their kids, what's been paid, and
-// how to pay. Read-only.
-export function FamilyView({ data }: { data: PaymentsData }) {
+// how to pay. Read-only. With club finances (0131), the date it's due, and
+// "No payment needed" when fundraising or a credit covers it all.
+export function FamilyView({ data, dues = {}, defaultDue = null }: { data: PaymentsData; dues?: Record<string, string>; defaultDue?: string | null }) {
   const accounts = useMemo(() => buildAccounts(data.players, data.charges, data.payments), [data]);
 
   if (accounts.every((a) => a.charges.length === 0 && a.payments.length === 0)) {
@@ -25,6 +26,8 @@ export function FamilyView({ data }: { data: PaymentsData }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760 }}>
       {accounts.map((a) => {
         const st = balanceState(a.totals);
+        const due = a.players.map((p) => dues[p.id]).filter(Boolean).sort()[0] ?? defaultDue;
+        const covered = st === "paid" && a.totals.paid === 0 && a.totals.credited > 0;
         return (
           <div key={a.key} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <Card>
@@ -36,12 +39,15 @@ export function FamilyView({ data }: { data: PaymentsData }) {
                   ? `${formatAmount(a.totals.balance)} due`
                   : st === "credit"
                     ? `${formatAmount(-a.totals.balance)} credit`
-                    : "Paid in full"}
+                    : covered
+                      ? "No payment needed"
+                      : "Paid in full"}
               </span>
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
-                {formatAmount(a.totals.charged - a.totals.credited)} for the season · {formatAmount(a.totals.paid)} paid
-                {st === "paid" && " · thank you!"}
+                {formatAmount(Math.max(0, a.totals.charged - a.totals.credited))} for the season · {formatAmount(a.totals.paid)} paid
+                {st === "paid" && (covered ? " · covered by fundraising and credits" : " · thank you!")}
               </span>
+              {st === "owes" && due && <span style={{ fontSize: 13, fontWeight: 700 }}>Due by {formatDay(due)}</span>}
             </Card>
 
             {st === "owes" && (

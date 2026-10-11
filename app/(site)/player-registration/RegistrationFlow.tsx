@@ -19,6 +19,8 @@ import {
   toInputs,
   type RegistrationState,
 } from "../../../lib/teams/registration-form";
+import { DEFAULT_FEE_TIERS, type FeeTier } from "../../../lib/finances/fees";
+import { FeeTiersProvider } from "./fee-tiers";
 import { emptyExtras, extrasProblem, inputExtras, type ExtrasState, type FormExtras } from "../../../lib/onboarding/form-extras";
 
 // A spot offered from the waitlist (0130): the player and the parent's email
@@ -50,6 +52,7 @@ export default function RegistrationFlow({
   save = createRegistrations,
   config = null,
   offer = null,
+  feeTiers = DEFAULT_FEE_TIERS,
 }: {
   // Swappable for trying the page without a server.
   api?: WizardApi;
@@ -57,11 +60,13 @@ export default function RegistrationFlow({
   // The registration workflow's extra questions (0130); null while it's off.
   config?: FormExtras | null;
   offer?: OfferSeed | null;
+  // The season's fee tiers (Settings → Fees, 0131).
+  feeTiers?: FeeTier[];
 }) {
   const seed = offer
     ? () => {
         const fresh = emptyRegistration();
-        fresh.kids = [newKid({ athlete_first: offer.first, athlete_last: offer.last, athlete_dob: offer.dob ?? "", first_season: true, fee_tier: suggestedTier(offer.dob) ?? "" })];
+        fresh.kids = [newKid({ athlete_first: offer.first, athlete_last: offer.last, athlete_dob: offer.dob ?? "", first_season: true, fee_tier: suggestedTier(offer.dob, feeTiers) ?? "" })];
         return fresh;
       }
     : undefined;
@@ -140,7 +145,7 @@ export default function RegistrationFlow({
   }
 
   return (
-    <>
+    <FeeTiersProvider tiers={feeTiers}>
       {/* The wizard stays mounted behind the full form, so switching back
           returns to the same step. */}
       <div hidden={view !== "wizard"}>
@@ -182,6 +187,6 @@ export default function RegistrationFlow({
           onExtras={setExtras}
         />
       )}
-    </>
+    </FeeTiersProvider>
   );
 }

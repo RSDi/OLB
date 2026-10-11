@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { ClearSearchButton, KpiCard, Pill } from "../../components/ui";
 import { addRegistrationFees, setParentBalancesVisible } from "../../../lib/finances/actions";
+import { setFamilyDue } from "../../../lib/finances/club-actions";
 import {
   balanceState,
   buildAccounts,
@@ -23,7 +24,7 @@ import type { ChargeKind, PaymentsData } from "../../../lib/finances/types";
 import { AccountDetail } from "./AccountDetail";
 import { ChargeDialog } from "./ChargeDialog";
 import { PaymentDialog } from "./PaymentDialog";
-import { BalanceChip, ErrorNote, SegButton, SegGroup } from "./parts";
+import { BalanceChip, ErrorNote, SegButton, SegGroup, formatDay } from "./parts";
 import { VenmoMatch } from "./VenmoMatch";
 
 type Show = "owes" | "paid" | "all";
@@ -31,7 +32,22 @@ type Open = { kind: "payment"; account: Account } | { kind: ChargeKind; account:
 
 // The Treasurer's view: the season's totals, every family's balance, and
 // recording what comes in.
-export function TreasurerView({ data, openPlayerId = null, venmo = false }: { data: PaymentsData; openPlayerId?: string | null; venmo?: boolean }) {
+export function TreasurerView({
+  data,
+  openPlayerId = null,
+  venmo = false,
+  club = false,
+  dues = {},
+  defaultDue = null,
+}: {
+  data: PaymentsData;
+  openPlayerId?: string | null;
+  venmo?: boolean;
+  // Club finances (0131): its charge categories and each family's due date.
+  club?: boolean;
+  dues?: Record<string, string>;
+  defaultDue?: string | null;
+}) {
   const router = useRouter();
   const accounts = useMemo(() => buildAccounts(data.players, data.charges, data.payments), [data]);
   // "Open in Payments" from a player page lands here with that family open.
@@ -296,6 +312,7 @@ export function TreasurerView({ data, openPlayerId = null, venmo = false }: { da
               onToggle={() => setExpanded(expanded === a.key ? null : a.key)}
               onOpen={(kind) => setOpen({ kind, account: a } as Open)}
               names={data.names}
+              due={club ? { date: a.players.map((p) => dues[p.id]).filter(Boolean).sort()[0] ?? null, fallback: defaultDue } : null}
             />
           ))}
         </div>
@@ -305,7 +322,7 @@ export function TreasurerView({ data, openPlayerId = null, venmo = false }: { da
         <PaymentDialog account={openAccount} onClose={() => setOpen(null)} />
       )}
       {open && openAccount && open.kind !== "payment" && (
-        <ChargeDialog account={openAccount} kind={open.kind} onClose={() => setOpen(null)} />
+        <ChargeDialog account={openAccount} kind={open.kind} onClose={() => setOpen(null)} club={club} />
       )}
     </div>
   );
@@ -318,6 +335,7 @@ function FamilyRow({
   onToggle,
   onOpen,
   names,
+  due,
 }: {
   account: Account;
   border: boolean;
@@ -325,6 +343,8 @@ function FamilyRow({
   onToggle: () => void;
   onOpen: (kind: "payment" | ChargeKind) => void;
   names: Record<string, string>;
+  // Club finances (0131): the family's own due date, else the season's.
+  due: { date: string | null; fallback: string | null } | null;
 }) {
   const kids = a.players
     .map((p) => {
@@ -363,6 +383,7 @@ function FamilyRow({
           <BalanceChip totals={a.totals} />
           <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--gw-fg-muted)", textAlign: "right" }}>
             {formatAmount(a.totals.charged - a.totals.credited)} due · {formatAmount(a.totals.paid)} paid
+            {due && balanceState(a.totals) === "owes" && (due.date ?? due.fallback) ? ` · by ${formatDay((due.date ?? due.fallback)!)}` : ""}
           </span>
         </div>
         <span style={{ color: "var(--gw-fg-muted)", display: "flex", flexShrink: 0 }}>
@@ -398,6 +419,7 @@ function FamilyRow({
               ))}
             </div>
           )}
+          {due && <DueDate account={a} date={due.date} fallback={due.fallback} />}
           <AccountDetail account={a} canManage names={names} />
         </div>
       )}
@@ -409,6 +431,50 @@ function Empty({ text }: { text: string }) {
   return (
     <div className="rsd-card" style={{ padding: "40px 24px", textAlign: "center" }}>
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>{text}</div>
+    </div>
+  );
+}
+
+// The family's due date (0131): their own, or the season's from Settings → Fees.
+function DueDate({ account, date, fallback }: { account: Account; date: string | null; fallback: string | null }) {
+  const router = useRouter();
+  const [value, setValue] = useState(date ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function save(next: string) {
+    setBusy(true);
+    setError(null);
+    const res = await setFamilyDue(
+      account.players.map((p) => p.id),
+      next
+    );
+    setBusy(false);
+    if (res.error) return setError(res.error);
+    router.refresh();
+  }
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 12.5, fontWeight: 600 }} data-tour="payments-due">
+      <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        Due by
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          style={{ height: 32, padding: "0 8px", borderRadius: 8, border: "1px solid var(--gw-border)", background: "var(--gw-bg-elev)", color: "var(--gw-fg)", fontSize: 13 }}
+        />
+      </label>
+      {value !== (date ?? "") && (
+        <Pill size="sm" variant="accent" onClick={() => save(value)} disabled={busy}>
+          Save date
+        </Pill>
+      )}
+      {date && value === date && (
+        <Pill size="sm" variant="ghost" onClick={() => save("")} disabled={busy}>
+          Use the season&apos;s date
+        </Pill>
+      )}
+      {!date && <span style={{ color: "var(--gw-fg-muted)" }}>{fallback ? `The season's date: ${formatDay(fallback)}` : "No season date set (Settings → Fees)"}</span>}
+      {error && <span style={{ color: "var(--gw-error)" }}>{error}</span>}
     </div>
   );
 }

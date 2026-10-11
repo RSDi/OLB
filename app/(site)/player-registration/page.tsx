@@ -6,6 +6,8 @@ import { createAdminClient } from "../../../lib/supabase/admin";
 import { loadFormExtras } from "../../../lib/onboarding/server";
 import { loadOfferSeed } from "../../../lib/onboarding/offers";
 import type { FormExtras } from "../../../lib/onboarding/form-extras";
+import { seasonFeeTiers } from "../../../lib/finances/club-data";
+import { DEFAULT_FEE_TIERS, type FeeTier } from "../../../lib/finances/fees";
 
 export const metadata: Metadata = { title: "Player Registration" };
 
@@ -28,6 +30,13 @@ export default async function PlayerRegistrationPage({ searchParams }: { searchP
     console.error("[registration] loading the workflow's questions failed", e);
   }
   const offer = config ? await loadOfferSeed(token) : null;
+  // The season's fee tiers (Settings → Fees, 0131); the built-in ones until saved.
+  let feeTiers: FeeTier[] = DEFAULT_FEE_TIERS;
+  try {
+    feeTiers = await seasonFeeTiers(createAdminClient());
+  } catch (e) {
+    console.error("[registration] loading the fee tiers failed", e);
+  }
   return (
     <div className="olb-root">
       {offer === "expired" ? (
@@ -41,7 +50,7 @@ export default async function PlayerRegistrationPage({ searchParams }: { searchP
           </div>
         </div>
       ) : (
-        <RegistrationFlow config={config} offer={offer} />
+        <RegistrationFlow config={config} offer={offer} feeTiers={feeTiers} />
       )}
     </div>
   );

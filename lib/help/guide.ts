@@ -657,6 +657,78 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - **Record** records each one like **Record payment** does, split across the family's players by what each owes, with the Venmo number in its reference. A payment already recorded from a statement shows **Already recorded** and can't be recorded twice.`,
   },
   {
+    id: "payments-budget",
+    title: "Budget: what the club spends",
+    group: "Payments",
+    audience: "finance",
+    preview: true,
+    keywords: ["budget", "expenses", "payables", "import", "spreadsheet", "excel", "spending", "check", "check number", "vendor", "gym rent", "insurance", "tournament", "regionals", "hotel", "refs", "league", "deposit", "over budget", "split across team", "team cost", "mrs", "tournament we host", "groups"],
+    body: `Everything the club plans to spend and what it has paid, in place of the spreadsheet's Payables. On **Payments**, open **Budget**. You see it with the **Payments** permission, while **Track the club's books on Payments** is on in Settings → Fees.
+
+**The totals**: **Budgeted**, **Paid**, **Left to pay** and how many lines are **Over budget**. **Group**, **Team** and **Month** change how the list is grouped; the search box finds a cost, vendor, team or month.
+
+- **Add a cost**: pick its **Group** (General, Practice gyms, Teams…), say **What it's for**, and add the **Vendor**, the **Budget** (blank for a cost you didn't plan), the **Month** (for gym rent by month) and the **Team**, clinic or tournament it belongs to.
+- Tap a line, then **Record a payment**: the **Amount**, the date, how it was paid and the **Check number**. A deposit now and the rest later are two payments on one line.
+- **Split across team** passes a cost on to a team's families: pick the team and the players, then **Split the total** or charge the **Same amount each**. Each player gets a **Team cost** charge on their family's account.
+- **Edit** changes a line; **Void** crosses it out (void its payments first). Nothing is deleted.
+- **Groups** renames groups and adds new ones. **Tournaments we host** adds a tournament the club runs, like MRS, so its costs and income add up on their own.
+- **Import spreadsheet** brings in this season's spreadsheet: Payables, Receivables, the workouts and clinics sheets and Nelson's Produce. It shows what it will add, asks about any team or Nelson's worker it can't match, and checks the Regular Season sheet against Payments before you tap **Import**. **Undo the import** takes back only what it added.`,
+  },
+  {
+    id: "payments-income",
+    title: "Income: money in from outside families",
+    group: "Payments",
+    audience: "finance",
+    preview: true,
+    keywords: ["income", "receivables", "donation", "sponsor", "admissions", "tournament", "mrs", "shirts", "warm-up shirts", "merch", "vendor credit", "expected", "it came in"],
+    body: `Donations, sponsors, the tournament we host, shirts sold and credits from vendors: money that isn't a family's payment. On **Payments**, open **Income**.
+
+- **Add income**: pick **What kind**, who it's **From**, and what **Came in** with the date, how and a check number. Put an amount in **Expected** too, or alone for money you're still waiting on (like MRS registrations); tap **It came in** when it does.
+- Link it to a **Tournament we host** or a clinic so the Snapshot shows what each made, or to a fund like Buckets for Bucks.
+- **Void** crosses one out.`,
+  },
+  {
+    id: "payments-programs",
+    title: "Programs: clinics and workouts",
+    group: "Payments",
+    audience: "finance",
+    preview: true,
+    keywords: ["programs", "clinics", "summer clinics", "workouts", "spring workouts", "krave", "camp", "sign up", "sign-up", "cognito", "price", "junior high", "high school", "mark paid", "open", "closed"],
+    body: `Clinics, spring and summer workouts and camps, with their own sign-up page in place of Cognito. On **Payments**, open **Programs**.
+
+- **Add a program**: its name, kind, dates, when and where, what families read, and its prices (one price, or one per group like Junior high $60 and High school $100). **Room for** closes sign-up when it's full.
+- Switch it **Open** and families sign up at its page; **Copy sign-up link** copies the address. An open clinic also takes over the **Summer** page's button.
+- A player on this season's roster gets the fee on their family's **Payments** account. Anyone else shows **Owes** on the sign-up until you **Mark paid** (or **No charge**).
+- Costs you link to it on the Budget tab show what it made. **Finished** puts it away when it's over.`,
+  },
+  {
+    id: "payments-fundraising",
+    title: "Fundraising: Nelson's Produce shifts",
+    group: "Payments",
+    audience: "finance",
+    preview: true,
+    keywords: ["fundraising", "nelson's", "nelsons produce", "shifts", "hours", "festival", "tulip", "strawberry", "sunflower", "buckets for bucks", "program fund", "credit", "registration", "np", "no payment needed"],
+    body: `Shifts worked at a fundraiser like Nelson's Produce. On **Payments**, open **Fundraising**.
+
+- **Log a shift**: the **Fundraiser**, the **Event** (Tulip Festival), the date, **Who worked**, the **Hours**, and **Earned** (blank works it out at the fundraiser's rate).
+- **Where it goes** is the worker's choice: **Toward registration** puts a **Fundraising credit** on the player's family account, or the **General program fund** (Buckets for Bucks) adds it to that fund instead. A name you've logged before starts from their last choice.
+- **Change** moves a shift to another player or the fund: the old credit is voided and a new one posted. **Void** takes a shift off.
+- A family whose credits cover everything sees **No payment needed** on their balance.
+- **Fundraisers and funds** sets what an hour earns and adds new fundraisers or funds.`,
+  },
+  {
+    id: "payments-snapshot",
+    title: "Snapshot: the club's money at a glance",
+    group: "Payments",
+    audience: "staff",
+    permission: "finances_view",
+    preview: true,
+    keywords: ["snapshot", "financial snapshot", "club finances", "money in", "money out", "budget vs actual", "net", "board", "coaches", "see club finances", "report", "accountant"],
+    body: `The whole season in one page: **Money in**, **Money out**, whether the club is **Ahead** or **Behind**, and what families **still owe**. Then spending against the budget by group, each team's costs (and what was passed on to families), each clinic, the tournament we host, fundraising and the funds. Totals only: no family names or balances.
+
+The board sees it under **Payments → Snapshot**, and so does anyone given **See club finances** in Settings → Access Profiles, like a coach. The Treasurer sees it as a tab next to the rest. **Download spreadsheet** saves it for the accountant.`,
+  },
+  {
     id: "your-balance",
     title: "Your balance",
     group: "Payments",
@@ -1009,6 +1081,22 @@ Tap **Save** when you're done.`,
 - **Try-on night**, **Order deadline** and **Charge families** (when you mark the order placed, or when each registration is approved). Tap **Save**.
 
 While the registration workflow is on, families pick a size for each item on the registration form.`,
+  },
+  {
+    id: "settings-fees",
+    title: "Settings: Fees",
+    group: "Settings",
+    audience: "finance",
+    preview: true,
+    keywords: ["fees", "registration fee", "tiers", "8u-12u", "14u", "16u-18u", "coach's kid", "coaches' kids", "comp", "ck", "fundraising rate", "due date", "club finances", "books"],
+    body: `What families are charged this season. Open **Settings → Fees** (the **Payments** permission).
+
+- **Track the club's books on Payments** adds **Budget**, **Income**, **Programs**, **Fundraising** and **Snapshot** to Payments, and the clinic sign-up page. Off hides them again; nothing is lost.
+- **Registration fees**: each tier's name, the oldest age it covers on the season's cutoff (blank on the oldest tier) and the fee. The registration form suggests the right one by birthday. Families who already registered keep the fee they registered at.
+- **Comp coaches' kids**: a head or assistant coach's player keeps the fee on their account with a **Coach's kid** credit taking it off (all of it, or **How much to take off**). Coaches put on a team after their kid was approved show up here; tap **Comp them now**.
+- **A fundraiser hour earns** and **Balances due by** (shown on every family's balance unless you give a family its own date on Payments).
+
+Tap **Save**.`,
   },
   {
     id: "settings-contact-types",
