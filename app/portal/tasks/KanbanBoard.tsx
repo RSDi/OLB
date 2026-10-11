@@ -4,8 +4,10 @@
 // error); anyone can click a card to open it. Cards carry the same chips as the
 // list rows. Someday/Cancelled tasks are kept off the board (they live in the
 // List view). Native HTML5 drag — desktop pointer only; on touch the columns
-// scroll horizontally and tapping a card opens it.
-import { useRef, useState } from "react";
+// scroll horizontally and tapping a card opens it. Touch phones can't drag, so
+// on a touch or narrow screen each card also carries a "Move" chip (a native
+// <select> of the lanes) that makes the same change as a drop.
+import { useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { changeTicketStatus, type TicketStatus } from "../../../lib/maintenance/actions";
 import { TaskScheduleChips } from "./QueueRow";
@@ -21,6 +23,16 @@ export interface KanbanCard {
   due_on: string | null;
   someday: boolean;
   progress: { done: number; total: number } | null;
+}
+
+const TOUCHY_QUERY = "(pointer: coarse), (max-width: 767px)";
+function subscribeTouchy(onChange: () => void) {
+  const mq = window.matchMedia(TOUCHY_QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+function readTouchy() {
+  return window.matchMedia(TOUCHY_QUERY).matches;
 }
 
 const COLUMNS: { status: TicketStatus; label: string }[] = [
@@ -43,6 +55,14 @@ export function KanbanBoard({
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<TicketStatus | null>(null);
   const draggingRef = useRef(false);
+  // Set on pointerdown when the press began on the Move control, so pressing
+  // it never starts a card drag.
+  const pressOnMoveRef = useRef(false);
+  // Touch pointer or phone width: show the Move control (drag doesn't work on
+  // touch). Desktop keeps drag only, so cards stay uncluttered.
+  // Server render and first paint read false, so the control appears once
+  // the page is live.
+  const touchy = useSyncExternalStore(subscribeTouchy, readTouchy, () => false);
 
   async function moveTo(id: string, status: TicketStatus) {
     const card = items.find((c) => c.id === id);
@@ -114,9 +134,18 @@ export function KanbanBoard({
               <div
                 key={c.id}
                 draggable={canMove}
+                onPointerDown={
+                  canMove
+                    ? (e) => { pressOnMoveRef.current = !!(e.target as Element).closest("[data-card-move]"); }
+                    : undefined
+                }
                 onDragStart={
                   canMove
                     ? (e) => {
+                        if (pressOnMoveRef.current) {
+                          e.preventDefault();
+                          return;
+                        }
                         e.dataTransfer.setData("text/plain", c.id);
                         e.dataTransfer.effectAllowed = "move";
                         draggingRef.current = true;
@@ -165,8 +194,17 @@ export function KanbanBoard({
                     today={today}
                   />
                 </div>
-                {c.assigneeName && (
-                  <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>{c.assigneeName}</div>
+                {(c.assigneeName || (canMove && touchy)) && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600, minWidth: 0 }}>{c.assigneeName}</span>
+                    {canMove && touchy && (
+                      <MoveControl
+                        title={c.title}
+                        status={c.status}
+                        onMove={(s) => void moveTo(c.id, s)}
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             ))}
@@ -180,5 +218,77 @@ export function KanbanBoard({
         );
       })}
     </div>
+  );
+}
+
+// The touch stand-in for dragging: a chip reading "Move" over an invisible
+// native <select> of the lanes. The native picker opens as the phone's own
+// sheet, so nothing gets clipped by the lane or board, and the select keeps a
+// 16px font so iOS doesn't zoom in when it's tapped. Clicks stop here so a tap
+// doesn't also open the task.
+function MoveControl({
+  title,
+  status,
+  onMove,
+}: {
+  title: string;
+  status: TicketStatus;
+  onMove: (status: TicketStatus) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <span
+      data-card-move
+      data-tour="tasks-card-move"
+      onClick={(e) => e.stopPropagation()}
+      style={{ position: "relative", display: "inline-flex", flexShrink: 0, marginLeft: "auto" }}
+    >
+      <span
+        aria-hidden
+        className="rsd-chip rsd-chip-mute"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          minHeight: 36,
+          padding: "0 12px",
+          borderRadius: 100,
+          fontSize: 11,
+          fontWeight: 700,
+          outline: focused ? "2px solid var(--rsd-accent)" : undefined,
+          outlineOffset: 2,
+        }}
+      >
+        Move
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </span>
+      <select
+        aria-label={`Move "${title}" to another lane`}
+        value={status}
+        onChange={(e) => onMove(e.target.value as TicketStatus)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          opacity: 0,
+          fontSize: 16,
+          cursor: "pointer",
+          appearance: "none",
+          border: 0,
+          margin: 0,
+        }}
+      >
+        {COLUMNS.map((col) => (
+          <option key={col.status} value={col.status}>
+            {col.status === status ? `${col.label} (here now)` : col.label}
+          </option>
+        ))}
+      </select>
+    </span>
   );
 }
