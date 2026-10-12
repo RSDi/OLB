@@ -85,6 +85,9 @@ export interface PlayerEdit {
   dob: string | null;
   jersey_number: string | null;
   age_group: string | null;
+  // The player's own, not a parent's.
+  email: string | null;
+  phone: string | null;
 }
 
 // What Edit player saves, tidied, or what's wrong with it.
@@ -111,5 +114,17 @@ export function cleanPlayerEdit(input: PlayerEdit): { value: PlayerEdit } | { er
     return { error: "Pick an age group from the list." };
   }
 
-  return { value: { full_name, dob, jersey_number, age_group } };
+  const email = input.email?.trim() || null;
+  if (email && (email.length > 254 || !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email))) {
+    return { error: "Enter the email like name@example.com." };
+  }
+
+  // Kept as typed, but it has to dial: digits and the usual ( ) - . + marks.
+  const phone = input.phone?.trim().replace(/\s+/g, " ") || null;
+  if (phone) {
+    const digits = phone.replace(/\D/g, "").length;
+    if (!/^[\d\s()+.\-]+$/.test(phone) || digits < 7 || digits > 15) return { error: "Enter the phone number with its area code." };
+  }
+
+  return { value: { full_name, dob, jersey_number, age_group, email, phone } };
 }
