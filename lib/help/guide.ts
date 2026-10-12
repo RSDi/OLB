@@ -713,6 +713,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - **Log a shift**: the **Fundraiser**, the **Event** (Tulip Festival), the date, **Who worked**, the **Hours**, and **Earned** (blank works it out at the fundraiser's rate).
 - **Where it goes** is the worker's choice: **Toward registration** puts a **Fundraising credit** on the player's family account, or the **General program fund** (Buckets for Bucks) adds it to that fund instead. A name you've logged before starts from their last choice.
 - **Then the rest of the family** (on to start): once that player owes nothing, the rest goes to their brothers, a credit for each, like Sarah Wesner's shifts going to Luke until he's paid and then to Nate.
+- Shifts are listed by event, closed to start: each shows its number of shifts and total. Tap an event to see who worked.
 - **Change** moves a shift to another player or the fund: the old credit is voided and a new one posted. **Void** takes a shift off.
 - A family whose credits cover everything sees **No payment needed** on their balance.
 - **Fundraisers and funds** sets what an hour earns and adds new fundraisers or funds.`,

@@ -176,11 +176,20 @@ export function FundraisingView({ data }: { data: ClubData }) {
         <Empty text="No shifts yet. Log each person's shift above; a shift toward registration shows on their family's balance right away." />
       ) : (
         [...byLabel].map(([label, shifts]) => (
-          <div key={label} className="rsd-card" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "14px 18px", gap: 12 }}>
-              <span style={{ fontSize: 15, fontWeight: 800 }}>{label}</span>
+          // Closed by default: tap an event to see its shifts.
+          <details key={label} className="rsd-card fundraising-event" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
+            <summary style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", gap: 12, cursor: "pointer", listStyle: "none" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span aria-hidden className="fundraising-chevron" style={{ fontSize: 11, color: "var(--gw-fg-muted)", transition: "transform 0.15s" }}>
+                  ▶
+                </span>
+                <span style={{ fontSize: 15, fontWeight: 800 }}>{label}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--gw-fg-muted)", whiteSpace: "nowrap" }}>
+                  {`· ${shifts.length} ${shifts.length === 1 ? "shift" : "shifts"}`}
+                </span>
+              </span>
               <span style={{ fontSize: 13, fontWeight: 700 }}>{formatAmount(shifts.reduce((n, s) => n + s.amount_cents, 0))}</span>
-            </div>
+            </summary>
             {shifts.map((s) => (
               <div key={s.id} style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 18px", borderTop: "1px solid var(--gw-border)", flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 220px", minWidth: 0 }}>
@@ -198,9 +207,10 @@ export function FundraisingView({ data }: { data: ClubData }) {
                 </button>
               </div>
             ))}
-          </div>
+          </details>
         ))
       )}
+      <style>{`.fundraising-event > summary::-webkit-details-marker { display: none; } .fundraising-event[open] .fundraising-chevron { transform: rotate(90deg); }`}</style>
 
       {perPlayer.size > 0 && (
         <div className="rsd-card" style={{ gap: 8, padding: "16px 18px" }}>
