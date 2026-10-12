@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { loadPublicDirectory, loadPublicDirectoryKey } from "../../../../lib/teams/public-directory";
 import { keyOpens } from "../../../../lib/teams/public-directory-key";
+import { ScrollToTopButton } from "../../../components/ScrollToTopButton";
 import { PublicDirectoryList } from "../PublicDirectoryList";
 import logo from "../../../(site)/_images/logo-wordmark.png";
 
@@ -61,6 +62,7 @@ export default async function PublicDirectoryPage({ params }: { params: Promise<
         </header>
         <PublicDirectoryList season={season} teams={teams} players={players} />
       </div>
+      <ScrollToTopButton />
     </div>
   );
 }
