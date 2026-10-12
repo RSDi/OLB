@@ -396,6 +396,9 @@ export interface ImportChoices {
   workers: Record<string, string>;
   // Put Nelson's "Registration" shifts on families' accounts as credits.
   postCredits: boolean;
+  // Once a player's fees are paid, the rest of a shift goes on to their
+  // brothers and sisters.
+  spill?: boolean;
 }
 
 export interface ImportPreview {

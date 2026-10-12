@@ -4,6 +4,7 @@
 // from client components.
 
 import { formatAmount, parseAmount } from "../requirements/logic.ts"; // explicit extension so node --test can load this file
+import { splitPayment } from "./logic.ts";
 import {
   EXPENSE_METHODS,
   INCOME_CATEGORIES,
@@ -119,6 +120,47 @@ export function splitEvenly(totalCents: number, n: number): number[] {
 // Hours at the fundraiser's rate, to the cent.
 export function shiftAmountCents(hours: number, rateCents: number): number {
   return Math.round(hours * rateCents);
+}
+
+// Each player's balance and their brothers and sisters (players who share a
+// parent), for sending fundraising money on down a family.
+export interface FamilyBalances {
+  balance: Map<string, number>; // cents still owed; negative is a credit
+  siblings: Map<string, string[]>; // player → the family's other players
+  names: Map<string, string>;
+}
+
+export interface SpillPiece {
+  player_id: string;
+  amount_cents: number;
+  hours: number;
+}
+
+// A fundraiser credit toward one player that, once their balance is paid,
+// goes on to their brothers and sisters (by name), the way Record payment
+// splits a family's payment. Anything past what the whole family owes stays
+// on the player picked. Hours follow the money, to the hundredth.
+export function familySpill(amountCents: number, hours: number, playerId: string, fb: FamilyBalances): SpillPiece[] {
+  const sibs = (fb.siblings.get(playerId) ?? [])
+    .filter((id) => id !== playerId)
+    .sort((a, b) => (fb.names.get(a) ?? "").localeCompare(fb.names.get(b) ?? ""));
+  const split = splitPayment(
+    amountCents,
+    [playerId, ...sibs].map((id) => ({ player_id: id, balance: fb.balance.get(id) ?? 0 }))
+  );
+  // One player takes it all: the one picked, or a brother when the one
+  // picked owes nothing.
+  if (split.length <= 1) return [{ player_id: split[0]?.player_id ?? playerId, amount_cents: amountCents, hours }];
+  const pieces = split.map((x) => ({ player_id: x.player_id, amount_cents: x.amount_cents, hours: Math.max(0.01, Math.round((hours * x.amount_cents * 100) / amountCents) / 100) }));
+  // The first piece takes up the rounding, so the hours still add up.
+  const rest = pieces.slice(1).reduce((n, x) => n + x.hours, 0);
+  pieces[0].hours = Math.max(0.01, Math.round((hours - rest) * 100) / 100);
+  return pieces;
+}
+
+// What's owed after those credits, for the next shift in the same run.
+export function applySpill(fb: FamilyBalances, pieces: SpillPiece[]): void {
+  for (const p of pieces) fb.balance.set(p.player_id, (fb.balance.get(p.player_id) ?? 0) - p.amount_cents);
 }
 
 // ─── Programs ───────────────────────────────────────────────────────────────

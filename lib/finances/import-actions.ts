@@ -12,7 +12,8 @@ import { revalidatePath } from "next/cache";
 import { requireFinances } from "../auth/guards";
 import { createAdminClient } from "../supabase/admin";
 import { centralToday } from "./data";
-import { ensureDefaults, latestBoard } from "./club-data";
+import { ensureDefaults, familyBalances, latestBoard } from "./club-data";
+import { applySpill, familySpill, type SpillPiece } from "./club-logic";
 import { IMPORT_NOTE, parseFinanceWorkbook, personKey, teamKey, type ImportChoices, type ImportPreview, type SheetPlan } from "./import-sheet";
 
 // Next.js stops server-action uploads at 1 MB anyway; the spreadsheet is ~40 KB.
@@ -300,6 +301,7 @@ export async function runFinanceImport(form: FormData, choices: ImportChoices): 
     }
 
     // Nelson's shifts.
+    const fb = choices.spill && choices.postCredits ? await familyBalances(db, boardId) : null;
     let credits = 0;
     let skipped = 0;
     for (const s of plan.shifts) {
@@ -318,42 +320,51 @@ export async function runFinanceImport(form: FormData, choices: ImportChoices): 
           continue;
         }
       }
-      let charge_id: string | null = null;
-      if (destination === "family" && player && choices.postCredits) {
-        const { data: c, error } = await db
-          .from("olb_charges")
-          .insert({
-            board_id: boardId,
-            player_id: player,
-            kind: "credit",
-            category: "fundraising",
-            description: ["Nelson's Produce", s.event_label].filter(Boolean).join(" – ").slice(0, 120),
-            amount_cents: s.amount_cents,
-            entry_date: today,
-            note: `${s.worker_name}, ${s.hours} hours`,
-            created_by: userId,
-          })
-          .select("id")
-          .single();
+      // Toward a player whose fees are paid, the rest goes on to their
+      // brothers and sisters, while that's asked for.
+      const pieces =
+        destination === "family" && player && choices.postCredits && fb
+          ? familySpill(s.amount_cents, s.hours, player, fb)
+          : [{ player_id: player, amount_cents: s.amount_cents, hours: s.hours }];
+      if (fb && destination === "family" && player && choices.postCredits) applySpill(fb, pieces as SpillPiece[]);
+      for (const piece of pieces) {
+        let charge_id: string | null = null;
+        if (destination === "family" && piece.player_id && choices.postCredits) {
+          const { data: c, error } = await db
+            .from("olb_charges")
+            .insert({
+              board_id: boardId,
+              player_id: piece.player_id,
+              kind: "credit",
+              category: "fundraising",
+              description: ["Nelson's Produce", s.event_label].filter(Boolean).join(" – ").slice(0, 120),
+              amount_cents: piece.amount_cents,
+              entry_date: today,
+              note: `${s.worker_name}, ${piece.hours} hours`,
+              created_by: userId,
+            })
+            .select("id")
+            .single();
+          if (error) throw new Error(error.message);
+          charge_id = (c as { id: string }).id;
+          credits++;
+        }
+        const { error } = await db.from("olb_fundraiser_shifts").insert({
+          board_id: boardId,
+          fundraiser_id: nelsonsId,
+          event_label: s.event_label,
+          worker_name: s.worker_name,
+          hours: piece.hours,
+          amount_cents: piece.amount_cents,
+          destination,
+          player_id: destination === "family" ? piece.player_id : null,
+          fund_id: destination === "fund" ? fundId : null,
+          charge_id,
+          note: IMPORT_NOTE,
+          recorded_by: userId,
+        });
         if (error) throw new Error(error.message);
-        charge_id = (c as { id: string }).id;
-        credits++;
       }
-      const { error } = await db.from("olb_fundraiser_shifts").insert({
-        board_id: boardId,
-        fundraiser_id: nelsonsId,
-        event_label: s.event_label,
-        worker_name: s.worker_name,
-        hours: s.hours,
-        amount_cents: s.amount_cents,
-        destination,
-        player_id: destination === "family" ? player : null,
-        fund_id: destination === "fund" ? fundId : null,
-        charge_id,
-        note: IMPORT_NOTE,
-        recorded_by: userId,
-      });
-      if (error) throw new Error(error.message);
     }
 
     revalidatePath("/portal/payments");
