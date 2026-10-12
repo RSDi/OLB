@@ -46,6 +46,14 @@ export function BudgetView({ data }: { data: ClubData }) {
   const [view, setView] = useState<View>("group");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Sections start closed; a search opens every one with a match.
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set());
+  const toggleSection = (key: string) =>
+    setOpenSections((cur) => {
+      const out = new Set(cur);
+      if (!out.delete(key)) out.add(key);
+      return out;
+    });
   const [open, setOpen] = useState<Open>(null);
 
   const paid = useMemo(() => paidByLine(data.expensePayments), [data.expensePayments]);
@@ -134,15 +142,27 @@ export function BudgetView({ data }: { data: ClubData }) {
 
       {shown.map((s) => {
         const spend = s.lines.reduce((t, l) => ({ budget: t.budget + l.budget_cents, paid: t.paid + (paid.get(l.id) ?? 0) }), { budget: 0, paid: 0 });
+        const isOpen = !!q || openSections.has(s.key);
         return (
           <div key={s.key} className="rsd-card" style={{ padding: 0, gap: 0, overflow: "hidden" }} data-tour="budget-group">
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", flexWrap: "wrap" }}>
-              <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 800 }}>{s.title}</div>
-                <div style={sub}>
-                  {s.lines.length} {s.lines.length === 1 ? "line" : "lines"}
-                </div>
-              </div>
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => toggleSection(s.key)}
+                data-tour="budget-group-toggle"
+                style={{ flex: "1 1 200px", minWidth: 0, display: "flex", alignItems: "center", gap: 10, border: "none", background: "none", padding: 0, textAlign: "left", color: "inherit", cursor: "pointer" }}
+              >
+                <span aria-hidden style={{ fontSize: 11, color: "var(--gw-fg-muted)", transition: "transform 0.15s", transform: isOpen ? "rotate(90deg)" : "none" }}>
+                  ▶
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 15, fontWeight: 800 }}>{s.title}</span>
+                  <span style={{ ...sub, display: "block" }}>
+                    {s.lines.length} {s.lines.length === 1 ? "line" : "lines"}
+                  </span>
+                </span>
+              </button>
               <SpendBar spend={spend} />
               {s.groupId && (
                 <button type="button" style={linkBtn} onClick={() => setOpen({ kind: "line", line: null, groupId: s.groupId })}>
@@ -150,7 +170,7 @@ export function BudgetView({ data }: { data: ClubData }) {
                 </button>
               )}
             </div>
-            {s.lines.map((l) => (
+            {isOpen && s.lines.map((l) => (
               <LineRow
                 key={l.id}
                 line={l}

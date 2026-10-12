@@ -665,7 +665,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     keywords: ["budget", "expenses", "payables", "import", "spreadsheet", "excel", "spending", "check", "check number", "vendor", "gym rent", "insurance", "tournament", "regionals", "hotel", "refs", "league", "deposit", "over budget", "split across team", "team cost", "mrs", "tournament we host", "groups"],
     body: `Everything the club plans to spend and what it has paid, in place of the spreadsheet's Payables. On **Payments**, open **Budget**. You see it with the **Payments** permission, while **Track the club's books on Payments** is on in Settings → Fees.
 
-**The totals**: **Budgeted**, **Paid**, **Left to pay** and how many lines are **Over budget**. **Group**, **Team** and **Month** change how the list is grouped; the search box finds a cost, vendor, team or month.
+**The totals**: **Budgeted**, **Paid**, **Left to pay** and how many lines are **Over budget**. **Group**, **Team** and **Month** change how the list is grouped; the search box finds a cost, vendor, team or month. Each group starts closed, showing its number of lines and what's paid against its budget; tap it to see the lines. A search opens every group with a match.
 
 - **Add a cost**: pick its **Group** (General, Practice gyms, Teams…), say **What it's for**, and add the **Vendor**, the **Budget** (blank for a cost you didn't plan), the **Month** (for gym rent by month) and the **Team**, clinic or tournament it belongs to.
 - Tap a line, then **Record a payment**: the **Amount**, the date, how it was paid and the **Check number**. A deposit now and the rest later are two payments on one line.
