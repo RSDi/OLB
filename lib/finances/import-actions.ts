@@ -15,7 +15,7 @@ import { centralToday } from "./data";
 import { formatAmount, groupFamilies, parseAmount, totalsFor } from "./logic";
 import { ensureDefaults, familyBalances, latestBoard } from "./club-data";
 import { NELSONS_LABEL, NELSONS_REF, applySpill, familySpill, type SpillPiece } from "./club-logic";
-import { IMPORT_NOTE, compareBalances, parseFinanceWorkbook, personKey, teamKey, type ImportChoices, type ImportPreview, type SheetPlan, type SheetPlayer, type SiteMoney, type UniformChoices } from "./import-sheet";
+import { IMPORT_NOTE, compareBalances, duplicateUniformCharges, parseFinanceWorkbook, personKey, teamKey, type ImportChoices, type ImportPreview, type SheetPlan, type SheetPlayer, type SiteMoney, type UniformCharge, uniformPiecesOf, type UniformChoices } from "./import-sheet";
 
 // Next.js stops server-action uploads at 1 MB anyway; the spreadsheet is ~40 KB.
 const MAX_BYTES = 1024 * 1024;
@@ -172,6 +172,7 @@ export async function previewFinanceImport(form: FormData): Promise<ImportPrevie
     notes: plan.notes,
     uniforms: await uniformPlan(ctx),
     payments: await paymentPlan(ctx),
+    uniformDupes: await uniformDupePlan(ctx.db, ctx.boardId, ctx.players),
     coaches: await coachPlan(ctx),
     compare: await comparePlan(ctx),
   };
@@ -469,7 +470,10 @@ async function uniformPieces(ctx: Context): Promise<{ pieces: UniformPiece[]; un
     .eq("board_id", ctx.boardId)
     .eq("category", "uniform")
     .is("voided_at", null);
-  const have = new Set(((data as { player_id: string; description: string }[] | null) ?? []).map((c) => `${c.player_id}|${/short/i.test(c.description) ? "Shorts" : /jersey/i.test(c.description) ? "Jersey" : "?"}`));
+  // A plain "Uniform" charge covers both pieces.
+  const have = new Set(
+    ((data as { player_id: string; description: string | null }[] | null) ?? []).flatMap((c) => uniformPiecesOf(c.description).map((piece) => `${c.player_id}|${piece}`))
+  );
   const pieces = wanted.filter((w) => !have.has(`${w.player_id}|${w.item}`));
   return { pieces, unmatched, alreadyCharged: wanted.length - pieces.length };
 }
@@ -666,4 +670,48 @@ async function comparePlan(ctx: Context): Promise<ImportPreview["compare"]> {
   }
   const families = groupFamilies(ps).map((fam) => fam.map((p) => ({ id: p.id, name: p.full_name })));
   return compareBalances(families, site, sheet);
+}
+
+// ─── Uniform pieces charged twice ───────────────────────────────────────────
+
+async function uniformDupes(db: Admin, boardId: string): Promise<UniformCharge[]> {
+  const { data } = await db
+    .from("olb_charges")
+    .select("id, player_id, description, amount_cents, note")
+    .eq("board_id", boardId)
+    .eq("kind", "charge")
+    .eq("category", "uniform")
+    .is("voided_at", null);
+  return duplicateUniformCharges((data as UniformCharge[] | null) ?? []);
+}
+
+async function uniformDupePlan(db: Admin, boardId: string, players: { id: string; full_name: string }[]): Promise<ImportPreview["uniformDupes"]> {
+  const dupes = await uniformDupes(db, boardId);
+  const names = new Map(players.map((p) => [p.id, p.full_name]));
+  return {
+    players: [...new Set(dupes.map((d) => names.get(d.player_id) ?? "A player"))].sort(),
+    count: dupes.length,
+    cents: dupes.reduce((n, d) => n + d.amount_cents, 0),
+  };
+}
+
+// Voids the import's jersey and shorts charges for players who already had
+// their own uniform charge. Only the import's are touched.
+export async function removeDuplicateUniforms(): Promise<{ error?: string; notice?: string }> {
+  const gate = await requireFinances();
+  if ("error" in gate) return { error: gate.error };
+  const db = createAdminClient();
+  const board = await latestBoard(db);
+  if (!board) return { error: "There's no season set up yet." };
+  const dupes = await uniformDupes(db, board.id);
+  if (dupes.length === 0) return { notice: "No uniform is charged twice." };
+  const { error } = await db
+    .from("olb_charges")
+    .update({ voided_at: new Date().toISOString(), voided_by: gate.userId })
+    .in("id", dupes.map((d) => d.id))
+    .is("voided_at", null);
+  if (error) return { error: error.message };
+  revalidatePath("/portal/payments");
+  const players = new Set(dupes.map((d) => d.player_id)).size;
+  return { notice: `Removed ${dupes.length} duplicate uniform charges (${dollarText(dupes.reduce((n, d) => n + d.amount_cents, 0))}) for ${players} players.` };
 }

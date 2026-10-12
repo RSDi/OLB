@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pill } from "../../components/ui";
 import { ComboSelect } from "../../components/ComboSelect";
-import { previewFinanceImport, runCoachComps, runFinanceImport, runPaymentCatchUp, runUniformCharges, undoFinanceImport } from "../../../lib/finances/import-actions";
+import { previewFinanceImport, removeDuplicateUniforms, runCoachComps, runFinanceImport, runPaymentCatchUp, runUniformCharges, undoFinanceImport } from "../../../lib/finances/import-actions";
 import type { CompareFamily, ImportPreview } from "../../../lib/finances/import-sheet";
 import { formatAmount } from "../../../lib/finances/logic";
 import { ErrorNote, Sheet, capStyle } from "./parts";
@@ -37,6 +37,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
   const [uniformNote, setUniformNote] = useState<string | null>(null);
   const [paymentNote, setPaymentNote] = useState<string | null>(null);
   const [coachNote, setCoachNote] = useState<string | null>(null);
+  const [dupeNote, setDupeNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -97,7 +98,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
   // The balances list again, after a change here or on Payments.
   async function recheck() {
     const res = await previewFinanceImport(form()).catch(() => null);
-    if (res && !("error" in res)) setPreview((cur) => (cur ? { ...cur, coaches: res.coaches, compare: res.compare, payments: res.payments, uniforms: res.uniforms } : cur));
+    if (res && !("error" in res)) setPreview((cur) => (cur ? { ...cur, uniformDupes: res.uniformDupes, coaches: res.coaches, compare: res.compare, payments: res.payments, uniforms: res.uniforms } : cur));
   }
 
   async function coaches() {
@@ -110,6 +111,21 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
       return setError(res.error);
     }
     setCoachNote(res.notice ?? "Done.");
+    await recheck();
+    setBusy(false);
+    router.refresh();
+  }
+
+  async function dupes() {
+    if (!confirm("Remove the uniform charges the import added twice?")) return;
+    setBusy(true);
+    setError(null);
+    const res = await removeDuplicateUniforms().catch(() => ({ error: "That didn't work. Try again." }) as { error?: string; notice?: string });
+    if (res.error) {
+      setBusy(false);
+      return setError(res.error);
+    }
+    setDupeNote(res.notice ?? "Done.");
     await recheck();
     setBusy(false);
     router.refresh();
@@ -253,6 +269,26 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
                     <span style={{ ...sub, display: "block" }}>Sarah Wesner&apos;s shifts go to Luke until he owes nothing, then to Nate.</span>
                   </span>
                 </label>
+              )}
+            </div>
+          )}
+
+          {(preview.uniformDupes.count > 0 || dupeNote) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-tour="import-uniform-dupes">
+              <span style={capStyle}>Uniforms charged twice</span>
+              {dupeNote ? (
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{dupeNote}</div>
+              ) : (
+                <>
+                  <div style={sub}>
+                    {`${preview.uniformDupes.players.join(", ")} already had a uniform charge of their own, and the import added a jersey and shorts again (${preview.uniformDupes.count} charges, ${formatAmount(preview.uniformDupes.cents)}). Remove the import's; their own charges stay.`}
+                  </div>
+                  <div>
+                    <Pill size="sm" variant="accent" onClick={dupes} disabled={busy}>
+                      Remove duplicate uniform charges
+                    </Pill>
+                  </div>
+                </>
               )}
             </div>
           )}
