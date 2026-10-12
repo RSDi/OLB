@@ -43,20 +43,33 @@ test("the birthday match wins over a namesake without one", () => {
 });
 
 test("Edit player tidies what it saves", () => {
-  const r = cleanPlayerEdit({ full_name: "  Ben   Foster ", dob: "2017-02-28", jersey_number: " 00 ", age_group: "10u" });
-  assert.deepEqual(r, { value: { full_name: "Ben Foster", dob: "2017-02-28", jersey_number: "00", age_group: "10U" } });
-  const blank = cleanPlayerEdit({ full_name: "Ben Foster", dob: "", jersey_number: "", age_group: "" });
-  assert.deepEqual(blank, { value: { full_name: "Ben Foster", dob: null, jersey_number: null, age_group: null } });
-  assert.ok("value" in cleanPlayerEdit({ full_name: "Ben", dob: null, jersey_number: null, age_group: "8U" }));
+  const r = cleanPlayerEdit({
+    full_name: "  Ben   Foster ",
+    dob: "2017-02-28",
+    jersey_number: " 00 ",
+    age_group: "10u",
+    email: " ben@example.com ",
+    phone: " (555)  123-4567 ",
+  });
+  assert.deepEqual(r, {
+    value: { full_name: "Ben Foster", dob: "2017-02-28", jersey_number: "00", age_group: "10U", email: "ben@example.com", phone: "(555) 123-4567" },
+  });
+  const blank = cleanPlayerEdit({ full_name: "Ben Foster", dob: "", jersey_number: "", age_group: "", email: "", phone: " " });
+  assert.deepEqual(blank, { value: { full_name: "Ben Foster", dob: null, jersey_number: null, age_group: null, email: null, phone: null } });
+  assert.ok("value" in cleanPlayerEdit({ full_name: "Ben", dob: null, jersey_number: null, age_group: "8U", email: null, phone: "+1 555.123.4567" }));
 });
 
 test("Edit player turns away what doesn't fit", () => {
   const bad = (input: Parameters<typeof cleanPlayerEdit>[0]) => "error" in cleanPlayerEdit(input);
-  const ok = { full_name: "Ben Foster", dob: null, jersey_number: null, age_group: null };
+  const ok = { full_name: "Ben Foster", dob: null, jersey_number: null, age_group: null, email: null, phone: null };
   assert.ok(bad({ ...ok, full_name: "   " }));
   assert.ok(bad({ ...ok, dob: "2017-02-30" }));
   assert.ok(bad({ ...ok, dob: "Feb 28" }));
   assert.ok(bad({ ...ok, jersey_number: "1234" }));
   assert.ok(bad({ ...ok, jersey_number: "#5" }));
   assert.ok(bad({ ...ok, age_group: "Varsity" }));
+  assert.ok(bad({ ...ok, email: "ben@" }));
+  assert.ok(bad({ ...ok, email: "ben foster@example.com" }));
+  assert.ok(bad({ ...ok, phone: "555-1234 ext" }));
+  assert.ok(bad({ ...ok, phone: "12345" }));
 });

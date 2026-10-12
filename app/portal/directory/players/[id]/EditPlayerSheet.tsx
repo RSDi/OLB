@@ -8,7 +8,7 @@ import type { DirectoryPlayer } from "../../_shared/data";
 import { ErrorNote, Sheet } from "../../../payments/parts";
 
 // Edit player, for the Registrations grant: the player's name, birthday,
-// jersey number and age group, and taking them off the roster. The team is
+// jersey number, age group, own email and phone, and taking them off the roster. The team is
 // picked on the player's card.
 export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlayer; onClose: () => void }) {
   const router = useRouter();
@@ -16,6 +16,8 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
   const [dob, setDob] = useState(p.dob ?? "");
   const [jersey, setJersey] = useState(p.jersey_number ?? "");
   const [ageGroup, setAgeGroup] = useState(p.age_group ?? "");
+  const [email, setEmail] = useState(p.email ?? "");
+  const [phone, setPhone] = useState(p.phone ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Remove from team…: open, and where they go.
@@ -27,7 +29,14 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
   async function save() {
     setBusy(true);
     setError(null);
-    const res = await updatePlayer(p.id, { full_name: name, dob: dob || null, jersey_number: jersey || null, age_group: ageGroup || null });
+    const res = await updatePlayer(p.id, {
+      full_name: name,
+      dob: dob || null,
+      jersey_number: jersey || null,
+      age_group: ageGroup || null,
+      email: email || null,
+      phone: phone || null,
+    });
     setBusy(false);
     if (res.error) return setError(res.error);
     router.refresh();
@@ -67,6 +76,27 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
           ))}
         </Select>
       </div>
+      <Input
+        label="Email"
+        type="email"
+        inputMode="email"
+        autoComplete="off"
+        value={email}
+        maxLength={254}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="None"
+        help="The player's own. A parent's email and phone show with the parent, not here."
+      />
+      <Input
+        label="Phone"
+        type="tel"
+        inputMode="tel"
+        autoComplete="off"
+        value={phone}
+        maxLength={30}
+        onChange={(e) => setPhone(e.target.value)}
+        placeholder="None"
+      />
 
       {error && <ErrorNote text={error} />}
 

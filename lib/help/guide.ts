@@ -334,7 +334,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **Putting players on teams.** In the Directory, every player has a team chip showing their team (or **No team yet**). Tap it and pick a team, and the player moves there right away. Pick **No team yet** to take them off their team. Pick **No team yet** from the **All teams** drop-down at the top to see who still needs a team.
 
-**Editing a player.** On a player's page, the team chip works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number** and **Age group**. Tap **Save**.
+**Editing a player.** On a player's page, the team chip works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number**, **Age group**, and the player's own **Email** and **Phone**. Leave Email or Phone empty to clear it. A parent's email and phone show with the parent, not here. Tap **Save**.
 
 **Taking a player off their team.** For a family that lost their spot, or a player who isn't in the program this season. On the player's page, tap **Edit player**, then **Remove from team…**, and pick where they go:
 
