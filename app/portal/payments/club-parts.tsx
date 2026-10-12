@@ -37,7 +37,11 @@ export function PaymentsTabs({ tabs, active }: { tabs: PaymentsTab[]; active: Pa
   usePageHelp(TAB_HELP[active] ?? null);
   // On a phone the tabs scroll sideways: keep the open one in view.
   const current = useRef<HTMLAnchorElement>(null);
-  useEffect(() => current.current?.scrollIntoView({ block: "nearest", inline: "nearest" }), [active]);
+  // Braces, not an arrow's value: newer browsers return a Promise from
+  // scrollIntoView, and React would call it as the effect's cleanup.
+  useEffect(() => {
+    current.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [active]);
   return (
     <nav aria-label="Payments" style={{ display: "flex", gap: 4, overflowX: "auto", borderBottom: "1px solid var(--gw-border)", marginBottom: 4 }}>
       {tabs.map((t) => (
