@@ -187,6 +187,14 @@ export type SignupState = "paid" | "owes" | "waived" | "on_account";
 
 // Where a sign-up stands. A roster player's fee is on the family's account
 // (paid there, with everything else); anyone else pays on the sign-up.
+// A sign-up paid from Nelson's Produce earnings: its fee is a charge on the
+// family's account, and their Nelson's credit pays it.
+export const NELSONS_LABEL = "Nelson's Produce";
+export const NELSONS_REF = "NP: Nelson's Produce";
+export function coveredByNelsons(s: Pick<ProgramSignup, "charge_id" | "paid_ref">): boolean {
+  return !!s.charge_id && (s.paid_ref ?? "").startsWith("NP");
+}
+
 export function signupState(s: Pick<ProgramSignup, "charge_id" | "price_cents" | "paid_cents" | "paid_method">): SignupState {
   if (s.charge_id) return "on_account";
   if (s.paid_method === "waived") return "waived";

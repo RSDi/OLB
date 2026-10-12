@@ -18,6 +18,8 @@ import {
   cleanProgramInput,
   cleanShiftInput,
   familySpill,
+  NELSONS_LABEL,
+  NELSONS_REF,
   splitEvenly,
   type IncomeInput,
   type LineInput,
@@ -386,6 +388,48 @@ export async function markSignupPaid(
     })
     .eq("id", id);
   if (error) return { error: error.message };
+  refresh();
+  return {};
+}
+
+// Paid from Nelson's Produce earnings: the fee goes on the family's account
+// as a charge, where their Nelson's credit pays it. Roster players only.
+export async function coverWithCredit(id: string): Promise<ClubResult> {
+  const g = await gate();
+  if ("error" in g) return g;
+  const { data } = await g.db
+    .from("olb_program_signups")
+    .select("id, player_id, charge_id, price_cents, cancelled_at, program:olb_programs(name)")
+    .eq("id", id)
+    .eq("board_id", g.boardId)
+    .maybeSingle();
+  const s = data as { player_id: string | null; charge_id: string | null; price_cents: number; cancelled_at: string | null; program: { name: string } | null } | null;
+  if (!s || s.cancelled_at) return { error: "That sign-up isn't there any more. Refresh the page." };
+  if (!s.player_id) return { error: "Only a player on the roster has an account to charge." };
+  if (s.charge_id) return { error: "This one's already on the family's Payments account." };
+  const { data: charge, error: chargeError } = await g.db
+    .from("olb_charges")
+    .insert({
+      board_id: g.boardId,
+      player_id: s.player_id,
+      kind: "charge",
+      category: "program",
+      description: `${s.program?.name ?? "Program"} (${NELSONS_LABEL})`.slice(0, 120),
+      amount_cents: s.price_cents,
+      entry_date: centralToday(),
+      created_by: g.userId,
+    })
+    .select("id")
+    .single();
+  if (chargeError || !charge) return { error: chargeError?.message ?? "Couldn't add the charge. Try again." };
+  const { error } = await g.db
+    .from("olb_program_signups")
+    .update({ charge_id: (charge as { id: string }).id, paid_cents: 0, paid_method: null, paid_on: null, paid_ref: NELSONS_REF })
+    .eq("id", id);
+  if (error) {
+    await g.db.from("olb_charges").update({ voided_at: now(), voided_by: g.userId }).eq("id", (charge as { id: string }).id);
+    return { error: error.message };
+  }
   refresh();
   return {};
 }

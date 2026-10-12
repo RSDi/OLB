@@ -14,7 +14,7 @@ import { createAdminClient } from "../supabase/admin";
 import { centralToday } from "./data";
 import { formatAmount, parseAmount } from "./logic";
 import { ensureDefaults, familyBalances, latestBoard } from "./club-data";
-import { applySpill, familySpill, type SpillPiece } from "./club-logic";
+import { NELSONS_LABEL, NELSONS_REF, applySpill, familySpill, type SpillPiece } from "./club-logic";
 import { IMPORT_NOTE, parseFinanceWorkbook, personKey, teamKey, type ImportChoices, type ImportPreview, type SheetPlan, type UniformChoices } from "./import-sheet";
 
 // Next.js stops server-action uploads at 1 MB anyway; the spreadsheet is ~40 KB.
@@ -280,26 +280,51 @@ export async function runFinanceImport(form: FormData, choices: ImportChoices): 
       if (error) throw new Error(error.message);
     }
 
-    // Sign-ups, paid as the spreadsheet says. They're never charged to a
-    // family's account: that money already came in.
+    // Sign-ups, paid as the spreadsheet says: that money already came in.
+    // NP ones were paid from Nelson's Produce earnings, so a roster player's
+    // fee goes on the family's account, where their Nelson's credit pays it.
     for (const p of plan.programs) {
       if (!p.signups.length) continue;
-      const { error } = await db.from("olb_program_signups").insert(
-        p.signups.map((s) => ({
+      const rows = [];
+      for (const s of p.signups) {
+        const playerId = matchPlayer(ctx, `${s.first} ${s.last}`, false);
+        let chargeId: string | null = null;
+        if (s.waived && playerId && s.price_cents > 0) {
+          const { data: charge, error } = await db
+            .from("olb_charges")
+            .insert({
+              board_id: boardId,
+              player_id: playerId,
+              kind: "charge",
+              category: "program",
+              description: `${p.name} (${NELSONS_LABEL})`.slice(0, 120),
+              amount_cents: s.price_cents,
+              entry_date: today,
+              note: IMPORT_NOTE,
+              created_by: userId,
+            })
+            .select("id")
+            .single();
+          if (error) throw new Error(error.message);
+          chargeId = (charge as { id: string }).id;
+        }
+        rows.push({
           board_id: boardId,
           program_id: programIds.get(p.name)!,
-          player_id: matchPlayer(ctx, `${s.first} ${s.last}`, false),
+          player_id: playerId,
           child_first: s.first.slice(0, 60) || "?",
           child_last: s.last.slice(0, 60) || "?",
           level: s.level,
           price_cents: s.price_cents,
+          charge_id: chargeId,
           paid_cents: s.waived ? 0 : s.price_cents,
-          paid_on: today,
-          paid_method: s.waived ? "waived" : "other",
-          paid_ref: s.waived ? "NP: Nelson's Produce" : "Spreadsheet",
+          paid_on: chargeId ? null : today,
+          paid_method: chargeId ? null : s.waived ? "waived" : "other",
+          paid_ref: s.waived ? NELSONS_REF : "Spreadsheet",
           note: IMPORT_NOTE,
-        }))
-      );
+        });
+      }
+      const { error } = await db.from("olb_program_signups").insert(rows);
       if (error) throw new Error(error.message);
     }
 

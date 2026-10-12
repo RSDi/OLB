@@ -16,6 +16,8 @@ import {
   programTotals,
   shiftAmountCents,
   signupState,
+  coveredByNelsons,
+  NELSONS_REF,
   snapshotCsv,
   spendBy,
   splitEvenly,
@@ -225,6 +227,20 @@ test("program totals: roster fees on the account, everyone else on the sign-up",
     expensePayments: [pay("gym", 248000)],
   });
   assert.deepEqual(programTotals("sc", data), { signups: 2, billed: 12000, collected: 6000, costs: { budget: 248000, paid: 248000 } });
+});
+
+test("a sign-up paid from Nelson's is a charge on the account, and counts in the program's fees", () => {
+  const base = { id: "n", program_id: "sc", player_id: "p", child_first: "Nate", child_last: "Wesner", child_dob: null, level: null, price_cents: 6000, parent_name: null, parent_email: null, parent_phone: null, note: null, paid_cents: 0, paid_on: null, created_at: "", cancelled_at: null };
+  const covered = { ...base, charge_id: "c", paid_method: null, paid_ref: NELSONS_REF };
+  const waived = { ...base, charge_id: null, paid_method: "waived" as const, paid_ref: NELSONS_REF };
+  assert.equal(coveredByNelsons(covered), true);
+  assert.equal(signupState(covered), "on_account");
+  // The old import's "waived" isn't on any account: not covered, and no fee.
+  assert.equal(coveredByNelsons(waived), false);
+  assert.equal(coveredByNelsons({ ...covered, paid_ref: null }), false);
+  const data = club({ signups: [covered], signupCharges: [{ id: "c", player_id: "p", amount_cents: 6000, voided_at: null }] });
+  assert.equal(programTotals("sc", data).billed, 6000);
+  assert.equal(programTotals("sc", club({ signups: [waived] })).billed, 0);
 });
 
 test("the Snapshot adds up money in and out, teams, events and funds", () => {
