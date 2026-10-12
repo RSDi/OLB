@@ -48,10 +48,15 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         </>
       );
     }
-    const db = createAdminClient();
-    const board = await latestBoard(db);
-    if (!board) return <Notice title="No season yet" body="Payments start once this season's roster is set up." />;
-    const { data, credits } = await loadClubData(db, board);
+    const loaded = await loadClub();
+    if ("notice" in loaded)
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {tabs}
+          {loaded.notice}
+        </div>
+      );
+    const { data, credits } = loaded;
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://omahalightning.org").replace(/\/$/, "");
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -68,14 +73,11 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   // The board and "See club finances": the Snapshot (totals only), and their
   // own balance as a parent on its own tab.
   if (club && tab !== "balance") {
-    const db = createAdminClient();
-    const board = await latestBoard(db);
-    if (!board) return <Notice title="No season yet" body="Payments start once this season's roster is set up." />;
-    const { data, credits } = await loadClubData(db, board);
+    const loaded = await loadClub();
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <PaymentsTabs tabs={["snapshot", "balance"]} active="snapshot" />
-        <SnapshotView snapshot={buildSnapshot(data, credits)} />
+        {"notice" in loaded ? loaded.notice : <SnapshotView snapshot={buildSnapshot(loaded.data, loaded.credits)} />}
       </div>
     );
   }
@@ -116,6 +118,28 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       <FamilyView data={data} dues={due.dues} defaultDue={due.defaultDue} />
     </>
   );
+}
+
+// The club's books for the season, or a notice saying why they didn't load,
+// so the tabs and Families stay usable and the reason is on the screen.
+async function loadClub(): Promise<Awaited<ReturnType<typeof loadClubData>> | { notice: React.ReactNode }> {
+  try {
+    const db = createAdminClient();
+    const board = await latestBoard(db);
+    if (!board) return { notice: <Notice title="No season yet" body="Payments start once this season's roster is set up." /> };
+    return await loadClubData(db, board);
+  } catch (e) {
+    console.error("[payments] loading the club's books failed", e);
+    const reason = e instanceof Error ? e.message : String(e);
+    return {
+      notice: (
+        <Notice
+          title="This tab didn't load"
+          body={`${reason}. Reload to try again; if it keeps happening, send this message to whoever looks after the site.`}
+        />
+      ),
+    };
+  }
 }
 
 function Notice({ title, body }: { title: string; body: string }) {

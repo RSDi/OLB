@@ -211,12 +211,12 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
     await Promise.all([
       loadFinanceSettings(db, b),
       db.from("olb_budget_groups").select("id, name, sort_order").eq("board_id", b).order("sort_order"),
-      db.from("olb_budget_lines").select(LINE_COLUMNS).eq("board_id", b).order("month", { nullsFirst: true }).order("created_at"),
+      db.from("olb_budget_lines").select(LINE_COLUMNS).eq("board_id", b).is("voided_at", null).order("month", { nullsFirst: true }).order("created_at"),
       db.from("olb_expense_payments").select(EXPENSE_PAYMENT_COLUMNS).eq("board_id", b).order("paid_on"),
       db.from("olb_income").select(INCOME_COLUMNS).eq("board_id", b).order("received_on", { nullsFirst: false }).order("created_at"),
       db.from("olb_hosted_events").select("id, name, starts_on, ends_on, note, archived_at").eq("board_id", b).order("starts_on"),
       db.from("olb_programs").select(PROGRAM_COLUMNS).eq("board_id", b).order("starts_on", { nullsFirst: false }),
-      db.from("olb_program_signups").select(SIGNUP_COLUMNS).eq("board_id", b).order("created_at"),
+      db.from("olb_program_signups").select(`${SIGNUP_COLUMNS}, charge:olb_charges(id, player_id, amount_cents, voided_at)`).eq("board_id", b).order("created_at"),
       db.from("olb_program_funds").select("id, name, description, archived_at").eq("board_id", b).order("sort_order"),
       db.from("olb_fundraisers").select("id, name, rate_cents, archived_at").eq("board_id", b).order("name"),
       db.from("olb_fundraiser_shifts").select(SHIFT_COLUMNS).eq("board_id", b).order("worked_on", { nullsFirst: true }).order("created_at"),
@@ -224,28 +224,23 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
       db.from("olb_players").select("id, full_name, team_id").eq("board_id", b).order("full_name"),
       familyTotals(db, b),
     ]);
+  // A table that won't load says which, rather than the page showing
+  // nothing for it.
+  for (const [name, res] of Object.entries({ groups, lines, expensePayments, income, events, programs, signups, funds, fundraisers, shifts, teams, players })) {
+    if (res.error) throw new Error(`Loading ${name}: ${res.error.message}`);
+  }
   const lineRows = (lines.data as BudgetLine[] | null) ?? [];
-  const signupRows = (signups.data as ProgramSignup[] | null) ?? [];
-  const [lineCharges, signupCharges] = await Promise.all([
-    lineRows.length
-      ? db
-          .from("olb_budget_line_charges")
-          .select("line_id, charge:olb_charges(id, amount_cents, voided_at)")
-          .in(
-            "line_id",
-            lineRows.map((l) => l.id)
-          )
-      : Promise.resolve({ data: [] }),
-    signupRows.some((s) => s.charge_id)
-      ? db
-          .from("olb_charges")
-          .select("id, player_id, amount_cents, voided_at")
-          .in(
-            "id",
-            signupRows.map((s) => s.charge_id).filter((x): x is string => !!x)
-          )
-      : Promise.resolve({ data: [] }),
-  ]);
+  const signupRows = ((signups.data as unknown as (ProgramSignup & { charge: ClubData["signupCharges"][number] | null })[] | null) ?? []).map(
+    ({ charge, ...s }) => ({ ...s, _charge: charge })
+  );
+  // Team costs passed on to families, found through their lines' season (a
+  // list of every line's id would make the request too long to send).
+  const lineCharges = await db
+    .from("olb_budget_line_charges")
+    .select("line_id, charge:olb_charges(id, amount_cents, voided_at), line:olb_budget_lines!inner(board_id, voided_at)")
+    .eq("line.board_id", b)
+    .is("line.voided_at", null);
+  if (lineCharges.error) throw new Error(`Loading team costs: ${lineCharges.error.message}`);
 
   const data: ClubData = {
     board,
@@ -259,8 +254,9 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
     income: (income.data as IncomeRow[] | null) ?? [],
     events: (events.data as HostedEvent[] | null) ?? [],
     programs: ((programs.data as (Program & { levels: unknown })[] | null) ?? []).map((p) => ({ ...p, levels: levelsFrom(p.levels) })),
-    signups: signupRows,
-    signupCharges: (signupCharges.data as ClubData["signupCharges"] | null) ?? [],
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the charge goes in signupCharges
+    signups: signupRows.map(({ _charge, ...s }) => s),
+    signupCharges: signupRows.map((s) => s._charge).filter((c): c is ClubData["signupCharges"][number] => !!c),
     funds: (funds.data as Fund[] | null) ?? [],
     fundraisers: (fundraisers.data as Fundraiser[] | null) ?? [],
     shifts: ((shifts.data as (Shift & { hours: number | string })[] | null) ?? []).map((s) => ({ ...s, hours: Number(s.hours) })),
