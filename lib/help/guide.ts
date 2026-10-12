@@ -694,12 +694,13 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     group: "Payments",
     audience: "finance",
     preview: true,
-    keywords: ["programs", "clinics", "summer clinics", "workouts", "spring workouts", "krave", "camp", "sign up", "sign-up", "cognito", "price", "junior high", "high school", "mark paid", "open", "closed"],
+    keywords: ["programs", "clinics", "summer clinics", "workouts", "spring workouts", "krave", "camp", "sign up", "sign-up", "cognito", "price", "junior high", "high school", "mark paid", "open", "closed", "nelson's", "nelsons produce", "covered by nelson's", "np", "waived"],
     body: `Clinics, spring and summer workouts and camps, with their own sign-up page in place of Cognito. On **Payments**, open **Programs**.
 
 - **Add a program**: its name, kind, dates, when and where, what families read, and its prices (one price, or one per group like Junior high $60 and High school $100). **Room for** closes sign-up when it's full.
 - Switch it **Open** and families sign up at its page; **Copy sign-up link** copies the address. An open clinic also takes over the **Summer** page's button.
 - A player on this season's roster gets the fee on their family's **Payments** account. Anyone else shows **Owes** on the sign-up until you **Mark paid** (or **No charge**).
+- Paid from Nelson's Produce earnings: tap **Change** and pick **Nelson's credit** (roster players only). The fee goes on the family's account, where their Nelson's credit pays it, and the sign-up shows **Covered by Nelson's**. The spreadsheet import does this for its NP sign-ups.
 - Costs you link to it on the Budget tab show what it made. **Finished** puts it away when it's over.`,
   },
   {

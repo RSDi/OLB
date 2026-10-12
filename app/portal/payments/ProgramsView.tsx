@@ -2,9 +2,9 @@
 import { useState } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../components/ui";
-import { archiveProgram, cancelSignup, markSignupPaid, saveProgram, setProgramOpen } from "../../../lib/finances/club-actions";
+import { archiveProgram, cancelSignup, coverWithCredit, markSignupPaid, saveProgram, setProgramOpen } from "../../../lib/finances/club-actions";
 import { formatAmount } from "../../../lib/finances/logic";
-import { priceRange, programTotals, signupState, type ProgramInput } from "../../../lib/finances/club-logic";
+import { coveredByNelsons, priceRange, programTotals, signupState, type ProgramInput } from "../../../lib/finances/club-logic";
 import { PROGRAM_KINDS, type ClubData, type Program, type ProgramSignup } from "../../../lib/finances/club-types";
 import { ErrorNote, SegButton, SegGroup, Sheet, capStyle, formatDay, today } from "./parts";
 import { Empty, Notice, linkBtn, sub, useAct } from "./club-parts";
@@ -119,7 +119,7 @@ export function ProgramsView({ data, siteUrl }: { data: ClubData; siteUrl: strin
                         <div style={sub}>{[s.parent_name, s.parent_email, s.parent_phone].filter(Boolean).join(" · ")}</div>
                       </div>
                       <span className={`rsd-chip ${state === "owes" ? "rsd-chip-error" : state === "paid" ? "rsd-chip-accent" : "rsd-chip-mute"}`}>
-                        {STATE_LABEL[state]}
+                        {coveredByNelsons(s) ? "Covered by Nelson's" : STATE_LABEL[state]}
                         {state === "owes" ? ` ${formatAmount(s.price_cents - s.paid_cents)}` : ""}
                       </span>
                       {!s.charge_id && (
@@ -226,8 +226,10 @@ function PaidSheet({ signup, onClose }: { signup: ProgramSignup; onClose: () => 
     ["check", "Check"],
     ["cash", "Cash"],
     ["card", "Card"],
+    ...(signup.player_id ? [["nelsons", "Nelson's credit"]] : []),
     ["waived", "No charge"],
   ];
+  const save = () => (method === "nelsons" ? coverWithCredit(signup.id) : markSignupPaid(signup.id, { amount, method, date, reference }));
   return (
     <Sheet eyebrow={`${signup.child_first} ${signup.child_last}`} title="Mark paid" busy={busy} onClose={onClose}>
       <div style={{ ...sub, fontWeight: 600 }}>The price is {formatAmount(signup.price_cents)}.</div>
@@ -236,7 +238,8 @@ function PaidSheet({ signup, onClose }: { signup: ProgramSignup; onClose: () => 
           <SegButton key={k} label={label} active={method === k} onClick={() => setMethod(k)} />
         ))}
       </SegGroup>
-      {method !== "waived" && (
+      {method === "nelsons" && <div style={sub}>Puts the fee on their family&apos;s account, where their Nelson&apos;s Produce credit pays it.</div>}
+      {method !== "waived" && method !== "nelsons" && (
         <>
           <Input label="Amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
           <Input label="Paid on" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -245,7 +248,7 @@ function PaidSheet({ signup, onClose }: { signup: ProgramSignup; onClose: () => 
       )}
       {error && <ErrorNote text={error} />}
       <div style={{ display: "flex", gap: 8, marginTop: "auto", paddingTop: 8 }}>
-        <Pill variant="accent" onClick={async () => (await act(() => markSignupPaid(signup.id, { amount, method, date, reference }))) && onClose()} disabled={busy}>
+        <Pill variant="accent" onClick={async () => (await act(save)) && onClose()} disabled={busy}>
           {busy ? "Saving…" : "Save"}
         </Pill>
         <Pill variant="ghost" onClick={onClose} disabled={busy}>
