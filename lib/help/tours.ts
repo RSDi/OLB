@@ -916,6 +916,12 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Its group, what it's for, the vendor, the budget, and the team, month, clinic or tournament it belongs to.",
       },
       {
+        target: "budget-line",
+        click: "budget-group-toggle",
+        title: "Open a group",
+        body: "Groups start closed, with what each has paid against its budget. Tap one to see its lines; a search opens every group with a match.",
+      },
+      {
         target: "budget-line-actions",
         click: "budget-line",
         title: "Pay it, or pass it on",
