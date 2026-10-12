@@ -12,9 +12,10 @@ import { revalidatePath } from "next/cache";
 import { requireFinances } from "../auth/guards";
 import { createAdminClient } from "../supabase/admin";
 import { centralToday } from "./data";
+import { formatAmount, parseAmount } from "./logic";
 import { ensureDefaults, familyBalances, latestBoard } from "./club-data";
 import { applySpill, familySpill, type SpillPiece } from "./club-logic";
-import { IMPORT_NOTE, parseFinanceWorkbook, personKey, teamKey, type ImportChoices, type ImportPreview, type SheetPlan } from "./import-sheet";
+import { IMPORT_NOTE, parseFinanceWorkbook, personKey, teamKey, type ImportChoices, type ImportPreview, type SheetPlan, type UniformChoices } from "./import-sheet";
 
 // Next.js stops server-action uploads at 1 MB anyway; the spreadsheet is ~40 KB.
 const MAX_BYTES = 1024 * 1024;
@@ -169,6 +170,8 @@ export async function previewFinanceImport(form: FormData): Promise<ImportPrevie
     siteTeams: ctx.teams,
     checks,
     notes: plan.notes,
+    uniforms: await uniformPlan(ctx),
+    payments: await paymentPlan(ctx),
   };
 }
 
@@ -400,10 +403,144 @@ export async function undoFinanceImport(): Promise<{ error?: string; notice?: st
     db.from("olb_program_signups").update({ cancelled_at: now }).eq("board_id", board.id).eq("note", IMPORT_NOTE).is("cancelled_at", null),
     db.from("olb_fundraiser_shifts").update(voided).eq("board_id", board.id).eq("note", IMPORT_NOTE).is("voided_at", null),
     chargeIds.length ? db.from("olb_charges").update(voided).in("id", chargeIds).is("voided_at", null) : Promise.resolve({ error: null }),
+    // Payments recorded to match Regular Season.
+    db.from("olb_payments").update(voided).eq("board_id", board.id).eq("note", IMPORT_NOTE).is("voided_at", null),
+    // Uniform charges added from Regular Season.
+    db.from("olb_charges").update(voided).eq("board_id", board.id).eq("category", "uniform").eq("note", IMPORT_NOTE).is("voided_at", null),
   ]);
   const failed = results.find((r) => r.error);
   if (failed?.error) return { error: failed.error.message };
   revalidatePath("/portal/payments");
   const lines = ((results[0] as { data: unknown[] | null }).data ?? []).length;
   return { notice: lines ? `Took back the import (${lines} costs and everything with them).` : "There was nothing imported to take back." };
+}
+
+// ─── Uniforms from Regular Season ───────────────────────────────────────────
+
+type UniformPiece = { player_id: string; item: "Jersey" | "Shorts"; size: string };
+
+// The jerseys and shorts Regular Season says were ordered, for players on
+// this season's roster, less any already on their accounts as a uniform
+// charge for that piece (from an earlier run, the uniform order, or by hand).
+async function uniformPieces(ctx: Context): Promise<{ pieces: UniformPiece[]; unmatched: string[]; alreadyCharged: number }> {
+  const wanted: UniformPiece[] = [];
+  const unmatched: string[] = [];
+  for (const p of ctx.plan.players) {
+    if (!p.jersey && !p.shorts) continue;
+    const id = matchPlayer(ctx, `${p.first} ${p.last}`, false);
+    if (!id) {
+      unmatched.push(`${p.first} ${p.last}`);
+      continue;
+    }
+    if (p.jersey) wanted.push({ player_id: id, item: "Jersey", size: p.jersey });
+    if (p.shorts) wanted.push({ player_id: id, item: "Shorts", size: p.shorts });
+  }
+  if (wanted.length === 0) return { pieces: [], unmatched, alreadyCharged: 0 };
+  const { data } = await ctx.db
+    .from("olb_charges")
+    .select("player_id, description")
+    .eq("board_id", ctx.boardId)
+    .eq("category", "uniform")
+    .is("voided_at", null);
+  const have = new Set(((data as { player_id: string; description: string }[] | null) ?? []).map((c) => `${c.player_id}|${/short/i.test(c.description) ? "Shorts" : /jersey/i.test(c.description) ? "Jersey" : "?"}`));
+  const pieces = wanted.filter((w) => !have.has(`${w.player_id}|${w.item}`));
+  return { pieces, unmatched, alreadyCharged: wanted.length - pieces.length };
+}
+
+async function uniformPlan(ctx: Context): Promise<ImportPreview["uniforms"]> {
+  const { pieces, unmatched, alreadyCharged } = await uniformPieces(ctx);
+  return {
+    jerseys: pieces.filter((x) => x.item === "Jersey").length,
+    shorts: pieces.filter((x) => x.item === "Shorts").length,
+    players: new Set(pieces.map((x) => x.player_id)).size,
+    unmatched,
+    alreadyCharged,
+  };
+}
+
+// A Uniform charge on each player's account for every jersey and pair of
+// shorts Regular Season says was ordered: "Jersey (AM)". Safe to run again;
+// pieces already charged are skipped. Runs whether or not the rest of the
+// spreadsheet was imported.
+export async function runUniformCharges(form: FormData, choices: UniformChoices): Promise<{ error?: string; notice?: string }> {
+  const ctx = await load(form);
+  if ("error" in ctx) return ctx;
+  const price = { Jersey: parseAmount(choices.jersey), Shorts: parseAmount(choices.shorts) };
+  if (!price.Jersey || !price.Shorts) return { error: "Enter what a jersey and shorts cost, like 55." };
+  const { pieces } = await uniformPieces(ctx);
+  if (pieces.length === 0) return { notice: "Every jersey and pair of shorts on Regular Season is already on families' accounts." };
+  const today = centralToday();
+  const { error } = await ctx.db.from("olb_charges").insert(
+    pieces.map((x) => ({
+      board_id: ctx.boardId,
+      player_id: x.player_id,
+      kind: "charge",
+      category: "uniform",
+      description: `${x.item} (${x.size})`,
+      amount_cents: price[x.item]!,
+      entry_date: today,
+      note: IMPORT_NOTE,
+      created_by: ctx.userId,
+    }))
+  );
+  if (error) return { error: error.message };
+  revalidatePath("/portal/payments");
+  const players = new Set(pieces.map((x) => x.player_id)).size;
+  return { notice: `Added ${pieces.length} uniform charges for ${players} players.` };
+}
+
+// ─── Payments to match Regular Season ───────────────────────────────────────
+
+const dollarText = (c: number) => formatAmount(c);
+
+// What each player has paid by the sheet (PAID, less the Nelson's column,
+// which comes in as Fundraising credits) against what Payments has. Only
+// gaps the sheet is ahead on are recorded; the rest are listed.
+async function paymentGaps(ctx: Context): Promise<{ gaps: { player_id: string; cents: number }[]; over: string[] }> {
+  const { data } = await ctx.db.from("olb_payments").select("player_id, amount_cents").eq("board_id", ctx.boardId).is("voided_at", null);
+  const site = new Map<string, number>();
+  for (const p of (data as { player_id: string; amount_cents: number }[] | null) ?? []) site.set(p.player_id, (site.get(p.player_id) ?? 0) + p.amount_cents);
+  const gaps: { player_id: string; cents: number }[] = [];
+  const over: string[] = [];
+  for (const sp of ctx.plan.players) {
+    if (sp.comped || !sp.paid_cents) continue;
+    const id = matchPlayer(ctx, `${sp.first} ${sp.last}`, false);
+    if (!id) continue;
+    const cash = sp.paid_cents - (sp.nelsons_cents ?? 0);
+    const have = site.get(id) ?? 0;
+    if (cash > have) gaps.push({ player_id: id, cents: cash - have });
+    else if (cash < have) over.push(`${sp.first} ${sp.last} (Payments ${dollarText(have)}, sheet ${dollarText(cash)})`);
+  }
+  return { gaps, over };
+}
+
+async function paymentPlan(ctx: Context): Promise<ImportPreview["payments"]> {
+  const { gaps, over } = await paymentGaps(ctx);
+  return { players: gaps.length, cents: gaps.reduce((n, g) => n + g.cents, 0), over };
+}
+
+// Records what Payments is missing against Regular Season: one payment per
+// player for the difference, "From the spreadsheet". Safe to run again.
+export async function runPaymentCatchUp(form: FormData): Promise<{ error?: string; notice?: string }> {
+  const ctx = await load(form);
+  if ("error" in ctx) return ctx;
+  const { gaps } = await paymentGaps(ctx);
+  if (gaps.length === 0) return { notice: "Payments already has everything the sheet says was paid." };
+  const today = centralToday();
+  const { error } = await ctx.db.from("olb_payments").insert(
+    gaps.map((g) => ({
+      board_id: ctx.boardId,
+      group_id: crypto.randomUUID(),
+      player_id: g.player_id,
+      amount_cents: g.cents,
+      paid_on: today,
+      method: "other",
+      reference: "From the spreadsheet",
+      note: IMPORT_NOTE,
+      recorded_by: ctx.userId,
+    }))
+  );
+  if (error) return { error: error.message };
+  revalidatePath("/portal/payments");
+  return { notice: `Recorded ${dollarText(gaps.reduce((n, g) => n + g.cents, 0))} in payments for ${gaps.length} players, to match the sheet.` };
 }

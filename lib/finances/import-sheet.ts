@@ -81,6 +81,9 @@ export interface SheetPlayer {
   fee_cents: number | null;
   paid_cents: number | null;
   nelsons_cents: number | null;
+  // Uniform pieces ordered for them, by size ("AM"); null when none.
+  jersey: string | null;
+  shorts: string | null;
 }
 
 export interface SheetPlan {
@@ -329,7 +332,17 @@ function readRoster(rows: Cell[][]): SheetPlayer[] {
     const i = head.findIndex((h) => re.test(h));
     return i >= 0 ? i : fallback;
   };
-  const [cFirst, cLast, cDob, cFee, cPaid, cNel] = [col(/^first/, 0), col(/^last/, 1), col(/^dob|birth/, 2), col(/registration amount|^fee/, 7), col(/^paid/, 9), col(/nelson/, 11)];
+  const [cFirst, cLast, cDob, cFee, cPaid, cNel, cJersey, cShorts] = [
+    col(/^first/, 0),
+    col(/^last/, 1),
+    col(/^dob|birth/, 2),
+    col(/registration amount|^fee/, 7),
+    col(/^paid/, 9),
+    col(/nelson/, 11),
+    col(/jersey/, 4),
+    col(/shorts/, 5),
+  ];
+  const size = (v: Cell) => text(v).slice(0, 20) || null;
   const out: SheetPlayer[] = [];
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i] ?? [];
@@ -346,6 +359,8 @@ function readRoster(rows: Cell[][]): SheetPlayer[] {
       fee_cents: money(r[cFee]),
       paid_cents: money(r[cPaid]),
       nelsons_cents: money(r[cNel]),
+      jersey: size(r[cJersey]),
+      shorts: size(r[cShorts]),
     });
   }
   return out;
@@ -425,6 +440,16 @@ export interface ImportPreview {
   // Regular Season against Payments: where they differ.
   checks: string[];
   notes: string[];
+  // Jerseys and shorts ordered on Regular Season, for uniform charges.
+  uniforms: { jerseys: number; shorts: number; players: number; unmatched: string[]; alreadyCharged: number };
+  // Regular Season's PAID (less Nelson's) against Payments, for recording
+  // what's missing.
+  payments: { players: number; cents: number; over: string[] };
+}
+
+export interface UniformChoices {
+  jersey: string; // "$55"
+  shorts: string;
 }
 
 // "10u Grey" and "10U GREY" are the same team; so are "14u White" and
