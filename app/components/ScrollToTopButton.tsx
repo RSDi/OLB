@@ -8,11 +8,18 @@ const SHOW_AFTER_PX = 480;
 // `.rsd-app main` is the app shell's real scrolling container (see
 // app/globals.css's "Portal app shell" section) — `window`/`document`
 // never scroll in this layout, so both the visibility check and the click
-// handler target it directly rather than the usual window.scrollY.
+// handler target it directly rather than the usual window.scrollY. Pages
+// outside the shell (the public Directory) have no such element and scroll
+// the window, so fall back to that.
 const SCROLLER_SELECTOR = ".rsd-app main";
 
+function scroller(): { el: HTMLElement | Window; top: () => number } {
+  const main = document.querySelector<HTMLElement>(SCROLLER_SELECTOR);
+  return main ? { el: main, top: () => main.scrollTop } : { el: window, top: () => window.scrollY };
+}
+
 // Floating yellow "back to top" button, mounted once by the portal shell so
-// every portal page gets it. It only appears once you've scrolled far enough
+// every portal page gets it (and by the public Directory page). It only appears once you've scrolled far enough
 // for it to save a real scroll, so short pages never show it.
 export function ScrollToTopButton() {
   const [visible, setVisible] = useState(false);
@@ -21,12 +28,11 @@ export function ScrollToTopButton() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const scroller = document.querySelector(SCROLLER_SELECTOR);
-    if (!scroller) return;
-    const onScroll = () => setVisible(scroller.scrollTop > SHOW_AFTER_PX);
+    const { el, top } = scroller();
+    const onScroll = () => setVisible(top() > SHOW_AFTER_PX);
     onScroll();
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    return () => scroller.removeEventListener("scroll", onScroll);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
   }, [pathname]);
 
   if (!visible) return null;
@@ -34,7 +40,7 @@ export function ScrollToTopButton() {
   return (
     <button
       type="button"
-      onClick={() => document.querySelector(SCROLLER_SELECTOR)?.scrollTo({ top: 0, behavior: "smooth" })}
+      onClick={() => scroller().el.scrollTo({ top: 0, behavior: "smooth" })}
       aria-label="Scroll to top"
       className="gw-press"
       style={{
