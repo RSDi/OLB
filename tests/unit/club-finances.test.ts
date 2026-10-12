@@ -404,3 +404,43 @@ test("fundraising money goes to the player picked, then on down the family", asy
   assert.equal(Math.round(odd.reduce((n, p) => n + p.hours, 0) * 100) / 100, 3.42);
   assert.equal(odd.reduce((n, p) => n + p.amount_cents, 0), 3420);
 });
+
+test("balances against the sheet: families that differ, biggest first, credits spilled across brothers still add up", async () => {
+  const { compareBalances } = await import("../../lib/finances/import-sheet.ts");
+  const sp = (first: string, last: string, o: Partial<import("../../lib/finances/import-sheet.ts").SheetPlayer> = {}) => ({
+    row: 1, first, last, dob: null, comped: false, fee_cents: 37500, paid_cents: 0, nelsons_cents: null, due_cents: 0, jersey: null, shorts: null, ...o,
+  });
+  const families = [
+    [{ id: "luke", name: "Luke Wesner" }, { id: "nate", name: "Nate Wesner" }],
+    [{ id: "ck", name: "Gideon Nelson" }],
+    [{ id: "max", name: "Max Malone" }],
+    [{ id: "new", name: "New Kid" }],
+  ];
+  const site = new Map([
+    // Nelson's credit all on Luke; the family still owes the sheet's total.
+    ["luke", { charged: 37500, credited: 50000, paid: 0 }],
+    ["nate", { charged: 51000, credited: 0, paid: 24480 }],
+    // CK still charged registration here.
+    ["ck", { charged: 52500, credited: 0, paid: 0 }],
+    ["max", { charged: 63500, credited: 0, paid: 63500 }],
+    ["new", { charged: 40000, credited: 0, paid: 0 }],
+  ]);
+  const sheet = new Map([
+    ["luke", sp("Luke", "Wesner", { paid_cents: 37500, nelsons_cents: 37500 })],
+    ["nate", sp("Nate", "Wesner", { fee_cents: 40000, jersey: "YM", shorts: "YM", paid_cents: 37070, nelsons_cents: 37070, due_cents: 13930 })],
+    ["ck", sp("Gideon", "Nelson", { comped: true, fee_cents: null })],
+    ["max", sp("Max", "Malone", { fee_cents: 52500, paid_cents: 63500 })],
+  ]);
+  const out = compareBalances(families, site, sheet);
+  // Wesner: 885 − 500 − 244.80 = 140.20 here against 139.30 on the sheet.
+  assert.deepEqual(out.families.map((f) => [f.names, f.site, f.sheet]), [
+    ["Gideon Nelson", 52500, 0],
+    ["New Kid", 40000, 0],
+    ["Luke Wesner, Nate Wesner", 14020, 13930],
+  ]);
+  assert.equal(out.families[1].players[0].sheet, null);
+  assert.equal(out.families[0].players[0].sheet?.comped, true);
+  assert.equal(out.siteOwed, 52500 + 40000 + 14020);
+  assert.equal(out.sheetDue, 13930);
+});
+

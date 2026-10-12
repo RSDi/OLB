@@ -3,8 +3,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pill } from "../../components/ui";
 import { ComboSelect } from "../../components/ComboSelect";
-import { previewFinanceImport, runFinanceImport, runPaymentCatchUp, runUniformCharges, undoFinanceImport } from "../../../lib/finances/import-actions";
-import type { ImportPreview } from "../../../lib/finances/import-sheet";
+import { previewFinanceImport, runCoachComps, runFinanceImport, runPaymentCatchUp, runUniformCharges, undoFinanceImport } from "../../../lib/finances/import-actions";
+import type { CompareFamily, ImportPreview } from "../../../lib/finances/import-sheet";
 import { formatAmount } from "../../../lib/finances/logic";
 import { ErrorNote, Sheet, capStyle } from "./parts";
 import { sub } from "./club-parts";
@@ -36,6 +36,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
   const [prices, setPrices] = useState({ jersey: "55", shorts: "55" });
   const [uniformNote, setUniformNote] = useState<string | null>(null);
   const [paymentNote, setPaymentNote] = useState<string | null>(null);
+  const [coachNote, setCoachNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -90,6 +91,27 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
     setBusy(false);
     if (res.error) return setError(res.error);
     setPaymentNote(res.notice ?? "Recorded.");
+    router.refresh();
+  }
+
+  // The balances list again, after a change here or on Payments.
+  async function recheck() {
+    const res = await previewFinanceImport(form()).catch(() => null);
+    if (res && !("error" in res)) setPreview((cur) => (cur ? { ...cur, coaches: res.coaches, compare: res.compare, payments: res.payments, uniforms: res.uniforms } : cur));
+  }
+
+  async function coaches() {
+    if (!confirm("Take the registration fee off for these coaches' kids?")) return;
+    setBusy(true);
+    setError(null);
+    const res = await runCoachComps(form()).catch(() => ({ error: "That didn't work. Try again." }) as { error?: string; notice?: string });
+    if (res.error) {
+      setBusy(false);
+      return setError(res.error);
+    }
+    setCoachNote(res.notice ?? "Done.");
+    await recheck();
+    setBusy(false);
     router.refresh();
   }
 
@@ -292,6 +314,42 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
             </div>
           )}
 
+          {(preview.coaches.players.length > 0 || coachNote) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-tour="import-coaches">
+              <span style={capStyle}>Coaches&apos; kids from Regular Season</span>
+              {coachNote ? (
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{coachNote}</div>
+              ) : (
+                <>
+                  <div style={sub}>
+                    {`The sheet marks ${preview.coaches.players.join(", ")} "CK", but their registration (${formatAmount(preview.coaches.cents)} in all) is still charged here. Take it off with a Coach's kid credit on each account.`}
+                  </div>
+                  <div>
+                    <Pill size="sm" variant="light" onClick={coaches} disabled={busy}>
+                      Take their fee off
+                    </Pill>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {preview.compare.families.length > 0 && (
+            <details data-tour="import-compare">
+              <summary style={{ ...capStyle, cursor: "pointer" }}>
+                {`Balances that differ from the sheet (${preview.compare.families.length})`}
+              </summary>
+              <div style={{ ...sub, margin: "8px 0" }}>
+                {`Still owed here: ${formatAmount(preview.compare.siteOwed)}. The sheet's Amount Due: ${formatAmount(preview.compare.sheetDue)}. Each family below owes a different amount here than the sheet says, biggest difference first.`}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {preview.compare.families.map((f) => (
+                  <CompareRow key={f.names} family={f} />
+                ))}
+              </div>
+            </details>
+          )}
+
           {preview.checks.length > 0 && (
             <details>
               <summary style={{ ...capStyle, cursor: "pointer" }}>Regular Season vs Payments ({preview.checks.length})</summary>
@@ -337,5 +395,28 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
       )}
       {!preview && error && <ErrorNote text={error} />}
     </Sheet>
+  );
+}
+
+const owesText = (c: number) => (c < 0 ? `${formatAmount(-c)} credit` : `owes ${formatAmount(c)}`);
+
+// One family: what the site and the sheet each say, player by player.
+function CompareRow({ family }: { family: CompareFamily }) {
+  return (
+    <div style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13.5, fontWeight: 700 }}>{family.names}</span>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>{`Here ${owesText(family.site)} · sheet ${owesText(family.sheet)}`}</span>
+      </div>
+      {family.players.map((p) => (
+        <div key={p.name} style={sub}>
+          <strong>{p.name}</strong>
+          {` — here: ${formatAmount(p.site.charged)} charged, ${formatAmount(p.site.credited)} taken off, ${formatAmount(p.site.paid)} paid. `}
+          {p.sheet
+            ? `Sheet: ${p.sheet.comped ? "CK" : `${formatAmount(p.sheet.fee)} registration`}${p.sheet.uniforms ? `, ${p.sheet.uniforms} uniform ${p.sheet.uniforms === 1 ? "piece" : "pieces"}` : ""}, ${formatAmount(p.sheet.paid)} paid${p.sheet.nelsons ? ` (${formatAmount(p.sheet.nelsons)} Nelson's)` : ""}, due ${formatAmount(p.sheet.due)}.`
+            : "Not on the sheet's Regular Season."}
+        </div>
+      ))}
+    </div>
   );
 }

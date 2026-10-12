@@ -81,6 +81,8 @@ export interface SheetPlayer {
   fee_cents: number | null;
   paid_cents: number | null;
   nelsons_cents: number | null;
+  // The sheet's Amount Due: what they still owe by Jason's count.
+  due_cents: number | null;
   // Uniform pieces ordered for them, by size ("AM"); null when none.
   jersey: string | null;
   shorts: string | null;
@@ -332,7 +334,7 @@ function readRoster(rows: Cell[][]): SheetPlayer[] {
     const i = head.findIndex((h) => re.test(h));
     return i >= 0 ? i : fallback;
   };
-  const [cFirst, cLast, cDob, cFee, cPaid, cNel, cJersey, cShorts] = [
+  const [cFirst, cLast, cDob, cFee, cPaid, cNel, cJersey, cShorts, cDue] = [
     col(/^first/, 0),
     col(/^last/, 1),
     col(/^dob|birth/, 2),
@@ -341,6 +343,7 @@ function readRoster(rows: Cell[][]): SheetPlayer[] {
     col(/nelson/, 11),
     col(/jersey/, 4),
     col(/shorts/, 5),
+    col(/amount due|^due/, 8),
   ];
   const size = (v: Cell) => text(v).slice(0, 20) || null;
   const out: SheetPlayer[] = [];
@@ -359,6 +362,7 @@ function readRoster(rows: Cell[][]): SheetPlayer[] {
       fee_cents: money(r[cFee]),
       paid_cents: money(r[cPaid]),
       nelsons_cents: money(r[cNel]),
+      due_cents: money(r[cDue]),
       jersey: size(r[cJersey]),
       shorts: size(r[cShorts]),
     });
@@ -445,6 +449,70 @@ export interface ImportPreview {
   // Regular Season's PAID (less Nelson's) against Payments, for recording
   // what's missing.
   payments: { players: number; cents: number; over: string[] };
+  // "CK" players still charged registration with nothing taking it off.
+  coaches: { players: string[]; cents: number };
+  // Every family whose site balance differs from the sheet's Amount Due.
+  compare: { families: CompareFamily[]; siteOwed: number; sheetDue: number };
+}
+
+// Each family's balance on the site against the sheet's Amount Due.
+export interface SiteMoney {
+  charged: number;
+  credited: number;
+  paid: number;
+}
+
+export interface ComparePlayer {
+  name: string;
+  site: SiteMoney;
+  // Null when the sheet's Regular Season doesn't list them.
+  sheet: { comped: boolean; fee: number; uniforms: number; paid: number; nelsons: number; due: number } | null;
+}
+
+export interface CompareFamily {
+  names: string;
+  site: number; // charged − credited − paid; below zero is a credit
+  sheet: number;
+  players: ComparePlayer[];
+}
+
+// Families whose balance on the site differs from what the sheet says they
+// owe, biggest difference first. A family is the site's (shared parents),
+// so Nelson's credit that spilled from one brother to another still adds up.
+export function compareBalances(
+  families: { id: string; name: string }[][],
+  site: Map<string, SiteMoney>,
+  sheet: Map<string, SheetPlayer>
+): { families: CompareFamily[]; siteOwed: number; sheetDue: number } {
+  const out: CompareFamily[] = [];
+  let siteOwed = 0;
+  let sheetDue = 0;
+  for (const fam of families) {
+    const players: ComparePlayer[] = fam.map((p) => {
+      const sp = sheet.get(p.id);
+      return {
+        name: p.name,
+        site: site.get(p.id) ?? { charged: 0, credited: 0, paid: 0 },
+        sheet: sp
+          ? {
+              comped: sp.comped,
+              fee: sp.comped ? 0 : sp.fee_cents ?? 0,
+              uniforms: (sp.jersey ? 1 : 0) + (sp.shorts ? 1 : 0),
+              paid: sp.paid_cents ?? 0,
+              nelsons: sp.nelsons_cents ?? 0,
+              due: sp.due_cents ?? 0,
+            }
+          : null,
+      };
+    });
+    const siteBal = players.reduce((n, p) => n + p.site.charged - p.site.credited - p.site.paid, 0);
+    const sheetBal = players.reduce((n, p) => n + (p.sheet?.due ?? 0), 0);
+    siteOwed += Math.max(0, siteBal);
+    sheetDue += sheetBal;
+    if (siteBal !== sheetBal) out.push({ names: fam.map((p) => p.name).join(", "), site: siteBal, sheet: sheetBal, players });
+  }
+  out.sort((a, b) => Math.abs(b.site - b.sheet) - Math.abs(a.site - a.sheet) || a.names.localeCompare(b.names));
+  return { families: out, siteOwed, sheetDue };
 }
 
 export interface UniformChoices {
