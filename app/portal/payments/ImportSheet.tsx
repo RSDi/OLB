@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pill } from "../../components/ui";
 import { ComboSelect } from "../../components/ComboSelect";
-import { previewFinanceImport, runFinanceImport, undoFinanceImport } from "../../../lib/finances/import-actions";
+import { previewFinanceImport, runFinanceImport, runPaymentCatchUp, runUniformCharges, undoFinanceImport } from "../../../lib/finances/import-actions";
 import type { ImportPreview } from "../../../lib/finances/import-sheet";
 import { formatAmount } from "../../../lib/finances/logic";
 import { ErrorNote, Sheet, capStyle } from "./parts";
@@ -33,6 +33,9 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
   const [workers, setWorkers] = useState<Record<string, string>>({});
   const [postCredits, setPostCredits] = useState(true);
   const [spill, setSpill] = useState(true);
+  const [prices, setPrices] = useState({ jersey: "55", shorts: "55" });
+  const [uniformNote, setUniformNote] = useState<string | null>(null);
+  const [paymentNote, setPaymentNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -64,6 +67,29 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
     setBusy(false);
     if (res.error) return setError(res.error);
     setDone(res.notice ?? "Imported.");
+    router.refresh();
+  }
+
+  // Jerseys and shorts from Regular Season, on their own: they can be added
+  // after the rest of the spreadsheet is in.
+  async function uniforms() {
+    setBusy(true);
+    setError(null);
+    const res = await runUniformCharges(form(), prices).catch(() => ({ error: "That didn't work. Try again." }) as { error?: string; notice?: string });
+    setBusy(false);
+    if (res.error) return setError(res.error);
+    setUniformNote(res.notice ?? "Added.");
+    router.refresh();
+  }
+
+  async function catchUp() {
+    if (!confirm("Record these payments so Payments matches the spreadsheet?")) return;
+    setBusy(true);
+    setError(null);
+    const res = await runPaymentCatchUp(form()).catch(() => ({ error: "That didn't work. Try again." }) as { error?: string; notice?: string });
+    setBusy(false);
+    if (res.error) return setError(res.error);
+    setPaymentNote(res.notice ?? "Recorded.");
     router.refresh();
   }
 
@@ -205,6 +231,63 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
                     <span style={{ ...sub, display: "block" }}>Sarah Wesner&apos;s shifts go to Luke until he owes nothing, then to Nate.</span>
                   </span>
                 </label>
+              )}
+            </div>
+          )}
+
+          {(preview.uniforms.jerseys > 0 || preview.uniforms.shorts > 0 || preview.uniforms.alreadyCharged > 0) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-tour="import-uniforms">
+              <span style={capStyle}>Uniforms from Regular Season</span>
+              {uniformNote ? (
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{uniformNote}</div>
+              ) : preview.uniforms.jerseys + preview.uniforms.shorts === 0 ? (
+                <div style={sub}>Every jersey and pair of shorts on the sheet is already on families&apos; accounts.</div>
+              ) : (
+                <>
+                  <div style={sub}>
+                    {`${preview.uniforms.jerseys} jerseys and ${preview.uniforms.shorts} shorts ordered for ${preview.uniforms.players} players, each a Uniform charge on their family's account, like "Jersey (AM)".`}
+                    {preview.uniforms.alreadyCharged > 0 && ` ${preview.uniforms.alreadyCharged} already charged are left alone.`}
+                  </div>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600 }}>
+                      Jersey
+                      <input inputMode="decimal" value={prices.jersey} onChange={(e) => setPrices({ ...prices, jersey: e.target.value })} style={{ ...selectStyle, width: 90 }} />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600 }}>
+                      Shorts
+                      <input inputMode="decimal" value={prices.shorts} onChange={(e) => setPrices({ ...prices, shorts: e.target.value })} style={{ ...selectStyle, width: 90 }} />
+                    </label>
+                    <Pill size="sm" variant={preview.alreadyImported ? "accent" : "light"} onClick={uniforms} disabled={busy}>
+                      Add uniform charges
+                    </Pill>
+                  </div>
+                </>
+              )}
+              {preview.uniforms.unmatched.length > 0 && (
+                <div style={sub}>Not on this season&apos;s roster, so left out: {preview.uniforms.unmatched.join(", ")}.</div>
+              )}
+            </div>
+          )}
+
+          {(preview.payments.players > 0 || preview.payments.over.length > 0) && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-tour="import-payments">
+              <span style={capStyle}>Match payments to the sheet</span>
+              {paymentNote ? (
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{paymentNote}</div>
+              ) : preview.payments.players > 0 ? (
+                <>
+                  <div style={sub}>
+                    {`Regular Season shows ${formatAmount(preview.payments.cents)} more paid than Payments, across ${preview.payments.players} players (counting PAID less the Nelson's column, which comes in as Fundraising credits). Record each difference as a payment "From the spreadsheet". Add the uniform charges first so the balances come out right.`}
+                  </div>
+                  <div>
+                    <Pill size="sm" variant="light" onClick={catchUp} disabled={busy}>
+                      Record {formatAmount(preview.payments.cents)} in payments
+                    </Pill>
+                  </div>
+                </>
+              ) : null}
+              {preview.payments.over.length > 0 && (
+                <div style={sub}>Payments shows more than the sheet for these, so they&apos;re left alone: {preview.payments.over.join("; ")}.</div>
               )}
             </div>
           )}
