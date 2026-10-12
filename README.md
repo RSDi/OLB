@@ -133,8 +133,14 @@ Hosted on Vercel via the GitHub integration — pushes to `main` deploy to
 production; PRs get preview deployments. Set the environment variables from
 `.env.example` in the Vercel project settings, and set the same `CRON_SECRET`
 there so the scheduled PM-generation job (`vercel.json` → `/api/cron/pm-generate`)
-is authenticated. Remember to apply new `supabase/migrations/` to the production
-database before (or together with) a deploy that depends on them.
+is authenticated.
+
+New `supabase/migrations/` files are applied to production by the Migrate
+GitHub Action (`.github/workflows/migrate.yml`) when they land on `main`. It
+needs the repository secret `DATABASE_URL` (Supabase → Connect → Session
+pooler URI, port 5432). Files that drop a table or column wait for a manual
+run (Actions → Migrate → Run workflow, "Allow destructive") once the deploy is
+live. Locally: `npm run db:migrate -- --plan` lists what's pending.
 
 ## CI
 

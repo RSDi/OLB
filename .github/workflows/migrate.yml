@@ -1,0 +1,90 @@
+name: Migrate
+
+# Applies pending supabase/migrations/*.sql to production with scripts/migrate.mjs,
+# so landing a change on main no longer depends on someone pasting its SQL.
+#
+#   • On push to main (when a migration file changed): applies ADDITIVE files.
+#     Vercel builds in ~1-2 min, so they normally land before the new code does.
+#   • The runner stops without applying anything if a pending file is older
+#     than the newest recorded one (applied by hand in the SQL editor, never
+#     recorded) or drops a table/column (those run AFTER the deploy — see
+#     AGENTS.md "Ship it"). Both need a person: fix the record, or use the
+#     manual run below once the deploy is live.
+#   • Manual: Actions → Migrate → Run workflow. "Plan only" lists what would
+#     run; untick it to apply; tick "Allow destructive" for a drop.
+#   • One-time setup: fill in "Baseline up to" with the newest file already in
+#     production (e.g. 0131_club_finances.sql) to record it and everything
+#     before it as applied, without running any SQL.
+#
+# Needs the repository secret DATABASE_URL: the production database's
+# Session pooler URI (Supabase → Connect → Session pooler, port 5432).
+# GitHub's runners are IPv4-only and Supabase's direct host is IPv6, so the
+# direct string won't connect. Until the secret exists this job does nothing.
+
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch:
+    inputs:
+      plan_only:
+        description: "Only list what would run (apply nothing)"
+        type: boolean
+        default: true
+      allow_destructive:
+        description: "Allow migrations that drop a table or column (only after the deploy that stops using it is live)"
+        type: boolean
+        default: false
+      baseline_up_to:
+        description: "Setup only: record this file and every earlier one as already applied (runs no SQL)"
+        type: string
+        default: ""
+
+# One at a time, never cancelled half-way.
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply pending migrations
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Check configuration
+        id: cfg
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::DATABASE_URL secret not set — skipping. Add it under Settings → Secrets and variables → Actions."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.cfg.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v5
+        if: steps.cfg.outputs.ready == 'true'
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.cfg.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Baseline
+        if: steps.cfg.outputs.ready == 'true' && inputs.baseline_up_to != ''
+        env:
+          BASELINE_UP_TO: ${{ inputs.baseline_up_to }}
+        run: node scripts/migrate.mjs --baseline-up-to "$BASELINE_UP_TO"
+
+      - name: Plan
+        if: steps.cfg.outputs.ready == 'true'
+        run: node scripts/migrate.mjs --plan
+
+      - name: Apply
+        if: steps.cfg.outputs.ready == 'true' && (github.event_name == 'push' || (!inputs.plan_only && inputs.baseline_up_to == ''))
+        run: node scripts/migrate.mjs ${{ inputs.allow_destructive && '--allow-destructive' || '' }}
