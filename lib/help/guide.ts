@@ -672,7 +672,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - **Split across team** passes a cost on to a team's families: pick the team and the players, then **Split the total** or charge the **Same amount each**. Each player gets a **Team cost** charge on their family's account.
 - **Edit** changes a line; **Void** crosses it out (void its payments first). Nothing is deleted.
 - **Groups** renames groups and adds new ones. **Tournaments we host** adds a tournament the club runs, like MRS, so its costs and income add up on their own.
-- **Import spreadsheet** brings in this season's spreadsheet: Payables, Receivables, the workouts and clinics sheets and Nelson's Produce. It shows what it will add, asks about any team or Nelson's worker it can't match, and checks the Regular Season sheet against Payments before you tap **Import**. **Undo the import** takes back only what it added.`,
+- **Import spreadsheet** brings in this season's spreadsheet: Payables, Receivables, the workouts and clinics sheets and Nelson's Produce. It shows what it will add, asks about any team or Nelson's worker it can't match (each worker's money goes to the player you pick first, then on to their brothers once that player's paid), and checks the Regular Season sheet against Payments before you tap **Import**. **Undo the import** takes back only what it added.`,
   },
   {
     id: "payments-income",
@@ -712,6 +712,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 
 - **Log a shift**: the **Fundraiser**, the **Event** (Tulip Festival), the date, **Who worked**, the **Hours**, and **Earned** (blank works it out at the fundraiser's rate).
 - **Where it goes** is the worker's choice: **Toward registration** puts a **Fundraising credit** on the player's family account, or the **General program fund** (Buckets for Bucks) adds it to that fund instead. A name you've logged before starts from their last choice.
+- **Then the rest of the family** (on to start): once that player owes nothing, the rest goes to their brothers, a credit for each, like Sarah Wesner's shifts going to Luke until he's paid and then to Nate.
 - **Change** moves a shift to another player or the fund: the old credit is voided and a new one posted. **Void** takes a shift off.
 - A family whose credits cover everything sees **No payment needed** on their balance.
 - **Fundraisers and funds** sets what an hour earns and adds new fundraisers or funds.`,

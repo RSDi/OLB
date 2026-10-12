@@ -9,7 +9,7 @@ import { seasonBoardId } from "../onboarding/server";
 import { centralToday } from "./data";
 import { feeTiersFrom } from "./fees";
 import { groupFamilies, totalsFor } from "./logic";
-import { levelsFrom } from "./club-logic";
+import { levelsFrom, type FamilyBalances } from "./club-logic";
 import {
   DEFAULT_BUDGET_GROUPS,
   DEFAULT_FUNDRAISERS,
@@ -329,4 +329,28 @@ export async function loadDues(db: Db, boardId: string, playerIds?: string[]): P
   const dues: Record<string, string> = {};
   if (!error) for (const r of (data as { player_id: string; due_on: string }[] | null) ?? []) dues[r.player_id] = r.due_on;
   return { dues, defaultDue: settings.default_due_on };
+}
+
+// Every player's balance this season and their brothers and sisters, for
+// fundraising credits that go on down a family (familySpill).
+export async function familyBalances(db: Db, boardId: string): Promise<FamilyBalances> {
+  const [{ data: players }, { data: charges }, { data: payments }] = await Promise.all([
+    db.from("olb_players").select("id, full_name, parents:olb_player_parents(member_id)").eq("board_id", boardId),
+    db.from("olb_charges").select("player_id, kind, amount_cents, voided_at").eq("board_id", boardId),
+    db.from("olb_payments").select("player_id, amount_cents, voided_at").eq("board_id", boardId),
+  ]);
+  const ps = ((players as unknown as { id: string; full_name: string; parents: { member_id: string }[] }[] | null) ?? []).map((p) => ({
+    id: p.id,
+    full_name: p.full_name,
+    parent_ids: (p.parents ?? []).map((x) => x.member_id),
+  }));
+  const cs = ((charges as Money[] | null) ?? []).map((c) => ({ ...c, kind: (c.kind ?? "charge") as "charge" | "credit" }));
+  const pays = (payments as Money[] | null) ?? [];
+  const fb: FamilyBalances = { balance: new Map(), siblings: new Map(), names: new Map() };
+  for (const p of ps) {
+    fb.names.set(p.id, p.full_name);
+    fb.balance.set(p.id, totalsFor([p.id], cs, pays).balance);
+  }
+  for (const fam of groupFamilies(ps)) for (const p of fam) fb.siblings.set(p.id, fam.map((x) => x.id));
+  return fb;
 }

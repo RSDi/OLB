@@ -350,3 +350,41 @@ test("the Treasurer's spreadsheet reads into costs, income, programs and shifts"
   assert.equal(teamKey("14U - White"), teamKey("14u white"));
   assert.equal(teamKey("10u Gray"), teamKey("10U GREY"));
 });
+
+test("fundraising money goes to the player picked, then on down the family", async () => {
+  const { familySpill, applySpill } = await import("../../lib/finances/club-logic.ts");
+  const fb = {
+    balance: new Map([
+      ["luke", 2000],
+      ["nate", 40000],
+      ["solo", 0],
+    ]),
+    siblings: new Map([
+      ["luke", ["luke", "nate"]],
+      ["nate", ["luke", "nate"]],
+      ["solo", ["solo"]],
+    ]),
+    names: new Map([
+      ["luke", "Luke Wesner"],
+      ["nate", "Nate Wesner"],
+      ["solo", "Sam Solo"],
+    ]),
+  };
+  // Sarah's $30 shift, 3 hours: Luke owes $20, so $10 goes to Nate.
+  const pieces = familySpill(3000, 3, "luke", fb);
+  assert.deepEqual(pieces, [
+    { player_id: "luke", amount_cents: 2000, hours: 2 },
+    { player_id: "nate", amount_cents: 1000, hours: 1 },
+  ]);
+  applySpill(fb, pieces);
+  assert.equal(fb.balance.get("luke"), 0);
+  assert.equal(fb.balance.get("nate"), 39000);
+  // Luke's paid now: the next one all goes to Nate.
+  assert.deepEqual(familySpill(4225, 4.25, "luke", fb), [{ player_id: "nate", amount_cents: 4225, hours: 4.25 }]);
+  // No brothers, or nobody owing: it stays on the player picked.
+  assert.deepEqual(familySpill(3000, 3, "solo", fb), [{ player_id: "solo", amount_cents: 3000, hours: 3 }]);
+  // Odd hours still add up.
+  const odd = familySpill(3420, 3.42, "luke", { ...fb, balance: new Map([["luke", 1000], ["nate", 99999]]) });
+  assert.equal(Math.round(odd.reduce((n, p) => n + p.hours, 0) * 100) / 100, 3.42);
+  assert.equal(odd.reduce((n, p) => n + p.amount_cents, 0), 3420);
+});

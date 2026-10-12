@@ -33,6 +33,8 @@ export function FundraisingView({ data }: { data: ClubData }) {
   const [f, setF] = useState<ShiftInput>(() => blankShift(data));
   const [moving, setMoving] = useState<Shift | null>(null);
   const [manage, setManage] = useState(false);
+  // Once the player's fees are paid, the rest goes to their brothers.
+  const [spill, setSpill] = useState(true);
   const up = (patch: Partial<ShiftInput>) => setF((x) => ({ ...x, ...patch }));
 
   const live = data.shifts.filter((s) => !s.voided_at);
@@ -56,7 +58,7 @@ export function FundraisingView({ data }: { data: ClubData }) {
   }
 
   async function save() {
-    if (await act(() => addShift(f), `Logged ${f.worker_name.trim()}'s shift.`)) {
+    if (await act(() => addShift(f, spill), `Logged ${f.worker_name.trim()}'s shift.`)) {
       // Keep the fundraiser, event and date for the next one from the same day.
       setF({ ...blankShift(data), fundraiser_id: f.fundraiser_id, event_label: f.event_label, worked_on: f.worked_on, fund_id: f.fund_id });
     }
@@ -132,14 +134,23 @@ export function FundraisingView({ data }: { data: ClubData }) {
           </SegGroup>
         </div>
         {f.destination === "family" ? (
-          <Select label="Whose fees" value={f.player_id} onChange={(e) => up({ player_id: e.target.value })}>
-            <option value="">Pick a player</option>
-            {data.players.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.full_name}
-              </option>
-            ))}
-          </Select>
+          <>
+            <Select label="Whose fees" value={f.player_id} onChange={(e) => up({ player_id: e.target.value })}>
+              <option value="">Pick a player</option>
+              {data.players.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.full_name}
+                </option>
+              ))}
+            </Select>
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13.5, fontWeight: 600 }} data-tour="fundraising-spill">
+              <input type="checkbox" checked={spill} onChange={(e) => setSpill(e.target.checked)} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--rsd-accent)" }} />
+              <span>
+                Then the rest of the family
+                <span style={{ ...sub, display: "block" }}>Once this player owes nothing, the rest goes to their brothers.</span>
+              </span>
+            </label>
+          </>
         ) : (
           openFunds.length > 1 && (
             <Select label="Fund" value={f.fund_id} onChange={(e) => up({ fund_id: e.target.value })}>

@@ -10,13 +10,14 @@ import { requireFinances } from "../auth/guards";
 import { createAdminClient } from "../supabase/admin";
 import { centralToday } from "./data";
 import { cleanTiers, type TierInput } from "./fees";
-import { parseAmount } from "./logic";
+import { formatAmount, parseAmount } from "./logic";
 import {
   cleanIncomeInput,
   cleanLineInput,
   cleanMoneyInput,
   cleanProgramInput,
   cleanShiftInput,
+  familySpill,
   splitEvenly,
   type IncomeInput,
   type LineInput,
@@ -24,7 +25,7 @@ import {
   type ProgramInput,
   type ShiftInput,
 } from "./club-logic";
-import { coachKidIds, compFor, financesReady, latestBoard, loadFinanceSettings } from "./club-data";
+import { coachKidIds, compFor, familyBalances, financesReady, latestBoard, loadFinanceSettings } from "./club-data";
 import type { FinanceSettings, ShiftDestination, SignupPaidMethod } from "./club-types";
 
 export interface ClubResult {
@@ -430,7 +431,9 @@ async function postShiftCredit(
   return { id: (data as { id: string }).id };
 }
 
-export async function addShift(input: ShiftInput): Promise<ClubResult> {
+// spill: once the player's fees are paid, the rest goes on to their brothers
+// and sisters, a shift row and credit for each.
+export async function addShift(input: ShiftInput, spill = false): Promise<ClubResult> {
   const g = await gate();
   if ("error" in g) return g;
   const { data: f } = await g.db.from("olb_fundraisers").select("id, name, rate_cents").eq("id", input.fundraiser_id).eq("board_id", g.boardId).maybeSingle();
@@ -442,19 +445,29 @@ export async function addShift(input: ShiftInput): Promise<ClubResult> {
     const { data: p } = await g.db.from("olb_players").select("id").eq("id", c.player_id).eq("board_id", g.boardId).maybeSingle();
     if (!p) return { error: "That player isn't on this season's roster." };
   }
-  let charge_id: string | null = null;
-  if (c.destination === "family" && c.player_id) {
-    const credit = await postShiftCredit(g.db, g.boardId, { ...c, fundraiser: fundraiser.name, player_id: c.player_id }, g.userId);
-    if ("error" in credit) return credit;
-    charge_id = credit.id;
-  }
-  const { error } = await g.db.from("olb_fundraiser_shifts").insert({ ...c, board_id: g.boardId, charge_id, recorded_by: g.userId });
-  if (error) {
-    if (charge_id) await g.db.from("olb_charges").update({ voided_at: now(), voided_by: g.userId }).eq("id", charge_id);
-    return { error: error.message };
+  const fb = c.destination === "family" && c.player_id && spill ? await familyBalances(g.db, g.boardId) : null;
+  const pieces = fb && c.player_id ? familySpill(c.amount_cents, c.hours, c.player_id, fb) : [{ player_id: c.player_id, amount_cents: c.amount_cents, hours: c.hours }];
+  const posted: string[] = [];
+  for (const piece of pieces) {
+    let charge_id: string | null = null;
+    if (c.destination === "family" && piece.player_id) {
+      const credit = await postShiftCredit(g.db, g.boardId, { ...c, ...piece, fundraiser: fundraiser.name, player_id: piece.player_id }, g.userId);
+      if ("error" in credit) return credit;
+      charge_id = credit.id;
+      posted.push(credit.id);
+    }
+    const { error } = await g.db
+      .from("olb_fundraiser_shifts")
+      .insert({ ...c, ...piece, board_id: g.boardId, charge_id, recorded_by: g.userId });
+    if (error) {
+      if (posted.length) await g.db.from("olb_charges").update({ voided_at: now(), voided_by: g.userId }).in("id", posted);
+      return { error: error.message };
+    }
   }
   refresh();
-  return {};
+  return pieces.length > 1 && fb
+    ? { notice: `Logged ${c.worker_name}'s shift: ${pieces.map((x) => `${formatAmount(x.amount_cents)} toward ${fb.names.get(x.player_id ?? "") ?? "a player"}`).join(", ")}.` }
+    : {};
 }
 
 export async function voidShift(id: string): Promise<ClubResult> {

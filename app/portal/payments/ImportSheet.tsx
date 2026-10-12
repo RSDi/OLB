@@ -32,6 +32,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
   const [teams, setTeams] = useState<Record<string, string>>({});
   const [workers, setWorkers] = useState<Record<string, string>>({});
   const [postCredits, setPostCredits] = useState(true);
+  const [spill, setSpill] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -59,7 +60,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
   async function run() {
     setBusy(true);
     setError(null);
-    const res = await runFinanceImport(form(), { teams, workers, postCredits }).catch(() => ({ error: "That didn't work. Try again." }) as { error?: string; notice?: string });
+    const res = await runFinanceImport(form(), { teams, workers, postCredits, spill }).catch(() => ({ error: "That didn't work. Try again." }) as { error?: string; notice?: string });
     setBusy(false);
     if (res.error) return setError(res.error);
     setDone(res.notice ?? "Imported.");
@@ -167,7 +168,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
           {preview.workers.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={capStyle}>Nelson&apos;s toward registration: whose fees</span>
-              <div style={sub}>Matched by name. Pick the player for anyone it couldn&apos;t match, like a parent with more than one kid: type a first or last name to find them.</div>
+              <div style={sub}>Matched by name. Pick the player each one goes toward first, like a parent with more than one kid: type a first or last name to find them.</div>
               {preview.workers.map((w) => (
                 <label key={w.name} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", fontSize: 13.5, fontWeight: 600 }}>
                   <span>
@@ -196,6 +197,15 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
                   </span>
                 </span>
               </label>
+              {postCredits && (
+                <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13.5, fontWeight: 600 }}>
+                  <input type="checkbox" checked={spill} onChange={(e) => setSpill(e.target.checked)} style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--rsd-accent)" }} />
+                  <span>
+                    When a player&apos;s fees are paid, the rest goes to their brothers
+                    <span style={{ ...sub, display: "block" }}>Sarah Wesner&apos;s shifts go to Luke until he owes nothing, then to Nate.</span>
+                  </span>
+                </label>
+              )}
             </div>
           )}
 
