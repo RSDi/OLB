@@ -12,10 +12,10 @@ import { revalidatePath } from "next/cache";
 import { requireFinances } from "../auth/guards";
 import { createAdminClient } from "../supabase/admin";
 import { centralToday } from "./data";
-import { formatAmount, parseAmount } from "./logic";
+import { formatAmount, groupFamilies, parseAmount, totalsFor } from "./logic";
 import { ensureDefaults, familyBalances, latestBoard } from "./club-data";
 import { NELSONS_LABEL, NELSONS_REF, applySpill, familySpill, type SpillPiece } from "./club-logic";
-import { IMPORT_NOTE, parseFinanceWorkbook, personKey, teamKey, type ImportChoices, type ImportPreview, type SheetPlan, type UniformChoices } from "./import-sheet";
+import { IMPORT_NOTE, compareBalances, parseFinanceWorkbook, personKey, teamKey, type ImportChoices, type ImportPreview, type SheetPlan, type SheetPlayer, type SiteMoney, type UniformChoices } from "./import-sheet";
 
 // Next.js stops server-action uploads at 1 MB anyway; the spreadsheet is ~40 KB.
 const MAX_BYTES = 1024 * 1024;
@@ -132,7 +132,7 @@ export async function previewFinanceImport(form: FormData): Promise<ImportPrevie
         checks.push(`${name} is on the spreadsheet's roster but not this season's on the site.`);
         continue;
       }
-      if (sp.comped && !comped.has(id)) checks.push(`${name} is "CK" on the spreadsheet; on the site nothing takes their fee off yet (Settings → Fees → Comp coaches' kids).`);
+      if (sp.comped && !comped.has(id)) checks.push(`${name} is "CK" on the spreadsheet; on the site nothing takes their fee off yet (Take their fee off, below).`);
       const sheetPaid = sp.paid_cents ?? 0;
       const sitePaid = paid.get(id) ?? 0;
       if (!sp.comped && sheetPaid !== sitePaid) {
@@ -172,6 +172,8 @@ export async function previewFinanceImport(form: FormData): Promise<ImportPrevie
     notes: plan.notes,
     uniforms: await uniformPlan(ctx),
     payments: await paymentPlan(ctx),
+    coaches: await coachPlan(ctx),
+    compare: await comparePlan(ctx),
   };
 }
 
@@ -430,8 +432,8 @@ export async function undoFinanceImport(): Promise<{ error?: string; notice?: st
     chargeIds.length ? db.from("olb_charges").update(voided).in("id", chargeIds).is("voided_at", null) : Promise.resolve({ error: null }),
     // Payments recorded to match Regular Season.
     db.from("olb_payments").update(voided).eq("board_id", board.id).eq("note", IMPORT_NOTE).is("voided_at", null),
-    // Uniform charges added from Regular Season.
-    db.from("olb_charges").update(voided).eq("board_id", board.id).eq("category", "uniform").eq("note", IMPORT_NOTE).is("voided_at", null),
+    // Uniform charges and coaches' kids' comps added from Regular Season.
+    db.from("olb_charges").update(voided).eq("board_id", board.id).in("category", ["uniform", "coach_comp"]).eq("note", IMPORT_NOTE).is("voided_at", null),
   ]);
   const failed = results.find((r) => r.error);
   if (failed?.error) return { error: failed.error.message };
@@ -568,4 +570,100 @@ export async function runPaymentCatchUp(form: FormData): Promise<{ error?: strin
   if (error) return { error: error.message };
   revalidatePath("/portal/payments");
   return { notice: `Recorded ${dollarText(gaps.reduce((n, g) => n + g.cents, 0))} in payments for ${gaps.length} players, to match the sheet.` };
+}
+
+// ─── Coaches' kids from Regular Season ──────────────────────────────────────
+
+// "CK" players on the sheet whose registration is charged on the site with
+// no coach's-kid credit taking it off.
+async function coachGaps(ctx: Context): Promise<{ player_id: string; name: string; cents: number }[]> {
+  const ck = ctx.plan.players
+    .filter((p) => p.comped)
+    .map((p) => ({ name: `${p.first} ${p.last}`, id: matchPlayer(ctx, `${p.first} ${p.last}`, false) }))
+    .filter((x): x is { name: string; id: string } => !!x.id);
+  if (ck.length === 0) return [];
+  const { data } = await ctx.db
+    .from("olb_charges")
+    .select("player_id, kind, category, amount_cents")
+    .eq("board_id", ctx.boardId)
+    .in("player_id", ck.map((x) => x.id))
+    .in("category", ["registration", "coach_comp"])
+    .is("voided_at", null);
+  const rows = (data as { player_id: string; kind: string; category: string; amount_cents: number }[] | null) ?? [];
+  return ck
+    .map((x) => ({
+      player_id: x.id,
+      name: x.name,
+      cents: rows.filter((r) => r.player_id === x.id && r.category === "registration" && r.kind !== "credit").reduce((n, r) => n + r.amount_cents, 0),
+      comped: rows.some((r) => r.player_id === x.id && r.category === "coach_comp" && r.kind === "credit"),
+    }))
+    .filter((x) => x.cents > 0 && !x.comped)
+    .map(({ player_id, name, cents }) => ({ player_id, name, cents }));
+}
+
+async function coachPlan(ctx: Context): Promise<ImportPreview["coaches"]> {
+  const gaps = await coachGaps(ctx);
+  return { players: gaps.map((g) => g.name), cents: gaps.reduce((n, g) => n + g.cents, 0) };
+}
+
+// A Coach's kid credit for the whole registration fee of each "CK" player
+// still charged it, as the sheet comps them. Safe to run again.
+export async function runCoachComps(form: FormData): Promise<{ error?: string; notice?: string }> {
+  const ctx = await load(form);
+  if ("error" in ctx) return ctx;
+  const gaps = await coachGaps(ctx);
+  if (gaps.length === 0) return { notice: "Every coach's kid on the sheet already has their fee taken off." };
+  const today = centralToday();
+  const { error } = await ctx.db.from("olb_charges").insert(
+    gaps.map((g) => ({
+      board_id: ctx.boardId,
+      player_id: g.player_id,
+      kind: "credit",
+      category: "coach_comp",
+      description: "Coach's kid",
+      amount_cents: g.cents,
+      entry_date: today,
+      note: IMPORT_NOTE,
+      created_by: ctx.userId,
+    }))
+  );
+  if (error) return { error: error.message };
+  revalidatePath("/portal/payments");
+  return { notice: `Took ${dollarText(gaps.reduce((n, g) => n + g.cents, 0))} off for ${gaps.length} coaches' kids.` };
+}
+
+// ─── Balances against the sheet ─────────────────────────────────────────────
+
+// Every family on this season's roster: what the site says they owe against
+// the sheet's Amount Due, for the ones that differ.
+async function comparePlan(ctx: Context): Promise<ImportPreview["compare"]> {
+  const ids = ctx.players.map((p) => p.id);
+  if (ids.length === 0 || ctx.plan.players.length === 0) return { families: [], siteOwed: 0, sheetDue: 0 };
+  const [{ data: players }, { data: charges }, { data: payments }] = await Promise.all([
+    ctx.db.from("olb_players").select("id, full_name, parents:olb_player_parents(member_id)").eq("board_id", ctx.boardId),
+    ctx.db.from("olb_charges").select("player_id, kind, amount_cents, voided_at").eq("board_id", ctx.boardId).is("voided_at", null),
+    ctx.db.from("olb_payments").select("player_id, amount_cents, voided_at").eq("board_id", ctx.boardId).is("voided_at", null),
+  ]);
+  const ps = ((players as unknown as { id: string; full_name: string; parents: { member_id: string }[] }[] | null) ?? []).map((p) => ({
+    id: p.id,
+    full_name: p.full_name,
+    parent_ids: (p.parents ?? []).map((x) => x.member_id),
+  }));
+  const cs = ((charges as { player_id: string; kind: string | null; amount_cents: number; voided_at: string | null }[] | null) ?? []).map((c) => ({
+    ...c,
+    kind: (c.kind ?? "charge") as "charge" | "credit",
+  }));
+  const pays = (payments as { player_id: string; amount_cents: number; voided_at: string | null }[] | null) ?? [];
+  const site = new Map<string, SiteMoney>();
+  for (const p of ps) {
+    const t = totalsFor([p.id], cs, pays);
+    site.set(p.id, { charged: t.charged, credited: t.credited, paid: t.paid });
+  }
+  const sheet = new Map<string, SheetPlayer>();
+  for (const sp of ctx.plan.players) {
+    const id = matchPlayer(ctx, `${sp.first} ${sp.last}`, false);
+    if (id) sheet.set(id, sp);
+  }
+  const families = groupFamilies(ps).map((fam) => fam.map((p) => ({ id: p.id, name: p.full_name })));
+  return compareBalances(families, site, sheet);
 }
