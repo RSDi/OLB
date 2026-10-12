@@ -191,7 +191,7 @@ export function TreasurerView({
         style={{ "--rsd-kpi-num": "clamp(20px, 2.6vw, 36px)" } as React.CSSProperties}
       >
         <KpiCard label="Charged" value={formatDollars(season.charged)} sub={`${data.players.length} players`} />
-        <KpiCard label="Taken off" value={formatDollars(season.credited)} sub="Covered and scholarships" />
+        <KpiCard label="Taken off" value={formatDollars(season.credited)} sub="Covered, scholarships and fundraising" />
         <KpiCard label="Paid" value={formatDollars(season.paid)} sub={`${paymentCount} ${paymentCount === 1 ? "payment" : "payments"}`} />
         <KpiCard
           label="Still owed"
