@@ -684,6 +684,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     body: `Donations, sponsors, the tournament we host, shirts sold and credits from vendors: money that isn't a family's payment. On **Payments**, open **Income**.
 
 - **Add income**: pick **What kind**, who it's **From**, and what **Came in** with the date, how and a check number. Put an amount in **Expected** too, or alone for money you're still waiting on (like MRS registrations); tap **It came in** when it does.
+- Income is listed by kind, closed to start: each shows its number of entries and total. Tap one to see the entries.
 - Link it to a **Tournament we host** or a clinic so the Snapshot shows what each made, or to a fund like Buckets for Bucks.
 - **Void** crosses one out.`,
   },

@@ -48,11 +48,20 @@ export function IncomeView({ data }: { data: ClubData }) {
           const rows = live.filter((i) => i.category === c.key);
           if (rows.length === 0) return null;
           return (
-            <div key={c.key} className="rsd-card" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "14px 18px" }}>
-                <span style={{ fontSize: 15, fontWeight: 800 }}>{c.label}</span>
+            // Closed by default: tap a category to see its entries.
+            <details key={c.key} className="rsd-card income-section" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
+              <summary style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "14px 18px", cursor: "pointer", listStyle: "none" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <span aria-hidden className="income-chevron" style={{ fontSize: 11, color: "var(--gw-fg-muted)", transition: "transform 0.15s" }}>
+                    ▶
+                  </span>
+                  <span style={{ fontSize: 15, fontWeight: 800 }}>{c.label}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--gw-fg-muted)", whiteSpace: "nowrap" }}>
+                    {`· ${rows.length} ${rows.length === 1 ? "entry" : "entries"}`}
+                  </span>
+                </span>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>{formatAmount(rows.reduce((n, i) => n + i.amount_cents, 0))}</span>
-              </div>
+              </summary>
               {rows.map((i) => {
                 const tags = [
                   i.from_name,
@@ -81,10 +90,11 @@ export function IncomeView({ data }: { data: ClubData }) {
                   </div>
                 );
               })}
-            </div>
+            </details>
           );
         })
       )}
+      <style>{`.income-section > summary::-webkit-details-marker { display: none; } .income-section[open] .income-chevron { transform: rotate(90deg); }`}</style>
       {open && <IncomeSheet data={data} row={open === "new" ? null : open} onClose={() => setOpen(null)} />}
     </div>
   );
