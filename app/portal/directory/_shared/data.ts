@@ -206,25 +206,49 @@ export async function loadRequirements(): Promise<DirectoryRequirements> {
   return { requirements, rows };
 }
 
-// Emails (0116) and Slack DMs (0118) sent to a player's family from the
-// Directory, newest first, for the board, the Registrations grant and the
-// Slack DMs grant (RLS returns nothing to anyone else, or before 0116 is
-// applied). Before 0118 there's no `via`, so everything reads as email.
-export async function loadPlayerMessages(playerId: string): Promise<SentMessage[]> {
+// Emails (0116) and Slack DMs (0118) sent to a player's family, newest
+// first, for the board, the Registrations grant, the Slack DMs grant and
+// Payments (RLS returns nothing to anyone else, or before 0116 is applied).
+// Before 0118 there's no `via`, so everything reads as email.
+//
+// The whole family's: pass the player's brothers and sisters (players who
+// share a parent), and a message sent from any of their pages shows here
+// too, once, with the players it was about.
+export async function loadPlayerMessages(playerId: string, family: { id: string; first_name: string }[] = []): Promise<SentMessage[]> {
   const supabase = await createClient();
+  const ids = [...new Set([playerId, ...family.map((f) => f.id)])];
+  const firstOf = new Map(family.map((f) => [f.id, f.first_name]));
   const read = (cols: string) =>
-    supabase.from("olb_player_messages").select(cols).eq("player_id", playerId).order("sent_at", { ascending: false });
-  const withVia = await read("id, subject, body, sent_to, sent_at, sent_by, via");
-  const { data } = withVia.error ? await read("id, subject, body, sent_to, sent_at, sent_by") : withVia;
-  const rows = (data as (Omit<SentMessage, "sent_by_name"> & { sent_by: string | null })[] | null) ?? [];
-  const fromRegistration = await loadRegistrationMessages(playerId);
+    supabase.from("olb_player_messages").select(cols).in("player_id", ids).order("sent_at", { ascending: false });
+  const withVia = await read("id, player_id, subject, body, sent_to, sent_at, sent_by, via");
+  const { data } = withVia.error ? await read("id, player_id, subject, body, sent_to, sent_at, sent_by") : withVia;
+  type Row = Omit<SentMessage, "sent_by_name"> & { sent_by: string | null; player_id: string };
+  const rows = (data as Row[] | null) ?? [];
+  const fromRegistration = (await Promise.all(ids.map(async (id) => (await loadRegistrationMessages(id)).map((m) => ({ ...m, player_id: id, form: true }))))).flat();
   if (rows.length === 0 && fromRegistration.length === 0) return [];
-  const names = await loadNames([...rows, ...fromRegistration].map((r) => r.sent_by));
-  return [...rows, ...fromRegistration]
-    .map(({ sent_by, ...m }) => ({
-      ...m,
-      // No sender: the registration form's receipt, sent by the website.
-      sent_by_name: sent_by ? names.get(sent_by) ?? null : "the registration form",
+  // One family email is kept once per player it was about: show it once.
+  const merged = new Map<string, Row & { player_ids: string[]; form?: boolean }>();
+  for (const r of [...rows, ...fromRegistration]) {
+    const key = [r.via ?? "email", r.sent_at, r.subject, r.body, [...r.sent_to].sort().join(",")].join("|");
+    const seen = merged.get(key);
+    if (seen) {
+      if (!seen.player_ids.includes(r.player_id)) seen.player_ids.push(r.player_id);
+    } else merged.set(key, { ...r, player_ids: [r.player_id] });
+  }
+  const list = [...merged.values()];
+  const names = await loadNames(list.map((r) => r.sent_by));
+  return list
+    .map(({ id, subject, body, sent_to, sent_at, via, sent_by, player_ids, form }) => ({
+      id,
+      subject,
+      body,
+      sent_to,
+      sent_at,
+      ...(via ? { via } : {}),
+      // No sender: the registration form's receipt, or Finances' weekly
+      // balance reminder (0133), both sent by the website.
+      sent_by_name: sent_by ? names.get(sent_by) ?? null : form ? "the registration form" : "the weekly reminder",
+      ...(ids.length > 1 ? { players: player_ids.map((p) => firstOf.get(p) ?? "").filter(Boolean) } : {}),
     }))
     .sort((a, b) => b.sent_at.localeCompare(a.sent_at));
 }

@@ -156,6 +156,17 @@ export async function requireSlackDm(): Promise<GateResult> {
   return { userId: caller.userId };
 }
 
+// Connecting your own Slack (0118) to send DMs from it: the Slack DMs grant,
+// or Payments, which messages families from Finances (0133).
+export async function requireSlackSender(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canSlackDm(caller.member) && !canManageFinances(caller.member)) {
+    return { error: "You don't have permission to send Slack DMs from the portal." };
+  }
+  return { userId: caller.userId };
+}
+
 // Settings → Website (0120): a board member with the Website grant, or a
 // super-admin.
 export async function requireWebsite(): Promise<GateResult> {

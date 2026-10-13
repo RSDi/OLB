@@ -50,6 +50,9 @@ export interface PlayerNote {
   author_name: string | null;
   // The viewer wrote it, or is a super-admin: Edit and Delete show.
   can_edit: boolean;
+  // On a player's page, a brother's or sister's note shows too: their
+  // first name. Null for this player's own.
+  about?: string | null;
 }
 
 // Which record a note hangs off: a player on the roster, or a registration

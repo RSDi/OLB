@@ -45,6 +45,8 @@ export function ComposeSheet({
   startTemplate,
   onSend,
   onClose,
+  messageHelp,
+  fillPreview,
 }: {
   targets: MailTarget[];
   title: string;
@@ -56,6 +58,10 @@ export function ComposeSheet({
   startTemplate?: string;
   onSend: (ids: string[], subject: string, body: string, roles: Recipient[]) => Promise<SendResult>;
   onClose: () => void;
+  // Finances (0133): tokens of its own, like {balance}, explained under the
+  // message and filled in for the preview.
+  messageHelp?: string;
+  fillPreview?: (text: string, players: MailTarget[]) => string;
 }) {
   const router = useRouter();
   const one = targets.length === 1;
@@ -80,7 +86,8 @@ export function ComposeSheet({
   const contacts = one ? targets[0].contacts : [];
   const offered = rolesPresent(targets.flatMap(contactsOf));
   const toggle = (r: Recipient) => setRoles((list) => (list.includes(r) ? list.filter((x) => x !== r) : ALL_RECIPIENTS.filter((x) => x === r || list.includes(x))));
-  const preview = !one && /\{player\}/i.test(body) && groups[0] ? groups[0] : null;
+  const preview =
+    groups[0] && ((!one && /\{player\}/i.test(body)) || (fillPreview && /\{(balance|due_date|family)\}/i.test(`${subject} ${body}`))) ? groups[0] : null;
   const picked = contacts.filter((c) => roles.includes(c.role)).length;
   const primary = contacts.find((c) => c.primary);
 
@@ -239,7 +246,7 @@ export function ComposeSheet({
           />
           <Textarea
             label="Message"
-            help={one ? "Type {player} anywhere to put in the player's name." : "{player} becomes each family's player names when it sends."}
+            help={messageHelp ?? (one ? "Type {player} anywhere to put in the player's name." : "{player} becomes each family's player names when it sends.")}
             value={body}
             rows={11}
             maxLength={4000}
@@ -252,7 +259,8 @@ export function ComposeSheet({
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={capStyle}>How it reads for {firstNames(preview.players)}</span>
               <div style={{ ...muted, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.55, padding: "10px 12px", borderRadius: 10, background: "var(--gw-bg)", border: "1px solid var(--gw-border)" }}>
-                {fillMessage(body, preview.players)}
+                {fillPreview && <strong style={{ display: "block", marginBottom: 6 }}>{fillMessage(fillPreview(subject, preview.players), preview.players)}</strong>}
+                {fillMessage(fillPreview ? fillPreview(body, preview.players) : body, preview.players)}
               </div>
             </div>
           )}
@@ -288,6 +296,7 @@ export function SentMessages({ messages, style }: { messages: SentMessage[]; sty
             <span style={muted}>
               {new Date(m.sent_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
               {m.sent_by_name ? ` · by ${m.sent_by_name}` : ""} · to {m.sent_to.join(", ")}
+              {m.players && m.players.length > 0 ? ` · about ${m.players.join(" & ")}` : ""}
             </span>
             <div style={{ ...muted, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.55, padding: "8px 10px", borderRadius: 8, background: "var(--gw-bg)" }}>{m.body}</div>
           </div>

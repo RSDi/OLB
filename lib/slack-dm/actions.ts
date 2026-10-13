@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
-import { requireSlackDm } from "../auth/guards";
+import { requireSlackDm, requireSlackSender } from "../auth/guards";
 import { getPreview } from "../activity/preview";
 import { ALL_RECIPIENTS, playerTarget, type Recipient } from "../teams/family-mail";
 import { readPlayers, wantedIds } from "../teams/read-players";
@@ -43,7 +43,7 @@ export async function getSlackDmStatus(): Promise<SlackDmStatus | { error: strin
 }
 
 export async function disconnectSlack(): Promise<{ error?: string }> {
-  const gate = await requireSlackDm();
+  const gate = await requireSlackSender();
   if ("error" in gate) return { error: gate.error };
   if (await getPreview()) return { error: PREVIEW };
   return removeSlackConnection(gate.userId);

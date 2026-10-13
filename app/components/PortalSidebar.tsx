@@ -87,6 +87,9 @@ export interface SidebarViewer {
   canManageRegistrations?: boolean;
   // Shows the Payments item: a finance manager, or a parent whose balance is open.
   seesPayments?: boolean;
+  // The Treasurer and the board (Payments, or See club finances while the
+  // club's books are on): the item reads "Finances". Parents keep "Payments".
+  seesFinances?: boolean;
   // A coach (a leadership volunteer role on a team): sees the HS Schedule and
   // External Contacts. Only looked up for approved members off the board.
   isCoach?: boolean;
@@ -156,7 +159,8 @@ export function PortalSidebar({
   const settings = isStaff || !!viewer?.canOpenSettings;
   const planner = isStaff || isCoach || travel || !!viewer?.canPlanHsSchedule;
   const contacts = isStaff || isCoach || travel || !!viewer?.canEditContacts;
-  const visibleItems = navItems.filter(item => (!item.staffOnly || settings) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts));
+  const seesFinances = viewer?.seesFinances ?? false;
+  const visibleItems = navItems.map(item => (item.href === "/portal/payments" && seesFinances ? { ...item, label: "Finances" } : item)).filter(item => (!item.staffOnly || settings) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts));
   const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
   const bottomItems = BOTTOM_HREFS
     .map(href => visibleItems.find(item => item.href === href))

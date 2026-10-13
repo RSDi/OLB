@@ -34,6 +34,7 @@ export const SLACK_BOT_SCOPES = [
   "channels:read", // archive access (0084): conversations.info/members on public channels
   "groups:read", // archive access (0084): the same for private channels
   "files:read", // archive: downloading message attachments
+  "im:write", // conversations.open: DMs to families from the club's bot (Finances, 0133)
 ];
 
 // "Continue with Slack" is Supabase's slack_oidc provider, which asks for

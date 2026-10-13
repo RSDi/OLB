@@ -15,7 +15,7 @@ import {
   type SlackCheck,
   type SlackDmStatus,
 } from "../../../../lib/slack-dm/actions";
-import { ErrorNote, Sheet, capStyle } from "../../payments/parts";
+import { ErrorNote, SegButton, SegGroup, Sheet, capStyle } from "../../payments/parts";
 import { muted } from "./PlayerParts";
 
 const ROLE_MANY: Record<Recipient, string> = { father: "Dads", mother: "Moms", guardian: "Guardians", player: "Players" };
@@ -25,13 +25,50 @@ const STEP = 8;
 
 const CONNECT_URL = "/api/slack/connect?popup=1";
 
+export type SlackFrom = "me" | "bot";
+type CheckResult = { people: SlackCheck[]; noContact: string[] } | { error: string; status?: SlackDmStatus };
+type SendResultDm = { sent: string[]; missed: { email: string; reason: string }[]; error?: string; status?: SlackDmStatus };
+
+// Where the sheet sends from: the Directory's own actions, or another page's
+// (Finances, 0133), which can also send from the club's Slack bot.
+export interface SlackApi {
+  status: (from: SlackFrom) => Promise<SlackDmStatus | { error: string }>;
+  check: (ids: string[], roles: Recipient[], from: SlackFrom) => Promise<CheckResult>;
+  send: (ids: string[], roles: Recipient[], body: string, emails: string[], from: SlackFrom) => Promise<SendResultDm>;
+}
+
+const DIRECTORY_API: SlackApi = {
+  status: () => getSlackDmStatus(),
+  check: (ids, roles) => checkSlackRecipients(ids, roles),
+  send: (ids, roles, body, emails) => sendSlackDms(ids, roles, body, emails),
+};
+
 // Slack DMs to families (0118), from the Directory or a player's page: one
 // direct message to each person picked, sent from the sender's own Slack, so
 // replies come straight back to them. First they connect Slack (once), then
 // the window checks who has a Slack account with the email on file, and
 // sends to those people a few at a time.
-export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: MailTarget[]; eyebrow: string; onClose: () => void }) {
+export function SlackComposeSheet({
+  targets,
+  eyebrow,
+  onClose,
+  api = DIRECTORY_API,
+  allowBot = false,
+  messageHelp,
+  fillPreview,
+}: {
+  targets: MailTarget[];
+  eyebrow: string;
+  onClose: () => void;
+  api?: SlackApi;
+  // Offer "From: me / the club's Slack bot".
+  allowBot?: boolean;
+  messageHelp?: string;
+  // Fills tokens of the page's own (like {balance}) for the person shown.
+  fillPreview?: (text: string, person: SlackCheck) => string;
+}) {
   const router = useRouter();
+  const [from, setFrom] = useState<SlackFrom>("me");
   const [status, setStatus] = useState<SlackDmStatus | null>(null);
   // Counts each status read, so the Slack lookup runs again after one.
   const [statusSeq, setStatusSeq] = useState(0);
@@ -52,18 +89,26 @@ export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: Mail
 
   const loadStatus = useCallback(
     () =>
-      getSlackDmStatus().then((s) => {
+      api.status(from).then((s) => {
         if (!("ready" in s)) return setError(s.error);
         setStatus(s);
         setStatusSeq((n) => n + 1);
         if (!s.ready && s.error) setError(s.error);
       }),
-    []
+    [api, from]
   );
 
   useEffect(() => {
     loadStatus();
   }, [loadStatus]);
+
+  // A different sender: check that one's status afresh.
+  function chooseFrom(next: SlackFrom) {
+    if (next === from) return;
+    setStatus(null);
+    setError(null);
+    setFrom(next);
+  }
 
   // The "Connect Slack" pop-up says how it went as it closes.
   useEffect(() => {
@@ -90,12 +135,12 @@ export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: Mail
 
   // Who of the people picked is on Slack, once connected and again when the
   // boxes change.
-  const checkKey = `${statusSeq}|${roles.join(",")}`;
+  const checkKey = `${from}|${statusSeq}|${roles.join(",")}`;
   const ready = !!status?.ready;
   useEffect(() => {
     if (!ready || result) return;
     let cancelled = false;
-    checkSlackRecipients(ids, roles).then((res) => {
+    api.check(ids, roles, from).then((res) => {
       if (cancelled) return;
       if ("error" in res) {
         setChecked({ key: checkKey, data: null, error: res.error });
@@ -107,7 +152,7 @@ export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: Mail
     return () => {
       cancelled = true;
     };
-  }, [ready, ids, roles, result, checkKey]);
+  }, [ready, ids, roles, result, checkKey, api, from]);
   const fresh = checked?.key === checkKey ? checked : null;
   const checking = ready && !result && !fresh;
   const check = fresh?.data ?? null;
@@ -163,7 +208,7 @@ export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: Mail
     const sent: string[] = [];
     const missed: { email: string; reason: string }[] = [];
     for (let i = 0; i < emails.length; i += STEP) {
-      const res = await sendSlackDms(ids, roles, body, emails.slice(i, i + STEP));
+      const res = await api.send(ids, roles, body, emails.slice(i, i + STEP), from);
       sent.push(...res.sent);
       missed.push(...res.missed);
       if (res.error) {
@@ -186,7 +231,8 @@ export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: Mail
       {result ? (
         <>
           <div role="status" style={{ padding: "12px 14px", borderRadius: 10, background: "var(--rsd-accent-bg)", fontSize: 13.5, fontWeight: 600, lineHeight: 1.5 }}>
-            Sent {result.sent.length} {result.sent.length === 1 ? "DM" : "DMs"} from your Slack. Replies come to you there.
+            Sent {result.sent.length} {result.sent.length === 1 ? "DM" : "DMs"}{" "}
+            {from === "bot" ? "from the club's Slack bot." : "from your Slack. Replies come to you there."}
           </div>
           {result.missed.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -205,16 +251,36 @@ export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: Mail
           </Pill>
         </>
       ) : !status ? (
-        error ? <ErrorNote text={error} /> : <span style={muted}>Checking your Slack connection…</span>
+        <>
+          {allowBot && <FromPicker from={from} onChange={chooseFrom} disabled={busy} />}
+          {error ? <ErrorNote text={error} /> : <span style={muted}>Checking your Slack connection…</span>}
+        </>
       ) : !status.ready ? (
-        <ConnectStep status={status} note={note} error={error} onConnect={connect} onClose={onClose} />
+        <>
+          {allowBot && <FromPicker from={from} onChange={chooseFrom} disabled={busy} />}
+          {from === "bot" ? (
+            <ErrorNote text={status.error ?? "The club's Slack bot isn't set up on this site."} />
+          ) : (
+            <ConnectStep status={status} note={note} error={error} onConnect={connect} onClose={onClose} />
+          )}
+        </>
       ) : (
         <>
+          {allowBot && <FromPicker from={from} onChange={chooseFrom} disabled={busy} />}
           <div style={{ fontSize: 13, fontWeight: 500, color: "var(--gw-fg-muted)", lineHeight: 1.55 }}>
-            Each person gets their own direct message, from you{status.name ? ` (${status.name})` : ""} in Slack. Replies come to you there. A copy is kept on each player&apos;s page.{" "}
-            <button type="button" onClick={disconnect} disabled={busy} style={linkButton}>
-              Disconnect Slack
-            </button>
+            {from === "bot" ? (
+              <>
+                Each person gets their own direct message from the club&apos;s Slack bot. Nobody reads replies to the bot, so say in the message how to reach you. A
+                copy is kept on each player&apos;s page.
+              </>
+            ) : (
+              <>
+                {`Each person gets their own direct message, from you${status.name ? ` (${status.name})` : ""} in Slack. Replies come to you there. A copy is kept on each player's page.`}{" "}
+                <button type="button" onClick={disconnect} disabled={busy} style={linkButton}>
+                  Disconnect Slack
+                </button>
+              </>
+            )}
           </div>
 
           <div data-tour="slack-recipients" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -250,18 +316,18 @@ export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: Mail
           )}
           <Textarea
             label="Message"
-            help="{name} becomes each person's first name, and {player} their players' names."
+            help={messageHelp ?? "{name} becomes each person's first name, and {player} their players' names."}
             value={body}
             rows={9}
             maxLength={DM_MAX}
             disabled={busy}
             onChange={(e) => setBody(e.target.value)}
           />
-          {sample && /\{(name|player)\}/i.test(body) && (
+          {sample && /\{(name|player|balance|due_date|family)\}/i.test(body) && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={capStyle}>How it reads for {sample.name}</span>
               <div style={{ ...muted, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.55, padding: "10px 12px", borderRadius: 10, background: "var(--gw-bg)", border: "1px solid var(--gw-border)" }}>
-                {fillDm(body, { name: sample.name, players: sample.players.map((first_name) => ({ first_name })) })}
+                {fillDm(fillPreview ? fillPreview(body, sample) : body, { name: sample.name, players: sample.players.map((first_name) => ({ first_name })) })}
               </div>
             </div>
           )}
@@ -280,6 +346,19 @@ export function SlackComposeSheet({ targets, eyebrow, onClose }: { targets: Mail
         </>
       )}
     </Sheet>
+  );
+}
+
+// Who the DMs come from: the sender's own Slack, or the club's bot.
+function FromPicker({ from, onChange, disabled }: { from: SlackFrom; onChange: (f: SlackFrom) => void; disabled: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }} data-tour="slack-from">
+      <span style={capStyle}>From</span>
+      <SegGroup label="From">
+        <SegButton label="Me" active={from === "me"} onClick={() => !disabled && onChange("me")} />
+        <SegButton label="The club's Slack bot" active={from === "bot"} onClick={() => !disabled && onChange("bot")} />
+      </SegGroup>
+    </div>
   );
 }
 

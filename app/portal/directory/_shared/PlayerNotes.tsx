@@ -285,6 +285,7 @@ function NoteItem({ note, border }: { note: PlayerNote; border: boolean }) {
         <span style={muted}>
           {when}
           {edited && " · edited"}
+          {note.about && ` · about ${note.about}`}
         </span>
         {note.can_edit && !editing && (
           <span style={{ marginLeft: "auto", display: "inline-flex", gap: 12 }}>

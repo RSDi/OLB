@@ -23,6 +23,7 @@ import {
   splitEvenly,
 } from "../../lib/finances/club-logic.ts";
 import { nameKey, priceFor, signupProblem } from "../../lib/finances/program-signup.ts";
+import { DEFAULT_REMINDER } from "../../lib/finances/reminders.ts";
 import type { BudgetLine, ClubData, ExpensePayment } from "../../lib/finances/club-types.ts";
 
 test("the built-in tiers read exactly as the form always wrote them", () => {
@@ -194,7 +195,7 @@ test("program prices, sign-up state and the sign-up form", () => {
 function club(over: Partial<ClubData> = {}): ClubData {
   return {
     board: { id: "b", season: "2026-2027" },
-    settings: { board_id: "b", enabled: true, fee_tiers: DEFAULT_FEE_TIERS, custom_tiers: false, comp_coach_kids: true, coach_comp_cents: null, fundraising_rate_cents: 1000, default_due_on: null },
+    settings: { board_id: "b", enabled: true, fee_tiers: DEFAULT_FEE_TIERS, custom_tiers: false, comp_coach_kids: true, coach_comp_cents: null, fundraising_rate_cents: 1000, default_due_on: null, reminder: DEFAULT_REMINDER },
     groups: [{ id: "g1", name: "General", sort_order: 10 }],
     lines: [],
     expensePayments: [],

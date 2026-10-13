@@ -210,7 +210,7 @@ export function PlayerDetail({
 
       {notes && <PlayerNotes owner={{ playerId: p.id }} notes={notes} />}
 
-      {(canEmail || canSlack) && messages.length > 0 && (
+      {messages.length > 0 && (
         <div className="rsd-card" style={{ padding: "14px 20px" }}>
           <SentMessages messages={messages} />
         </div>
@@ -242,7 +242,7 @@ export function PlayerDetail({
                 href={`/portal/payments?family=${p.id}`}
                 style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}
               >
-                Open in Payments
+                Open in Finances
                 <Icons.ChevronRight width={12} height={12} />
               </Link>
             </div>

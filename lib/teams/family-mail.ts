@@ -34,6 +34,9 @@ export interface SentMessage {
   sent_at: string;
   sent_by_name: string | null;
   via?: "email" | "slack";
+  // On a player's page, the family's players it was sent about (first
+  // names), when the family has more than one.
+  players?: string[];
 }
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
