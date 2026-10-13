@@ -260,6 +260,16 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
     .is("line.voided_at", null);
   if (lineCharges.error) throw new Error(`Loading team costs: ${lineCharges.error.message}`);
 
+  // The tournaments planned on the HS Schedule (0134), for a link to each
+  // one's planning page. None before that migration.
+  const eventRows = (events.data as HostedEvent[] | null) ?? [];
+  const plans = eventRows.length
+    ? await db.from("hs_hosted").select("weekend_id, finance_event_id").in("finance_event_id", eventRows.map((e) => e.id))
+    : null;
+  const planOf = new Map(
+    plans && !plans.error ? ((plans.data as { weekend_id: string; finance_event_id: string }[] | null) ?? []).map((r) => [r.finance_event_id, r.weekend_id]) : []
+  );
+
   const data: ClubData = {
     board,
     settings,
@@ -270,7 +280,7 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
       .filter((r) => r.charge)
       .map((r) => ({ line_id: r.line_id, charge_id: r.charge!.id, amount_cents: r.charge!.amount_cents, voided: !!r.charge!.voided_at })),
     income: (income.data as IncomeRow[] | null) ?? [],
-    events: (events.data as HostedEvent[] | null) ?? [],
+    events: eventRows.map((e) => ({ ...e, plan_weekend_id: planOf.get(e.id) ?? null })),
     programs: ((programs.data as (Program & { levels: unknown })[] | null) ?? []).map((p) => ({ ...p, levels: levelsFrom(p.levels) })),
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the charge goes in signupCharges
     signups: signupRows.map(({ _charge, ...s }) => s),
