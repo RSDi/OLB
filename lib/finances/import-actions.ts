@@ -14,6 +14,7 @@ import { createAdminClient } from "../supabase/admin";
 import { centralToday } from "./data";
 import { formatAmount, groupFamilies, parseAmount, totalsFor } from "./logic";
 import { ensureDefaults, familyBalances, latestBoard } from "./club-data";
+import { DEFAULT_FUNDS, GENERAL_FUND } from "./club-types";
 import { NELSONS_LABEL, NELSONS_REF, applySpill, familySpill, type SpillPiece } from "./club-logic";
 import { IMPORT_NOTE, compareBalances, duplicateUniformCharges, parseFinanceWorkbook, personKey, teamKey, type ImportChoices, type ImportPreview, type SheetPlan, type SheetPlayer, type SiteMoney, type UniformCharge, uniformPiecesOf, type UniformChoices } from "./import-sheet";
 
@@ -208,7 +209,7 @@ export async function runFinanceImport(form: FormData, choices: ImportChoices): 
     for (const name of new Set([...plan.lines.map((l) => l.program), ...plan.income.map((i) => i.program)].filter((x): x is string => !!x))) {
       if (!programIds.has(name)) programIds.set(name, await idFor(db, "olb_programs", boardId, name, { kind: "clinic", levels: [], open: false, created_by: userId }));
     }
-    const fundId = await idFor(db, "olb_program_funds", boardId, "Buckets for Bucks", { description: "The general program fund" });
+    const fundId = await idFor(db, "olb_program_funds", boardId, GENERAL_FUND, { description: DEFAULT_FUNDS[0].description });
     const nelsonsId = await idFor(db, "olb_fundraisers", boardId, "Nelson's Produce", { rate_cents: 1000 });
 
     // Budget lines, then what was paid on each.

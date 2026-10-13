@@ -411,7 +411,7 @@ export const IMPORT_NOTE = "Imported from the spreadsheet";
 export interface ImportChoices {
   // Sheet team name → team id ("" leaves the cost off any team).
   teams: Record<string, string>;
-  // Nelson's worker name → a player id, "fund" (Buckets for Bucks) or "skip".
+  // Nelson's worker name → a player id, "fund" (the general program fund) or "skip".
   workers: Record<string, string>;
   // Put Nelson's "Registration" shifts on families' accounts as credits.
   postCredits: boolean;

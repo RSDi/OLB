@@ -39,8 +39,14 @@ export const PROGRAM_KINDS: { key: ProgramKind; label: string }[] = [
 
 // What a new season starts with. Each can be renamed or added to.
 export const DEFAULT_BUDGET_GROUPS = ["General", "Subscriptions", "Practice gyms", "Teams", "Programs", "Uniforms & gear", "Events"];
-export const DEFAULT_FUNDS = [{ name: "Buckets for Bucks", description: "The general program fund" }];
-export const DEFAULT_FUNDRAISERS = [{ name: "Nelson's Produce", rate_cents: 1000 }];
+// The club's general program fund. Buckets for Bucks is a fundraiser whose
+// earnings go to it, not the fund itself.
+export const GENERAL_FUND = "General program fund";
+export const DEFAULT_FUNDS = [{ name: GENERAL_FUND, description: "Program costs for the whole club. Buckets for Bucks raises money for it." }];
+export const DEFAULT_FUNDRAISERS = [
+  { name: "Nelson's Produce", rate_cents: 1000 },
+  { name: "Buckets for Bucks", rate_cents: 0 },
+];
 
 export interface FinanceSettings {
   board_id: string;
