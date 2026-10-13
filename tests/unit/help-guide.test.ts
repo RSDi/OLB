@@ -105,6 +105,9 @@ test("coaches see the coaches' sections, other members don't", () => {
   assert.ok(forCoach.every((s) => s.audience === "everyone" || s.audience === "coaches"));
   assert.equal(guideSectionForPath("/portal/schedule", COACH)?.id, "hs-schedule");
   assert.equal(guideSectionForPath("/portal/contacts/abc", COACH)?.id, "external-contacts");
+  // A tournament we host has its own help (0134).
+  assert.equal(guideSectionForPath("/portal/schedule/hosted/abc", COACH)?.id, "hosted-tournament");
+  assert.equal(guideSectionForPath("/portal/schedule/hosted/abc", MEMBER), null);
   assert.ok(!guideSectionsFor(MEMBER).some((s) => s.audience === "coaches"));
   assert.equal(guideSectionForPath("/portal/schedule", MEMBER), null);
   // The board reads them too; a pending coach doesn't.
