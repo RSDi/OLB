@@ -871,7 +871,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         route: "/portal/payments",
         click: "payments-tab-fundraising",
         title: "8. Nelson's shifts",
-        body: "Log each shift: who, the hours and the event. **Toward registration** credits the player's family; the **General program fund** sends it to Buckets for Bucks.",
+        body: "Log each shift: who, the hours and the event. **Toward registration** credits the player's family; the **General program fund** sends it to the club's general fund.",
       },
       {
         target: "programs-add",
@@ -995,7 +995,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "fundraising-totals",
         click: "payments-tab-fundraising",
         title: "What's been earned",
-        body: "The total, what went toward families' fees, and each fund like Buckets for Bucks.",
+        body: "The total, what went toward families' fees, and each fund, like the General program fund.",
       },
       {
         target: "fundraising-log",
@@ -1007,7 +1007,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "fundraising-where",
         click: "payments-tab-fundraising",
         title: "Their choice",
-        body: "**Toward registration** credits the player's family account; the **General program fund** goes to Buckets for Bucks. **Change** on a shift moves it later.",
+        body: "**Toward registration** credits the player's family account; the **General program fund** goes to the club's general fund. **Change** on a shift moves it later.",
       },
     ],
   },

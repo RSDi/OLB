@@ -685,7 +685,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 
 - **Add income**: pick **What kind**, who it's **From**, and what **Came in** with the date, how and a check number. Put an amount in **Expected** too, or alone for money you're still waiting on (like MRS registrations); tap **It came in** when it does.
 - Income is listed by kind, closed to start: each shows its number of entries and total. Tap one to see the entries.
-- Link it to a **Tournament we host** or a clinic so the Snapshot shows what each made, or to a fund like Buckets for Bucks.
+- Link it to a **Tournament we host** or a clinic so the Snapshot shows what each made, or to a fund like the General program fund.
 - **Void** crosses one out.`,
   },
   {
@@ -713,11 +713,12 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     body: `Shifts worked at a fundraiser like Nelson's Produce. On **Payments**, open **Fundraising**.
 
 - **Log a shift**: the **Fundraiser**, the **Event** (Tulip Festival), the date, **Who worked**, the **Hours**, and **Earned** (blank works it out at the fundraiser's rate).
-- **Where it goes** is the worker's choice: **Toward registration** puts a **Fundraising credit** on the player's family account, or the **General program fund** (Buckets for Bucks) adds it to that fund instead. A name you've logged before starts from their last choice.
+- **Where it goes** is the worker's choice: **Toward registration** puts a **Fundraising credit** on the player's family account, or the **General program fund** adds it to the club's general fund instead (where Buckets for Bucks money goes too). A name you've logged before starts from their last choice.
 - **Then the rest of the family** (on to start): once that player owes nothing, the rest goes to their brothers, a credit for each, like Sarah Wesner's shifts going to Luke until he's paid and then to Nate.
 - Shifts are listed by event, closed to start: each shows its number of shifts and total. Tap an event to see who worked.
 - **Change** moves a shift to another player or the fund: the old credit is voided and a new one posted. **Void** takes a shift off.
 - A family whose credits cover everything sees **No payment needed** on their balance.
+- **Buckets for Bucks** is a fundraiser too, with no hourly rate: pick it, put what was raised in **Earned**, and send it to the **General program fund**.
 - **Fundraisers and funds** sets what an hour earns and adds new fundraisers or funds.`,
   },
   {

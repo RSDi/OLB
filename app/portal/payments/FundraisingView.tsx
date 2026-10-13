@@ -27,7 +27,7 @@ function blankShift(data: ClubData): ShiftInput {
 // Payments → Fundraising (0131): shifts worked at a fundraiser like
 // Nelson's Produce. The worker chooses where their earnings go: toward a
 // player's registration and fees (a Fundraising credit on the family's
-// account) or the general program fund (Buckets for Bucks).
+// account) or the general program fund.
 export function FundraisingView({ data }: { data: ClubData }) {
   const { busy, error, notice, act } = useAct();
   const [f, setF] = useState<ShiftInput>(() => blankShift(data));
@@ -127,7 +127,7 @@ export function FundraisingView({ data }: { data: ClubData }) {
           <SegGroup label="Where it goes">
             <SegButton label="Toward registration" active={f.destination === "family"} onClick={() => up({ destination: "family" })} />
             <SegButton
-              label={openFunds.length === 1 ? `General program fund (${defaultFund?.name})` : "General program fund"}
+              label="General program fund"
               active={f.destination === "fund"}
               onClick={() => up({ destination: "fund", fund_id: f.fund_id || defaultFund?.id || "" })}
             />

@@ -622,7 +622,7 @@ export function cleanShiftInput(input: ShiftInput, rateCents: number): CleanShif
     if (c == null || c <= 0) return { error: "Enter the amount earned, like 40." };
     amount_cents = c;
   }
-  if (amount_cents <= 0) return { error: "This shift earned nothing. Check the rate in Settings → Fees." };
+  if (amount_cents <= 0) return { error: rateCents > 0 ? "This shift earned nothing. Check the rate in Settings → Fees." : "Enter what it raised in Earned." };
   if (input.worked_on && !ISO_DAY.test(input.worked_on)) return { error: "Check the date." };
   if (input.destination === "family") {
     if (!input.player_id) return { error: "Pick the player whose fees it goes toward." };

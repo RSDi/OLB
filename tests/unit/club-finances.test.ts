@@ -204,7 +204,7 @@ function club(over: Partial<ClubData> = {}): ClubData {
     programs: [],
     signups: [],
     signupCharges: [],
-    funds: [{ id: "b4b", name: "Buckets for Bucks", description: null, archived_at: null }],
+    funds: [{ id: "b4b", name: "General program fund", description: null, archived_at: null }],
     fundraisers: [{ id: "nel", name: "Nelson's Produce", rate_cents: 1000, archived_at: null }],
     shifts: [],
     teams: [{ id: "white", name: "14u White" }],
@@ -264,7 +264,7 @@ test("the Snapshot adds up money in and out, teams, events and funds", () => {
   assert.equal(s.net, -34750);
   assert.deepEqual(s.teams, [{ name: "14u White", spend: { budget: 15000, paid: 10000 }, passedOn: 15000 }]);
   assert.deepEqual(s.events, [{ name: "MRS", spend: { budget: 240000, paid: 240000 }, income: 0, expected: 400000 }]);
-  assert.deepEqual(s.funds, [{ name: "Buckets for Bucks", total: 4250 }]);
+  assert.deepEqual(s.funds, [{ name: "General program fund", total: 4250 }]);
   assert.deepEqual(s.fundraisers, [{ name: "Nelson's Produce", toFamilies: 4000, toFunds: 4250 }]);
   const csv = snapshotCsv(s);
   assert.match(csv, /^Section,Item,Budget,Actual,Note\r\n/);

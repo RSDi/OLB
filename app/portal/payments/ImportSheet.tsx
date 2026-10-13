@@ -204,7 +204,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
               ))}
               {c.shifts > 0 && (
                 <span>
-                  <strong>{c.shifts} Nelson&apos;s shifts</strong>: {formatAmount(c.toFamilies)} toward registration, {formatAmount(c.toFund)} to Buckets for Bucks
+                  <strong>{c.shifts} Nelson&apos;s shifts</strong>: {formatAmount(c.toFamilies)} toward registration, {formatAmount(c.toFund)} to the general program fund
                 </span>
               )}
             </div>
@@ -243,7 +243,7 @@ export function ImportSheet({ imported, onClose }: { imported: boolean; onClose:
                   </span>
                   <ComboSelect aria-label={`Whose fees for ${w.name}`} value={workers[w.name] ?? "skip"} onChange={(e) => setWorkers({ ...workers, [w.name]: e.target.value })} style={selectStyle}>
                     <option value="skip">Leave out</option>
-                    <option value="fund">Buckets for Bucks</option>
+                    <option value="fund">General program fund</option>
                     {preview.players.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
