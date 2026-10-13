@@ -444,3 +444,26 @@ test("balances against the sheet: families that differ, biggest first, credits s
   assert.equal(out.sheetDue, 13930);
 });
 
+test("uniform charges: a plain Uniform covers both pieces, and the import's extras are the duplicates", async () => {
+  const { uniformPiecesOf, duplicateUniformCharges, IMPORT_NOTE } = await import("../../lib/finances/import-sheet.ts");
+  assert.deepEqual(uniformPiecesOf("Jersey (AM)"), ["Jersey"]);
+  assert.deepEqual(uniformPiecesOf("Shorts (YM)"), ["Shorts"]);
+  assert.deepEqual(uniformPiecesOf("Uniform"), ["Jersey", "Shorts"]);
+  assert.deepEqual(uniformPiecesOf(null), ["Jersey", "Shorts"]);
+  const c = (id: string, player_id: string, description: string, note: string | null = IMPORT_NOTE) => ({ id, player_id, description, amount_cents: 5500, note });
+  const out = duplicateUniformCharges([
+    // Jasper: $110 "Uniform" by hand, then the import's jersey and shorts.
+    c("own", "jasper", "Uniform", null),
+    c("j1", "jasper", "Jersey (YS)"),
+    c("s1", "jasper", "Shorts (YS)"),
+    // Max: only the import's. Nothing to remove.
+    c("j2", "max", "Jersey (AM)"),
+    c("s2", "max", "Shorts (AM)"),
+    // Jett: his own jersey; the import's shorts are new.
+    c("own2", "jett", "Jersey", null),
+    c("j3", "jett", "Jersey (YM)"),
+    c("s3", "jett", "Shorts (YM)"),
+  ]);
+  assert.deepEqual(out.map((x) => x.id), ["j1", "s1", "j3"]);
+});
+

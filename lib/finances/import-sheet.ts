@@ -449,6 +449,8 @@ export interface ImportPreview {
   // Regular Season's PAID (less Nelson's) against Payments, for recording
   // what's missing.
   payments: { players: number; cents: number; over: string[] };
+  // Uniform pieces the import charged twice, for removing.
+  uniformDupes: { players: string[]; count: number; cents: number };
   // "CK" players still charged registration with nothing taking it off.
   coaches: { players: string[]; cents: number };
   // Every family whose site balance differs from the sheet's Amount Due.
@@ -513,6 +515,34 @@ export function compareBalances(
   }
   out.sort((a, b) => Math.abs(b.site - b.sheet) - Math.abs(a.site - a.sheet) || a.names.localeCompare(b.names));
   return { families: out, siteOwed, sheetDue };
+}
+
+// Which pieces a uniform charge is for, by its description: "Jersey (AM)"
+// is the jersey, "Shorts (AM)" the shorts, and anything else ("Uniform",
+// "Uniform kit") the whole uniform.
+export function uniformPiecesOf(description: string | null): ("Jersey" | "Shorts")[] {
+  const d = description ?? "";
+  const out: ("Jersey" | "Shorts")[] = [];
+  if (/jersey/i.test(d)) out.push("Jersey");
+  if (/short/i.test(d)) out.push("Shorts");
+  return out.length ? out : ["Jersey", "Shorts"];
+}
+
+export interface UniformCharge {
+  id: string;
+  player_id: string;
+  description: string | null;
+  amount_cents: number;
+  note: string | null;
+}
+
+// Uniform pieces the import charged for a player who already had their own
+// charge for that piece (often a plain $110 "Uniform" added by hand): the
+// import's are the extra ones.
+export function duplicateUniformCharges(charges: UniformCharge[]): UniformCharge[] {
+  const own = new Set<string>();
+  for (const c of charges) if (c.note !== IMPORT_NOTE) for (const piece of uniformPiecesOf(c.description)) own.add(`${c.player_id}|${piece}`);
+  return charges.filter((c) => c.note === IMPORT_NOTE && uniformPiecesOf(c.description).every((piece) => own.has(`${c.player_id}|${piece}`)));
 }
 
 export interface UniformChoices {
