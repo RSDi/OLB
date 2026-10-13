@@ -8,8 +8,16 @@ import type { ClubData, Shift, ShiftDestination } from "../../../lib/finances/cl
 import { ErrorNote, SegButton, SegGroup, Sheet, capStyle, formatDay } from "./parts";
 import { Empty, Notice, linkBtn, sub, useAct } from "./club-parts";
 
+// The fundraiser most shifts are logged at (Nelson's Produce), not the first
+// by name: Buckets for Bucks sorts first but has no hourly rate.
+function usualFundraiser(data: ClubData) {
+  const open = data.fundraisers.filter((f) => !f.archived_at);
+  const count = (id: string) => data.shifts.filter((s) => s.fundraiser_id === id && !s.voided_at).length;
+  return [...open].sort((a, b) => count(b.id) - count(a.id) || b.rate_cents - a.rate_cents)[0];
+}
+
 function blankShift(data: ClubData): ShiftInput {
-  const fundraiser = data.fundraisers.find((f) => !f.archived_at);
+  const fundraiser = usualFundraiser(data);
   return {
     fundraiser_id: fundraiser?.id ?? "",
     event_label: "",
