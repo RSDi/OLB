@@ -26,9 +26,39 @@ import { ChargeDialog } from "./ChargeDialog";
 import { PaymentDialog } from "./PaymentDialog";
 import { BalanceChip, ErrorNote, SegButton, SegGroup, formatDay } from "./parts";
 import { VenmoMatch } from "./VenmoMatch";
+import { ComposeSheet } from "../directory/_shared/Messaging";
+import { SlackComposeSheet, type SlackApi } from "../directory/_shared/SlackMessaging";
+import { checkFinanceSlack, financeSlackStatus, pauseReminders, sendFinanceEmail, sendFinanceSlack } from "../../../lib/finances/message-actions";
+import { BALANCE_TOKEN_HELP, fillMoney, moneyFor } from "../../../lib/finances/reminders";
+import { playerTarget, type MailTarget } from "../../../lib/teams/family-mail";
+import type { FinanceSlackCheck } from "../../../lib/finances/message-actions";
+import { SlackLogo } from "../../components/SlackLogo";
 
 type Show = "owes" | "paid" | "all";
 type Open = { kind: "payment"; account: Account } | { kind: ChargeKind; account: Account } | null;
+// Writing to families (0133): everyone listed, or one family.
+type Compose = { via: "email" | "slack"; accounts: Account[] } | null;
+
+const FINANCE_SLACK: SlackApi = {
+  status: (from) => financeSlackStatus(from),
+  check: (ids, roles, from) => checkFinanceSlack(ids, roles, from),
+  send: (ids, roles, body, emails, from) => sendFinanceSlack(ids, roles, body, emails, from),
+};
+
+const EMAIL_START = { subject: "Omaha Lightning: your balance", body: "Hi {family} family,\n\n" };
+
+function targetsOf(accounts: Account[]): MailTarget[] {
+  return accounts.flatMap((a) =>
+    a.players.map((p) =>
+      playerTarget({
+        id: p.id,
+        full_name: p.full_name,
+        email: null,
+        parents: p.parents.map((x) => ({ relationship: x.relationship, member: x.member ? { full_name: x.member.full_name, email: x.member.email } : null })),
+      })
+    )
+  );
+}
 
 // The Treasurer's view: the season's totals, every family's balance, and
 // recording what comes in.
@@ -39,6 +69,7 @@ export function TreasurerView({
   club = false,
   dues = {},
   defaultDue = null,
+  paused = [],
 }: {
   data: PaymentsData;
   openPlayerId?: string | null;
@@ -47,6 +78,8 @@ export function TreasurerView({
   club?: boolean;
   dues?: Record<string, string>;
   defaultDue?: string | null;
+  // Players whose family is off the weekly reminder (0133).
+  paused?: string[];
 }) {
   const router = useRouter();
   const accounts = useMemo(() => buildAccounts(data.players, data.charges, data.payments), [data]);
@@ -58,6 +91,11 @@ export function TreasurerView({
   const [open, setOpen] = useState<Open>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [compose, setCompose] = useState<Compose>(null);
+  // {balance}, {due_date} and {family} as each family's message will read.
+  const moneyAccounts = useMemo(() => accounts.map((a) => ({ playerIds: a.players.map((p) => p.id), balanceCents: a.totals.balance, name: a.name })), [accounts]);
+  const moneyText = (text: string, ids: string[]) => fillMoney(text, moneyFor(ids, moneyAccounts, dues, defaultDue));
+  const pausedSet = useMemo(() => new Set(paused), [paused]);
   const [error, setError] = useState<string | null>(null);
   // Match Venmo (0130), with the registration workflow.
   const [matching, setMatching] = useState(false);
@@ -253,6 +291,16 @@ export function TreasurerView({
               <SegButton label={`All ${accounts.length}`} active={show === "all"} onClick={() => setShow("all")} />
             </SegGroup>
           </span>
+          {club && (
+            <span data-tour="payments-message" style={{ display: "inline-flex", gap: 8 }}>
+              <Pill size="sm" variant="ghost" onClick={() => setCompose({ via: "email", accounts: shown })} disabled={shown.length === 0}>
+                <Icons.Mail width={13} height={13} /> Email families
+              </Pill>
+              <Pill size="sm" variant="ghost" onClick={() => setCompose({ via: "slack", accounts: shown })} disabled={shown.length === 0}>
+                <SlackLogo size={13} /> Slack families
+              </Pill>
+            </span>
+          )}
           <Pill size="sm" variant="ghost" onClick={download}>
             <Icons.Download width={13} height={13} /> Download spreadsheet
           </Pill>
@@ -313,9 +361,43 @@ export function TreasurerView({
               onOpen={(kind) => setOpen({ kind, account: a } as Open)}
               names={data.names}
               due={club ? { date: a.players.map((p) => dues[p.id]).filter(Boolean).sort()[0] ?? null, fallback: defaultDue } : null}
+              messaging={club ? { paused: a.players.some((p) => pausedSet.has(p.id)), onWrite: (via) => setCompose({ via, accounts: [a] }) } : null}
             />
           ))}
         </div>
+      )}
+
+      {compose?.via === "email" && (
+        <ComposeSheet
+          targets={targetsOf(compose.accounts)}
+          title={compose.accounts.length === 1 ? "Email the family" : "Email families"}
+          eyebrow={compose.accounts.length === 1 ? `${compose.accounts[0].name} family` : `${compose.accounts.length} families listed`}
+          note={
+            compose.accounts.length === 1
+              ? "One email to the family, with what they owe filled in. A copy is kept on each player's page."
+              : "One email to each family listed here, with what each one owes filled in. A copy is kept on each player's page."
+          }
+          subject={EMAIL_START.subject}
+          body={EMAIL_START.body}
+          messageHelp={BALANCE_TOKEN_HELP}
+          fillPreview={(text, players) => moneyText(text, players.map((p) => p.id))}
+          onSend={(ids, subject, body, roles) => sendFinanceEmail(ids, subject, body, roles)}
+          onClose={() => setCompose(null)}
+        />
+      )}
+      {compose?.via === "slack" && (
+        <SlackComposeSheet
+          targets={targetsOf(compose.accounts)}
+          eyebrow={compose.accounts.length === 1 ? `${compose.accounts[0].name} family` : `${compose.accounts.length} families listed`}
+          api={FINANCE_SLACK}
+          allowBot
+          messageHelp={`{name} becomes each person's first name. ${BALANCE_TOKEN_HELP}`}
+          fillPreview={(text, person) => {
+            const money = (person as FinanceSlackCheck).money;
+            return money ? fillMoney(text, money) : text;
+          }}
+          onClose={() => setCompose(null)}
+        />
       )}
 
       {open && openAccount && open.kind === "payment" && (
@@ -336,6 +418,7 @@ function FamilyRow({
   onOpen,
   names,
   due,
+  messaging = null,
 }: {
   account: Account;
   border: boolean;
@@ -345,6 +428,8 @@ function FamilyRow({
   names: Record<string, string>;
   // Club finances (0131): the family's own due date, else the season's.
   due: { date: string | null; fallback: string | null } | null;
+  // Writing to the family, and whether they're off the weekly reminder (0133).
+  messaging?: { paused: boolean; onWrite: (via: "email" | "slack") => void } | null;
 }) {
   const kids = a.players
     .map((p) => {
@@ -420,6 +505,7 @@ function FamilyRow({
             </div>
           )}
           {due && <DueDate account={a} date={due.date} fallback={due.fallback} />}
+          {messaging && <FamilyMessaging account={a} paused={messaging.paused} onWrite={messaging.onWrite} />}
           <AccountDetail account={a} canManage names={names} />
         </div>
       )}
@@ -475,6 +561,43 @@ function DueDate({ account, date, fallback }: { account: Account; date: string |
       )}
       {!date && <span style={{ color: "var(--gw-fg-muted)" }}>{fallback ? `The season's date: ${formatDay(fallback)}` : "No season date set (Settings → Fees)"}</span>}
       {error && <span style={{ color: "var(--gw-error)" }}>{error}</span>}
+    </div>
+  );
+}
+
+// Email or Slack the family, and take them off the weekly reminder (a
+// payment plan, say) or put them back on.
+function FamilyMessaging({ account, paused, onWrite }: { account: Account; paused: boolean; onWrite: (via: "email" | "slack") => void }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function toggle() {
+    setBusy(true);
+    setError(null);
+    const res = await pauseReminders(
+      account.players.map((p) => p.id),
+      !paused
+    ).catch(() => ({ error: "That didn't work. Try again." }));
+    setBusy(false);
+    if (res.error) return setError(res.error);
+    router.refresh();
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }} data-tour="payments-family-message">
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <Pill size="sm" variant="light" onClick={() => onWrite("email")}>
+          <Icons.Mail width={13} height={13} /> Email family
+        </Pill>
+        <Pill size="sm" variant="light" onClick={() => onWrite("slack")}>
+          <SlackLogo size={13} /> Slack family
+        </Pill>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: busy ? "default" : "pointer" }}>
+          <input type="checkbox" checked={!paused} disabled={busy} onChange={toggle} />
+          Weekly reminder
+          {paused && <span className="rsd-chip rsd-chip-mute">Paused</span>}
+        </label>
+      </div>
+      {error && <ErrorNote text={error} />}
     </div>
   );
 }

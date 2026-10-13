@@ -293,7 +293,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     audience: "everyone",
     routes: ["/portal/directory/players"],
     keywords: ["player", "player page", "kid", "child", "son", "siblings", "brother", "sister", "parents", "mom", "dad", "balance", "payments", "fees"],
-    body: `Everything about one player in one place. Open it by tapping a player's name in the Directory, on a team page, on a parent's profile, or on the Payments page.
+    body: `Everything about one player in one place. Open it by tapping a player's name in the Directory, on a team page, on a parent's profile, or on the Finances page.
 
 - **The top** shows their jersey number, team (tap it to open the team page), age and birthday, address, and the player's own phone and email (their email is left off when it's the same as a parent's, since it shows with that parent). A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**.
 - **Parents** lists each parent with their phone and email. Tap a parent's name to open their profile. **Siblings** links to their brothers' and sisters' pages.
@@ -301,7 +301,9 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **For the board.** The top also shows the registration fee, how the family said they'd pay, shirt size and waiver, plus a chip for each requirement. Tap a chip to check it off, the same as in the Directory.
 
-**For the Treasurer.** **Record payment**, **Add a charge** and **Take off an amount** work right on the player page, for the whole family. **Open in Payments ›** jumps to the family on the Payments page.`,
+**For the Treasurer.** **Record payment**, **Add a charge** and **Take off an amount** work right on the player page, for the whole family. **Open in Finances ›** jumps to the family on the Finances page.
+
+**Notes** and **Messages sent** are the whole family's: a note or email from a brother's or sister's page shows here too, marked with who it was about.`,
   },
   {
     id: "registrations",
@@ -389,7 +391,7 @@ Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdr
     keywords: ["notes", "note", "log", "history", "document", "record", "screenshot", "screenshots", "attachment", "attach", "file", "pdf", "photo", "text messages", "texts", "link", "slack archive", "save to notes", "thread", "no show", "no-show"],
     body: `You see this if you're on the board or have the **Registrations** permission. Families never see notes.
 
-In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip by their name; tap it to open them. Every player's page has a **Notes** card: a running log of what happened with the family, newest first, with who wrote each note and when. While a player is off the roster, the same notes show on their registration on the **New**, **Waitlist** and **Removed** tabs, and they follow the player back onto the roster when they're approved.
+In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip by their name; tap it to open them. Every player's page has a **Notes** card: a running log of what happened with the family, newest first, with who wrote each note and when. Brothers and sisters (players who share a parent) show each other's notes too, marked **about Brecken** (or whoever it was written on), so every page in the family tells the same story. While a player is off the roster, the same notes show on their registration on the **New**, **Waitlist** and **Removed** tabs, and they follow the player back onto the roster when they're approved.
 
 - Tap **Add a note**, write what happened, and tap **Save note**.
 - **Attach screenshots or files** adds pictures or PDFs (up to 10 per note, 10 MB each), such as screenshots of a text exchange. You can also paste a screenshot straight into the note, or drag files onto it. iPhone photos are turned into regular pictures so everyone can open them. Tap a picture or file on a saved note to open it.
@@ -415,7 +417,7 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
 
 **{player}** in the subject or message becomes the family's player names. Writing to several families, a preview shows how it reads for the first one.
 
-**A copy** of each email is kept on the player's page under **Messages sent**, with who sent it and when.`,
+**A copy** of each email is kept on the player's page under **Messages sent**, with who sent it and when. Brothers' and sisters' pages show it too: an email sent from one player's page shows on the whole family's, once, marked with who it was about.`,
   },
   {
     id: "slack-dms",
@@ -617,12 +619,12 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
   },
   {
     id: "payments",
-    title: "Payments: recording what families pay",
-    group: "Payments",
+    title: "Finances: recording what families pay",
+    group: "Finances",
     audience: "finance",
     routes: ["/portal/payments"],
-    keywords: ["payments", "treasurer", "fees", "registration fee", "owes", "owed", "balance", "paid", "venmo", "check", "cash", "uniform", "tournament", "covered", "hardship", "scholarship", "credit", "refund", "void", "spreadsheet", "csv", "download", "export"],
-    body: `The season's money, one family at a time. You see this if you have the **Payments** permission (a super-admin turns it on in Settings → Members).
+    keywords: ["payments", "finances", "treasurer", "fees", "registration fee", "owes", "owed", "balance", "paid", "venmo", "check", "cash", "uniform", "tournament", "covered", "hardship", "scholarship", "credit", "refund", "void", "spreadsheet", "csv", "download", "export"],
+    body: `The season's money, one family at a time, under **Finances** in the sidebar. You see this if you have the **Payments** permission (a super-admin turns it on in Settings → Members).
 
 **The totals** across the top: **Charged** (fees, uniforms and so on), **Taken off** (players the club covers and scholarships), **Paid**, and **Still owed**, with how many families owe.
 
@@ -646,11 +648,11 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
   {
     id: "payments-venmo",
     title: "Matching Venmo",
-    group: "Payments",
+    group: "Finances",
     audience: "finance",
     preview: true,
     keywords: ["venmo", "statement", "match", "import", "csv", "record payments"],
-    body: `Record a month of Venmo payments at once. On **Payments**, tap **Match Venmo** and pick the statement you downloaded from Venmo (Statements → download as CSV).
+    body: `Record a month of Venmo payments at once. On **Finances**, tap **Match Venmo** and pick the statement you downloaded from Venmo (Statements → download as CSV).
 
 - Each payment that came in is listed with who sent it, the note and the amount. Where the note names a player (or the sender's last name and a player's first name), that player is filled in. Siblings named together are both filled in.
 - Fix any guess: tap **×** to take a player off, or pick one from **+ player**. Untick any you don't want to record.
@@ -659,11 +661,11 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
   {
     id: "payments-budget",
     title: "Budget: what the club spends",
-    group: "Payments",
+    group: "Finances",
     audience: "finance",
     preview: true,
     keywords: ["budget", "expenses", "payables", "import", "spreadsheet", "excel", "spending", "check", "check number", "vendor", "gym rent", "insurance", "tournament", "regionals", "hotel", "refs", "league", "deposit", "over budget", "split across team", "team cost", "mrs", "tournament we host", "groups"],
-    body: `Everything the club plans to spend and what it has paid, in place of the spreadsheet's Payables. On **Payments**, open **Budget**. You see it with the **Payments** permission, while **Track the club's books on Payments** is on in Settings → Fees.
+    body: `Everything the club plans to spend and what it has paid, in place of the spreadsheet's Payables. On **Finances**, open **Budget**. You see it with the **Payments** permission, while **Track the club's books on Finances** is on in Settings → Fees.
 
 **The totals**: **Budgeted**, **Paid**, **Left to pay** and how many lines are **Over budget**. **Group**, **Team** and **Month** change how the list is grouped; the search box finds a cost, vendor, team or month. Each group starts closed, showing its number of lines and what's paid against its budget; tap it to see the lines. A search opens every group with a match.
 
@@ -677,11 +679,11 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
   {
     id: "payments-income",
     title: "Income: money in from outside families",
-    group: "Payments",
+    group: "Finances",
     audience: "finance",
     preview: true,
     keywords: ["income", "receivables", "donation", "sponsor", "admissions", "tournament", "mrs", "shirts", "warm-up shirts", "merch", "vendor credit", "expected", "it came in"],
-    body: `Donations, sponsors, the tournament we host, shirts sold and credits from vendors: money that isn't a family's payment. On **Payments**, open **Income**.
+    body: `Donations, sponsors, the tournament we host, shirts sold and credits from vendors: money that isn't a family's payment. On **Finances**, open **Income**.
 
 - **Add income**: pick **What kind**, who it's **From**, and what **Came in** with the date, how and a check number. Put an amount in **Expected** too, or alone for money you're still waiting on (like MRS registrations); tap **It came in** when it does.
 - Income is listed by kind, closed to start: each shows its number of entries and total. Tap one to see the entries.
@@ -691,26 +693,26 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
   {
     id: "payments-programs",
     title: "Programs: clinics and workouts",
-    group: "Payments",
+    group: "Finances",
     audience: "finance",
     preview: true,
     keywords: ["programs", "clinics", "summer clinics", "workouts", "spring workouts", "krave", "camp", "sign up", "sign-up", "cognito", "price", "junior high", "high school", "mark paid", "open", "closed", "nelson's", "nelsons produce", "covered by nelson's", "np", "waived"],
-    body: `Clinics, spring and summer workouts and camps, with their own sign-up page in place of Cognito. On **Payments**, open **Programs**.
+    body: `Clinics, spring and summer workouts and camps, with their own sign-up page in place of Cognito. On **Finances**, open **Programs**.
 
 - **Add a program**: its name, kind, dates, when and where, what families read, and its prices (one price, or one per group like Junior high $60 and High school $100). **Room for** closes sign-up when it's full.
 - Switch it **Open** and families sign up at its page; **Copy sign-up link** copies the address. An open clinic also takes over the **Summer** page's button.
-- A player on this season's roster gets the fee on their family's **Payments** account. Anyone else shows **Owes** on the sign-up until you **Mark paid** (or **No charge**).
+- A player on this season's roster gets the fee on their family's account. Anyone else shows **Owes** on the sign-up until you **Mark paid** (or **No charge**).
 - Paid from Nelson's Produce earnings: tap **Change** and pick **Nelson's credit** (roster players only). The fee goes on the family's account, where their Nelson's credit pays it, and the sign-up shows **Covered by Nelson's**. The spreadsheet import does this for its NP sign-ups.
 - Costs you link to it on the Budget tab show what it made. **Finished** puts it away when it's over.`,
   },
   {
     id: "payments-fundraising",
     title: "Fundraising: Nelson's Produce shifts",
-    group: "Payments",
+    group: "Finances",
     audience: "finance",
     preview: true,
     keywords: ["fundraising", "nelson's", "nelsons produce", "shifts", "hours", "festival", "tulip", "strawberry", "sunflower", "buckets for bucks", "program fund", "credit", "registration", "np", "no payment needed"],
-    body: `Shifts worked at a fundraiser like Nelson's Produce. On **Payments**, open **Fundraising**.
+    body: `Shifts worked at a fundraiser like Nelson's Produce. On **Finances**, open **Fundraising**.
 
 - **Log a shift**: the **Fundraiser**, the **Event** (Tulip Festival), the date, **Who worked**, the **Hours**, and **Earned** (blank works it out at the fundraiser's rate).
 - **Where it goes** is the worker's choice: **Toward registration** puts a **Fundraising credit** on the player's family account, or the **General program fund** adds it to the club's general fund instead (where Buckets for Bucks money goes too). A name you've logged before starts from their last choice.
@@ -724,14 +726,30 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
   {
     id: "payments-snapshot",
     title: "Snapshot: the club's money at a glance",
-    group: "Payments",
+    group: "Finances",
     audience: "staff",
     permission: "finances_view",
     preview: true,
     keywords: ["snapshot", "financial snapshot", "club finances", "money in", "money out", "budget vs actual", "net", "board", "coaches", "see club finances", "report", "accountant"],
     body: `The whole season in one page: **Money in**, **Money out**, whether the club is **Ahead** or **Behind**, and what families **still owe**. Then spending against the budget by group, each team's costs (and what was passed on to families), each clinic, the tournament we host, fundraising and the funds. Totals only: no family names or balances.
 
-The board sees it under **Payments → Snapshot**, and so does anyone given **See club finances** in Settings → Access Profiles, like a coach. The Treasurer sees it as a tab next to the rest. **Download spreadsheet** saves it for the accountant.`,
+The board sees it under **Finances → Snapshot**, and so does anyone given **See club finances** in Settings → Access Profiles, like a coach. The Treasurer sees it as a tab next to the rest. **Download spreadsheet** saves it for the accountant.`,
+  },
+  {
+    id: "payments-messages",
+    title: "Finances: emailing and Slacking families",
+    group: "Finances",
+    audience: "finance",
+    preview: true,
+    keywords: ["email", "slack", "message", "families", "remind", "reminder", "balance", "{balance}", "{due_date}", "owe", "owes", "bot", "slack bot", "pause", "payment plan", "template"],
+    body: `Write to families about what they owe, from **Finances** (the **Payments** permission).
+
+- **Email families** and **Slack families** (next to **Download spreadsheet**) write to every family the list shows right now: pick **Owes**, **Paid up** or **All**, or search, first. In an open family, **Email family** and **Slack family** write to just them.
+- **Email** works like the Directory's: pick who gets it (Dads, Moms, Guardians, Players), start from a **Template** if you like, and send. One email per family, from the club's email address; replies go to the club's Gmail.
+- **{balance}** becomes what the family owes, **{due_date}** their due date, **{family}** their last name and **{player}** their players' names. A preview shows how it reads for the first family.
+- **Slack** sends each person their own direct message. **From** picks **Me** (your own Slack: connect it once, and replies come to you) or **The club's Slack bot** (nobody reads replies to the bot, so say in the message how to reach you). In Slack messages, **{name}** is each person's first name.
+- A copy of every email and DM is kept on the players' pages under **Messages sent**, for the whole family.
+- **Weekly reminder** in an open family: untick it to take the family off the weekly balance reminder (a payment plan, say); they show **Paused** until you tick it again. Set the reminder up in **Settings → Fees**.`,
   },
   {
     id: "your-balance",
@@ -1093,15 +1111,16 @@ While the registration workflow is on, families pick a size for each item on the
     group: "Settings",
     audience: "finance",
     preview: true,
-    keywords: ["fees", "registration fee", "tiers", "8u-12u", "14u", "16u-18u", "coach's kid", "coaches' kids", "comp", "ck", "fundraising rate", "due date", "club finances", "books"],
+    keywords: ["fees", "reminder", "weekly reminder", "balance reminder", "{balance}", "registration fee", "tiers", "8u-12u", "14u", "16u-18u", "coach's kid", "coaches' kids", "comp", "ck", "fundraising rate", "due date", "club finances", "books"],
     body: `What families are charged this season. Open **Settings → Fees** (the **Payments** permission).
 
-- **Track the club's books on Payments** adds **Budget**, **Income**, **Programs**, **Fundraising** and **Snapshot** to Payments, and the clinic sign-up page. Off hides them again; nothing is lost.
+- **Track the club's books on Finances** adds **Budget**, **Income**, **Programs**, **Fundraising** and **Snapshot** to Finances, and the clinic sign-up page. Off hides them again; nothing is lost.
 - **Registration fees**: each tier's name, the oldest age it covers on the season's cutoff (blank on the oldest tier) and the fee. The registration form suggests the right one by birthday. Families who already registered keep the fee they registered at.
 - **Comp coaches' kids**: a head or assistant coach's player keeps the fee on their account with a **Coach's kid** credit taking it off (all of it, or **How much to take off**). Coaches put on a team after their kid was approved show up here; tap **Comp them now**.
-- **A fundraiser hour earns** and **Balances due by** (shown on every family's balance unless you give a family its own date on Payments).
+- **A fundraiser hour earns** and **Balances due by** (shown on every family's balance unless you give a family its own date on Finances).
+- **Weekly balance reminder**: an email every week to each family that still owes, until they've paid. Pick **Day it goes**, **When it starts** (**As soon as a family owes**, or some days before, on or after their due date), **Who gets it** (Dads, Moms, Guardians, Players), and its **Subject** and **Message**, or **Start from a template**. **{balance}** becomes what the family owes, **{due_date}** their due date, **{family}** their last name and **{player}** their players' names. **Email me a test** sends it to you as one family that owes would get it. Turn on **Send the weekly reminder** and tap **Save reminder**. **Recent weeks** shows how many families it went to. A family with a credit or nothing owed never gets it, and you can take one family off it on Finances.
 
-Tap **Save**. **Show me around** here walks the whole setup, from this tab through importing the spreadsheet, Nelson's shifts, clinics and the Snapshot to who can see it. Each Payments tab has its own walkthrough under the **i** too.`,
+Tap **Save**. **Show me around** here walks the whole setup, from this tab through importing the spreadsheet, Nelson's shifts, clinics and the Snapshot to who can see it. Each Finances tab has its own walkthrough under the **i** too.`,
   },
   {
     id: "settings-contact-types",

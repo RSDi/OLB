@@ -2,6 +2,8 @@
 // and Snapshot tabs, their server actions and the logic share. A plain module
 // on purpose: exporting types from a "use server" file breaks the build.
 
+import type { ReminderSettings } from "./reminders";
+
 import type { FeeTier } from "./fees.ts";
 
 export type ExpenseMethod = "check" | "card" | "venmo" | "cash" | "transfer" | "other";
@@ -58,6 +60,8 @@ export interface FinanceSettings {
   coach_comp_cents: number | null; // null: the whole registration fee
   fundraising_rate_cents: number;
   default_due_on: string | null;
+  // The weekly balance reminder (0133); off before it's applied.
+  reminder: ReminderSettings;
 }
 
 export interface BudgetGroup {

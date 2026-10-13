@@ -324,7 +324,7 @@ export const GUIDE_TOURS: GuideTour[] = [
   {
     id: "payments",
     sectionId: "payments",
-    title: "Payments tour",
+    title: "Finances tour",
     route: "/portal/payments",
     steps: [
       {
@@ -346,6 +346,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "payments-filter",
         title: "Who owes",
         body: "**Owes** lists the families with money due. **Paid up** and **All** show the rest. The search box finds a family by player, parent or phone.",
+      },
+      {
+        target: "payments-message",
+        title: "Write to the families listed",
+        body: "**Email families** or **Slack families** writes to every family showing. **{balance}** becomes what each one owes. The weekly reminder is set up in **Settings → Fees**.",
       },
       {
         target: "payments-parent-link",
@@ -819,7 +824,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "fees-switch",
         click: "settings-tab-fees",
         title: "1. Turn it on",
-        body: "**Track the club's books on Payments** adds Budget, Income, Programs, Fundraising and Snapshot to Payments. Off hides them again; nothing is lost.",
+        body: "**Track the club's books on Finances** adds Budget, Income, Programs, Fundraising and Snapshot to Finances. Off hides them again; nothing is lost.",
       },
       {
         target: "fees-tiers",
@@ -843,13 +848,13 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "fees-save",
         click: "settings-tab-fees",
         title: "5. Save",
-        body: "Tap **Save**. Then on to Payments.",
+        body: "Tap **Save**. Then on to Finances.",
       },
       {
         target: "payments-tab-budget",
         route: "/portal/payments",
-        part: "Payments",
-        title: "Payments has new tabs",
+        part: "Finances",
+        title: "Finances has new tabs",
         body: "Next to **Families**: **Budget**, **Income**, **Programs**, **Fundraising** and **Snapshot**.",
       },
       {

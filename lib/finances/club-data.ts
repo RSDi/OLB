@@ -10,6 +10,7 @@ import { centralToday } from "./data";
 import { feeTiersFrom } from "./fees";
 import { groupFamilies, totalsFor } from "./logic";
 import { levelsFrom, type FamilyBalances } from "./club-logic";
+import { DEFAULT_REMINDER, type ReminderSettings } from "./reminders";
 import {
   DEFAULT_BUDGET_GROUPS,
   DEFAULT_FUNDRAISERS,
@@ -46,6 +47,7 @@ export function defaultFinanceSettings(boardId: string): FinanceSettings {
     coach_comp_cents: null,
     fundraising_rate_cents: 1000,
     default_due_on: null,
+    reminder: DEFAULT_REMINDER,
   };
 }
 
@@ -65,6 +67,22 @@ export async function loadFinanceSettings(db: Db, boardId: string): Promise<Fina
     coach_comp_cents: row.coach_comp_cents ?? null,
     fundraising_rate_cents: row.fundraising_rate_cents ?? 1000,
     default_due_on: row.default_due_on ?? null,
+    reminder: reminderFrom(data as Record<string, unknown>),
+  };
+}
+
+// The weekly reminder's columns (0133), or its defaults before they exist.
+function reminderFrom(row: Record<string, unknown>): ReminderSettings {
+  if (!("reminder_enabled" in row)) return DEFAULT_REMINDER;
+  const roles = Array.isArray(row.reminder_roles) ? (row.reminder_roles as ReminderSettings["reminder_roles"]) : DEFAULT_REMINDER.reminder_roles;
+  return {
+    reminder_enabled: !!row.reminder_enabled,
+    reminder_weekday: Number(row.reminder_weekday) || 1,
+    reminder_start: row.reminder_start === "owing" ? "owing" : "due",
+    reminder_offset_days: Number(row.reminder_offset_days) || 0,
+    reminder_roles: roles,
+    reminder_subject: (row.reminder_subject as string | null) ?? null,
+    reminder_body: (row.reminder_body as string | null) ?? null,
   };
 }
 

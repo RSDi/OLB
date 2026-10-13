@@ -57,10 +57,13 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   // Slack DMs grant can Slack them (0118). Either sees what was sent.
   const canEmail = viewer.isStaff || viewer.canManageRegistrations;
   const canSlack = viewer.canSlackDm;
-  const messages = canEmail || canSlack ? await loadPlayerMessages(id) : [];
+  // The whole family's history: a message or note from a brother's or
+  // sister's page shows here too.
+  const familyFirst = family.map((f) => ({ id: f.id, first_name: f.full_name.trim().split(/\s+/)[0] ?? f.full_name }));
+  const messages = canEmail || canSlack || canManageFinances ? await loadPlayerMessages(id, familyFirst) : [];
   // Notes (0124): the board and the Registrations grant.
   const canNote = viewer.isStaff || viewer.canManageRegistrations;
-  const notes = canNote ? await loadPlayerNotes(id, { userId: viewer.userId, isSuperAdmin: viewer.isSuperAdmin }) : null;
+  const notes = canNote ? await loadPlayerNotes(id, { userId: viewer.userId, isSuperAdmin: viewer.isSuperAdmin }, familyFirst) : null;
 
   return (
     <PlayerDetail

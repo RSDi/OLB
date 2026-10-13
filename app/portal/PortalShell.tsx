@@ -186,7 +186,7 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
 
   // Exact match first; otherwise label individual ticket detail pages
   // (`/portal/tasks/<id>`, but not /new) as "Request".
-  const meta =
+  const found =
     PAGE_META[pathname] ??
     (pathname.startsWith("/portal/requests/")
       ? { title: "New request", subtitle: "" }
@@ -223,6 +223,8 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       : pathname.startsWith("/portal/links/")
       ? { title: sidebarLinks.find(l => pathname === `/portal/links/${l.id}`)?.label ?? "Link", subtitle: "" }
       : { title: "Portal", subtitle: "" });
+  // Finances for the Treasurer and the board; parents' own balance stays Payments.
+  const meta = pathname === "/portal/payments" && viewer?.seesFinances ? { title: "Finances", subtitle: "" } : found;
 
   // Members (non-staff) use /portal/requests as their dashboard — label it
   // "Dashboard" there instead of "Make a Request" (staff keep /portal).

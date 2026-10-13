@@ -4,7 +4,7 @@
 // (member_slack_connections, 0118) so their Slack DMs come from them.
 
 import { NextResponse, type NextRequest } from "next/server";
-import { requireSlackDm } from "../../../../../lib/auth/guards";
+import { requireSlackSender } from "../../../../../lib/auth/guards";
 import { getPreview } from "../../../../../lib/activity/preview";
 import { saveSlackConnection, slackDmConfigured } from "../../../../../lib/slack-dm/connection";
 import { SLACK_DM_USER_SCOPES, slackCall } from "../../../../../lib/slack-dm/slack-user-api";
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   // "Cancel" on Slack's page.
   if (params.get("error")) return finish("cancelled");
 
-  const gate = await requireSlackDm();
+  const gate = await requireSlackSender();
   if ("error" in gate) return finish("not-allowed");
   if (await getPreview()) return finish("preview");
   const code = params.get("code");

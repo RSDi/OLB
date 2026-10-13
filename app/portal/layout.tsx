@@ -68,6 +68,7 @@ export default async function PortalLayout({
               canPlanHsSchedule: viewer.canPlanHsSchedule,
               permissions: viewer.permissions,
               seesPayments: viewer.canManageFinances || hasBalance || (viewer.canViewFinances && booksOn),
+              seesFinances: viewer.canManageFinances || (viewer.canViewFinances && booksOn),
               isCoach,
             }
           : null

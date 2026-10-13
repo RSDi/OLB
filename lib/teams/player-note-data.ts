@@ -22,9 +22,15 @@ interface Row {
 
 export type NoteViewer = { userId: string; isSuperAdmin: boolean };
 
-export async function loadPlayerNotes(playerId: string, viewer: NoteViewer): Promise<PlayerNote[]> {
-  const rows = await loadRows("player_id", [playerId]);
-  return (await withLinks(rows, viewer)).map(({ note }) => note);
+// A player's notes, and their brothers' and sisters' (players who share a
+// parent) when `family` lists them, so the family's pages say the same.
+export async function loadPlayerNotes(playerId: string, viewer: NoteViewer, family: { id: string; first_name: string }[] = []): Promise<PlayerNote[]> {
+  const firstOf = new Map(family.map((f) => [f.id, f.first_name]));
+  const rows = await loadRows("player_id", [...new Set([playerId, ...family.map((f) => f.id)])]);
+  return (await withLinks(rows, viewer)).map(({ row, note }) => ({
+    ...note,
+    about: row.player_id && row.player_id !== playerId ? firstOf.get(row.player_id) ?? null : null,
+  }));
 }
 
 // The waitlist: every registration's notes at once, by registration.

@@ -41,10 +41,12 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       // workflow is on.
       const venmo = viewer.seesFullUi || (await workflowEnabled());
       const due = club ? await loadDues(createAdminClient(), data.board.id).catch(() => ({ dues: {}, defaultDue: null })) : { dues: {}, defaultDue: null };
+      // Families off the weekly reminder (0133); none before it's applied.
+      const paused = club ? await loadPaused(data.board.id) : [];
       return (
         <>
           {tabs}
-          <TreasurerView data={data} openPlayerId={family ?? null} venmo={venmo} club={club} dues={due.dues} defaultDue={due.defaultDue} />
+          <TreasurerView data={data} openPlayerId={family ?? null} venmo={venmo} club={club} dues={due.dues} defaultDue={due.defaultDue} paused={paused} />
         </>
       );
     }
@@ -149,4 +151,9 @@ function Notice({ title, body }: { title: string; body: string }) {
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 420, lineHeight: 1.6 }}>{body}</div>
     </div>
   );
+}
+
+async function loadPaused(boardId: string): Promise<string[]> {
+  const { data, error } = await createAdminClient().from("olb_reminder_pauses").select("player_id").eq("board_id", boardId);
+  return error ? [] : ((data as { player_id: string }[] | null) ?? []).map((r) => r.player_id);
 }

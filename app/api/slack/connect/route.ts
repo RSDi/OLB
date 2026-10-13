@@ -5,7 +5,7 @@
 // closes itself instead.
 
 import { NextResponse, type NextRequest } from "next/server";
-import { requireSlackDm } from "../../../../lib/auth/guards";
+import { requireSlackSender } from "../../../../lib/auth/guards";
 import { getPreview } from "../../../../lib/activity/preview";
 import { slackDmConfigured } from "../../../../lib/slack-dm/connection";
 import { SLACK_DM_USER_SCOPES } from "../../../../lib/slack-dm/slack-user-api";
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const popup = req.nextUrl.searchParams.get("popup") === "1";
   const next = popup ? POPUP_RETURN : safeReturnPath(req.nextUrl.searchParams.get("next"));
   const stop = (outcome: string) => (popup ? popupPage(outcome) : NextResponse.redirect(backTo(origin, next, outcome)));
-  const gate = await requireSlackDm();
+  const gate = await requireSlackSender();
   // Signed out, the portal page sends them to sign in.
   if ("error" in gate) return stop("not-allowed");
   // During "Preview as" the browser is signed in as the member: connecting

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Input, Pill } from "../../components/ui";
 import { ErrorBox } from "./TeamsSettingsTab";
+import { ReminderCard } from "./ReminderCard";
 import { compCoachKidsNow, loadFeeSetup, saveFeeSettings, setFinancesEnabled } from "../../../lib/finances/club-actions";
 import { formatAmount } from "../../../lib/finances/logic";
 import type { TierInput } from "../../../lib/finances/fees";
@@ -81,7 +82,7 @@ export function FeesTab() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 820 }}>
       <p style={{ ...sub, fontSize: 13, maxWidth: 640 }}>
-        What families are charged this season, and the club&apos;s own books on <Link href="/portal/payments">Payments</Link>.
+        What families are charged this season, and the club&apos;s own books on <Link href="/portal/payments">Finances</Link>.
       </p>
       {error && <ErrorBox text={error} />}
       {notice && (
@@ -101,9 +102,9 @@ export function FeesTab() {
             style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--rsd-accent)" }}
           />
           <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Track the club&apos;s books on Payments</span>
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Track the club&apos;s books on Finances</span>
             <span style={sub}>
-              Adds Budget, Income, Programs, Fundraising and Snapshot to Payments, and the clinic sign-up page. Turn it off and they&apos;re
+              Adds Budget, Income, Programs, Fundraising and Snapshot to Finances, and the clinic sign-up page. Turn it off and they&apos;re
               hidden again; nothing is lost.
             </span>
           </span>
@@ -199,6 +200,8 @@ export function FeesTab() {
           {busy ? "Saving…" : "Save"}
         </Pill>
       </div>
+
+      <ReminderCard />
     </div>
   );
 }
