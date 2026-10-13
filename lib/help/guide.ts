@@ -1199,15 +1199,15 @@ Every signed-in member sees the links; only super-admins can change them.`,
     group: "Settings",
     audience: "super_admin",
     permission: "site_links",
-    keywords: ["public directory", "directory link", "share", "link", "key", "no login", "without signing in", "read-only", "roster", "turn off"],
-    body: `The public Directory is a read-only copy of the Directory on the club website. It opens without signing in, for anyone you give its private link to. It lists only families who said yes to the directory, shows each player's age (not their birthday) and city and ZIP code (not their street address), and never shows fees or payments. Open **Settings → Public Directory**.
+    keywords: ["public directory", "directory link", "share", "link", "key", "no login", "without signing in", "read-only", "roster", "turn off", "coaches", "coach"],
+    body: `The public Directory is a read-only copy of the Directory on the club website. It opens without signing in, for anyone you give its private link to. It lists only families who said yes to the directory, shows each player's age (not their birthday) and city and ZIP code (not their street address), and never shows fees or payments. Each team's coaches are listed too, with their phone and email: anyone in a coaching role on the team (Head coach, Assistant coach). They show at the top of each team under **By team**, and all together under **Coaches**. Open **Settings → Public Directory**.
 
 - **Link** — the address to share. **Copy link** copies it; **Open** shows the page in a new tab.
 - **Key** — the end of the link. Type your own (at least 16 letters, numbers, dashes or underscores) and tap **Save key**, or tap **New random key** to have one made for you.
 - Changing the key retires the old link right away. Do it if the link has been passed around more than you'd like.
 - **Turn off** — nobody can open the page until you save a key again.
 
-Anyone with the link can see parents' names, phone numbers and emails, so share it only with families in the program.`,
+Anyone with the link can see parents' and coaches' names, phone numbers and emails, so share it only with families in the program.`,
   },
   {
     id: "settings-audit-log",

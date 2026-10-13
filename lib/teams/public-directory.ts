@@ -5,7 +5,9 @@
 // names, team, jersey, age (never the birthday), city and ZIP (never the
 // street), and contact details.
 // Nothing about fees, payments, shirts, waivers or requirements is selected,
-// so none of it can reach the page.
+// so none of it can reach the page. Each team's coaches come along too: the
+// volunteers in a coaching role (Settings → Volunteer Roles), with the
+// phone and email on their member record.
 
 import { createAdminClient } from "../supabase/admin";
 import { ageFromDob } from "./age";
@@ -45,10 +47,27 @@ export interface PublicPlayer {
   parents: PublicParent[];
 }
 
+// A volunteer in a coaching role on a team.
+export interface PublicCoach {
+  team_id: string;
+  role: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+}
+
 export interface PublicDirectory {
   season: string | null;
   teams: PublicTeam[];
   players: PublicPlayer[];
+  // In each team's role order (head coach first), then by name.
+  coaches: PublicCoach[];
+}
+
+// Which volunteer roles the public Directory lists: the coaching ones (Head
+// coach, Assistant coach). Other volunteers can join once the board says so.
+export function isCoachRole(name: string): boolean {
+  return /coach/i.test(name);
 }
 
 interface Row {
@@ -71,6 +90,12 @@ interface Row {
   }[];
 }
 
+interface CoachRow {
+  team_id: string;
+  role_id: string;
+  member: { full_name: string | null; email: string | null; phone: string | null; deleted_at: string | null } | null;
+}
+
 const COLUMNS =
   "id, full_name, dob, age_group, team_id, jersey_number, new_to_program, city, state, postal_code, phone, email, " +
   "team:olb_teams(id, name, age_group, color), " +
@@ -91,9 +116,9 @@ export async function loadPublicDirectory(): Promise<PublicDirectory> {
     .order("season", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (!board) return { season: null, teams: [], players: [] };
+  if (!board) return { season: null, teams: [], players: [], coaches: [] };
 
-  const [teams, players] = await Promise.all([
+  const [teams, players, roles] = await Promise.all([
     db
       .from("olb_teams")
       .select("id, name, age_group, color")
@@ -106,12 +131,43 @@ export async function loadPublicDirectory(): Promise<PublicDirectory> {
       .eq("board_id", board.id)
       .eq("directory_optin", true)
       .order("full_name", { ascending: true }),
+    db
+      .from("olb_volunteer_roles")
+      .select("id, name, sort_order")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: true }),
   ]);
+
+  const teamList = (teams.data as PublicTeam[] | null) ?? [];
+  const coachRoles = ((roles.data as { id: string; name: string; sort_order: number }[] | null) ?? []).filter((r) =>
+    isCoachRole(r.name)
+  );
+  const order = new Map(coachRoles.map((r, i) => [r.id, i]));
+  const { data: spots } =
+    teamList.length && coachRoles.length
+      ? await db
+          .from("olb_team_volunteers")
+          .select("team_id, role_id, member:members(full_name, email, phone, deleted_at)")
+          .in("team_id", teamList.map((t) => t.id))
+          .in("role_id", coachRoles.map((r) => r.id))
+      : { data: [] };
+  const name = (v: CoachRow) => v.member!.full_name ?? v.member!.email ?? "Unknown";
+  const coaches = ((spots as unknown as CoachRow[] | null) ?? [])
+    .filter((v) => v.member && !v.member.deleted_at)
+    .sort((a, b) => order.get(a.role_id)! - order.get(b.role_id)! || name(a).localeCompare(name(b)))
+    .map((v) => ({
+      team_id: v.team_id,
+      role: coachRoles[order.get(v.role_id)!].name,
+      name: name(v),
+      phone: v.member!.phone,
+      email: v.member!.email,
+    }));
 
   const rows = (players.data as unknown as Row[] | null) ?? [];
   return {
     season: board.season as string,
-    teams: (teams.data as PublicTeam[] | null) ?? [],
+    teams: teamList,
+    coaches,
     players: rows.map(({ parents, dob, ...p }) => {
       const live = parents.filter((pa) => pa.member && !pa.member.deleted_at);
       return {
