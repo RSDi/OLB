@@ -9,6 +9,7 @@ import { teamLabel } from "../../../lib/teams/volunteer-options";
 import type { PublicPlayer, PublicTeam } from "../../../lib/teams/public-directory";
 import { JerseyNumber, TeamDot } from "../../portal/directory/_shared/TeamBanner";
 import { ContactLine, RELATIONSHIP_LABEL, muted } from "../../portal/directory/_shared/PlayerParts";
+import { FilterSelect, SegButton } from "../../components/FilterControls";
 
 type View = "alpha" | "city" | "team" | "age";
 const VIEWS: { key: View; label: string }[] = [
@@ -138,6 +139,9 @@ export function PublicDirectoryList({
 
   const shownSections = sections.filter((s) => s.players.length > 0);
   const shown = shownSections.reduce((n, s) => n + s.players.length, 0);
+  const showTeamFilter = view === "team" && teams.length > 0;
+  const showGroupFilter = view === "age" && groupNames.length > 1;
+  const pickedTeam = showTeamFilter && teamId !== "all" ? teams.find((t) => t.id === teamId) ?? null : null;
 
   return (
     <>
@@ -193,36 +197,42 @@ export function PublicDirectoryList({
         </div>
       </div>
 
-      {view === "team" && teams.length > 0 && (
+      {(showTeamFilter || showGroupFilter) && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <Chip label="All teams" active={teamId === "all"} onClick={() => setTeamId("all")} />
-          {teams.map((t) => (
-            <Chip
-              key={t.id}
-              label={teamLabel(t)}
-              color={t.color}
-              count={countByTeam.get(t.id) ?? 0}
-              active={teamId === t.id}
-              onClick={() => setTeamId(t.id)}
-            />
-          ))}
-          {(countByTeam.get(NO_TEAM) ?? 0) > 0 && (
-            <Chip
-              label="No team yet"
-              count={countByTeam.get(NO_TEAM) ?? 0}
-              active={teamId === NO_TEAM}
-              onClick={() => setTeamId(NO_TEAM)}
-            />
+          {showTeamFilter && (
+            <FilterSelect
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+              aria-label="Show a team"
+              active={teamId !== "all"}
+              leading={pickedTeam ? <TeamDot color={pickedTeam.color} /> : undefined}
+            >
+              <option value="all">All teams</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {teamLabel(t)} ({countByTeam.get(t.id) ?? 0})
+                </option>
+              ))}
+              {(countByTeam.get(NO_TEAM) ?? 0) > 0 && (
+                <option value={NO_TEAM}>No team yet ({countByTeam.get(NO_TEAM)})</option>
+              )}
+            </FilterSelect>
           )}
-        </div>
-      )}
-
-      {view === "age" && groupNames.length > 1 && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <Chip label="All ages" active={group === "all"} onClick={() => setGroup("all")} />
-          {groupNames.map((g) => (
-            <Chip key={g} label={g} active={group === g} onClick={() => setGroup(g)} />
-          ))}
+          {showGroupFilter && (
+            <FilterSelect
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+              aria-label="Show an age group"
+              active={group !== "all"}
+            >
+              <option value="all">All ages</option>
+              {groupNames.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </FilterSelect>
+          )}
         </div>
       )}
 
@@ -330,71 +340,6 @@ function PlayerRow({ player: p, border }: { player: PublicPlayer; border: boolea
         )}
       </div>
     </div>
-  );
-}
-
-function Chip({
-  label,
-  color,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  color?: string | null;
-  count?: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        height: 34,
-        padding: "0 14px",
-        borderRadius: 100,
-        background: active ? "var(--rsd-accent-fill)" : "var(--gw-bg-elev)",
-        color: active ? "var(--rsd-accent-fill-on)" : "var(--gw-fg-muted)",
-        border: "1px solid",
-        borderColor: active ? "var(--rsd-accent-fill)" : "var(--gw-border)",
-        fontSize: 12,
-        fontWeight: 700,
-        cursor: "pointer",
-      }}
-    >
-      {color !== undefined && <TeamDot color={color} />}
-      {label}
-      {count !== undefined && <span style={{ fontWeight: 600, opacity: 0.65 }}>{count}</span>}
-    </button>
-  );
-}
-
-function SegButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      style={{
-        height: 32,
-        padding: "0 14px",
-        borderRadius: 8,
-        border: "none",
-        background: active ? "var(--gw-bg-elev)" : "transparent",
-        boxShadow: active ? "0 1px 2px rgba(0,0,0,.08)" : "none",
-        color: active ? "var(--gw-fg)" : "var(--gw-fg-muted)",
-        fontSize: 12,
-        fontWeight: 700,
-        cursor: "pointer",
-      }}
-    >
-      {label}
-    </button>
   );
 }
 
