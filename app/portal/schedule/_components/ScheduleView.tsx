@@ -55,6 +55,8 @@ import { WeekendSheet } from "./WeekendSheet";
 import { WeekendDetails } from "./WeekendDetails";
 import { TravelChip, TravelPopover } from "./TravelPopover";
 import { placesNear, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
+import type { HotelOption } from "../../../../lib/hs-hotel-stays/data";
+import type { HotelStayView } from "../../../../lib/hs-hotel-stays/types";
 import { FilterMenu, FilterMultiSelect, FilterSelect, MenuAction, MenuHeading, MenuRow, type MultiOption } from "../../../components/FilterControls";
 
 export interface CompareWeekend {
@@ -77,10 +79,13 @@ export function ScheduleView({
   compare,
   isStaff,
   canEdit,
+  canManageStays,
   options,
   knownTeams,
   directoryTeams,
   travelPlaces,
+  hotelStays,
+  hotels,
   today,
 }: {
   schedule: HsSeasonSchedule;
@@ -89,11 +94,15 @@ export function ScheduleView({
   isStaff: boolean;
   // The board and the coaches change it; the travel coordinator only looks.
   canEdit: boolean;
+  // Travel (and the board) manage hotel stays on weekends (0135).
+  canManageStays: boolean;
   options: HsContactOption[];
   knownTeams: TeamPick[];
   directoryTeams: DirectoryTeam[];
   // Hotels and places to eat, for where to stay and eat on weekends away.
   travelPlaces: TravelPlace[];
+  hotelStays: HotelStayView[];
+  hotels: HotelOption[];
   today: string;
 }) {
   const router = useRouter();
@@ -930,6 +939,10 @@ export function ScheduleView({
           opponents={state.opponents}
           contacts={contacts}
           near={nearBy.get(sheetWeekend.id) ?? null}
+          stays={hotelStays.filter((s) => s.weekend_id === sheetWeekend.id)}
+          hotels={hotels}
+          directoryTeams={directoryTeams}
+          canManageStays={canManageStays}
           onClose={() => setSheet(null)}
         />
       )}
@@ -945,6 +958,10 @@ export function ScheduleView({
           contacts={contacts}
           options={options}
           knownTeams={known}
+          stays={sheetWeekend ? hotelStays.filter((s) => s.weekend_id === sheetWeekend.id) : []}
+          hotels={hotels}
+          directoryTeams={directoryTeams}
+          canManageStays={canManageStays}
           dispatch={dispatch}
           onClose={() => setSheet(null)}
           onSaved={(w) => setSheet({ kind: "weekend", id: w.id })}

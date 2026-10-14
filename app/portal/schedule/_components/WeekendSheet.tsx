@@ -48,6 +48,10 @@ import type { ScheduleAction } from "./store";
 import { TeamAdder, type TeamPick } from "./TeamAdder";
 import { ComboSelect } from "../../../components/ComboSelect";
 import { TeamChips } from "./TeamChips";
+import { HotelStayPanel } from "./HotelStayPanel";
+import type { DirectoryTeam } from "./SeasonSheet";
+import type { HotelOption } from "../../../../lib/hs-hotel-stays/data";
+import type { HotelStayView } from "../../../../lib/hs-hotel-stays/types";
 
 const FACILITY_TYPES = ["facilities", "facility", "gyms", "venues", "gym rentals"];
 
@@ -61,6 +65,10 @@ export function WeekendSheet({
   contacts,
   options,
   knownTeams,
+  stays,
+  hotels,
+  directoryTeams,
+  canManageStays,
   dispatch,
   onClose,
   onSaved,
@@ -75,6 +83,10 @@ export function WeekendSheet({
   contacts: Map<string, HsContactRef>;
   options: HsContactOption[];
   knownTeams: TeamPick[];
+  stays: HotelStayView[];
+  hotels: HotelOption[];
+  directoryTeams: DirectoryTeam[];
+  canManageStays: boolean;
   dispatch: (a: ScheduleAction) => void;
   onClose: () => void;
   onSaved: (w: HsWeekend) => void;
@@ -259,6 +271,14 @@ export function WeekendSheet({
 
       {weekend ? (
         <>
+          <HotelStayPanel
+            weekendId={weekend.id}
+            weekendEvent={weekend.event}
+            stays={stays}
+            hotels={hotels}
+            teams={directoryTeams}
+            canEdit={canManageStays}
+          />
           <GamesEditor weekend={weekend} levels={levels} games={games} dispatch={dispatch} onError={setError} />
           <TeamsEditor
             weekend={weekend}

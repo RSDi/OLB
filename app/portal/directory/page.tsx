@@ -4,20 +4,32 @@ import { PlayersList } from "./PlayersList";
 import { holdsLeadershipRole, loadTeamsWithStaff } from "../../../lib/teams/volunteer-data";
 import { countRegistrations } from "../../../lib/teams/registration-data";
 import { countPlayerNotes } from "../../../lib/teams/player-note-data";
+import { createClient } from "../../../lib/supabase/server";
+import { loadDirectoryHotelStays, loadHotelStayPlayers } from "../../../lib/hs-hotel-stays/data";
 
-export default async function DirectoryPage() {
+export default async function DirectoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ hotelStay?: string }>;
+}) {
   // Started before the viewer check on purpose — see loadViewer().
   const players = loadPlayers();
   const teams = loadTeamsWithStaff();
   // Board, Check off requirements, or Travel (0134); anyone else gets an
   // empty list back by RLS.
   const requirements = loadRequirements();
+  const params = await searchParams;
   const viewer = await loadViewer();
   if (!viewer) return <AccessDenied />;
   const { teams: teamList, roles } = await teams;
   const playerList = await players;
   const req = viewer.canCheckRequirements ? await requirements : { requirements: [], rows: [] };
   const playerIds = new Set(playerList.map((p) => p.id));
+  // Hotel stays (0135): Travel and the board track Booked per event.
+  const canStays = viewer.canManageTravel || viewer.isStaff;
+  const supabase = canStays ? await createClient() : null;
+  const hotelStays = supabase ? await loadDirectoryHotelStays(supabase) : [];
+  const stayRows = supabase ? await loadHotelStayPlayers(supabase, hotelStays.map((s) => s.id)) : [];
   // New, waitlisted and removed registrations, for the Registrations button
   // and the team filter.
   const registrations = viewer.canManageRegistrations ? await countRegistrations() : null;
@@ -38,6 +50,10 @@ export default async function DirectoryPage() {
       canViewAges={canViewAges}
       requirements={req.requirements}
       requirementRows={req.rows.filter((r) => playerIds.has(r.player_id))}
+      hotelStays={hotelStays}
+      hotelStayRows={stayRows.filter((r) => playerIds.has(r.player_id))}
+      canManageHotelStays={canStays}
+      initialStayId={params.hotelStay ?? null}
       canPlace={viewer.canManageRegistrations}
       canEmail={viewer.canEmailFamilies}
       canSlack={viewer.canSlackDm}

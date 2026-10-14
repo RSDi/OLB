@@ -10,6 +10,7 @@ import { getViewer } from "../../../../lib/auth/viewer";
 import { createClient } from "../../../../lib/supabase/server";
 import { viewerCanUseHsSchedule } from "../../../../lib/hs-schedule/viewer";
 import { loadContactScheduleHistory } from "../../../../lib/hs-schedule/data";
+import { loadHotelStaysForContact } from "../../../../lib/hs-hotel-stays/data";
 import { loadLastContactChange } from "../../../../lib/contacts/history-data";
 
 export default async function ContactDetailPage({
@@ -43,7 +44,7 @@ export default async function ContactDetailPage({
 
   // A company: the people who work there. A person: their company, and who
   // else works there.
-  const [people, company, coworkers, links, history, lastChange] = await Promise.all([
+  const [people, company, coworkers, links, history, hotelStays, lastChange] = await Promise.all([
     isCompany ? loadChildContacts(id) : Promise.resolve([]),
     parentId ? loadContact(parentId) : Promise.resolve(null),
     parentId ? loadChildContacts(parentId) : Promise.resolve([]),
@@ -52,6 +53,10 @@ export default async function ContactDetailPage({
     // viewer can use the HS Schedule.
     isCompany && schedule
       ? createClient().then((supabase) => loadContactScheduleHistory(supabase, id))
+      : Promise.resolve([]),
+    // Hotel stays linked to this contact (0135); empty when it isn't a hotel.
+    isCompany && schedule
+      ? createClient().then((supabase) => loadHotelStaysForContact(supabase, id))
       : Promise.resolve([]),
     editor ? createClient().then((supabase) => loadLastContactChange(supabase, id)) : Promise.resolve(null),
   ]);
@@ -64,6 +69,7 @@ export default async function ContactDetailPage({
       coworkers={coworkers.filter((c) => c.id !== id)}
       links={links}
       history={history}
+      hotelStays={hotelStays}
       canEdit={canEdit}
       canHistory={editor}
       canDelete={viewer.isSuperAdmin}

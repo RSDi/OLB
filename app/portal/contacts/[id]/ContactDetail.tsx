@@ -19,6 +19,8 @@ import type {
 import { displayName, externalHref, telHref } from "../_shared/format";
 import { placeLabel } from "../_shared/group";
 import type { ContactScheduleRow } from "../../../../lib/hs-schedule/data";
+import type { HotelStayView } from "../../../../lib/hs-hotel-stays/types";
+import { stayStatusLabel } from "../../../../lib/hs-hotel-stays/logic";
 import type { LastContactChange } from "../../../../lib/contacts/history-data";
 import { formatWhen } from "../../../../lib/contacts/history";
 import { formatWeekendDates, weekendStatusLabel } from "../../../../lib/hs-schedule/logic";
@@ -33,6 +35,8 @@ interface Props {
   links: ResolvedLink[];
   // For a program or facility: its weekends on the HS Schedule.
   history: ContactScheduleRow[];
+  // For a hotel: stays linked to HS Schedule weekends (0135).
+  hotelStays: HotelStayView[];
   // Edit and add people: the board, and the travel coordinator on a hotel or
   // place to eat (0110). Coaches only read (0109).
   canEdit: boolean;
@@ -43,7 +47,7 @@ interface Props {
   lastChange: LastContactChange | null;
 }
 
-export function ContactDetail({ contact, people, company, coworkers, links, history, canEdit, canHistory, canDelete, lastChange }: Props) {
+export function ContactDetail({ contact, people, company, coworkers, links, history, hotelStays, canEdit, canHistory, canDelete, lastChange }: Props) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -301,6 +305,9 @@ export function ContactDetail({ contact, people, company, coworkers, links, hist
 
           {/* The HS Schedule: every weekend a program came to or a facility hosted */}
           {isCompany && history.length > 0 && <ScheduleHistory rows={history} />}
+
+          {/* Hotel stays: when we booked this hotel for a weekend (0135) */}
+          {isCompany && hotelStays.length > 0 && <HotelStayHistory stays={hotelStays} />}
 
           {/* Linked entities */}
           {links.length > 0 && (
@@ -689,6 +696,64 @@ function WorksAtCard({ company, coworkers }: { company: ContactWithRefs; coworke
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Hotel stays on the HS Schedule: when we stayed here and for which event.
+function HotelStayHistory({ stays }: { stays: HotelStayView[] }) {
+  const seasons = [...new Set(stays.map((s) => s.season))];
+  return (
+    <div className="rsd-card" style={{ gap: 12 }} data-tour="contact-hotel-stays">
+      <h3 style={SECTION_TITLE}>Hotel stays ({stays.length})</h3>
+      {seasons.map((season) => (
+        <div key={season} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-fg-muted)", textTransform: "uppercase", letterSpacing: ".04em" }}>
+            {seasonLabel(season)}
+          </span>
+          {stays
+            .filter((s) => s.season === season)
+            .map((s) => (
+              <div
+                key={s.id}
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "baseline",
+                  flexWrap: "wrap",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  background: "var(--gw-bg)",
+                  border: "1px solid var(--gw-border)",
+                }}
+              >
+                <Link
+                  href={`/portal/schedule?season=${season}#w-${s.weekend_id}`}
+                  style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", flex: 1, minWidth: 160, textDecoration: "none", color: "inherit" }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 700, minWidth: 84, fontVariantNumeric: "tabular-nums" }}>
+                    {formatWeekendDates(s.weekend_starts_on, s.weekend_ends_on)}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 120, fontSize: 13, fontWeight: 600 }}>
+                    {s.name}
+                    {s.weekend_event && s.weekend_event !== s.name && (
+                      <span style={{ color: "var(--gw-fg-muted)", fontWeight: 500 }}> · {s.weekend_event}</span>
+                    )}
+                  </span>
+                  <span className="rsd-chip rsd-chip-mute" style={{ fontSize: 10 }}>
+                    {stayStatusLabel(s.status)}
+                  </span>
+                </Link>
+                <Link
+                  href={`/portal/directory?hotelStay=${s.id}`}
+                  style={{ fontSize: 11, fontWeight: 700, color: "var(--gw-accent)", textDecoration: "none" }}
+                >
+                  Directory ›
+                </Link>
+              </div>
+            ))}
+        </div>
+      ))}
     </div>
   );
 }

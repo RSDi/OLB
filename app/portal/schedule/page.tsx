@@ -12,6 +12,10 @@ import {
   loadHsTravelPlaces,
   loadKnownTeams,
 } from "../../../lib/hs-schedule/data";
+import {
+  loadHotelContactOptions,
+  loadHotelStaysForSeason,
+} from "../../../lib/hs-hotel-stays/data";
 import { ScheduleView, type CompareWeekend } from "./_components/ScheduleView";
 import { EmptySchedule } from "./_components/EmptySchedule";
 import type { DirectoryTeam } from "./_components/SeasonSheet";
@@ -31,6 +35,7 @@ export default async function SchedulePage({
   const access = await viewerHsScheduleAccess(viewer);
   if (!access) return <NotAvailable />;
   const canEdit = access === "edit";
+  const canManageStays = viewer.isStaff || viewer.canManageTravel;
 
   const params = await searchParams;
   const supabase = await createClient();
@@ -51,7 +56,23 @@ export default async function SchedulePage({
 
   const compareSeason = seasons.find((s) => s.season === parseSeason(params.compare) && s.id !== season.id) ?? null;
   const board = `${season.season}-${season.season + 1}`;
-  const [schedule, options, knownTeams, compareRows, teams, travelPlaces] = await Promise.all([
+  const loadDirectoryTeams = () =>
+    supabase
+      .from("olb_boards")
+      .select("id")
+      .eq("season", board)
+      .maybeSingle()
+      .then(async ({ data }) => {
+        if (!data) return [] as DirectoryTeam[];
+        const { data: t } = await supabase
+          .from("olb_teams")
+          .select("id, name, age_group")
+          .eq("board_id", (data as { id: string }).id)
+          .order("sort_order")
+          .order("name");
+        return (t as DirectoryTeam[] | null) ?? [];
+      });
+  const [schedule, options, knownTeams, compareRows, teams, travelPlaces, hotelStays, hotels] = await Promise.all([
     loadHsSeasonSchedule(supabase, season),
     // The programs to add teams from: all of them for the board, the types
     // shared with coaches for a coach (RLS, 0109). Only for those who edit.
@@ -65,27 +86,12 @@ export default async function SchedulePage({
           .order("starts_on")
           .then(({ data }) => (data as CompareWeekend[] | null) ?? [])
       : Promise.resolve(null),
-    // The season's teams in the Directory, to link the columns to (Season
-    // settings, for those who edit).
-    !canEdit
-      ? Promise.resolve([] as DirectoryTeam[])
-      : supabase
-          .from("olb_boards")
-          .select("id")
-          .eq("season", board)
-          .maybeSingle()
-          .then(async ({ data }) => {
-            if (!data) return [] as DirectoryTeam[];
-            const { data: t } = await supabase
-              .from("olb_teams")
-              .select("id, name, age_group")
-              .eq("board_id", (data as { id: string }).id)
-              .order("sort_order")
-              .order("name");
-            return (t as DirectoryTeam[] | null) ?? [];
-          }),
+    // Directory teams: Season settings (editors) and hotel-stay audience (Travel).
+    canEdit || canManageStays ? loadDirectoryTeams() : Promise.resolve([] as DirectoryTeam[]),
     // Hotels and places to eat, for where to stay and eat on weekends away.
     loadHsTravelPlaces(supabase),
+    loadHotelStaysForSeason(supabase, season.id),
+    canManageStays ? loadHotelContactOptions(supabase) : Promise.resolve([]),
   ]);
 
   return (
@@ -97,10 +103,13 @@ export default async function SchedulePage({
       compare={compareSeason && compareRows ? { season: compareSeason.season, weekends: compareRows } : null}
       isStaff={viewer.isStaff}
       canEdit={canEdit}
+      canManageStays={canManageStays}
       options={options}
       knownTeams={knownTeams}
       directoryTeams={teams}
       travelPlaces={travelPlaces}
+      hotelStays={hotelStays}
+      hotels={hotels}
       today={today}
     />
   );

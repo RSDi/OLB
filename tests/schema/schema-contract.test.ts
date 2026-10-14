@@ -94,6 +94,10 @@ const CONTRACT: Record<string, string> = {
     "id,name,description,kind,amount_cents,allow_file,done_label,due_on,team_ids,active,sort_order,created_by,created_at,updated_at,deleted_at",
   olb_player_requirements:
     "player_id,requirement_id,status,completed_on,note,file_path,file_name,marked_by,created_at,updated_at",
+  // Hotel stays on HS Schedule weekends (0135).
+  hs_hotel_stays:
+    "id,weekend_id,hotel_contact_id,name,team_ids,booking_instructions,booking_url,booking_code,cutoff_on,rate_notes,status,sort_order,created_by,updated_by,created_at,updated_at",
+  hs_hotel_stay_players: "stay_id,player_id,status,completed_on,note,marked_by,created_at,updated_at",
   olb_charges:
     "id,board_id,player_id,kind,category,description,amount_cents,entry_date,note,created_by,created_at,voided_at,voided_by",
   olb_payments:
