@@ -127,7 +127,7 @@ test("the travel coordinator reads the hotels section, and the board still gets 
   assert.equal(guideSectionForPath("/portal/contacts/abc/edit", TRAVEL)?.id, "travel-contacts");
   assert.ok(!guideSectionsFor(TRAVEL).some((s) => s.audience === "staff" || s.audience === "coaches"));
   assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "travel-contacts"));
-  // Hotel registration chase, plus email/Slack follow-ups (0134).
+  // Hotel stays (0135), plus email/Slack follow-ups.
   assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "hotel-registration"));
   assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "email-families"));
   assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "slack-dms"));

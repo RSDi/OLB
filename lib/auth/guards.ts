@@ -135,6 +135,16 @@ export async function requireUniforms(): Promise<GateResult> {
   return { userId: caller.userId };
 }
 
+// Hotel stays on the HS Schedule (0135): the board, or Travel.
+export async function requireTravelOrStaff(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!isStaff(caller.member) && !canManageTravel(caller.member)) {
+    return { error: "Only the board and the travel coordinator can manage hotel stays." };
+  }
+  return { userId: caller.userId };
+}
+
 // Emailing families from the Directory (0116): the board, Registrations, or
 // Travel (0134 hotel follow-ups).
 export async function requireFamilyEmail(): Promise<GateResult> {
