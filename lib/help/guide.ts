@@ -24,9 +24,10 @@ import type { MemberRole, MemberStatus } from "../auth/permissions";
 // the coaches (a leadership volunteer role on a team) and the board;
 // "finance" = anyone with the Payments grant; "registrations" = anyone with
 // the Registrations grant; "travel" = anyone with the Travel grant (the
-// travel coordinator); "messaging" = the board and the Registrations grant,
-// who can email families from the Directory; "slack" = anyone with the Slack
-// DMs grant; "website" = board members with the Website grant. Super-admins always have all of them. The guide hides a section
+// travel coordinator); "messaging" = the board, the Registrations grant, and
+// Travel, who can email families from the Directory; "slack" = anyone with
+// the Slack DMs grant or Travel; "website" = board members with the Website
+// grant. Super-admins always have all of them. The guide hides a section
 // from anyone it doesn't apply to.
 export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "travel" | "messaging" | "slack" | "website" | "super_admin";
 
@@ -406,10 +407,10 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
     title: "Emailing families",
     group: "Directory",
     audience: "messaging",
-    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "messages sent", "template", "templates", "primary email", "same email", "{player}"],
-    body: `You see this if you're on the board or have the **Registrations** permission.
+    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "hotel", "hotel registration", "messages sent", "template", "templates", "primary email", "same email", "{player}"],
+    body: `You see this if you're on the board, or have the **Registrations** or **Travel** permission.
 
-**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: pick a team or **No team yet**, pick an age group, search, or pick a requirement and **Missing** to remind just the families who still need it. The top of the window says who it's going to, and **see who gets it** lists each family.
+**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: pick a team or **No team yet**, pick an age group, search, or pick a requirement (like **Hotel registration** or the handbook) and **Missing** to remind just the families who still need it. The top of the window says who it's going to, and **see who gets it** lists each family.
 
 **Email one family.** On a player's page, **Email family** writes to just that player's family.
 
@@ -427,13 +428,13 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
     group: "Directory",
     audience: "slack",
     keywords: ["slack", "dm", "direct message", "message", "families", "parents", "dad", "mom", "remind", "reminder", "missing", "handbook", "connect slack", "disconnect", "reply", "replies", "{name}", "{player}"],
-    body: `You see this if a super-admin turned on **Slack DMs** for you in **Settings → Members**: board members, coaches, the travel coordinator, anyone the club picks.
+    body: `You see this if you have the **Travel** permission, or a super-admin turned on **Slack DMs** for you in **Settings → Members**: board members, coaches, the travel coordinator, anyone the club picks.
 
 **What it does.** Sends the parents of the players you pick a Slack direct message **from you**, one to each person, never a group DM. It looks just like a message you typed yourself, so when a parent replies, the reply comes straight to you in Slack.
 
 **Connect Slack, once.** The first time, **Slack families** asks you to **Connect Slack**. A Slack window opens; tap **Allow** and it closes by itself. After that the portal can send DMs for you. To stop, tap **Disconnect Slack** at the top of the window.
 
-**Slack the players in view.** On the Directory, **Slack families** (next to **Email families**, when you have both) writes to the families of the players the list shows right now. Narrow it first: tap a team, pick an age group, search, or (for the board) pick a requirement like the handbook and **Missing**, so only the families who still need it hear from you.
+**Slack the players in view.** On the Directory, **Slack families** (next to **Email families**, when you have both) writes to the families of the players the list shows right now. Narrow it first: tap a team, pick an age group, search, or pick a requirement like **Hotel registration** or the handbook and **Missing**, so only the families who still need it hear from you.
 
 **Slack one family.** On a player's page, **Slack family** writes to just that player's parents.
 
@@ -469,18 +470,18 @@ You can only Slack the families of players you can see in the Directory. Slack D
     group: "Directory",
     audience: "staff",
     permission: "player_requirements",
-    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "scanner", "camera", "auto", "pdf", "heic", "iphone photo", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
-    body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, a tournament fee, a form. Only the board sees any of this.
+    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "hotel", "hotel registration", "booked", "room block", "fee", "fees", "paid", "owes", "waived", "scan", "scanner", "camera", "auto", "pdf", "heic", "iphone photo", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
+    body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, hotel registration, a tournament fee, a form. The board sees this; the travel coordinator (the **Travel** permission) does too, so they can mark hotel registration and follow up.
 
 **On each player.** In the **Directory**, every player has a chip for each requirement that applies to them:
 
-- A red **Needs Handbook signature** (or **Owes** for a fee) means it's still missing.
-- A green chip with a check means it's done or paid. A little page icon means a scan is attached.
+- A red **Needs Handbook signature** or **Needs Hotel registration** (or **Owes** for a fee) means it's still missing.
+- A green chip with a check means it's done, paid, or **Booked** (hotel registration). A little page icon means a scan is attached.
 - A grey **waived** chip means you've excused them.
 
-**Checking a player off.** Tap the chip. Pick **Done** (**Paid** for a fee), **Waived** or **Not yet**, set the date, and add a **Note** if it helps (a check number, say). Then tap **Save**.
+**Checking a player off.** Tap the chip. Pick **Done** (**Paid** for a fee, **Booked** for hotel registration), **Waived** or **Not yet**, set the date, and add a **Note** if it helps (a confirmation number, say). Then tap **Save**.
 
-**Scans.** When a requirement offers it, you can attach a copy of what you collected. Scans are private to the board.
+**Scans.** When a requirement offers it, you can attach a copy of what you collected. Scans are private to people who can check requirements off.
 
 - **Scan with camera** works like the scanner built into your phone. Point the camera at the page and hold still: once the yellow outline finds it, the ring around the round button fills and it takes the picture by itself. Tap the round button to take it sooner, or tap **Auto** to turn that off and always tap it yourself (your phone remembers). Drag the corners if they're off, then tap **Keep scan**. The page comes out straight and cleaned up. Pick **Color**, **Grayscale**, **B&W** or **Photo** (the picture as taken), tap **Add page** for more pages (it waits until you turn to the next page), then **Attach scan** to save them all as one PDF. **Photo** next to the round button scans a picture you already took.
 - **Upload scan** attaches a photo or PDF you already have. A photo opens in the scanner first, so you can drag the corners and pick a look the same way, or tap **Upload as is** to attach it untouched. iPhone photos (HEIC) work on any computer; with **Upload as is** they're saved as a JPEG so everyone can open them.
@@ -488,11 +489,33 @@ You can only Slack the families of players you can see in the Directory. Slack D
 
 If the camera won't open, allow it for this site in your browser's settings, or tap **Use a photo instead**.
 
-**Who's still missing?** Pick a requirement from the **All requirements** drop-down above the list. **Missing** shows who still needs it, with counts for **Done** (or **Paid**), **Waived** and **All**. It works together with search and the team and age-group filters, and the line above the list shows how many are done.
+**Who's still missing?** Pick a requirement from the **All requirements** drop-down above the list. **Missing** shows who still needs it, with counts for **Done** (or **Paid** / **Booked**), **Waived** and **All**. It works together with search and the team and age-group filters, and the line above the list shows how many are done. From a **Missing** list, **Email families** or **Slack families** writes to those families.
 
 Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.
 
 **Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title, or tap **ⓘ** on **Settings → Requirements** and then **Show me around**.`,
+  },
+  {
+    id: "hotel-registration",
+    title: "Hotel registration",
+    group: "Directory",
+    audience: "travel",
+    keywords: ["hotel", "hotels", "hotel registration", "booked", "room block", "travel", "travel coordinator", "missing", "email", "slack", "dm", "follow up", "families", "requirements"],
+    body: `For the travel coordinator: track which families have registered for the hotel / room block, mark them **Booked**, and follow up with the ones who haven't — the same way the board tracks the handbook signature.
+
+**On each player.** In the **Directory**, every player shows a **Hotel registration** chip (and any other requirements the board has set):
+
+- Red **Needs Hotel registration** means the family still needs to book.
+- Green **Hotel registration** with a check means they're **Booked**.
+- Grey **waived** means you've excused them (staying elsewhere, say).
+
+**Marking Booked.** Tap the chip. Pick **Booked**, **Waived** or **Not yet**, set the date, and add a **Note** if it helps (a confirmation number). Then tap **Save**. Mark each player in the family once they've registered.
+
+**Who still needs it?** Above the list, pick **Hotel registration** from **All requirements**, then **Missing**. The line above the list shows how many are booked. Narrow further with a team or search if you like.
+
+**Follow up.** With **Missing** showing, tap **Email families** or **Slack families** to write to those families. **{player}** becomes each family's player names; for Slack, **{name}** is each parent's first name. A copy of what you send is kept on the player's page under **Messages sent**. For Slack, connect your Slack the first time when the window asks.
+
+Hotels and places to eat themselves stay in **External Contacts** (see *Hotels and places to eat*). The **HS Schedule** shows which weekends are away.`,
   },
   {
     id: "hs-schedule",
@@ -575,7 +598,7 @@ Super-admins can **Delete** a contact.`,
     group: "External Contacts",
     audience: "travel",
     routes: ["/portal/contacts"],
-    keywords: ["travel", "travel coordinator", "hotel", "hotels", "room block", "rates", "food", "restaurant", "places to eat", "dinner", "team meal", "external contacts", "tags", "closed"],
+    keywords: ["travel", "travel coordinator", "hotel", "hotels", "room block", "rates", "food", "restaurant", "places to eat", "dinner", "team meal", "external contacts", "tags", "closed", "hotel registration", "booked"],
     body: `For the travel coordinator: the hotels we book and the places that feed the team on the road, in **External Contacts** (in the sidebar). You see and change these; the rest of External Contacts is the board's.
 
 - Each hotel or restaurant is listed with the people there under it, their role, phone and email. Tap one to open it.
@@ -583,7 +606,9 @@ Super-admins can **Delete** a contact.`,
 - On a place's page, **+ Add person** adds who you deal with there, and **Edit** changes the place. If someone else saved it after you opened it, your save stops and says so, so nobody's changes are lost.
 - **Tags** put a place on the HS Schedule's weekends in a nearby city: tag a hotel in Ankeny **des moines** and it shows on Des Moines weekends as well as Ankeny's. Tag one **closed** to keep it off the schedule.
 
-You, the coaches and the board see these places under each weekend away on the **HS Schedule**, with your notes. Only the board can delete a contact.`,
+You, the coaches and the board see these places under each weekend away on the **HS Schedule**, with your notes. Only the board can delete a contact.
+
+**Who's registered for the hotel.** On the **Directory**, each player has a **Hotel registration** chip. Tap it to mark **Booked**, or pick **Hotel registration** → **Missing** and use **Email families** or **Slack families** to follow up — see *Hotel registration*.`,
   },
   {
     id: "playbooks",
@@ -937,7 +962,7 @@ Activity is recorded from the day it went live.`,
 - Pick someone's **access profile** from the drop-down on the **Approved** tab: **Member**, **Board**, any profile the club has made (like Treasurer), or **Super-admin**. The profile sets whether they're Board and what they can manage (see *Settings: Access Profiles*). Picking a new one replaces what they had, extras included.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - Tap **Access** on someone's row on the **Approved** tab to see what they can do. The number on the button counts it, and the row lists it under their name. Greyed ticks come from their profile; change those in **Settings → Access Profiles**. Tick any other box to give that one person an **extra** on top of their profile, untick to take it away. Rows with extras show **+ extras**, and rows on a profile the club made show its name.
-  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit the hotels and places to eat in External Contacts and see the HS Schedule, and **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*).
+  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, see the HS Schedule, mark **Hotel registration** on players in the Directory, and email or Slack families about travel, and **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too).
   - **Settings (Board)** (board members only): **Edit**, **Delete** and **Undelete** for Settings items like Requirements, and **Website** to change the club website's menu, page text and pictures (see *Settings: Website*).
   - **Board powers** (for people who aren't Board; Board has them all): **See all players** (every player, listed or not, with fees, waivers, shirts and parents' details), **Member notes**, **Check off requirements**, **Approve access requests**, **External Contacts** (see, add and edit every contact, and their history) and **Plan HS Schedule**.
   - **Club setup** (anyone): **Teams & volunteers** to set up teams and volunteer roles and fill team spots (putting someone in a leadership spot makes them a coach), and **Sidebar Links & Public Directory**.
@@ -1005,17 +1030,18 @@ The public Directory lists the same jobs under **By team** and **Coaches & Volun
     title: "Settings: Requirements",
     group: "Settings",
     audience: "staff",
-    keywords: ["requirements", "settings", "handbook", "signature", "fee", "tournament fee", "amount", "due date", "applies to", "teams", "retire", "active", "scan upload"],
-    body: `Choose what players need to hand in or pay. Open **Settings → Requirements**. Super-admins can always use this tab. A board member can too once a super-admin gives them **Settings: Edit**, through their access profile or their **Access** panel in **Settings → Members**.
+    keywords: ["requirements", "settings", "handbook", "signature", "hotel", "hotel registration", "booked", "mark complete as", "fee", "tournament fee", "amount", "due date", "applies to", "teams", "retire", "active", "scan upload"],
+    body: `Choose what players need to hand in or pay. Open **Settings → Requirements**. Super-admins can always use this tab. A board member can too once a super-admin gives them **Settings: Edit**, through their access profile or their **Access** panel in **Settings → Members**. **Handbook signature** and **Hotel registration** are set up to start.
 
-- **Add requirement** — give it a **Name** (what the board sees on each player, like Handbook signature) and a **Description** if it helps.
-- **Type** — **Task / form** is marked **Done**; **Fee** is marked **Paid** and asks for an **Amount**.
+- **Add requirement** — give it a **Name** (what the board sees on each player, like Handbook signature or Hotel registration) and a **Description** if it helps.
+- **Type** — **Task / form** is marked **Done** by default; **Fee** is marked **Paid** and asks for an **Amount**.
+- **Mark complete as** — optional word for the green chip and filter, like **Booked** for hotel registration. Leave blank for **Done** or **Paid**.
 - **Due date** is optional, a reminder for the board.
 - **Applies to** — **All players**, or **Only some teams** (a tournament fee for one team, say). Tick the teams it covers.
 - **Offer scan upload** lets the board attach a copy when they check a player off: scanned with the phone's camera, or a photo or PDF.
 - **Active** — untick it to retire a requirement. It leaves the Directory but keeps everyone's record, and you can turn it back on later.
 
-Use the arrows to change the order (it's the order of the teams in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
+Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can. The travel coordinator marks **Hotel registration** from the Directory without needing this Settings tab.`,
   },
   {
     id: "settings-planning-roles",
@@ -1241,8 +1267,17 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
   if (audience === "finance") return viewer.role === "super_admin" || !!viewer.canManageFinances;
   if (audience === "registrations") return viewer.role === "super_admin" || !!viewer.canManageRegistrations;
   if (audience === "travel") return viewer.role === "super_admin" || !!viewer.canManageTravel;
-  if (audience === "messaging") return viewer.isStaff || viewer.role === "super_admin" || !!viewer.canManageRegistrations;
-  if (audience === "slack") return viewer.role === "super_admin" || !!viewer.canSlackDm;
+  if (audience === "messaging") {
+    return (
+      viewer.isStaff ||
+      viewer.role === "super_admin" ||
+      !!viewer.canManageRegistrations ||
+      !!viewer.canManageTravel
+    );
+  }
+  if (audience === "slack") {
+    return viewer.role === "super_admin" || !!viewer.canSlackDm || !!viewer.canManageTravel;
+  }
   if (audience === "website") return viewer.role === "super_admin" || !!viewer.canManageWebsite;
   return viewer.role === "super_admin";
 }

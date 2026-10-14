@@ -91,7 +91,7 @@ const CONTRACT: Record<string, string> = {
   olb_import_batches: "id,board_id,filename,summary",
   sidebar_links: "id,label,url,open_in_new_tab,open_in_frame,sort_order,created_by",
   olb_requirements:
-    "id,name,description,kind,amount_cents,allow_file,due_on,team_ids,active,sort_order,created_by,created_at,updated_at,deleted_at",
+    "id,name,description,kind,amount_cents,allow_file,done_label,due_on,team_ids,active,sort_order,created_by,created_at,updated_at,deleted_at",
   olb_player_requirements:
     "player_id,requirement_id,status,completed_on,note,file_path,file_name,marked_by,created_at,updated_at",
   olb_charges:

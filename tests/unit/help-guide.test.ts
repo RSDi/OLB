@@ -112,9 +112,10 @@ test("coaches see the coaches' sections, other members don't", () => {
   assert.ok(!guideSectionsFor({ ...COACH, status: "pending" }).some((s) => s.audience === "coaches"));
 });
 
-test("emailing families reaches the board and the Registrations permission, not other members", () => {
+test("emailing families reaches the board, Registrations, and Travel, not other members", () => {
   const REGISTRAR: GuideViewer = { ...MEMBER, canManageRegistrations: true };
-  for (const v of [ADMIN, SUPER, REGISTRAR]) assert.ok(guideSectionsFor(v).some((s) => s.id === "email-families"));
+  const TRAVEL: GuideViewer = { ...MEMBER, canManageTravel: true };
+  for (const v of [ADMIN, SUPER, REGISTRAR, TRAVEL]) assert.ok(guideSectionsFor(v).some((s) => s.id === "email-families"));
   assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "email-families"));
   assert.ok(!guideSectionsFor({ ...MEMBER, canManageFinances: true, isCoach: true }).some((s) => s.id === "email-families"));
   assert.ok(!guideSectionsFor({ ...REGISTRAR, status: "pending" }).some((s) => s.id === "email-families"));
@@ -126,6 +127,11 @@ test("the travel coordinator reads the hotels section, and the board still gets 
   assert.equal(guideSectionForPath("/portal/contacts/abc/edit", TRAVEL)?.id, "travel-contacts");
   assert.ok(!guideSectionsFor(TRAVEL).some((s) => s.audience === "staff" || s.audience === "coaches"));
   assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "travel-contacts"));
+  // Hotel registration chase, plus email/Slack follow-ups (0134).
+  assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "hotel-registration"));
+  assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "email-families"));
+  assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "slack-dms"));
+  assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "hotel-registration"));
   // The board's "i" on External Contacts stays the main section.
   assert.equal(guideSectionForPath("/portal/contacts", ADMIN)?.id, "external-contacts");
   assert.ok(guideSectionsFor(SUPER).some((s) => s.id === "travel-contacts"));

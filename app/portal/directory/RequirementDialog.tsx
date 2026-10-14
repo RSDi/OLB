@@ -39,8 +39,9 @@ const capStyle: React.CSSProperties = {
   color: "var(--gw-fg-muted)",
 };
 
-// The board's check-off for one player on one requirement: Done (Paid for a
-// fee), Waived, or Not yet, with the date, a note and an optional scan.
+// Check-off for one player on one requirement: Done (Paid for a fee, Booked
+// when done_label says so), Waived, or Not yet, with the date, a note and an
+// optional scan. The board, Check off requirements, or Travel (0134).
 export function RequirementDialog({
   player,
   requirement: req,
@@ -64,7 +65,7 @@ export function RequirementDialog({
   const [scanning, setScanning] = useState<{ photo?: File } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const done = doneWord(req.kind);
+  const done = doneWord(req);
   const showFiles = req.allow_file || !!row?.file_path;
 
   async function dropUpload() {

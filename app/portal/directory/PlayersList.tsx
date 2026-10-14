@@ -80,10 +80,10 @@ export function PlayersList({
   // The Registrations grant (0102): a team picker on every player, and the
   // new-registrations banner.
   canPlace: boolean;
-  // The board and the Registrations grant: Email families, to the players
+  // Board, Registrations, or Travel (0134): Email families, to the players
   // in view.
   canEmail: boolean;
-  // The Slack DMs grant (0118): Slack families, to the players in view.
+  // Slack DMs grant or Travel (0118/0134): Slack families, to the players in view.
   canSlack: boolean;
   // New, waitlisted and removed registrations; null without the grant.
   registrations: { waiting: number; waitlist: number; removed: number } | null;
@@ -195,7 +195,7 @@ export function PlayersList({
   const inView = shownSections.flatMap((g) => g.players);
   const scope = [
     view === "team" ? (pickedTeam ? teamLabel(pickedTeam) : teamId === NO_TEAM ? "No team yet" : null) : group !== "all" ? group : null,
-    pickedReq && reqShow !== "all" && `${reqShow === "missing" ? "Missing" : reqShow === "done" ? doneWord(pickedReq.kind) : "Waived"}: ${pickedReq.name}`,
+    pickedReq && reqShow !== "all" && `${reqShow === "missing" ? "Missing" : reqShow === "done" ? doneWord(pickedReq) : "Waived"}: ${pickedReq.name}`,
     query.trim() && `Search "${query.trim()}"`,
   ].filter(Boolean);
 
@@ -330,7 +330,7 @@ export function PlayersList({
                 >
                   <SegButton label={`Missing ${reqCounts.missing}`} active={reqShow === "missing"} onClick={() => setReqShow("missing")} />
                   <SegButton
-                    label={`${doneWord(pickedReq.kind)} ${reqCounts.done}`}
+                    label={`${doneWord(pickedReq)} ${reqCounts.done}`}
                     active={reqShow === "done"}
                     onClick={() => setReqShow("done")}
                   />
@@ -354,7 +354,7 @@ export function PlayersList({
           {shown} {shown === 1 ? "player" : "players"}
           {season && ` · ${season} season`}
           {pickedReq &&
-            ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${pickedReq.kind === "fee" ? "paid" : "done"}` +
+            ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${doneWord(pickedReq).toLowerCase()}` +
               (reqCounts.waived > 0 ? ` (${reqCounts.waived} waived)` : "")}
         </div>
         {(canEmail || canSlack) && shown > 0 && (

@@ -9,8 +9,8 @@ export default async function DirectoryPage() {
   // Started before the viewer check on purpose — see loadViewer().
   const players = loadPlayers();
   const teams = loadTeamsWithStaff();
-  // Board and the Check off requirements permission only, by RLS; anyone
-  // else gets an empty list back.
+  // Board, Check off requirements, or Travel (0134); anyone else gets an
+  // empty list back by RLS.
   const requirements = loadRequirements();
   const viewer = await loadViewer();
   if (!viewer) return <AccessDenied />;
@@ -39,7 +39,7 @@ export default async function DirectoryPage() {
       requirements={req.requirements}
       requirementRows={req.rows.filter((r) => playerIds.has(r.player_id))}
       canPlace={viewer.canManageRegistrations}
-      canEmail={viewer.isStaff || viewer.canManageRegistrations}
+      canEmail={viewer.canEmailFamilies}
       canSlack={viewer.canSlackDm}
       registrations={registrations}
       noteCounts={noteCounts}

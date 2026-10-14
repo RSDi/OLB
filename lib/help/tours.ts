@@ -1442,14 +1442,14 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "requirements-add",
         click: "settings-tab-requirements",
         title: "Add requirement",
-        body: "Starts a new one. The **Handbook signature** may already be listed — tap the **pencil** on it to change it instead.",
+        body: "Starts a new one. **Handbook signature** and **Hotel registration** may already be listed — tap the **pencil** on one to change it instead.",
       },
       {
         target: "requirement-name",
         click: "requirements-add",
         interactive: true,
         title: "Name",
-        body: "What the board sees on each player's chip, like **Handbook signature**. Type it in now if you're adding one.",
+        body: "What the board sees on each player's chip, like **Handbook signature** or **Hotel registration**. Type it in now if you're adding one.",
       },
       {
         target: "requirement-kind",

@@ -114,21 +114,30 @@ export function canViewFinances(m: MemberLike | null | undefined): boolean {
 }
 
 // --- Travel --------------------------------------------------------------------
-// The travel coordinator: reading, adding and editing the External Contacts
-// of the travel types (Hotels, Food). Mirrors public.can_manage_travel() (0110).
+// The travel coordinator: hotels/food in External Contacts (0110), hotel
+// registration check-off and family email/Slack follow-ups (0134). Mirrors
+// public.can_manage_travel().
 
 export function canManageTravel(m: MemberLike | null | undefined): boolean {
   if (!m || m.status !== "approved") return false;
   return m.role === "super_admin" || !!m.can_manage_travel;
 }
 
+// Emailing families from the Directory: the board, Registrations, or Travel
+// (0134 hotel follow-ups).
+
+export function canEmailFamilies(m: MemberLike | null | undefined): boolean {
+  return isStaff(m) || canManageRegistrations(m) || canManageTravel(m);
+}
+
 // --- Slack DMs -----------------------------------------------------------------
 // Messaging the families of the Directory players you can see, one Slack DM
-// per person, sent as you. Mirrors public.can_slack_dm() (0118).
+// per person, sent as you. The Slack DMs grant (0118) or Travel (0134).
+// Mirrors public.can_slack_dm().
 
 export function canSlackDm(m: MemberLike | null | undefined): boolean {
   if (!m || m.status !== "approved") return false;
-  return m.role === "super_admin" || !!m.can_slack_dm;
+  return m.role === "super_admin" || !!m.can_slack_dm || canManageTravel(m);
 }
 
 // --- Website -------------------------------------------------------------------
@@ -155,8 +164,9 @@ export function hasPermission(m: MemberLike | null | undefined, key: string): bo
 export const canSeeAllPlayers = (m: MemberLike | null | undefined) =>
   isStaff(m) || hasPermission(m, "see_all_players");
 export const canMemberNotes = (m: MemberLike | null | undefined) => isStaff(m) || hasPermission(m, "member_notes");
+// Board, Check off requirements, or Travel (0134 hotel registration).
 export const canCheckRequirements = (m: MemberLike | null | undefined) =>
-  isStaff(m) || hasPermission(m, "player_requirements");
+  isStaff(m) || hasPermission(m, "player_requirements") || canManageTravel(m);
 export const canApproveMembers = (m: MemberLike | null | undefined) =>
   isStaff(m) || hasPermission(m, "approve_members");
 export const canEditContacts = (m: MemberLike | null | undefined) => isStaff(m) || hasPermission(m, "contacts_edit");

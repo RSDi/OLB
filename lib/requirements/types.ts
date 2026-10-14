@@ -11,6 +11,8 @@ export interface Requirement {
   kind: RequirementKind;
   amount_cents: number | null;
   allow_file: boolean;
+  // Optional word for a completed chip/filter (e.g. Booked). Null = Done or Paid.
+  done_label: string | null;
   due_on: string | null;
   team_ids: string[] | null;
   active: boolean;
@@ -35,7 +37,9 @@ export interface PlayerRequirement {
 }
 
 export const REQUIREMENT_COLUMNS =
-  "id, name, description, kind, amount_cents, allow_file, due_on, team_ids, active, sort_order";
+  "id, name, description, kind, amount_cents, allow_file, done_label, due_on, team_ids, active, sort_order";
+
+export const DONE_LABEL_MAX = 20;
 
 export const PLAYER_REQUIREMENT_COLUMNS =
   "player_id, requirement_id, status, completed_on, note, file_path, file_name, marked_by, updated_at";
