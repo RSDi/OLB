@@ -1356,6 +1356,32 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-hotel-import",
+    sectionId: "settings-hotel-import",
+    title: "Hotel import walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-import",
+        title: "Settings → Import",
+        body: "For the travel coordinator: turn a hotel's **Group Rooming List** into **Booked** marks on a hotel stay.",
+      },
+      {
+        target: "hotel-rooming-import",
+        click: "settings-tab-import",
+        title: "Hotel rooming list",
+        body: "Upload the PDF the hotel sent (or a CSV), then **Preview matches**. We guess the hotel, the HS Schedule weekend and which Directory families booked.",
+      },
+      {
+        target: "hotel-rooming-file",
+        click: "settings-tab-import",
+        interactive: true,
+        title: "Pick the file",
+        body: "Text PDFs from the hotel work best (Staybridge / IHG style). A scan-only PDF needs a CSV with confirmation, name and dates instead.",
+      },
+    ],
+  },
+  {
     id: "settings-audit-log",
     sectionId: "settings-audit-log",
     title: "Audit Log walkthrough",

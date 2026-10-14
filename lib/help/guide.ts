@@ -1256,7 +1256,8 @@ Anyone with the link can see parents', coaches' and volunteers' names, phone num
     title: "Settings: Import",
     group: "Settings",
     audience: "travel",
-    routes: ["/portal/settings"],
+    // No routes: Settings' default "i" stays Members; the Import tab sets this
+    // section via TAB_HELP (same pattern as Teams, Requirements, …).
     keywords: ["import", "hotel", "rooming list", "group rooming list", "pdf", "csv", "booked", "confirmation", "staybridge", "ihg", "settings", "travel", "travel coordinator"],
     body: `For the travel coordinator: turn a hotel's **Group Rooming List** into **Booked** marks on a hotel stay. Open **Settings → Import** (with **Travel**, Settings shows this tab).
 
