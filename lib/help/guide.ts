@@ -76,7 +76,7 @@ export interface GuideViewer {
   permissions?: string[];
 }
 
-export const GUIDE_UPDATED = "October 2026";
+export const GUIDE_UPDATED = "October 14, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -255,7 +255,7 @@ The tabs across the top are **Calendar**, **Year**, **Review** and **Template**.
     group: "Directory",
     audience: "everyone",
     routes: ["/portal/directory"],
-    keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "profile", "family", "search"],
+    keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "profile", "family", "search", "coaches & volunteers", "volunteers", "open spot", "scorekeeper", "clock", "photographer"],
     body: `This season's players and their parents, grouped by team.
 
 - **Search** by player, parent, email or phone number (type 3 or more digits to match a phone).
@@ -267,7 +267,9 @@ The tabs across the top are **Calendar**, **Year**, **Review** and **Template**.
 
 **Who's listed.** Players appear when their family said yes to being in the directory on the registration form. If your family said no, you still see your own players, marked **Not in directory**; other families don't.
 
-**Public directory.** The same players and parents are also on a read-only page on the club website that opens without signing in, for anyone given its private link. Only people with the link can find it, and super-admins manage the link in **Settings → Public Directory**. It lists only families who said yes to the directory, shows no fees or payment details, and can be grouped **Alphabetical** (the default), **By city**, **By team** or **By age group**. Each group's heading says how many players are in it, like **B · 4 players**. Once you scroll down, the yellow arrow in the bottom-right corner takes you back to the top. It shows each player's age (not their birthday) and their city and ZIP code (not their street address).
+**Public directory.** The same players and parents are also on a read-only page on the club website that opens without signing in, for anyone given its private link. Only people with the link can find it, and super-admins manage the link in **Settings → Public Directory**. It lists only families who said yes to the directory, shows no fees or payment details, and can be grouped **Alphabetical** (the default), **By city**, **By team**, **By age group** or **Coaches & Volunteers**. Each group's heading says how many players are in it, like **B · 4 players**. Once you scroll down, the yellow arrow in the bottom-right corner takes you back to the top. It shows each player's age (not their birthday) and their city and ZIP code (not their street address).
+
+Under **By team**, each team's coaches are listed above the players, with their phone and email. **Volunteers** under them stays closed until you tap it (tap again to close it). The closed row names who already has a job, and how many are still open. Open it for scorekeeper, clock, photographer and any other job the club adds later. A job with nobody in it says **Open Spot**. A filled one shows the person's name, phone and email. **Coaches & Volunteers** shows the same list for every team, with **Volunteers** closed the same way. The registration form does not show who has these jobs. It only asks whether you can help, and the board assigns the spots.
 
 **Profiles.** A member's profile shows their photo, phone, email, birthday and address (tap it for **Apple Maps** or **Google Maps**), plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
   },
@@ -994,7 +996,9 @@ What you enter here shows on the team's Directory banner and team page. Players 
 - **In Directory** — shows the role on the team's banner when someone picks that team in the Directory. Every role always shows on the team's own page.
 - Use the arrows to reorder, the **−/+** to change spots, and the switches to turn Leadership and In Directory on or off. Changes save right away.
 
-**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.`,
+**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.
+
+The public Directory lists the same jobs under **By team** and **Coaches & Volunteers**. Coaching roles (a **Leadership** role, or one whose name says coach) stay open on the page. Every other role — Scorekeeper, Clock, Photographer and any role you add here — is inside **Volunteers**, which stays closed until someone taps it. An empty seat says **Open Spot**. Adding a role here is enough; it shows up on that page on its own. The registration form still only asks who is willing to help. It does not show who has the job.`,
   },
   {
     id: "settings-requirements",
@@ -1199,15 +1203,15 @@ Every signed-in member sees the links; only super-admins can change them.`,
     group: "Settings",
     audience: "super_admin",
     permission: "site_links",
-    keywords: ["public directory", "directory link", "share", "link", "key", "no login", "without signing in", "read-only", "roster", "turn off", "coaches", "coach"],
-    body: `The public Directory is a read-only copy of the Directory on the club website. It opens without signing in, for anyone you give its private link to. It lists only families who said yes to the directory, shows each player's age (not their birthday) and city and ZIP code (not their street address), and never shows fees or payments. Each team's coaches are listed too, with their phone and email: anyone in a coaching role on the team (Head coach, Assistant coach). They show at the top of each team under **By team**, and all together under **Coaches**. Open **Settings → Public Directory**.
+    keywords: ["public directory", "directory link", "share", "link", "key", "no login", "without signing in", "read-only", "roster", "turn off", "coaches", "coach", "volunteers", "open spot", "scorekeeper", "clock", "photographer", "coaches & volunteers"],
+    body: `The public Directory is a read-only copy of the Directory on the club website. It opens without signing in, for anyone you give its private link to. It lists only families who said yes to the directory, shows each player's age (not their birthday) and city and ZIP code (not their street address), and never shows fees or payments. Each team's coaches and volunteers are listed too, with their phone and email. Coaches (a leadership role, or a role whose name says coach) show at the top of each team under **By team**, and all together under **Coaches & Volunteers**. Every other role — Scorekeeper, Clock, Photographer and any role you add in **Volunteer Roles** — is under **Volunteers**, closed until someone taps it. An empty seat says **Open Spot**. Assign people on the team's page in the Directory. The registration form does not list who has the job. Open **Settings → Public Directory**.
 
 - **Link** — the address to share. **Copy link** copies it; **Open** shows the page in a new tab.
 - **Key** — the end of the link. Type your own (at least 16 letters, numbers, dashes or underscores) and tap **Save key**, or tap **New random key** to have one made for you.
 - Changing the key retires the old link right away. Do it if the link has been passed around more than you'd like.
 - **Turn off** — nobody can open the page until you save a key again.
 
-Anyone with the link can see parents' and coaches' names, phone numbers and emails, so share it only with families in the program.`,
+Anyone with the link can see parents', coaches' and volunteers' names, phone numbers and emails, so share it only with families in the program.`,
   },
   {
     id: "settings-audit-log",
