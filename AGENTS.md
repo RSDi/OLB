@@ -19,6 +19,6 @@ The portal uses a local Supabase stack. `supabase/config.toml` turns on the expe
 
 On a Cloud Agent boot, start brings that stack up, writes `.env.local` from `supabase status --env` (single quotes stripped; the schema tests' parser does not remove them), and runs `npm run dev` on port 3000. `.env.local` is gitignored. Resend, Slack, Blob, and AssemblyAI stay unset, and the app skips those features.
 
-Sign in as `admin@example.com` / `local-dev-password` (a Super-admin on the local database). Recreate that account with `npm run create-admin -- --password 'local-dev-password' admin@example.com`.
+Each git branch gets its own local database. On boot, start creates a Super-admin: `admin@example.com` / `local-dev-password`. Recreate that account with `npm run create-admin -- --password 'local-dev-password' admin@example.com`.
 
 `npm test` runs the schema-contract probes when `.env.local` is present. `npm run type-check` and `npm run build` match CI. `npm run lint` still reports existing findings and is not a gate.
