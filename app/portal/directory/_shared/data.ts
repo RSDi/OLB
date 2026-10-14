@@ -46,11 +46,15 @@ export interface DirectoryViewer {
   // The Registrations grant (0102): the registrations queue, putting players
   // on teams and editing them.
   canManageRegistrations: boolean;
-  // The Slack DMs grant (0118): Slack families from the Directory.
+  // Travel (0110/0134): hotels/food, hotel registration, email/Slack families.
+  canManageTravel: boolean;
+  // Email families: board, Registrations, or Travel (0134).
+  canEmailFamilies: boolean;
+  // Slack DMs grant (0118) or Travel (0134): Slack families from the Directory.
   canSlackDm: boolean;
   // Board powers, also given by permission (0123): every player with their
   // fees, waivers and parents' details; the Member notes; checking players
-  // off on requirements.
+  // off on requirements. Travel can check requirements too (0134).
   canSeeAllPlayers: boolean;
   canMemberNotes: boolean;
   canCheckRequirements: boolean;
@@ -77,6 +81,10 @@ export async function loadViewer(): Promise<DirectoryViewer | null> {
     isStaff: viewer.isStaff,
     isSuperAdmin: viewer.isSuperAdmin,
     canManageRegistrations: viewer.canManageRegistrations,
+    canManageTravel: viewer.canManageTravel,
+    // Mirror canEmailFamilies() with the grant booleans already on the viewer.
+    canEmailFamilies:
+      viewer.isStaff || viewer.canManageRegistrations || viewer.canManageTravel,
     canSlackDm: viewer.canSlackDm,
     canSeeAllPlayers: viewer.canSeeAllPlayers,
     canMemberNotes: viewer.canMemberNotes,

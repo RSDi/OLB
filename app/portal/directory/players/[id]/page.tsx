@@ -53,9 +53,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
   const req = viewer.canCheckRequirements ? await requirements : { requirements: [], rows: [] };
   const teams = viewer.canManageRegistrations ? await loadSeasonTeams() : null;
-  // The board and the Registrations grant can email the family (0116); the
-  // Slack DMs grant can Slack them (0118). Either sees what was sent.
-  const canEmail = viewer.isStaff || viewer.canManageRegistrations;
+  // Board, Registrations, or Travel can email (0116/0134); Slack DMs grant
+  // or Travel can Slack them (0118/0134). Either sees what was sent.
+  const canEmail = viewer.canEmailFamilies;
   const canSlack = viewer.canSlackDm;
   // The whole family's history: a message or note from a brother's or
   // sister's page shows here too.

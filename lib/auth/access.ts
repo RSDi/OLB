@@ -63,7 +63,13 @@ export interface PermissionDef {
 export const PERMISSIONS: PermissionDef[] = [
   { key: "payments", label: "Payments", desc: "See every family's balance and record payments", group: "manage", legacyColumn: "can_manage_finances" },
   { key: "registrations", label: "Registrations", desc: "Review registrations, put players on teams and edit players", group: "manage", legacyColumn: "can_manage_registrations" },
-  { key: "travel", label: "Travel", desc: "Add and edit the hotels and places to eat in External Contacts", group: "manage", legacyColumn: "can_manage_travel" },
+  {
+    key: "travel",
+    label: "Travel",
+    desc: "Hotels and places to eat in External Contacts, mark hotel registration on players, and email or Slack families about travel",
+    group: "manage",
+    legacyColumn: "can_manage_travel",
+  },
   { key: "slack_dm", label: "Slack DMs", desc: "Send families Slack DMs from the Directory, as themselves", group: "manage", legacyColumn: "can_slack_dm" },
   { key: "uniforms", label: "Uniforms", desc: "Set the uniform items, prices and sizes, and run the uniform order", group: "manage" },
   { key: "finances_view", label: "See club finances", desc: "See the club's Snapshot: money in and out, budget vs paid, teams and programs. No family names or balances", group: "board" },

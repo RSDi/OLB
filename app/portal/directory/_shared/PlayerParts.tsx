@@ -70,7 +70,7 @@ export function RequirementChips({
         const title =
           state === "missing"
             ? `Mark ${r.name} for ${player.full_name}`
-            : `${state === "done" ? doneWord(r.kind) : "Waived"}${row?.note ? ` · ${row.note}` : ""}${row?.file_path ? " · Scan attached" : ""}`;
+            : `${state === "done" ? doneWord(r) : "Waived"}${row?.note ? ` · ${row.note}` : ""}${row?.file_path ? " · Scan attached" : ""}`;
         return (
           <button
             key={r.id}

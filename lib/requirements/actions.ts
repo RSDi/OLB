@@ -2,9 +2,9 @@
 
 // Player requirements (migration 0098). The list is managed in Settings →
 // Requirements by super-admins and board members with the settings grants;
-// any board member, or anyone with the Check off requirements permission
-// (0123), marks players off from the Directory. RLS enforces the same split;
-// these guards fail fast with a clear message.
+// any board member, anyone with Check off requirements (0123), or Travel
+// (0134 hotel registration) marks players off from the Directory. RLS
+// enforces the same split; these guards fail fast with a clear message.
 
 import { revalidatePath } from "next/cache";
 import { requireRequirementChecks, requireSettingsDelete, requireSettingsEdit } from "../auth/guards";
