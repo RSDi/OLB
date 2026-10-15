@@ -39,19 +39,29 @@ async function extractText(file: File): Promise<{ text: string } | { error: stri
 
   if (name.endsWith(".pdf") || file.type === "application/pdf") {
     try {
-      const { PDFParse } = await import("pdf-parse");
-      const parser = new PDFParse({ data: buf });
-      const result = await parser.getText();
-      const text = (result?.text ?? "").trim();
+      // unpdf (pdf.js) works in Node/serverless without browser DOM APIs
+      // like DOMMatrix, which pdf-parse needs and Vercel doesn't provide.
+      const { extractText, getDocumentProxy } = await import("unpdf");
+      const pdf = await getDocumentProxy(new Uint8Array(buf));
+      const extracted = await extractText(pdf, { mergePages: true });
+      const raw = extracted.text as string | string[];
+      const text = (Array.isArray(raw) ? raw.join("\n") : raw ?? "").trim();
       if (!text) {
         return {
           error:
-            "Couldn't read text from that PDF (it may be a scan). Export or save a text PDF from the hotel, or paste a CSV with confirmation, name and dates.",
+            "Couldn't read text from that PDF (it may be a scan). Ask the hotel for a text PDF, or upload a CSV with confirmation, name and dates.",
         };
       }
       return { text };
     } catch (e) {
-      return { error: e instanceof Error ? e.message : "Couldn't read that PDF." };
+      const msg = e instanceof Error ? e.message : "Couldn't read that PDF.";
+      if (/DOMMatrix|Path2D|OffscreenCanvas|not defined/i.test(msg)) {
+        return {
+          error:
+            "Couldn't read that PDF on the server. Try again, or upload a CSV/TXT export from the hotel instead.",
+        };
+      }
+      return { error: msg };
     }
   }
 

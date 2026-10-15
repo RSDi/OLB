@@ -385,7 +385,23 @@ export function HotelRoomingImport() {
         </>
       )}
 
-      {error && <div style={{ fontSize: 12, color: "var(--rsd-danger)" }}>{error}</div>}
+      {error && (
+        <div
+          role="alert"
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--rsd-danger)",
+            background: "color-mix(in srgb, var(--rsd-danger) 10%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--rsd-danger) 35%, transparent)",
+            borderRadius: 10,
+            padding: "12px 14px",
+            lineHeight: 1.45,
+          }}
+        >
+          {error}
+        </div>
+      )}
     </div>
   );
 }
