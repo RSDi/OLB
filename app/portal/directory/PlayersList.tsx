@@ -357,7 +357,7 @@ export function PlayersList({
             </FilterSelect>
           )}
           {hotelStays.length > 0 && canManageHotelStays && (
-            <div data-tour="directory-hotel-stays" style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <>
               <FilterSelect
                 value={stayId}
                 onChange={(e) => {
@@ -367,6 +367,9 @@ export function PlayersList({
                 }}
                 aria-label="Filter by hotel stay"
                 data-tour="hotel-stay-filter"
+                // Long stay labels (Regionals · hotel · dates) would stretch the
+                // chip to full width on a phone; grow caps it like Contacts.
+                grow
                 active={stayId !== "all"}
               >
                 <option value="all">All hotel stays</option>
@@ -395,7 +398,7 @@ export function PlayersList({
                   <SegButton label="All" active={stayShow === "all"} onClick={() => setStayShow("all")} />
                 </div>
               )}
-            </div>
+            </>
           )}
           {requirements.length > 0 && (
             <div data-tour="directory-requirements" style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
