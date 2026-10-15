@@ -526,6 +526,8 @@ Tap the chip: **Booked**, **Waived** or **Not yet**, a date, and a **Note** (con
 
 **On the hotel's contact.** Open the hotel in External Contacts: **Hotel stays** lists every weekend you linked it to, with the event and a jump back to the schedule or Directory.
 
+**Import a rooming list.** When the hotel sends a **Group Rooming List** PDF (or a CSV), open **Settings → Import** and use **Hotel rooming list** — see *Settings: Import*.
+
 Hotels and places to eat themselves stay in **External Contacts** (see *Hotels and places to eat*).`,
   },
   {
@@ -928,7 +930,7 @@ Activity is recorded from the day it went live.`,
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
-| Add and edit the hotels and places to eat in External Contacts; hotel stays on the HS Schedule; track Booked in the Directory | With **Travel** | ✓ | ✓ |
+| Add and edit the hotels and places to eat in External Contacts; hotel stays on the HS Schedule; track Booked; import a rooming list in Settings | With **Travel** | ✓ | ✓ |
 | Send families Slack DMs from the Directory, as yourself | With **Slack DMs** | With **Slack DMs** | ✓ |
 | Change the club website's menu, page text and pictures | | With **Settings: Website** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
@@ -972,11 +974,11 @@ Activity is recorded from the day it went live.`,
 - Pick someone's **access profile** from the drop-down on the **Approved** tab: **Member**, **Board**, any profile the club has made (like Treasurer), or **Super-admin**. The profile sets whether they're Board and what they can manage (see *Settings: Access Profiles*). Picking a new one replaces what they had, extras included.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - Tap **Access** on someone's row on the **Approved** tab to see what they can do. The number on the button counts it, and the row lists it under their name. Greyed ticks come from their profile; change those in **Settings → Access Profiles**. Tick any other box to give that one person an **extra** on top of their profile, untick to take it away. Rows with extras show **+ extras**, and rows on a profile the club made show its name.
-  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, set up **hotel stays** on the HS Schedule (booking instructions and who must register), mark **Booked** in the Directory, and email or Slack families about travel, and **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too).
+  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, set up **hotel stays** on the HS Schedule (booking instructions and who must register), mark **Booked** in the Directory, import a hotel **rooming list** in Settings → Import, and email or Slack families about travel, and **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too).
   - **Settings (Board)** (board members only): **Edit**, **Delete** and **Undelete** for Settings items like Requirements, and **Website** to change the club website's menu, page text and pictures (see *Settings: Website*).
   - **Board powers** (for people who aren't Board; Board has them all): **See all players** (every player, listed or not, with fees, waivers, shirts and parents' details), **Member notes**, **Check off requirements**, **Approve access requests**, **External Contacts** (see, add and edit every contact, and their history) and **Plan HS Schedule**.
   - **Club setup** (anyone): **Teams & volunteers** to set up teams and volunteer roles and fill team spots (putting someone in a leadership spot makes them a coach), and **Sidebar Links & Public Directory**.
-  - Someone who isn't Board but has **Approve access requests**, **Teams & volunteers** or **Sidebar Links & Public Directory** opens **Settings** and sees only those tabs.
+  - Someone who isn't Board but has **Approve access requests**, **Teams & volunteers**, **Sidebar Links & Public Directory** or **Travel** opens **Settings** and sees only those tabs.
   - Super-admins have all of these already, so their rows have no **Access** button.
 - To see everyone at once, tap **Roles & access** (next to the tabs, on **Approved**). It's a table with a row per person: their profile drop-down, then a box for each permission. Greyed ticks come from the profile; tick or untick any other box to change that person's extras. The number under each column says how many people have it. Super-admins show ✓ everywhere, and **–** means that box is for board members only. Tap **List** to go back.
 - **Remove** a member (demote a super-admin first).
@@ -1248,6 +1250,25 @@ Every signed-in member sees the links; only super-admins can change them.`,
 - **Turn off** — nobody can open the page until you save a key again.
 
 Anyone with the link can see parents', coaches' and volunteers' names, phone numbers and emails, so share it only with families in the program.`,
+  },
+  {
+    id: "settings-hotel-import",
+    title: "Settings: Import",
+    group: "Settings",
+    audience: "travel",
+    // No routes: Settings' default "i" stays Members; the Import tab sets this
+    // section via TAB_HELP (same pattern as Teams, Requirements, …).
+    keywords: ["import", "hotel", "rooming list", "group rooming list", "pdf", "csv", "booked", "confirmation", "staybridge", "ihg", "settings", "travel", "travel coordinator"],
+    body: `For the travel coordinator: turn a hotel's **Group Rooming List** into **Booked** marks on a hotel stay. Open **Settings → Import** (with **Travel**, Settings shows this tab).
+
+1. Under **Hotel rooming list**, choose the PDF the hotel sent (or a CSV/TXT export), then **Preview matches**.
+2. Check the guessed **Hotel** (from External Contacts → Hotels), **HS Schedule weekend**, and **Hotel stay**. If there's no stay yet, leave **Create new stay…** and set the name (Regionals, Nationals…).
+3. Each guest row shows our best guess for the Directory family — parents on the list match their players. Tick or untick players; leave unmatched rows alone.
+4. **Mark … Booked** writes confirmation numbers into each player's note and opens **Directory** filtered to that stay.
+
+Text PDFs from the hotel work best (Staybridge / IHG style). A scan-only PDF won't have selectable text — ask the hotel for a text PDF or a CSV with confirmation, name and dates.
+
+You can keep importing lists from different hotels the same way; each run attaches to the stay you pick.`,
   },
   {
     id: "settings-audit-log",

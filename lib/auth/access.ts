@@ -66,7 +66,7 @@ export const PERMISSIONS: PermissionDef[] = [
   {
     key: "travel",
     label: "Travel",
-    desc: "Hotels and food in External Contacts, hotel stays on the HS Schedule (booking instructions and Booked tracking), and email or Slack families about travel",
+    desc: "Hotels and food in External Contacts, hotel stays on the HS Schedule (booking instructions and Booked tracking), import a hotel rooming list in Settings, and email or Slack families about travel",
     group: "manage",
     legacyColumn: "can_manage_travel",
   },

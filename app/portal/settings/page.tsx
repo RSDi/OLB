@@ -11,6 +11,7 @@ import {
   canManageUniforms,
   canManageFinances,
   canManageWebsite,
+  canManageTravel,
   canOpenSettings,
   isStaff,
   isSuperAdmin,
@@ -52,7 +53,7 @@ import { Icons } from "../../components/icons";
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
 // Website is released to whoever holds its grant (and super-admins).
-const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website", "import"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "access_profiles",
   "playbooks",
@@ -80,6 +81,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   sidebar_links: "settings-sidebar-links",
   public_directory: "settings-public-directory",
   contact_categories: "settings-contact-types",
+  import: "settings-hotel-import",
   audit_log: "settings-audit-log",
 };
 
@@ -156,6 +158,8 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     registration_automations: workflowOn && canManageRegistrations(me),
     uniforms: workflowOn && canManageUniforms(me),
     fees: financesOn && canManageFinances(me),
+    // Hotel rooming-list import for the travel coordinator.
+    import: canManageTravel(me),
   };
   // Deleted tab stays super-admin-only until the RLS follow-up lets board
   // members with the undelete grant see + restore soft-deleted rows.
@@ -196,8 +200,8 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     // The key in the public Directory's link (0119).
     { key: "public_directory", label: "Public Directory", group: "Website & Portal", visible: siteLinks, tour: "settings-tab-public-directory", keywords: "directory link key" },
     { key: "integrations", label: "Integrations", group: "System", visible: true, tour: "settings-tab-integrations", keywords: "slack google connect" },
-    // The spreadsheet import, kept for the preview accounts only.
-    { key: "import", label: "Import", group: "System", visible: fullUi, tour: "settings-tab-import", keywords: "spreadsheet upload csv" },
+    // Hotel rooming list (Travel + board). Planning spreadsheet stays preview-only inside the tab.
+    { key: "import", label: "Import", group: "System", visible: fullUi || canManageTravel(me) || board, tour: "settings-tab-import", keywords: "hotel rooming list pdf csv booked travel spreadsheet upload" },
     { key: "audit_log", label: "Audit Log", group: "System", visible: true, tour: "settings-tab-audit-log", keywords: "history changes who" },
     { key: "deleted", label: "Deleted", group: "System", visible: showDeleted, tour: "settings-tab-deleted", keywords: "restore undelete trash" },
   ];
@@ -287,6 +291,8 @@ export default function SettingsPage() {
         ? "members"
         : canManageTeams(memberLike)
         ? "teams"
+        : canManageTravel(memberLike)
+        ? "import"
         : "sidebar_links";
       setTab(linked ? linked.key : mine.some((t) => t.key === landing) ? landing : mine[0]?.key ?? landing);
       setAuthChecked(true);
@@ -354,7 +360,7 @@ export default function SettingsPage() {
       {tab === "public_directory" && has("public_directory") && <PublicDirectoryTab />}
       {tab === "contact_categories" && has("contact_categories") && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && has("integrations") && <IntegrationsTab />}
-      {tab === "import" && has("import") && <ImportTab />}
+      {tab === "import" && has("import") && <ImportTab showPlanningImport={fullUi} />}
       {tab === "audit_log" && has("audit_log") && <AuditLogTab />}
       {tab === "deleted" && has("deleted") && <DeletedTab />}
     </>
