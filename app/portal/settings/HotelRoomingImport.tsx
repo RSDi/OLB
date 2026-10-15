@@ -154,20 +154,51 @@ export function HotelRoomingImport() {
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <label
+            data-tour="hotel-rooming-file"
+            style={{
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+              padding: "24px 16px",
+              borderRadius: 12,
+              border: "2px dashed var(--gw-border)",
+              background: "var(--gw-bg)",
+              cursor: "pointer",
+              textAlign: "center",
+            }}
+          >
+            <Icons.Download width={22} height={22} style={{ color: "var(--gw-fg-muted)", transform: "rotate(180deg)" }} />
+            <span style={{ fontSize: 14, fontWeight: 700 }}>
+              {file ? file.name : "Tap to choose the rooming list"}
+            </span>
+            <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.45 }}>
+              {file
+                ? `${Math.max(1, Math.round(file.size / 1024))} KB · tap to pick another`
+                : "PDF, CSV or TXT — from Photos, Files, or email"}
+            </span>
             <input
               type="file"
-              accept=".pdf,.csv,.txt,application/pdf,text/csv,text/plain"
+              accept="application/pdf,.pdf,text/csv,.csv,text/plain,.txt"
               onChange={(e) => {
                 setFile(e.target.files?.[0] ?? null);
                 setPreview(null);
                 setError(null);
               }}
-              data-tour="hotel-rooming-file"
+              style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}
             />
+          </label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <Pill size="sm" variant="accent" onClick={runPreview} disabled={!file || busy}>
               {busy && !preview ? "Reading…" : "Preview matches"}
             </Pill>
+            {!file && (
+              <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+                Choose a file above first
+              </span>
+            )}
           </div>
 
           {preview && (
@@ -354,7 +385,23 @@ export function HotelRoomingImport() {
         </>
       )}
 
-      {error && <div style={{ fontSize: 12, color: "var(--rsd-danger)" }}>{error}</div>}
+      {error && (
+        <div
+          role="alert"
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--rsd-danger)",
+            background: "color-mix(in srgb, var(--rsd-danger) 10%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--rsd-danger) 35%, transparent)",
+            borderRadius: 10,
+            padding: "12px 14px",
+            lineHeight: 1.45,
+          }}
+        >
+          {error}
+        </div>
+      )}
     </div>
   );
 }
