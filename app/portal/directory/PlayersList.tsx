@@ -367,8 +367,7 @@ export function PlayersList({
                 }}
                 aria-label="Filter by hotel stay"
                 data-tour="hotel-stay-filter"
-                // Long stay labels (Regionals · hotel · dates) would stretch the
-                // chip to full width on a phone; grow caps it like Contacts.
+                // Stay labels are long; grow keeps the chip phone-sized.
                 grow
                 active={stayId !== "all"}
               >
