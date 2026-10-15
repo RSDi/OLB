@@ -44,16 +44,16 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       // Families off the weekly reminder (0133); none before it's applied.
       const paused = club ? await loadPaused(data.board.id) : [];
       return (
-        <>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
           {tabs}
           <TreasurerView data={data} openPlayerId={family ?? null} venmo={venmo} club={club} dues={due.dues} defaultDue={due.defaultDue} paused={paused} />
-        </>
+        </div>
       );
     }
     const loaded = await loadClub();
     if ("notice" in loaded)
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
           {tabs}
           {loaded.notice}
         </div>
@@ -61,7 +61,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
     const { data, credits } = loaded;
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://omahalightning.org").replace(/\/$/, "");
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
         {tabs}
         {active === "budget" && <BudgetView data={data} />}
         {active === "income" && <IncomeView data={data} />}
@@ -77,7 +77,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   if (club && tab !== "balance") {
     const loaded = await loadClub();
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
         <PaymentsTabs tabs={["snapshot", "balance"]} active="snapshot" />
         {"notice" in loaded ? loaded.notice : <SnapshotView snapshot={buildSnapshot(loaded.data, loaded.credits)} />}
       </div>
@@ -92,33 +92,33 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   const data = await loadPaymentsData({ onlyPlayerIds: ids });
   if (!data || ids.length === 0) {
     return (
-      <>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
         {own}
         <Notice
           title="No players on your account"
           body="Your balance shows here when you're a parent on a player's registration. If that's you, sign in with the email you registered with."
         />
-      </>
+      </div>
     );
   }
   if (!data.board.parent_balances_visible) {
     return (
-      <>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
         {own}
         <Notice
           title="Balances aren't ready yet"
           body="The Treasurer is still entering this season's payments. Your balance will show here soon."
         />
-      </>
+      </div>
     );
   }
   // Due dates (0131), read on the server for just this family's players.
   const due = await loadDues(createAdminClient(), data.board.id, ids).catch(() => ({ dues: {}, defaultDue: null }));
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
       {own}
       <FamilyView data={data} dues={due.dues} defaultDue={due.defaultDue} />
-    </>
+    </div>
   );
 }
 
