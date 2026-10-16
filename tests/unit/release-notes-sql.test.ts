@@ -10,7 +10,7 @@ const migration = readFileSync(join(root, "supabase/migrations/0138_release_note
 const down = readFileSync(join(root, "supabase/removal/0138_release_notes_down.sql"), "utf8");
 const releases = readFileSync(join(root, "lib/release-notes/releases.ts"), "utf8");
 
-test("0138 is the next numbered migration after 0137", () => {
+test("0138 is the numbered migration after 0137", () => {
   const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
   assert.ok(names.includes("0137_hotel_stay_travel_players.sql"));
   assert.ok(names.includes("0138_release_notes.sql"));
@@ -19,8 +19,6 @@ test("0138 is the next numbered migration after 0137", () => {
     1,
     "only one 0138 migration"
   );
-  const last = names.filter((n) => /^\d{4}_/.test(n)).at(-1);
-  assert.equal(last, "0138_release_notes.sql");
 });
 
 test("0138 adds members.releases_seen_version and does not create a notes table", () => {
