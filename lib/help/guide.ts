@@ -327,7 +327,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **The waitlist.** The **Waitlist** tab lists those families in the order they registered, with who put them there, when, and the note (**Edit note** changes it).
 
-- **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. Pick who it goes to: for one family, tick **Dad**, **Mom** and the **Player** (when they have their own email); for everyone, tick **Dads**, **Moms** and **Players**. All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. For one family the player's name is already in the message; for everyone, **{player}** becomes each family's player names, and a preview shows how it reads. The message starts from the board's **Waitlist: teams are full** template (change its words in Settings → Email Templates), and **Template** swaps in any other. A copy is kept on the registration under **Messages sent**.
+- **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. Pick who it goes to: for one family, tick **Dad**, **Mom** and the **Player** (when they have their own email); for everyone, tick **Dads**, **Moms** and **Players**, then tick the families themselves (every family is ticked to start; **Select all / none** ticks every family or none). It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. For one family the player's name is already in the message; for everyone, **{player}** becomes each family's player names, and a preview shows how it reads. The message starts from the board's **Waitlist: teams are full** template (change its words in Settings → Email Templates), and **Template** swaps in any other. A copy is kept on the registration under **Messages sent**.
 - **Contacted** marks that someone has reached out, with the date and who, so two people don't both call. Sending a message ticks it for you.
 - **Email from my app** opens your own email app addressed to the parents instead. **Copy all emails** copies every parent's email to paste into Bcc, and **Download spreadsheet** saves the waitlist as a file for Excel or Google Sheets.
 - The Directory has the same thing for players already on the roster: see *Emailing families*.
@@ -407,14 +407,14 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
     title: "Emailing families",
     group: "Directory",
     audience: "messaging",
-    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "hotel", "hotel registration", "messages sent", "template", "templates", "primary email", "same email", "{player}"],
+    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "hotel", "hotel registration", "messages sent", "template", "templates", "primary email", "same email", "{player}", "select all", "untick"],
     body: `You see this if you're on the board, or have the **Registrations** or **Travel** permission.
 
-**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: pick a team or **No team yet**, pick an age group, search, pick a requirement (like the handbook) and **Missing**, or pick a **hotel stay** (Regionals, Nationals…) and **Not yet known** to remind just the families who still need to book. The top of the window says who it's going to, and **see who gets it** lists each family.
+**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: pick a team or **No team yet**, pick an age group, search, pick a requirement (like the handbook) and **Missing**, or pick a **hotel stay** (Regionals, Nationals…) and **Not yet known** to remind just the families who still need to book. The top of the window says who it's going to, and **see who gets it** lists each family. Every family is ticked to start; untick one to leave them out. **Select all / none** ticks every family or none. The count of families updates as you tick, and changing **Dads**, **Moms** or **Players** (or the Directory filters) starts the ticks over.
 
 **Email one family.** On a player's page, **Email family** writes to just that player's family.
 
-**Who gets it.** For one family, tick each person: **Dad**, **Mom**, a **Guardian**, and the **Player** when they have their own email. For several, tick **Dads**, **Moms** and **Players** (and **Guardians** when anyone has one). All are ticked to start. When a player's email is the same as a parent's, it's listed once, on that parent, marked **Primary email**. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. If a family has no email for the people picked, the window names them so you can reach them another way.
+**Who gets it.** For one family, tick each person: **Dad**, **Mom**, a **Guardian**, and the **Player** when they have their own email. For several, tick **Dads**, **Moms** and **Players** (and **Guardians** when anyone has one), then tick the families themselves. All are ticked to start. When a player's email is the same as a parent's, it's listed once, on that parent, marked **Primary email**. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. If a family has no email for the people picked, the window names them so you can reach them another way.
 
 **Templates.** Pick one from **Template** to fill in the subject and message, then change anything you like. The board writes them in **Settings → Email Templates**.
 
@@ -427,7 +427,7 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
     title: "Slack DMs to families",
     group: "Directory",
     audience: "slack",
-    keywords: ["slack", "dm", "direct message", "message", "families", "parents", "dad", "mom", "remind", "reminder", "missing", "handbook", "connect slack", "disconnect", "reply", "replies", "{name}", "{player}"],
+    keywords: ["slack", "dm", "direct message", "message", "families", "parents", "dad", "mom", "remind", "reminder", "missing", "handbook", "connect slack", "disconnect", "reply", "replies", "{name}", "{player}", "select all", "untick"],
     body: `You see this if you have the **Travel** permission, or a super-admin turned on **Slack DMs** for you in **Settings → Members**: board members, coaches, the travel coordinator, anyone the club picks.
 
 **What it does.** Sends the parents of the players you pick a Slack direct message **from you**, one to each person, never a group DM. It looks just like a message you typed yourself, so when a parent replies, the reply comes straight to you in Slack.
@@ -438,7 +438,7 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
 
 **Slack one family.** On a player's page, **Slack family** writes to just that player's parents.
 
-**Who gets it.** Tick **Dads**, **Moms**, **Guardians** and **Players**. The window looks each person up in the club's Slack by the email on file and lists them: a ✓ means they're on Slack and get a DM, a ✗ means no Slack account uses their email. A parent of brothers and sisters gets one DM about all of them. Nobody gets a DM from themselves. You can send up to 150 DMs at a time.
+**Who gets it.** Tick **Dads**, **Moms**, **Guardians** and **Players**. Then tick the families: every family is ticked to start, untick one to leave them out, and **Select all / none** ticks every family or none. Changing **Dads**, **Moms** or **Players** (or the Directory filters) starts the ticks over. The window looks each person up in the club's Slack by the email on file and lists them: a ✓ means they're on Slack and get a DM, a ✗ means no Slack account uses their email. A parent of brothers and sisters gets one DM about all of them. Nobody gets a DM from themselves. You can send up to 150 DMs at a time.
 
 **Writing it.** **{name}** becomes each person's first name and **{player}** their players' names, so *Hi {name}, we still need {player}'s handbook. Can you send it over?* reads as *Hi Sarah, we still need Sam's handbook. Can you send it over?* A preview shows how it reads for the first person. **Template** fills the message in from one of the board's email templates.
 
@@ -787,7 +787,7 @@ The board sees it under **Finances → Snapshot**, and so does anyone given **Se
     body: `Write to families about what they owe, from **Finances** (the **Payments** permission).
 
 - **Email families** and **Slack families** (next to **Download spreadsheet**) write to every family the list shows right now: pick **Owes**, **Paid up** or **All**, or search, first. In an open family, **Email family** and **Slack family** write to just them.
-- **Email** works like the Directory's: pick who gets it (Dads, Moms, Guardians, Players), start from a **Template** if you like, and send. One email per family, from the club's email address; replies go to the club's Gmail.
+- **Email** works like the Directory's: pick who gets it (Dads, Moms, Guardians, Players), then tick the families themselves (every family is ticked to start; **Select all / none** ticks every family or none), start from a **Template** if you like, and send. One email per family, from the club's email address; replies go to the club's Gmail.
 - **{balance}** becomes what the family owes, **{due_date}** their due date, **{family}** their last name and **{player}** their players' names. A preview shows how it reads for the first family.
 - **Slack** sends each person their own direct message. **From** picks **Me** (your own Slack: connect it once, and replies come to you) or **The club's Slack bot** (nobody reads replies to the bot, so say in the message how to reach you). In Slack messages, **{name}** is each person's first name.
 - A copy of every email and DM is kept on the players' pages under **Messages sent**, for the whole family.

@@ -5,8 +5,16 @@ import { Pill, Select, Textarea } from "../../../components/ui";
 import { SlackLogo } from "../../../components/SlackLogo";
 import { createClient } from "../../../../lib/supabase/client";
 import { EMAIL_TEMPLATE_COLUMNS, sortTemplates, type EmailTemplate } from "../../../../lib/teams/email-templates";
-import { ALL_RECIPIENTS, rolesPresent, type MailTarget, type Recipient } from "../../../../lib/teams/family-mail";
-import { CONNECT_OUTCOMES, DM_MAX, DM_MESSAGE, ROLE_WORD, fillDm, roleWords } from "../../../../lib/slack-dm/recipients";
+import {
+  ALL_RECIPIENTS,
+  familyId,
+  groupByFamily,
+  rolesPresent,
+  type MailTarget,
+  type Recipient,
+} from "../../../../lib/teams/family-mail";
+import { CONNECT_OUTCOMES, DM_MAX, DM_MESSAGE, ROLE_WORD, clipPeopleToFamilies, fillDm, roleWords } from "../../../../lib/slack-dm/recipients";
+import { FamilyList, useFamilySelection } from "./FamilyList";
 import {
   checkSlackRecipients,
   disconnectSlack,
@@ -34,13 +42,13 @@ type SendResultDm = { sent: string[]; missed: { email: string; reason: string }[
 export interface SlackApi {
   status: (from: SlackFrom) => Promise<SlackDmStatus | { error: string }>;
   check: (ids: string[], roles: Recipient[], from: SlackFrom) => Promise<CheckResult>;
-  send: (ids: string[], roles: Recipient[], body: string, emails: string[], from: SlackFrom) => Promise<SendResultDm>;
+  send: (ids: string[], roles: Recipient[], body: string, emails: string[], from: SlackFrom, familyIds: string[]) => Promise<SendResultDm>;
 }
 
 const DIRECTORY_API: SlackApi = {
   status: () => getSlackDmStatus(),
   check: (ids, roles) => checkSlackRecipients(ids, roles),
-  send: (ids, roles, body, emails) => sendSlackDms(ids, roles, body, emails),
+  send: (ids, roles, body, emails, from, familyIds) => sendSlackDms(ids, roles, body, emails, familyIds),
 };
 
 // Slack DMs to families (0118), from the Directory or a player's page: one
@@ -196,19 +204,26 @@ export function SlackComposeSheet({
   }
 
   const toggle = (r: Recipient) => setRoles((list) => (list.includes(r) ? list.filter((x) => x !== r) : ALL_RECIPIENTS.filter((x) => x === r || list.includes(x))));
-  const reach = check?.people.filter((p) => p.slack && !p.self) ?? [];
-  const away = check?.people.filter((p) => !p.slack) ?? [];
+  const { groups } = groupByFamily(targets, (t) => t.contacts, roles);
+  const resetKey = `${roles.join(",")}|${ids.slice().sort().join(",")}`;
+  const pick = useFamilySelection(groups, resetKey);
+  const familyIds = pick.selectedGroups.map((g) => familyId(g.players));
+  const selectedPlayerIds = new Set(pick.selectedGroups.flatMap((g) => g.players.map((p) => p.id)));
+  const shownPeople = check ? clipPeopleToFamilies(check.people, selectedPlayerIds) : [];
+  const shownCheck = check ? { people: shownPeople, noContact: check.noContact } : null;
+  const reach = shownPeople.filter((p) => p.slack && !p.self);
+  const away = shownPeople.filter((p) => !p.slack);
   const sample = reach[0] ?? null;
 
   async function send() {
-    if (!check) return;
+    if (!check || familyIds.length === 0) return;
     const emails = reach.map((p) => p.email);
     setError(null);
     setSending({ done: 0, of: emails.length });
     const sent: string[] = [];
     const missed: { email: string; reason: string }[] = [];
     for (let i = 0; i < emails.length; i += STEP) {
-      const res = await api.send(ids, roles, body, emails.slice(i, i + STEP), from);
+      const res = await api.send(ids, roles, body, emails.slice(i, i + STEP), from, familyIds);
       sent.push(...res.sent);
       missed.push(...res.missed);
       if (res.error) {
@@ -297,10 +312,19 @@ export function SlackComposeSheet({
                 ))}
               </div>
             )}
+            {targets.length > 1 && groups.length > 0 && (
+              <FamilyList
+                groups={groups}
+                selected={pick.selected}
+                onToggle={pick.toggle}
+                onSelectAll={pick.selectAll}
+                onSelectNone={pick.selectNone}
+              />
+            )}
             {checking ? (
               <span style={muted}>Looking them up in Slack…</span>
-            ) : check ? (
-              <Recipients check={check} />
+            ) : shownCheck ? (
+              <Recipients check={shownCheck} />
             ) : null}
           </div>
 

@@ -12,7 +12,7 @@ import { getPreview } from "../activity/preview";
 import { latestBoard, loadFinanceSettings } from "./club-data";
 import { boardPlayers, loadFamilyMoney } from "./family-money";
 import { cleanReminder, fillMoney, type FamilyMoney, type ReminderSettings } from "./reminders";
-import { ALL_RECIPIENTS, fillMessage, groupByFamily, messageHtml, playerTarget, type Recipient } from "../teams/family-mail";
+import { ALL_RECIPIENTS, chosenFamilies, fillMessage, groupByFamily, messageHtml, playerTarget, type Recipient } from "../teams/family-mail";
 import { sendFamilyEmails } from "../notifications/registration-message";
 import { getSlackConnection, hasDmScopes, slackDmConfigured } from "../slack-dm/connection";
 import { DM_MAX, MAX_DMS, dmPeople, fillDm, slackText, type DmPerson } from "../slack-dm/recipients";
@@ -62,7 +62,13 @@ async function keepCopies(db: Admin, userId: string, rows: { players: string[]; 
 
 // One email per family (by the parents' emails, like the Directory), with
 // {balance}, {due_date}, {family} and {player} filled in for each.
-export async function sendFinanceEmail(ids: string[], subject: string, body: string, recipients: Recipient[]): Promise<{ sent?: number; skipped?: string[]; error?: string }> {
+export async function sendFinanceEmail(
+  ids: string[],
+  subject: string,
+  body: string,
+  recipients: Recipient[],
+  familyIds: unknown = []
+): Promise<{ sent?: number; skipped?: string[]; error?: string }> {
   const c = await gate();
   if ("error" in c) return c;
   const title = subject?.trim();
@@ -75,7 +81,8 @@ export async function sendFinanceEmail(ids: string[], subject: string, body: str
   if (want.length === 0) return { error: "Pick who to send it to." };
   const [players, book] = await Promise.all([boardPlayers(c.db, c.boardId, want), loadFamilyMoney(c.db, c.boardId)]);
   if (players.length === 0) return { error: "Those players aren't on this season's roster any more. Refresh the page." };
-  const { groups, noEmail } = groupByFamily(players.map(playerTarget), (t) => t.contacts, roles);
+  const { groups, noEmail, error: pickError } = chosenFamilies(players.map(playerTarget), (t) => t.contacts, roles, familyIds);
+  if (pickError) return { error: pickError };
   const emails = groups.map((g) => {
     const money = book.moneyOf(g.players.map((p) => p.id));
     const s = fillMessage(fillMoney(title, money), g.players);
@@ -119,14 +126,29 @@ export async function financeSlackStatus(from: SlackFrom): Promise<SlackDmStatus
   return { ready: true, name: from === "bot" ? s.name : s.name === "you" ? null : s.name };
 }
 
-async function people(c: Ctx, ids: unknown, recipients: unknown): Promise<{ people: DmPerson[]; noContact: string[]; book: Awaited<ReturnType<typeof loadFamilyMoney>> } | { error: string }> {
+async function people(
+  c: Ctx,
+  ids: unknown,
+  recipients: unknown,
+  familyIds?: unknown
+): Promise<{ people: DmPerson[]; noContact: string[]; book: Awaited<ReturnType<typeof loadFamilyMoney>> } | { error: string }> {
   const want = wanted(ids);
   if (want.length === 0) return { error: "Pick who to send it to." };
   const roles = pickRoles(recipients);
   if (roles.length === 0) return { error: "Pick at least one person to send it to." };
   const [players, book] = await Promise.all([boardPlayers(c.db, c.boardId, want), loadFamilyMoney(c.db, c.boardId)]);
   if (players.length === 0) return { error: "Those players aren't on this season's roster any more. Refresh the page." };
-  const found = dmPeople(players.map(playerTarget), roles);
+  const targets = players.map(playerTarget);
+  if (familyIds !== undefined) {
+    const chosen = chosenFamilies(targets, (t) => t.contacts, roles, familyIds);
+    if (chosen.error) return { error: chosen.error };
+    const found = dmPeople(
+      chosen.groups.flatMap((g) => g.players),
+      roles
+    );
+    return { people: found.people, noContact: [...chosen.noEmail, ...found.noContact].map((t) => t.name), book };
+  }
+  const found = dmPeople(targets, roles);
   return { people: found.people, noContact: found.noContact.map((t) => t.name), book };
 }
 
@@ -148,6 +170,7 @@ export async function checkFinanceSlack(ids: string[], recipients: Recipient[], 
         name: p.name,
         roles: p.roles,
         players: p.players.map((t) => t.first_name),
+        playerIds: p.players.map((t) => t.id),
         slack: user?.name || (user ? p.name : null),
         self: !!user && user.id === s.selfId,
         money: found.book.moneyOf(p.players.map((t) => t.id)),
@@ -165,7 +188,8 @@ export async function sendFinanceSlack(
   recipients: Recipient[],
   body: string,
   emails: string[],
-  from: SlackFrom
+  from: SlackFrom,
+  familyIds: unknown = []
 ): Promise<{ sent: string[]; missed: { email: string; reason: string }[]; error?: string; status?: SlackDmStatus }> {
   const c = await gate();
   if ("error" in c) return { sent: [], missed: [], error: c.error };
@@ -175,7 +199,7 @@ export async function sendFinanceSlack(
   if (!text || text.length > DM_MAX) return { sent: [], missed: [], error: `Add a message (up to ${DM_MAX.toLocaleString()} characters).` };
   const only = new Set(Array.isArray(emails) ? emails.filter((e) => typeof e === "string") : []);
   if (only.size === 0 || only.size > 25) return { sent: [], missed: [], error: "Pick who to send it to." };
-  const found = await people(c, ids, recipients);
+  const found = await people(c, ids, recipients, familyIds ?? []);
   if ("error" in found) return { sent: [], missed: [], error: found.error };
   let results: { person: DmPerson; text: string; reason?: string }[];
   try {

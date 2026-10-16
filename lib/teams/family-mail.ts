@@ -100,6 +100,45 @@ export function groupByFamily<T extends { id: string }>(
   return { groups, noEmail };
 }
 
+// A family's id for a send: the players' ids, sorted, joined. The window and
+// the server compute it the same way from the same grouping, so the server
+// can ignore ids that aren't in the families it derived from the players
+// the caller may see (never trust a client-made family).
+export function familyId(players: { id: string }[]): string {
+  return [...new Set(players.map((p) => p.id))].sort().join(",");
+}
+
+const MAX_FAMILY_IDS = 1000;
+const MAX_FAMILY_ID_LEN = 2000;
+
+// The family ids the window ticked, once each. Empty when there are none,
+// they aren't a list, or there are too many to be a real send.
+export function selectedFamilyIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const ids = [
+    ...new Set(raw.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length <= MAX_FAMILY_ID_LEN)),
+  ];
+  return ids.length > MAX_FAMILY_IDS ? [] : ids;
+}
+
+// The families to write to: group the players the caller may see, then keep
+// only those whose id is in the list the window sent. Unknown ids are
+// dropped (a forged family, or one player of a pair of brothers). Empty
+// when nothing valid was ticked.
+export function chosenFamilies<T extends { id: string }>(
+  items: T[],
+  contactsOf: (t: T) => Contact[],
+  roles: Recipient[],
+  familyIds: unknown
+): { groups: FamilyGroup<T>[]; noEmail: T[]; error?: string } {
+  const { groups, noEmail } = groupByFamily(items, contactsOf, roles);
+  const want = new Set(selectedFamilyIds(familyIds));
+  if (want.size === 0) return { groups: [], noEmail, error: "Pick who to send it to." };
+  const picked = groups.filter((g) => want.has(familyId(g.players)));
+  if (picked.length === 0) return { groups: [], noEmail, error: "Pick who to send it to." };
+  return { groups: picked, noEmail };
+}
+
 // A Directory player (olb_players with its olb_player_parents) as someone to
 // email: each parent on the roster with an email, then the player's own
 // (unless it's a parent's: see withPrimary).
