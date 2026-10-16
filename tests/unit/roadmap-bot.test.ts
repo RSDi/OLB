@@ -4,7 +4,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   botInsertFields,
+  botListItem,
+  botListStatusFilter,
   botPatchFields,
+  botPatchUpdated,
   botStatusStep,
   cleanBotRoadmapItem,
   cleanBotStatusPatch,
@@ -133,4 +136,60 @@ test("progress → preview needs a preview_url; preview → released sets the li
   assert.deepEqual(botPatchFields(current, { status: "released" }), {
     error: "The bot can only move an item one column forward: proposed → planned → progress → preview → released.",
   });
+});
+
+test("GET ?status= accepts a column and rejects anything else", () => {
+  assert.deepEqual(botListStatusFilter(null), { status: null });
+  assert.deepEqual(botListStatusFilter(""), { status: null });
+  assert.deepEqual(botListStatusFilter("planned"), { status: "planned" });
+  assert.deepEqual(botListStatusFilter("preview"), { status: "preview" });
+  assert.deepEqual(botListStatusFilter("released"), { status: "released" });
+  assert.deepEqual(botListStatusFilter("done"), { error: "Pick a column." });
+});
+
+test("GET items include approved_by_name and approved_at", () => {
+  assert.deepEqual(
+    botListItem({
+      id: "b6a607ae-2798-4a33-aa41-6934c96623f0",
+      title: "Push notifications",
+      area: "Portal",
+      status: "planned",
+      approved_at: "2026-10-16T19:10:00.000Z",
+      approver: { full_name: "Jeff Malone" },
+    }),
+    {
+      id: "b6a607ae-2798-4a33-aa41-6934c96623f0",
+      title: "Push notifications",
+      area: "Portal",
+      status: "planned",
+      approved_by_name: "Jeff Malone",
+      approved_at: "2026-10-16T19:10:00.000Z",
+    },
+  );
+  assert.deepEqual(
+    botListItem({
+      id: "a",
+      title: "Idea",
+      area: "Website",
+      status: "proposed",
+      approved_at: null,
+      approver: null,
+    }),
+    {
+      id: "a",
+      title: "Idea",
+      area: "Website",
+      status: "proposed",
+      approved_by_name: null,
+      approved_at: null,
+    },
+  );
+});
+
+test("PATCH with 0 rows updated is a 409, not a 200", () => {
+  assert.deepEqual(botPatchUpdated(null), { ok: false, status: 409, error: "That item could not be updated." });
+  assert.deepEqual(botPatchUpdated([]), { ok: false, status: 409, error: "That item could not be updated." });
+  const item = { id: "a", status: "preview" };
+  assert.deepEqual(botPatchUpdated([item]), { ok: true, status: 200, item });
+  assert.deepEqual(botPatchUpdated(item), { ok: true, status: 200, item });
 });

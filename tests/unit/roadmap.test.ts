@@ -2,7 +2,7 @@
 // order each column shows.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanRoadmapItem, columnItems, formatDay, type RoadmapItem } from "../../lib/roadmap/model.ts";
+import { cleanRoadmapItem, columnItems, formatApprovedBy, formatDay, type RoadmapItem } from "../../lib/roadmap/model.ts";
 
 const form = { title: "  Push notifications ", description: " On your phone. ", area: "Portal", status: "planned", releasedOn: "" };
 
@@ -60,7 +60,7 @@ test("Released shows newest first; other columns oldest first", () => {
     released_on: string | null = null,
     area = "Portal",
   ): RoadmapItem =>
-    ({ id, title: id, description: "", area, status, released_on, preview_url: null, created_at });
+    ({ id, title: id, description: "", area, status, released_on, preview_url: null, created_at, approved_by: null, approved_at: null, approved_by_name: null });
   const items = [
     it("a", "released", "2026-01-01", "2026-09-01"),
     it("b", "released", "2026-01-02", "2026-10-01"),
@@ -83,4 +83,13 @@ test("dates leave off the year only for this year", () => {
   const now = new Date(2026, 9, 9);
   assert.equal(formatDay("2026-10-09", now), "Oct 9");
   assert.equal(formatDay("2025-12-31", now), "Dec 31, 2025");
+});
+
+test("Planned cards say who approved and when", () => {
+  const now = new Date(2026, 9, 16);
+  assert.equal(formatApprovedBy("Jeff Malone", "2026-10-16T19:10:00.000Z", now), "Approved by Jeff Malone on Oct 16");
+  assert.equal(formatApprovedBy("  Jeff Malone  ", "2025-12-31T12:00:00Z", now), "Approved by Jeff Malone on Dec 31, 2025");
+  assert.equal(formatApprovedBy(null, "2026-10-16T19:10:00.000Z", now), null);
+  assert.equal(formatApprovedBy("Jeff Malone", null, now), null);
+  assert.equal(formatApprovedBy("", "2026-10-16", now), null);
 });
