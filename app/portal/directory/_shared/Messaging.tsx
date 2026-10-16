@@ -7,6 +7,7 @@ import { EMAIL_TEMPLATE_COLUMNS, sortTemplates, type EmailTemplate } from "../..
 import { ErrorNote, Sheet, capStyle } from "../../payments/parts";
 import {
   ALL_RECIPIENTS,
+  familyId,
   fillMessage,
   firstNames,
   groupByFamily,
@@ -15,6 +16,7 @@ import {
   type Recipient,
   type SentMessage,
 } from "../../../../lib/teams/family-mail";
+import { FamilyList, useFamilySelection } from "./FamilyList";
 import { muted } from "./PlayerParts";
 import { SlackLogo } from "../../../components/SlackLogo";
 
@@ -56,7 +58,7 @@ export function ComposeSheet({
   subject: string;
   body: string;
   startTemplate?: string;
-  onSend: (ids: string[], subject: string, body: string, roles: Recipient[]) => Promise<SendResult>;
+  onSend: (ids: string[], subject: string, body: string, roles: Recipient[], familyIds: string[]) => Promise<SendResult>;
   onClose: () => void;
   // Finances (0133): tokens of its own, like {balance}, explained under the
   // message and filled in for the preview.
@@ -82,12 +84,20 @@ export function ComposeSheet({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const { groups, noEmail } = groupByFamily(targets, contactsOf, roles);
-  const families = groups.length;
+  const resetKey = `${roles.join(",")}|${targets
+    .map((t) => t.id)
+    .slice()
+    .sort()
+    .join(",")}`;
+  const pick = useFamilySelection(groups, resetKey);
+  const families = pick.count;
   const contacts = one ? targets[0].contacts : [];
   const offered = rolesPresent(targets.flatMap(contactsOf));
   const toggle = (r: Recipient) => setRoles((list) => (list.includes(r) ? list.filter((x) => x !== r) : ALL_RECIPIENTS.filter((x) => x === r || list.includes(x))));
   const preview =
-    groups[0] && ((!one && /\{player\}/i.test(body)) || (fillPreview && /\{(balance|due_date|family)\}/i.test(`${subject} ${body}`))) ? groups[0] : null;
+    pick.selectedGroups[0] && ((!one && /\{player\}/i.test(body)) || (fillPreview && /\{(balance|due_date|family)\}/i.test(`${subject} ${body}`)))
+      ? pick.selectedGroups[0]
+      : null;
   const picked = contacts.filter((c) => roles.includes(c.role)).length;
   const primary = contacts.find((c) => c.primary);
 
@@ -133,7 +143,8 @@ export function ComposeSheet({
       targets.map((t) => t.id),
       subject,
       body,
-      roles
+      roles,
+      pick.selectedGroups.map((g) => familyId(g.players))
     );
     setBusy(false);
     if (res.error && !res.sent) return setError(res.error);
@@ -141,12 +152,6 @@ export function ComposeSheet({
     setDone(`Sent to ${res.sent} ${res.sent === 1 ? "family" : "families"}.${skipped}${res.error ? ` ${res.error}` : ""}`);
     router.refresh();
   }
-
-  const familyList = groups.map((g) => (
-    <span key={g.players.map((t) => t.id).join()} style={{ fontSize: 12.5, color: "var(--gw-fg)", overflowWrap: "anywhere" }}>
-      <strong>{g.players.map((t) => t.first_name).join(" & ")}</strong> · {g.emails.join(", ")}
-    </span>
-  ));
 
   return (
     <Sheet eyebrow={eyebrow} title={title} busy={busy} onClose={onClose}>
@@ -191,19 +196,14 @@ export function ComposeSheet({
                 ))}
               </div>
             )}
-            {!one && families > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 2 }}>
-                {families > 6 ? (
-                  <details>
-                    <summary style={{ ...muted, fontWeight: 600, cursor: "pointer" }}>
-                      {families} families · see who gets it
-                    </summary>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 6 }}>{familyList}</div>
-                  </details>
-                ) : (
-                  familyList
-                )}
-              </div>
+            {!one && groups.length > 0 && (
+              <FamilyList
+                groups={groups}
+                selected={pick.selected}
+                onToggle={pick.toggle}
+                onSelectAll={pick.selectAll}
+                onSelectNone={pick.selectNone}
+              />
             )}
             {one && primary && (
               <span style={muted}>

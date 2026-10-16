@@ -42,7 +42,7 @@ type Compose = { via: "email" | "slack"; accounts: Account[] } | null;
 const FINANCE_SLACK: SlackApi = {
   status: (from) => financeSlackStatus(from),
   check: (ids, roles, from) => checkFinanceSlack(ids, roles, from),
-  send: (ids, roles, body, emails, from) => sendFinanceSlack(ids, roles, body, emails, from),
+  send: (ids, roles, body, emails, from, familyIds) => sendFinanceSlack(ids, roles, body, emails, from, familyIds),
 };
 
 const EMAIL_START = { subject: "Omaha Lightning: your balance", body: "Hi {family} family,\n\n" };
@@ -381,7 +381,7 @@ export function TreasurerView({
           body={EMAIL_START.body}
           messageHelp={BALANCE_TOKEN_HELP}
           fillPreview={(text, players) => moneyText(text, players.map((p) => p.id))}
-          onSend={(ids, subject, body, roles) => sendFinanceEmail(ids, subject, body, roles)}
+          onSend={(ids, subject, body, roles, familyIds) => sendFinanceEmail(ids, subject, body, roles, familyIds)}
           onClose={() => setCompose(null)}
         />
       )}

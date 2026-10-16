@@ -6,8 +6,8 @@ import { sendFamilyEmails } from "../notifications/registration-message";
 import { readPlayers, wantedIds } from "./read-players";
 import {
   ALL_RECIPIENTS,
+  chosenFamilies,
   fillMessage,
-  groupByFamily,
   messageHtml,
   playerTarget,
   type Recipient,
@@ -21,7 +21,8 @@ export async function sendPlayerMessage(
   ids: string[],
   subject: string,
   body: string,
-  recipients: Recipient[] = ALL_RECIPIENTS
+  recipients: Recipient[] = ALL_RECIPIENTS,
+  familyIds: unknown = []
 ): Promise<{ sent?: number; skipped?: string[]; error?: string }> {
   const gate = await requireFamilyEmail();
   if ("error" in gate) return { error: gate.error };
@@ -39,7 +40,11 @@ export async function sendPlayerMessage(
   const players = await readPlayers(db, wanted);
   if (players.length === 0) return { error: "Those players aren't in the Directory any more. Refresh the page." };
 
-  const { groups, noEmail } = groupByFamily(players.map(playerTarget), (t) => t.contacts, roles);
+  // Group from the players the caller may see, then keep only families whose
+  // id is in the list the window sent. Unknown ids are dropped, so a
+  // client-made family (or one brother of a pair) never goes out on its own.
+  const { groups, noEmail, error: pickError } = chosenFamilies(players.map(playerTarget), (t) => t.contacts, roles, familyIds);
+  if (pickError) return { error: pickError };
   const emails = groups.map((g) => {
     const filled = fillMessage(text, g.players);
     return { to: g.emails, subject: fillMessage(title, g.players), text: filled, html: messageHtml(filled) };

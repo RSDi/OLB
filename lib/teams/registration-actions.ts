@@ -13,7 +13,8 @@ import { sendFamilyEmails } from "../notifications/registration-message";
 import { sendReceipt, sendRegistrationEmails } from "../notifications/registration-receipt";
 import { clubNoticeSubject, greetingFor, receipt, registrant, registrationEmails, savedInput } from "./registration-receipt";
 import { sendPushToPermission } from "../notifications/push";
-import { ALL_RECIPIENTS, fillMessage, groupFamilies, messageHtml, type Recipient, type WaitlistRegistration } from "./waitlist";
+import { chosenFamilies } from "./family-mail";
+import { ALL_RECIPIENTS, familyContacts, fillMessage, messageHtml, type Recipient, type WaitlistRegistration } from "./waitlist";
 import { registrationFeeCents, registrationTier } from "../finances/logic";
 import { coachKidIds, compFor, loadFinanceSettings } from "../finances/club-data";
 import { centralToday } from "../finances/data";
@@ -605,7 +606,8 @@ export async function sendRegistrationMessage(
   ids: string[],
   subject: string,
   body: string,
-  recipients: Recipient[] = ALL_RECIPIENTS
+  recipients: Recipient[] = ALL_RECIPIENTS,
+  familyIds: unknown = []
 ): Promise<{ sent?: number; skipped?: string[]; error?: string }> {
   const gate = await requireRegistrations();
   if ("error" in gate) return { error: gate.error };
@@ -627,7 +629,8 @@ export async function sendRegistrationMessage(
   const regs = (data as (WaitlistRegistration & { contacted_at: string | null })[] | null) ?? [];
   if (regs.length === 0) return { error: "Those registrations aren't on the waitlist any more. Refresh the page." };
 
-  const { groups, noEmail } = groupFamilies(regs, roles);
+  const { groups, noEmail, error: pickError } = chosenFamilies(regs, familyContacts, roles, familyIds);
+  if (pickError) return { error: pickError };
   const emails = groups.map((g) => {
     const filled = fillMessage(text, g.players);
     return { to: g.emails, subject: fillMessage(title, g.players), text: filled, html: messageHtml(filled) };

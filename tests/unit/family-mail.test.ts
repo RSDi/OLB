@@ -3,12 +3,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  chosenFamilies,
   contactEmails,
+  familyId,
   fillMessage,
   groupByFamily,
   playerOwnEmail,
   playerTarget,
   rolesPresent,
+  selectedFamilyIds,
   type MailTarget,
   type PlayerWithParents,
 } from "../../lib/teams/family-mail.ts";
@@ -81,6 +84,47 @@ test("a player who shares a parent's email isn't a separate choice: that parent'
   const sam = playerTarget(player("s", "Sam Carter", [dad, mom], "sam@example.com"));
   assert.ok(sam.contacts.some((c) => c.role === "player"));
   assert.ok(!sam.contacts.some((c) => c.primary));
+});
+
+test("a family's id is its players, sorted, so send and the window agree", () => {
+  assert.equal(familyId([{ id: "b" }, { id: "a" }, { id: "a" }]), "a,b");
+  assert.deepEqual(selectedFamilyIds(["a,b", 1, "", "a,b", null]), ["a,b"]);
+  assert.deepEqual(selectedFamilyIds("a,b"), []);
+  assert.deepEqual(selectedFamilyIds(undefined), []);
+});
+
+test("the send keeps only families the server grouped, not a client-made list", () => {
+  const targets = [
+    player("a", "Sam Carter", [dad, mom], "sam@example.com"),
+    player("b", "Evan Carter", [mom, dad]),
+    player("c", "Ava Lane", [mom, { relationship: "father", member: { full_name: "Tom Lane", email: "tom@example.com" } }]),
+    player("d", "Max Ford", []),
+  ].map(playerTarget);
+  const { groups } = groupByFamily(targets, contactsOf);
+  const carters = familyId(groups[0].players);
+  const lanes = familyId(groups[1].players);
+  assert.equal(carters, "a,b");
+  assert.equal(lanes, "c");
+
+  // Ticking the Carters leaves Ava out, and Max (no email) is still skipped.
+  const picked = chosenFamilies(targets, contactsOf, ["father", "mother", "guardian", "player"], [carters, "forged"]);
+  assert.equal(picked.error, undefined);
+  assert.deepEqual(picked.groups.map((g) => g.players.map((t) => t.first_name)), [["Sam", "Evan"]]);
+  assert.deepEqual(picked.noEmail.map((t) => t.name), ["Max Ford"]);
+
+  // Passing one brother's id does not split the family: that isn't a family
+  // the server derived, so nobody is sent to.
+  const split = chosenFamilies(targets, contactsOf, ["father", "mother", "guardian", "player"], ["a"]);
+  assert.equal(split.error, "Pick who to send it to.");
+  assert.deepEqual(split.groups, []);
+
+  // Unticking everyone, or sending junk, does not fall back to the whole list.
+  assert.equal(chosenFamilies(targets, contactsOf, ["father", "mother", "guardian", "player"], []).error, "Pick who to send it to.");
+  assert.equal(chosenFamilies(targets, contactsOf, ["father", "mother", "guardian", "player"], ["nope"]).error, "Pick who to send it to.");
+  assert.equal(chosenFamilies(targets, contactsOf, ["father", "mother", "guardian", "player"], undefined).error, "Pick who to send it to.");
+
+  const both = chosenFamilies(targets, contactsOf, ["father", "mother", "guardian", "player"], [lanes, carters]);
+  assert.deepEqual(both.groups.map((g) => g.players.map((t) => t.first_name)), [["Sam", "Evan"], ["Ava"]]);
 });
 
 test("the Directory leaves a player's email off when it's a parent's", () => {
