@@ -502,7 +502,7 @@ Requirements start over each season, since each season has its own roster. The l
     title: "Hotel stays",
     group: "Directory",
     audience: "travel",
-    keywords: ["hotel", "hotels", "hotel stay", "hotel stays", "hotel registration", "booked", "booked in block", "staying elsewhere", "not yet known", "room block", "regionals", "nationals", "weekend", "booking", "instructions", "group code", "travel", "travel coordinator", "missing", "siblings", "email", "slack", "dm", "follow up", "families", "hs schedule"],
+    keywords: ["hotel", "hotels", "hotel stay", "hotel stays", "hotel registration", "booked", "booked in block", "staying elsewhere", "not yet known", "covered via sibling", "room block", "regionals", "nationals", "weekend", "booking", "instructions", "group code", "travel", "travel coordinator", "missing", "siblings", "email", "slack", "dm", "follow up", "families", "hs schedule"],
     body: `For the travel coordinator: each trip that needs a hotel — **Regionals** (everyone), **Nationals** (some teams), a weekend away — is its own **hotel stay** on that weekend of the **HS Schedule**. You pick the hotel from External Contacts, write how families book, then mark who's **Booked in block** in the Directory and follow up with the rest.
 
 **Set up a stay (on the HS Schedule).** Open the weekend (tap its event). Under **Hotel stays**, tap **Add hotel stay**:
@@ -514,15 +514,16 @@ Requirements start over each season, since each season has its own roster. The l
 - **Who registers** — **All players**, or **Only some teams** (Nationals, a JV weekend).
 - **Status** — **Open** while families should book; **Closed** or **Canceled** when you're done.
 
-**Track Booked in block (Directory).** Tap **Track Booked in block in Directory ›** on the stay, or on the Directory pick the stay from **All hotel stays**, then **Not yet known**. Each player shows a chip:
+**Track Booked in block (Directory).** Tap **Track Booked in block in Directory ›** on the stay, or on the Directory pick the stay from **All hotel stays**, then **Not yet known**. The list and counts include every player on this season's roster — including families who said no to the Directory (they show **Not in directory**). Other families still don't see those players. Each player shows a chip:
 
 - Red **Needs Regionals** (or the stay's name) means their stay is **Not yet known**.
 - Green with a check means **Booked in block**.
 - Grey **staying elsewhere** means they aren't in the hotel block (staying with family, for example). The note is on the chip.
+- Grey **Covered via sibling ·** and the sibling's name means they have no mark of their own, but a brother or sister who shares a parent is **Booked in block** or **Staying elsewhere** on this stay. They are left out of the **Not yet known** count.
 
 Tap the chip: **Booked in block**, **Staying elsewhere** or **Not yet known**, a date, and a **Note**. **Staying elsewhere** needs a note (placeholder **e.g. staying with family**). **Save**.
 
-**Siblings.** If two players share a parent and both are on this stay, marking one lists the other, ticked to start. Untick them to mark only the player you opened. **Not yet known** asks whether to clear the siblings too.
+**Siblings.** If two players share a parent and both are on this stay, marking one lists the other, ticked to start — including a sibling whose family said no to the Directory. Untick them to mark only the player you opened. **Not yet known** asks whether to clear the siblings too.
 
 **Follow up.** With **Not yet known** showing, **Email families** or **Slack families**. **{player}** becomes each family's player names; for Slack, **{name}** is each parent's first name.
 

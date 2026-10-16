@@ -21,15 +21,17 @@ import {
   type RequirementState,
 } from "../../../lib/requirements/logic";
 import {
+  countStayStates,
   indexStayRows,
   siblingsOnStay,
+  stayCoveredWord,
   stayDoneWord,
   stayFilterLabel,
   stayMissingWord,
   stayStateFor,
   stayStateWord,
   stayWaivedWord,
-  type StayPlayerState,
+  type StaySiblingPlayer,
 } from "../../../lib/hs-hotel-stays/logic";
 import type { HotelStayPlayer, HotelStayView } from "../../../lib/hs-hotel-stays/types";
 import { RequirementDialog } from "./RequirementDialog";
@@ -208,19 +210,33 @@ export function PlayersList({
     return c;
   }, [sections, pickedReq, rows]);
 
+  const stayPlayers = useMemo<StaySiblingPlayer[]>(
+    () =>
+      players.map((p) => ({
+        id: p.id,
+        full_name: p.full_name,
+        team_id: p.team_id,
+        parent_ids: p.parents.map((pa) => pa.member!.id),
+      })),
+    [players]
+  );
+
   const stayCounts = useMemo(() => {
-    const c: Record<StayPlayerState, number> = { done: 0, waived: 0, missing: 0, "n/a": 0 };
-    if (!pickedStay) return c;
-    for (const g of sections) for (const p of g.players) c[stayStateFor(p, pickedStay, stayRows)]++;
-    return c;
-  }, [sections, pickedStay, stayRows]);
+    if (!pickedStay) return { done: 0, waived: 0, missing: 0, covered: 0, "n/a": 0 };
+    return countStayStates(
+      sections.flatMap((g) => g.players),
+      pickedStay,
+      stayRows,
+      stayPlayers
+    );
+  }, [sections, pickedStay, stayRows, stayPlayers]);
 
   const shownSections = useMemo(() => {
     if (pickedStay) {
       return sections.map((g) => ({
         ...g,
         players: g.players.filter((p) => {
-          const st = stayStateFor(p, pickedStay, stayRows);
+          const st = stayStateFor(p, pickedStay, stayRows, stayPlayers);
           return st !== "n/a" && (stayShow === "all" || st === stayShow);
         }),
       }));
@@ -233,7 +249,7 @@ export function PlayersList({
         return st !== "n/a" && (reqShow === "all" || st === reqShow);
       }),
     }));
-  }, [sections, pickedReq, rows, reqShow, pickedStay, stayRows, stayShow]);
+  }, [sections, pickedReq, rows, reqShow, pickedStay, stayRows, stayPlayers, stayShow]);
 
   const showTeamFilter = view === "team" && teams.length > 0;
   const showGroupFilter = view === "age" && groupNames.length > 1;
@@ -465,7 +481,8 @@ export function PlayersList({
           {season && ` · ${season} season`}
           {pickedStay &&
             ` · ${pickedStay.name}: ${stayCounts.done + stayCounts.waived} of ${stayTotal} ${stayDoneWord().toLowerCase()}` +
-              (stayCounts.waived > 0 ? ` (${stayCounts.waived} ${stayWaivedWord().toLowerCase()})` : "")}
+              (stayCounts.waived > 0 ? ` (${stayCounts.waived} ${stayWaivedWord().toLowerCase()})` : "") +
+              (stayCounts.covered > 0 ? ` · ${stayCounts.covered} ${stayCoveredWord().toLowerCase()}` : "")}
           {!pickedStay &&
             pickedReq &&
             ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${doneWord(pickedReq).toLowerCase()}` +
@@ -496,8 +513,10 @@ export function PlayersList({
       ) : shown === 0 ? (
         <Empty
           text={
-            pickedReq && reqShow === "missing" && reqTotal > 0
-              ? `Nobody here is missing ${pickedReq.name}.`
+            pickedStay && stayShow === "missing" && stayTotal > 0
+              ? `Nobody here is ${stayMissingWord().toLowerCase()} for ${pickedStay.name}.`
+              : pickedReq && reqShow === "missing" && reqTotal > 0
+                ? `Nobody here is missing ${pickedReq.name}.`
               : pickedReq && reqShow !== "all" && reqTotal > 0
                 ? "No players match."
                 : query
@@ -568,6 +587,7 @@ export function PlayersList({
                     onOpenRequirement={(requirement) => setOpen({ player: p, requirement })}
                     hotelStays={canManageHotelStays ? chipStays : []}
                     stayRows={stayRows}
+                    stayPlayers={stayPlayers}
                     onOpenStay={(stay) => setOpenStay({ player: p, stay })}
                     notes={noteCounts?.[p.id] ?? 0}
                   />
@@ -612,16 +632,7 @@ export function PlayersList({
           player={openStay.player}
           stay={openStay.stay}
           row={stayRows.get(`${openStay.player.id}:${openStay.stay.id}`) ?? null}
-          siblings={siblingsOnStay(
-            openStay.player.id,
-            openStay.stay,
-            players.map((p) => ({
-              id: p.id,
-              full_name: p.full_name,
-              team_id: p.team_id,
-              parent_ids: p.parents.map((pa) => pa.member!.id),
-            }))
-          )}
+          siblings={siblingsOnStay(openStay.player.id, openStay.stay, stayPlayers)}
           onClose={() => {
             setOpenStay(null);
             router.refresh();
@@ -751,6 +762,7 @@ function PlayerRow({
   onOpenRequirement,
   hotelStays,
   stayRows,
+  stayPlayers,
   onOpenStay,
   notes,
 }: {
@@ -764,6 +776,7 @@ function PlayerRow({
   onOpenRequirement: (r: Requirement) => void;
   hotelStays: HotelStayView[];
   stayRows: Map<string, HotelStayPlayer>;
+  stayPlayers: StaySiblingPlayer[];
   onOpenStay: (s: HotelStayView) => void;
   // How many notes the player has (0124); 0 shows nothing.
   notes: number;
@@ -851,7 +864,7 @@ function PlayerRow({
           <RequirementChips player={p} requirements={requirements} rows={rows} onOpen={onOpenRequirement} />
         )}
         {hotelStays.length > 0 && (
-          <HotelStayChips player={p} stays={hotelStays} rows={stayRows} onOpen={onOpenStay} />
+          <HotelStayChips player={p} stays={hotelStays} rows={stayRows} stayPlayers={stayPlayers} onOpen={onOpenStay} />
         )}
         {teams && <TeamPicker player={p} teams={teams} />}
       </div>

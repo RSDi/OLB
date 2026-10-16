@@ -4,14 +4,19 @@ import assert from "node:assert/strict";
 import {
   cleanHotelStayInput,
   cleanStayPlayerMark,
+  countStayStates,
+  coveredSiblingOnStay,
   indexStayRows,
   siblingsOnStay,
   STAY_ELSEWHERE_NOTE_REQUIRED,
   stayAppliesTo,
+  stayCoveredLabel,
+  stayCoveredWord,
   stayDoneWord,
   stayFilterLabel,
   stayMissingWord,
   stayStateFor,
+  stayStateWord,
   stayWaivedWord,
   type HotelStayInput,
   type StaySiblingPlayer,
@@ -43,10 +48,13 @@ function row(playerId: string, stayId: string, status: "done" | "waived"): Hotel
   };
 }
 
-test("stay status words: booked in block, staying elsewhere, not yet known", () => {
+test("stay status words: booked in block, staying elsewhere, not yet known, covered via sibling", () => {
   assert.equal(stayDoneWord(), "Booked in block");
   assert.equal(stayWaivedWord(), "Staying elsewhere");
   assert.equal(stayMissingWord(), "Not yet known");
+  assert.equal(stayCoveredWord(), "Covered via sibling");
+  assert.equal(stayCoveredLabel("Maya Smith"), "Covered via sibling · Maya Smith");
+  assert.equal(stayStateWord("covered"), "Covered via sibling");
 });
 
 test("a stay with no teams covers everyone", () => {
@@ -196,4 +204,53 @@ test("siblings are listed by name", () => {
     siblingsOnStay("p1", { team_ids: null }, players).map((p) => p.full_name),
     ["Maya", "Zoe"]
   );
+});
+
+test("no row is Covered via sibling when a sibling is booked or staying elsewhere", () => {
+  const players = [
+    sibling("p1", "Alex Smith", ["mom"]),
+    sibling("p2", "Maya Smith", ["mom"]),
+    sibling("p3", "Sam Jones", ["dad"]),
+  ];
+  const stay = { id: "s1", team_ids: null };
+  const booked = indexStayRows([row("p2", "s1", "done")]);
+  assert.equal(stayStateFor({ id: "p1", team_id: "t1" }, stay, booked, players), "covered");
+  assert.equal(coveredSiblingOnStay("p1", stay, booked, players)?.full_name, "Maya Smith");
+  const elsewhere = indexStayRows([row("p2", "s1", "waived")]);
+  assert.equal(stayStateFor({ id: "p1", team_id: "t1" }, stay, elsewhere, players), "covered");
+  assert.equal(stayStateFor({ id: "p3", team_id: "t1" }, stay, booked, players), "missing");
+});
+
+test("a player's own mark wins over a sibling's mark", () => {
+  const players = [sibling("p1", "Alex Smith", ["mom"]), sibling("p2", "Maya Smith", ["mom"])];
+  const stay = { id: "s1", team_ids: null };
+  const rows = indexStayRows([row("p1", "s1", "waived"), row("p2", "s1", "done")]);
+  assert.equal(stayStateFor({ id: "p1", team_id: "t1" }, stay, rows, players), "waived");
+  assert.equal(coveredSiblingOnStay("p1", stay, rows, players), null);
+});
+
+test("Covered via sibling is left out of the Not yet known count", () => {
+  const players = [
+    sibling("p1", "Alex Smith", ["mom"]),
+    sibling("p2", "Maya Smith", ["mom"]),
+    sibling("p3", "Sam Jones", ["dad"]),
+  ];
+  const stay = { id: "s1", team_ids: null };
+  const rows = indexStayRows([row("p2", "s1", "done")]);
+  const counts = countStayStates(players, stay, rows, players);
+  assert.equal(counts.done, 1);
+  assert.equal(counts.covered, 1);
+  assert.equal(counts.missing, 1);
+  assert.equal(counts.waived, 0);
+});
+
+test("a team-scoped stay does not cover a sibling on another team", () => {
+  const players = [
+    sibling("p1", "Alex Smith", ["mom"], "t1"),
+    sibling("p2", "Maya Smith", ["mom"], "t2"),
+  ];
+  const stay = { id: "s1", team_ids: ["t1"] };
+  const rows = indexStayRows([row("p2", "s1", "done")]);
+  assert.equal(stayStateFor({ id: "p1", team_id: "t1" }, stay, rows, players), "missing");
+  assert.equal(stayStateFor({ id: "p2", team_id: "t2" }, stay, rows, players), "n/a");
 });

@@ -159,10 +159,12 @@ const PLAYER_COLUMNS =
 
 // Every player on the latest season's board ("2026-2027" style, so seasons
 // sort as text). RLS decides who's listed: staff and the Registrations and
-// Payments grants see everyone, approved members see the players whose family
-// opted into the directory, and parents see their own. Parents show
-// whether or not they've been approved for the portal yet (0091); a deleted
-// one comes back with member: null and is dropped.
+// Payments grants see everyone, Travel sees every current-season player for
+// hotel stays (0137) without changing directory_optin for anyone else,
+// approved members see the players whose family opted into the directory,
+// and parents see their own. Parents show whether or not they've been
+// approved for the portal yet (0091); a deleted one comes back with
+// member: null and is dropped.
 export async function loadPlayers(): Promise<DirectoryPlayer[]> {
   const supabase = await createClient();
   const { data } = await supabase

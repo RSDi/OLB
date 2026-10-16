@@ -11,7 +11,7 @@ import {
   type HotelStayStatus,
 } from "./types.ts";
 
-export type StayPlayerState = "done" | "waived" | "missing" | "n/a";
+export type StayPlayerState = "done" | "waived" | "missing" | "covered" | "n/a";
 
 export function stayAppliesTo(
   stay: Pick<HotelStay, "team_ids">,
@@ -32,10 +32,41 @@ export function indexStayRows(rows: HotelStayPlayer[]): Map<string, HotelStayPla
 export function stayStateFor(
   player: { id: string; team_id: string | null },
   stay: Pick<HotelStay, "id" | "team_ids">,
-  rows: Map<string, HotelStayPlayer>
+  rows: Map<string, HotelStayPlayer>,
+  siblingPlayers: StaySiblingPlayer[] = []
 ): StayPlayerState {
   if (!stayAppliesTo(stay, player)) return "n/a";
-  return rows.get(stayRowKey(player.id, stay.id))?.status ?? "missing";
+  const marked = rows.get(stayRowKey(player.id, stay.id))?.status;
+  if (marked) return marked;
+  const coveredBy = coveredSiblingOnStay(player.id, stay, rows, siblingPlayers);
+  return coveredBy ? "covered" : "missing";
+}
+
+// Sibling on this stay who is Booked in block or Staying elsewhere. A player
+// with no row of their own is Covered via sibling — not Not yet known.
+export function coveredSiblingOnStay(
+  playerId: string,
+  stay: Pick<HotelStay, "id" | "team_ids">,
+  rows: Map<string, HotelStayPlayer>,
+  siblingPlayers: StaySiblingPlayer[]
+): StaySiblingPlayer | null {
+  if (rows.has(stayRowKey(playerId, stay.id))) return null;
+  for (const sib of siblingsOnStay(playerId, stay, siblingPlayers)) {
+    const status = rows.get(stayRowKey(sib.id, stay.id))?.status;
+    if (status === "done" || status === "waived") return sib;
+  }
+  return null;
+}
+
+export function countStayStates(
+  players: { id: string; team_id: string | null }[],
+  stay: Pick<HotelStay, "id" | "team_ids">,
+  rows: Map<string, HotelStayPlayer>,
+  siblingPlayers: StaySiblingPlayer[] = []
+): Record<StayPlayerState, number> {
+  const c: Record<StayPlayerState, number> = { done: 0, waived: 0, missing: 0, covered: 0, "n/a": 0 };
+  for (const p of players) c[stayStateFor(p, stay, rows, siblingPlayers)]++;
+  return c;
 }
 
 // User-facing words for a player's mark. DB values stay done / waived / missing.
@@ -51,6 +82,15 @@ export function stayMissingWord(): string {
   return "Not yet known";
 }
 
+export function stayCoveredWord(): string {
+  return "Covered via sibling";
+}
+
+export function stayCoveredLabel(siblingName: string): string {
+  const name = siblingName.trim();
+  return name ? `${stayCoveredWord()} · ${name}` : stayCoveredWord();
+}
+
 export function stayStateWord(state: StayPlayerState): string {
   switch (state) {
     case "done":
@@ -59,6 +99,8 @@ export function stayStateWord(state: StayPlayerState): string {
       return stayWaivedWord();
     case "missing":
       return stayMissingWord();
+    case "covered":
+      return stayCoveredWord();
     case "n/a":
       return "";
   }
