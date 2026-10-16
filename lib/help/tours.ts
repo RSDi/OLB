@@ -52,8 +52,9 @@ export interface TourStep {
   // step goes there.
   route?: string;
   // Moving forward: click this `data-tour` element to bring the step's
-  // element into view (a tab, an "Add" button, a chip that opens a sheet),
-  // unless it's already showing.
+  // element into view (a tab, an "Add" button, a chip that opens a sheet,
+  // a <details> summary), unless it's already showing. A <details> is opened
+  // and left open, not toggled.
   click?: string;
   // Moving forward: click this `data-tour` element first if it's on the page,
   // e.g. to close a sheet a previous step opened.
@@ -1792,6 +1793,18 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "family-send-list",
         click: "directory-email",
+        title: "See who gets it",
+        body: "Tap **see who gets it** (the ▶) to open the list of families.",
+      },
+      {
+        target: "family-send-picks",
+        click: "family-send-list",
+        title: "Tick the families",
+        body: "Each family has a checkbox. **Select all / none** ticks every family or none.",
+      },
+      {
+        target: "family-send-picks",
+        click: "family-send-list",
         title: "Leave a family out",
         body: "Every family is ticked to start. Untick one to leave them out. **Select all / none** ticks every family or none. The count and **Send** follow the ticks.",
         interactive: true,
@@ -1819,6 +1832,18 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "family-send-list",
         click: "directory-slack",
+        title: "See who gets it",
+        body: "Tap **see who gets it** (the ▶) to open the list of families.",
+      },
+      {
+        target: "family-send-picks",
+        click: "family-send-list",
+        title: "Tick the families",
+        body: "Each family has a checkbox. **Select all / none** ticks every family or none.",
+      },
+      {
+        target: "family-send-picks",
+        click: "family-send-list",
         title: "Leave a family out",
         body: "Every family is ticked to start. Untick one to leave them out. **Select all / none** ticks every family or none. Changing **Dads** / **Moms** / **Players**, or the Directory filters, starts the ticks over.",
         interactive: true,

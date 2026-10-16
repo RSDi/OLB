@@ -220,6 +220,29 @@ test("a release note's Show me how picks the first tour this person can take", (
   assert.equal(tourForSection("hotel-registration", TRAVEL), null);
 });
 
+test("the email and Slack send tours open see who gets it before leave a family out", () => {
+  for (const [id, first, opener] of [
+    ["email-families-send", "Email families", "directory-email"],
+    ["slack-dms-send", "Slack families", "directory-slack"],
+  ] as const) {
+    const tour = GUIDE_TOURS.find((t) => t.id === id)!;
+    assert.deepEqual(
+      tour.steps.map((s) => s.title),
+      [first, "Who gets it", "See who gets it", "Tick the families", "Leave a family out"]
+    );
+    const see = tour.steps[2];
+    assert.equal(see.target, "family-send-list");
+    assert.equal(see.click, opener);
+    const tick = tour.steps[3];
+    assert.equal(tick.target, "family-send-picks");
+    assert.equal(tick.click, "family-send-list");
+    const leave = tour.steps[4];
+    assert.equal(leave.target, "family-send-picks");
+    assert.equal(leave.click, "family-send-list");
+    assert.equal(leave.interactive, true);
+  }
+});
+
 test("on Settings the ⓘ panel offers the open tab's walkthrough", () => {
   assert.equal(tourForPath("/portal/settings", SUPER, "settings-teams")?.id, "settings-teams");
   assert.equal(tourForPath("/portal/settings", SUPER, "settings-audit-log")?.id, "settings-audit-log");
