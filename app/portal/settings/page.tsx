@@ -163,6 +163,8 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     fees: financesOn && canManageFinances(me),
     // Hotel rooming-list import for the travel coordinator.
     import: canManageTravel(me),
+    // Every approved member: what's shipped.
+    release_notes: true,
   };
   // Deleted tab stays super-admin-only until the RLS follow-up lets board
   // members with the undelete grant see + restore soft-deleted rows.
@@ -287,7 +289,7 @@ export default function SettingsPage() {
       // preview bar links to the Website tab to publish). Otherwise all
       // board staff land on Members — any of them can work the approval
       // queue (D1) — and someone off the board lands on the first tab they
-      // have.
+      // have (Release Notes, unless a grant opens another).
       const wanted = new URLSearchParams(window.location.search).get("tab");
       const mine = visibleTabs(memberLike!, preview, on, booksOn);
       const linked = mine.find((t) => t.key === wanted);
@@ -297,7 +299,7 @@ export default function SettingsPage() {
         ? "teams"
         : canManageTravel(memberLike)
         ? "import"
-        : "sidebar_links";
+        : "release_notes";
       setTab(linked ? linked.key : mine.some((t) => t.key === landing) ? landing : mine[0]?.key ?? landing);
       setAuthChecked(true);
     })();

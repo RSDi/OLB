@@ -1,47 +1,34 @@
 "use server";
 
-// Release notes (Settings → Release Notes, 0138). The board reads them;
-// super-admins add, edit and soft-delete. RLS matches.
+// The user's "seen up to" release version, stored on members.releases_seen_version
+// (0138). Release notes themselves live in code (lib/release-notes/releases.ts).
 
-import { revalidatePath } from "next/cache";
-import { requireSuperAdmin } from "../auth/guards";
 import { createClient } from "../supabase/server";
-import { cleanReleaseNote, type ReleaseNoteInput } from "./model";
+import { getAuthUser } from "../auth/viewer";
 
-export interface ReleaseNoteResult {
-  success?: boolean;
-  error?: string;
-}
-
-function refresh() {
-  revalidatePath("/portal/settings");
-}
-
-export async function saveReleaseNote(id: string | null, input: ReleaseNoteInput): Promise<ReleaseNoteResult> {
-  const gate = await requireSuperAdmin();
-  if ("error" in gate) return { error: gate.error };
-  const row = cleanReleaseNote(input);
-  if ("error" in row) return { error: row.error };
-
+export async function loadReleasesSeen(): Promise<string | null> {
+  const user = await getAuthUser();
+  if (!user) return null;
   const supabase = await createClient();
-  const { error } = id
-    ? await supabase.from("olb_release_notes").update(row).eq("id", id).is("deleted_at", null)
-    : await supabase.from("olb_release_notes").insert({ ...row, created_by: gate.userId });
-  if (error) return { error: error.message };
-  refresh();
-  return { success: true };
+  const { data } = await supabase
+    .from("members")
+    .select("releases_seen_version")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const v = (data as { releases_seen_version?: string | null } | null)?.releases_seen_version;
+  return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
-export async function deleteReleaseNote(id: string): Promise<ReleaseNoteResult> {
-  const gate = await requireSuperAdmin();
-  if ("error" in gate) return { error: gate.error };
+export async function saveReleasesSeen(version: string): Promise<{ error?: string }> {
+  const user = await getAuthUser();
+  if (!user) return { error: "You must be signed in." };
+  const v = version.trim();
+  if (!v) return { error: "Missing version." };
   const supabase = await createClient();
   const { error } = await supabase
-    .from("olb_release_notes")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id)
-    .is("deleted_at", null);
+    .from("members")
+    .update({ releases_seen_version: v })
+    .eq("user_id", user.id);
   if (error) return { error: error.message };
-  refresh();
-  return { success: true };
+  return {};
 }

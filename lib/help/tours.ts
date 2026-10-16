@@ -8,6 +8,8 @@
 //     guide section that has one.
 //   - "Show me around" in the top-bar "i" panel, for the page you're on (on
 //     Settings, the open tab: see usePageHelp in app/components/PageHelp.tsx).
+//   - "Show me how →" on a Settings → Release Notes entry that changed
+//     something this person can use (a `releaseOnly` tour).
 //   - The welcome tour starts by itself for new accounts only (see
 //     autoStartsWelcomeTour); everyone else starts it from the User Guide.
 //
@@ -80,6 +82,10 @@ export interface GuideTour {
   // first.
   route: string;
   steps: TourStep[];
+  // Written for one release note's "Show me how →": walks to just what that
+  // release changed. Kept off the ⓘ panel and the guide's section buttons,
+  // which start the screen's full tour.
+  releaseOnly?: boolean;
 }
 
 export const GUIDE_TOURS: GuideTour[] = [
@@ -145,9 +151,8 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "nav-settings",
         sidebar: true,
-        audience: "staff",
         title: "Settings",
-        body: "Approve new sign-ups and manage member accounts. A red badge here counts the access requests waiting for you.",
+        body: "What's new in the portal lives here, under **Release Notes**. A **What's new** card also pops up in the bottom-right when something ships. Board members also approve new sign-ups and manage accounts here; a red badge counts access requests waiting for you.",
       },
       {
         target: "sidebar-collapse",
@@ -1256,32 +1261,19 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "settings-tab-release-notes",
         title: "Settings → Release Notes",
-        body: "What just shipped, grouped by day. Every board member can read this; only a super-admin can add or change an entry.",
-      },
-      {
-        target: "release-notes-filter",
-        click: "settings-tab-release-notes",
-        title: "Filter by area",
-        body: "Tap **All** or an area — **Portal**, **Website**, **Registration**, **Payments**, **HS Schedule**, **Slack & email** — to narrow the list.",
+        body: "What just shipped, newest first. Every member can read this. A **What's new** card also pops up in the bottom-right when something ships.",
       },
       {
         target: "release-notes-list",
         click: "settings-tab-release-notes",
-        title: "Each day's notes",
-        body: "Newest day first. Each card has an area chip, a title and a short summary of what changed.",
+        title: "Each release",
+        body: "A version pill, the title, the date, and what changed. The colored dot on the line marks each one.",
       },
       {
         target: "release-notes-show-how",
         click: "settings-tab-release-notes",
         title: "Show me how",
-        body: "When a note has a walkthrough, tap **Show me how**. A step-by-step overlay walks you through it, with **Back** / **Next** and an optional screenshot or video.",
-      },
-      {
-        target: "release-notes-add",
-        click: "settings-tab-release-notes",
-        audience: "super_admin",
-        title: "Add note",
-        body: "Writes a new entry. You can start from a **released** Roadmap item so its title, area, summary and live date are copied in.",
+        body: "When a release changed something you can use, tap **Show me how →**. A guided tour walks you through it on the real page, with **Back** / **Next**.",
       },
     ],
   },
@@ -1779,11 +1771,140 @@ export const GUIDE_TOURS: GuideTour[] = [
       },
     ],
   },
+  {
+    id: "email-families-send",
+    sectionId: "email-families",
+    title: "Tick families off before you send",
+    route: "/portal/directory",
+    releaseOnly: true,
+    steps: [
+      {
+        target: "directory-email",
+        title: "Email families",
+        body: "Writes to the families of the players the list is showing. Narrow the list first if you only want some of them.",
+      },
+      {
+        target: "message-recipients",
+        click: "directory-email",
+        title: "Who gets it",
+        body: "Tick **Dads**, **Moms** and **Players**. Then tick the families themselves.",
+      },
+      {
+        target: "family-send-list",
+        click: "directory-email",
+        title: "Leave a family out",
+        body: "Every family is ticked to start. Untick one to leave them out. **Select all / none** ticks every family or none. The count and **Send** follow the ticks.",
+        interactive: true,
+      },
+    ],
+  },
+  {
+    id: "slack-dms-send",
+    sectionId: "slack-dms",
+    title: "Tick families off before you Slack",
+    route: "/portal/directory",
+    releaseOnly: true,
+    steps: [
+      {
+        target: "directory-slack",
+        title: "Slack families",
+        body: "Sends each parent of the players the list is showing their own Slack DM, from you. Replies come back to you in Slack.",
+      },
+      {
+        target: "slack-recipients",
+        click: "directory-slack",
+        title: "Who gets it",
+        body: "Tick **Dads**, **Moms** and **Players**. Then tick the families themselves.",
+      },
+      {
+        target: "family-send-list",
+        click: "directory-slack",
+        title: "Leave a family out",
+        body: "Every family is ticked to start. Untick one to leave them out. **Select all / none** ticks every family or none. Changing **Dads** / **Moms** / **Players**, or the Directory filters, starts the ticks over.",
+        interactive: true,
+      },
+    ],
+  },
+  {
+    id: "hotel-covered-sibling",
+    sectionId: "hotel-registration",
+    title: "Covered via sibling",
+    route: "/portal/directory",
+    releaseOnly: true,
+    steps: [
+      {
+        target: "hotel-stay-filter",
+        pick: "hotel-stay-filter",
+        title: "Pick a hotel stay",
+        body: "On the Directory, pick the stay from **All hotel stays**, then **Not yet known** to see who still needs a mark of their own.",
+      },
+      {
+        target: "hotel-stay-status",
+        title: "Not yet known",
+        body: "Players **Covered via sibling** drop out of this count. They still show under **All**.",
+      },
+      {
+        target: "hotel-stay-chips",
+        title: "Covered via sibling",
+        body: "A player with no mark of their own shows **Covered via sibling** when a sibling is **Booked in block** or **Staying elsewhere** on the same stay.",
+      },
+    ],
+  },
+  {
+    id: "hotel-staying-elsewhere",
+    sectionId: "hotel-registration",
+    title: "Staying elsewhere",
+    route: "/portal/directory",
+    releaseOnly: true,
+    steps: [
+      {
+        target: "hotel-stay-filter",
+        pick: "hotel-stay-filter",
+        title: "Pick a hotel stay",
+        body: "On the Directory, pick the stay from **All hotel stays** — Regionals, Nationals, a weekend away.",
+      },
+      {
+        target: "hotel-stay-chip",
+        title: "A player's chip",
+        body: "Each player shows a chip for the stay. Red means **Not yet known**. Tap it to mark them.",
+      },
+      {
+        target: "hotel-stay-choice",
+        click: "hotel-stay-chip",
+        title: "Booked in block or Staying elsewhere",
+        body: "**Waived** is now **Staying elsewhere**, **Booked** is **Booked in block**, and **Missing** is **Not yet known**.",
+      },
+      {
+        target: "hotel-stay-note",
+        click: "hotel-stay-chip",
+        title: "A note for Staying elsewhere",
+        body: "**Staying elsewhere** needs a note (for example staying with family). The note shows on the chip.",
+        interactive: true,
+      },
+      {
+        target: "hotel-stay-siblings",
+        click: "hotel-stay-chip",
+        title: "Siblings",
+        body: "When you mark **Booked in block** or **Staying elsewhere**, siblings on the same stay are ticked to start, so one save covers them. Untick to mark only this player.",
+        interactive: true,
+      },
+    ],
+  },
 ];
 
 export function canSeeTour(tour: GuideTour, viewer: GuideViewer | null | undefined): boolean {
   const section = GUIDE_SECTIONS.find((s) => s.id === tour.sectionId);
-  return !!section && canSeeGuideSection(section, viewer);
+  if (section && canSeeGuideSection(section, viewer)) return true;
+  // The board marks hotel stays in the Directory too (canCheckRequirements),
+  // even though the Hotel stays guide section is written for Travel.
+  if (
+    tour.releaseOnly &&
+    tour.sectionId === "hotel-registration" &&
+    viewer?.status === "approved" &&
+    viewer.isStaff
+  )
+    return true;
+  return false;
 }
 
 // The steps this viewer should get, in order. Steps are also skipped at run
@@ -1838,8 +1959,24 @@ export const PLANNING_TOUR_ID = "planning";
 
 // The tour for a guide section, if it has one this viewer can take.
 export function tourForSection(sectionId: string, viewer: GuideViewer | null | undefined): GuideTour | null {
-  const tour = GUIDE_TOURS.find((t) => t.sectionId === sectionId || t.alsoSections?.includes(sectionId));
+  const tour = GUIDE_TOURS.find(
+    (t) => !t.releaseOnly && (t.sectionId === sectionId || t.alsoSections?.includes(sectionId))
+  );
   return tour && canSeeTour(tour, viewer) ? tour : null;
+}
+
+// A release note's "Show me how →": the first of its tour ids that this
+// person can take.
+export function releaseTour(
+  tour: string | string[] | undefined,
+  viewer: GuideViewer | null | undefined
+): GuideTour | null {
+  if (!tour) return null;
+  for (const id of Array.isArray(tour) ? tour : [tour]) {
+    const t = getTour(id);
+    if (t && canSeeTour(t, viewer) && tourStepsFor(t, viewer).length > 0) return t;
+  }
+  return null;
 }
 
 // The "Show me around" tour for a page: the tour of the page's "i" section,

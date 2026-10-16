@@ -56,9 +56,9 @@ const NAV: NavItem[] = [
   // Every family's balance for the Treasurer (the Payments grant); a parent's
   // own balance once the Treasurer turns that on.
   { href: "/portal/payments", label: "Payments", icon: <Icons.Give width={16} height={16}/>, paymentsOnly: true, tour: "nav-payments" },
-  // Board can view Settings; editing is gated per grant inside.
+  // Every approved member: Release Notes, plus any tabs their permissions add.
   // Pinned to the bottom of the nav (BOTTOM_HREFS).
-  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true, tour: "nav-settings" },
+  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, approvedOnly: true, tour: "nav-settings" },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
@@ -100,8 +100,8 @@ export interface SidebarViewer {
   canSlackDm?: boolean;
   // The Website grant (0120): for the guide's Settings: Website section.
   canManageWebsite?: boolean;
-  // Board, or holds a permission whose page is in Settings (0123): sees the
-  // Settings item, and the pending badge when they can approve.
+  // Approved member: sees Settings (Release Notes, plus granted tabs), and
+  // the pending badge when they can approve.
   canOpenSettings?: boolean;
   // The External Contacts and Plan HS Schedule permissions (0123), on top of
   // the board, coaches and the travel coordinator.

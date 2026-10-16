@@ -185,7 +185,7 @@ export function HotelStayDialog({
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div data-tour="hotel-stay-choice" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {choices.map((c) => (
             <button
               key={c.key}
@@ -215,15 +215,17 @@ export function HotelStayDialog({
               value={completedOn}
               onChange={(e) => setCompletedOn(e.target.value)}
             />
-            <Textarea
-              label={choice === "waived" ? "Note *" : "Note"}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={2}
-              placeholder={choice === "waived" ? "e.g. staying with family" : "Confirmation number…"}
-              error={error === STAY_ELSEWHERE_NOTE_REQUIRED ? error : undefined}
-              help={choice === "waived" ? "Required — where they're staying if not in the hotel block." : undefined}
-            />
+            <div data-tour="hotel-stay-note">
+              <Textarea
+                label={choice === "waived" ? "Note *" : "Note"}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                placeholder={choice === "waived" ? "e.g. staying with family" : "Confirmation number…"}
+                error={error === STAY_ELSEWHERE_NOTE_REQUIRED ? error : undefined}
+                help={choice === "waived" ? "Required — where they're staying if not in the hotel block." : undefined}
+              />
+            </div>
           </>
         )}
 

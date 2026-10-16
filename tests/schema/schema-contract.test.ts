@@ -45,7 +45,7 @@ const skip = env ? false : "no Supabase env — schema probes skipped (unit test
 // here whenever a migration adds a column the code starts using.
 const CONTRACT: Record<string, string> = {
   members:
-    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel,can_slack_dm,can_manage_website,access_profile_id,extra_permissions",
+    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel,can_slack_dm,can_manage_website,access_profile_id,extra_permissions,releases_seen_version",
   access_profiles: "id,name,base_role,permissions,is_builtin",
   maintenance_requests:
     "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at,planning_template_id,planning_season",
@@ -98,9 +98,6 @@ const CONTRACT: Record<string, string> = {
   hs_hotel_stays:
     "id,weekend_id,hotel_contact_id,name,team_ids,booking_instructions,booking_url,booking_code,cutoff_on,rate_notes,status,sort_order,created_by,updated_by,created_at,updated_at",
   hs_hotel_stay_players: "stay_id,player_id,status,completed_on,note,marked_by,created_at,updated_at",
-  // Settings → Release Notes (0138).
-  olb_release_notes:
-    "id,released_on,title,area,summary,steps,media_url,href,roadmap_item_id,seed_key,created_by,created_at,updated_at,deleted_at",
   olb_charges:
     "id,board_id,player_id,kind,category,description,amount_cents,entry_date,note,created_by,created_at,voided_at,voided_by",
   olb_payments:

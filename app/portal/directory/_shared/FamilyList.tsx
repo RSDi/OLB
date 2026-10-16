@@ -90,7 +90,7 @@ export function FamilyList({
   const count = `${n} ${n === 1 ? "family" : "families"}`;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 2 }}>
+    <div data-tour="family-send-list" style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 2 }}>
       {groups.length > 6 ? (
         <details>
           <summary style={{ ...muted, fontWeight: 600, cursor: "pointer" }}>{count} · see who gets it</summary>

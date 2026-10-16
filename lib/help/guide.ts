@@ -1224,15 +1224,15 @@ Make a page of your own, like a fall camp or a tryouts page. Under **Pages → N
     id: "settings-release-notes",
     title: "Settings: Release Notes",
     group: "Settings",
-    audience: "staff",
-    keywords: ["release notes", "changelog", "what's new", "shipped", "show me how", "walkthrough", "demo", "roadmap", "preview"],
-    body: `A dated list of what just shipped in the portal, the website, registration, payments, the HS Schedule, and Slack & email. Open **Settings → Release Notes**. Every board member can read it. Only a super-admin can add, edit or delete an entry.
+    audience: "everyone",
+    keywords: ["release notes", "changelog", "what's new", "shipped", "show me how", "walkthrough", "demo", "version", "toast"],
+    body: `What just shipped in the portal. Open **Settings → Release Notes**. Every member can read it.
 
-Each note has a **title**, an **area** (Portal, Website, Registration, Payments, HS Schedule, or Slack & email), the **day it went live**, and a short **summary**. Notes are grouped by day, newest first. Tap an **area** chip at the top to see only that part of the app.
+Each release has a **version** pill, a **title**, the **date**, and a short list of what changed. Newest first, down a timeline.
 
-**Show me how.** When a note has a walkthrough, tap **Show me how**. A step-by-step overlay walks you through it: **Back** / **Next**, an optional screenshot or video, and **Go there** when a step points at a page. **Done** (or **×**, or Escape) closes it.
+When something ships, a **What's new** card pops up in the bottom-right of any portal page. **See release notes** opens this list; **×** dismisses it. Opening the list also marks the notes as seen, so the card stays away until the next release.
 
-Super-admins: **Add note** writes a new entry. You can start from a **released** item on the Roadmap — that copies its title, area, summary and live date, and keeps the two linked. Add ordered **Show me how** steps if people will need a demo. The **pencil** edits a note; the **trash** can hides it from the board.`,
+**Show me how →.** When a release changed something you can use, tap **Show me how →**. A guided tour walks you through it on the real page: **Back** / **Next**, and **Skip tour** any time. The button only shows when that tour can run for you — a hotel-stay tour for Travel, an Email families tour if you can email families, and so on.`,
   },
   {
     id: "settings-sidebar-links",
