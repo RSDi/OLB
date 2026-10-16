@@ -1,32 +1,75 @@
-// In-app release notes. Dated entries the board (and later a What's new
-// page) can read. Newest first. Audience matches the User Guide: "staff" is
-// the board and super-admins; "super_admin" is narrower; "everyone" is
-// anyone approved.
+// Hand-maintained release history for Settings → Release Notes and the
+// "What's new" toast. Newest first. Omit `version` on a new entry — it is
+// derived from the nearest versioned row below it (see withVersions).
+import { withVersions, type AuthoredRelease, type Release } from "./model.ts";
 
-export type ReleaseAudience = "everyone" | "staff" | "super_admin";
+export type { Release } from "./model.ts";
+export {
+  RELEASES_SEEN_EVENT,
+  SEEN_PREF_KEY,
+  cmpVersion,
+  nextSeenVersion,
+  seenReleaseVersion,
+  unseenReleases,
+} from "./model.ts";
 
-export interface ReleaseNote {
-  id: string;
-  date: string; // YYYY-MM-DD
-  title: string;
-  audience: ReleaseAudience;
-  summary: string;
-  body: string;
-}
-
-export const RELEASES: ReleaseNote[] = [
+const AUTHORED: AuthoredRelease[] = [
   {
-    id: "2026-10-16-age-eligibility",
-    date: "2026-10-16",
+    date: "October 16, 2026",
     title: "Age eligibility and swing-ups",
-    audience: "staff",
-    summary: "Conqueror league age caps, a season end date, and who can play up or move down.",
-    body: `The board can set a **Season end date** and an **Age caps** table in **Settings → Season**. The Directory then shows each player's lowest eligible level through that date and flags anyone rostered on a level they age out of (**Ages out 10/25/26**).
-
-**Available to swing up** on the Directory: pick a team (for example 14U White) to list younger players who can play up, and older players still age-eligible to move down, with age at season end and current team. Players whose own team already has a game that weekend on the HS Schedule are marked **Plays same weekend** (or hidden).
-
-Birthdays and eligibility stay board-only.
-
-Conqueror rule from Ted Smith via the league (16 Oct 2026): 8th / 14U cannot turn 15 during the season; 6th / 12U cannot turn 13; 5th cannot turn 12; 4th cannot turn 11; 3rd / 10U-ish cannot turn 10.`,
+    color: "#c45c26",
+    tour: ["settings-season", "directory"],
+    features: [
+      "Settings → Season has a Season end date (starts at December 31, 2026) and an editable Age caps table",
+      "The Directory shows the lowest level a player is eligible for through that date, and Ages out when they are rostered on a level they age out of",
+      "Available to swing up lists younger players who can play up to a team you pick, and older players still age-eligible to move down",
+      "Birthdays and eligibility stay board-only",
+    ],
+  },
+  {
+    date: "October 16, 2026",
+    title: "Tick families off before you send",
+    color: "#2f7de1",
+    tour: ["email-families-send", "slack-dms-send"],
+    features: [
+      "Email families and Slack families let you leave a family out of a send without changing the list filters",
+      "Each family in see who gets it has a checkbox, all on to start; the count and Send button follow the ticks",
+      "Select all / none ticks every family or none; changing Dads / Moms / Players, or the Directory filters, starts the ticks over",
+    ],
+  },
+  {
+    date: "October 16, 2026",
+    title: "Roadmap Preview column",
+    color: "#7c5cbf",
+    features: [
+      "The roadmap board has a Preview column between In progress and Released",
+      "An item in Preview carries a Vercel preview link; Open preview opens it in a new tab",
+      "The Product Manager bot can move an item one column forward (progress → preview needs the link)",
+    ],
+  },
+  {
+    date: "October 16, 2026",
+    title: "Covered via sibling, and Travel sees every player",
+    color: "#2a9d8f",
+    tour: "hotel-covered-sibling",
+    features: [
+      "A player with no hotel-stay mark of their own shows Covered via sibling when a sibling is Booked in block or Staying elsewhere on the same stay",
+      "Those players drop out of the Not yet known count and filter; they still show under All",
+      "Travel can read every current-season player for hotel-stay tracking, including families who said no to the Directory",
+    ],
+  },
+  {
+    date: "October 16, 2026",
+    title: "Staying elsewhere and sibling marking",
+    color: "#e07a3d",
+    tour: "hotel-staying-elsewhere",
+    version: "26.10.0",
+    features: [
+      "Waived is now Staying elsewhere, Booked is Booked in block, and Missing is Not yet known",
+      "Staying elsewhere needs a note (for example staying with family); the note shows on the chip",
+      "When Travel marks Booked in block or Staying elsewhere, siblings on the same stay are ticked by default so one save covers them",
+    ],
   },
 ];
+
+export const RELEASES: Release[] = withVersions(AUTHORED);

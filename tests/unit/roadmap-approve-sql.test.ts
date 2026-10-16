@@ -13,11 +13,11 @@ const page = readFileSync(join(root, "app/portal/roadmap/page.tsx"), "utf8");
 const view = readFileSync(join(root, "app/portal/roadmap/RoadmapView.tsx"), "utf8");
 const actions = readFileSync(join(root, "lib/roadmap/actions.ts"), "utf8");
 
-test("0139 is the next free numbered migration after 0137, skipping 0138", () => {
+test("0139 follows 0138 (Release Notes)", () => {
   const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
   assert.ok(names.includes("0137_hotel_stay_travel_players.sql"));
+  assert.ok(names.includes("0138_release_notes.sql"));
   assert.ok(names.includes("0139_roadmap_approve.sql"));
-  assert.equal(names.filter((n) => n.startsWith("0138")).length, 0, "0138 left for Release Notes");
   assert.equal(names.filter((n) => n.startsWith("0139")).length, 1, "only one 0139 migration");
 });
 

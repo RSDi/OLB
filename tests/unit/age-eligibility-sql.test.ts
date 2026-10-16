@@ -6,11 +6,11 @@ import { join } from "node:path";
 const root = join(import.meta.dirname, "../..");
 const migration = readFileSync(join(root, "supabase/migrations/0140_age_eligibility.sql"), "utf8");
 
-test("0140 is the next numbered migration after 0139 and leaves 0138 for Release Notes", () => {
+test("0140 is the next numbered migration after 0139", () => {
   const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
+  assert.ok(names.includes("0138_release_notes.sql"));
   assert.ok(names.includes("0139_roadmap_approve.sql"));
   assert.ok(names.includes("0140_age_eligibility.sql"));
-  assert.equal(names.filter((n) => n.startsWith("0138")).length, 0, "0138 left for Release Notes");
   assert.equal(names.filter((n) => n.startsWith("0140")).length, 1, "only one 0140 migration");
 });
 

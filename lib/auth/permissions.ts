@@ -53,9 +53,9 @@ export function isSuperAdmin(m: MemberLike | null | undefined): boolean {
 }
 
 // --- Settings grants ---------------------------------------------------------
-// Board members (role = admin) can VIEW Settings, but editing,
+// Every approved member can open Settings (Release Notes). Editing,
 // deleting, and restoring each require a standing grant a super-admin gives
-// them. Super-admins implicitly hold every grant.
+// a board member. Super-admins implicitly hold every grant.
 
 export function canEditSettings(m: MemberLike | null | undefined): boolean {
   if (isSuperAdmin(m)) return true;
@@ -177,16 +177,10 @@ export const canPlanHsSchedule = (m: MemberLike | null | undefined) => isStaff(m
 export const canManageTeams = (m: MemberLike | null | undefined) => hasPermission(m, "teams");
 export const canManageSiteLinks = (m: MemberLike | null | undefined) => hasPermission(m, "site_links");
 
-// Someone who isn't Board but holds a permission that lives in Settings opens
-// Settings and sees only those tabs. Travel opens Settings for the hotel
-// rooming-list import.
+// Every approved member opens Settings (Release Notes, plus any tabs their
+// permissions add). Pending and denied accounts stay out.
 export const canOpenSettings = (m: MemberLike | null | undefined) =>
-  isStaff(m) ||
-  canApproveMembers(m) ||
-  canManageTeams(m) ||
-  canManageSiteLinks(m) ||
-  canManageRegistrations(m) ||
-  canManageTravel(m);
+  !!m && m.status === "approved";
 
 // Add/rename settings items needs the edit grant; (was: any staff).
 export const canManageAreas = canEditSettings;
