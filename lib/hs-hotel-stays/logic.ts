@@ -1,4 +1,4 @@
-// Pure helpers for hotel stays: who a stay covers, Booked word, form clean-up.
+// Pure helpers for hotel stays: who a stay covers, status words, form clean-up.
 // Safe to import from client components and node --test.
 
 import {
@@ -7,6 +7,7 @@ import {
   HOTEL_STAY_URL_MAX,
   type HotelStay,
   type HotelStayPlayer,
+  type HotelStayPlayerStatus,
   type HotelStayStatus,
 } from "./types.ts";
 
@@ -37,9 +38,73 @@ export function stayStateFor(
   return rows.get(stayRowKey(player.id, stay.id))?.status ?? "missing";
 }
 
-// Always "Booked" for a completed hotel stay (mirrors done_label on requirements).
+// User-facing words for a player's mark. DB values stay done / waived / missing.
 export function stayDoneWord(): string {
-  return "Booked";
+  return "Booked in block";
+}
+
+export function stayWaivedWord(): string {
+  return "Staying elsewhere";
+}
+
+export function stayMissingWord(): string {
+  return "Not yet known";
+}
+
+export function stayStateWord(state: StayPlayerState): string {
+  switch (state) {
+    case "done":
+      return stayDoneWord();
+    case "waived":
+      return stayWaivedWord();
+    case "missing":
+      return stayMissingWord();
+    case "n/a":
+      return "";
+  }
+}
+
+export const STAY_ELSEWHERE_NOTE_REQUIRED =
+  "Add a note for Staying elsewhere — e.g. staying with family.";
+
+export function cleanStayPlayerMark(input: {
+  status: HotelStayPlayerStatus;
+  completedOn: string;
+  note: string;
+}): { error: string } | { status: HotelStayPlayerStatus; completed_on: string; note: string | null } {
+  if (input.status !== "done" && input.status !== "waived") return { error: "Pick a status." };
+  const completedOn = input.completedOn.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(completedOn)) return { error: "Enter a valid date." };
+  const note = input.note.trim();
+  if (input.status === "waived" && !note) return { error: STAY_ELSEWHERE_NOTE_REQUIRED };
+  return { status: input.status, completed_on: completedOn, note: note || null };
+}
+
+// Brothers and sisters on this stay: other players who share a parent and
+// who this stay covers. Not a blended-family union — they must share a parent.
+export interface StaySiblingPlayer {
+  id: string;
+  full_name: string;
+  team_id: string | null;
+  parent_ids: string[];
+}
+
+export function siblingsOnStay(
+  playerId: string,
+  stay: Pick<HotelStay, "team_ids">,
+  players: StaySiblingPlayer[]
+): StaySiblingPlayer[] {
+  const player = players.find((p) => p.id === playerId);
+  if (!player) return [];
+  const parents = new Set(player.parent_ids.filter(Boolean));
+  if (parents.size === 0) return [];
+  return players
+    .filter((p) => {
+      if (p.id === playerId) return false;
+      if (!stayAppliesTo(stay, p)) return false;
+      return p.parent_ids.some((id) => parents.has(id));
+    })
+    .sort((a, b) => a.full_name.localeCompare(b.full_name));
 }
 
 export function stayStatusLabel(status: HotelStayStatus): string {
