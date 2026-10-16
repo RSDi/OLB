@@ -47,11 +47,22 @@ const ARROW = 12;
 type Rect = { top: number; left: number; width: number; height: number };
 type Side = "bottom" | "top" | "right" | "left";
 
+// Hidden behind a closed <details> (the family list behind "see who gets it").
+// The summary itself is visible; everything else in the details is not, even
+// if the browser still reports a box for it.
+function insideClosedDetails(el: HTMLElement): boolean {
+  const details = el.closest("details");
+  if (!(details instanceof HTMLDetailsElement) || details.open) return false;
+  const summary = details.querySelector(":scope > summary");
+  return !(summary instanceof HTMLElement && (el === summary || summary.contains(el)));
+}
+
 function findTarget(target: string): HTMLElement | null {
   // The first visible match: several elements can share a target (every
   // player row, say) and some only render on one screen size.
   const all = document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`);
   for (const el of all) {
+    if (insideClosedDetails(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.width > 0 && r.height > 0 && r.right > 0 && r.left < window.innerWidth) return el;
   }
