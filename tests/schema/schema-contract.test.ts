@@ -190,7 +190,7 @@ test("rpc: decrement_supply exists", { skip }, async () => {
   assert.ok(!body.includes("PGRST202"), `decrement_supply missing: ${body.slice(0, 200)}`);
 });
 
-test("rpc: hotel_stay_season_players exists (0136)", { skip }, async () => {
+test("rpc: hotel_stay_season_players exists (0137)", { skip }, async () => {
   const res = await fetch(`${env!.url}/rest/v1/rpc/hotel_stay_season_players`, {
     method: "POST",
     headers: {

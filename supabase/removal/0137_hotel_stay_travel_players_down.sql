@@ -1,4 +1,4 @@
--- Down for 0136_hotel_stay_travel_players.sql
+-- Down for 0137_hotel_stay_travel_players.sql
 -- Drops Travel's current-season hotel-stay player reads. The Directory
 -- directory_optin rule (0090) is unchanged.
 

@@ -133,7 +133,7 @@ function asStaySibling(p: HotelStaySeasonPlayerRow): HotelStaySeasonPlayer {
 }
 
 // Current-season players for hotel-stay tracking. Travel's
-// hotel_stay_season_players() RPC (0136) includes families who said no to
+// hotel_stay_season_players() RPC (0137) includes families who said no to
 // the Directory; staff already see them via RLS. Fallback walks olb_players
 // when the RPC isn't applied yet.
 export async function loadHotelStaySeasonPlayers(

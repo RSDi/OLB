@@ -1,4 +1,4 @@
--- 0136_hotel_stay_travel_players.sql
+-- 0137_hotel_stay_travel_players.sql
 --
 -- Travel needs every current-season player for hotel-stay tracking (the
 -- Directory tracker, the Booked / Not yet known counts, and the sibling
@@ -20,7 +20,7 @@
 --
 -- Helper calls in policies are wrapped in (select …) per AGENTS.md.
 --
--- Apply via the Supabase SQL editor, after 0135. Idempotent.
+-- Apply via the Supabase SQL editor, after 0136. Idempotent.
 
 begin;
 

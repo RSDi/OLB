@@ -1,26 +1,27 @@
-// Hotel stay Travel access (0136) and the sibling-mark backfill (manual).
+// Hotel stay Travel access (0137) and the sibling-mark backfill (manual).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const root = join(import.meta.dirname, "../..");
-const migration = readFileSync(join(root, "supabase/migrations/0136_hotel_stay_travel_players.sql"), "utf8");
+const migration = readFileSync(join(root, "supabase/migrations/0137_hotel_stay_travel_players.sql"), "utf8");
 const backfill = readFileSync(join(root, "supabase/manual/hotel_sibling_backfill.sql"), "utf8");
 
-test("0136 is the next numbered migration and is not under supabase/manual", () => {
+test("0137 is the next numbered migration and is not under supabase/manual", () => {
   const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
-  assert.ok(names.includes("0136_hotel_stay_travel_players.sql"));
+  assert.ok(names.includes("0136_roadmap_preview.sql"));
+  assert.ok(names.includes("0137_hotel_stay_travel_players.sql"));
   assert.equal(
-    names.filter((n) => n.startsWith("0136")).length,
+    names.filter((n) => n.startsWith("0137")).length,
     1,
-    "only one 0136 migration"
+    "only one 0137 migration"
   );
   const manuals = readdirSync(join(root, "supabase/manual"));
-  assert.ok(!manuals.some((n) => n.startsWith("0136")));
+  assert.ok(!manuals.some((n) => n.startsWith("0137")));
 });
 
-test("0136 scopes hotel-stay player reads to the Travel grant, not the general directory", () => {
+test("0137 scopes hotel-stay player reads to the Travel grant, not the general directory", () => {
   assert.ok(migration.includes("can_see_hotel_stay_players"));
   assert.ok(migration.includes("can_manage_travel()"));
   assert.ok(migration.includes("hotel_stay_season_players"));
