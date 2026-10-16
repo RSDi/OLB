@@ -16,6 +16,18 @@ export {
 const AUTHORED: AuthoredRelease[] = [
   {
     date: "October 16, 2026",
+    title: "Age eligibility and swing-ups",
+    color: "#c45c26",
+    tour: ["settings-season", "directory"],
+    features: [
+      "Settings → Season has a Season end date (starts at December 31, 2026) and an editable Age caps table",
+      "The Directory shows the lowest level a player is eligible for through that date, and Ages out when they are rostered on a level they age out of",
+      "Available to swing up lists younger players who can play up to a team you pick, and older players still age-eligible to move down",
+      "Birthdays and eligibility stay board-only",
+    ],
+  },
+  {
+    date: "October 16, 2026",
     title: "See who gets it, then tick families",
     color: "#2f7de1",
     tour: ["email-families-send", "slack-dms-send"],

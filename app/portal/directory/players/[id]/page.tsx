@@ -8,6 +8,7 @@ import { loadPlayerMessages, loadPlayers, loadRequirements, loadViewer } from ".
 import { PlayerDetail } from "./PlayerDetail";
 import { loadSeasonTeams } from "../../../../../lib/teams/volunteer-data";
 import { loadPlayerNotes } from "../../../../../lib/teams/player-note-data";
+import { loadEligibilityContext } from "../../../../../lib/teams/eligibility-data";
 
 // One player: everything on their Directory card, their parents and brothers
 // and sisters, and their family's payments. Payments show to anyone with the
@@ -64,12 +65,15 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   // Notes (0124): the board and the Registrations grant.
   const canNote = viewer.isStaff || viewer.canManageRegistrations;
   const notes = canNote ? await loadPlayerNotes(id, { userId: viewer.userId, isSuperAdmin: viewer.isSuperAdmin }, familyFirst) : null;
+  const eligibility = viewer.isStaff ? await loadEligibilityContext() : null;
 
   return (
     <PlayerDetail
       player={player}
       siblings={siblings}
       isStaff={viewer.canSeeAllPlayers}
+      canSeeBirthdates={viewer.isStaff}
+      eligibility={eligibility}
       requirements={req.requirements}
       requirementRows={req.rows.filter((r) => r.player_id === id)}
       payments={payments}

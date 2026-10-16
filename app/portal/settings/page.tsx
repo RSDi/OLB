@@ -26,6 +26,7 @@ import { AssetsTab } from "./AssetsTab";
 import { TypesTab } from "./TypesTab";
 import { SuppliesTab } from "./SuppliesTab";
 import { TeamsSettingsTab } from "./TeamsSettingsTab";
+import { SeasonTab } from "./SeasonTab";
 import { VolunteerRolesTab } from "./VolunteerRolesTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
 import { TaskCategoriesTab } from "./TaskCategoriesTab";
@@ -54,7 +55,7 @@ import { Icons } from "../../components/icons";
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
 // Website is released to whoever holds its grant (and super-admins).
-const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website", "release_notes", "import"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "season", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website", "release_notes", "import"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "access_profiles",
   "playbooks",
@@ -70,6 +71,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   members: "settings-members",
   access_profiles: "settings-access-profiles",
   teams: "settings-teams",
+  season: "settings-season",
   volunteer_roles: "settings-volunteer-roles",
   requirements: "settings-requirements",
   email_templates: "settings-email-templates",
@@ -96,6 +98,7 @@ type Tab =
   | "types"
   | "supplies"
   | "teams"
+  | "season"
   | "volunteer_roles"
   | "requirements"
   | "email_templates"
@@ -175,6 +178,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     // Named bundles of permissions handed out in Members (0122).
     { key: "access_profiles", label: "Access Profiles", group: "People & Access", visible: isSuperAdmin(me), tour: "settings-tab-access-profiles", keywords: "permissions roles grants treasurer" },
     { key: "teams", label: "Teams", group: "People & Access", visible: teams, tour: "settings-tab-teams", keywords: "coaches roster squads" },
+    { key: "season", label: "Season", group: "People & Access", visible: board, tour: "settings-tab-season", keywords: "season end date age cap eligibility 14u 12u 10u play up conqueror birthday" },
     { key: "volunteer_roles", label: "Volunteer Roles", group: "People & Access", visible: teams, tour: "settings-tab-volunteer-roles", keywords: "volunteers parents jobs" },
     { key: "requirements", label: "Requirements", group: "People & Access", visible: canEditSettings(me), tour: "settings-tab-requirements", keywords: "forms fees players registration hand in pay" },
     // Planning (lib/planning/access.ts): staged rollout, so only the preview
@@ -350,6 +354,7 @@ export default function SettingsPage() {
       {tab === "types" && has("types") && <TypesTab me={me} />}
       {tab === "supplies" && has("supplies") && <SuppliesTab me={me} />}
       {tab === "teams" && has("teams") && <TeamsSettingsTab />}
+      {tab === "season" && has("season") && <SeasonTab />}
       {tab === "volunteer_roles" && has("volunteer_roles") && <VolunteerRolesTab />}
       {tab === "requirements" && has("requirements") && <RequirementsTab me={me} />}
       {tab === "email_templates" && has("email_templates") && <EmailTemplatesTab />}
