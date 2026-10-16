@@ -17,6 +17,7 @@ import {
   nextPartIndex,
   partAt,
   partStartIndex,
+  releaseTour,
   tourForPath,
   tourForSection,
   tourStepsFor,
@@ -57,7 +58,9 @@ function tourAnchors(): Set<string> {
 test("tour ids are unique, one tour per section", () => {
   const ids = GUIDE_TOURS.map((t) => t.id);
   assert.equal(new Set(ids).size, ids.length);
-  const sections = GUIDE_TOURS.flatMap((t) => [t.sectionId, ...(t.alsoSections ?? [])]);
+  // Release-only tours share a section with the screen's full tour (or with
+  // each other) — they start from a release note, not the guide.
+  const sections = GUIDE_TOURS.filter((t) => !t.releaseOnly).flatMap((t) => [t.sectionId, ...(t.alsoSections ?? [])]);
   assert.equal(new Set(sections).size, sections.length);
 });
 
@@ -121,8 +124,9 @@ test("admins don't get super-admin steps", () => {
 test("each page tour is offered from its own page's ⓘ panel, and only there", () => {
   // A page tour: its section is that page's "i" help. The welcome tour and
   // walkthroughs across pages start from the guide instead.
-  const pageTours = GUIDE_TOURS.filter((t) =>
-    GUIDE_SECTIONS.find((s) => s.id === t.sectionId)?.routes?.includes(t.route)
+  const pageTours = GUIDE_TOURS.filter(
+    (t) =>
+      !t.releaseOnly && GUIDE_SECTIONS.find((s) => s.id === t.sectionId)?.routes?.includes(t.route)
   );
   assert.ok(pageTours.length >= 5);
   for (const t of pageTours) {
@@ -199,6 +203,21 @@ test("part helpers find, name and skip parts", () => {
 test("a preview section's tour only reaches accounts on the staged-rollout list", () => {
   assert.equal(tourForSection("activity", SUPER), null);
   assert.equal(tourForSection("activity", { ...SUPER, seesFullUi: true })?.id, "activity");
+});
+
+test("a release note's Show me how picks the first tour this person can take", () => {
+  const TRAVEL: GuideViewer = { ...MEMBER, canManageTravel: true };
+  const SLACK: GuideViewer = { ...MEMBER, canSlackDm: true };
+  assert.equal(releaseTour(["email-families-send", "slack-dms-send"], ADMIN)?.id, "email-families-send");
+  assert.equal(releaseTour(["email-families-send", "slack-dms-send"], SLACK)?.id, "slack-dms-send");
+  assert.equal(releaseTour("hotel-staying-elsewhere", TRAVEL)?.id, "hotel-staying-elsewhere");
+  assert.equal(releaseTour("hotel-staying-elsewhere", ADMIN)?.id, "hotel-staying-elsewhere");
+  assert.equal(releaseTour("hotel-covered-sibling", MEMBER), null);
+  assert.equal(releaseTour(["email-families-send", "slack-dms-send"], MEMBER), null);
+  assert.equal(releaseTour(undefined, ADMIN), null);
+  // Release-only tours stay off the guide and the ⓘ panel.
+  assert.equal(tourForSection("email-families", ADMIN), null);
+  assert.equal(tourForSection("hotel-registration", TRAVEL), null);
 });
 
 test("on Settings the ⓘ panel offers the open tab's walkthrough", () => {

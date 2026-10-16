@@ -8,13 +8,14 @@
 // trip.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
 import { PortalTopBar } from "../components/PortalTopBar";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
 import { GuidedTour, TourContext, type StartTour } from "../components/GuidedTour";
 import { ScrollToTopButton } from "../components/ScrollToTopButton";
+import { WhatsNewToast } from "../components/WhatsNewToast";
 import { ActivityBeacon } from "../components/ActivityBeacon";
 import { PreviewBanner, type PreviewInfo } from "../components/PreviewBanner";
 import { PageHelpContext } from "../components/PageHelp";
@@ -25,6 +26,7 @@ import {
   autoStartsWelcomeTour,
   tourForPath,
 } from "../../lib/help/tours";
+import { RELEASES_SEEN_EVENT } from "../../lib/release-notes/model";
 import { createClient } from "../../lib/supabase/client";
 import type { TopbarSearchHandle } from "../components/TopbarSearch";
 import type { SidebarLink } from "../../lib/sidebar-links/url";
@@ -51,7 +53,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/payments":    { title: "Payments",     subtitle: "" },
   "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
   "/portal/directory/registrations": { title: "Registrations", subtitle: "Directory" },
-  "/portal/settings":    { title: "Settings",     subtitle: "Board" },
+  "/portal/settings":    { title: "Settings",     subtitle: "" },
   "/portal/slack-archive":            { title: "Slack Archive", subtitle: "" },
   "/portal/slack-archive/search":     { title: "Search archive", subtitle: "Slack Archive" },
   "/portal/slack-archive/exceptions": { title: "Exceptions",     subtitle: "Slack Archive" },
@@ -83,6 +85,7 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
   const [infoOpen, setInfoOpen] = useState(false);
   const inlineSearchRef = useRef<TopbarSearchHandle>(null);
   const pathname = usePathname();
+  const router = useRouter();
   const previewing = preview !== null;
   // The top-bar "i" shows the User Guide section for this page, when the
   // viewer can see one (lib/help/guide.ts), or for the open view on a page
@@ -273,6 +276,16 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
           )}
           <main>{children}</main>
           <ScrollToTopButton />
+          {viewer?.status === "approved" && !previewing && (
+            <WhatsNewToast
+              onOpen={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new Event(RELEASES_SEEN_EVENT));
+                }
+                router.push("/portal/settings?tab=release_notes");
+              }}
+            />
+          )}
           <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
           <InfoPanel
             section={pageHelp}

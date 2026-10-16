@@ -86,6 +86,9 @@ test("members only see the member sections", () => {
   const forMember = guideSectionsFor(MEMBER);
   assert.ok(forMember.length > 0);
   assert.ok(forMember.every((s) => s.audience === "everyone"));
+  assert.ok(forMember.some((s) => s.id === "settings-release-notes"));
+  // Settings' default "i" stays Members (staff); the Release Notes tab sets
+  // its own section. Members still read Release Notes in the User Guide.
   assert.equal(guideSectionForPath("/portal/settings", MEMBER), null);
   assert.equal(guideSectionForPath("/portal/contacts", MEMBER), null);
 });

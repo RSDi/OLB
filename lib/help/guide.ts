@@ -997,7 +997,7 @@ Activity is recorded from the day it went live.`,
   - **Settings (Board)** (board members only): **Edit**, **Delete** and **Undelete** for Settings items like Requirements, and **Website** to change the club website's menu, page text and pictures (see *Settings: Website*).
   - **Board powers** (for people who aren't Board; Board has them all): **See all players** (every player, listed or not, with fees, waivers, shirts and parents' details), **Member notes**, **Check off requirements**, **Approve access requests**, **External Contacts** (see, add and edit every contact, and their history) and **Plan HS Schedule**.
   - **Club setup** (anyone): **Teams & volunteers** to set up teams and volunteer roles and fill team spots (putting someone in a leadership spot makes them a coach), and **Sidebar Links & Public Directory**.
-  - Someone who isn't Board but has **Approve access requests**, **Teams & volunteers**, **Sidebar Links & Public Directory** or **Travel** opens **Settings** and sees only those tabs.
+  - Every approved member opens **Settings** and sees **Release Notes**. Someone who isn't Board but has **Approve access requests**, **Teams & volunteers**, **Sidebar Links & Public Directory** or **Travel** also sees those tabs.
   - Super-admins have all of these already, so their rows have no **Access** button.
 - To see everyone at once, tap **Roles & access** (next to the tabs, on **Approved**). It's a table with a row per person: their profile drop-down, then a box for each permission. Greyed ticks come from the profile; tick or untick any other box to change that person's extras. The number under each column says how many people have it. Super-admins show ✓ everywhere, and **–** means that box is for board members only. Tap **List** to go back.
 - **Remove** a member (demote a super-admin first).
@@ -1235,6 +1235,20 @@ Pick a page (**Home**, **Philosophy**, **History**, **Summer**, **Programs**, **
 **New pages**
 
 Make a page of your own, like a fall camp or a tryouts page. Under **Pages → New pages**, tap **Add page** and fill in its **Title**, its **Address** (filled in from the title: Fall Camp makes **/fall-camp**), an optional **Banner picture**, and the **Page text**. Save the draft, preview it, publish it, then add it to the **Menu** so people can find it. An address the site already uses can't be taken. Delete a page from the list (and publish) to take it down.`,
+  },
+  {
+    id: "settings-release-notes",
+    title: "Settings: Release Notes",
+    group: "Settings",
+    audience: "everyone",
+    keywords: ["release notes", "changelog", "what's new", "shipped", "show me how", "walkthrough", "demo", "version", "toast"],
+    body: `What just shipped in the portal. Open **Settings → Release Notes**. Every member can read it.
+
+Each release has a **version** pill, a **title**, the **date**, and a short list of what changed. Newest first, down a timeline.
+
+When something ships, a **What's new** card pops up in the bottom-right of any portal page. **See release notes** opens this list; **×** dismisses it. Opening the list also marks the notes as seen, so the card stays away until the next release.
+
+**Show me how →.** When a release changed something you can use, tap **Show me how →**. A guided tour walks you through it on the real page: **Back** / **Next**, and **Skip tour** any time. The button only shows when that tour can run for you — a hotel-stay tour for Travel, an Email families tour if you can email families, and so on.`,
   },
   {
     id: "settings-sidebar-links",
