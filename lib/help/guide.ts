@@ -626,6 +626,22 @@ You, the coaches and the board see these places under each weekend away on the *
 **When we stay there.** On a hotel's page, **Hotel stays** lists each HS Schedule weekend you linked this hotel to (Regionals, Nationals, a weekend away), with booking status and links to the schedule and Directory. Set those stays up on the weekend itself — see *Hotel stays*.`,
   },
   {
+    id: "roadmap",
+    title: "Roadmap",
+    group: "Roadmap",
+    audience: "super_admin",
+    preview: true,
+    routes: ["/portal/roadmap"],
+    keywords: ["roadmap", "proposed", "planned", "in progress", "preview", "released", "approve", "share link", "product"],
+    body: `What's live, what's in preview, what's being built, what's planned, and ideas. Super-admins only, for now.
+
+The board is five columns: **Released**, **Preview**, **In progress**, **Planned** and **Proposed**. Filter by area at the top. **Add item** opens a sheet for the title, a short description families can read, the area, the column, the day it went live (Released), and a preview link (required in Preview).
+
+**Approve** on a Proposed card, or in that item's sheet, moves it to Planned and records who approved it and when. Planned cards then say **Approved by X on date**. Only a super-admin can approve — the page hides the button from everyone else, and the server and the database both refuse anyone who isn't.
+
+**Share link** turns on a read-only copy families can open without signing in. **New link** and **Turn off** stop the old link working.`,
+  },
+  {
     id: "playbooks",
     title: "Playbooks",
     group: "Playbooks",

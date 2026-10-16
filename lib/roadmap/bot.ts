@@ -145,3 +145,52 @@ export function botPatchFields(
     updated_at: now.toISOString(),
   };
 }
+
+// GET /api/roadmap/items?status=planned — a miss or blank is "every column".
+export function botListStatusFilter(raw: string | null): { error: string } | { status: Status | null } {
+  if (raw == null || raw === "") return { status: null };
+  if (!isStatus(raw)) return { error: "Pick a column." };
+  return { status: raw };
+}
+
+export interface BotListItem {
+  id: string;
+  title: string;
+  area: string;
+  status: string;
+  approved_by_name: string | null;
+  approved_at: string | null;
+}
+
+export function botListItem(row: {
+  id: string;
+  title: string;
+  area: string;
+  status: string;
+  approved_at?: string | null;
+  approver?: { full_name: string | null } | { full_name: string | null }[] | null;
+}): BotListItem {
+  const approver = Array.isArray(row.approver) ? row.approver[0] : row.approver;
+  const name = approver?.full_name?.trim() || null;
+  return {
+    id: row.id,
+    title: row.title,
+    area: row.area,
+    status: row.status,
+    approved_by_name: name,
+    approved_at: row.approved_at ?? null,
+  };
+}
+
+// PATCH must not return 200 when PostgREST updated 0 rows (RLS, a delete in
+// between, or a filter miss). 409 so the bot retries instead of treating it
+// as done. 404 is for "never found the item" before the write.
+export function botPatchUpdated<T>(rows: T[] | T | null):
+  | { ok: false; status: 409; error: string }
+  | { ok: true; status: 200; item: T } {
+  const list = rows == null ? [] : Array.isArray(rows) ? rows : [rows];
+  if (!list.length) {
+    return { ok: false, status: 409, error: "That item could not be updated." };
+  }
+  return { ok: true, status: 200, item: list[0] };
+}

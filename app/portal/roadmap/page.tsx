@@ -3,8 +3,12 @@ import { getViewer } from "../../../lib/auth/viewer";
 import { loadRoadmap } from "../../../lib/roadmap/data";
 import { RoadmapView } from "./RoadmapView";
 
-// What's live, being built, planned, and ideas (migration 0129). Super-admins
-// on the preview list only, for now.
+// Always the board as it stands. A bot PATCH used to leave this page stale
+// because it was cacheable and the write path didn't expire every copy.
+export const dynamic = "force-dynamic";
+
+// What's live, being built, planned, and ideas (migrations 0129, 0136, 0139).
+// Super-admins on the preview list only, for now.
 export default async function RoadmapPage() {
   const viewer = await getViewer();
   if (!viewer?.isSuperAdmin || !viewer.seesFullUi) redirect("/portal/directory");

@@ -140,6 +140,10 @@ const CONTRACT: Record<string, string> = {
   hs_weekend_games: "weekend_id,level_id,games,unsure,note,updated_by,updated_at",
   hs_opponents:
     "id,weekend_id,level_id,contact_id,name,status,our_score,their_score,note,sort_order,created_by,updated_by,created_at,updated_at",
+  // Roadmap (0129, 0136, 0139).
+  olb_roadmap_items:
+    "id,title,description,area,status,released_on,preview_url,created_by,created_at,updated_at,deleted_at,approved_by,approved_at",
+  olb_roadmap_link: "id,key,updated_at",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {
