@@ -256,13 +256,14 @@ The tabs across the top are **Calendar**, **Year**, **Review** and **Template**.
     group: "Directory",
     audience: "everyone",
     routes: ["/portal/directory"],
-    keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "profile", "family", "search", "coaches & volunteers", "volunteers", "open spot", "scorekeeper", "clock", "photographer"],
+    keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "profile", "family", "search", "coaches & volunteers", "volunteers", "open spot", "scorekeeper", "clock", "photographer", "eligible", "ages out", "swing up", "play up", "birthday", "season end"],
     body: `This season's players and their parents, grouped by team.
 
 - **Search** by player, parent, email or phone number (type 3 or more digits to match a phone).
 - Pick a team from the **All teams** drop-down to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed. The number next to each team is how many players are on it.
 - Coaches, other team leaders and board members can switch between **By team** and **By age group** (10U–18U), then pick one from the **All ages** drop-down.
-- Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A player's own email shows too, unless it's the same as a parent's. A **New** chip means it's their first season with us.
+- Each player shows their jersey number, team, address, and their parents' phone and email. A player's own email shows too, unless it's the same as a parent's. A **New** chip means it's their first season with us.
+- **For the board.** Each player also shows their age and birthday, the lowest level they're eligible for through the **Season end date**, and an **Ages out** chip when they're rostered on a level they age out of (for example **Ages out 10/25/26**). Pick a team from **Available to swing up** to list younger players who can play up to that team, and older players still age-eligible to move down, with age at season end and current team. Tick **Hide if their team plays the same weekend** to drop anyone whose own team already has a game that weekend on the HS Schedule. Age caps live in **Settings → Season**.
 - Tap an address and pick **Apple Maps** or **Google Maps** to get directions.
 - Tap a player's name to open their player page, a parent's name to open their profile, and **Team page ›** to open a team's full page.
 
@@ -295,10 +296,10 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     group: "Directory",
     audience: "everyone",
     routes: ["/portal/directory/players"],
-    keywords: ["player", "player page", "kid", "child", "son", "siblings", "brother", "sister", "parents", "mom", "dad", "balance", "payments", "fees"],
+    keywords: ["player", "player page", "kid", "child", "son", "siblings", "brother", "sister", "parents", "mom", "dad", "balance", "payments", "fees", "eligible", "ages out", "birthday"],
     body: `Everything about one player in one place. Open it by tapping a player's name in the Directory, on a team page, on a parent's profile, or on the Finances page.
 
-- **The top** shows their jersey number, team (tap it to open the team page), age and birthday, address, and the player's own phone and email (their email is left off when it's the same as a parent's, since it shows with that parent). A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**.
+- **The top** shows their jersey number, team (tap it to open the team page), address, and the player's own phone and email (their email is left off when it's the same as a parent's, since it shows with that parent). A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**. The board also sees their age and birthday, the lowest level they're eligible for through the season end date, and **Ages out** when they're rostered on a level they age out of.
 - **Parents** lists each parent with their phone and email. Tap a parent's name to open their profile. **Siblings** links to their brothers' and sisters' pages.
 - **Payments** shows what the family owes and has paid, with each charge and payment. You see it for your own kids once the Treasurer has opened balances to families, and the Treasurer sees it for everyone.
 
@@ -1036,6 +1037,21 @@ Put someone on a profile with the drop-down on their row in **Settings → Membe
 - **Staff & volunteers →** opens the team's page in the Directory, where you assign coaches and volunteers.
 
 What you enter here shows on the team's Directory banner and team page. Players are put on teams in the Directory, with the team chip on each player.`,
+  },
+  {
+    id: "settings-season",
+    title: "Settings: Season",
+    group: "Settings",
+    audience: "staff",
+    keywords: ["season", "season end date", "age cap", "age caps", "eligibility", "14U", "12U", "10U", "play up", "conqueror", "max age", "birthday"],
+    body: `The season end date and the age caps the Directory uses for eligibility. Open **Settings → Season**. The board can (admin and super-admin).
+
+**Conqueror league rule.** A player at a level cannot turn older than that level's max age at any point of the season, or they have to play up. 8th / 14U cannot turn 15; 6th / 12U cannot turn 13; 5th cannot turn 12; 4th cannot turn 11; 3rd / 10U-ish cannot turn 10.
+
+- **Season end date** — the last day of the season (starts at December 31, 2026). A player ages out of a level if they turn one year over its max age on or before this day. Tap **Save date**.
+- **Age caps by level** — each row is a level (14U, 12U, 10U…) and its **Max age**. Max age 14 on 14U means they must not turn 15 on or before the season end date. **Add a level** for a grade (5th, 4th, 3rd) if you place by grade. **Remove** deletes a row. Tap **Save caps**.
+
+The Directory then shows each player's lowest eligible level and flags anyone rostered on a level they age out of. **Available to swing up** on the Directory lists who can move to a team you pick.`,
   },
   {
     id: "settings-volunteer-roles",

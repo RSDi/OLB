@@ -6,6 +6,14 @@ import { Icons } from "../../components/icons";
 import { MapLink } from "../../components/MapLink";
 import { ClearSearchButton } from "../../components/ui";
 import { ageFromDob } from "../../../lib/teams/age";
+import {
+  agesOutLabel,
+  playerEligibility,
+  practiceDaysOverlap,
+  swingKind,
+  weekendsSharedWith,
+  type EligibilityContext,
+} from "../../../lib/teams/eligibility";
 import type { DirectoryPlayer } from "./_shared/data";
 import { JerseyNumber, TeamBanner, TeamDot } from "./_shared/TeamBanner";
 import type { OlbVolunteerRole } from "../../../lib/teams/types";
@@ -73,6 +81,8 @@ type ReqShow = "missing" | "done" | "waived" | "all";
 export function PlayersList({
   players,
   isStaff,
+  canSeeBirthdates,
+  eligibility,
   teams,
   roles,
   canViewAges,
@@ -90,6 +100,9 @@ export function PlayersList({
 }: {
   players: DirectoryPlayer[];
   isStaff: boolean;
+  // Board only (0140): birthdays, age at season end, eligibility chips, swing-up.
+  canSeeBirthdates: boolean;
+  eligibility: EligibilityContext | null;
   teams: TeamWithStaff[];
   roles: OlbVolunteerRole[];
   canViewAges: boolean;
@@ -131,6 +144,9 @@ export function PlayersList({
   const [openStay, setOpenStay] = useState<{ player: DirectoryPlayer; stay: HotelStayView } | null>(null);
   const [emailing, setEmailing] = useState(false);
   const [slacking, setSlacking] = useState(false);
+  // Board: "Available to swing up" — pick a target team, list who can move.
+  const [swingTeamId, setSwingTeamId] = useState("");
+  const [hideConflicts, setHideConflicts] = useState(false);
 
   const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
   const stayRows = useMemo(() => indexStayRows(hotelStayRows), [hotelStayRows]);
@@ -231,25 +247,50 @@ export function PlayersList({
     );
   }, [sections, pickedStay, stayRows, stayPlayers]);
 
+  const swingTarget = canSeeBirthdates && eligibility ? teams.find((t) => t.id === swingTeamId) ?? null : null;
+
   const shownSections = useMemo(() => {
-    if (pickedStay) {
+    const narrowed = (() => {
+      if (pickedStay) {
+        return sections.map((g) => ({
+          ...g,
+          players: g.players.filter((p) => {
+            const st = stayStateFor(p, pickedStay, stayRows, stayPlayers);
+            return st !== "n/a" && (stayShow === "all" || st === stayShow);
+          }),
+        }));
+      }
+      if (!pickedReq) return sections;
       return sections.map((g) => ({
         ...g,
         players: g.players.filter((p) => {
-          const st = stayStateFor(p, pickedStay, stayRows, stayPlayers);
-          return st !== "n/a" && (stayShow === "all" || st === stayShow);
+          const st = stateFor(p, pickedReq, rows);
+          return st !== "n/a" && (reqShow === "all" || st === reqShow);
         }),
       }));
+    })();
+    if (!swingTarget || !eligibility) return narrowed;
+    const pool = narrowed.flatMap((g) => g.players);
+    const up: DirectoryPlayer[] = [];
+    const down: DirectoryPlayer[] = [];
+    for (const p of pool) {
+      const kind = swingKind(
+        { dob: p.dob, teamId: p.team_id, teamAgeGroup: p.team?.age_group ?? p.age_group },
+        { teamId: swingTarget.id, ageGroup: swingTarget.age_group },
+        eligibility.seasonEndsOn,
+        eligibility.caps
+      );
+      if (!kind) continue;
+      const sameWeekend = weekendsSharedWith(p.team_id, swingTarget.id, eligibility.weekends).length > 0;
+      const samePractice = practiceDaysOverlap(p.team_id ? teams.find((t) => t.id === p.team_id)?.practice_times : null, swingTarget.practice_times);
+      if (hideConflicts && (sameWeekend || samePractice)) continue;
+      (kind === "up" ? up : down).push(p);
     }
-    if (!pickedReq) return sections;
-    return sections.map((g) => ({
-      ...g,
-      players: g.players.filter((p) => {
-        const st = stateFor(p, pickedReq, rows);
-        return st !== "n/a" && (reqShow === "all" || st === reqShow);
-      }),
-    }));
-  }, [sections, pickedReq, rows, reqShow, pickedStay, stayRows, stayPlayers, stayShow]);
+    return [
+      { key: "swing-up", title: `Can play up to ${teamLabel(swingTarget)}`, team: null as TeamWithStaff | null, players: up },
+      { key: "swing-down", title: `Age-eligible to move down to ${teamLabel(swingTarget)}`, team: null, players: down },
+    ];
+  }, [sections, pickedReq, rows, reqShow, pickedStay, stayRows, stayPlayers, stayShow, swingTarget, eligibility, hideConflicts, teams]);
 
   const showTeamFilter = view === "team" && teams.length > 0;
   const showGroupFilter = view === "age" && groupNames.length > 1;
@@ -270,6 +311,7 @@ export function PlayersList({
       pickedReq &&
       reqShow !== "all" &&
       `${reqShow === "missing" ? "Missing" : reqShow === "done" ? doneWord(pickedReq) : "Waived"}: ${pickedReq.name}`,
+    swingTarget && `Available to swing up to ${teamLabel(swingTarget)}`,
     query.trim() && `Search "${query.trim()}"`,
   ].filter(Boolean);
 
@@ -329,7 +371,7 @@ export function PlayersList({
         </div>
       </div>
 
-      {(showTeamFilter || showGroupFilter || requirements.length > 0) && (
+      {(showTeamFilter || showGroupFilter || requirements.length > 0 || canSeeBirthdates) && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {showTeamFilter && (
             <FilterSelect
@@ -375,6 +417,40 @@ export function PlayersList({
                 </option>
               ))}
             </FilterSelect>
+          )}
+          {canSeeBirthdates && eligibility && teams.length > 0 && (
+            <>
+              <FilterSelect
+                value={swingTeamId}
+                onChange={(e) => setSwingTeamId(e.target.value)}
+                aria-label="Available to swing up"
+                data-tour="directory-swing-up"
+                grow
+                active={!!swingTarget}
+                leading={swingTarget ? <TeamDot color={swingTarget.color} /> : undefined}
+              >
+                <option value="">Available to swing up</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {teamLabel(t)}
+                  </option>
+                ))}
+              </FilterSelect>
+              {swingTarget && (
+                <label
+                  data-tour="directory-swing-conflicts"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={hideConflicts}
+                    onChange={(e) => setHideConflicts(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: "var(--rsd-accent)" }}
+                  />
+                  Hide if their team plays the same weekend
+                </label>
+              )}
+            </>
           )}
           {hotelStays.length > 0 && canManageHotelStays && (
             <>
@@ -521,6 +597,10 @@ export function PlayersList({
                 ? "No players match."
                 : query
                   ? "No matches."
+                  : swingTarget
+                    ? hideConflicts
+                      ? `Nobody else is age-eligible for ${teamLabel(swingTarget)} without a same-weekend game.`
+                      : `Nobody else is age-eligible for ${teamLabel(swingTarget)}.`
                   : teamId === NO_TEAM
                     ? "Everyone is on a team."
                     : "No players on this team yet."
@@ -531,7 +611,7 @@ export function PlayersList({
           .filter((g) => g.players.length > 0)
           .map((g) => (
             <section key={g.key} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {!pickedTeam && (
+              {(!pickedTeam || swingTarget) && (
                 <h2
                   style={{
                     margin: 0,
@@ -580,7 +660,11 @@ export function PlayersList({
                     key={p.id}
                     player={p}
                     isStaff={isStaff}
+                    canSeeBirthdates={canSeeBirthdates}
+                    eligibility={eligibility}
+                    swingTarget={swingTarget}
                     teams={canPlace ? teams : null}
+                    allTeams={teams}
                     border={i < g.players.length - 1}
                     requirements={requirements}
                     rows={rows}
@@ -755,7 +839,11 @@ function Empty({ text }: { text: string }) {
 function PlayerRow({
   player: p,
   isStaff,
+  canSeeBirthdates,
+  eligibility,
+  swingTarget,
   teams,
+  allTeams,
   border,
   requirements,
   rows,
@@ -768,8 +856,12 @@ function PlayerRow({
 }: {
   player: DirectoryPlayer;
   isStaff: boolean;
+  canSeeBirthdates: boolean;
+  eligibility: EligibilityContext | null;
+  swingTarget: TeamWithStaff | null;
   // Set for the Registrations grant: the team picker.
   teams: TeamWithStaff[] | null;
+  allTeams: TeamWithStaff[];
   border: boolean;
   requirements: Requirement[];
   rows: Map<string, PlayerRequirement>;
@@ -781,8 +873,17 @@ function PlayerRow({
   // How many notes the player has (0124); 0 shows nothing.
   notes: number;
 }) {
-  const age = ageFromDob(p.dob);
-  const born = formatDate(p.dob);
+  const age = canSeeBirthdates ? ageFromDob(p.dob) : null;
+  const born = canSeeBirthdates ? formatDate(p.dob) : null;
+  const rosterLevel = p.team?.age_group ?? p.age_group;
+  const info = canSeeBirthdates && eligibility ? playerEligibility(p.dob, rosterLevel, eligibility.seasonEndsOn, eligibility.caps) : null;
+  const sharedWeekends =
+    canSeeBirthdates && eligibility && swingTarget
+      ? weekendsSharedWith(p.team_id, swingTarget.id, eligibility.weekends)
+      : [];
+  const samePractice =
+    !!swingTarget &&
+    practiceDaysOverlap(p.team_id ? allTeams.find((t) => t.id === p.team_id)?.practice_times : null, swingTarget.practice_times);
   const addr = playerAddress(p);
   const ownEmail = playerOwnEmail(p);
   const staffFacts = [
@@ -830,6 +931,19 @@ function PlayerRow({
               {notes === 1 ? "1 note" : `${notes} notes`}
             </Link>
           )}
+          {canSeeBirthdates && info?.agesOut && (
+            <span className="rsd-chip rsd-chip-error" data-tour="directory-ages-out" title={`Ages out of ${info.agesOut.level} on ${info.agesOut.on}`}>
+              {agesOutLabel(info.agesOut.on)}
+            </span>
+          )}
+          {canSeeBirthdates && sharedWeekends.length > 0 && (
+            <span className="rsd-chip rsd-chip-mute" title={sharedWeekends.map((w) => w.label).join(", ")}>
+              Plays same weekend
+            </span>
+          )}
+          {canSeeBirthdates && samePractice && sharedWeekends.length === 0 && (
+            <span className="rsd-chip rsd-chip-mute">Same practice day</span>
+          )}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
           {/* Only people who can see an opted-out player get it at all: the
               board, the Treasurer, and the player's own parents (0101). */}
@@ -842,11 +956,17 @@ function PlayerRow({
             </span>
           )}
         </div>
-        {(age != null || born) && (
+        {canSeeBirthdates && (age != null || born || info) && (
           <div style={muted}>
-            {age != null && `Age ${age}`}
-            {age != null && born && " · "}
-            {born && `Born ${born}`}
+            {[
+              age != null && `Age ${age}`,
+              born && `Born ${born}`,
+              info?.ageAtSeasonEnd != null && `Age ${info.ageAtSeasonEnd} at season end`,
+              info?.lowestLevel && `Eligible ${info.lowestLevel}`,
+              !p.dob && "No birthday on file",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </div>
         )}
         {addr && (

@@ -223,7 +223,19 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "directory-player",
         title: "Each player",
-        body: "Jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.",
+        body: "Jersey number, team, address, and their parents' phone and email. A **New** chip means it's their first season with us.",
+      },
+      {
+        target: "directory-player",
+        audience: "staff",
+        title: "Age and eligibility",
+        body: "The board sees each player's age and birthday, the lowest level they're eligible for through the season end date, and **Ages out** when they're rostered on a level they age out of.",
+      },
+      {
+        target: "directory-swing-up",
+        audience: "staff",
+        title: "Available to swing up",
+        body: "Pick a team (for example **14U White**) to list younger players who can play up, and older players still age-eligible to move down, with age at season end and current team. Tick **Hide if their team plays the same weekend** when the schedule already has their team on that weekend.",
       },
       {
         target: "directory-place",
@@ -651,6 +663,52 @@ export const GUIDE_TOURS: GuideTour[] = [
         interactive: true,
         title: "Save it",
         body: "Tap **Create team** to save, or **Cancel** to leave things as they are.",
+      },
+    ],
+  },
+  {
+    id: "settings-season",
+    sectionId: "settings-season",
+    title: "Season walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-season",
+        title: "Settings → Season",
+        body: "The season end date and the age caps the Directory uses for eligibility. The board can change these.",
+      },
+      {
+        target: "season-end-date",
+        click: "settings-tab-season",
+        title: "Season end date",
+        body: "The last day of the season. A player ages out of a level if they turn one year over its max age on or before this day. 14U cannot turn 15; 12U cannot turn 13.",
+      },
+      {
+        target: "season-end-save",
+        click: "settings-tab-season",
+        interactive: true,
+        title: "Save the date",
+        body: "Tap **Save date** after you change it. The Directory uses the new date right away for **Ages out** and swing-ups.",
+      },
+      {
+        target: "season-age-caps",
+        click: "settings-tab-season",
+        title: "Age caps by level",
+        body: "Each row is a level and its **Max age**. Max age 14 on 14U means they must not turn 15 on or before the season end date.",
+      },
+      {
+        target: "season-age-cap-row",
+        click: "settings-tab-season",
+        interactive: true,
+        title: "Edit a cap",
+        body: "Change the **Level** name or **Max age**. **Add a level** for a grade (5th, 4th, 3rd) if you place by grade.",
+      },
+      {
+        target: "season-age-caps-save",
+        click: "settings-tab-season",
+        interactive: true,
+        title: "Save the caps",
+        body: "Tap **Save caps** when the table looks right. **Remove** deletes a row.",
       },
     ],
   },

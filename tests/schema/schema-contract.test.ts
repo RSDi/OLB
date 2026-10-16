@@ -80,7 +80,8 @@ const CONTRACT: Record<string, string> = {
     "id,recording_id,text,routed_to,done,sort_order,priority,owner_member_id,supporter_member_ids,suggested_assignee_name,suggested_member_id,suggested_supporter_names,transcript_ms,anchor_quote,task_id,dismissed",
   slack_archive_channels: "id,slack_channel_id,label,active,added_by,created_at,is_private,access_checked_at,access_error",
   slack_archive_channel_members: "channel_id,member_id,created_at",
-  olb_boards: "id,season,name,parent_balances_visible",
+  olb_boards: "id,season,name,parent_balances_visible,season_ends_on",
+  olb_age_caps: "id,board_id,age_group,max_age,sort_order,created_at,updated_at",
   olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at",
   olb_players:
     "id,board_id,team_id,full_name,dob,grade,sort_order,import_flag,updated_at,age_group,new_to_program,address_line1,address_line2,city,state,postal_code,phone,email,registration_fee,payment_method,shirt_size,waiver_signed,waiver_signed_on,directory_optin,registered_at",

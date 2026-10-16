@@ -6,6 +6,7 @@ import { countRegistrations } from "../../../lib/teams/registration-data";
 import { countPlayerNotes } from "../../../lib/teams/player-note-data";
 import { createClient } from "../../../lib/supabase/server";
 import { loadDirectoryHotelStays, loadHotelStayPlayers } from "../../../lib/hs-hotel-stays/data";
+import { loadEligibilityContext } from "../../../lib/teams/eligibility-data";
 
 export default async function DirectoryPage({
   searchParams,
@@ -38,6 +39,8 @@ export default async function DirectoryPage({
   // Notes on players (0124), for a chip on their card: the board and the
   // Registrations grant.
   const noteCounts = viewer.isStaff || viewer.canManageRegistrations ? await countPlayerNotes() : null;
+  // Birthdates and eligibility are board-only (members.role admin / super_admin).
+  const eligibility = viewer.isStaff ? await loadEligibilityContext() : null;
 
   // Everyone filters by team; the board (staff) and anyone holding a
   // leadership role (coaches) can also switch to age groups.
@@ -47,6 +50,8 @@ export default async function DirectoryPage({
     <PlayersList
       players={playerList}
       isStaff={viewer.canSeeAllPlayers}
+      canSeeBirthdates={viewer.isStaff}
+      eligibility={eligibility}
       teams={teamList}
       roles={roles}
       canViewAges={canViewAges}
