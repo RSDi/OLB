@@ -1,6 +1,6 @@
 "use server";
 
-// Roadmap edits (/portal/roadmap, migration 0129). Super-admins on the
+// Roadmap edits (/portal/roadmap, migrations 0129 and 0136). Super-admins on the
 // preview list only, here and (for super-admins) in RLS.
 
 import { revalidatePath } from "next/cache";

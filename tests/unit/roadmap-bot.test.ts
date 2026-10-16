@@ -2,7 +2,14 @@
 // token, the proposed-only lock, and the same title/area checks as the form.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { botInsertFields, cleanBotRoadmapItem, roadmapBotAuthorized } from "../../lib/roadmap/bot.ts";
+import {
+  botInsertFields,
+  botPatchFields,
+  botStatusStep,
+  cleanBotRoadmapItem,
+  cleanBotStatusPatch,
+  roadmapBotAuthorized,
+} from "../../lib/roadmap/bot.ts";
 
 const TOKEN = "roadmap-bot-test-token-not-a-secret";
 
@@ -36,6 +43,7 @@ test("the bot always saves proposed with no date, even if a status is sent", () 
     area: "Portal",
     status: "proposed",
     released_on: null,
+    preview_url: null,
   });
   assert.ok(!("error" in row));
   assert.deepEqual(botInsertFields(row), {
@@ -69,4 +77,60 @@ test("title, description and area use the form's checks; a missing object is a 4
   assert.deepEqual(cleanBotRoadmapItem(null), { error: "Send a JSON object with title, description, and area." });
   assert.deepEqual(cleanBotRoadmapItem(["Portal"]), { error: "Send a JSON object with title, description, and area." });
   assert.deepEqual(cleanBotRoadmapItem("item"), { error: "Send a JSON object with title, description, and area." });
+});
+
+test("PATCH only accepts status and preview_url", () => {
+  assert.deepEqual(cleanBotStatusPatch({ status: "planned" }), { status: "planned" });
+  assert.deepEqual(cleanBotStatusPatch({ status: "preview", preview_url: "https://olb-git-preview.vercel.app" }), {
+    status: "preview",
+    preview_url: "https://olb-git-preview.vercel.app",
+  });
+  assert.deepEqual(cleanBotStatusPatch({ status: "planned", title: "Nope" }), {
+    error: "The bot can only set status and preview_url.",
+  });
+  assert.deepEqual(cleanBotStatusPatch({ status: "planned", released_on: "2026-10-16" }), {
+    error: "The bot can only set status and preview_url.",
+  });
+  assert.deepEqual(cleanBotStatusPatch({}), { error: "Send a status." });
+  assert.deepEqual(cleanBotStatusPatch({ status: "done" }), { error: "Pick a column." });
+  assert.deepEqual(cleanBotStatusPatch(null), { error: "Send a JSON object with status." });
+});
+
+test("the bot may only move one column forward", () => {
+  assert.deepEqual(botStatusStep("proposed", "planned"), { status: "planned" });
+  assert.deepEqual(botStatusStep("planned", "progress"), { status: "progress" });
+  assert.deepEqual(botStatusStep("progress", "preview"), { status: "preview" });
+  assert.deepEqual(botStatusStep("preview", "released"), { status: "released" });
+  assert.deepEqual(botStatusStep("proposed", "proposed"), { error: "That item is already in that column." });
+  const skip = "The bot can only move an item one column forward: proposed → planned → progress → preview → released.";
+  assert.deepEqual(botStatusStep("proposed", "progress"), { error: skip });
+  assert.deepEqual(botStatusStep("progress", "planned"), { error: skip });
+  assert.deepEqual(botStatusStep("released", "preview"), { error: skip });
+  assert.deepEqual(botStatusStep("proposed", "released"), { error: skip });
+});
+
+test("progress → preview needs a preview_url; preview → released sets the live day", () => {
+  const now = new Date(2026, 9, 16);
+  const current = { status: "progress" as const, preview_url: null, released_on: null };
+  assert.deepEqual(botPatchFields(current, { status: "preview" }), { error: "Add the preview link." });
+  const preview = botPatchFields(current, { status: "preview", preview_url: "https://olb-git-preview.vercel.app" }, now);
+  assert.deepEqual(preview, {
+    status: "preview",
+    preview_url: "https://olb-git-preview.vercel.app",
+    released_on: null,
+    updated_at: now.toISOString(),
+  });
+  const released = botPatchFields(
+    { status: "preview", preview_url: "https://olb-git-preview.vercel.app", released_on: null },
+    { status: "released" },
+    now,
+  );
+  assert.ok(!("error" in released));
+  assert.equal(released.status, "released");
+  assert.equal(released.released_on, "2026-10-16");
+  assert.equal(released.preview_url, "https://olb-git-preview.vercel.app");
+  assert.equal(released.updated_at, now.toISOString());
+  assert.deepEqual(botPatchFields(current, { status: "released" }), {
+    error: "The bot can only move an item one column forward: proposed → planned → progress → preview → released.",
+  });
 });

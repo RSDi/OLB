@@ -1,4 +1,4 @@
-// Roadmap reads (migration 0129). A failed read comes back as an error to
+// Roadmap reads (migrations 0129 and 0136). A failed read comes back as an error to
 // show, never as an empty board: "nothing here yet" looks just like a
 // working board with no items.
 
@@ -7,7 +7,7 @@ import { createAdminClient } from "../supabase/admin";
 import { keyOpens } from "../teams/public-directory-key";
 import type { RoadmapItem } from "./model";
 
-const ITEM_COLS = "id, title, description, area, status, released_on, created_at";
+const ITEM_COLS = "id, title, description, area, status, released_on, preview_url, created_at";
 
 export interface RoadmapData {
   items: RoadmapItem[];

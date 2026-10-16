@@ -120,7 +120,7 @@ app/                  Routes (App Router)
     events/  supplies/  docs/   Events, supplies inventory, playbooks
     settings/         Admin tabs (areas, priorities, assignments, volunteer teams, …)
   api/cron/           Vercel cron (daily PM generation)
-  api/roadmap/        Product Manager bot: propose items (Bearer OLB_ROADMAP_BOT_TOKEN)
+  api/roadmap/        Product Manager bot: propose items and move status (Bearer OLB_ROADMAP_BOT_TOKEN)
 lib/                  Server actions, Supabase clients, auth, notifications, search
 supabase/migrations/  Schema + RLS, applied in numeric order: 0000_baseline.sql
                       (the whole schema), then newer migrations
@@ -142,9 +142,10 @@ database before (or together with) a deploy that depends on them.
 ## Roadmap bot API
 
 Jeff's Product Manager assistant can propose items on `/portal/roadmap` through
-`/api/roadmap/items`. Super-admins still edit the board in the portal. The
-route is insert-only: it never updates or deletes, and it always saves
-`status: "proposed"` with no `released_on` (any status in the body is ignored).
+`/api/roadmap/items`, and move them one column forward with
+`PATCH /api/roadmap/items/<id>`. Super-admins still edit the board in the
+portal. POST is insert-only: it always saves `status: "proposed"` with no
+`released_on` (any status in the body is ignored).
 
 Set `OLB_ROADMAP_BOT_TOKEN` to a long random string in `.env.local` and in the
 Vercel project settings. Send it as `Authorization: Bearer <token>`. A missing
@@ -169,6 +170,18 @@ curl -sS https://<site>/api/roadmap/items \
 `area` must be one of Portal, Website, Registration, Payments, HS Schedule, or
 Slack & email (same list as `lib/roadmap/model.ts`). Title and description use
 the same length checks as the board form. Bad input is a 400 with `{ "error": "…" }`.
+
+**PATCH** `/api/roadmap/items/<id>` — move one existing item one column forward:
+proposed → planned → progress → preview → released. Body is `{ "status" }` and,
+when moving to preview, a required `preview_url`. Any other field, the same
+status, a skip, or a backwards move is a 400. Unknown id is 404.
+
+```bash
+curl -sS -X PATCH https://<site>/api/roadmap/items/<id> \
+  -H "Authorization: Bearer $OLB_ROADMAP_BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"status":"preview","preview_url":"https://olb-git-preview.vercel.app"}'
+```
 
 ## CI
 

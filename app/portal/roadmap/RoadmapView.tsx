@@ -9,6 +9,7 @@ import {
   STATUSES,
   TITLE_MAX,
   DESCRIPTION_MAX,
+  PREVIEW_URL_MAX,
   columnItems,
   formatDay,
   todayIso,
@@ -25,6 +26,7 @@ type Sheet = { kind: "item"; item: RoadmapItem | null; status: Status } | { kind
 
 const DOT: Record<Status, string> = {
   released: "var(--gw-success)",
+  preview: "var(--rsd-accent)",
   progress: "var(--rsd-accent-fill)",
   planned: "var(--gw-fg-muted)",
   proposed: "var(--gw-fg-faint)",
@@ -172,6 +174,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 }
 
 function Card({ it, onOpen }: { it: RoadmapItem; onOpen?: () => void }) {
+  const accent = it.status === "preview" ? "var(--rsd-accent)" : it.status === "progress" ? "var(--rsd-accent-fill)" : "var(--gw-border)";
   const style: CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -179,7 +182,7 @@ function Card({ it, onOpen }: { it: RoadmapItem; onOpen?: () => void }) {
     padding: 14,
     borderRadius: 12,
     border: "1px solid var(--gw-border)",
-    borderLeft: it.status === "progress" ? "3px solid var(--rsd-accent-fill)" : "1px solid var(--gw-border)",
+    borderLeft: accent !== "var(--gw-border)" ? `3px solid ${accent}` : "1px solid var(--gw-border)",
     background: "var(--gw-bg-elev)",
     color: "var(--gw-fg)",
     textAlign: "left",
@@ -187,24 +190,32 @@ function Card({ it, onOpen }: { it: RoadmapItem; onOpen?: () => void }) {
     width: "100%",
     cursor: onOpen ? "pointer" : "default",
   };
-  const body = (
-    <>
+  return (
+    <div className={onOpen ? "gw-press" : undefined} onClick={onOpen} style={style}>
       <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--gw-fg-muted)" }}>
         {it.area}
+        {it.status === "preview" && (
+          <span style={{ padding: "1px 7px", borderRadius: 100, border: "1px solid var(--rsd-accent)", color: "var(--rsd-accent)", letterSpacing: 0, textTransform: "none" }}>Preview</span>
+        )}
         {it.released_on && <span style={{ marginLeft: "auto", textTransform: "none", letterSpacing: 0 }}>{formatDay(it.released_on)}</span>}
       </span>
       <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{it.title}</span>
       {it.description && (
         <span style={{ fontSize: 13, lineHeight: 1.5, color: "var(--gw-fg-muted)", whiteSpace: "pre-wrap" }}>{it.description}</span>
       )}
-    </>
-  );
-  return onOpen ? (
-    <button type="button" onClick={onOpen} className="gw-press" style={style}>
-      {body}
-    </button>
-  ) : (
-    <div style={style}>{body}</div>
+      {it.preview_url && (
+        <a
+          href={it.preview_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none", width: "fit-content" }}
+        >
+          Open preview
+        </a>
+      )}
+    </div>
   );
 }
 
@@ -224,6 +235,7 @@ function ItemSheet({
   const [area, setArea] = useState<string>(item?.area ?? AREAS[0]);
   const [status, setStatus] = useState<Status>(startStatus);
   const [releasedOn, setReleasedOn] = useState(item?.released_on ?? todayIso());
+  const [previewUrl, setPreviewUrl] = useState(item?.preview_url ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -238,7 +250,7 @@ function ItemSheet({
   };
 
   const save = () =>
-    run(() => saveRoadmapItem(item?.id ?? null, { title, description, area, status, releasedOn }), item ? "Saved" : "Added");
+    run(() => saveRoadmapItem(item?.id ?? null, { title, description, area, status, releasedOn, previewUrl }), item ? "Saved" : "Added");
 
   return (
     <SideSheet
@@ -293,6 +305,15 @@ function ItemSheet({
         {status === "released" && (
           <Input label="Went live on" type="date" value={releasedOn} onChange={(e) => setReleasedOn(e.target.value)} />
         )}
+        <Input
+          label="Preview link"
+          type="url"
+          value={previewUrl}
+          onChange={(e) => setPreviewUrl(e.target.value)}
+          placeholder="https://…"
+          maxLength={PREVIEW_URL_MAX}
+          help={status === "preview" ? "The Vercel preview. Required in this column." : "A Vercel preview, if there is one. Opens in a new tab on the board."}
+        />
         {err && <div role="alert" style={{ fontSize: 13, color: "var(--gw-error)" }}>{err}</div>}
       </form>
     </SideSheet>
@@ -327,7 +348,7 @@ function LinkSheet({ linkKey, onClose, onDone }: { linkKey: string | null; onClo
     <SideSheet eyebrow="Roadmap" title="Share link" busy={busy} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 14, lineHeight: 1.6 }}>
         <p style={{ margin: 0, color: "var(--gw-fg-muted)" }}>
-          Anyone with the link can read the roadmap without signing in. They see the titles, descriptions, areas and dates, and can&apos;t change anything.
+          Anyone with the link can read the roadmap without signing in. They see the titles, descriptions, areas, dates and preview links, and can&apos;t change anything.
         </p>
         {url ? (
           <>

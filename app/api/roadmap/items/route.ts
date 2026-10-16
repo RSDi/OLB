@@ -4,11 +4,13 @@
 // cron routes (`CRON_SECRET`) but a dedicated secret. Unset or wrong → 401.
 // RLS on olb_roadmap_items is super-admin only, so reads and the insert use
 // the service role. POST is insert-only: status is always `proposed`, there
-// is never a released_on, and this route has no update or delete.
+// is never a released_on, and this file has no update or delete. Status
+// moves go through PATCH /api/roadmap/items/[id].
 
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { botInsertFields, cleanBotRoadmapItem, ROADMAP_BOT_TOKEN_ENV, roadmapBotAuthorized } from "../../../../lib/roadmap/bot";
+import { roadmapBotDeny, roadmapBotNeedServiceRole } from "../../../../lib/roadmap/bot-http";
+import { botInsertFields, cleanBotRoadmapItem } from "../../../../lib/roadmap/bot";
 import { createAdminClient } from "../../../../lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -16,31 +18,10 @@ export const dynamic = "force-dynamic";
 
 const LIST_COLS = "id, title, area, status";
 
-function unauthorized(expected: string | undefined): NextResponse {
-  if (!expected) console.error(`roadmap-items: ${ROADMAP_BOT_TOKEN_ENV} not configured`);
-  return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-}
-
-function authorize(request: Request): NextResponse | null {
-  const expected = process.env[ROADMAP_BOT_TOKEN_ENV];
-  if (!roadmapBotAuthorized(request.headers.get("authorization"), expected)) {
-    return unauthorized(expected);
-  }
-  return null;
-}
-
-function needServiceRole(): NextResponse | null {
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
-  return NextResponse.json(
-    { error: "SUPABASE_SERVICE_ROLE_KEY not set; the roadmap bot cannot read or write items (RLS blocks unauthenticated writes)." },
-    { status: 500 },
-  );
-}
-
 export async function GET(request: Request) {
-  const denied = authorize(request);
+  const denied = roadmapBotDeny(request);
   if (denied) return denied;
-  const missing = needServiceRole();
+  const missing = roadmapBotNeedServiceRole();
   if (missing) return missing;
 
   const admin = createAdminClient();
@@ -57,7 +38,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = authorize(request);
+  const denied = roadmapBotDeny(request);
   if (denied) return denied;
 
   let body: unknown;
@@ -70,7 +51,7 @@ export async function POST(request: Request) {
   const row = cleanBotRoadmapItem(body);
   if ("error" in row) return NextResponse.json({ error: row.error }, { status: 400 });
 
-  const missing = needServiceRole();
+  const missing = roadmapBotNeedServiceRole();
   if (missing) return missing;
 
   const admin = createAdminClient();
