@@ -110,6 +110,84 @@ export async function loadHotelStaysForContact(
   return views.sort((a, b) => b.weekend_starts_on.localeCompare(a.weekend_starts_on));
 }
 
+export interface HotelStaySeasonPlayer extends StaySiblingPlayer {
+  board_id: string;
+}
+
+interface HotelStaySeasonPlayerRow {
+  id: string;
+  board_id: string;
+  team_id: string | null;
+  full_name: string;
+  parent_ids: string[] | null;
+}
+
+function asStaySibling(p: HotelStaySeasonPlayerRow): HotelStaySeasonPlayer {
+  return {
+    id: p.id,
+    board_id: p.board_id,
+    team_id: p.team_id,
+    full_name: p.full_name,
+    parent_ids: p.parent_ids ?? [],
+  };
+}
+
+// Current-season players for hotel-stay tracking. Travel's
+// hotel_stay_season_players() RPC (0136) includes families who said no to
+// the Directory; staff already see them via RLS. Fallback walks olb_players
+// when the RPC isn't applied yet.
+export async function loadHotelStaySeasonPlayers(
+  supabase: SupabaseClient,
+  boardId?: string
+): Promise<HotelStaySeasonPlayer[]> {
+  const { data, error } = await supabase.rpc("hotel_stay_season_players");
+  if (!error && Array.isArray(data) && data.length > 0) {
+    return (data as HotelStaySeasonPlayerRow[])
+      .filter((p) => !boardId || p.board_id === boardId)
+      .map(asStaySibling);
+  }
+  return loadHotelStaySeasonPlayersViaTable(supabase, boardId);
+}
+
+async function loadHotelStaySeasonPlayersViaTable(
+  supabase: SupabaseClient,
+  boardId?: string
+): Promise<HotelStaySeasonPlayer[]> {
+  let seasonBoardId = boardId ?? "";
+  if (!seasonBoardId) {
+    const { data: boards } = await supabase.from("olb_boards").select("id, season").order("season", { ascending: false }).limit(1);
+    seasonBoardId = ((boards as { id: string }[] | null) ?? [])[0]?.id ?? "";
+    if (!seasonBoardId) return [];
+  }
+  const { data: ps } = await supabase
+    .from("olb_players")
+    .select("id, board_id, team_id, full_name")
+    .eq("board_id", seasonBoardId)
+    .order("full_name");
+  const players = (ps as Omit<HotelStaySeasonPlayerRow, "parent_ids">[] | null) ?? [];
+  if (players.length === 0) return [];
+  const { data: links } = await supabase
+    .from("olb_player_parents")
+    .select("player_id, member_id")
+    .in(
+      "player_id",
+      players.map((p) => p.id)
+    );
+  const parentIdsByPlayer = new Map<string, string[]>();
+  for (const l of (links as { player_id: string; member_id: string }[] | null) ?? []) {
+    const arr = parentIdsByPlayer.get(l.player_id) ?? [];
+    arr.push(l.member_id);
+    parentIdsByPlayer.set(l.player_id, arr);
+  }
+  return players.map((p) => ({
+    id: p.id,
+    board_id: p.board_id,
+    team_id: p.team_id,
+    full_name: p.full_name,
+    parent_ids: parentIdsByPlayer.get(p.id) ?? [],
+  }));
+}
+
 export async function loadStaySiblingPlayers(
   supabase: SupabaseClient,
   stayId: string,
@@ -117,37 +195,10 @@ export async function loadStaySiblingPlayers(
 ): Promise<StaySiblingPlayer[]> {
   const [{ data: stay }, { data: me }] = await Promise.all([
     supabase.from("hs_hotel_stays").select("team_ids").eq("id", stayId).maybeSingle(),
-    supabase.from("olb_players").select("id, team_id, full_name, board_id").eq("id", playerId).maybeSingle(),
+    supabase.from("olb_players").select("id, board_id").eq("id", playerId).maybeSingle(),
   ]);
   if (!stay || !me) return [];
-  const { data: myParents } = await supabase.from("olb_player_parents").select("member_id").eq("player_id", playerId);
-  const parentIds = [...new Set(((myParents as { member_id: string }[] | null) ?? []).map((p) => p.member_id))];
-  if (parentIds.length === 0) return [];
-  const { data: links } = await supabase
-    .from("olb_player_parents")
-    .select("player_id, member_id")
-    .in("member_id", parentIds);
-  const parentIdsByPlayer = new Map<string, string[]>();
-  for (const l of (links as { player_id: string; member_id: string }[] | null) ?? []) {
-    const arr = parentIdsByPlayer.get(l.player_id) ?? [];
-    arr.push(l.member_id);
-    parentIdsByPlayer.set(l.player_id, arr);
-  }
-  const ids = [...parentIdsByPlayer.keys()];
-  if (ids.length === 0) return [];
-  const { data: ps } = await supabase
-    .from("olb_players")
-    .select("id, team_id, full_name")
-    .in("id", ids)
-    .eq("board_id", (me as { board_id: string }).board_id);
-  const players: StaySiblingPlayer[] = ((ps as { id: string; team_id: string | null; full_name: string }[] | null) ?? []).map(
-    (p) => ({
-      id: p.id,
-      team_id: p.team_id,
-      full_name: p.full_name,
-      parent_ids: parentIdsByPlayer.get(p.id) ?? [],
-    })
-  );
+  const players = await loadHotelStaySeasonPlayers(supabase, (me as { board_id: string }).board_id);
   return siblingsOnStay(playerId, { team_ids: (stay as { team_ids: string[] | null }).team_ids }, players);
 }
 

@@ -25,7 +25,9 @@ export default async function DirectoryPage({
   const playerList = await players;
   const req = viewer.canCheckRequirements ? await requirements : { requirements: [], rows: [] };
   const playerIds = new Set(playerList.map((p) => p.id));
-  // Hotel stays (0135): Travel and the board track Booked in block per event.
+  // Hotel stays (0135/0136): Travel and the board track Booked in block per
+  // event. Travel's current-season player read (0136) is what fills the
+  // tracker list, counts and sibling picker for opted-out families.
   const canStays = viewer.canManageTravel || viewer.isStaff;
   const supabase = canStays ? await createClient() : null;
   const hotelStays = supabase ? await loadDirectoryHotelStays(supabase) : [];

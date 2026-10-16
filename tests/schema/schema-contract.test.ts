@@ -190,6 +190,20 @@ test("rpc: decrement_supply exists", { skip }, async () => {
   assert.ok(!body.includes("PGRST202"), `decrement_supply missing: ${body.slice(0, 200)}`);
 });
 
+test("rpc: hotel_stay_season_players exists (0136)", { skip }, async () => {
+  const res = await fetch(`${env!.url}/rest/v1/rpc/hotel_stay_season_players`, {
+    method: "POST",
+    headers: {
+      apikey: env!.key,
+      Authorization: `Bearer ${env!.key}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  const body = await res.text();
+  assert.ok(!body.includes("PGRST202"), `hotel_stay_season_players missing: ${body.slice(0, 200)}`);
+});
+
 test("rpc: my_permissions exists (0122)", { skip }, async () => {
   const res = await fetch(`${env!.url}/rest/v1/rpc/my_permissions`, {
     method: "POST",
