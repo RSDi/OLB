@@ -1,11 +1,19 @@
 "use client";
-// Check-off for one player on one hotel stay: Booked, Waived, or Not yet.
+// Check-off for one player on one hotel stay: Booked in block, Staying
+// elsewhere, or Not yet known. Siblings on the stay can be marked together.
 
 import { useState } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Textarea } from "../../components/ui";
 import { clearHotelStayPlayer, markHotelStayPlayer } from "../../../lib/hs-hotel-stays/actions";
-import { stayDoneWord } from "../../../lib/hs-hotel-stays/logic";
+import {
+  cleanStayPlayerMark,
+  STAY_ELSEWHERE_NOTE_REQUIRED,
+  stayDoneWord,
+  stayMissingWord,
+  stayWaivedWord,
+  type StaySiblingPlayer,
+} from "../../../lib/hs-hotel-stays/logic";
 import type { HotelStayPlayer, HotelStayPlayerStatus, HotelStayView } from "../../../lib/hs-hotel-stays/types";
 
 type Choice = HotelStayPlayerStatus | "missing";
@@ -28,29 +36,56 @@ const capStyle: React.CSSProperties = {
   color: "var(--gw-fg-muted)",
 };
 
+const checkLabel: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  fontSize: 13,
+  fontWeight: 600,
+};
+
 export function HotelStayDialog({
   player,
   stay,
   row,
+  siblings,
   onClose,
 }: {
   player: { id: string; full_name: string };
   stay: HotelStayView;
   row: HotelStayPlayer | null;
+  siblings: StaySiblingPlayer[];
   onClose: () => void;
 }) {
   const [choice, setChoice] = useState<Choice>(row?.status ?? "done");
   const [completedOn, setCompletedOn] = useState(row?.completed_on ?? today());
   const [note, setNote] = useState(row?.note ?? "");
+  const [alsoIds, setAlsoIds] = useState<Set<string>>(() => new Set(siblings.map((s) => s.id)));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const done = stayDoneWord();
+  const waived = stayWaivedWord();
+  const missing = stayMissingWord();
+
+  function toggleSibling(id: string) {
+    setAlsoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   async function save() {
     setBusy(true);
     setError(null);
     if (choice === "missing") {
-      const result = await clearHotelStayPlayer(player.id, stay.id);
+      let extra: string[] = [];
+      if (siblings.length > 0) {
+        const names = siblings.map((s) => s.full_name).join(", ");
+        if (confirm(`Also set ${names} to ${missing}?`)) extra = siblings.map((s) => s.id);
+      }
+      const result = await clearHotelStayPlayer(player.id, stay.id, extra);
       setBusy(false);
       if (result.error) {
         setError(result.error);
@@ -59,12 +94,19 @@ export function HotelStayDialog({
       onClose();
       return;
     }
+    const cleaned = cleanStayPlayerMark({ status: choice, completedOn, note });
+    if ("error" in cleaned) {
+      setBusy(false);
+      setError(cleaned.error);
+      return;
+    }
     const result = await markHotelStayPlayer({
       playerId: player.id,
       stayId: stay.id,
       status: choice,
       completedOn,
       note,
+      alsoPlayerIds: siblings.filter((s) => alsoIds.has(s.id)).map((s) => s.id),
     });
     setBusy(false);
     if (result.error) {
@@ -76,8 +118,8 @@ export function HotelStayDialog({
 
   const choices: { key: Choice; label: string }[] = [
     { key: "done", label: done },
-    { key: "waived", label: "Waived" },
-    { key: "missing", label: "Not yet" },
+    { key: "waived", label: waived },
+    { key: "missing", label: missing },
   ];
 
   return (
@@ -168,25 +210,41 @@ export function HotelStayDialog({
         {choice !== "missing" && (
           <>
             <Input
-              label={choice === "waived" ? "Waived on" : `${done} on`}
+              label={choice === "waived" ? `${waived} on` : `${done} on`}
               type="date"
               value={completedOn}
               onChange={(e) => setCompletedOn(e.target.value)}
             />
             <Textarea
-              label="Note"
+              label={choice === "waived" ? "Note *" : "Note"}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
-              placeholder="Confirmation number…"
+              placeholder={choice === "waived" ? "e.g. staying with family" : "Confirmation number…"}
+              error={error === STAY_ELSEWHERE_NOTE_REQUIRED ? error : undefined}
+              help={choice === "waived" ? "Required — where they're staying if not in the hotel block." : undefined}
             />
           </>
         )}
 
-        {error && <div style={{ fontSize: 12, color: "var(--rsd-danger)" }}>{error}</div>}
+        {choice !== "missing" && siblings.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-tour="hotel-stay-siblings">
+            <span style={{ fontSize: 12, fontWeight: 700 }}>Also mark siblings</span>
+            {siblings.map((s) => (
+              <label key={s.id} style={checkLabel}>
+                <input type="checkbox" checked={alsoIds.has(s.id)} onChange={() => toggleSibling(s.id)} />
+                {s.full_name}
+              </label>
+            ))}
+          </div>
+        )}
+
+        {error && error !== STAY_ELSEWHERE_NOTE_REQUIRED && (
+          <div style={{ fontSize: 12, color: "var(--rsd-danger)" }}>{error}</div>
+        )}
         {row && (
           <div style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-            Last marked {row.status === "waived" ? "waived" : done.toLowerCase()}
+            Last marked {row.status === "waived" ? waived.toLowerCase() : done.toLowerCase()}
             {row.completed_on ? ` on ${formatDay(row.completed_on)}` : ""}
             {row.marked_by_name ? ` by ${row.marked_by_name}` : ""}
           </div>

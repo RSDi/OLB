@@ -65,7 +65,7 @@ export function HotelStayPanel({
         )}
       </div>
       <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.45 }}>
-        Link the hotel in External Contacts, write how families book, then track who&apos;s Booked in the Directory.
+        Link the hotel in External Contacts, write how families book, then track who&apos;s Booked in block in the Directory.
       </div>
 
       {stays.length === 0 && !adding && (
@@ -132,7 +132,7 @@ function StayCard({
   const [error, setError] = useState<string | null>(null);
 
   async function remove() {
-    if (!confirm(`Remove "${stay.name}" from this weekend? Booked marks for families are removed too.`)) return;
+    if (!confirm(`Remove "${stay.name}" from this weekend? Booked in block and Staying elsewhere marks for families are removed too.`)) return;
     setBusy(true);
     const result = await deleteHotelStay(stay.id);
     setBusy(false);
@@ -204,7 +204,7 @@ function StayCard({
         {stay.team_ids?.length ? `${stay.team_ids.length} team${stay.team_ids.length === 1 ? "" : "s"}` : "All players"}
       </div>
       <Link href={directoryHref} style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-accent)", textDecoration: "none" }}>
-        Track Booked in Directory ›
+        Track Booked in block in Directory ›
       </Link>
       {error && <div style={{ fontSize: 12, color: "var(--rsd-danger)" }}>{error}</div>}
     </div>

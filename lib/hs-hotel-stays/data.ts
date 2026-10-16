@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadNames } from "../teams/registration-data";
+import { siblingsOnStay, type StaySiblingPlayer } from "./logic";
 import {
   HOTEL_STAY_COLUMNS,
   HOTEL_STAY_PLAYER_COLUMNS,
@@ -107,6 +108,47 @@ export async function loadHotelStaysForContact(
   if (error) return [];
   const views = await hydrateStays(supabase, (data as HotelStay[] | null) ?? []);
   return views.sort((a, b) => b.weekend_starts_on.localeCompare(a.weekend_starts_on));
+}
+
+export async function loadStaySiblingPlayers(
+  supabase: SupabaseClient,
+  stayId: string,
+  playerId: string
+): Promise<StaySiblingPlayer[]> {
+  const [{ data: stay }, { data: me }] = await Promise.all([
+    supabase.from("hs_hotel_stays").select("team_ids").eq("id", stayId).maybeSingle(),
+    supabase.from("olb_players").select("id, team_id, full_name, board_id").eq("id", playerId).maybeSingle(),
+  ]);
+  if (!stay || !me) return [];
+  const { data: myParents } = await supabase.from("olb_player_parents").select("member_id").eq("player_id", playerId);
+  const parentIds = [...new Set(((myParents as { member_id: string }[] | null) ?? []).map((p) => p.member_id))];
+  if (parentIds.length === 0) return [];
+  const { data: links } = await supabase
+    .from("olb_player_parents")
+    .select("player_id, member_id")
+    .in("member_id", parentIds);
+  const parentIdsByPlayer = new Map<string, string[]>();
+  for (const l of (links as { player_id: string; member_id: string }[] | null) ?? []) {
+    const arr = parentIdsByPlayer.get(l.player_id) ?? [];
+    arr.push(l.member_id);
+    parentIdsByPlayer.set(l.player_id, arr);
+  }
+  const ids = [...parentIdsByPlayer.keys()];
+  if (ids.length === 0) return [];
+  const { data: ps } = await supabase
+    .from("olb_players")
+    .select("id, team_id, full_name")
+    .in("id", ids)
+    .eq("board_id", (me as { board_id: string }).board_id);
+  const players: StaySiblingPlayer[] = ((ps as { id: string; team_id: string | null; full_name: string }[] | null) ?? []).map(
+    (p) => ({
+      id: p.id,
+      team_id: p.team_id,
+      full_name: p.full_name,
+      parent_ids: parentIdsByPlayer.get(p.id) ?? [],
+    })
+  );
+  return siblingsOnStay(playerId, { team_ids: (stay as { team_ids: string[] | null }).team_ids }, players);
 }
 
 export async function loadHotelStayPlayers(

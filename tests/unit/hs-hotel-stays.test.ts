@@ -1,14 +1,20 @@
-// Hotel stays (0135): who a stay covers, Booked state, form clean-up.
+// Hotel stays (0135): who a stay covers, status words, siblings, form clean-up.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   cleanHotelStayInput,
+  cleanStayPlayerMark,
   indexStayRows,
+  siblingsOnStay,
+  STAY_ELSEWHERE_NOTE_REQUIRED,
   stayAppliesTo,
   stayDoneWord,
   stayFilterLabel,
+  stayMissingWord,
   stayStateFor,
+  stayWaivedWord,
   type HotelStayInput,
+  type StaySiblingPlayer,
 } from "../../lib/hs-hotel-stays/logic.ts";
 import type { HotelStayPlayer } from "../../lib/hs-hotel-stays/types.ts";
 
@@ -37,8 +43,10 @@ function row(playerId: string, stayId: string, status: "done" | "waived"): Hotel
   };
 }
 
-test("stay done word is Booked", () => {
-  assert.equal(stayDoneWord(), "Booked");
+test("stay status words: booked in block, staying elsewhere, not yet known", () => {
+  assert.equal(stayDoneWord(), "Booked in block");
+  assert.equal(stayWaivedWord(), "Staying elsewhere");
+  assert.equal(stayMissingWord(), "Not yet known");
 });
 
 test("a stay with no teams covers everyone", () => {
@@ -103,4 +111,89 @@ test("nationals can scope to some teams", () => {
   const c = cleanHotelStayInput({ ...base, name: "Nationals", teamIds: ["t1", "t1", "t2"] });
   assert.ok(!("error" in c));
   assert.deepEqual(c.team_ids, ["t1", "t2"]);
+});
+
+test("Booked in block allows an empty note", () => {
+  const c = cleanStayPlayerMark({ status: "done", completedOn: "2026-10-16", note: "  " });
+  assert.ok(!("error" in c));
+  assert.equal(c.note, null);
+  assert.equal(c.status, "done");
+});
+
+test("Staying elsewhere requires a non-blank note", () => {
+  const blank = cleanStayPlayerMark({ status: "waived", completedOn: "2026-10-16", note: "   " });
+  assert.ok("error" in blank);
+  assert.equal(blank.error, STAY_ELSEWHERE_NOTE_REQUIRED);
+  const ok = cleanStayPlayerMark({ status: "waived", completedOn: "2026-10-16", note: " staying with family " });
+  assert.ok(!("error" in ok));
+  assert.equal(ok.note, "staying with family");
+});
+
+function sibling(
+  id: string,
+  name: string,
+  parentIds: string[],
+  teamId: string | null = "t1"
+): StaySiblingPlayer {
+  return { id, full_name: name, team_id: teamId, parent_ids: parentIds };
+}
+
+test("siblings on a stay share a parent and are covered by the stay", () => {
+  const players = [
+    sibling("p1", "Alex Smith", ["mom"]),
+    sibling("p2", "Maya Smith", ["mom"]),
+    sibling("p3", "Sam Jones", ["dad"]),
+  ];
+  const found = siblingsOnStay("p1", { team_ids: null }, players);
+  assert.deepEqual(
+    found.map((p) => p.id),
+    ["p2"]
+  );
+});
+
+test("a player with no siblings on the stay returns none", () => {
+  const players = [sibling("p1", "Alex Smith", ["mom"]), sibling("p2", "Sam Jones", ["dad"])];
+  assert.deepEqual(siblingsOnStay("p1", { team_ids: null }, players), []);
+});
+
+test("a player with no parents has no siblings", () => {
+  const players = [sibling("p1", "Alex Smith", []), sibling("p2", "Maya Smith", ["mom"])];
+  assert.deepEqual(siblingsOnStay("p1", { team_ids: null }, players), []);
+});
+
+test("a team-scoped stay drops siblings who aren't on those teams", () => {
+  const players = [
+    sibling("p1", "Alex Smith", ["mom"], "t1"),
+    sibling("p2", "Maya Smith", ["mom"], "t2"),
+  ];
+  assert.deepEqual(siblingsOnStay("p1", { team_ids: ["t1"] }, players), []);
+  assert.equal(siblingsOnStay("p1", { team_ids: ["t1", "t2"] }, players)[0]?.id, "p2");
+});
+
+test("blended families only include kids who share a parent", () => {
+  const players = [
+    sibling("a", "A", ["mom"]),
+    sibling("b", "B", ["mom", "dad"]),
+    sibling("c", "C", ["dad"]),
+  ];
+  assert.deepEqual(
+    siblingsOnStay("a", { team_ids: null }, players).map((p) => p.id),
+    ["b"]
+  );
+  assert.deepEqual(
+    siblingsOnStay("b", { team_ids: null }, players).map((p) => p.id),
+    ["a", "c"]
+  );
+});
+
+test("siblings are listed by name", () => {
+  const players = [
+    sibling("p1", "Alex", ["mom"]),
+    sibling("p3", "Zoe", ["mom"]),
+    sibling("p2", "Maya", ["mom"]),
+  ];
+  assert.deepEqual(
+    siblingsOnStay("p1", { team_ids: null }, players).map((p) => p.full_name),
+    ["Maya", "Zoe"]
+  );
 });

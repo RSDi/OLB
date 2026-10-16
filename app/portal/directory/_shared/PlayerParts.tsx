@@ -12,7 +12,7 @@ import type { DirectoryParent, DirectoryPlayer } from "./data";
 import type { PlayerRequirement, Requirement } from "../../../../lib/requirements/types";
 import { doneWord, requirementLabel, rowKey, stateFor } from "../../../../lib/requirements/logic";
 import type { HotelStayPlayer, HotelStayView } from "../../../../lib/hs-hotel-stays/types";
-import { stayDoneWord, stayRowKey, stayStateFor } from "../../../../lib/hs-hotel-stays/logic";
+import { stayDoneWord, stayRowKey, stayStateFor, stayWaivedWord } from "../../../../lib/hs-hotel-stays/logic";
 import { ComboSelect } from "../../../components/ComboSelect";
 
 export function formatDate(iso: string | null): string | null {
@@ -110,16 +110,24 @@ export function HotelStayChips({
     .filter((c) => c.state !== "n/a");
   if (chips.length === 0) return null;
   const done = stayDoneWord();
+  const waived = stayWaivedWord();
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 2 }} data-tour="hotel-stay-chips">
       {chips.map(({ s, state, row }) => {
         const variant = state === "done" ? "rsd-chip-success" : state === "waived" ? "rsd-chip-mute" : "rsd-chip-error";
+        const note = row?.note?.trim() || "";
         const text =
-          state === "done" ? s.name : state === "waived" ? `${s.name} waived` : `Needs ${s.name}`;
+          state === "done"
+            ? s.name
+            : state === "waived"
+              ? note
+                ? `${s.name} ${waived.toLowerCase()} · ${note}`
+                : `${s.name} ${waived.toLowerCase()}`
+              : `Needs ${s.name}`;
         const title =
           state === "missing"
             ? `Mark ${s.name} for ${player.full_name}`
-            : `${state === "done" ? done : "Waived"}${row?.note ? ` · ${row.note}` : ""} · ${s.hotel_name}`;
+            : `${state === "done" ? done : waived}${note ? ` · ${note}` : ""} · ${s.hotel_name}`;
         return (
           <button
             key={s.id}

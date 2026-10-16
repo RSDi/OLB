@@ -22,9 +22,13 @@ import {
 } from "../../../lib/requirements/logic";
 import {
   indexStayRows,
+  siblingsOnStay,
   stayDoneWord,
   stayFilterLabel,
+  stayMissingWord,
   stayStateFor,
+  stayStateWord,
+  stayWaivedWord,
   type StayPlayerState,
 } from "../../../lib/hs-hotel-stays/logic";
 import type { HotelStayPlayer, HotelStayView } from "../../../lib/hs-hotel-stays/types";
@@ -245,7 +249,7 @@ export function PlayersList({
     view === "team" ? (pickedTeam ? teamLabel(pickedTeam) : teamId === NO_TEAM ? "No team yet" : null) : group !== "all" ? group : null,
     pickedStay &&
       stayShow !== "all" &&
-      `${stayShow === "missing" ? "Missing" : stayShow === "done" ? stayDoneWord() : "Waived"}: ${pickedStay.name}`,
+      `${stayStateWord(stayShow)}: ${pickedStay.name}`,
     !pickedStay &&
       pickedReq &&
       reqShow !== "all" &&
@@ -385,14 +389,22 @@ export function PlayersList({
                   data-tour="hotel-stay-status"
                   style={{ display: "inline-flex", flexWrap: "wrap", maxWidth: "100%", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
                 >
-                  <SegButton label={`Missing ${stayCounts.missing}`} active={stayShow === "missing"} onClick={() => setStayShow("missing")} />
+                  <SegButton
+                    label={`${stayMissingWord()} ${stayCounts.missing}`}
+                    active={stayShow === "missing"}
+                    onClick={() => setStayShow("missing")}
+                  />
                   <SegButton
                     label={`${stayDoneWord()} ${stayCounts.done}`}
                     active={stayShow === "done"}
                     onClick={() => setStayShow("done")}
                   />
                   {(stayCounts.waived > 0 || stayShow === "waived") && (
-                    <SegButton label={`Waived ${stayCounts.waived}`} active={stayShow === "waived"} onClick={() => setStayShow("waived")} />
+                    <SegButton
+                      label={`${stayWaivedWord()} ${stayCounts.waived}`}
+                      active={stayShow === "waived"}
+                      onClick={() => setStayShow("waived")}
+                    />
                   )}
                   <SegButton label="All" active={stayShow === "all"} onClick={() => setStayShow("all")} />
                 </div>
@@ -453,7 +465,7 @@ export function PlayersList({
           {season && ` · ${season} season`}
           {pickedStay &&
             ` · ${pickedStay.name}: ${stayCounts.done + stayCounts.waived} of ${stayTotal} ${stayDoneWord().toLowerCase()}` +
-              (stayCounts.waived > 0 ? ` (${stayCounts.waived} waived)` : "")}
+              (stayCounts.waived > 0 ? ` (${stayCounts.waived} ${stayWaivedWord().toLowerCase()})` : "")}
           {!pickedStay &&
             pickedReq &&
             ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${doneWord(pickedReq).toLowerCase()}` +
@@ -600,6 +612,16 @@ export function PlayersList({
           player={openStay.player}
           stay={openStay.stay}
           row={stayRows.get(`${openStay.player.id}:${openStay.stay.id}`) ?? null}
+          siblings={siblingsOnStay(
+            openStay.player.id,
+            openStay.stay,
+            players.map((p) => ({
+              id: p.id,
+              full_name: p.full_name,
+              team_id: p.team_id,
+              parent_ids: p.parents.map((pa) => pa.member!.id),
+            }))
+          )}
           onClose={() => {
             setOpenStay(null);
             router.refresh();

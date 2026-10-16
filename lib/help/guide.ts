@@ -77,7 +77,7 @@ export interface GuideViewer {
   permissions?: string[];
 }
 
-export const GUIDE_UPDATED = "October 14, 2026";
+export const GUIDE_UPDATED = "October 16, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -410,7 +410,7 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
     keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "hotel", "hotel registration", "messages sent", "template", "templates", "primary email", "same email", "{player}"],
     body: `You see this if you're on the board, or have the **Registrations** or **Travel** permission.
 
-**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: pick a team or **No team yet**, pick an age group, search, pick a requirement (like the handbook) and **Missing**, or pick a **hotel stay** (Regionals, Nationals…) and **Missing** to remind just the families who still need to book. The top of the window says who it's going to, and **see who gets it** lists each family.
+**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: pick a team or **No team yet**, pick an age group, search, pick a requirement (like the handbook) and **Missing**, or pick a **hotel stay** (Regionals, Nationals…) and **Not yet known** to remind just the families who still need to book. The top of the window says who it's going to, and **see who gets it** lists each family.
 
 **Email one family.** On a player's page, **Email family** writes to just that player's family.
 
@@ -434,7 +434,7 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
 
 **Connect Slack, once.** The first time, **Slack families** asks you to **Connect Slack**. A Slack window opens; tap **Allow** and it closes by itself. After that the portal can send DMs for you. To stop, tap **Disconnect Slack** at the top of the window.
 
-**Slack the players in view.** On the Directory, **Slack families** (next to **Email families**, when you have both) writes to the families of the players the list shows right now. Narrow it first: tap a team, pick an age group, search, pick a requirement like the handbook and **Missing**, or pick a **hotel stay** and **Missing**, so only the families who still need it hear from you.
+**Slack the players in view.** On the Directory, **Slack families** (next to **Email families**, when you have both) writes to the families of the players the list shows right now. Narrow it first: tap a team, pick an age group, search, pick a requirement like the handbook and **Missing**, or pick a **hotel stay** and **Not yet known**, so only the families who still need it hear from you.
 
 **Slack one family.** On a player's page, **Slack family** writes to just that player's parents.
 
@@ -479,7 +479,7 @@ You can only Slack the families of players you can see in the Directory. Slack D
 - A green chip with a check means it's done or paid. A little page icon means a scan is attached.
 - A grey **waived** chip means you've excused them.
 
-**Hotel stays** (Regionals, Nationals, weekend trips) are separate from this list — the travel coordinator sets them on each HS Schedule weekend and tracks **Booked** in the Directory (see *Hotel stays*).
+**Hotel stays** (Regionals, Nationals, weekend trips) are separate from this list — the travel coordinator sets them on each HS Schedule weekend and tracks **Booked in block** in the Directory (see *Hotel stays*).
 
 **Checking a player off.** Tap the chip. Pick **Done** (**Paid** for a fee), **Waived** or **Not yet**, set the date, and add a **Note** if it helps (a check number, say). Then tap **Save**.
 
@@ -502,8 +502,8 @@ Requirements start over each season, since each season has its own roster. The l
     title: "Hotel stays",
     group: "Directory",
     audience: "travel",
-    keywords: ["hotel", "hotels", "hotel stay", "hotel stays", "hotel registration", "booked", "room block", "regionals", "nationals", "weekend", "booking", "instructions", "group code", "travel", "travel coordinator", "missing", "email", "slack", "dm", "follow up", "families", "hs schedule"],
-    body: `For the travel coordinator: each trip that needs a hotel — **Regionals** (everyone), **Nationals** (some teams), a weekend away — is its own **hotel stay** on that weekend of the **HS Schedule**. You pick the hotel from External Contacts, write how families book, then mark who's **Booked** in the Directory and follow up with the rest.
+    keywords: ["hotel", "hotels", "hotel stay", "hotel stays", "hotel registration", "booked", "booked in block", "staying elsewhere", "not yet known", "room block", "regionals", "nationals", "weekend", "booking", "instructions", "group code", "travel", "travel coordinator", "missing", "siblings", "email", "slack", "dm", "follow up", "families", "hs schedule"],
+    body: `For the travel coordinator: each trip that needs a hotel — **Regionals** (everyone), **Nationals** (some teams), a weekend away — is its own **hotel stay** on that weekend of the **HS Schedule**. You pick the hotel from External Contacts, write how families book, then mark who's **Booked in block** in the Directory and follow up with the rest.
 
 **Set up a stay (on the HS Schedule).** Open the weekend (tap its event). Under **Hotel stays**, tap **Add hotel stay**:
 
@@ -514,15 +514,17 @@ Requirements start over each season, since each season has its own roster. The l
 - **Who registers** — **All players**, or **Only some teams** (Nationals, a JV weekend).
 - **Status** — **Open** while families should book; **Closed** or **Canceled** when you're done.
 
-**Track Booked (Directory).** Tap **Track Booked in Directory ›** on the stay, or on the Directory pick the stay from **All hotel stays**, then **Missing**. Each player shows a chip:
+**Track Booked in block (Directory).** Tap **Track Booked in block in Directory ›** on the stay, or on the Directory pick the stay from **All hotel stays**, then **Not yet known**. Each player shows a chip:
 
-- Red **Needs Regionals** (or the stay's name) means they still need to book.
-- Green with a check means **Booked**.
-- Grey **waived** means you've excused them.
+- Red **Needs Regionals** (or the stay's name) means their stay is **Not yet known**.
+- Green with a check means **Booked in block**.
+- Grey **staying elsewhere** means they aren't in the hotel block (staying with family, for example). The note is on the chip.
 
-Tap the chip: **Booked**, **Waived** or **Not yet**, a date, and a **Note** (confirmation number). **Save**.
+Tap the chip: **Booked in block**, **Staying elsewhere** or **Not yet known**, a date, and a **Note**. **Staying elsewhere** needs a note (placeholder **e.g. staying with family**). **Save**.
 
-**Follow up.** With **Missing** showing, **Email families** or **Slack families**. **{player}** becomes each family's player names; for Slack, **{name}** is each parent's first name.
+**Siblings.** If two players share a parent and both are on this stay, marking one lists the other, ticked to start. Untick them to mark only the player you opened. **Not yet known** asks whether to clear the siblings too.
+
+**Follow up.** With **Not yet known** showing, **Email families** or **Slack families**. **{player}** becomes each family's player names; for Slack, **{name}** is each parent's first name.
 
 **On the hotel's contact.** Open the hotel in External Contacts: **Hotel stays** lists every weekend you linked it to, with the event and a jump back to the schedule or Directory.
 
@@ -574,7 +576,7 @@ Hotels and places to eat themselves stay in **External Contacts** (see *Hotels a
     body: `For the travel coordinator: the high school season weekend by weekend, to plan the hotel blocks and team meals. It's **HS Schedule** in the sidebar. You see all of it; the coaches and the board keep the games and teams up to date (**View only** at the top for those). You add **Hotel stays** on each weekend that needs a room block.
 
 - **The grid.** A row per weekend: the dates, **Where** and the trip (**Local**, **Day trip**, **Overnight**…), the event, a column for each of our teams (V, JV1, JV2…) with its games, and **Notes** (the venue and game times). The event's color says how it stands: **Tentative** (red), **Need to secure facility** (yellow), **Final details in process** (pale yellow) and **Facility secured** (green).
-- **Hotel stays.** Tap a weekend's event. Under **Hotel stays**, **Add hotel stay** links the hotel from External Contacts, with how to book, the group code and who must register (everyone, or some teams). **Track Booked in Directory ›** opens the Directory filtered to who's still missing — see *Hotel stays*.
+- **Hotel stays.** Tap a weekend's event. Under **Hotel stays**, **Add hotel stay** links the hotel from External Contacts, with how to book, the group code and who must register (everyone, or some teams). **Track Booked in block in Directory ›** opens the Directory filtered to who's **Not yet known** — see *Hotel stays*.
 - **Where to stay and eat.** On a weekend away, a bed and a fork under **Where** count the hotels and places to eat saved there (by city). Tap them for the list, with the places that have your notes first. They're the ones you keep in **External Contacts**.
 - **Who's coming.** Hover over a team's count (tap it on a phone) to see its games and the teams it plays. Scroll or click in the card and it stays open, with an **✕** to close it.
 - **Seasons.** The arrows beside the season's name move between seasons. **View** → **Compare with** puts another season's same weekend beside each row. **Search events, places, teams** finds a weekend by its event, place or a team coming.`,
@@ -930,7 +932,7 @@ Activity is recorded from the day it went live.`,
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
-| Add and edit the hotels and places to eat in External Contacts; hotel stays on the HS Schedule; track Booked; import a rooming list in Settings | With **Travel** | ✓ | ✓ |
+| Add and edit the hotels and places to eat in External Contacts; hotel stays on the HS Schedule; track Booked in block; import a rooming list in Settings | With **Travel** | ✓ | ✓ |
 | Send families Slack DMs from the Directory, as yourself | With **Slack DMs** | With **Slack DMs** | ✓ |
 | Change the club website's menu, page text and pictures | | With **Settings: Website** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
@@ -974,7 +976,7 @@ Activity is recorded from the day it went live.`,
 - Pick someone's **access profile** from the drop-down on the **Approved** tab: **Member**, **Board**, any profile the club has made (like Treasurer), or **Super-admin**. The profile sets whether they're Board and what they can manage (see *Settings: Access Profiles*). Picking a new one replaces what they had, extras included.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - Tap **Access** on someone's row on the **Approved** tab to see what they can do. The number on the button counts it, and the row lists it under their name. Greyed ticks come from their profile; change those in **Settings → Access Profiles**. Tick any other box to give that one person an **extra** on top of their profile, untick to take it away. Rows with extras show **+ extras**, and rows on a profile the club made show its name.
-  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, set up **hotel stays** on the HS Schedule (booking instructions and who must register), mark **Booked** in the Directory, import a hotel **rooming list** in Settings → Import, and email or Slack families about travel, and **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too).
+  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, set up **hotel stays** on the HS Schedule (booking instructions and who must register), mark **Booked in block** in the Directory, import a hotel **rooming list** in Settings → Import, and email or Slack families about travel, and **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too).
   - **Settings (Board)** (board members only): **Edit**, **Delete** and **Undelete** for Settings items like Requirements, and **Website** to change the club website's menu, page text and pictures (see *Settings: Website*).
   - **Board powers** (for people who aren't Board; Board has them all): **See all players** (every player, listed or not, with fees, waivers, shirts and parents' details), **Member notes**, **Check off requirements**, **Approve access requests**, **External Contacts** (see, add and edit every contact, and their history) and **Plan HS Schedule**.
   - **Club setup** (anyone): **Teams & volunteers** to set up teams and volunteer roles and fill team spots (putting someone in a leadership spot makes them a coach), and **Sidebar Links & Public Directory**.

@@ -25,7 +25,7 @@ export default async function DirectoryPage({
   const playerList = await players;
   const req = viewer.canCheckRequirements ? await requirements : { requirements: [], rows: [] };
   const playerIds = new Set(playerList.map((p) => p.id));
-  // Hotel stays (0135): Travel and the board track Booked per event.
+  // Hotel stays (0135): Travel and the board track Booked in block per event.
   const canStays = viewer.canManageTravel || viewer.isStaff;
   const supabase = canStays ? await createClient() : null;
   const hotelStays = supabase ? await loadDirectoryHotelStays(supabase) : [];
