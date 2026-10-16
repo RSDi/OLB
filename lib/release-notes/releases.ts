@@ -16,6 +16,16 @@ export {
 const AUTHORED: AuthoredRelease[] = [
   {
     date: "October 16, 2026",
+    title: "See who gets it, then tick families",
+    color: "#2f7de1",
+    tour: ["email-families-send", "slack-dms-send"],
+    features: [
+      "The Show me how tour for Email families (and Slack families) now points at see who gets it, opens the list, then highlights the family checkboxes and Select all / none",
+      "The list stays open while you walk through ticking families, including on a phone",
+    ],
+  },
+  {
+    date: "October 16, 2026",
     title: "Tick families off before you send",
     color: "#2f7de1",
     tour: ["email-families-send", "slack-dms-send"],

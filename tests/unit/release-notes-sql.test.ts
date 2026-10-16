@@ -35,6 +35,7 @@ test("0138 adds members.releases_seen_version and does not create a notes table"
 
 test("the 10/16 seed entries live in releases.ts, not the migration", () => {
   for (const title of [
+    "See who gets it, then tick families",
     "Tick families off before you send",
     "Roadmap Preview column",
     "Covered via sibling, and Travel sees every player",

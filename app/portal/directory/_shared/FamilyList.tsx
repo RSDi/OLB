@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { familyId, type FamilyGroup, type MailTarget } from "../../../../lib/teams/family-mail";
 import { muted } from "./PlayerParts";
 
@@ -88,25 +88,39 @@ export function FamilyList({
     </span>
   );
   const count = `${n} ${n === 1 ? "family" : "families"}`;
+  // Select all / none plus each family's checkbox. A max height keeps the
+  // tour's ring on screen when there are dozens of families (a phone's Email
+  // families sheet is the full width and not very tall).
+  const picksStyle: CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    maxHeight: "min(36vh, 240px)",
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    WebkitOverflowScrolling: "touch",
+  };
 
   return (
-    <div data-tour="family-send-list" style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 2 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 2 }}>
       {groups.length > 6 ? (
         <details>
-          <summary style={{ ...muted, fontWeight: 600, cursor: "pointer" }}>{count} · see who gets it</summary>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+          <summary data-tour="family-send-list" style={{ ...muted, fontWeight: 600, cursor: "pointer" }}>
+            {count} · see who gets it
+          </summary>
+          <div data-tour="family-send-picks" style={{ ...picksStyle, marginTop: 6 }}>
             {toggle}
             {rows}
           </div>
         </details>
       ) : (
-        <>
+        <div data-tour="family-send-picks" style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", alignItems: "baseline" }}>
             <span style={{ ...muted, fontWeight: 600 }}>{count}</span>
             {toggle}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>{rows}</div>
-        </>
+        </div>
       )}
     </div>
   );

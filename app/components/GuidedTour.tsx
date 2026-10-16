@@ -47,11 +47,22 @@ const ARROW = 12;
 type Rect = { top: number; left: number; width: number; height: number };
 type Side = "bottom" | "top" | "right" | "left";
 
+// Hidden behind a closed <details> (the family list behind "see who gets it").
+// The summary itself is visible; everything else in the details is not, even
+// if the browser still reports a box for it.
+function insideClosedDetails(el: HTMLElement): boolean {
+  const details = el.closest("details");
+  if (!(details instanceof HTMLDetailsElement) || details.open) return false;
+  const summary = details.querySelector(":scope > summary");
+  return !(summary instanceof HTMLElement && (el === summary || summary.contains(el)));
+}
+
 function findTarget(target: string): HTMLElement | null {
   // The first visible match: several elements can share a target (every
   // player row, say) and some only render on one screen size.
   const all = document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`);
   for (const el of all) {
+    if (insideClosedDetails(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.width > 0 && r.height > 0 && r.right > 0 && r.left < window.innerWidth) return el;
   }
@@ -94,10 +105,35 @@ function closeTourMenus() {
   }
 }
 
-// A marked wrapper around a button clicks the button inside it.
+// A marked wrapper around a button clicks the button inside it. A <details>
+// or its summary is opened, not toggled, so a tour that has already expanded
+// a list (Email families' "see who gets it") doesn't close it again.
 function press(el: HTMLElement) {
+  const details =
+    el instanceof HTMLDetailsElement
+      ? el
+      : el.tagName === "SUMMARY" && el.parentElement instanceof HTMLDetailsElement
+        ? el.parentElement
+        : null;
+  if (details) {
+    details.open = true;
+    return;
+  }
   const inner = el.matches("button, a, [role=button]") ? el : el.querySelector<HTMLElement>("button, a, [role=button]");
   (inner ?? el).click();
+}
+
+// Open a closed <details> that hides this step's element, and leave it open.
+function openEnclosingDetails(target: string): boolean {
+  let opened = false;
+  for (const node of document.querySelectorAll<HTMLElement>(`[data-tour="${target}"]`)) {
+    const details = node.closest("details");
+    if (details instanceof HTMLDetailsElement && !details.open) {
+      details.open = true;
+      opened = true;
+    }
+  }
+  return opened;
 }
 
 // Typing in a field on an interactive step shouldn't flip the tour's steps.
@@ -258,6 +294,11 @@ export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }
       if (el) {
         show(el);
         return;
+      }
+      // Inside a closed <details> (the family list behind "see who gets it"):
+      // open it so the step can point at the checkboxes, and leave it open.
+      if (openEnclosingDetails(target)) {
+        deadline = Math.max(deadline, Date.now() + SETTLED_WAIT_MS);
       }
       // The element is tucked into a phone menu: open its page from the
       // hidden copy and point at the bar that names it.
