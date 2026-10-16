@@ -3,7 +3,7 @@ import { useState, type CSSProperties } from "react";
 import { Pill, Input, Textarea, Select } from "../../components/ui";
 import { SideSheet } from "../../components/SideSheet";
 import { Icons } from "../../components/icons";
-import { saveRoadmapItem, deleteRoadmapItem, setRoadmapLink, type RoadmapResult } from "../../../lib/roadmap/actions";
+import { saveRoadmapItem, deleteRoadmapItem, setRoadmapLink, approveRoadmapItem, type RoadmapResult } from "../../../lib/roadmap/actions";
 import {
   AREAS,
   STATUSES,
@@ -11,6 +11,7 @@ import {
   DESCRIPTION_MAX,
   PREVIEW_URL_MAX,
   columnItems,
+  formatApprovedBy,
   formatDay,
   todayIso,
   type RoadmapItem,
@@ -47,6 +48,7 @@ export function RoadmapView({
   const [area, setArea] = useState<string>("all");
   const [sheet, setSheet] = useState<Sheet>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const visible = area === "all" ? items : items.filter((i) => i.area === area);
   const areaCount = (a: string) => items.filter((i) => i.area === a).length;
@@ -60,6 +62,17 @@ export function RoadmapView({
   const done = (msg: string) => {
     setSheet(null);
     flash(msg);
+  };
+
+  const approve = async (id: string) => {
+    setApprovingId(id);
+    const res = await approveRoadmapItem(id);
+    setApprovingId(null);
+    if (res.error) flash(res.error);
+    else {
+      setSheet(null);
+      flash("Approved");
+    }
   };
 
   return (
@@ -116,7 +129,13 @@ export function RoadmapView({
               </header>
               {list.length ? (
                 list.map((it) => (
-                  <Card key={it.id} it={it} onOpen={editable ? () => setSheet({ kind: "item", item: it, status: it.status }) : undefined} />
+                  <Card
+                    key={it.id}
+                    it={it}
+                    onOpen={editable ? () => setSheet({ kind: "item", item: it, status: it.status }) : undefined}
+                    onApprove={editable && it.status === "proposed" ? () => approve(it.id) : undefined}
+                    approving={approvingId === it.id}
+                  />
                 ))
               ) : (
                 <div style={{ padding: "18px 12px", border: "1px dashed var(--gw-border)", borderRadius: 12, fontSize: 13, color: "var(--gw-fg-muted)", textAlign: "center" }}>
@@ -135,6 +154,8 @@ export function RoadmapView({
           status={sheet.status}
           onClose={() => setSheet(null)}
           onDone={done}
+          onApprove={sheet.item?.status === "proposed" ? () => approve(sheet.item!.id) : undefined}
+          approving={sheet.item ? approvingId === sheet.item.id : false}
         />
       )}
       {sheet?.kind === "link" && <LinkSheet linkKey={linkKey} onClose={() => setSheet(null)} onDone={flash} />}
@@ -173,7 +194,18 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
   );
 }
 
-function Card({ it, onOpen }: { it: RoadmapItem; onOpen?: () => void }) {
+function Card({
+  it,
+  onOpen,
+  onApprove,
+  approving = false,
+}: {
+  it: RoadmapItem;
+  onOpen?: () => void;
+  onApprove?: () => void;
+  approving?: boolean;
+}) {
+  const approved = it.status === "planned" ? formatApprovedBy(it.approved_by_name, it.approved_at) : null;
   const accent = it.status === "preview" ? "var(--rsd-accent)" : it.status === "progress" ? "var(--rsd-accent-fill)" : "var(--gw-border)";
   const style: CSSProperties = {
     display: "flex",
@@ -203,6 +235,9 @@ function Card({ it, onOpen }: { it: RoadmapItem; onOpen?: () => void }) {
       {it.description && (
         <span style={{ fontSize: 13, lineHeight: 1.5, color: "var(--gw-fg-muted)", whiteSpace: "pre-wrap" }}>{it.description}</span>
       )}
+      {approved && (
+        <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>{approved}</span>
+      )}
       {it.preview_url && (
         <a
           href={it.preview_url}
@@ -215,6 +250,13 @@ function Card({ it, onOpen }: { it: RoadmapItem; onOpen?: () => void }) {
           Open preview
         </a>
       )}
+      {onApprove && (
+        <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} style={{ width: "fit-content" }}>
+          <Pill size="sm" variant="accent" disabled={approving} onClick={onApprove}>
+            {approving ? "Approving…" : "Approve"}
+          </Pill>
+        </span>
+      )}
     </div>
   );
 }
@@ -224,11 +266,15 @@ function ItemSheet({
   status: startStatus,
   onClose,
   onDone,
+  onApprove,
+  approving = false,
 }: {
   item: RoadmapItem | null;
   status: Status;
   onClose: () => void;
   onDone: (msg: string) => void;
+  onApprove?: () => void;
+  approving?: boolean;
 }) {
   const [title, setTitle] = useState(item?.title ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
@@ -262,17 +308,22 @@ function ItemSheet({
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {item &&
             (confirmDelete ? (
-              <Pill size="sm" disabled={busy} onClick={() => run(() => deleteRoadmapItem(item.id), "Deleted")} style={{ color: "var(--gw-error)" }}>
+              <Pill size="sm" disabled={busy || approving} onClick={() => run(() => deleteRoadmapItem(item.id), "Deleted")} style={{ color: "var(--gw-error)" }}>
                 Yes, delete it
               </Pill>
             ) : (
-              <Pill size="sm" variant="ghost" disabled={busy} onClick={() => setConfirmDelete(true)}>
+              <Pill size="sm" variant="ghost" disabled={busy || approving} onClick={() => setConfirmDelete(true)}>
                 <Icons.Trash width={14} height={14} /> Delete
               </Pill>
             ))}
           <span style={{ flex: 1 }} />
-          <Pill size="sm" variant="ghost" disabled={busy} onClick={onClose}>Cancel</Pill>
-          <Pill size="sm" variant="accent" disabled={busy} onClick={save}>{busy ? "Saving…" : item ? "Save" : "Add item"}</Pill>
+          {onApprove && (
+            <Pill size="sm" variant="accent" disabled={busy || approving} onClick={onApprove}>
+              {approving ? "Approving…" : "Approve"}
+            </Pill>
+          )}
+          <Pill size="sm" variant="ghost" disabled={busy || approving} onClick={onClose}>Cancel</Pill>
+          <Pill size="sm" variant="accent" disabled={busy || approving} onClick={save}>{busy ? "Saving…" : item ? "Save" : "Add item"}</Pill>
         </div>
       }
     >

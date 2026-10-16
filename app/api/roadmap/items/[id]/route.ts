@@ -4,12 +4,15 @@
 // only `{ status }` and optional `preview_url`. Allowed steps: proposed →
 // planned → progress → preview → released. preview_url is required on
 // progress → preview. Same column, a skip, backwards, or any other field is
-// 400. Unknown or deleted id is 404. POST remains insert-only as proposed.
+// 400. Unknown or deleted id is 404. A write that matches 0 rows is 409, not
+// 200. POST remains insert-only as proposed. After a successful write the
+// portal board and the public share page are revalidated so they don't stay
+// on the old column.
 
-import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { roadmapBotDeny, roadmapBotNeedServiceRole } from "../../../../../lib/roadmap/bot-http";
-import { botPatchFields, cleanBotStatusPatch } from "../../../../../lib/roadmap/bot";
+import { botPatchFields, botPatchUpdated, cleanBotStatusPatch } from "../../../../../lib/roadmap/bot";
+import { refreshRoadmap } from "../../../../../lib/roadmap/cache";
 import { isStatus, type Status } from "../../../../../lib/roadmap/model";
 import { createAdminClient } from "../../../../../lib/supabase/admin";
 
@@ -73,12 +76,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     .update(row)
     .eq("id", id)
     .is("deleted_at", null)
-    .select(ITEM_COLS)
-    .single();
+    .select(ITEM_COLS);
   if (error) {
     console.error("[roadmap-items PATCH]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  revalidatePath("/portal/roadmap");
-  return NextResponse.json({ item: data });
+  const applied = botPatchUpdated(data);
+  if (!applied.ok) return NextResponse.json({ error: applied.error }, { status: applied.status });
+  refreshRoadmap();
+  return NextResponse.json({ item: applied.item });
 }

@@ -7,16 +7,16 @@
 // is never a released_on, and this file has no update or delete. Status
 // moves go through PATCH /api/roadmap/items/[id].
 
-import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { roadmapBotDeny, roadmapBotNeedServiceRole } from "../../../../lib/roadmap/bot-http";
-import { botInsertFields, cleanBotRoadmapItem } from "../../../../lib/roadmap/bot";
+import { botInsertFields, botListItem, botListStatusFilter, cleanBotRoadmapItem } from "../../../../lib/roadmap/bot";
+import { refreshRoadmap } from "../../../../lib/roadmap/cache";
 import { createAdminClient } from "../../../../lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const LIST_COLS = "id, title, area, status";
+const LIST_COLS = "id, title, area, status, approved_at, approver:members!approved_by(full_name)";
 
 export async function GET(request: Request) {
   const denied = roadmapBotDeny(request);
@@ -24,17 +24,22 @@ export async function GET(request: Request) {
   const missing = roadmapBotNeedServiceRole();
   if (missing) return missing;
 
+  const filter = botListStatusFilter(new URL(request.url).searchParams.get("status"));
+  if ("error" in filter) return NextResponse.json({ error: filter.error }, { status: 400 });
+
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let query = admin
     .from("olb_roadmap_items")
     .select(LIST_COLS)
     .is("deleted_at", null)
     .order("created_at", { ascending: true });
+  if (filter.status) query = query.eq("status", filter.status);
+  const { data, error } = await query;
   if (error) {
     console.error("[roadmap-items GET]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ items: data ?? [] });
+  return NextResponse.json({ items: (data ?? []).map(botListItem) });
 }
 
 export async function POST(request: Request) {
@@ -58,12 +63,12 @@ export async function POST(request: Request) {
   const { data, error } = await admin
     .from("olb_roadmap_items")
     .insert(botInsertFields(row))
-    .select(LIST_COLS)
+    .select("id, title, area, status, approved_at")
     .single();
   if (error) {
     console.error("[roadmap-items POST]", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  revalidatePath("/portal/roadmap");
-  return NextResponse.json({ item: data }, { status: 201 });
+  refreshRoadmap();
+  return NextResponse.json({ item: botListItem(data) }, { status: 201 });
 }

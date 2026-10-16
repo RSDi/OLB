@@ -33,6 +33,10 @@ export interface RoadmapItem {
   released_on: string | null;
   preview_url: string | null;
   created_at: string;
+  // Who approved a Proposed item onto Planned, and when. Null until Approve.
+  approved_by: string | null;
+  approved_at: string | null;
+  approved_by_name: string | null;
 }
 
 export interface RoadmapItemInput {
@@ -141,4 +145,17 @@ export function todayIso(now: Date = new Date()): string {
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
   return `${now.getFullYear()}-${m}-${d}`;
+}
+
+// "Approved by Jeff Malone on Oct 16" for a Planned card. Needs both a name
+// and a timestamp; otherwise the card stays quiet.
+export function formatApprovedBy(
+  name: string | null | undefined,
+  at: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  const who = name?.trim() ?? "";
+  const day = (at ?? "").slice(0, 10);
+  if (!who || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  return `Approved by ${who} on ${formatDay(day, now)}`;
 }
