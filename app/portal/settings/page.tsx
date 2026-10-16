@@ -46,6 +46,7 @@ import { PlanningRolesTab } from "./PlanningRolesTab";
 import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { WebsiteTab } from "./WebsiteTab";
 import { AccessProfilesTab } from "./AccessProfilesTab";
+import { ReleaseNotesTab } from "./ReleaseNotesTab";
 import { usePageHelp } from "../../components/PageHelp";
 import { Icons } from "../../components/icons";
 
@@ -53,7 +54,7 @@ import { Icons } from "../../components/icons";
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
 // Website is released to whoever holds its grant (and super-admins).
-const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website", "import"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website", "release_notes", "import"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "access_profiles",
   "playbooks",
@@ -77,6 +78,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   uniforms: "settings-uniforms",
   fees: "settings-fees",
   website: "settings-website",
+  release_notes: "settings-release-notes",
   playbooks: "settings-playbooks",
   sidebar_links: "settings-sidebar-links",
   public_directory: "settings-public-directory",
@@ -102,6 +104,7 @@ type Tab =
   | "uniforms"
   | "fees"
   | "website"
+  | "release_notes"
   | "planning_roles"
   | "event_categories"
   | "task_categories"
@@ -196,6 +199,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     { key: "contact_categories", label: "Contact Types", group: "Communication", visible: true, tour: "settings-tab-contact-categories", keywords: "contacts categories" },
     // The public club website's menu, page text and pictures (0120).
     { key: "website", label: "Website", group: "Website & Portal", visible: canManageWebsite(me), tour: "settings-tab-website", keywords: "public site pages pictures publish" },
+    { key: "release_notes", label: "Release Notes", group: "Website & Portal", visible: true, tour: "settings-tab-release-notes", keywords: "release notes shipped changelog whats new show me how walkthrough demo" },
     { key: "sidebar_links", label: "Sidebar Links", group: "Website & Portal", visible: siteLinks, tour: "settings-tab-sidebar-links", keywords: "links menu" },
     // The key in the public Directory's link (0119).
     { key: "public_directory", label: "Public Directory", group: "Website & Portal", visible: siteLinks, tour: "settings-tab-public-directory", keywords: "directory link key" },
@@ -352,6 +356,7 @@ export default function SettingsPage() {
       {tab === "uniforms" && has("uniforms") && <UniformsTab />}
       {tab === "fees" && has("fees") && <FeesTab />}
       {tab === "website" && has("website") && <WebsiteTab />}
+      {tab === "release_notes" && has("release_notes") && <ReleaseNotesTab me={me} />}
       {tab === "planning_roles" && has("planning_roles") && <PlanningRolesTab />}
       {tab === "event_categories" && has("event_categories") && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && has("task_categories") && <TaskCategoriesTab me={me} />}

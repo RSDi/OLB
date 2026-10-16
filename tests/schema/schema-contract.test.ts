@@ -98,6 +98,9 @@ const CONTRACT: Record<string, string> = {
   hs_hotel_stays:
     "id,weekend_id,hotel_contact_id,name,team_ids,booking_instructions,booking_url,booking_code,cutoff_on,rate_notes,status,sort_order,created_by,updated_by,created_at,updated_at",
   hs_hotel_stay_players: "stay_id,player_id,status,completed_on,note,marked_by,created_at,updated_at",
+  // Settings → Release Notes (0138).
+  olb_release_notes:
+    "id,released_on,title,area,summary,steps,media_url,href,roadmap_item_id,seed_key,created_by,created_at,updated_at,deleted_at",
   olb_charges:
     "id,board_id,player_id,kind,category,description,amount_cents,entry_date,note,created_by,created_at,voided_at,voided_by",
   olb_payments:

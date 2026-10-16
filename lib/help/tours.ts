@@ -1248,6 +1248,44 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-release-notes",
+    sectionId: "settings-release-notes",
+    title: "Release Notes walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-release-notes",
+        title: "Settings → Release Notes",
+        body: "What just shipped, grouped by day. Every board member can read this; only a super-admin can add or change an entry.",
+      },
+      {
+        target: "release-notes-filter",
+        click: "settings-tab-release-notes",
+        title: "Filter by area",
+        body: "Tap **All** or an area — **Portal**, **Website**, **Registration**, **Payments**, **HS Schedule**, **Slack & email** — to narrow the list.",
+      },
+      {
+        target: "release-notes-list",
+        click: "settings-tab-release-notes",
+        title: "Each day's notes",
+        body: "Newest day first. Each card has an area chip, a title and a short summary of what changed.",
+      },
+      {
+        target: "release-notes-show-how",
+        click: "settings-tab-release-notes",
+        title: "Show me how",
+        body: "When a note has a walkthrough, tap **Show me how**. A step-by-step overlay walks you through it, with **Back** / **Next** and an optional screenshot or video.",
+      },
+      {
+        target: "release-notes-add",
+        click: "settings-tab-release-notes",
+        audience: "super_admin",
+        title: "Add note",
+        body: "Writes a new entry. You can start from a **released** Roadmap item so its title, area, summary and live date are copied in.",
+      },
+    ],
+  },
+  {
     id: "settings-sidebar-links",
     sectionId: "settings-sidebar-links",
     title: "Sidebar Links walkthrough",
