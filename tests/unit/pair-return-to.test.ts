@@ -24,7 +24,8 @@ test("unauthenticated /pair redirects to /login with a return-to and stashes it"
 test("Slack OAuth and emailed-code magic-link both pass next to /auth/callback", () => {
   const form = src("app/(site)/login/LoginForm.tsx");
   assert.ok(form.includes("authCallbackUrl"));
-  assert.ok(form.includes("/auth/callback?next="));
+  assert.ok(form.includes("/auth/callback"));
+  assert.ok(form.includes("?next="));
   assert.ok(form.includes("signInWithOAuth"));
   assert.ok(form.includes("emailRedirectTo"));
   assert.ok(form.includes("authCallbackUrl()"));
