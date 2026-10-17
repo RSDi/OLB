@@ -6,7 +6,7 @@ they never pass through Vercel.
 
 This feature is namespaced so it can be torn out: `app/film`, `app/t`,
 `app/portal/film`, `lib/film`, plus one sidebar link, one Settings tab, one
-cron path, and migration `0142_game_film.sql`.
+cron path, and migrations `0142_game_film.sql` and `0143_game_film_game.sql`.
 
 ## Go live (Jeff)
 
@@ -16,11 +16,15 @@ add a new migration; 0142 is still the one to run if it is not on the
 project yet. Uniqueness of codes is checked in app code against the
 existing hashes.
 
-1. **Run the SQL** in the Supabase SQL editor: `supabase/migrations/0142_game_film.sql`.
-   That creates `game_film_uploads`, `game_film_managers`, the private
-   `game-film` bucket (20 GB limit), film columns on `olb_teams`, and
-   `can_view_film()` / `can_manage_film()`. Safe to re-run if an earlier
-   draft of 0142 already landed (columns and tables are `if not exists`).
+1. **Run the SQL** in the Supabase SQL editor:
+   - `supabase/migrations/0142_game_film.sql` — `game_film_uploads`,
+     `game_film_managers`, the private `game-film` bucket (20 GB limit),
+     film columns on `olb_teams`, and `can_view_film()` / `can_manage_film()`.
+     Safe to re-run if an earlier draft of 0142 already landed (columns and
+     tables are `if not exists`).
+   - `supabase/migrations/0143_game_film_game.sql` — adds `game_date`,
+     `opponent`, `our_score`, and `their_score` on `game_film_uploads`. Run
+     this after 0142. Idempotent (`if not exists`).
 2. **Raise the project's Storage file-size limit** in the Supabase dashboard
    (Project Settings → Storage) if it is still the default (often 50 MB). The
    bucket is 20 GB; the project cap has to be at least that.
@@ -87,7 +91,9 @@ hash, so rotating the env var doesn't lock the codes.
 
 - `/film` — pick a team (Directory teams that are On, with a slug and a code).
 - `/t/<slug>` — shared code (cookie HMAC with `FILM_SESSION_SECRET` and that
-  team's `film_code_version`), then Uppy + TUS. The server validates (video
+  team's `film_code_version`), then Uppy + TUS. Families fill in **Your name**,
+  **Game date** (defaults to today in America/Chicago), **Opponent**, and
+  optional **Our score** / **Their score**. The server validates (video
   MIME including iPhone `.mov`/HEVC, 20 GB, name required, per-IP rate
   limit), mints `createSignedUploadUrl` with the service role, and **POSTs
   the TUS create** to `{project}.storage.supabase.co/storage/v1/upload/resumable/sign`

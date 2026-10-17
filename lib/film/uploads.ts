@@ -8,6 +8,9 @@ import { createAdminClient } from "../supabase/admin";
 import { GAME_FILM_BUCKET, MOVED_RETENTION_DAYS, type FilmStatus, type FilmUpload } from "./types.ts";
 import { storageObjectName } from "./validation.ts";
 
+export const FILM_UPLOAD_COLUMNS =
+  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, game_date, opponent, our_score, their_score";
+
 export function filmStoragePath(team: string, uploadId: string, filename: string): string {
   const now = new Date();
   const y = String(now.getUTCFullYear());
@@ -28,6 +31,10 @@ export async function insertHoldingUpload(input: {
   contentType: string;
   sizeBytes: number;
   storagePath: string;
+  gameDate: string;
+  opponent: string | null;
+  ourScore: number | null;
+  theirScore: number | null;
 }): Promise<FilmUpload> {
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -42,10 +49,12 @@ export async function insertHoldingUpload(input: {
       size_bytes: input.sizeBytes,
       storage_path: input.storagePath,
       status: "holding",
+      game_date: input.gameDate,
+      opponent: input.opponent,
+      our_score: input.ourScore,
+      their_score: input.theirScore,
     })
-    .select(
-      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
-    )
+    .select(FILM_UPLOAD_COLUMNS)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't log the upload.");
   return data as FilmUpload;
@@ -55,9 +64,8 @@ export async function listFilmUploads(teamIds?: string[]): Promise<FilmUpload[]>
   const admin = createAdminClient();
   let query = admin
     .from("game_film_uploads")
-    .select(
-      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
-    )
+    .select(FILM_UPLOAD_COLUMNS)
+    .order("game_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (teamIds) {
     if (teamIds.length === 0) return [];
@@ -72,9 +80,7 @@ export async function getFilmUpload(id: string): Promise<FilmUpload | null> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("game_film_uploads")
-    .select(
-      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
-    )
+    .select(FILM_UPLOAD_COLUMNS)
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -91,9 +97,7 @@ export async function setFilmStatus(id: string, status: FilmStatus): Promise<Fil
     .from("game_film_uploads")
     .update(patch)
     .eq("id", id)
-    .select(
-      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
-    )
+    .select(FILM_UPLOAD_COLUMNS)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return (data as FilmUpload | null) ?? null;
@@ -113,9 +117,7 @@ export async function listExpiredMovedUploads(now = new Date()): Promise<FilmUpl
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("game_film_uploads")
-    .select(
-      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
-    )
+    .select(FILM_UPLOAD_COLUMNS)
     .eq("status", "moved")
     .not("moved_at", "is", null)
     .lt("moved_at", cutoff);

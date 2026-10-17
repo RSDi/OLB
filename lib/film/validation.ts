@@ -2,6 +2,8 @@
 // iPhone camera-roll videos are often .mov / HEVC with video/quicktime or an
 // empty MIME; we accept those by extension when the browser doesn't send a type.
 
+import { churchToday } from "../dates/today.ts";
+import { parseFilmGameFields, type FilmGameFields } from "./game-meta.ts";
 import { MAX_UPLOAD_BYTES } from "./types.ts";
 
 export const VIDEO_MIME_TYPES = new Set([
@@ -37,7 +39,7 @@ const NAME_MAX = 80;
 const FILENAME_MAX = 200;
 
 export type UploadValidation =
-  | { ok: true; uploaderName: string; filename: string; contentType: string; sizeBytes: number }
+  | { ok: true; uploaderName: string; filename: string; contentType: string; sizeBytes: number } & FilmGameFields
   | { ok: false; error: string };
 
 function extOf(filename: string): string {
@@ -72,12 +74,19 @@ export function cleanSizeBytes(raw: unknown): number | null {
   return Math.floor(n);
 }
 
-export function validateUploadInput(input: {
-  uploaderName?: unknown;
-  filename?: unknown;
-  contentType?: unknown;
-  sizeBytes?: unknown;
-}): UploadValidation {
+export function validateUploadInput(
+  input: {
+    uploaderName?: unknown;
+    filename?: unknown;
+    contentType?: unknown;
+    sizeBytes?: unknown;
+    gameDate?: unknown;
+    opponent?: unknown;
+    ourScore?: unknown;
+    theirScore?: unknown;
+  },
+  today = churchToday()
+): UploadValidation {
   const uploaderName = cleanUploaderName(input.uploaderName);
   if (!uploaderName) return { ok: false, error: "Your name is required." };
   const filename = cleanFilename(input.filename);
@@ -91,12 +100,18 @@ export function validateUploadInput(input: {
   if (!isVideoFile(filename, contentType)) {
     return { ok: false, error: "Upload a video (phone recordings like .mov are fine)." };
   }
+  const game = parseFilmGameFields(input, today);
+  if (!game.ok) return game;
   return {
     ok: true,
     uploaderName,
     filename,
     contentType: contentType || "video/mp4",
     sizeBytes: size,
+    gameDate: game.gameDate,
+    opponent: game.opponent,
+    ourScore: game.ourScore,
+    theirScore: game.theirScore,
   };
 }
 

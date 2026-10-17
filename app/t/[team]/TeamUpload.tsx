@@ -8,7 +8,9 @@ import Link from "next/link";
 import Uppy from "@uppy/core";
 import Tus from "@uppy/tus";
 import { tusSignedHeaders } from "../../../lib/film/tus";
-import { allUploadsFinished, formatBytes, formatFinishTime } from "../../../lib/film/guest-status";
+import { churchToday } from "../../../lib/dates/today";
+import { formatFilmGameLine } from "../../../lib/film/game-meta";
+import { allUploadsFinished, formatBytes, formatFinishTime, isLargeFilmFile } from "../../../lib/film/guest-status";
 import { MAX_UPLOAD_BYTES, TUS_CHUNK_SIZE } from "../../../lib/film/types";
 import styles from "../../film/film.module.css";
 
@@ -26,7 +28,15 @@ type FileUi = {
   status: "waiting" | "uploading" | "done" | "error";
   error?: string;
   finishedAt?: number;
+  gameDate?: string;
+  opponent?: string | null;
+  ourScore?: number | null;
+  theirScore?: number | null;
 };
+
+function digitsOnly(raw: string): string {
+  return raw.replace(/\D/g, "").slice(0, 3);
+}
 
 type TokenRes = {
   uploadId: string;
@@ -44,15 +54,35 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
   const [unlockError, setUnlockError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
   const [uploaderName, setUploaderName] = useState("");
+  const [gameDate, setGameDate] = useState(() => churchToday());
+  const [opponent, setOpponent] = useState("");
+  const [ourScore, setOurScore] = useState("");
+  const [theirScore, setTheirScore] = useState("");
   const [files, setFiles] = useState<FileUi[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const nameRef = useRef(uploaderName);
+  const gameDateRef = useRef(gameDate);
+  const opponentRef = useRef(opponent);
+  const ourScoreRef = useRef(ourScore);
+  const theirScoreRef = useRef(theirScore);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     nameRef.current = uploaderName;
   }, [uploaderName]);
+  useEffect(() => {
+    gameDateRef.current = gameDate;
+  }, [gameDate]);
+  useEffect(() => {
+    opponentRef.current = opponent;
+  }, [opponent]);
+  useEffect(() => {
+    ourScoreRef.current = ourScore;
+  }, [ourScore]);
+  useEffect(() => {
+    theirScoreRef.current = theirScore;
+  }, [theirScore]);
 
   const uppy = useMemo(() => {
     const instance = new Uppy({
@@ -147,6 +177,12 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
         uppy.removeFile(fileId);
         return false;
       }
+      const snapshot = {
+        gameDate: gameDateRef.current.trim() || churchToday(),
+        opponent: opponentRef.current.trim() || null,
+        ourScore: ourScoreRef.current.trim() || null,
+        theirScore: theirScoreRef.current.trim() || null,
+      };
       setFormError(null);
       const res = await fetch("/film/upload-token", {
         method: "POST",
@@ -156,6 +192,10 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
           filename: file.name,
           contentType: file.type,
           sizeBytes: file.size,
+          gameDate: snapshot.gameDate,
+          opponent: snapshot.opponent,
+          ourScore: snapshot.ourScore,
+          theirScore: snapshot.theirScore,
         }),
       });
       const body = (await res.json().catch(() => ({}))) as TokenRes & { error?: string };
@@ -174,6 +214,19 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
         filmToken: body.token,
         filmUploadId: body.uploadId,
       });
+      setFiles((cur) =>
+        cur.map((f) =>
+          f.id === fileId
+            ? {
+                ...f,
+                gameDate: snapshot.gameDate,
+                opponent: snapshot.opponent,
+                ourScore: snapshot.ourScore ? Number(snapshot.ourScore) : null,
+                theirScore: snapshot.theirScore ? Number(snapshot.theirScore) : null,
+              }
+            : f
+        )
+      );
       return true;
     },
     [uppy]
@@ -221,6 +274,7 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
   );
 
   const allDone = allUploadsFinished(files);
+  const largeFileNote = files.some((f) => isLargeFilmFile(f.total || f.bytes));
 
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
@@ -297,8 +351,66 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
                   placeholder="So coaches know who sent it"
                   required
                   autoComplete="name"
+                  enterKeyHint="next"
                 />
               </label>
+              <label className={styles.field}>
+                <span className={styles.label}>Game date</span>
+                <input
+                  className={styles.input}
+                  type="date"
+                  value={gameDate}
+                  onChange={(e) => setGameDate(e.target.value || churchToday())}
+                  required
+                />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.label}>Opponent</span>
+                <input
+                  className={styles.input}
+                  value={opponent}
+                  onChange={(e) => setOpponent(e.target.value)}
+                  placeholder="Who did we play?"
+                  autoComplete="off"
+                  autoCapitalize="words"
+                  enterKeyHint="next"
+                  maxLength={80}
+                />
+              </label>
+              <fieldset className={styles.scoreFields}>
+                <legend className={styles.label}>Score</legend>
+                <p className={styles.hint}>Optional — leave blank if the game isn&apos;t over.</p>
+                <div className={styles.scoreRow}>
+                  <label className={styles.field}>
+                    <span className={styles.subLabel}>Our score</span>
+                    <input
+                      className={styles.input}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="off"
+                      maxLength={3}
+                      value={ourScore}
+                      onChange={(e) => setOurScore(digitsOnly(e.target.value))}
+                      placeholder="—"
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    <span className={styles.subLabel}>Their score</span>
+                    <input
+                      className={styles.input}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="off"
+                      maxLength={3}
+                      value={theirScore}
+                      onChange={(e) => setTheirScore(digitsOnly(e.target.value))}
+                      placeholder="—"
+                    />
+                  </label>
+                </div>
+              </fieldset>
               <div
                 className={`${styles.drop} ${dragOver ? styles.dropActive : ""}`}
                 onDragOver={(e) => {
@@ -334,12 +446,27 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
                   or tap to pick from your camera roll. Phone .mov files are fine. Up to 20 GB each.
                 </div>
               </div>
+              <p className={styles.tip}>
+                Tip: record in 1080p at 30 fps (iPhone: Settings → Camera → Record Video). 4K files are
+                3–6× bigger and upload much slower.
+              </p>
+              {largeFileNote && (
+                <p className={styles.sizeHint} role="status">
+                  This file is over 4 GB. Next time, 1080p at 30 fps uploads much faster.
+                </p>
+              )}
               {formError && <p className={styles.error}>{formError}</p>}
               {files.length > 0 && (
                 <div className={styles.files}>
                   {files.map((f) => {
                     const pct = f.total > 0 ? Math.min(100, Math.round((f.bytes / f.total) * 100)) : 0;
                     const size = formatBytes(f.total || f.bytes);
+                    const gameLine = formatFilmGameLine({
+                      gameDate: f.gameDate,
+                      opponent: f.opponent,
+                      ourScore: f.ourScore,
+                      theirScore: f.theirScore,
+                    });
                     if (f.status === "done") {
                       return (
                         <div key={f.id} className={`${styles.fileRow} ${styles.fileRowDone}`} role="status">
@@ -354,6 +481,7 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
                                 {size}
                                 {f.finishedAt ? ` · ${formatFinishTime(f.finishedAt)}` : ""}
                               </p>
+                              {gameLine && <p className={styles.fileGame}>{gameLine}</p>}
                             </div>
                           </div>
                           <div className={styles.bar} aria-valuemin={0} aria-valuemax={100} aria-valuenow={100}>

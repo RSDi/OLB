@@ -690,13 +690,14 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     permission: "film_view",
     alsoPermissions: ["film_manage"],
     routes: ["/portal/film"],
-    keywords: ["film", "game film", "video", "upload", "download", "moved", "youtube", "holding", "delete", "coach inbox"],
+    keywords: ["film", "game film", "video", "upload", "download", "moved", "youtube", "holding", "delete", "coach inbox", "game date", "opponent", "score"],
     body: `Game videos families send in from their phones, under **Film** in the sidebar. You see this if a super-admin gave you **Game film** (or **Game film (manage)**) in Settings → Members.
 
-Families don't sign in here. They open the team upload link they were sent (the full **https://…/t/…** address from **Settings → Film**), enter that team's shared code, type their name, and upload. Ask them to **keep the page open and keep the phone plugged in** until they see **✓ Uploaded** on each file and the green **All videos uploaded — you can close this page.** If a file says **Failed**, they tap **Retry**.
+Families don't sign in here. They open the team upload link they were sent (the full **https://…/t/…** address from **Settings → Film**), enter that team's shared code, then fill in **Your name**, **Game date** (it starts on today), **Opponent**, and **Our score** / **Their score** if they know it — scores can stay blank if the game isn't over — and upload. The page has a **Tip: record in 1080p at 30 fps (iPhone: Settings → Camera → Record Video).** Ask them to **keep the page open and keep the phone plugged in** until they see **✓ Uploaded** on each file and the green **All videos uploaded — you can close this page.** If a file says **Failed**, they tap **Retry**.
 
 **On this page**
 
+- Each video lists the game date, opponent, and score the family typed, plus who sent it.
 - **All**, **Holding** and **Moved** filter the list. New uploads start as **Holding**.
 - **Download** opens a temporary link to the file. Save it somewhere the club keeps film.
 - If you have **Game film (manage)**: **Mark moved** once it's copied off (YouTube, a drive). **Back to holding** undoes that. **Delete** removes the file for good.
