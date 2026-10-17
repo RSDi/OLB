@@ -52,6 +52,7 @@ export const SITE_PAGES: { href: string; label: string }[] = [
   { href: "/contact", label: "Contact" },
   { href: "/assistance", label: "Assistance" },
   { href: "/player-registration", label: "Player Registration" },
+  { href: "/film", label: "Game film" },
 ];
 
 // A web address opens in a new tab; a site page doesn't.

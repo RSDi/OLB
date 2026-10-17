@@ -340,6 +340,38 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "film",
+    sectionId: "film",
+    title: "Film tour",
+    route: "/portal/film",
+    steps: [
+      {
+        title: "Game film",
+        body: "Videos families uploaded from their phones. Download a copy, then mark it moved once it's somewhere the club keeps film.",
+      },
+      {
+        target: "film-filter",
+        title: "Holding or moved",
+        body: "**All** is everything. **Holding** is still waiting to be copied off. **Moved** is already saved elsewhere.",
+      },
+      {
+        target: "film-download",
+        title: "Download",
+        body: "Opens a temporary link to the file. Save it before you mark it moved.",
+      },
+      {
+        target: "film-moved",
+        title: "Mark moved",
+        body: "Once the video is on YouTube or a drive, tap **Mark moved**. Files marked moved are deleted after 30 days. You only see this with **Game film (manage)**.",
+      },
+      {
+        target: "film-delete",
+        title: "Delete",
+        body: "**Delete** removes the file for good. Same permission as **Mark moved**.",
+      },
+    ],
+  },
+  {
     id: "payments",
     sectionId: "payments",
     title: "Finances tour",
@@ -669,6 +701,37 @@ export const GUIDE_TOURS: GuideTour[] = [
         interactive: true,
         title: "Save it",
         body: "Tap **Create team** to save, or **Cancel** to leave things as they are.",
+      },
+    ],
+  },
+  {
+    id: "settings-film",
+    sectionId: "settings-film",
+    title: "Film teams walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-film",
+        title: "Settings → Film",
+        body: "The same Directory teams, with a family upload page and a shared code for each one you turn on.",
+      },
+      {
+        target: "film-settings-row",
+        click: "settings-tab-film",
+        title: "Each team",
+        body: "**On** shows it on **/film**. **Rename** changes the Directory name. **Upload address** is the **/t/…** link families open.",
+      },
+      {
+        target: "film-settings-code",
+        click: "settings-tab-film",
+        title: "The upload code",
+        body: "**Set code** or **Generate code**, then copy it — we store it hashed and won't show it again. **Rotate** makes a new one and locks phones that already unlocked.",
+      },
+      {
+        target: "film-settings-add",
+        click: "settings-tab-film",
+        title: "New team",
+        body: "Adds a Directory team so you can give it a film page from here.",
       },
     ],
   },

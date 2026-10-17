@@ -66,6 +66,7 @@ export default async function PortalLayout({
               canOpenSettings: viewer.canOpenSettings,
               canEditContacts: viewer.canEditContacts,
               canPlanHsSchedule: viewer.canPlanHsSchedule,
+              canViewFilm: viewer.canViewFilm,
               permissions: viewer.permissions,
               canPairDevices: viewer.canPairDevices,
               seesPayments: viewer.canManageFinances || hasBalance || (viewer.canViewFinances && booksOn),
