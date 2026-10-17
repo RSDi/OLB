@@ -30,6 +30,8 @@ import {
   canEditContacts,
   canManageTeams,
   canManageSiteLinks,
+  canViewFilm,
+  canManageFilm,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -235,6 +237,25 @@ export async function requireSiteLinks(): Promise<GateResult> {
   if (!caller) return { error: "You must be signed in." };
   if (!canManageSiteLinks(caller.member)) {
     return { error: "You don't have permission to change the sidebar links or the public Directory." };
+  }
+  return { userId: caller.userId };
+}
+
+// Game film inbox (0142): list/download vs mark moved/delete.
+export async function requireFilmView(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canViewFilm(caller.member)) {
+    return { error: "You don't have permission to view game film." };
+  }
+  return { userId: caller.userId };
+}
+
+export async function requireFilmManage(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canManageFilm(caller.member)) {
+    return { error: "You don't have permission to change game film." };
   }
   return { userId: caller.userId };
 }

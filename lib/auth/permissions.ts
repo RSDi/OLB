@@ -177,6 +177,12 @@ export const canPlanHsSchedule = (m: MemberLike | null | undefined) => isStaff(m
 export const canManageTeams = (m: MemberLike | null | undefined) => hasPermission(m, "teams");
 export const canManageSiteLinks = (m: MemberLike | null | undefined) => hasPermission(m, "site_links");
 
+// Game film inbox (0142). View lists and downloads; manage marks moved / deletes.
+// Manage includes view, so a coach given only "Game film (manage)" still opens Film.
+export const canManageFilm = (m: MemberLike | null | undefined) => hasPermission(m, "film_manage");
+export const canViewFilm = (m: MemberLike | null | undefined) =>
+  hasPermission(m, "film_view") || canManageFilm(m);
+
 // Every approved member opens Settings (Release Notes, plus any tabs their
 // permissions add). Pending and denied accounts stay out.
 export const canOpenSettings = (m: MemberLike | null | undefined) =>

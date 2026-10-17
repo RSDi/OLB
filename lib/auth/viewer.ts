@@ -33,6 +33,8 @@ import {
   canPlanHsSchedule,
   canManageTeams,
   canManageSiteLinks,
+  canViewFilm,
+  canManageFilm,
   canOpenSettings,
   type MemberLike,
   type MemberRole,
@@ -78,6 +80,9 @@ export interface Viewer {
   // Super-admin powers, for super-admins and whoever is given them (0123).
   canManageTeams: boolean;
   canManageSiteLinks: boolean;
+  // Game film inbox (0142): list/download vs mark moved/delete.
+  canViewFilm: boolean;
+  canManageFilm: boolean;
   // Board, or holds a permission whose page is in Settings.
   canOpenSettings: boolean;
   // Every permission key they hold (0122), for the help's per-permission
@@ -172,6 +177,8 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canPlanHsSchedule: canPlanHsSchedule(member),
     canManageTeams: canManageTeams(member),
     canManageSiteLinks: canManageSiteLinks(member),
+    canViewFilm: canViewFilm(member),
+    canManageFilm: canManageFilm(member),
     canOpenSettings: canOpenSettings(member),
     permissions: member.permissions ?? [],
     seesFullUi: seesFullUi(user.email),
