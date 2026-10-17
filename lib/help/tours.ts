@@ -705,6 +705,37 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-film",
+    sectionId: "settings-film",
+    title: "Film teams walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-film",
+        title: "Settings → Film",
+        body: "The same Directory teams, with a family upload page and a shared code for each one you turn on.",
+      },
+      {
+        target: "film-settings-row",
+        click: "settings-tab-film",
+        title: "Each team",
+        body: "**On** shows it on **/film**. **Rename** changes the Directory name. **Upload address** is the **/t/…** link families open.",
+      },
+      {
+        target: "film-settings-code",
+        click: "settings-tab-film",
+        title: "The upload code",
+        body: "**Set code** or **Generate code**, then copy it — we store it hashed and won't show it again. **Rotate** makes a new one and locks phones that already unlocked.",
+      },
+      {
+        target: "film-settings-add",
+        click: "settings-tab-film",
+        title: "New team",
+        body: "Adds a Directory team so you can give it a film page from here.",
+      },
+    ],
+  },
+  {
     id: "settings-season",
     sectionId: "settings-season",
     title: "Season walkthrough",

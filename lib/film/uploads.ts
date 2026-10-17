@@ -22,6 +22,7 @@ export function newUploadId(): string {
 export async function insertHoldingUpload(input: {
   id: string;
   team: string;
+  teamId: string;
   uploaderName: string;
   filename: string;
   contentType: string;
@@ -34,6 +35,7 @@ export async function insertHoldingUpload(input: {
     .insert({
       id: input.id,
       team: input.team,
+      team_id: input.teamId,
       uploader_name: input.uploaderName,
       filename: input.filename,
       content_type: input.contentType,
@@ -42,21 +44,26 @@ export async function insertHoldingUpload(input: {
       status: "holding",
     })
     .select(
-      "id, team, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
+      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
     )
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't log the upload.");
   return data as FilmUpload;
 }
 
-export async function listFilmUploads(): Promise<FilmUpload[]> {
+export async function listFilmUploads(teamIds?: string[]): Promise<FilmUpload[]> {
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let query = admin
     .from("game_film_uploads")
     .select(
-      "id, team, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
+      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
     )
     .order("created_at", { ascending: false });
+  if (teamIds) {
+    if (teamIds.length === 0) return [];
+    query = query.in("team_id", teamIds);
+  }
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data as FilmUpload[]) ?? [];
 }
@@ -66,7 +73,7 @@ export async function getFilmUpload(id: string): Promise<FilmUpload | null> {
   const { data, error } = await admin
     .from("game_film_uploads")
     .select(
-      "id, team, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
+      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
     )
     .eq("id", id)
     .maybeSingle();
@@ -85,7 +92,7 @@ export async function setFilmStatus(id: string, status: FilmStatus): Promise<Fil
     .update(patch)
     .eq("id", id)
     .select(
-      "id, team, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
+      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
     )
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -107,7 +114,7 @@ export async function listExpiredMovedUploads(now = new Date()): Promise<FilmUpl
   const { data, error } = await admin
     .from("game_film_uploads")
     .select(
-      "id, team, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
+      "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at"
     )
     .eq("status", "moved")
     .not("moved_at", "is", null)

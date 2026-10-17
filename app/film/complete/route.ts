@@ -3,13 +3,15 @@
 
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { FILM_COOKIE, parseFilmSession } from "../../../lib/film/session";
+import { FILM_COOKIE, parseFilmSession, sessionMatchesTeam } from "../../../lib/film/session";
+import { getFilmTeamBySlug } from "../../../lib/film/teams";
 import { getFilmUpload } from "../../../lib/film/uploads";
 
 export async function POST(request: Request) {
   const store = await cookies();
-  const team = parseFilmSession(store.get(FILM_COOKIE)?.value);
-  if (!team) {
+  const session = parseFilmSession(store.get(FILM_COOKIE)?.value);
+  const team = session ? await getFilmTeamBySlug(session.slug).catch(() => null) : null;
+  if (!session || !sessionMatchesTeam(session, team)) {
     return NextResponse.json({ error: "Unlock this team with the shared code first." }, { status: 401 });
   }
   let body: { uploadId?: unknown };
@@ -21,7 +23,7 @@ export async function POST(request: Request) {
   const id = typeof body.uploadId === "string" ? body.uploadId : "";
   if (!id) return NextResponse.json({ error: "Send the upload id." }, { status: 400 });
   const row = await getFilmUpload(id);
-  if (!row || row.team !== team) {
+  if (!row || row.team !== session.slug) {
     return NextResponse.json({ error: "That upload isn't on this team." }, { status: 404 });
   }
   return NextResponse.json({ ok: true, status: row.status });

@@ -1,12 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
-import { configuredFilmTeams } from "../../lib/film/teams";
+import { listEnabledFilmTeams } from "../../lib/film/teams";
 import styles from "./film.module.css";
 
 export const dynamic = "force-dynamic";
 
-export default function FilmLandingPage() {
-  const teams = configuredFilmTeams();
+export default async function FilmLandingPage() {
+  let teams: { slug: string; label: string }[] = [];
+  try {
+    teams = await listEnabledFilmTeams();
+  } catch {
+    teams = [];
+  }
   return (
     <div className={styles.page}>
       <div className={styles.inner}>
@@ -24,8 +29,8 @@ export default function FilmLandingPage() {
         {teams.length === 0 ? (
           <div className={styles.card}>
             <p className={styles.lede} style={{ margin: 0 }}>
-              Team upload pages aren&apos;t set up yet. A club admin needs to add each team&apos;s
-              code.
+              Team upload pages aren&apos;t set up yet. A club admin turns each team on in Settings
+              → Film and sets its code.
             </p>
           </div>
         ) : (

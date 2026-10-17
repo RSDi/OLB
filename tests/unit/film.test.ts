@@ -1,12 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  checkTeamCode,
+  checkFilmTeamCode,
   codesMatch,
   encodeFilmSession,
   parseFilmSession,
+  sessionMatchesTeam,
 } from "../../lib/film/session.ts";
-import { configuredFilmTeams, filmTeam, filmTeams, teamCode, teamCodeEnvKey } from "../../lib/film/teams.ts";
+import { filmSlugProblem, slugifyFilmTeam } from "../../lib/film/teams.ts";
+import {
+  filmCodeMatches,
+  filmCodeProblem,
+  generateFilmCode,
+  hashFilmCode,
+  normalizeFilmCode,
+} from "../../lib/film/codes.ts";
 import {
   cleanUploaderName,
   isVideoFile,
@@ -15,11 +23,10 @@ import {
 import { canManageFilm, canViewFilm, hasPermission, type MemberLike } from "../../lib/auth/permissions.ts";
 import { tusEndpoint } from "../../lib/film/supabase-storage.ts";
 import { TOKEN_LIMIT, rateLimitTake } from "../../lib/film/rate-limit.ts";
+import type { FilmTeamRow } from "../../lib/film/teams.ts";
 
 const ENV = {
   FILM_SESSION_SECRET: "film-session-secret-for-tests-not-real",
-  TEAM_CODE_14U_WHITE: "white-code",
-  TEAM_CODE_14U_GOLD: "gold-code",
 };
 
 const approved = (perms: string[]): MemberLike => ({
@@ -28,47 +35,65 @@ const approved = (perms: string[]): MemberLike => ({
   permissions: perms,
 });
 
-test("team slugs map to TEAM_CODE_* env names", () => {
-  assert.equal(teamCodeEnvKey("14u-white"), "TEAM_CODE_14U_WHITE");
-  assert.equal(teamCodeEnvKey("14u-gold"), "TEAM_CODE_14U_GOLD");
-  assert.equal(filmTeam("14u-white")?.label, "14U White");
-  assert.equal(teamCode("14u-white", ENV), "white-code");
-  assert.equal(teamCode("14u-white", {}), null);
-  assert.deepEqual(
-    configuredFilmTeams(ENV).map((t) => t.slug),
-    ["14u-white", "14u-gold"]
-  );
-  assert.equal(configuredFilmTeams({}).length, 0);
+function team(partial: Partial<FilmTeamRow> & Pick<FilmTeamRow, "id" | "slug">): FilmTeamRow {
+  return {
+    boardId: "board",
+    label: "14U White",
+    enabled: true,
+    hasCode: true,
+    hasSlug: true,
+    codeVersion: 1,
+    codeHash: hashFilmCode(partial.id, "white-code"),
+    ...partial,
+  };
+}
+
+test("team names become /t/ slugs", () => {
+  assert.equal(slugifyFilmTeam("14U White"), "14u-white");
+  assert.equal(slugifyFilmTeam("  16U Black  "), "16u-black");
+  assert.equal(filmSlugProblem("14u-white"), null);
+  assert.equal(filmSlugProblem("14U White"), "Use lowercase letters, numbers and hyphens.");
+  assert.equal(filmSlugProblem(""), "Pick an address for the family upload page.");
 });
 
-test("FILM_TEAMS overrides the built-in list", () => {
-  const teams = filmTeams({ FILM_TEAMS: "16u-black:16U Black, 14u-white:14U White" });
-  assert.deepEqual(
-    teams.map((t) => t.envKey),
-    ["TEAM_CODE_16U_BLACK", "TEAM_CODE_14U_WHITE"]
-  );
+test("upload codes are hashed; plaintext is not recoverable", () => {
+  const id = "11111111-1111-1111-1111-111111111111";
+  const stored = hashFilmCode(id, "White-Code");
+  assert.equal(stored.startsWith("v1."), true);
+  assert.equal(stored.includes("white-code"), false);
+  assert.equal(filmCodeMatches(stored, id, "white-code"), true);
+  assert.equal(filmCodeMatches(stored, id, "White-Code"), true);
+  assert.equal(filmCodeMatches(stored, id, "nope"), false);
+  assert.equal(filmCodeMatches(stored, "other-id", "white-code"), false);
+  assert.equal(filmCodeProblem("abc"), "Use at least 4 characters.");
+  assert.match(generateFilmCode(), /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  assert.equal(normalizeFilmCode("  AbC  "), "abc");
 });
 
 test("the shared team code is checked in constant time and fails closed", () => {
-  assert.equal(checkTeamCode("14u-white", "white-code", ENV), "ok");
-  assert.equal(checkTeamCode("14u-white", "nope", ENV), "wrong");
-  assert.equal(checkTeamCode("14u-white", "white-code", {}), "unset");
-  assert.equal(checkTeamCode("no-such-team", "x", ENV), "unset");
+  const row = team({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", slug: "14u-white" });
+  assert.equal(checkFilmTeamCode(row, "white-code"), "ok");
+  assert.equal(checkFilmTeamCode(row, "nope"), "wrong");
+  assert.equal(checkFilmTeamCode({ ...row, enabled: false }, "white-code"), "unset");
+  assert.equal(checkFilmTeamCode({ ...row, hasCode: false, codeHash: null }, "white-code"), "unset");
+  assert.equal(checkFilmTeamCode(null, "white-code"), "unset");
   assert.equal(codesMatch("abc", "abc"), true);
   assert.equal(codesMatch("abc", "abd"), false);
-  assert.equal(codesMatch("ab", "abc"), false);
 });
 
-test("the film session cookie round-trips for one team and rejects junk", () => {
-  const raw = encodeFilmSession("14u-white", 1_700_000_000_000, ENV);
+test("the film session cookie includes the code version so rotate unlocks old phones", () => {
+  const raw = encodeFilmSession("14u-white", 1, 1_700_000_000_000, ENV);
   assert.ok(raw);
-  assert.equal(parseFilmSession(raw, 1_700_000_000_000, ENV), "14u-white");
+  assert.deepEqual(parseFilmSession(raw, 1_700_000_000_000, ENV), { slug: "14u-white", version: 1 });
   assert.equal(parseFilmSession(raw, 1_700_000_000_000 + 8 * 24 * 60 * 60 * 1000, ENV), null);
   assert.equal(parseFilmSession("nope", 1_700_000_000_000, ENV), null);
-  const other = encodeFilmSession("14u-gold", 1_700_000_000_000, ENV)!;
-  assert.equal(parseFilmSession(other, 1_700_000_000_000, ENV), "14u-gold");
+  const v2 = encodeFilmSession("14u-white", 2, 1_700_000_000_000, ENV)!;
+  assert.deepEqual(parseFilmSession(v2, 1_700_000_000_000, ENV), { slug: "14u-white", version: 2 });
+  const row = team({ id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", slug: "14u-white", codeVersion: 2 });
+  assert.equal(sessionMatchesTeam(parseFilmSession(raw, 1_700_000_000_000, ENV), row), false);
+  assert.equal(sessionMatchesTeam(parseFilmSession(v2, 1_700_000_000_000, ENV), row), true);
   assert.equal(parseFilmSession(raw, 1_700_000_000_000, { FILM_SESSION_SECRET: "other" }), null);
-  assert.equal(encodeFilmSession("14u-white", 1, {}), null);
+  assert.equal(encodeFilmSession("14u-white", 1, 1, {}), null);
 });
 
 test("video validation accepts iPhone .mov / HEVC and rejects non-video", () => {

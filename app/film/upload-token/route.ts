@@ -4,8 +4,8 @@
 
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { FILM_COOKIE, parseFilmSession } from "../../../lib/film/session";
-import { teamCode } from "../../../lib/film/teams";
+import { FILM_COOKIE, parseFilmSession, sessionMatchesTeam } from "../../../lib/film/session";
+import { getFilmTeamBySlug } from "../../../lib/film/teams";
 import { validateUploadInput } from "../../../lib/film/validation";
 import { TOKEN_LIMIT, clientIp, rateLimitTake } from "../../../lib/film/rate-limit";
 import { filmStorage } from "../../../lib/film/storage";
@@ -14,8 +14,9 @@ import { GAME_FILM_BUCKET } from "../../../lib/film/types";
 
 export async function POST(request: Request) {
   const store = await cookies();
-  const team = parseFilmSession(store.get(FILM_COOKIE)?.value);
-  if (!team || !teamCode(team)) {
+  const session = parseFilmSession(store.get(FILM_COOKIE)?.value);
+  const team = session ? await getFilmTeamBySlug(session.slug).catch(() => null) : null;
+  if (!sessionMatchesTeam(session, team) || !team) {
     return NextResponse.json({ error: "Unlock this team with the shared code first." }, { status: 401 });
   }
 
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
   if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
 
   const id = newUploadId();
-  const path = filmStoragePath(team, id, checked.filename);
+  const path = filmStoragePath(team.slug, id, checked.filename);
   let minted;
   try {
     minted = await filmStorage().mintUpload({ path, contentType: checked.contentType });
@@ -56,7 +57,8 @@ export async function POST(request: Request) {
   try {
     await insertHoldingUpload({
       id,
-      team,
+      team: team.slug,
+      teamId: team.id,
       uploaderName: checked.uploaderName,
       filename: checked.filename,
       contentType: checked.contentType,

@@ -702,7 +702,7 @@ Families don't sign in here. They open the team page they were sent (for example
 - If you have **Game film (manage)**: **Mark moved** once it's copied off (YouTube, a drive). **Back to holding** undoes that. **Delete** removes the file for good.
 - Files marked **Moved** are deleted automatically after 30 days.
 
-Share the team upload link and code with families, not this inbox.`,
+Share the team upload link and code with families, not this inbox. Super-admins and anyone with **Game film (manage)** set those codes in **Settings → Film**.`
   },
   {
     id: "payments",
@@ -1037,7 +1037,7 @@ Activity is recorded from the day it went live.`,
 - Pick someone's **access profile** from the drop-down on the **Approved** tab: **Member**, **Board**, any profile the club has made (like Treasurer), or **Super-admin**. The profile sets whether they're Board and what they can manage (see *Settings: Access Profiles*). Picking a new one replaces what they had, extras included.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - Tap **Access** on someone's row on the **Approved** tab to see what they can do. The number on the button counts it, and the row lists it under their name. Greyed ticks come from their profile; change those in **Settings → Access Profiles**. Tick any other box to give that one person an **extra** on top of their profile, untick to take it away. Rows with extras show **+ extras**, and rows on a profile the club made show its name.
-  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, set up **hotel stays** on the HS Schedule (booking instructions and who must register), mark **Booked in block** in the Directory, import a hotel **rooming list** in Settings → Import, and email or Slack families about travel, **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too), **Game film** to open **Film** and download videos families uploaded, and **Game film (manage)** to mark those videos moved or delete them.
+  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, set up **hotel stays** on the HS Schedule (booking instructions and who must register), mark **Booked in block** in the Directory, import a hotel **rooming list** in Settings → Import, and email or Slack families about travel, **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too), **Game film** to open **Film** and download videos families uploaded, and **Game film (manage)** to mark those videos moved or delete them and to open **Settings → Film** (team upload codes). A person can also be a **video manager** for one team in Settings → Film, without the club-wide permission.
   - **Settings (Board)** (board members only): **Edit**, **Delete** and **Undelete** for Settings items like Requirements, and **Website** to change the club website's menu, page text and pictures (see *Settings: Website*).
   - **Board powers** (for people who aren't Board; Board has them all): **See all players** (every player, listed or not, with fees, waivers, shirts and parents' details), **Member notes**, **Check off requirements**, **Approve access requests**, **External Contacts** (see, add and edit every contact, and their history) and **Plan HS Schedule**.
   - **Club setup** (anyone): **Teams & volunteers** to set up teams and volunteer roles and fill team spots (putting someone in a leadership spot makes them a coach), and **Sidebar Links & Public Directory**.
@@ -1080,6 +1080,25 @@ Put someone on a profile with the drop-down on their row in **Settings → Membe
 - **Staff & volunteers →** opens the team's page in the Directory, where you assign coaches and volunteers.
 
 What you enter here shows on the team's Directory banner and team page. Players are put on teams in the Directory, with the team chip on each player.`,
+  },
+  {
+    id: "settings-film",
+    title: "Settings: Film",
+    group: "Settings",
+    audience: "super_admin",
+    permission: "film_manage",
+    keywords: ["film", "game film", "upload code", "team code", "video managers", "rotate", "slug", "/t/"],
+    body: `Turn Directory teams on for family uploads and set each team's code. Open **Settings → Film**. Super-admins can, and so can anyone with **Game film (manage)**.
+
+These are the same teams as **Settings → Teams**, not a second list.
+
+- **+ New team** adds a Directory team (same as Settings → Teams) so you can give it a film page without leaving this tab. **Rename** changes the team's name everywhere.
+- **On** / **Off** shows or hides that team on **/film** and **/t/…**. Turn it on only after a code is set.
+- **Upload address** is the end of the family link, like **14u-white** for **/t/14u-white**.
+- **Set code** or **Generate code** makes the shared code families type. We store it hashed and **show it once** — copy it now. There is no reveal later. **Rotate code** makes a new one; phones that already unlocked that team have to enter the new code.
+- **Video managers** are portal people who can open **Film** and download that team's videos without the club-wide **Game film** permission. They cannot mark moved or delete.
+
+**FILM_SESSION_SECRET** stays in Vercel (it signs the unlock cookie). Team codes do not.`,
   },
   {
     id: "settings-season",

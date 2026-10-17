@@ -2,8 +2,8 @@
 // Sets the signed olb_film cookie. Bytes never land here.
 
 import { NextResponse } from "next/server";
-import { FILM_COOKIE, checkTeamCode, encodeFilmSession, filmCookieOptions } from "../../../lib/film/session";
-import { filmTeam } from "../../../lib/film/teams";
+import { FILM_COOKIE, checkFilmTeamCode, encodeFilmSession, filmCookieOptions } from "../../../lib/film/session";
+import { getFilmTeamBySlug } from "../../../lib/film/teams";
 import { UNLOCK_LIMIT, clientIp, rateLimitTake } from "../../../lib/film/rate-limit";
 import { requestIsHttps } from "../../../lib/auth/pairing-cookie";
 
@@ -15,7 +15,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Send the team and the code." }, { status: 400 });
   }
   const slug = typeof body.team === "string" ? body.team.trim().toLowerCase() : "";
-  if (!filmTeam(slug)) {
+  let team;
+  try {
+    team = slug ? await getFilmTeamBySlug(slug) : null;
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Couldn't check that team." },
+      { status: 500 }
+    );
+  }
+  if (!team || !team.enabled) {
     return NextResponse.json({ error: "That team isn't set up for film." }, { status: 404 });
   }
 
@@ -28,7 +37,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = checkTeamCode(slug, body.code);
+  const result = checkFilmTeamCode(team, body.code);
   if (result === "unset") {
     return NextResponse.json({ error: "That team isn't set up for film." }, { status: 404 });
   }
@@ -36,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "That code doesn't match." }, { status: 401 });
   }
 
-  const value = encodeFilmSession(slug);
+  const value = encodeFilmSession(team.slug, team.codeVersion);
   if (!value) {
     return NextResponse.json(
       { error: "Film uploads aren't configured (missing FILM_SESSION_SECRET)." },
@@ -44,7 +53,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const res = NextResponse.json({ ok: true, team: slug });
+  const res = NextResponse.json({ ok: true, team: team.slug });
   res.cookies.set(
     FILM_COOKIE,
     value,

@@ -82,7 +82,7 @@ const CONTRACT: Record<string, string> = {
   slack_archive_channel_members: "channel_id,member_id,created_at",
   olb_boards: "id,season,name,parent_balances_visible,season_ends_on",
   olb_age_caps: "id,board_id,age_group,max_age,sort_order,created_at,updated_at",
-  olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at",
+  olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at,film_slug,film_enabled,film_code_hash,film_code_version",
   olb_players:
     "id,board_id,team_id,full_name,dob,grade,sort_order,import_flag,updated_at,age_group,new_to_program,address_line1,address_line2,city,state,postal_code,phone,email,registration_fee,payment_method,shirt_size,waiver_signed,waiver_signed_on,directory_optin,registered_at",
   olb_player_parents: "player_id,member_id,relationship",
@@ -150,7 +150,8 @@ const CONTRACT: Record<string, string> = {
   olb_roadmap_link: "id,key,updated_at",
   // Game film (0142).
   game_film_uploads:
-    "id,team,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at",
+    "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at",
+  game_film_managers: "team_id,user_id,created_at",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {

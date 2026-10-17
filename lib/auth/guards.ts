@@ -10,6 +10,7 @@
 //   if ("error" in gate) return { error: gate.error };
 
 import { createClient } from "../supabase/server";
+import { listFilmManagerTeamIds } from "../film/teams";
 import { loadGrants } from "./load-grants";
 import {
   isStaff,
@@ -242,13 +243,23 @@ export async function requireSiteLinks(): Promise<GateResult> {
 }
 
 // Game film inbox (0142): list/download vs mark moved/delete.
-export async function requireFilmView(): Promise<GateResult> {
+// allTeams = global film_view / film_manage; otherwise teamIds are the
+// teams this person is a video manager for.
+export type FilmAccess = { userId: string; allTeams: boolean; teamIds: string[] };
+
+export async function requireFilmAccess(): Promise<{ error: string } | FilmAccess> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };
-  if (!canViewFilm(caller.member)) {
-    return { error: "You don't have permission to view game film." };
-  }
-  return { userId: caller.userId };
+  if (canViewFilm(caller.member)) return { userId: caller.userId, allTeams: true, teamIds: [] };
+  const teamIds = await listFilmManagerTeamIds(caller.userId);
+  if (teamIds.length === 0) return { error: "You don't have permission to view game film." };
+  return { userId: caller.userId, allTeams: false, teamIds };
+}
+
+export async function requireFilmView(): Promise<GateResult> {
+  const access = await requireFilmAccess();
+  if ("error" in access) return access;
+  return { userId: access.userId };
 }
 
 export async function requireFilmManage(): Promise<GateResult> {

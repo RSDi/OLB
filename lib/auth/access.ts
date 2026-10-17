@@ -88,7 +88,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "teams", label: "Teams & volunteers", desc: "Set up teams and volunteer roles, and fill team spots. Putting someone in a leadership spot makes them a coach", group: "setup" },
   { key: "site_links", label: "Sidebar Links & Public Directory", desc: "Change the links in everyone's sidebar and the public Directory link", group: "setup" },
   { key: "film_view", label: "Game film", desc: "Open Film in the sidebar: list game videos families uploaded and download them", group: "manage" },
-  { key: "film_manage", label: "Game film (manage)", desc: "Mark game film moved or delete it. Also lets you open Film", group: "manage" },
+  { key: "film_manage", label: "Game film (manage)", desc: "Settings → Film (team upload pages and codes), mark game film moved or delete it. Also lets you open Film", group: "manage" },
 ];
 
 export const PERMISSION_GROUPS: { key: PermissionDef["group"]; label: string }[] = [

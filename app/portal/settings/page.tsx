@@ -12,6 +12,7 @@ import {
   canManageFinances,
   canManageWebsite,
   canManageTravel,
+  canManageFilm,
   canOpenSettings,
   isStaff,
   isSuperAdmin,
@@ -26,6 +27,7 @@ import { AssetsTab } from "./AssetsTab";
 import { TypesTab } from "./TypesTab";
 import { SuppliesTab } from "./SuppliesTab";
 import { TeamsSettingsTab } from "./TeamsSettingsTab";
+import { FilmSettingsTab } from "./FilmSettingsTab";
 import { SeasonTab } from "./SeasonTab";
 import { VolunteerRolesTab } from "./VolunteerRolesTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
@@ -55,7 +57,7 @@ import { Icons } from "../../components/icons";
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
 // Website is released to whoever holds its grant (and super-admins).
-const RELEASED_TABS = new Set<string>(["members", "teams", "season", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website", "release_notes", "import"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "film", "season", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website", "release_notes", "import"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "access_profiles",
   "playbooks",
@@ -71,6 +73,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   members: "settings-members",
   access_profiles: "settings-access-profiles",
   teams: "settings-teams",
+  film: "settings-film",
   season: "settings-season",
   volunteer_roles: "settings-volunteer-roles",
   requirements: "settings-requirements",
@@ -98,6 +101,7 @@ type Tab =
   | "types"
   | "supplies"
   | "teams"
+  | "film"
   | "season"
   | "volunteer_roles"
   | "requirements"
@@ -150,6 +154,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
   // tab stay super-admin-only via canManage.
   const showMembers = canApproveMembers(me);
   const teams = canManageTeams(me);
+  const film = canManageFilm(me);
   const siteLinks = canManageSiteLinks(me);
   // Someone off the board who holds one of the permissions above sees only
   // those tabs; the rest of Settings is the board's.
@@ -157,6 +162,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
   const GRANTED_TABS: Partial<Record<Tab, boolean>> = {
     members: showMembers,
     teams,
+    film,
     volunteer_roles: teams,
     sidebar_links: siteLinks,
     public_directory: siteLinks,
@@ -178,6 +184,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     // Named bundles of permissions handed out in Members (0122).
     { key: "access_profiles", label: "Access Profiles", group: "People & Access", visible: isSuperAdmin(me), tour: "settings-tab-access-profiles", keywords: "permissions roles grants treasurer" },
     { key: "teams", label: "Teams", group: "People & Access", visible: teams, tour: "settings-tab-teams", keywords: "coaches roster squads" },
+    { key: "film", label: "Film", group: "People & Access", visible: film, tour: "settings-tab-film", keywords: "game film video upload code teams coaches" },
     { key: "season", label: "Season", group: "People & Access", visible: board, tour: "settings-tab-season", keywords: "season end date age cap eligibility 14u 12u 10u play up conqueror birthday" },
     { key: "volunteer_roles", label: "Volunteer Roles", group: "People & Access", visible: teams, tour: "settings-tab-volunteer-roles", keywords: "volunteers parents jobs" },
     { key: "requirements", label: "Requirements", group: "People & Access", visible: canEditSettings(me), tour: "settings-tab-requirements", keywords: "forms fees players registration hand in pay" },
@@ -303,6 +310,8 @@ export default function SettingsPage() {
         ? "teams"
         : canManageTravel(memberLike)
         ? "import"
+        : canManageFilm(memberLike)
+        ? "film"
         : "release_notes";
       setTab(linked ? linked.key : mine.some((t) => t.key === landing) ? landing : mine[0]?.key ?? landing);
       setAuthChecked(true);
@@ -354,6 +363,7 @@ export default function SettingsPage() {
       {tab === "types" && has("types") && <TypesTab me={me} />}
       {tab === "supplies" && has("supplies") && <SuppliesTab me={me} />}
       {tab === "teams" && has("teams") && <TeamsSettingsTab />}
+      {tab === "film" && has("film") && <FilmSettingsTab />}
       {tab === "season" && has("season") && <SeasonTab />}
       {tab === "volunteer_roles" && has("volunteer_roles") && <VolunteerRolesTab />}
       {tab === "requirements" && has("requirements") && <RequirementsTab me={me} />}

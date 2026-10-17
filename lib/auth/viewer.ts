@@ -82,7 +82,10 @@ export interface Viewer {
   canManageSiteLinks: boolean;
   // Game film inbox (0142): list/download vs mark moved/delete.
   canViewFilm: boolean;
+  canViewAllFilm: boolean;
   canManageFilm: boolean;
+  // Teams this person is a video manager for (empty when they have global view).
+  filmTeamIds: string[];
   // Board, or holds a permission whose page is in Settings.
   canOpenSettings: boolean;
   // Every permission key they hold (0122), for the help's per-permission
@@ -152,6 +155,12 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
   const member: MemberLike = { ...grants, role: row.role, status: row.status };
+  const globalFilm = canViewFilm(member);
+  let filmTeamIds: string[] = [];
+  if (!globalFilm) {
+    const { data: managed } = await supabase.from("game_film_managers").select("team_id").eq("user_id", user.id);
+    filmTeamIds = ((managed as { team_id: string }[] | null) ?? []).map((r) => r.team_id);
+  }
 
   return {
     userId: user.id,
@@ -177,8 +186,10 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canPlanHsSchedule: canPlanHsSchedule(member),
     canManageTeams: canManageTeams(member),
     canManageSiteLinks: canManageSiteLinks(member),
-    canViewFilm: canViewFilm(member),
+    canViewFilm: globalFilm || filmTeamIds.length > 0,
+    canViewAllFilm: globalFilm,
     canManageFilm: canManageFilm(member),
+    filmTeamIds,
     canOpenSettings: canOpenSettings(member),
     permissions: member.permissions ?? [],
     seesFullUi: seesFullUi(user.email),

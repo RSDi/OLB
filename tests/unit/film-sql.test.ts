@@ -24,10 +24,15 @@ test("0142 adds game_film_uploads, the private bucket, and wrapped film helpers"
   assert.ok(migration.includes("can_manage_film"));
   assert.ok(migration.includes("has_permission('film_view')"));
   assert.ok(migration.includes("has_permission('film_manage')"));
-  assert.ok(migration.includes("using ((select public.can_view_film()))"));
+  assert.ok(migration.includes("(select public.can_view_film())"));
   assert.ok(migration.includes("using ((select public.can_manage_film()))"));
+  assert.ok(migration.includes("film_slug"));
+  assert.ok(migration.includes("film_code_hash"));
+  assert.ok(migration.includes("film_code_version"));
+  assert.ok(migration.includes("game_film_managers"));
   assert.ok(!migration.includes("using (public.can_view_film())"));
   assert.ok(!migration.includes("using (public.is_staff())"));
+  assert.ok(!migration.includes("TEAM_CODE_"));
   assert.ok(!migration.includes("drop table"));
   assert.ok(!migration.includes("to anon"));
   assert.ok(migration.includes("OLB does NOT auto-run"));

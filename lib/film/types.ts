@@ -21,12 +21,12 @@ export type FilmStatus = "holding" | "moved";
 export interface FilmTeam {
   slug: string;
   label: string;
-  envKey: string;
 }
 
 export interface FilmUpload {
   id: string;
   team: string;
+  team_id: string | null;
   uploader_name: string;
   filename: string;
   content_type: string | null;
