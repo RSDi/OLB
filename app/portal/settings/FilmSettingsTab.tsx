@@ -91,8 +91,8 @@ export function FilmSettingsTab() {
             Settings → Teams
           </Link>
           . Turn a team on, set its family upload address and code, and optionally pick video managers who can
-          open <strong>Film</strong> for that team only. The code is stored hashed — we show it once when you set
-          it.
+          open <strong>Film</strong> for that team only. Type a short word for the code (like <strong>white14</strong>)
+          — we store it hashed and show it once.
         </div>
         {!adding && season && (
           <span data-tour="film-settings-add" style={{ display: "inline-flex" }}>
@@ -158,7 +158,7 @@ function TeamCard({
   const [enabled, setEnabled] = useState(team.enabled);
   const [name, setName] = useState(team.label);
   const [renaming, setRenaming] = useState(false);
-  const [codeDraft, setCodeDraft] = useState("");
+  const [codeDraft, setCodeDraft] = useState(team.suggestedCode);
   const [settingCode, setSettingCode] = useState(false);
   const [revealed, setRevealed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -167,7 +167,7 @@ function TeamCard({
   const [copied, setCopied] = useState(false);
   const uploadUrl = filmUploadUrl(origin, team.slug);
 
-  async function run(fn: () => Promise<{ error?: string }>, ok?: () => void) {
+  async function run<T extends { error?: string }>(fn: () => Promise<T>, ok?: (res: T) => void) {
     setBusy(true);
     onError(null);
     const res = await fn();
@@ -176,7 +176,7 @@ function TeamCard({
       onError(res.error);
       return;
     }
-    ok?.();
+    ok?.(res);
     await onChanged();
   }
 
@@ -289,7 +289,11 @@ function TeamCard({
           Upload code
         </div>
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          {team.hasCode ? "A code is set. We can't show it again — rotate it to make a new one (old family cookies stop working)." : "No code yet. Families can't upload until you set one and turn the team On."}
+          {team.hasCode
+            ? "A code is set. We can't show it again — type a new word to rotate it (old family cookies stop working)."
+            : "No code yet. Families can't upload until you set a short word and turn the team On."}{" "}
+          Use 4–20 letters or numbers, like <strong>{team.suggestedCode || "white14"}</strong>. Codes are not case
+          sensitive and must be unique across teams.
         </div>
         {revealed && (
           <div
@@ -313,9 +317,9 @@ function TeamCard({
               e.preventDefault();
               void run(
                 () => setFilmTeamCode(team.id, codeDraft),
-                () => {
-                  setRevealed(codeDraft.trim());
-                  setCodeDraft("");
+                (res) => {
+                  setRevealed(("code" in res && res.code) || codeDraft.trim().toLowerCase());
+                  setCodeDraft(team.suggestedCode);
                   setSettingCode(false);
                 }
               );
@@ -324,16 +328,18 @@ function TeamCard({
             <div style={{ flex: "1 1 180px" }}>
               <Input
                 label="New code"
+                help="4–20 letters or numbers. Suggested from the team name. Not case sensitive."
                 value={codeDraft}
-                onChange={(e) => setCodeDraft(e.target.value)}
+                onChange={(e) => setCodeDraft(e.target.value.toLowerCase())}
                 autoComplete="off"
+                autoCapitalize="off"
                 required
               />
             </div>
             <Pill
               size="sm"
               onClick={() => {
-                void suggestFilmCode().then((res) => {
+                void suggestFilmCode(team.id).then((res) => {
                   if (res.code) setCodeDraft(res.code);
                   if (res.error) onError(res.error);
                 });
@@ -351,7 +357,15 @@ function TeamCard({
           </form>
         ) : (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Pill size="sm" disabled={busy} onClick={() => { setRevealed(null); setSettingCode(true); }}>
+            <Pill
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setRevealed(null);
+                setCodeDraft(team.suggestedCode);
+                setSettingCode(true);
+              }}
+            >
               {team.hasCode ? "Rotate code" : "Set code"}
             </Pill>
             <Pill

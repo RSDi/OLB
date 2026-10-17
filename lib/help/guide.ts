@@ -1096,7 +1096,7 @@ These are the same teams as **Settings → Teams**, not a second list.
 - **On** / **Off** shows or hides that team on **/film** and **/t/…**. Turn it on only after a code is set.
 - **Upload address** is the end of the family link, like **14u-white**.
 - **Upload link** is the full **https://…** address families open (this site plus **/t/** and the upload address). It is shown in full. **Copy** puts that link on the clipboard and briefly says **Copied**. It copies the link only — never the team's code.
-- **Set code** or **Generate code** makes the shared code families type. We store it hashed and **show it once** — copy it now. There is no reveal later. **Rotate code** makes a new one; phones that already unlocked that team have to enter the new code.
+- **Set code** lets you type a short word families will remember, like **white14** or **gold14**. We suggest one from the team name and age. **Suggest** fills that in; **Generate code** makes a random one if you'd rather. Use 4–20 letters or numbers, unique across teams, not case sensitive. We store it hashed and **show it once** — copy it now. There is no reveal later. **Rotate code** makes a new one; phones that already unlocked that team have to enter the new code.
 - **Video managers** are portal people who can open **Film** and download that team's videos without the club-wide **Game film** permission. They cannot mark moved or delete.
 
 **FILM_SESSION_SECRET** stays in Vercel (it signs the unlock cookie). Team codes do not.`,

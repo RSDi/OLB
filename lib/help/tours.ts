@@ -731,7 +731,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "film-settings-code",
         click: "settings-tab-film",
         title: "The upload code",
-        body: "**Set code** or **Generate code**, then copy it — we store it hashed and won't show it again. **Rotate** makes a new one and locks phones that already unlocked.",
+        body: "**Set code** to type a short word like **white14** (we suggest one from the team name). **Generate code** makes a random one. Copy it — we store it hashed and won't show it again.",
       },
       {
         target: "film-settings-add",

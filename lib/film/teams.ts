@@ -4,6 +4,7 @@
 
 import { createAdminClient } from "../supabase/admin.ts";
 import { teamLabel } from "../teams/volunteer-options.ts";
+import { suggestTeamWordCode } from "./codes.ts";
 import type { FilmTeam } from "./types.ts";
 
 export const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -17,6 +18,7 @@ export type FilmTeamRow = FilmTeam & {
   hasSlug: boolean;
   codeVersion: number;
   codeHash: string | null;
+  suggestedCode: string;
 };
 
 type TeamQueryRow = {
@@ -61,6 +63,7 @@ function toFilmTeam(row: TeamQueryRow): FilmTeamRow {
     hasSlug: !!stored,
     codeVersion: row.film_code_version ?? 1,
     codeHash: row.film_code_hash,
+    suggestedCode: suggestTeamWordCode({ name: row.name, ageGroup: row.age_group, label: teamLabel(row) }),
   };
 }
 

@@ -80,6 +80,7 @@ export async function POST(request: Request) {
     path: minted.path,
     endpoint: minted.endpoint,
     token: minted.token,
+    gatewayJwt: minted.gatewayJwt ?? "",
     contentType: checked.contentType,
   });
 }

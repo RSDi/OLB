@@ -3,7 +3,7 @@
 // then TUS-uploads straight to Storage — bytes never pass through Vercel.
 
 import { createAdminClient } from "../supabase/admin.ts";
-import { tusEndpoint } from "./tus.ts";
+import { filmGatewayJwt, tusEndpoint } from "./tus.ts";
 import { GAME_FILM_BUCKET, TUS_CHUNK_SIZE, type FilmStorageProvider, type MintedUpload } from "./types.ts";
 
 export { TUS_CHUNK_SIZE, tusEndpoint };
@@ -26,6 +26,7 @@ export function supabaseFilmStorage(): FilmStorageProvider {
         path: data.path,
         endpoint: tusEndpoint(url),
         token: data.token,
+        gatewayJwt: filmGatewayJwt(),
       };
     },
     async signedDownloadUrl(path, expiresInSeconds): Promise<string> {
