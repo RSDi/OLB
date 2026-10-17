@@ -1,6 +1,8 @@
-// POST /film/upload-token — validate, log a holding row, mint a short-lived
-// signed TUS token with the service-role key. The browser then uploads
-// straight to Supabase Storage. This route never sees the file bytes.
+// POST /film/upload-token — validate the team-code session, log a holding
+// row, mint a short-lived signed TUS token with the service-role key
+// (createSignedUploadUrl). The browser then TUS-uploads to
+// /upload/resumable/sign with that token as x-signature. This route never
+// sees the file bytes and never sends the service-role key to the client.
 
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";

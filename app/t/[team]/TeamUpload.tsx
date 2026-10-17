@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Uppy from "@uppy/core";
 import Tus from "@uppy/tus";
+import { tusSignedHeaders } from "../../../lib/film/tus";
 import { MAX_UPLOAD_BYTES, TUS_CHUNK_SIZE } from "../../../lib/film/types";
 import styles from "../../film/film.module.css";
 
@@ -58,7 +59,6 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
   }, [uploaderName]);
 
   const uppy = useMemo(() => {
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
     const instance = new Uppy({
       autoProceed: false,
       restrictions: {
@@ -72,20 +72,15 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
       uploadDataDuringCreation: true,
       removeFingerprintOnSuccess: true,
       allowedMetaFields: ["bucketName", "objectName", "contentType", "cacheControl"],
-      headers: (file) => {
-        const token = String(file.meta.filmToken ?? "");
-        return {
-          apikey: anonKey,
-          "x-signature": token,
-          "x-upsert": "false",
-        };
-      },
+      // Signed TUS only. Never send the anon/publishable key or an empty
+      // bearer token — Storage treats those as JWTs and returns
+      // "Invalid Compact JWS".
+      headers: (file) => tusSignedHeaders(String(file.meta.filmToken ?? "")),
       onBeforeRequest: (req, file) => {
         const token = file.meta.filmToken;
-        if (typeof token === "string" && token) {
-          req.setHeader("x-signature", token);
-          req.setHeader("apikey", anonKey);
-          req.setHeader("x-upsert", "false");
+        if (typeof token !== "string" || !token) return;
+        for (const [key, value] of Object.entries(tusSignedHeaders(token))) {
+          req.setHeader(key, value);
         }
       },
     });

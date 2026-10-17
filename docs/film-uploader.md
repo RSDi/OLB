@@ -11,6 +11,8 @@ cron path, and migration `0142_game_film.sql`.
 ## Go live (Jeff)
 
 OLB does **not** auto-run migrations. Do these by hand, then redeploy.
+This signed-TUS fix does **not** add a new migration; 0142 is still the one
+to run if it is not on the project yet.
 
 1. **Run the SQL** in the Supabase SQL editor: `supabase/migrations/0142_game_film.sql`.
    That creates `game_film_uploads`, `game_film_managers`, the private
@@ -23,8 +25,10 @@ OLB does **not** auto-run migrations. Do these by hand, then redeploy.
 3. **Add env vars in Vercel** (Production, and Preview if you want to try it):
    - `FILM_SESSION_SECRET` — long random string (signs the team-unlock cookie)
    - `CRON_SECRET` — already used by the other crons; the cleanup job uses it too
-   Existing `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and
-   `SUPABASE_SERVICE_ROLE_KEY` are reused. There is no `FILM_ADMIN_CODE` and
+   Existing `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are
+   reused to mint the signed upload token on the server. The guest TUS client
+   does **not** send `NEXT_PUBLIC_SUPABASE_ANON_KEY` (that key may be
+   `sb_publishable_…`, which is not a JWT). There is no `FILM_ADMIN_CODE` and
    no `TEAM_CODE_*` / `FILM_TEAMS`.
 4. **Grant permissions.** Super-admins see **Film** and **Settings → Film**
    immediately. For everyone else, in Settings → Access Profiles or a person's
@@ -82,9 +86,12 @@ hash, so rotating the env var doesn't lock the codes.
 - `/film` — pick a team (Directory teams that are On, with a slug and a code).
 - `/t/<slug>` — shared code (cookie HMAC with `FILM_SESSION_SECRET` and that
   team's `film_code_version`), then Uppy + TUS to
-  `{project}.storage.supabase.co`. The server only validates (video MIME
-  including iPhone `.mov`/HEVC, 20 GB, name required, per-IP rate limit) and
-  mints `createSignedUploadUrl`. The client sends that token as `x-signature`.
+  `{project}.storage.supabase.co/storage/v1/upload/resumable/sign`. The server
+  only validates (video MIME including iPhone `.mov`/HEVC, 20 GB, name
+  required, per-IP rate limit) and mints `createSignedUploadUrl`. The client
+  sends that token as `x-signature` only — never the anon/publishable key or
+  an Authorization bearer. The unsigned `/upload/resumable` path requires a
+  compact-JWS JWT and is what produced "Invalid Compact JWS" for guests.
 - `/portal/film` — portal login + `film_view` / `film_manage` / video manager.
 - **Settings → Film** — `film_manage` only.
 - Cron deletes objects **30 days after** `status = moved`.
