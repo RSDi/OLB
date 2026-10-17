@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
+import { copyText } from "../../../lib/copy-text";
+import { filmUploadUrl } from "../../../lib/film/upload-url";
 import {
   addFilmManager,
   addFilmTeam,
@@ -161,6 +163,9 @@ function TeamCard({
   const [revealed, setRevealed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [addManager, setAddManager] = useState("");
+  const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
+  const [copied, setCopied] = useState(false);
+  const uploadUrl = filmUploadUrl(origin, team.slug);
 
   async function run(fn: () => Promise<{ error?: string }>, ok?: () => void) {
     setBusy(true);
@@ -227,7 +232,7 @@ function TeamCard({
         <div style={{ flex: "1 1 220px" }}>
           <Input
             label="Upload address"
-            help="Families open /t/ plus this. Changing it does not change the code."
+            help="The end of the family upload link. Changing it does not change the code."
             value={slug}
             onChange={(e) => setSlug(e.target.value.toLowerCase())}
           />
@@ -240,8 +245,43 @@ function TeamCard({
           Save address
         </Pill>
       </div>
-      <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-        Family page: {team.hasCode && enabled ? `/t/${team.slug}` : "off until a code is set and the team is On"}
+      <div data-tour="film-settings-upload-url" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          Upload link
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <code
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              overflowWrap: "anywhere",
+              wordBreak: "break-all",
+              color: "var(--gw-fg)",
+              flex: "1 1 280px",
+            }}
+          >
+            {uploadUrl}
+          </code>
+          <Pill
+            size="sm"
+            variant="light"
+            disabled={!uploadUrl}
+            onClick={() => {
+              void copyText(uploadUrl).then((ok) => {
+                if (!ok) return;
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              });
+            }}
+          >
+            {copied ? "Copied" : "Copy"}
+          </Pill>
+        </div>
+        {(!team.hasCode || !enabled) && (
+          <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+            Families can use this once a code is set and the team is On.
+          </div>
+        )}
       </div>
 
       <div data-tour="film-settings-code" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

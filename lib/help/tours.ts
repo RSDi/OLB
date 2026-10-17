@@ -719,7 +719,13 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "film-settings-row",
         click: "settings-tab-film",
         title: "Each team",
-        body: "**On** shows it on **/film**. **Rename** changes the Directory name. **Upload address** is the **/t/…** link families open.",
+        body: "**On** shows it on **/film**. **Rename** changes the Directory name. **Upload address** is the end of the family link.",
+      },
+      {
+        target: "film-settings-upload-url",
+        click: "settings-tab-film",
+        title: "The upload link",
+        body: "Each team shows the full **https://…** upload link. **Copy** puts that link on the clipboard — not the team's code.",
       },
       {
         target: "film-settings-code",

@@ -693,7 +693,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     keywords: ["film", "game film", "video", "upload", "download", "moved", "youtube", "holding", "delete", "coach inbox"],
     body: `Game videos families send in from their phones, under **Film** in the sidebar. You see this if a super-admin gave you **Game film** (or **Game film (manage)**) in Settings → Members.
 
-Families don't sign in here. They open the team page they were sent (for example **/t/14u-white**), enter that team's shared code, type their name, and upload. Ask them to **keep the page open and keep the phone plugged in** until the bar finishes — a full game can take a while.
+Families don't sign in here. They open the team upload link they were sent (the full **https://…/t/…** address from **Settings → Film**), enter that team's shared code, type their name, and upload. Ask them to **keep the page open and keep the phone plugged in** until the bar finishes — a full game can take a while.
 
 **On this page**
 
@@ -1087,14 +1087,15 @@ What you enter here shows on the team's Directory banner and team page. Players 
     group: "Settings",
     audience: "super_admin",
     permission: "film_manage",
-    keywords: ["film", "game film", "upload code", "team code", "video managers", "rotate", "slug", "/t/"],
+    keywords: ["film", "game film", "upload code", "team code", "video managers", "rotate", "slug", "/t/", "copy", "upload link"],
     body: `Turn Directory teams on for family uploads and set each team's code. Open **Settings → Film**. Super-admins can, and so can anyone with **Game film (manage)**.
 
 These are the same teams as **Settings → Teams**, not a second list.
 
 - **+ New team** adds a Directory team (same as Settings → Teams) so you can give it a film page without leaving this tab. **Rename** changes the team's name everywhere.
 - **On** / **Off** shows or hides that team on **/film** and **/t/…**. Turn it on only after a code is set.
-- **Upload address** is the end of the family link, like **14u-white** for **/t/14u-white**.
+- **Upload address** is the end of the family link, like **14u-white**.
+- **Upload link** is the full **https://…** address families open (this site plus **/t/** and the upload address). It is shown in full. **Copy** puts that link on the clipboard and briefly says **Copied**. It copies the link only — never the team's code.
 - **Set code** or **Generate code** makes the shared code families type. We store it hashed and **show it once** — copy it now. There is no reveal later. **Rotate code** makes a new one; phones that already unlocked that team have to enter the new code.
 - **Video managers** are portal people who can open **Film** and download that team's videos without the club-wide **Game film** permission. They cannot mark moved or delete.
 
