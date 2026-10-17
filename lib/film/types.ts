@@ -17,6 +17,7 @@ export const SIGNED_DOWNLOAD_TTL_S = 6 * 60 * 60;
 export const MOVED_RETENTION_DAYS = 30;
 
 export type FilmStatus = "holding" | "moved";
+export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
 
 export interface FilmTeam {
   slug: string;
@@ -39,6 +40,10 @@ export interface FilmUpload {
   opponent: string | null;
   our_score: number | null;
   their_score: number | null;
+  youtube_status: YoutubeStatus | null;
+  youtube_video_id: string | null;
+  youtube_error: string | null;
+  youtube_updated_at: string | null;
 }
 
 export interface MintedUpload {

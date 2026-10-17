@@ -347,12 +347,22 @@ export const GUIDE_TOURS: GuideTour[] = [
     steps: [
       {
         title: "Game film",
-        body: "Videos families uploaded from their phones. Each one lists the game date, opponent, and score they typed. Download a copy, then mark it moved once it's somewhere the club keeps film.",
+        body: "Videos families uploaded from their phones, grouped by team and game. Play them here, or wait for YouTube if that's connected.",
       },
       {
         target: "film-filter",
         title: "Holding or moved",
         body: "**All** is everything. **Holding** is still waiting to be copied off. **Moved** is already saved elsewhere.",
+      },
+      {
+        target: "film-team-filter",
+        title: "By team",
+        body: "When more than one team has film, tap a team name to see only that team's games.",
+      },
+      {
+        target: "film-play",
+        title: "Play",
+        body: "**Play** watches the video on this page. It works on a phone. **Close player** puts the player away.",
       },
       {
         target: "film-download",
@@ -713,7 +723,13 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "settings-tab-film",
         title: "Settings → Film",
-        body: "The same Directory teams, with a family upload page and a shared code for each one you turn on.",
+        body: "The same Directory teams, with a family upload page and a shared code for each one you turn on. **YouTube** is at the top of this tab.",
+      },
+      {
+        target: "film-settings-youtube",
+        click: "settings-tab-film",
+        title: "Connect YouTube",
+        body: "**Connect YouTube** once with the club channel. New uploads then go up unlisted in the background. **Disconnect YouTube** stops that.",
       },
       {
         target: "film-settings-row",

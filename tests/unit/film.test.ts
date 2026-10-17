@@ -300,13 +300,15 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(client, /gameDate: snapshot\.gameDate/);
   const inbox = readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmInbox.tsx"), "utf8");
   assert.match(inbox, /formatFilmGameLine/);
+  assert.match(inbox, />Play</);
+  assert.match(inbox, /playsInline/);
   assert.match(route, /gameDate: body\.gameDate/);
   assert.match(route, /ourScore: checked\.ourScore/);
   const uploads = readFileSync(join(import.meta.dirname, "../../lib/film/uploads.ts"), "utf8");
   assert.match(uploads, /game_date: input\.gameDate/);
   assert.match(uploads, /our_score: input\.ourScore/);
   assert.match(uploads, /FILM_UPLOAD_COLUMNS/);
-  assert.match(uploads, /game_date, opponent, our_score, their_score/);
+  assert.match(uploads, /game_date, opponent, our_score, their_score, youtube_status/);
   assert.equal(client.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY"), false);
   assert.equal(client.includes("sb_publishable"), false);
   assert.doesNotMatch(client, /onBeforeRequest/);

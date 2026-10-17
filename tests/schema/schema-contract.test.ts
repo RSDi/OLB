@@ -148,10 +148,13 @@ const CONTRACT: Record<string, string> = {
   olb_roadmap_items:
     "id,title,description,area,status,released_on,preview_url,created_by,created_at,updated_at,deleted_at,approved_by,approved_at",
   olb_roadmap_link: "id,key,updated_at",
-  // Game film (0142, 0143).
+  // Game film (0142, 0143, 0144).
   game_film_uploads:
-    "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score",
+    "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score,youtube_status,youtube_video_id,youtube_error,youtube_updated_at",
   game_film_managers: "team_id,user_id,created_at",
+  game_film_youtube:
+    "id,refresh_token_enc,channel_id,channel_title,connected_at,connected_by,privacy_status,made_for_kids,updated_at",
+  game_film_youtube_jobs: "upload_id,upload_uri,bytes_sent,attempts,updated_at",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {

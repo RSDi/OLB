@@ -7,7 +7,6 @@ import { requireFilmAccess, requireFilmManage } from "../auth/guards";
 import { SIGNED_DOWNLOAD_TTL_S } from "./types.ts";
 import { filmStorage } from "./storage.ts";
 import { deleteFilmUploadRow, getFilmUpload, setFilmStatus } from "./uploads.ts";
-import { publishFilmToYouTube } from "./youtube.ts";
 
 function refresh() {
   revalidatePath("/portal/film");
@@ -69,12 +68,3 @@ export async function deleteFilmUpload(
   return { ok: true };
 }
 
-// Later: a "Publish to YouTube" button can call this. It is a stub today.
-export async function publishFilm(id: string): Promise<{ error: string }> {
-  const gate = await requireFilmManage();
-  if ("error" in gate) return { error: gate.error };
-  const row = await getFilmUpload(id);
-  if (!row) return { error: "That upload isn't there any more." };
-  const result = await publishFilmToYouTube(row);
-  return { error: result.reason };
-}
