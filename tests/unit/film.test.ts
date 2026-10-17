@@ -1,5 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   checkFilmTeamCode,
   codesMatch,
@@ -22,6 +24,7 @@ import {
 } from "../../lib/film/validation.ts";
 import { canManageFilm, canViewFilm, hasPermission, type MemberLike } from "../../lib/auth/permissions.ts";
 import { tusEndpoint } from "../../lib/film/supabase-storage.ts";
+import { tusSignedHeaders } from "../../lib/film/tus.ts";
 import { TOKEN_LIMIT, rateLimitTake } from "../../lib/film/rate-limit.ts";
 import type { FilmTeamRow } from "../../lib/film/teams.ts";
 
@@ -136,11 +139,48 @@ test("film_view lists; film_manage includes view; others are out", () => {
   assert.equal(canViewFilm({ role: "admin", status: "approved", permissions: [] }), false);
 });
 
-test("the TUS endpoint uses the direct storage hostname", () => {
+test("the TUS endpoint is the signed path on the direct storage hostname", () => {
   assert.equal(
     tusEndpoint("https://abcd.supabase.co"),
-    "https://abcd.storage.supabase.co/storage/v1/upload/resumable"
+    "https://abcd.storage.supabase.co/storage/v1/upload/resumable/sign"
   );
+  assert.equal(
+    tusEndpoint("https://abcd.supabase.co/"),
+    "https://abcd.storage.supabase.co/storage/v1/upload/resumable/sign"
+  );
+  assert.equal(
+    tusEndpoint("https://abcd.storage.supabase.co"),
+    "https://abcd.storage.supabase.co/storage/v1/upload/resumable/sign"
+  );
+  assert.equal(tusEndpoint("https://abcd.supabase.co").endsWith("/upload/resumable"), false);
+});
+
+test("signed TUS headers send only x-signature, never a JWT bearer or apikey", () => {
+  const headers = tusSignedHeaders("signed-upload-token");
+  assert.deepEqual(headers, { "x-signature": "signed-upload-token", "x-upsert": "false" });
+  assert.equal("authorization" in headers, false);
+  assert.equal("Authorization" in headers, false);
+  assert.equal("apikey" in headers, false);
+  assert.equal("x-signature" in tusSignedHeaders("  "), false);
+  assert.deepEqual(tusSignedHeaders(""), { "x-upsert": "false" });
+});
+
+test("the guest uploader mints a signed token and does not send the anon/publishable key", () => {
+  const client = readFileSync(join(import.meta.dirname, "../../app/t/[team]/TeamUpload.tsx"), "utf8");
+  const mint = readFileSync(join(import.meta.dirname, "../../lib/film/supabase-storage.ts"), "utf8");
+  const route = readFileSync(join(import.meta.dirname, "../../app/film/upload-token/route.ts"), "utf8");
+  assert.match(client, /tusSignedHeaders/);
+  assert.match(client, /allowedFileTypes: \["video\/\*".*\.mov/);
+  assert.match(client, /maxFileSize: MAX_UPLOAD_BYTES/);
+  assert.match(client, /Phone \.mov files are fine\. Up to 20 GB each\./);
+  assert.equal(client.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY"), false);
+  assert.equal(client.includes("apikey"), false);
+  assert.equal(/authorization/i.test(client), false);
+  assert.match(mint, /createSignedUploadUrl/);
+  assert.match(mint, /tusEndpoint/);
+  assert.equal(mint.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
+  assert.match(route, /filmStorage\(\)\.mintUpload/);
+  assert.match(route, /token: minted\.token/);
 });
 
 test("the per-IP token mint cap trips after the limit", () => {
