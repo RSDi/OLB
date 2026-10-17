@@ -13,6 +13,10 @@ type FakeEl = {
   setSelectionRange: (start: number, end: number) => void;
 };
 
+function setGlobal(name: "navigator" | "document", value: unknown) {
+  Object.defineProperty(globalThis, name, { configurable: true, value });
+}
+
 function installDom(opts?: { execOk?: boolean; throwExec?: boolean }) {
   const created: FakeEl[] = [];
   const body = {
@@ -26,7 +30,7 @@ function installDom(opts?: { execOk?: boolean; throwExec?: boolean }) {
     },
   };
   const execOk = opts?.execOk ?? true;
-  (globalThis as { document?: unknown }).document = {
+  setGlobal("document", {
     body,
     createElement(tag: string) {
       assert.equal(tag, "textarea");
@@ -48,33 +52,33 @@ function installDom(opts?: { execOk?: boolean; throwExec?: boolean }) {
       assert.equal(cmd, "copy");
       return execOk;
     },
-  };
+  });
   return { created, body };
 }
 
 test("copyText uses navigator.clipboard when it works", async () => {
   let written = "";
-  (globalThis as { navigator?: unknown }).navigator = {
+  setGlobal("navigator", {
     clipboard: {
       writeText(text: string) {
         written = text;
         return Promise.resolve();
       },
     },
-  };
-  (globalThis as { document?: unknown }).document = undefined;
+  });
+  setGlobal("document", undefined);
   assert.equal(await copyText("https://olb.example.org/t/14u-white"), true);
   assert.equal(written, "https://olb.example.org/t/14u-white");
 });
 
 test("copyText falls back to textarea/execCommand when clipboard rejects", async () => {
-  (globalThis as { navigator?: unknown }).navigator = {
+  setGlobal("navigator", {
     clipboard: {
       writeText() {
         return Promise.reject(new Error("denied"));
       },
     },
-  };
+  });
   const { created, body } = installDom();
   assert.equal(await copyText("https://olb.example.org/t/14u-white"), true);
   assert.equal(created[0]?.value, "https://olb.example.org/t/14u-white");
@@ -85,14 +89,14 @@ test("copyText falls back to textarea/execCommand when clipboard rejects", async
 });
 
 test("copyText falls back when clipboard is missing", async () => {
-  (globalThis as { navigator?: unknown }).navigator = {};
+  setGlobal("navigator", {});
   const { created } = installDom();
   assert.equal(await copyText("https://olb.example.org/t/16u-black"), true);
   assert.equal(created[0]?.value, "https://olb.example.org/t/16u-black");
 });
 
 test("copyTextFallback returns false if execCommand fails", () => {
-  (globalThis as { navigator?: unknown }).navigator = {};
+  setGlobal("navigator", {});
   installDom({ execOk: false });
   assert.equal(copyTextFallback("https://olb.example.org/t/14u-white"), false);
 });
