@@ -175,6 +175,7 @@ export const RESERVED_SLUGS = [
   "auth",
   "portal",
   "login",
+  "pair",
   "register",
   "reset-password",
   "directory",

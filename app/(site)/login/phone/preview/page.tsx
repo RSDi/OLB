@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
-import { AuthSection } from "../../_components/AuthSection";
-import { PhonePairScreen } from "../../login/phone/PhonePairScreen";
-import { PairApproveScreen } from "../../pair/[id]/PairApproveScreen";
+import { AuthSection } from "../../../_components/AuthSection";
+import { PhonePairScreen } from "../PhonePairScreen";
+import { PairApproveScreen } from "../../../pair/[id]/PairApproveScreen";
 
 export const metadata = { title: "Pairing preview" };
 

@@ -15,7 +15,7 @@ export const MAX_PENDING = 20;
 export const APPROVE_WINDOW_MS = 60 * 60 * 1000;
 export const APPROVE_PER_HOUR = 3;
 
-export { isPairingId, safePairNext, safeReturnTo } from "./pairing-cookie";
+export { isPairingId, safePairNext, safeReturnTo } from "./pairing-cookie.ts";
 
 export const CODE_ALPHABET = "BCDFGHJKLMNPQRSTVWXZ";
 const CODE_LEN = 8;

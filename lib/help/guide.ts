@@ -88,7 +88,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     keywords: ["login", "log in", "sign in", "password", "forgot", "reset", "code", "slack", "register", "request access", "pending", "approved", "denied", "account", "phone", "QR", "pair"],
     body: `The member portal is for Omaha Lightning families, coaches and the board. Use the **Login** button at the top of the club website (or the **Login** link at the bottom), or go straight to the login page.
 
-**Three ways to sign in** (unchanged)
+**Three ways to sign in**
 
 - **Continue with Slack** — the quickest. If you're in the club's Slack workspace, this gets you in right away, even if you're new.
 - **Email and password** — the account you created when you requested access.

@@ -74,19 +74,19 @@ test("cmpVersion is numeric per segment, so 26.10.9 < 26.10.10", () => {
 test("a first visit sees only the latest; later visits see anything newer than the marker", () => {
   assert.deepEqual(
     unseenReleases(RELEASES, null).map((r) => r.version),
-    ["26.10.5"]
+    ["26.10.6"]
   );
   assert.deepEqual(
     unseenReleases(RELEASES, "26.10.1").map((r) => r.version),
-    ["26.10.5", "26.10.4", "26.10.3", "26.10.2"]
+    ["26.10.6", "26.10.5", "26.10.4", "26.10.3", "26.10.2"]
   );
-  assert.deepEqual(unseenReleases(RELEASES, "26.10.5"), []);
+  assert.deepEqual(unseenReleases(RELEASES, "26.10.6"), []);
   assert.deepEqual(unseenReleases(RELEASES, "26.11.0"), []);
 });
 
 test("nextSeenVersion advances to the latest and never goes backward", () => {
-  assert.equal(nextSeenVersion(RELEASES, null), "26.10.5");
-  assert.equal(nextSeenVersion(RELEASES, "26.10.0"), "26.10.5");
+  assert.equal(nextSeenVersion(RELEASES, null), "26.10.6");
+  assert.equal(nextSeenVersion(RELEASES, "26.10.0"), "26.10.6");
   assert.equal(nextSeenVersion(RELEASES, "26.11.0"), "26.11.0");
   assert.equal(nextSeenVersion([], "26.10.0"), "26.10.0");
 });
