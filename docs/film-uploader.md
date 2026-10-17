@@ -5,8 +5,9 @@ under **Film**. Bytes go **browser → Supabase Storage** over TUS (resumable);
 they never pass through Vercel.
 
 This feature is namespaced so it can be torn out: `app/film`, `app/t`,
-`app/portal/film`, `lib/film`, plus one sidebar link, one Settings tab, one
-cron path, and migrations `0142_game_film.sql` and `0143_game_film_game.sql`.
+`app/portal/film`, `lib/film`, plus one sidebar link, one Settings tab, two
+crons, and migrations `0142_game_film.sql`, `0143_game_film_game.sql`,
+and `0144_game_film_youtube.sql`.
 
 ## Go live (Jeff)
 
@@ -25,6 +26,9 @@ existing hashes.
    - `supabase/migrations/0143_game_film_game.sql` — adds `game_date`,
      `opponent`, `our_score`, and `their_score` on `game_film_uploads`. Run
      this after 0142. Idempotent (`if not exists`).
+   - `supabase/migrations/0144_game_film_youtube.sql` — YouTube connection
+     singleton, display columns on uploads, and `game_film_youtube_jobs`
+     (resumable session URI, service role only). Run after 0143.
 2. **Raise the project's Storage file-size limit** in the Supabase dashboard
    (Project Settings → Storage) if it is still the default (often 50 MB). The
    bucket is 20 GB; the project cap has to be at least that.
@@ -46,13 +50,52 @@ existing hashes.
    **video manager** for one team in Settings → Film (inbox + download for
    that team only).
 5. **Redeploy** so Vercel picks up `FILM_SESSION_SECRET` and the `vercel.json`
-   cron (`/api/cron/film-cleanup`, daily).
+   crons (`/api/cron/film-cleanup` daily, `/api/cron/film-youtube` every
+   minute — Pro plan).
 6. In **Settings → Film**, turn on each team, set its `/t/…` address, and
    **Generate code** (copy it — we only show it once). Send families
    `https://<site>/t/<slug>` or `/film` and that team's code.
+7. **YouTube (optional).** See **YouTube auto-push** below. Until Google
+   verifies the OAuth app, uploads are often forced **private** even if
+   privacy is set to Unlisted.
 
 Optional: add **Game film** → `/film` on the public site menu in Settings →
 Website.
+
+## YouTube auto-push
+
+Vercel cannot upload a 20 GB file in one serverless run (max ~5 minutes).
+A **minute cron** (`/api/cron/film-youtube`) plus `after()` on
+`/film/complete` streams 8 MiB chunks from private Storage to YouTube's
+resumable Data API and stores the session URI + byte offset on
+`game_film_youtube_jobs`. The next tick continues. Not a Supabase Edge
+Function: same timeout class, extra moving part.
+
+**Jeff — Google Cloud**
+
+1. Google Cloud Console → create or pick a project (e.g. Omaha Lightning).
+2. Enable **YouTube Data API v3**.
+3. **OAuth consent screen**: External. App name, support email, add yourself
+   as a test user (the Google account that owns the club YouTube channel).
+   Scopes: `.../auth/youtube.upload` and `.../auth/youtube.readonly`.
+4. **Credentials** → OAuth 2.0 Client ID → Web application. Authorized
+   redirect URIs:
+   - `https://omahalightningbasketball.com/api/film/youtube/callback`
+   - `http://localhost:3000/api/film/youtube/callback`
+   Add any preview host you will use.
+5. Vercel env (Production; Preview if you will connect from a preview):
+   - `FILM_YOUTUBE_CLIENT_ID`
+   - `FILM_YOUTUBE_CLIENT_SECRET`
+   - `FILM_YOUTUBE_TOKEN_KEY` — 32 bytes, e.g. `openssl rand -hex 32`
+6. Redeploy. **Settings → Film** → **Connect YouTube**. Sign in as the
+   channel owner. The refresh token is encrypted with `FILM_YOUTUBE_TOKEN_KEY`
+   and never shown. Privacy default is **Unlisted**. **Made for kids** is off.
+7. **Unverified apps:** until Google's OAuth/YouTube audit, the API often
+   sets new uploads to **private** (not unlisted). Test users on the consent
+   screen can still upload. Public/unlisted for anyone else needs verification.
+
+Title: `{Team} vs {Opponent} – {M/D/YYYY}`. Description includes the score
+when both numbers are present.
 
 ## Codes (hashed, shown once)
 
@@ -76,12 +119,15 @@ hash, so rotating the env var doesn't lock the codes.
    / `FilmSettingsTab.tsx`.
 3. Remove the Film sections from `lib/help/guide.ts` and the film tours from
    `lib/help/tours.ts`.
-4. Remove `/api/cron/film-cleanup` from `vercel.json` and
-   `app/api/cron/film-cleanup`.
-5. Remove `FILM_SESSION_SECRET` from Vercel and `.env.example`.
+4. Remove `/api/cron/film-cleanup` and `/api/cron/film-youtube` from
+   `vercel.json` and those route folders. Remove `/api/film/youtube`.
+5. Remove `FILM_SESSION_SECRET`, `FILM_YOUTUBE_CLIENT_ID`,
+   `FILM_YOUTUBE_CLIENT_SECRET`, and `FILM_YOUTUBE_TOKEN_KEY` from Vercel
+   and `.env.example`.
 6. Remove `film` / `t` from `lib/website/content.ts` `RESERVED_SLUGS` and
    `/film` from `SITE_PAGES`.
-7. In Supabase: drop table `game_film_uploads` and `game_film_managers`, drop
+7. In Supabase: drop table `game_film_uploads`, `game_film_managers`,
+   `game_film_youtube`, and `game_film_youtube_jobs`. Drop
    functions `can_view_film` / `can_manage_film`, drop columns
    `film_slug` / `film_enabled` / `film_code_hash` / `film_code_version` on
    `olb_teams`, delete the `game-film` bucket (and its objects). No need to
@@ -102,7 +148,11 @@ hash, so rotating the env var doesn't lock the codes.
   and never from both Uppy `headers` and `onBeforeRequest` — XHR would
   comma-merge them into an invalid JWS).
 - `/portal/film` — portal login + `film_view` / `film_manage` / video manager.
-- **Settings → Film** — `film_manage` only.
-- Cron deletes objects **30 days after** `status = moved`.
+  **Play** uses a signed URL from the private bucket (Safari `playsInline`).
+  List is grouped by team, then game date / opponent / score.
+- **Settings → Film** — `film_manage` only. **Connect YouTube** stores an
+  encrypted refresh token.
+- Cron deletes objects **30 days after** `status = moved`. Another cron
+  (`/api/cron/film-youtube`, every minute) resumes YouTube uploads.
 - Storage is a provider (`lib/film/storage.ts`): Supabase now; R2 and S3 are
-  stubs. `lib/film/youtube.ts` is the later “publish to YouTube” hook.
+  stubs. `lib/film/youtube.ts` is the resumable YouTube worker.

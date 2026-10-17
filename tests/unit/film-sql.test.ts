@@ -21,6 +21,23 @@ test("0143 is the next numbered migration after 0142", () => {
   assert.equal(names.filter((n) => n.startsWith("0143")).length, 1, "only one 0143 migration");
 });
 
+test("0144 is the next numbered migration after 0143", () => {
+  const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
+  const youtube = readFileSync(join(root, "supabase/migrations/0144_game_film_youtube.sql"), "utf8");
+  assert.ok(names.includes("0143_game_film_game.sql"));
+  assert.ok(names.includes("0144_game_film_youtube.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0144")).length, 1, "only one 0144 migration");
+  assert.ok(youtube.includes("create table if not exists public.game_film_youtube"));
+  assert.ok(youtube.includes("create table if not exists public.game_film_youtube_jobs"));
+  assert.ok(youtube.includes("add column if not exists youtube_status"));
+  assert.ok(youtube.includes("refresh_token_enc"));
+  assert.ok(youtube.includes("revoke all on table public.game_film_youtube"));
+  assert.ok(youtube.includes("revoke all on table public.game_film_youtube_jobs"));
+  assert.ok(youtube.includes("OLB does NOT auto-run"));
+  assert.ok(!youtube.includes("to anon"));
+  assert.ok(!youtube.includes("drop table"));
+});
+
 test("0143 adds game date, opponent, and optional score columns", () => {
   assert.ok(gameMeta.includes("add column if not exists game_date date"));
   assert.ok(gameMeta.includes("add column if not exists opponent text"));

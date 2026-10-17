@@ -2,10 +2,13 @@
 // holding; this just confirms the id belongs to this team session.
 
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { FILM_COOKIE, parseFilmSession, sessionMatchesTeam } from "../../../lib/film/session";
 import { getFilmTeamBySlug } from "../../../lib/film/teams";
 import { getFilmUpload } from "../../../lib/film/uploads";
+import { enqueueYoutubeIfConnected, processYoutubeQueue, YOUTUBE_KICK_BUDGET_MS } from "../../../lib/film/youtube";
+
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const store = await cookies();
@@ -26,5 +29,13 @@ export async function POST(request: Request) {
   if (!row || row.team !== session.slug) {
     return NextResponse.json({ error: "That upload isn't on this team." }, { status: 404 });
   }
+  after(async () => {
+    try {
+      const { queued } = await enqueueYoutubeIfConnected(id);
+      if (queued) await processYoutubeQueue({ budgetMs: YOUTUBE_KICK_BUDGET_MS, uploadId: id });
+    } catch (err) {
+      console.error("film-complete youtube kick:", err instanceof Error ? err.message : err);
+    }
+  });
   return NextResponse.json({ ok: true, status: row.status });
 }

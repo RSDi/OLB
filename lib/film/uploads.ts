@@ -5,11 +5,11 @@
 
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "../supabase/admin";
-import { GAME_FILM_BUCKET, MOVED_RETENTION_DAYS, type FilmStatus, type FilmUpload } from "./types.ts";
+import { GAME_FILM_BUCKET, MOVED_RETENTION_DAYS, type FilmStatus, type FilmUpload, type YoutubeStatus } from "./types.ts";
 import { storageObjectName } from "./validation.ts";
 
 export const FILM_UPLOAD_COLUMNS =
-  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, game_date, opponent, our_score, their_score";
+  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at";
 
 export function filmStoragePath(team: string, uploadId: string, filename: string): string {
   const now = new Date();
@@ -121,6 +121,123 @@ export async function listExpiredMovedUploads(now = new Date()): Promise<FilmUpl
     .eq("status", "moved")
     .not("moved_at", "is", null)
     .lt("moved_at", cutoff);
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload[]) ?? [];
+}
+
+export async function setFilmYoutubeStatus(
+  id: string,
+  patch: {
+    youtube_status: YoutubeStatus | null;
+    youtube_video_id?: string | null;
+    youtube_error?: string | null;
+  }
+): Promise<FilmUpload | null> {
+  const admin = createAdminClient();
+  const update: Record<string, unknown> = {
+    youtube_status: patch.youtube_status,
+    youtube_updated_at: new Date().toISOString(),
+  };
+  if (patch.youtube_video_id !== undefined) update.youtube_video_id = patch.youtube_video_id;
+  if (patch.youtube_error !== undefined) update.youtube_error = patch.youtube_error;
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .update(update)
+    .eq("id", id)
+    .select(FILM_UPLOAD_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload | null) ?? null;
+}
+
+export type YoutubeJob = {
+  upload_id: string;
+  upload_uri: string | null;
+  bytes_sent: number;
+  attempts: number;
+  updated_at: string;
+};
+
+export async function upsertYoutubeJob(
+  uploadId: string,
+  patch: Partial<Pick<YoutubeJob, "upload_uri" | "bytes_sent" | "attempts">>
+): Promise<YoutubeJob> {
+  const admin = createAdminClient();
+  const { data: existing } = await admin
+    .from("game_film_youtube_jobs")
+    .select("upload_id, upload_uri, bytes_sent, attempts, updated_at")
+    .eq("upload_id", uploadId)
+    .maybeSingle();
+  const next = {
+    upload_id: uploadId,
+    upload_uri: patch.upload_uri !== undefined ? patch.upload_uri : (existing?.upload_uri ?? null),
+    bytes_sent: patch.bytes_sent !== undefined ? patch.bytes_sent : (existing?.bytes_sent ?? 0),
+    attempts: patch.attempts !== undefined ? patch.attempts : (existing?.attempts ?? 0),
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await admin
+    .from("game_film_youtube_jobs")
+    .upsert(next, { onConflict: "upload_id" })
+    .select("upload_id, upload_uri, bytes_sent, attempts, updated_at")
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "Couldn't save the YouTube job.");
+  return data as YoutubeJob;
+}
+
+export async function getYoutubeJob(uploadId: string): Promise<YoutubeJob | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_youtube_jobs")
+    .select("upload_id, upload_uri, bytes_sent, attempts, updated_at")
+    .eq("upload_id", uploadId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as YoutubeJob | null) ?? null;
+}
+
+export async function claimYoutubeWork(id: string, now = new Date()): Promise<FilmUpload | null> {
+  const admin = createAdminClient();
+  const stamp = now.toISOString();
+  const staleBefore = new Date(now.getTime() - 4 * 60 * 1000).toISOString();
+  const { data: queued } = await admin
+    .from("game_film_uploads")
+    .update({ youtube_status: "uploading", youtube_error: null, youtube_updated_at: stamp })
+    .eq("id", id)
+    .eq("youtube_status", "queued")
+    .select(FILM_UPLOAD_COLUMNS)
+    .maybeSingle();
+  if (queued) return queued as FilmUpload;
+  const { data: stale, error } = await admin
+    .from("game_film_uploads")
+    .update({ youtube_status: "uploading", youtube_updated_at: stamp })
+    .eq("id", id)
+    .eq("youtube_status", "uploading")
+    .lt("youtube_updated_at", staleBefore)
+    .select(FILM_UPLOAD_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (stale) return stale as FilmUpload;
+  const { data: untouched } = await admin
+    .from("game_film_uploads")
+    .update({ youtube_status: "uploading", youtube_updated_at: stamp })
+    .eq("id", id)
+    .eq("youtube_status", "uploading")
+    .is("youtube_updated_at", null)
+    .select(FILM_UPLOAD_COLUMNS)
+    .maybeSingle();
+  return (untouched as FilmUpload | null) ?? null;
+}
+
+export async function listYoutubeWork(uploadId?: string): Promise<FilmUpload[]> {
+  const admin = createAdminClient();
+  let query = admin
+    .from("game_film_uploads")
+    .select(FILM_UPLOAD_COLUMNS)
+    .in("youtube_status", ["queued", "uploading"])
+    .order("created_at", { ascending: true })
+    .limit(20);
+  if (uploadId) query = query.eq("id", uploadId);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data as FilmUpload[]) ?? [];
 }

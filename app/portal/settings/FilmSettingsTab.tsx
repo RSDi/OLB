@@ -8,6 +8,7 @@ import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
 import { copyText } from "../../../lib/copy-text";
 import { filmUploadUrl } from "../../../lib/film/upload-url";
+import { FilmYoutubeCard } from "./FilmYoutubeCard";
 import {
   addFilmManager,
   addFilmTeam,
@@ -102,6 +103,8 @@ export function FilmSettingsTab() {
           </span>
         )}
       </div>
+
+      <FilmYoutubeCard />
 
       {error && <ErrorBox text={error} />}
 

@@ -690,20 +690,21 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     permission: "film_view",
     alsoPermissions: ["film_manage"],
     routes: ["/portal/film"],
-    keywords: ["film", "game film", "video", "upload", "download", "moved", "youtube", "holding", "delete", "coach inbox", "game date", "opponent", "score"],
+    keywords: ["film", "game film", "video", "upload", "download", "play", "moved", "youtube", "holding", "delete", "coach inbox", "game date", "opponent", "score", "unlisted"],
     body: `Game videos families send in from their phones, under **Film** in the sidebar. You see this if a super-admin gave you **Game film** (or **Game film (manage)**) in Settings → Members.
 
 Families don't sign in here. They open the team upload link they were sent (the full **https://…/t/…** address from **Settings → Film**), enter that team's shared code, then fill in **Your name**, **Game date** (it starts on today), **Opponent**, and **Our score** / **Their score** if they know it — scores can stay blank if the game isn't over — and upload. The page has a **Tip: record in 1080p at 30 fps (iPhone: Settings → Camera → Record Video).** Ask them to **keep the page open and keep the phone plugged in** until they see **✓ Uploaded** on each file and the green **All videos uploaded — you can close this page.** If a file says **Failed**, they tap **Retry**.
 
 **On this page**
 
-- Each video lists the game date, opponent, and score the family typed, plus who sent it.
-- **All**, **Holding** and **Moved** filter the list. New uploads start as **Holding**.
-- **Download** opens a temporary link to the file. Save it somewhere the club keeps film.
-- If you have **Game film (manage)**: **Mark moved** once it's copied off (YouTube, a drive). **Back to holding** undoes that. **Delete** removes the file for good.
+- Videos are grouped by team, then by game date, opponent, and score.
+- **Play** watches the file in this page (it works on a phone). **Close player** puts the player away. **Download** still saves a copy.
+- **Every team** (and each team name) filters the list when more than one team has film. **All**, **Holding** and **Moved** filter by whether it's been copied off.
+- After YouTube is connected in **Settings → Film**, new uploads go to that channel in the background (unlisted unless you change it). **On YouTube** / **YouTube** opens the video. If it failed, **Retry YouTube** tries again. **Send to YouTube** is for older files that never went up.
+- If you have **Game film (manage)**: **Mark moved** once it's copied off. **Back to holding** undoes that. **Delete** removes the file for good.
 - Files marked **Moved** are deleted automatically after 30 days.
 
-Share the team upload link and code with families, not this inbox. Super-admins and anyone with **Game film (manage)** set those codes in **Settings → Film**.`
+Share the team upload link and code with families, not this inbox. Super-admins and anyone with **Game film (manage)** set those codes and connect YouTube in **Settings → Film**.`
   },
   {
     id: "payments",
@@ -1088,11 +1089,12 @@ What you enter here shows on the team's Directory banner and team page. Players 
     group: "Settings",
     audience: "super_admin",
     permission: "film_manage",
-    keywords: ["film", "game film", "upload code", "team code", "video managers", "rotate", "slug", "/t/", "copy", "upload link"],
+    keywords: ["film", "game film", "upload code", "team code", "video managers", "rotate", "slug", "/t/", "copy", "upload link", "youtube", "connect youtube", "unlisted"],
     body: `Turn Directory teams on for family uploads and set each team's code. Open **Settings → Film**. Super-admins can, and so can anyone with **Game film (manage)**.
 
 These are the same teams as **Settings → Teams**, not a second list.
 
+- **YouTube** — **Connect YouTube** signs in with the Google account that owns the Omaha Lightning channel (once). The refresh token is stored encrypted on the server, never shown. New family uploads then go to that channel in the background. **Privacy** starts as **Unlisted**; **Private** and **Public** are there too. **Made for kids** is off unless you check it. **Disconnect YouTube** stops new uploads from going up. Unverified Google apps often force videos to private until Google audits the app.
 - **+ New team** adds a Directory team (same as Settings → Teams) so you can give it a film page without leaving this tab. **Rename** changes the team's name everywhere.
 - **On** / **Off** shows or hides that team on **/film** and **/t/…**. Turn it on only after a code is set.
 - **Upload address** is the end of the family link, like **14u-white**.
@@ -1100,7 +1102,7 @@ These are the same teams as **Settings → Teams**, not a second list.
 - **Set code** lets you type a short word families will remember, like **white14** or **gold14**. We suggest one from the team name and age. **Suggest** fills that in; **Generate code** makes a random one if you'd rather. Use 4–20 letters or numbers, unique across teams, not case sensitive. We store it hashed and **show it once** — copy it now. There is no reveal later. **Rotate code** makes a new one; phones that already unlocked that team have to enter the new code.
 - **Video managers** are portal people who can open **Film** and download that team's videos without the club-wide **Game film** permission. They cannot mark moved or delete.
 
-**FILM_SESSION_SECRET** stays in Vercel (it signs the unlock cookie). Team codes do not.`,
+**FILM_SESSION_SECRET** and the YouTube client id / secret / token key stay in Vercel. Team codes do not.`,
   },
   {
     id: "settings-season",
