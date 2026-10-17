@@ -2,8 +2,8 @@
 // service-role key (never sent to the browser as the key itself). The client
 // then TUS-uploads straight to Storage — bytes never pass through Vercel.
 
-import { createAdminClient } from "../supabase/admin";
-import { GAME_FILM_BUCKET, TUS_CHUNK_SIZE, type FilmStorageProvider, type MintedUpload } from "./types";
+import { createAdminClient } from "../supabase/admin.ts";
+import { GAME_FILM_BUCKET, TUS_CHUNK_SIZE, type FilmStorageProvider, type MintedUpload } from "./types.ts";
 
 export { TUS_CHUNK_SIZE };
 

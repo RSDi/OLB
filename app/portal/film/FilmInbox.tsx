@@ -76,8 +76,9 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
       <p style={{ margin: 0, fontSize: 14, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
-        Videos families upload from their phones. Download a copy, then <strong>Mark moved</strong> once
-        it&apos;s on YouTube or a drive. Files marked moved are deleted automatically after 30 days.
+        Videos families upload from their phones. Download a copy, then <strong>Mark moved</strong>
+        {" "}
+        once it&apos;s on YouTube or a drive. Files marked moved are deleted automatically after 30 days.
       </p>
 
       {parentLinks.length > 0 && (

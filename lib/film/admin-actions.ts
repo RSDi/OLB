@@ -4,10 +4,10 @@
 
 import { revalidatePath } from "next/cache";
 import { requireFilmManage, requireFilmView } from "../auth/guards";
-import { SIGNED_DOWNLOAD_TTL_S } from "./types";
-import { filmStorage } from "./storage";
-import { deleteFilmUploadRow, getFilmUpload, setFilmStatus } from "./uploads";
-import { publishFilmToYouTube } from "./youtube";
+import { SIGNED_DOWNLOAD_TTL_S } from "./types.ts";
+import { filmStorage } from "./storage.ts";
+import { deleteFilmUploadRow, getFilmUpload, setFilmStatus } from "./uploads.ts";
+import { publishFilmToYouTube } from "./youtube.ts";
 
 function refresh() {
   revalidatePath("/portal/film");

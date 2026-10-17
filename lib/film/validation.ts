@@ -2,7 +2,7 @@
 // iPhone camera-roll videos are often .mov / HEVC with video/quicktime or an
 // empty MIME; we accept those by extension when the browser doesn't send a type.
 
-import { MAX_UPLOAD_BYTES } from "./types";
+import { MAX_UPLOAD_BYTES } from "./types.ts";
 
 export const VIDEO_MIME_TYPES = new Set([
   "video/mp4",

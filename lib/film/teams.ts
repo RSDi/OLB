@@ -5,7 +5,7 @@
 // Override the list with FILM_TEAMS="14u-white:14U White,14u-gold:14U Gold".
 // Teams without a code set are hidden from /film and refuse unlock.
 
-import type { FilmTeam } from "./types";
+import type { FilmTeam } from "./types.ts";
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 

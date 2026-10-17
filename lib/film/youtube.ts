@@ -2,7 +2,7 @@
 // hand-off; this is intentionally a no-op so storage and the inbox can land
 // without a YouTube app. Call publishFilmToYouTube from a future button.
 
-import type { FilmUpload } from "./types";
+import type { FilmUpload } from "./types.ts";
 
 export async function publishFilmToYouTube(
   upload: Pick<FilmUpload, "id" | "filename" | "storage_path" | "team">

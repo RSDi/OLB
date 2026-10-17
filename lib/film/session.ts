@@ -3,8 +3,8 @@
 // fails closed — nobody unlocks.
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { FILM_COOKIE, FILM_SESSION_MAX_AGE_S } from "./types";
-import { teamCode } from "./teams";
+import { FILM_COOKIE, FILM_SESSION_MAX_AGE_S } from "./types.ts";
+import { teamCode } from "./teams.ts";
 
 export { FILM_COOKIE, FILM_SESSION_MAX_AGE_S };
 

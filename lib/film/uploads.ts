@@ -5,8 +5,8 @@
 
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "../supabase/admin";
-import { GAME_FILM_BUCKET, MOVED_RETENTION_DAYS, type FilmStatus, type FilmUpload } from "./types";
-import { storageObjectName } from "./validation";
+import { GAME_FILM_BUCKET, MOVED_RETENTION_DAYS, type FilmStatus, type FilmUpload } from "./types.ts";
+import { storageObjectName } from "./validation.ts";
 
 export function filmStoragePath(team: string, uploadId: string, filename: string): string {
   const now = new Date();

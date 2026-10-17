@@ -1,8 +1,8 @@
 // Delete game-film files 30 days after a coach marked them moved. Called from
 // the Vercel cron at /api/cron/film-cleanup.
 
-import { deleteFilmUploadRow, listExpiredMovedUploads } from "./uploads";
-import { filmStorage } from "./storage";
+import { deleteFilmUploadRow, listExpiredMovedUploads } from "./uploads.ts";
+import { filmStorage } from "./storage.ts";
 
 export async function cleanupMovedFilm(): Promise<{
   scanned: number;
