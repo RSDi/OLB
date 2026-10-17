@@ -21,6 +21,12 @@ import {
   suggestTeamWordCode,
 } from "../../lib/film/codes.ts";
 import {
+  formatFilmDate,
+  formatFilmGameLine,
+  formatFilmScore,
+  parseFilmGameFields,
+} from "../../lib/film/game-meta.ts";
+import {
   cleanUploaderName,
   isVideoFile,
   validateUploadInput,
@@ -141,7 +147,21 @@ test("video validation accepts iPhone .mov / HEVC and rejects non-video", () => 
     filename: "game.mov",
     contentType: "video/quicktime",
     sizeBytes: 12_000_000,
-  }), { ok: true, uploaderName: "Pat", filename: "game.mov", contentType: "video/quicktime", sizeBytes: 12_000_000 });
+    gameDate: "2026-10-17",
+    opponent: "  Elkhorn  ",
+    ourScore: "45",
+    theirScore: 38,
+  }), {
+    ok: true,
+    uploaderName: "Pat",
+    filename: "game.mov",
+    contentType: "video/quicktime",
+    sizeBytes: 12_000_000,
+    gameDate: "2026-10-17",
+    opponent: "Elkhorn",
+    ourScore: 45,
+    theirScore: 38,
+  });
   assert.equal(validateUploadInput({
     uploaderName: " ",
     filename: "game.mov",
@@ -155,6 +175,50 @@ test("video validation accepts iPhone .mov / HEVC and rejects non-video", () => 
     sizeBytes: 21 * 1024 * 1024 * 1024,
   }).ok, false);
   assert.equal(cleanUploaderName("x".repeat(81)), null);
+});
+
+test("game date defaults to Chicago today; opponent and scores are optional", () => {
+  const today = "2026-10-17";
+  const result = validateUploadInput({
+    uploaderName: "Pat",
+    filename: "game.mov",
+    contentType: "video/quicktime",
+    sizeBytes: 12_000_000,
+  }, today);
+  assert.deepEqual(result, {
+    ok: true,
+    uploaderName: "Pat",
+    filename: "game.mov",
+    contentType: "video/quicktime",
+    sizeBytes: 12_000_000,
+    gameDate: today,
+    opponent: null,
+    ourScore: null,
+    theirScore: null,
+  });
+  assert.equal(parseFilmGameFields({ gameDate: "2026-02-31" }, today).ok, false);
+  assert.equal(parseFilmGameFields({ gameDate: today, opponent: "x".repeat(81) }, today).ok, false);
+  assert.equal(parseFilmGameFields({ gameDate: today, ourScore: 1000 }, today).ok, false);
+  assert.equal(parseFilmGameFields({ gameDate: today, ourScore: "12.5" }, today).ok, false);
+  assert.deepEqual(parseFilmGameFields({ gameDate: today, ourScore: "0", theirScore: "" }, today), {
+    ok: true,
+    gameDate: today,
+    opponent: null,
+    ourScore: 0,
+    theirScore: null,
+  });
+  assert.equal(formatFilmDate("2026-10-17"), "Oct 17, 2026");
+  assert.equal(formatFilmScore(45, 38), "45–38");
+  assert.equal(formatFilmScore(45, null), "Us 45");
+  assert.equal(formatFilmScore(null, 38), "Them 38");
+  assert.equal(
+    formatFilmGameLine({ gameDate: "2026-10-17", opponent: "Elkhorn", ourScore: 45, theirScore: 38 }),
+    "Oct 17, 2026 · vs Elkhorn · 45–38"
+  );
+  assert.equal(
+    formatFilmGameLine({ gameDate: "2026-10-17", opponent: null, ourScore: null, theirScore: null }),
+    "Oct 17, 2026"
+  );
 });
 
 test("film_view lists; film_manage includes view; others are out", () => {
@@ -222,6 +286,24 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(client, /allUploadsFinished/);
   assert.match(client, /retryUpload/);
   assert.match(client, /setFileState\(fileId, \{ tus: \{ uploadUrl: body\.uploadUrl \} \}\)/);
+  assert.match(client, />Your name</);
+  assert.match(client, />Game date</);
+  assert.match(client, />Opponent</);
+  assert.match(client, />Our score</);
+  assert.match(client, />Their score</);
+  assert.match(client, /type="date"/);
+  assert.match(client, /churchToday/);
+  assert.match(client, /formatFilmGameLine/);
+  assert.match(client, /gameDate: snapshot\.gameDate/);
+  const inbox = readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmInbox.tsx"), "utf8");
+  assert.match(inbox, /formatFilmGameLine/);
+  assert.match(route, /gameDate: body\.gameDate/);
+  assert.match(route, /ourScore: checked\.ourScore/);
+  const uploads = readFileSync(join(import.meta.dirname, "../../lib/film/uploads.ts"), "utf8");
+  assert.match(uploads, /game_date: input\.gameDate/);
+  assert.match(uploads, /our_score: input\.ourScore/);
+  assert.match(uploads, /FILM_UPLOAD_COLUMNS/);
+  assert.match(uploads, /game_date, opponent, our_score, their_score/);
   assert.equal(client.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY"), false);
   assert.equal(client.includes("sb_publishable"), false);
   assert.doesNotMatch(client, /onBeforeRequest/);

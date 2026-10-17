@@ -347,7 +347,7 @@ export const GUIDE_TOURS: GuideTour[] = [
     steps: [
       {
         title: "Game film",
-        body: "Videos families uploaded from their phones. Download a copy, then mark it moved once it's somewhere the club keeps film.",
+        body: "Videos families uploaded from their phones. Each one lists the game date, opponent, and score they typed. Download a copy, then mark it moved once it's somewhere the club keeps film.",
       },
       {
         target: "film-filter",

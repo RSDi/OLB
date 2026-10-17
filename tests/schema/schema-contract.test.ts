@@ -148,9 +148,9 @@ const CONTRACT: Record<string, string> = {
   olb_roadmap_items:
     "id,title,description,area,status,released_on,preview_url,created_by,created_at,updated_at,deleted_at,approved_by,approved_at",
   olb_roadmap_link: "id,key,updated_at",
-  // Game film (0142).
+  // Game film (0142, 0143).
   game_film_uploads:
-    "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at",
+    "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score",
   game_film_managers: "team_id,user_id,created_at",
 };
 

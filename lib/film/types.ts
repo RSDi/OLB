@@ -35,6 +35,10 @@ export interface FilmUpload {
   status: FilmStatus;
   created_at: string;
   moved_at: string | null;
+  game_date: string | null;
+  opponent: string | null;
+  our_score: number | null;
+  their_score: number | null;
 }
 
 export interface MintedUpload {

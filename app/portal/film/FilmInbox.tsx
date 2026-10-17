@@ -10,6 +10,7 @@ import {
   restoreFilmHolding,
   signedFilmDownload,
 } from "../../../lib/film/admin-actions";
+import { formatFilmGameLine } from "../../../lib/film/game-meta";
 import type { FilmStatus, FilmUpload } from "../../../lib/film/types";
 
 interface Props {
@@ -120,7 +121,14 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {shown.map((row) => (
+          {shown.map((row) => {
+            const gameLine = formatFilmGameLine({
+              gameDate: row.game_date,
+              opponent: row.opponent,
+              ourScore: row.our_score,
+              theirScore: row.their_score,
+            });
+            return (
             <div
               key={row.id}
               data-tour="film-row"
@@ -133,6 +141,11 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
                   <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
                     {row.team} · {row.uploader_name} · {formatBytes(row.size_bytes)} · {formatWhen(row.created_at)}
                   </div>
+                  {gameLine && (
+                    <div style={{ fontSize: 14, fontWeight: 800, marginTop: 6, color: "var(--gw-fg)" }}>
+                      {gameLine}
+                    </div>
+                  )}
                 </div>
                 <span
                   style={{
@@ -191,7 +204,8 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

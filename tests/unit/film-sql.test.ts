@@ -5,12 +5,31 @@ import { join } from "node:path";
 
 const root = join(import.meta.dirname, "../..");
 const migration = readFileSync(join(root, "supabase/migrations/0142_game_film.sql"), "utf8");
+const gameMeta = readFileSync(join(root, "supabase/migrations/0143_game_film_game.sql"), "utf8");
 
 test("0142 is the next numbered migration after 0141", () => {
   const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
   assert.ok(names.includes("0141_device_pairings.sql"));
   assert.ok(names.includes("0142_game_film.sql"));
   assert.equal(names.filter((n) => n.startsWith("0142")).length, 1, "only one 0142 migration");
+});
+
+test("0143 is the next numbered migration after 0142", () => {
+  const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
+  assert.ok(names.includes("0142_game_film.sql"));
+  assert.ok(names.includes("0143_game_film_game.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0143")).length, 1, "only one 0143 migration");
+});
+
+test("0143 adds game date, opponent, and optional score columns", () => {
+  assert.ok(gameMeta.includes("add column if not exists game_date date"));
+  assert.ok(gameMeta.includes("add column if not exists opponent text"));
+  assert.ok(gameMeta.includes("add column if not exists our_score integer"));
+  assert.ok(gameMeta.includes("add column if not exists their_score integer"));
+  assert.ok(gameMeta.includes("game_film_uploads_game_date_idx"));
+  assert.ok(gameMeta.includes("OLB does NOT auto-run"));
+  assert.ok(!gameMeta.includes("drop table"));
+  assert.ok(!gameMeta.includes("to anon"));
 });
 
 test("0142 adds game_film_uploads, the private bucket, and wrapped film helpers", () => {

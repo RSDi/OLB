@@ -44,6 +44,10 @@ export async function POST(request: Request) {
     filename: body.filename,
     contentType: body.contentType,
     sizeBytes: body.sizeBytes,
+    gameDate: body.gameDate,
+    opponent: body.opponent,
+    ourScore: body.ourScore,
+    theirScore: body.theirScore,
   });
   if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
 
@@ -71,6 +75,10 @@ export async function POST(request: Request) {
       contentType: checked.contentType,
       sizeBytes: checked.sizeBytes,
       storagePath: minted.path,
+      gameDate: checked.gameDate,
+      opponent: checked.opponent,
+      ourScore: checked.ourScore,
+      theirScore: checked.theirScore,
     });
   } catch (err) {
     return NextResponse.json(
