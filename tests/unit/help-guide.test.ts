@@ -175,6 +175,17 @@ test("a Board power given to a member brings its section, and only that one", ()
   assert.ok(!ids({ ...APPROVER, status: "pending" }).includes("settings-members"));
 });
 
+test("Game film reaches view or manage holders, not the rest of the board", () => {
+  const view: GuideViewer = { ...MEMBER, permissions: ["film_view"] };
+  const manage: GuideViewer = { ...MEMBER, permissions: ["film_manage"] };
+  assert.equal(guideSectionForPath("/portal/film", SUPER)?.id, "film");
+  assert.equal(guideSectionForPath("/portal/film", view)?.id, "film");
+  assert.equal(guideSectionForPath("/portal/film", manage)?.id, "film");
+  assert.equal(guideSectionForPath("/portal/film", ADMIN), null);
+  assert.equal(guideSectionForPath("/portal/film", MEMBER), null);
+  assert.ok(!guideSectionsFor({ ...view, status: "pending" }).some((s) => s.id === "film"));
+});
+
 test("a pending account is treated as a member", () => {
   const pendingAdmin: GuideViewer = { role: "admin", status: "pending", isStaff: false };
   assert.ok(guideSectionsFor(pendingAdmin).every((s) => s.audience === "everyone"));

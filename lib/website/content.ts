@@ -191,6 +191,9 @@ export const RESERVED_SLUGS = [
   "family",
   // Clinic and workout sign-ups (0131).
   "sign-up",
+  // Game-film uploader (0142): /film landing and /t/<team> upload pages.
+  "film",
+  "t",
 ];
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

@@ -1,0 +1,210 @@
+/* Self-contained styles for /film and /t/[team]. Easy to delete with the feature. */
+
+.page {
+  min-height: 100vh;
+  background: var(--gw-bg);
+  color: var(--gw-fg);
+}
+
+.inner {
+  width: min(560px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 28px 0 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand img {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gw-fg-muted);
+}
+
+.title {
+  margin: 4px 0 0;
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+.lede {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--gw-fg-muted);
+  font-weight: 500;
+}
+
+.note {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--rsd-accent-bg);
+  border: 1px solid var(--rsd-accent);
+  color: var(--rsd-accent-on);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--gw-border);
+  border-radius: 16px;
+  background: var(--gw-surface);
+}
+
+.teams {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.teamLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--gw-border);
+  text-decoration: none;
+  color: var(--gw-fg);
+  font-weight: 700;
+  font-size: 16px;
+  background: var(--gw-bg);
+}
+
+.drop {
+  border: 2px dashed var(--gw-border);
+  border-radius: 16px;
+  padding: 28px 16px;
+  text-align: center;
+  background: var(--gw-bg-elev);
+  cursor: pointer;
+}
+
+.dropActive {
+  border-color: var(--rsd-accent);
+  background: var(--rsd-accent-bg);
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fileRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fileMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 100px;
+  background: var(--gw-stroke-2);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--rsd-accent);
+  border-radius: inherit;
+  transition: width 160ms linear;
+}
+
+.error {
+  color: var(--gw-error);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.button {
+  appearance: none;
+  border: 1px solid var(--rsd-accent-fill);
+  background: var(--rsd-accent-fill);
+  color: var(--rsd-accent-fill-on);
+  font-weight: 700;
+  font-size: 15px;
+  border-radius: 100px;
+  padding: 14px 20px;
+  min-height: 48px;
+}
+
+.button[disabled] {
+  opacity: 0.5;
+}
+
+.input {
+  height: 48px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--gw-border);
+  padding: 0 14px;
+  font-size: 16px;
+  background: var(--gw-bg);
+  color: var(--gw-fg);
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gw-fg-muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .inner {
+    width: min(100% - 24px, 560px);
+    padding-top: 20px;
+  }
+  .title {
+    font-size: 24px;
+  }
+}

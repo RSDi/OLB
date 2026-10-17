@@ -33,7 +33,9 @@ export type PermissionKey =
   | "hs_schedule"
   // Super-admin powers anyone can be given (0123).
   | "teams"
-  | "site_links";
+  | "site_links"
+  | "film_view"
+  | "film_manage";
 
 // The member columns each permission lived in before 0122. Still used to read
 // grants on a database without 0122, and nothing else.
@@ -85,6 +87,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "hs_schedule", label: "Plan HS Schedule", desc: "Change the HS Schedule, like coaches do", group: "board" },
   { key: "teams", label: "Teams & volunteers", desc: "Set up teams and volunteer roles, and fill team spots. Putting someone in a leadership spot makes them a coach", group: "setup" },
   { key: "site_links", label: "Sidebar Links & Public Directory", desc: "Change the links in everyone's sidebar and the public Directory link", group: "setup" },
+  { key: "film_view", label: "Game film", desc: "Open Film in the sidebar: list game videos families uploaded and download them", group: "manage" },
+  { key: "film_manage", label: "Game film (manage)", desc: "Mark game film moved or delete it. Also lets you open Film", group: "manage" },
 ];
 
 export const PERMISSION_GROUPS: { key: PermissionDef["group"]; label: string }[] = [

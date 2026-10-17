@@ -15,7 +15,7 @@ function siteImagesPattern(): URL[] {
 const nextConfig: NextConfig = {
   // ReelNotes ships as a workspace package of raw TS/TSX source; Next must
   // transpile it like first-party app code.
-  transpilePackages: ["reelnotes"],
+  transpilePackages: ["reelnotes", "@uppy/core", "@uppy/tus", "tus-js-client"],
   images: { remotePatterns: siteImagesPattern() },
   async redirects() {
     // The maintenance area was renamed to Tasks & Projects; keep old links working.

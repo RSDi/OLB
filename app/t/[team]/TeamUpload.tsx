@@ -1,0 +1,360 @@
+"use client";
+// Parent upload page: shared-code gate, then Uppy + TUS straight to Supabase
+// Storage. The file bytes never go through this site's server.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import Uppy from "@uppy/core";
+import Tus from "@uppy/tus";
+import { MAX_UPLOAD_BYTES, TUS_CHUNK_SIZE } from "../../../lib/film/types";
+import styles from "../../film/film.module.css";
+
+interface Props {
+  team: string;
+  label: string;
+  unlocked: boolean;
+}
+
+type FileUi = {
+  id: string;
+  name: string;
+  bytes: number;
+  total: number;
+  status: "waiting" | "uploading" | "done" | "error";
+  error?: string;
+};
+
+type TokenRes = {
+  uploadId: string;
+  bucket: string;
+  path: string;
+  endpoint: string;
+  token: string;
+  contentType: string;
+};
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) {
+  const [unlocked, setUnlocked] = useState(initiallyUnlocked);
+  const [code, setCode] = useState("");
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+  const [uploaderName, setUploaderName] = useState("");
+  const [files, setFiles] = useState<FileUi[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const nameRef = useRef(uploaderName);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    nameRef.current = uploaderName;
+  }, [uploaderName]);
+
+  const uppy = useMemo(() => {
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+    const instance = new Uppy({
+      autoProceed: false,
+      restrictions: {
+        maxFileSize: MAX_UPLOAD_BYTES,
+        allowedFileTypes: ["video/*", ".mov", ".mp4", ".m4v", ".hevc", ".webm", ".mkv", ".avi"],
+      },
+    }).use(Tus, {
+      endpoint: "https://invalid.example/tus",
+      chunkSize: TUS_CHUNK_SIZE,
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      allowedMetaFields: ["bucketName", "objectName", "contentType", "cacheControl"],
+      headers: (file) => {
+        const token = String(file.meta.filmToken ?? "");
+        return {
+          apikey: anonKey,
+          "x-signature": token,
+          "x-upsert": "false",
+        };
+      },
+      onBeforeRequest: (req, file) => {
+        const token = file.meta.filmToken;
+        if (typeof token === "string" && token) {
+          req.setHeader("x-signature", token);
+          req.setHeader("apikey", anonKey);
+          req.setHeader("x-upsert", "false");
+        }
+      },
+    });
+    return instance;
+  }, []);
+
+  useEffect(() => {
+    const patch = (id: string, next: Partial<FileUi>) => {
+      setFiles((cur) => cur.map((f) => (f.id === id ? { ...f, ...next } : f)));
+    };
+
+    const onAdded = (file: { id: string; name: string; size: number | null }) => {
+      setFiles((cur) => {
+        if (cur.some((f) => f.id === file.id)) return cur;
+        return [...cur, { id: file.id, name: file.name, bytes: 0, total: file.size ?? 0, status: "waiting" }];
+      });
+    };
+    const onProgress = (
+      file: { id: string } | undefined,
+      progress: { bytesUploaded: number; bytesTotal: number | null }
+    ) => {
+      if (!file) return;
+      patch(file.id, {
+        bytes: progress.bytesUploaded,
+        total: progress.bytesTotal ?? 0,
+        status: "uploading",
+      });
+    };
+    const onSuccess = (file: { id: string; meta?: Record<string, unknown> } | undefined) => {
+      if (!file) return;
+      patch(file.id, { status: "done" });
+      const uploadId = file.meta?.filmUploadId;
+      if (typeof uploadId === "string" && uploadId) {
+        void fetch("/film/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uploadId }),
+        });
+      }
+    };
+    const onError = (file: { id: string } | undefined, error: { message?: string }) => {
+      if (!file) return;
+      patch(file.id, { status: "error", error: error.message ?? "Upload failed." });
+    };
+    const onRemoved = (file: { id: string }) => {
+      setFiles((cur) => cur.filter((f) => f.id !== file.id));
+    };
+
+    uppy.on("file-added", onAdded);
+    uppy.on("upload-progress", onProgress);
+    uppy.on("upload-success", onSuccess);
+    uppy.on("upload-error", onError);
+    uppy.on("file-removed", onRemoved);
+    return () => {
+      uppy.off("file-added", onAdded);
+      uppy.off("upload-progress", onProgress);
+      uppy.off("upload-success", onSuccess);
+      uppy.off("upload-error", onError);
+      uppy.off("file-removed", onRemoved);
+      uppy.cancelAll();
+    };
+  }, [uppy]);
+
+  const mintFile = useCallback(
+    async (fileId: string): Promise<boolean> => {
+      const file = uppy.getFile(fileId);
+      if (!file) return false;
+      const name = nameRef.current.trim();
+      if (!name) {
+        setFormError("Put your name in first, so the coaches know who sent it.");
+        uppy.removeFile(fileId);
+        return false;
+      }
+      setFormError(null);
+      const res = await fetch("/film/upload-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploaderName: name,
+          filename: file.name,
+          contentType: file.type,
+          sizeBytes: file.size,
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as TokenRes & { error?: string };
+      if (!res.ok || !body.token) {
+        uppy.removeFile(fileId);
+        setFormError(body.error ?? "Couldn't start that upload.");
+        return false;
+      }
+      uppy.getPlugin("Tus")?.setOptions({ endpoint: body.endpoint });
+      uppy.setFileMeta(fileId, {
+        bucketName: body.bucket,
+        objectName: body.path,
+        contentType: body.contentType || file.type,
+        cacheControl: "3600",
+        filmToken: body.token,
+        filmUploadId: body.uploadId,
+      });
+      return true;
+    },
+    [uppy]
+  );
+
+  const addNativeFiles = useCallback(
+    (list: FileList | File[]) => {
+      const incoming = Array.from(list);
+      if (incoming.length === 0) return;
+      const ids: string[] = [];
+      for (const file of incoming) {
+        try {
+          ids.push(uppy.addFile({ name: file.name, type: file.type, data: file }));
+        } catch (err) {
+          setFormError(err instanceof Error ? err.message : "That file couldn't be added.");
+        }
+      }
+      void (async () => {
+        let ready = 0;
+        for (const id of ids) {
+          if (await mintFile(id)) ready += 1;
+        }
+        if (ready > 0) await uppy.upload();
+      })();
+    },
+    [mintFile, uppy]
+  );
+
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault();
+    setUnlocking(true);
+    setUnlockError(null);
+    try {
+      const res = await fetch("/film/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ team, code }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setUnlockError(body.error ?? "That code doesn't match.");
+        return;
+      }
+      setUnlocked(true);
+    } finally {
+      setUnlocking(false);
+    }
+  }
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.inner}>
+        <Link href="/film" className={styles.brand}>
+          <Image src="/email/olb-bolt.png" alt="" width={40} height={40} />
+          <div>
+            <div className={styles.eyebrow}>Omaha Lightning · Game film</div>
+            <h1 className={styles.title}>{label}</h1>
+          </div>
+        </Link>
+
+        {!unlocked ? (
+          <form className={styles.card} onSubmit={unlock}>
+            <p className={styles.lede} style={{ margin: 0 }}>
+              Enter the shared code for this team. Coaches send it out; it isn&apos;t your portal password.
+            </p>
+            <label className={styles.field}>
+              <span className={styles.label}>Team code</span>
+              <input
+                className={styles.input}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                autoComplete="off"
+                autoCapitalize="off"
+                required
+              />
+            </label>
+            {unlockError && <p className={styles.error}>{unlockError}</p>}
+            <button className={styles.button} type="submit" disabled={unlocking || !code.trim()}>
+              {unlocking ? "Checking…" : "Continue"}
+            </button>
+          </form>
+        ) : (
+          <>
+            <p className={styles.note}>
+              Keep this page open and keep your phone plugged in until every video finishes. A full
+              game can take a while on cellular — Wi-Fi is better.
+            </p>
+            <div className={styles.card}>
+              <label className={styles.field}>
+                <span className={styles.label}>Your name</span>
+                <input
+                  className={styles.input}
+                  value={uploaderName}
+                  onChange={(e) => setUploaderName(e.target.value)}
+                  placeholder="So coaches know who sent it"
+                  required
+                  autoComplete="name"
+                />
+              </label>
+              <div
+                className={`${styles.drop} ${dragOver ? styles.dropActive : ""}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  addNativeFiles(e.dataTransfer.files);
+                }}
+                onClick={() => inputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
+                }}
+              >
+                <input
+                  ref={inputRef}
+                  className={styles.fileInput}
+                  type="file"
+                  accept="video/*,.mov,.mp4,.m4v,.hevc"
+                  multiple
+                  onChange={(e) => {
+                    if (e.target.files) addNativeFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <div style={{ fontWeight: 800, fontSize: 16 }}>Drop a video here</div>
+                <div style={{ marginTop: 6, fontSize: 14, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+                  or tap to pick from your camera roll. Phone .mov files are fine. Up to 20 GB each.
+                </div>
+              </div>
+              {formError && <p className={styles.error}>{formError}</p>}
+              {files.length > 0 && (
+                <div className={styles.files}>
+                  {files.map((f) => {
+                    const pct = f.total > 0 ? Math.min(100, Math.round((f.bytes / f.total) * 100)) : 0;
+                    return (
+                      <div key={f.id} className={styles.fileRow}>
+                        <div className={styles.fileMeta}>
+                          <span>{f.name}</span>
+                          <span>
+                            {f.status === "done"
+                              ? "Done"
+                              : f.status === "error"
+                                ? "Failed"
+                                : `${pct}% · ${formatBytes(f.bytes)} / ${formatBytes(f.total)}`}
+                          </span>
+                        </div>
+                        <div className={styles.bar} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+                          <div
+                            className={styles.barFill}
+                            style={{
+                              width: `${f.status === "done" ? 100 : pct}%`,
+                              background: f.status === "error" ? "var(--gw-error)" : undefined,
+                            }}
+                          />
+                        </div>
+                        {f.error && <p className={styles.error}>{f.error}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
