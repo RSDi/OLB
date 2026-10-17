@@ -8,6 +8,7 @@ import Link from "next/link";
 import Uppy from "@uppy/core";
 import Tus from "@uppy/tus";
 import { tusSignedHeaders } from "../../../lib/film/tus";
+import { allUploadsFinished, formatBytes, formatFinishTime } from "../../../lib/film/guest-status";
 import { MAX_UPLOAD_BYTES, TUS_CHUNK_SIZE } from "../../../lib/film/types";
 import styles from "../../film/film.module.css";
 
@@ -24,6 +25,7 @@ type FileUi = {
   total: number;
   status: "waiting" | "uploading" | "done" | "error";
   error?: string;
+  finishedAt?: number;
 };
 
 type TokenRes = {
@@ -35,13 +37,6 @@ type TokenRes = {
   uploadUrl: string;
   contentType: string;
 };
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
 
 export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) {
   const [unlocked, setUnlocked] = useState(initiallyUnlocked);
@@ -103,9 +98,13 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
         status: "uploading",
       });
     };
-    const onSuccess = (file: { id: string; meta?: Record<string, unknown> } | undefined) => {
+    const onSuccess = (file: { id: string; size?: number | null; meta?: Record<string, unknown> } | undefined) => {
       if (!file) return;
-      patch(file.id, { status: "done" });
+      patch(file.id, {
+        status: "done",
+        finishedAt: Date.now(),
+        ...(typeof file.size === "number" ? { bytes: file.size, total: file.size } : {}),
+      });
       const uploadId = file.meta?.filmUploadId;
       if (typeof uploadId === "string" && uploadId) {
         void fetch("/film/complete", {
@@ -203,6 +202,26 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
     [mintFile, uppy]
   );
 
+  const retryFile = useCallback(
+    async (fileId: string) => {
+      const file = uppy.getFile(fileId);
+      if (!file) return;
+      setFiles((cur) =>
+        cur.map((f) => (f.id === fileId ? { ...f, status: "uploading", error: undefined } : f))
+      );
+      const hasUrl = Boolean(file.tus?.uploadUrl && file.meta.filmToken);
+      if (!hasUrl && !(await mintFile(fileId))) return;
+      try {
+        await uppy.retryUpload(fileId);
+      } catch {
+        // upload-error handler records the failure
+      }
+    },
+    [mintFile, uppy]
+  );
+
+  const allDone = allUploadsFinished(files);
+
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
     setUnlocking(true);
@@ -258,10 +277,16 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
           </form>
         ) : (
           <>
-            <p className={styles.note}>
-              Keep this page open and keep your phone plugged in until every video finishes. A full
-              game can take a while on cellular — Wi-Fi is better.
-            </p>
+            {allDone ? (
+              <p className={styles.noteOk} role="status">
+                All videos uploaded — you can close this page.
+              </p>
+            ) : (
+              <p className={styles.note}>
+                Keep this page open and keep your phone plugged in until every video finishes. A full
+                game can take a while on cellular — Wi-Fi is better.
+              </p>
+            )}
             <div className={styles.card}>
               <label className={styles.field}>
                 <span className={styles.label}>Your name</span>
@@ -314,28 +339,55 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
                 <div className={styles.files}>
                   {files.map((f) => {
                     const pct = f.total > 0 ? Math.min(100, Math.round((f.bytes / f.total) * 100)) : 0;
+                    const size = formatBytes(f.total || f.bytes);
+                    if (f.status === "done") {
+                      return (
+                        <div key={f.id} className={`${styles.fileRow} ${styles.fileRowDone}`} role="status">
+                          <div className={styles.uploadedHead}>
+                            <span className={styles.check} aria-hidden>
+                              ✓
+                            </span>
+                            <div>
+                              <p className={styles.uploadedTitle}>✓ Uploaded</p>
+                              <p className={styles.fileName}>{f.name}</p>
+                              <p className={styles.fileDetail}>
+                                {size}
+                                {f.finishedAt ? ` · ${formatFinishTime(f.finishedAt)}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <div className={styles.bar} aria-valuemin={0} aria-valuemax={100} aria-valuenow={100}>
+                            <div className={`${styles.barFill} ${styles.barFillOk}`} style={{ width: "100%" }} />
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (f.status === "error") {
+                      return (
+                        <div key={f.id} className={`${styles.fileRow} ${styles.fileRowError}`} role="alert">
+                          <p className={styles.failedTitle}>Failed</p>
+                          <p className={styles.fileName}>{f.name}</p>
+                          {f.error && <p className={styles.error}>{f.error}</p>}
+                          <div className={styles.bar} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+                            <div className={`${styles.barFill} ${styles.barFillError}`} />
+                          </div>
+                          <button className={styles.retry} type="button" onClick={() => void retryFile(f.id)}>
+                            Retry
+                          </button>
+                        </div>
+                      );
+                    }
                     return (
                       <div key={f.id} className={styles.fileRow}>
                         <div className={styles.fileMeta}>
                           <span>{f.name}</span>
                           <span>
-                            {f.status === "done"
-                              ? "Done"
-                              : f.status === "error"
-                                ? "Failed"
-                                : `${pct}% · ${formatBytes(f.bytes)} / ${formatBytes(f.total)}`}
+                            {`${pct}% · ${formatBytes(f.bytes)} / ${formatBytes(f.total)}`}
                           </span>
                         </div>
                         <div className={styles.bar} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-                          <div
-                            className={styles.barFill}
-                            style={{
-                              width: `${f.status === "done" ? 100 : pct}%`,
-                              background: f.status === "error" ? "var(--gw-error)" : undefined,
-                            }}
-                          />
+                          <div className={styles.barFill} style={{ width: `${pct}%` }} />
                         </div>
-                        {f.error && <p className={styles.error}>{f.error}</p>}
                       </div>
                     );
                   })}

@@ -693,7 +693,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     keywords: ["film", "game film", "video", "upload", "download", "moved", "youtube", "holding", "delete", "coach inbox"],
     body: `Game videos families send in from their phones, under **Film** in the sidebar. You see this if a super-admin gave you **Game film** (or **Game film (manage)**) in Settings → Members.
 
-Families don't sign in here. They open the team upload link they were sent (the full **https://…/t/…** address from **Settings → Film**), enter that team's shared code, type their name, and upload. Ask them to **keep the page open and keep the phone plugged in** until the bar finishes — a full game can take a while.
+Families don't sign in here. They open the team upload link they were sent (the full **https://…/t/…** address from **Settings → Film**), enter that team's shared code, type their name, and upload. Ask them to **keep the page open and keep the phone plugged in** until they see **✓ Uploaded** on each file and the green **All videos uploaded — you can close this page.** If a file says **Failed**, they tap **Retry**.
 
 **On this page**
 

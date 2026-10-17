@@ -29,6 +29,7 @@ import { canManageFilm, canViewFilm, hasPermission, type MemberLike } from "../.
 import { tusEndpoint } from "../../lib/film/supabase-storage.ts";
 import { isCompactJws, tusSignedHeaders, tusUploadMetadata } from "../../lib/film/tus.ts";
 import { TOKEN_LIMIT, rateLimitTake } from "../../lib/film/rate-limit.ts";
+import { allUploadsFinished, formatBytes, formatFinishTime } from "../../lib/film/guest-status.ts";
 import type { FilmTeamRow } from "../../lib/film/teams.ts";
 
 const ENV = {
@@ -214,6 +215,12 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(client, /allowedFileTypes: \["video\/\*".*\.mov/);
   assert.match(client, /maxFileSize: MAX_UPLOAD_BYTES/);
   assert.match(client, /Phone \.mov files are fine\. Up to 20 GB each\./);
+  assert.match(client, /✓ Uploaded/);
+  assert.match(client, /All videos uploaded — you can close this page\./);
+  assert.match(client, /Keep this page open and keep your phone plugged in/);
+  assert.match(client, />\s*Retry\s*</);
+  assert.match(client, /allUploadsFinished/);
+  assert.match(client, /retryUpload/);
   assert.match(client, /setFileState\(fileId, \{ tus: \{ uploadUrl: body\.uploadUrl \} \}\)/);
   assert.equal(client.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY"), false);
   assert.equal(client.includes("sb_publishable"), false);
@@ -231,6 +238,15 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(settings, /suggestFilmCode\(team\.id\)/);
   assert.match(settings, /toLowerCase\(\)/);
   assert.match(settings, /Generate code/);
+});
+
+test("guest upload status: all-done, size, and local finish time", () => {
+  assert.equal(allUploadsFinished([]), false);
+  assert.equal(allUploadsFinished([{ status: "uploading" }]), false);
+  assert.equal(allUploadsFinished([{ status: "done" }, { status: "error" }]), false);
+  assert.equal(allUploadsFinished([{ status: "done" }, { status: "done" }]), true);
+  assert.equal(formatBytes(12 * 1024 * 1024), "12.0 MB");
+  assert.match(formatFinishTime(Date.now(), "en-US"), /\d{1,2}:\d{2}/);
 });
 
 test("the per-IP token mint cap trips after the limit", () => {
