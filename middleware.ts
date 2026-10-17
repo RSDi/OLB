@@ -9,9 +9,12 @@ import {
 import {
   DEVICE_COOKIE_HTTP,
   DEVICE_COOKIE_HTTPS,
+  RETURN_TO_COOKIE,
   cookieFlags,
   deviceCookieExpired,
   readDeviceCookie,
+  requestIsHttps,
+  returnToCookieOptions,
   safeReturnTo,
 } from "./lib/auth/pairing-cookie";
 
@@ -47,7 +50,9 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/login";
     const next = safeReturnTo(path);
     url.search = next ? `?next=${encodeURIComponent(next)}` : "";
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    rememberReturnTo(res, request, next);
+    return res;
   }
 
   // A "Preview as" past its 2-hour limit ends itself: the exit route signs
@@ -81,15 +86,28 @@ export async function middleware(request: NextRequest) {
 
   // Don't redirect away from /login if there's a status message (pending/denied)
   const hasStatus = request.nextUrl.searchParams.has("status");
+  const loginNext = path === "/login" ? safeReturnTo(request.nextUrl.searchParams.get("next")) : null;
   if (user && path === "/login" && !hasStatus) {
     const url = request.nextUrl.clone();
-    const next = safeReturnTo(request.nextUrl.searchParams.get("next"));
-    url.pathname = next ?? "/portal";
+    url.pathname = loginNext ?? "/portal";
     url.search = "";
     return NextResponse.redirect(url);
   }
 
+  // Slack OAuth and the emailed magic-link often drop ?next=. Stash a safe
+  // return-to so /auth/callback can send the phone back to /pair/<id>.
+  if (loginNext) rememberReturnTo(supabaseResponse, request, loginNext);
+
   return supabaseResponse;
+}
+
+function rememberReturnTo(res: NextResponse, request: NextRequest, next: string | null) {
+  if (!next) return;
+  res.cookies.set(
+    RETURN_TO_COOKIE,
+    next,
+    returnToCookieOptions(requestIsHttps(request.headers, request.nextUrl.protocol))
+  );
 }
 
 async function deviceRevoked(id: string): Promise<boolean> {

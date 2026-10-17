@@ -52,6 +52,9 @@ export async function POST(request: Request) {
       user_code: userCode,
       expires_in: 180,
       pair_url: `${requestOrigin(request.headers, request.url)}/pair/${id}`,
+      // Tesla Chromium often drops the HttpOnly pair cookie from fetch
+      // Set-Cookie. The car keeps this in memory and sends it on poll.
+      secret,
     });
   } catch (err) {
     console.error("[pair/start]", err);
