@@ -8,8 +8,12 @@ import { createAdminClient } from "../supabase/admin.ts";
 import { teamLabel } from "../teams/volunteer-options.ts";
 import {
   filmCodeProblem,
+  filmCodeUsedByOther,
   generateFilmCode,
   hashFilmCode,
+  normalizeFilmCode,
+  pickUniqueFilmCode,
+  suggestTeamWordCode,
 } from "./codes.ts";
 import {
   currentBoardId,
@@ -72,6 +76,7 @@ export async function loadFilmSettings(): Promise<
         hasCode: t.hasCode,
         hasSlug: t.hasSlug,
         codeVersion: t.codeVersion,
+        suggestedCode: t.suggestedCode,
         managers: managersByTeam.get(t.id) ?? [],
       })),
     };
@@ -148,6 +153,16 @@ export async function saveFilmTeamPage(
   return {};
 }
 
+async function otherTeamCodeHashes(exceptId: string): Promise<{ id: string; codeHash: string | null }[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("olb_teams").select("id, film_code_hash").neq("id", exceptId);
+  if (error) throw new Error(error.message);
+  return ((data as { id: string; film_code_hash: string | null }[] | null) ?? []).map((row) => ({
+    id: row.id,
+    codeHash: row.film_code_hash,
+  }));
+}
+
 export async function setFilmTeamCode(
   id: string,
   code: string
@@ -156,10 +171,18 @@ export async function setFilmTeamCode(
   if ("error" in gate) return { error: gate.error };
   const problem = filmCodeProblem(code);
   if (problem) return { error: problem };
-  const plaintext = code.trim();
+  const plaintext = normalizeFilmCode(code);
   const admin = createAdminClient();
   const { data: row } = await admin.from("olb_teams").select("id, film_code_version").eq("id", id).maybeSingle();
   if (!row) return { error: "That team isn't there any more." };
+  try {
+    const others = await otherTeamCodeHashes(id);
+    if (filmCodeUsedByOther(others, id, plaintext)) {
+      return { error: "Another team already uses that code. Pick a different word." };
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Couldn't check that code." };
+  }
   const version = ((row as { film_code_version: number | null }).film_code_version ?? 1) + 1;
   const { error } = await admin
     .from("olb_teams")
@@ -175,13 +198,35 @@ export async function setFilmTeamCode(
 }
 
 export async function generateAndSetFilmTeamCode(id: string): Promise<{ error?: string; code?: string }> {
-  return setFilmTeamCode(id, generateFilmCode());
-}
-
-export async function suggestFilmCode(): Promise<{ error?: string; code?: string }> {
   const gate = await requireFilmManage();
   if ("error" in gate) return { error: gate.error };
-  return { code: generateFilmCode() };
+  try {
+    const others = await otherTeamCodeHashes(id);
+    const taken = (code: string) => filmCodeUsedByOther(others, id, code);
+    return setFilmTeamCode(id, pickUniqueFilmCode(generateFilmCode(), taken));
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Couldn't make a code." };
+  }
+}
+
+export async function suggestFilmCode(teamId: string): Promise<{ error?: string; code?: string }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  if (!teamId) return { error: "Pick a team." };
+  const admin = createAdminClient();
+  const { data: row } = await admin.from("olb_teams").select("id, name, age_group").eq("id", teamId).maybeSingle();
+  if (!row) return { error: "That team isn't there any more." };
+  try {
+    const others = await otherTeamCodeHashes(teamId);
+    const taken = (code: string) => filmCodeUsedByOther(others, teamId, code);
+    const base = suggestTeamWordCode({
+      name: (row as { name: string }).name,
+      ageGroup: (row as { age_group: string | null }).age_group,
+    });
+    return { code: pickUniqueFilmCode(base, taken) };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Couldn't suggest a code." };
+  }
 }
 
 export async function addFilmManager(teamId: string, userId: string): Promise<{ error?: string }> {

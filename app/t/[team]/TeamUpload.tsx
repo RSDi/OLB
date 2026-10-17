@@ -32,6 +32,7 @@ type TokenRes = {
   path: string;
   endpoint: string;
   token: string;
+  gatewayJwt?: string;
   contentType: string;
 };
 
@@ -72,14 +73,16 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
       uploadDataDuringCreation: true,
       removeFingerprintOnSuccess: true,
       allowedMetaFields: ["bucketName", "objectName", "contentType", "cacheControl"],
-      // Signed TUS only. Never send the anon/publishable key or an empty
-      // bearer token — Storage treats those as JWTs and returns
-      // "Invalid Compact JWS".
-      headers: (file) => tusSignedHeaders(String(file.meta.filmToken ?? "")),
+      // /sign still needs a compact-JWS on Authorization/apikey (hosted
+      // Storage). Prefer the legacy anon JWT; fall back to the signed token.
+      // Never send a publishable API key as a bearer.
+      headers: (file) =>
+        tusSignedHeaders(String(file.meta.filmToken ?? ""), String(file.meta.filmGatewayJwt ?? "")),
       onBeforeRequest: (req, file) => {
         const token = file.meta.filmToken;
         if (typeof token !== "string" || !token) return;
-        for (const [key, value] of Object.entries(tusSignedHeaders(token))) {
+        const gateway = typeof file.meta.filmGatewayJwt === "string" ? file.meta.filmGatewayJwt : "";
+        for (const [key, value] of Object.entries(tusSignedHeaders(token, gateway))) {
           req.setHeader(key, value);
         }
       },
@@ -178,6 +181,7 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
         contentType: body.contentType || file.type,
         cacheControl: "3600",
         filmToken: body.token,
+        filmGatewayJwt: body.gatewayJwt ?? "",
         filmUploadId: body.uploadId,
       });
       return true;

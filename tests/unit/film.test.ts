@@ -13,9 +13,12 @@ import { filmSlugProblem, slugifyFilmTeam } from "../../lib/film/teams.ts";
 import {
   filmCodeMatches,
   filmCodeProblem,
+  filmCodeUsedByOther,
   generateFilmCode,
   hashFilmCode,
   normalizeFilmCode,
+  pickUniqueFilmCode,
+  suggestTeamWordCode,
 } from "../../lib/film/codes.ts";
 import {
   cleanUploaderName,
@@ -24,7 +27,7 @@ import {
 } from "../../lib/film/validation.ts";
 import { canManageFilm, canViewFilm, hasPermission, type MemberLike } from "../../lib/auth/permissions.ts";
 import { tusEndpoint } from "../../lib/film/supabase-storage.ts";
-import { tusSignedHeaders } from "../../lib/film/tus.ts";
+import { filmGatewayJwt, isCompactJws, tusSignedHeaders } from "../../lib/film/tus.ts";
 import { TOKEN_LIMIT, rateLimitTake } from "../../lib/film/rate-limit.ts";
 import type { FilmTeamRow } from "../../lib/film/teams.ts";
 
@@ -47,6 +50,7 @@ function team(partial: Partial<FilmTeamRow> & Pick<FilmTeamRow, "id" | "slug">):
     hasSlug: true,
     codeVersion: 1,
     codeHash: hashFilmCode(partial.id, "white-code"),
+    suggestedCode: "white14",
     ...partial,
   };
 }
@@ -68,9 +72,34 @@ test("upload codes are hashed; plaintext is not recoverable", () => {
   assert.equal(filmCodeMatches(stored, id, "White-Code"), true);
   assert.equal(filmCodeMatches(stored, id, "nope"), false);
   assert.equal(filmCodeMatches(stored, "other-id", "white-code"), false);
-  assert.equal(filmCodeProblem("abc"), "Use at least 4 characters.");
-  assert.match(generateFilmCode(), /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
-  assert.equal(normalizeFilmCode("  AbC  "), "abc");
+  assert.equal(filmCodeProblem("abc"), "Use at least 4 letters or numbers.");
+  assert.equal(filmCodeProblem("white-14"), "Use letters and numbers only (no spaces or punctuation).");
+  assert.equal(filmCodeProblem("WHITE14"), null);
+  assert.equal(filmCodeProblem("a".repeat(21)), "Keep it to 20 letters or numbers.");
+  assert.match(generateFilmCode(), /^[a-z0-9]{8}$/);
+  assert.equal(normalizeFilmCode("  White14  "), "white14");
+});
+
+test("suggested team-word codes come from the name and age, lowercase", () => {
+  assert.equal(suggestTeamWordCode({ name: "White", ageGroup: "14U" }), "white14");
+  assert.equal(suggestTeamWordCode({ name: "14U White", ageGroup: "14U" }), "white14");
+  assert.equal(suggestTeamWordCode({ name: "Gold", ageGroup: "16U" }), "gold16");
+  assert.equal(suggestTeamWordCode({ name: "14U White", ageGroup: null, label: "14U White" }), "white14");
+  assert.equal(suggestTeamWordCode({ name: "WHITE", ageGroup: "14u" }), "white14");
+  const taken = new Set(["white14"]);
+  assert.equal(
+    pickUniqueFilmCode("white14", (c) => taken.has(c)),
+    "white142"
+  );
+  const a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+  const b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+  const rows = [
+    { id: a, codeHash: hashFilmCode(a, "white14") },
+    { id: b, codeHash: hashFilmCode(b, "gold16") },
+  ];
+  assert.equal(filmCodeUsedByOther(rows, a, "white14"), false);
+  assert.equal(filmCodeUsedByOther(rows, a, "gold16"), true);
+  assert.equal(filmCodeUsedByOther(rows, a, "GOLD16"), true);
 });
 
 test("the shared team code is checked in constant time and fails closed", () => {
@@ -155,32 +184,55 @@ test("the TUS endpoint is the signed path on the direct storage hostname", () =>
   assert.equal(tusEndpoint("https://abcd.supabase.co").endsWith("/upload/resumable"), false);
 });
 
-test("signed TUS headers send only x-signature, never a JWT bearer or apikey", () => {
-  const headers = tusSignedHeaders("signed-upload-token");
-  assert.deepEqual(headers, { "x-signature": "signed-upload-token", "x-upsert": "false" });
-  assert.equal("authorization" in headers, false);
-  assert.equal("Authorization" in headers, false);
-  assert.equal("apikey" in headers, false);
-  assert.equal("x-signature" in tusSignedHeaders("  "), false);
-  assert.deepEqual(tusSignedHeaders(""), { "x-upsert": "false" });
+test("signed TUS headers send a compact-JWS bearer, never a publishable key", () => {
+  const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.sig";
+  const token = "eyJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJnYW1lLWZpbG0vYSJ9.tok";
+  assert.equal(isCompactJws(jwt), true);
+  assert.equal(isCompactJws("sb_publishable_abc"), false);
+  assert.equal(isCompactJws(""), false);
+  assert.deepEqual(tusSignedHeaders(token, jwt), {
+    "x-signature": token,
+    "x-upsert": "false",
+    authorization: `Bearer ${jwt}`,
+    apikey: jwt,
+  });
+  assert.deepEqual(tusSignedHeaders(token, "sb_publishable_abc"), {
+    "x-signature": token,
+    "x-upsert": "false",
+    authorization: `Bearer ${token}`,
+    apikey: token,
+  });
+  assert.equal(tusSignedHeaders("not-a-jwt", "sb_publishable_abc").authorization, undefined);
+  assert.equal(filmGatewayJwt({ NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_abc" }), "");
+  assert.equal(
+    filmGatewayJwt({
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_abc",
+      NEXT_PUBLIC_SUPABASE_LEGACY_ANON_KEY: jwt,
+    }),
+    jwt
+  );
 });
 
-test("the guest uploader mints a signed token and does not send the anon/publishable key", () => {
+test("the guest uploader mints a signed token and does not send the publishable key", () => {
   const client = readFileSync(join(import.meta.dirname, "../../app/t/[team]/TeamUpload.tsx"), "utf8");
   const mint = readFileSync(join(import.meta.dirname, "../../lib/film/supabase-storage.ts"), "utf8");
   const route = readFileSync(join(import.meta.dirname, "../../app/film/upload-token/route.ts"), "utf8");
+  const settings = readFileSync(join(import.meta.dirname, "../../app/portal/settings/FilmSettingsTab.tsx"), "utf8");
   assert.match(client, /tusSignedHeaders/);
   assert.match(client, /allowedFileTypes: \["video\/\*".*\.mov/);
   assert.match(client, /maxFileSize: MAX_UPLOAD_BYTES/);
   assert.match(client, /Phone \.mov files are fine\. Up to 20 GB each\./);
   assert.equal(client.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY"), false);
-  assert.equal(client.includes("apikey"), false);
-  assert.equal(/authorization/i.test(client), false);
+  assert.equal(client.includes("sb_publishable"), false);
   assert.match(mint, /createSignedUploadUrl/);
-  assert.match(mint, /tusEndpoint/);
+  assert.match(mint, /filmGatewayJwt/);
   assert.equal(mint.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
   assert.match(route, /filmStorage\(\)\.mintUpload/);
   assert.match(route, /token: minted\.token/);
+  assert.match(route, /gatewayJwt: minted\.gatewayJwt/);
+  assert.match(settings, /suggestFilmCode\(team\.id\)/);
+  assert.match(settings, /toLowerCase\(\)/);
+  assert.match(settings, /Generate code/);
 });
 
 test("the per-IP token mint cap trips after the limit", () => {

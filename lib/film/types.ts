@@ -42,6 +42,8 @@ export interface MintedUpload {
   path: string;
   endpoint: string;
   token: string;
+  // Compact-JWS for the Storage gateway (legacy anon JWT). Empty if none.
+  gatewayJwt?: string;
 }
 
 export interface FilmStorageProvider {
