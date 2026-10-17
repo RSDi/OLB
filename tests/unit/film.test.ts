@@ -27,7 +27,7 @@ import {
 } from "../../lib/film/validation.ts";
 import { canManageFilm, canViewFilm, hasPermission, type MemberLike } from "../../lib/auth/permissions.ts";
 import { tusEndpoint } from "../../lib/film/supabase-storage.ts";
-import { filmGatewayJwt, isCompactJws, tusSignedHeaders } from "../../lib/film/tus.ts";
+import { isCompactJws, tusSignedHeaders, tusUploadMetadata } from "../../lib/film/tus.ts";
 import { TOKEN_LIMIT, rateLimitTake } from "../../lib/film/rate-limit.ts";
 import type { FilmTeamRow } from "../../lib/film/teams.ts";
 
@@ -184,36 +184,28 @@ test("the TUS endpoint is the signed path on the direct storage hostname", () =>
   assert.equal(tusEndpoint("https://abcd.supabase.co").endsWith("/upload/resumable"), false);
 });
 
-test("signed TUS headers send a compact-JWS bearer, never a publishable key", () => {
-  const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.sig";
+test("signed TUS headers send x-signature once and never a bearer or apikey", () => {
   const token = "eyJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJnYW1lLWZpbG0vYSJ9.tok";
-  assert.equal(isCompactJws(jwt), true);
+  assert.equal(isCompactJws(token), true);
   assert.equal(isCompactJws("sb_publishable_abc"), false);
   assert.equal(isCompactJws(""), false);
-  assert.deepEqual(tusSignedHeaders(token, jwt), {
+  assert.equal(isCompactJws(`${token}, ${token}`), false);
+  assert.deepEqual(tusSignedHeaders(token), {
     "x-signature": token,
     "x-upsert": "false",
-    authorization: `Bearer ${jwt}`,
-    apikey: jwt,
   });
-  assert.deepEqual(tusSignedHeaders(token, "sb_publishable_abc"), {
-    "x-signature": token,
-    "x-upsert": "false",
-    authorization: `Bearer ${token}`,
-    apikey: token,
+  assert.equal(tusSignedHeaders(token).authorization, undefined);
+  assert.equal(tusSignedHeaders(token).apikey, undefined);
+  const meta = tusUploadMetadata({
+    bucketName: "game-film",
+    objectName: "white14/a/clip.mov",
+    contentType: "video/quicktime",
   });
-  assert.equal(tusSignedHeaders("not-a-jwt", "sb_publishable_abc").authorization, undefined);
-  assert.equal(filmGatewayJwt({ NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_abc" }), "");
-  assert.equal(
-    filmGatewayJwt({
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "sb_publishable_abc",
-      NEXT_PUBLIC_SUPABASE_LEGACY_ANON_KEY: jwt,
-    }),
-    jwt
-  );
+  assert.match(meta, /^bucketName [A-Za-z0-9+/=]+,objectName [A-Za-z0-9+/=]+,contentType [A-Za-z0-9+/=]+,cacheControl [A-Za-z0-9+/=]+$/);
+  assert.equal(Buffer.from(meta.split(",")[0]!.split(" ")[1]!, "base64").toString("utf8"), "game-film");
 });
 
-test("the guest uploader mints a signed token and does not send the publishable key", () => {
+test("the guest uploader uses a server-created TUS URL and does not double-set headers", () => {
   const client = readFileSync(join(import.meta.dirname, "../../app/t/[team]/TeamUpload.tsx"), "utf8");
   const mint = readFileSync(join(import.meta.dirname, "../../lib/film/supabase-storage.ts"), "utf8");
   const route = readFileSync(join(import.meta.dirname, "../../app/film/upload-token/route.ts"), "utf8");
@@ -222,14 +214,20 @@ test("the guest uploader mints a signed token and does not send the publishable 
   assert.match(client, /allowedFileTypes: \["video\/\*".*\.mov/);
   assert.match(client, /maxFileSize: MAX_UPLOAD_BYTES/);
   assert.match(client, /Phone \.mov files are fine\. Up to 20 GB each\./);
+  assert.match(client, /setFileState\(fileId, \{ tus: \{ uploadUrl: body\.uploadUrl \} \}\)/);
   assert.equal(client.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY"), false);
   assert.equal(client.includes("sb_publishable"), false);
+  assert.doesNotMatch(client, /onBeforeRequest/);
+  assert.equal(client.includes("filmGatewayJwt"), false);
+  assert.doesNotMatch(client, /\bauthorization\s*:/i);
+  assert.doesNotMatch(client, /\bapikey\s*:/i);
   assert.match(mint, /createSignedUploadUrl/);
-  assert.match(mint, /filmGatewayJwt/);
+  assert.match(mint, /createSignedTusUpload/);
   assert.equal(mint.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
   assert.match(route, /filmStorage\(\)\.mintUpload/);
   assert.match(route, /token: minted\.token/);
-  assert.match(route, /gatewayJwt: minted\.gatewayJwt/);
+  assert.match(route, /uploadUrl: minted\.uploadUrl/);
+  assert.equal(route.includes("gatewayJwt"), false);
   assert.match(settings, /suggestFilmCode\(team\.id\)/);
   assert.match(settings, /toLowerCase\(\)/);
   assert.match(settings, /Generate code/);

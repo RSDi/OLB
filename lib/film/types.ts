@@ -42,13 +42,14 @@ export interface MintedUpload {
   path: string;
   endpoint: string;
   token: string;
-  // Compact-JWS for the Storage gateway (legacy anon JWT). Empty if none.
-  gatewayJwt?: string;
+  // TUS Location from server-side POST /upload/resumable/sign. The phone
+  // PATCHes chunks here and never POSTs to Storage itself.
+  uploadUrl?: string;
 }
 
 export interface FilmStorageProvider {
   id: "supabase" | "r2" | "s3";
-  mintUpload(input: { path: string; contentType: string }): Promise<MintedUpload>;
+  mintUpload(input: { path: string; contentType: string; sizeBytes: number }): Promise<MintedUpload>;
   signedDownloadUrl(path: string, expiresInSeconds: number): Promise<string>;
   deleteObject(path: string): Promise<void>;
 }

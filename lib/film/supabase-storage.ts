@@ -1,9 +1,11 @@
 // Supabase Storage provider: mint a short-lived signed upload token with the
-// service-role key (never sent to the browser as the key itself). The client
-// then TUS-uploads straight to Storage — bytes never pass through Vercel.
+// service-role key (never sent to the browser as the key itself), then create
+// the TUS upload on Storage from this server. The client PATCHes file bytes
+// straight to the returned Location — they never pass through Vercel.
 
 import { createAdminClient } from "../supabase/admin.ts";
-import { filmGatewayJwt, tusEndpoint } from "./tus.ts";
+import { createSignedTusUpload } from "./tus-create.ts";
+import { tusEndpoint } from "./tus.ts";
 import { GAME_FILM_BUCKET, TUS_CHUNK_SIZE, type FilmStorageProvider, type MintedUpload } from "./types.ts";
 
 export { TUS_CHUNK_SIZE, tusEndpoint };
@@ -11,7 +13,7 @@ export { TUS_CHUNK_SIZE, tusEndpoint };
 export function supabaseFilmStorage(): FilmStorageProvider {
   return {
     id: "supabase",
-    async mintUpload({ path }): Promise<MintedUpload> {
+    async mintUpload({ path, contentType, sizeBytes }): Promise<MintedUpload> {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
       if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set.");
       const admin = createAdminClient();
@@ -21,12 +23,20 @@ export function supabaseFilmStorage(): FilmStorageProvider {
       if (error || !data) {
         throw new Error(error?.message ?? "Couldn't mint an upload token.");
       }
+      const endpoint = tusEndpoint(url);
+      const uploadUrl = await createSignedTusUpload({
+        endpoint,
+        token: data.token,
+        path: data.path,
+        contentType,
+        sizeBytes,
+      });
       return {
         bucket: GAME_FILM_BUCKET,
         path: data.path,
-        endpoint: tusEndpoint(url),
+        endpoint,
         token: data.token,
-        gatewayJwt: filmGatewayJwt(),
+        uploadUrl,
       };
     },
     async signedDownloadUrl(path, expiresInSeconds): Promise<string> {
