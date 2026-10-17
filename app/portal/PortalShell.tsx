@@ -62,6 +62,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/search":      { title: "Search",       subtitle: "" },
   "/portal/search/log":  { title: "Search log",   subtitle: "Search" },
   "/portal/activity":    { title: "Activity",     subtitle: "Super-admin" },
+  "/portal/devices":     { title: "Signed-in devices", subtitle: "" },
   "/portal/roadmap":     { title: "Roadmap",      subtitle: "" },
 };
 

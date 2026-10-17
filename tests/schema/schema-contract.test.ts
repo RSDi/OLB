@@ -125,6 +125,9 @@ const CONTRACT: Record<string, string> = {
   activity_user_last_view: "user_id,last_seen_path",
   activity_top_pages_30d: "page,views,people",
   activity_daily_30d: "day,people,views",
+  // Phone-to-device QR pairing (0141). Service role only.
+  device_pairings:
+    "id,host,secret_hash,user_code_hmac,status,wrong_picks,device_ua,device_ip,device_city,created_at,expires_at,approved_at,approved_by_email,approved_by_user_id,approver_sid,approver_ip,consumed_at,session_id,session_expires_at,last_poll_at,revoked_at,revoked_by_email",
   // Planning (0104).
   planning_roles: "id,name,chip_class,member_id,sort_order,seed_key,created_at,updated_at,deleted_at",
   planning_templates: "id,kind,title,notes,month,role_id,playbook_id,sort_order,seed_key,created_by,created_at,updated_at,deleted_at",

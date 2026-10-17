@@ -15,6 +15,17 @@ export {
 
 const AUTHORED: AuthoredRelease[] = [
   {
+    date: "October 17, 2026",
+    title: "Sign in with phone",
+    color: "#1f6feb",
+    features: [
+      "Login has Sign in with phone: the other screen shows a QR code and a short code",
+      "Scan it on a signed-in phone, pick the matching code, then Approve or Deny",
+      "That device gets a 12-hour session; Signed-in devices lets you sign it out",
+      "Slack, email and password sign-in are unchanged",
+    ],
+  },
+  {
     date: "October 16, 2026",
     title: "Age eligibility and swing-ups",
     color: "#c45c26",

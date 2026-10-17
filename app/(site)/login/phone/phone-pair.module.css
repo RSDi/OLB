@@ -1,0 +1,34 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.qr {
+  width: min(100%, 260px);
+  margin: 0 auto 16px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.qr :global(svg) {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.code {
+  margin: 0 0 8px;
+  text-align: center;
+  font-size: calc(var(--fs-normal) * 2);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  line-height: 1.2;
+}
+
+.countdown {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-small);
+}

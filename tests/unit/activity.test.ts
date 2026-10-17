@@ -64,6 +64,7 @@ test("recorded paths read as words", () => {
   assert.equal(pathLabel("/portal/docs/abc/history"), "Playbooks · Playbook · History");
   assert.equal(pathLabel("/portal/contacts/abc/edit"), "External Contacts · Contact · Edit");
   assert.equal(pathLabel("/portal/slack-archive/search?q=tournament"), "Slack Archive · Search · Search: tournament");
+  assert.equal(pathLabel("/portal/devices"), "Signed-in devices");
   assert.equal(pathLabel("/portal"), "Dashboard");
   assert.equal(pathLabel("/portal/something-new"), "something-new");
   assert.deepEqual(describePath("/portal/activity?u=abc"), { section: "Activity", page: undefined, detail: undefined });

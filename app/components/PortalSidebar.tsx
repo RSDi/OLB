@@ -32,6 +32,8 @@ interface NavItem {
   contactsOnly?: boolean;
   // Guided-tour anchor (lib/help/tours.ts).
   tour?: string;
+  // Sign in with phone: PAIRING_ALLOWED_EMAILS (Jeff, unless the env is set).
+  pairingOnly?: boolean;
 }
 
 // Slimmed nav (2026-06): "Make a Request" lives on the Dashboard; Review + PM
@@ -58,6 +60,7 @@ const NAV: NavItem[] = [
   { href: "/portal/payments", label: "Payments", icon: <Icons.Give width={16} height={16}/>, paymentsOnly: true, tour: "nav-payments" },
   // Every approved member: Release Notes, plus any tabs their permissions add.
   // Pinned to the bottom of the nav (BOTTOM_HREFS).
+  { href: "/portal/devices", label: "Signed-in devices", icon: <Icons.Phone width={16} height={16}/>, pairingOnly: true, tour: "nav-devices" },
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, approvedOnly: true, tour: "nav-settings" },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
@@ -109,6 +112,8 @@ export interface SidebarViewer {
   canPlanHsSchedule?: boolean;
   // Every permission key they hold (0122), for the guide.
   permissions?: string[];
+  // PAIRING_ALLOWED_EMAILS: Signed-in devices.
+  canPairDevices?: boolean;
 }
 
 interface PortalSidebarProps {
@@ -160,7 +165,8 @@ export function PortalSidebar({
   const planner = isStaff || isCoach || travel || !!viewer?.canPlanHsSchedule;
   const contacts = isStaff || isCoach || travel || !!viewer?.canEditContacts;
   const seesFinances = viewer?.seesFinances ?? false;
-  const visibleItems = navItems.map(item => (item.href === "/portal/payments" && seesFinances ? { ...item, label: "Finances" } : item)).filter(item => (!item.staffOnly || settings) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts));
+  const pairing = viewer?.canPairDevices ?? false;
+  const visibleItems = navItems.map(item => (item.href === "/portal/payments" && seesFinances ? { ...item, label: "Finances" } : item)).filter(item => (!item.staffOnly || settings) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts) && (!item.pairingOnly || pairing));
   const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
   const bottomItems = BOTTOM_HREFS
     .map(href => visibleItems.find(item => item.href === href))

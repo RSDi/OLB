@@ -77,7 +77,7 @@ export interface GuideViewer {
   permissions?: string[];
 }
 
-export const GUIDE_UPDATED = "October 16, 2026";
+export const GUIDE_UPDATED = "October 17, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -85,14 +85,16 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: "Signing in",
     group: "Getting started",
     audience: "everyone",
-    keywords: ["login", "log in", "sign in", "password", "forgot", "reset", "code", "slack", "register", "request access", "pending", "approved", "denied", "account"],
+    keywords: ["login", "log in", "sign in", "password", "forgot", "reset", "code", "slack", "register", "request access", "pending", "approved", "denied", "account", "phone", "QR", "pair"],
     body: `The member portal is for Omaha Lightning families, coaches and the board. Use the **Login** button at the top of the club website (or the **Login** link at the bottom), or go straight to the login page.
 
-**Three ways to sign in**
+**Three ways to sign in** (unchanged)
 
 - **Continue with Slack** — the quickest. If you're in the club's Slack workspace, this gets you in right away, even if you're new.
 - **Email and password** — the account you created when you requested access.
 - **Email me a sign-in code** — no password needed. Enter your email, we email you a code, type it in and you're in. (If the email shows a sign-in button instead of a code, tapping the button works too.) Codes only work for email addresses that already have an account.
+
+**Sign in with phone** is an extra button on the login page for a screen that can't type easily (a car browser). It shows a QR code and a short code like **WDJB-MJHT**. Scan the QR with a phone that's already signed in, pick the matching code, then tap **Approve** or **Deny**. Only an allowlisted account can approve (Jeff, unless Settings change that). Slack, email and password still work the same for everyone.
 
 **Forgot your password?** Tap **Forgot password?** next to the Password label. We'll email you a code; type it in, then choose a new password (at least 8 characters).
 
@@ -824,6 +826,19 @@ The board sees it under **Finances → Snapshot**, and so does anyone given **Se
 - **Payments** lists what the Treasurer has recorded from you, with the date and how you paid.
 
 **To pay,** Venmo the club and put your player's name in the note, or pay by check. A payment shows here once the Treasurer records it, so it may take a few days. Questions about your balance? Email the club at the address on the page.`,
+  },
+  {
+    id: "signed-in-devices",
+    title: "Signed-in devices",
+    group: "Signed-in devices",
+    audience: "super_admin",
+    routes: ["/portal/devices"],
+    keywords: ["signed-in devices", "phone", "QR", "pair", "car", "revoke", "sign out", "approve"],
+    body: `**Signed-in devices** lists screens you signed in with **Sign in with phone** — a car browser, for example. Open it from the sidebar.
+
+Each row shows the device, city and IP, when it signed in, and when the 12-hour session ends. **Sign out** ends that one; **Sign out all devices** ends every phone-paired session. Slack, email and password sessions on your other devices are left alone.
+
+On the phone, after you tap **Approve**, you'll see **Device signed in** and a **Sign it out** button. You'll also get an email when a device is approved, with a link back here.`,
   },
   {
     id: "slack-archive",
