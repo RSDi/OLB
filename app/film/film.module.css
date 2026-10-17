@@ -322,6 +322,26 @@
   line-height: 1.35;
 }
 
+.tip {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gw-fg-muted);
+  line-height: 1.45;
+}
+
+.sizeHint {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--gw-bg-elev);
+  border: 1px solid var(--gw-border);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gw-fg);
+  line-height: 1.4;
+}
+
 .scoreFields {
   margin: 0;
   padding: 0;

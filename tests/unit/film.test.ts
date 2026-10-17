@@ -35,7 +35,7 @@ import { canManageFilm, canViewFilm, hasPermission, type MemberLike } from "../.
 import { tusEndpoint } from "../../lib/film/supabase-storage.ts";
 import { isCompactJws, tusSignedHeaders, tusUploadMetadata } from "../../lib/film/tus.ts";
 import { TOKEN_LIMIT, rateLimitTake } from "../../lib/film/rate-limit.ts";
-import { allUploadsFinished, formatBytes, formatFinishTime } from "../../lib/film/guest-status.ts";
+import { allUploadsFinished, formatBytes, formatFinishTime, isLargeFilmFile } from "../../lib/film/guest-status.ts";
 import type { FilmTeamRow } from "../../lib/film/teams.ts";
 
 const ENV = {
@@ -279,6 +279,9 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(client, /allowedFileTypes: \["video\/\*".*\.mov/);
   assert.match(client, /maxFileSize: MAX_UPLOAD_BYTES/);
   assert.match(client, /Phone \.mov files are fine\. Up to 20 GB each\./);
+  assert.match(client, /Tip: record in 1080p at 30 fps \(iPhone: Settings → Camera → Record Video\)\./);
+  assert.match(client, /This file is over 4 GB/);
+  assert.match(client, /isLargeFilmFile/);
   assert.match(client, /✓ Uploaded/);
   assert.match(client, /All videos uploaded — you can close this page\./);
   assert.match(client, /Keep this page open and keep your phone plugged in/);
@@ -329,6 +332,8 @@ test("guest upload status: all-done, size, and local finish time", () => {
   assert.equal(allUploadsFinished([{ status: "done" }, { status: "done" }]), true);
   assert.equal(formatBytes(12 * 1024 * 1024), "12.0 MB");
   assert.match(formatFinishTime(Date.now(), "en-US"), /\d{1,2}:\d{2}/);
+  assert.equal(isLargeFilmFile(4 * 1024 * 1024 * 1024), false);
+  assert.equal(isLargeFilmFile(4 * 1024 * 1024 * 1024 + 1), true);
 });
 
 test("the per-IP token mint cap trips after the limit", () => {

@@ -10,7 +10,7 @@ import Tus from "@uppy/tus";
 import { tusSignedHeaders } from "../../../lib/film/tus";
 import { churchToday } from "../../../lib/dates/today";
 import { formatFilmGameLine } from "../../../lib/film/game-meta";
-import { allUploadsFinished, formatBytes, formatFinishTime } from "../../../lib/film/guest-status";
+import { allUploadsFinished, formatBytes, formatFinishTime, isLargeFilmFile } from "../../../lib/film/guest-status";
 import { MAX_UPLOAD_BYTES, TUS_CHUNK_SIZE } from "../../../lib/film/types";
 import styles from "../../film/film.module.css";
 
@@ -274,6 +274,7 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
   );
 
   const allDone = allUploadsFinished(files);
+  const largeFileNote = files.some((f) => isLargeFilmFile(f.total || f.bytes));
 
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
@@ -445,6 +446,15 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
                   or tap to pick from your camera roll. Phone .mov files are fine. Up to 20 GB each.
                 </div>
               </div>
+              <p className={styles.tip}>
+                Tip: record in 1080p at 30 fps (iPhone: Settings → Camera → Record Video). 4K files are
+                3–6× bigger and upload much slower.
+              </p>
+              {largeFileNote && (
+                <p className={styles.sizeHint} role="status">
+                  This file is over 4 GB. Next time, 1080p at 30 fps uploads much faster.
+                </p>
+              )}
               {formError && <p className={styles.error}>{formError}</p>}
               {files.length > 0 && (
                 <div className={styles.files}>

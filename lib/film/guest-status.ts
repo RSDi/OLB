@@ -16,3 +16,10 @@ export function allUploadsFinished(
 ): boolean {
   return files.length > 0 && files.every((f) => f.status === "done");
 }
+
+// ~4 GB. Phone 4K recordings often land here; 1080p30 is much smaller.
+export const LARGE_FILM_HINT_BYTES = 4 * 1024 * 1024 * 1024;
+
+export function isLargeFilmFile(bytes: number): boolean {
+  return bytes > LARGE_FILM_HINT_BYTES;
+}
