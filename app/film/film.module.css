@@ -59,9 +59,21 @@
   background: var(--rsd-accent-bg);
   border: 1px solid var(--rsd-accent);
   color: var(--rsd-accent-on);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   line-height: 1.45;
+}
+
+.noteOk {
+  margin: 0;
+  padding: 18px 18px;
+  border-radius: 14px;
+  background: var(--gw-success-bg);
+  border: 2px solid var(--gw-success);
+  color: var(--gw-success);
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.3;
 }
 
 .card {
@@ -120,25 +132,93 @@
 .files {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .fileRow {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+}
+
+.fileRowDone,
+.fileRowError {
+  padding: 14px 14px 16px;
+  border-radius: 14px;
+}
+
+.fileRowDone {
+  background: var(--gw-success-bg);
+  border: 2px solid var(--gw-success);
+}
+
+.fileRowError {
+  background: var(--gw-error-bg);
+  border: 2px solid var(--gw-error);
 }
 
 .fileMeta {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.uploadedHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.check {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 100px;
+  background: var(--gw-success);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 36px;
+  text-align: center;
+}
+
+.uploadedTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--gw-success);
+}
+
+.fileName {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--gw-fg);
+  word-break: break-word;
+}
+
+.fileDetail {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gw-fg-muted);
+}
+
+.failedTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--gw-error);
 }
 
 .bar {
-  height: 8px;
+  height: 10px;
   border-radius: 100px;
   background: var(--gw-stroke-2);
   overflow: hidden;
@@ -151,11 +231,35 @@
   transition: width 160ms linear;
 }
 
+.barFillOk {
+  background: var(--gw-success);
+}
+
+.barFillError {
+  background: var(--gw-error);
+  width: 100%;
+}
+
 .error {
   color: var(--gw-error);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.retry {
+  appearance: none;
+  align-self: flex-start;
+  border: 1px solid var(--gw-error);
+  background: var(--gw-error);
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  border-radius: 100px;
+  padding: 12px 22px;
+  min-height: 48px;
 }
 
 .button {
