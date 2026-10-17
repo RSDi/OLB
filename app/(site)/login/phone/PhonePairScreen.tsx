@@ -1,12 +1,12 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { FormError } from "../../_components/AuthForm";
 import auth from "../../_components/auth.module.css";
 import styles from "../../_components/site.module.css";
 import { cx } from "../../_components/util";
+import { createClient } from "../../../../lib/supabase/client";
 import pair from "./phone-pair.module.css";
 
 type Phase = "loading" | "ready" | "expired" | "denied" | "signing-in" | "error";
@@ -16,13 +16,13 @@ export function PhonePairScreen({
 }: {
   demo?: { userCode: string; pairUrl: string; qrSvg: string };
 }) {
-  const router = useRouter();
   const [phase, setPhase] = useState<Phase>("loading");
   const [message, setMessage] = useState<string | null>(null);
   const [userCode, setUserCode] = useState("");
   const [pairUrl, setPairUrl] = useState("");
   const [qrSvg, setQrSvg] = useState("");
   const [left, setLeft] = useState(180);
+  const secretRef = useRef("");
 
   const start = useCallback(async () => {
     setPhase("loading");
@@ -34,6 +34,7 @@ export function PhonePairScreen({
         user_code?: string;
         expires_in?: number;
         pair_url?: string;
+        secret?: string;
         error?: string;
         message?: string;
       };
@@ -42,6 +43,7 @@ export function PhonePairScreen({
         setMessage(data.message ?? "Couldn't start a sign-in. Try again.");
         return;
       }
+      secretRef.current = typeof data.secret === "string" ? data.secret : "";
       const svg = await QRCode.toString(data.pair_url, {
         type: "svg",
         margin: 1,
@@ -99,13 +101,31 @@ export function PhonePairScreen({
         const res = await fetch("/api/auth/pair/poll", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id, secret: secretRef.current || undefined }),
         });
-        const data = (await res.json()) as { status?: string; error?: string; interval?: number };
+        const data = (await res.json()) as {
+          status?: string;
+          error?: string;
+          interval?: number;
+          access_token?: string;
+          refresh_token?: string;
+        };
         if (data.status === "success") {
           setPhase("signing-in");
-          router.push("/portal");
-          router.refresh();
+          try {
+            if (data.access_token && data.refresh_token) {
+              const supabase = createClient();
+              await supabase.auth.setSession({
+                access_token: data.access_token,
+                refresh_token: data.refresh_token,
+              });
+            }
+          } catch {
+            // Full-page navigation still runs; server cookies may have landed.
+          }
+          // Tesla Chromium often ignores Set-Cookie on fetch and client
+          // router.push then hits /portal with no session → login.
+          window.location.assign("/portal");
           return;
         }
         if (data.error === "access_denied") {
@@ -129,7 +149,7 @@ export function PhonePairScreen({
       stopped = true;
       clearTimeout(timer);
     };
-  }, [phase, pairUrl, router]);
+  }, [phase, pairUrl]);
 
   const primary = cx(styles.button, auth.action);
   const minutes = Math.floor(left / 60);

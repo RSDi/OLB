@@ -74,18 +74,22 @@ export function LoginForm({
     router.refresh();
   }
 
+  function authCallbackUrl() {
+    const base = `${window.location.origin}/auth/callback`;
+    return next ? `${base}?next=${encodeURIComponent(next)}` : base;
+  }
+
   async function handleSlack() {
     setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "slack_oidc",
       options: {
-        redirectTo: next
-          ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-          : `${window.location.origin}/auth/callback`,
+        redirectTo: authCallbackUrl(),
       },
     });
     // On success the browser redirects to Slack and back through /auth/callback.
+    // Supabase often strips ?next= from redirectTo; olb_return_to is the backup.
     if (error) setError(friendlyAuthError(error.message));
   }
 
@@ -130,7 +134,12 @@ export function LoginForm({
     // folks go through Request access so the approval flow holds.
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: false },
+      options: {
+        shouldCreateUser: false,
+        // The in-email button is a magic link. Without this, it lands on
+        // /auth/callback with no next and the phone goes to /portal.
+        ...(next ? { emailRedirectTo: authCallbackUrl() } : {}),
+      },
     });
     setPending(null);
     if (otpError) {

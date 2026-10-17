@@ -16,6 +16,15 @@ export {
 const AUTHORED: AuthoredRelease[] = [
   {
     date: "October 17, 2026",
+    title: "Phone QR comes back to Approve",
+    color: "#1f6feb",
+    features: [
+      "Scanning a car QR and signing in on the phone (Slack, email and password, or a sign-in code) takes you back to Approve, not the portal",
+      "After Approve, the car finishes signing in even in a Tesla browser",
+    ],
+  },
+  {
+    date: "October 17, 2026",
     title: "Sign in with phone",
     color: "#1f6feb",
     features: [

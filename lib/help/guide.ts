@@ -94,7 +94,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **Email and password** — the account you created when you requested access.
 - **Email me a sign-in code** — no password needed. Enter your email, we email you a code, type it in and you're in. (If the email shows a sign-in button instead of a code, tapping the button works too.) Codes only work for email addresses that already have an account.
 
-**Sign in with phone** is an extra button on the login page for a screen that can't type easily (a car browser). It shows a QR code and a short code like **WDJB-MJHT**. Scan the QR with a phone that's already signed in, pick the matching code, then tap **Approve** or **Deny**. Only an allowlisted account can approve (Jeff, unless Settings change that). Slack, email and password still work the same for everyone.
+**Sign in with phone** is an extra button on the login page for a screen that can't type easily (a car browser). It shows a QR code and a short code like **WDJB-MJHT**. Scan the QR with your phone. If you're not signed in there, you'll see the login page first — **Continue with Slack**, email and password, or **Email me a sign-in code** (including the button in the email) all bring you back to the approve page, not the portal. Pick the matching code, then tap **Approve** or **Deny**. After **Approve**, the other screen signs in by itself. Only an allowlisted account can approve (Jeff, unless Settings change that). Slack, email and password still work the same for everyone.
 
 **Forgot your password?** Tap **Forgot password?** next to the Password label. We'll email you a code; type it in, then choose a new password (at least 8 characters).
 

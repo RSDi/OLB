@@ -8,6 +8,7 @@ import {
   pollTooSoon,
   sameHash,
 } from "../../../../../lib/auth/pairing";
+import { parsePairCookie } from "../../../../../lib/auth/pairing-cookie";
 import {
   consumePairing,
   expireIfNeeded,
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   const blocked = requireSameOrigin(request);
   if (blocked) return blocked;
 
-  let body: { id?: unknown };
+  let body: { id?: unknown; secret?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -40,7 +41,10 @@ export async function POST(request: Request) {
   if (!isPairingId(id)) return json({ error: "expired_token" }, 400);
 
   const cookie = await pairCookieFromStore();
-  if (!cookie || cookie.id !== id) return json({ error: "expired_token" }, 400);
+  const bodySecret = typeof body.secret === "string" ? body.secret : "";
+  const proof =
+    cookie && cookie.id === id ? cookie : parsePairCookie(`${id}.${bodySecret}`);
+  if (!proof || proof.id !== id) return json({ error: "expired_token" }, 400);
 
   const host = requestHost(request.headers, request.url);
 
@@ -50,7 +54,7 @@ export async function POST(request: Request) {
     const row = await expireIfNeeded(raw);
 
     if (row.host !== host) return json({ error: "expired_token" }, 400);
-    if (!sameHash(row.secret_hash, hashSecret(cookie.secret))) return json({ error: "expired_token" }, 400);
+    if (!sameHash(row.secret_hash, hashSecret(proof.secret))) return json({ error: "expired_token" }, 400);
 
     if (pollTooSoon(row.last_poll_at)) return json({ error: "slow_down", interval: 5 }, 400);
     await markLastPoll(id);
@@ -81,12 +85,18 @@ export async function POST(request: Request) {
 
     const secure = requestIsSecure(request.headers, request.url);
     await setDeviceCookie(
-      { id, secret: cookie.secret, expiresAt: Date.now() + DEVICE_SESSION_TTL_MS },
+      { id, secret: proof.secret, expiresAt: Date.now() + DEVICE_SESSION_TTL_MS },
       secure
     );
     await clearPairCookies();
 
-    return json({ status: "success" });
+    // Tokens go in the JSON so the car can setSession itself. Tesla Chromium
+    // often ignores Set-Cookie on the fetch that called this route.
+    return json({
+      status: "success",
+      access_token: minted.accessToken,
+      refresh_token: minted.refreshToken,
+    });
   } catch (err) {
     console.error("[pair/poll]", err);
     return json({ error: "failed" }, 500);

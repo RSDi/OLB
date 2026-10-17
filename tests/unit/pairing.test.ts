@@ -18,18 +18,22 @@ import {
   pairingAlertEmail,
   pollTooSoon,
   randomUserCode,
+  resolveReturnTo,
   safeReturnTo,
   sameHash,
   shuffleCodes,
   startLimited,
 } from "../../lib/auth/pairing.ts";
 import {
+  cookieFlags,
+  deviceCookieName,
   encodeDeviceCookie,
   encodePairCookie,
   parseDeviceCookie,
   parsePairCookie,
   pairCookieName,
   deviceCookieExpired,
+  returnToCookieOptions,
 } from "../../lib/auth/pairing-cookie.ts";
 
 const SECRET = "test-pairing-secret";
@@ -78,8 +82,13 @@ test("pairing cookies round-trip and reject junk", () => {
   assert.equal(deviceCookieExpired(device, 1_800_000_000_001), true);
   assert.equal(deviceCookieExpired(device, 1_800_000_000_000), true);
   assert.equal(deviceCookieExpired(device, 1_799_999_999_999), false);
-  assert.equal(pairCookieName(true), "__Host-pair");
+  assert.equal(pairCookieName(true), "olb_pair");
   assert.equal(pairCookieName(false), "olb_pair");
+  assert.equal(deviceCookieName(true), "olb_device");
+  assert.equal(cookieFlags(true, 180).sameSite, "lax");
+  assert.equal(cookieFlags(true, 180).httpOnly, true);
+  assert.equal(cookieFlags(true, 180).secure, true);
+  assert.equal(returnToCookieOptions(true).sameSite, "lax");
 });
 
 test("return-to only allows a pair URL or Signed-in devices", () => {
@@ -90,6 +99,12 @@ test("return-to only allows a pair URL or Signed-in devices", () => {
   assert.equal(safeReturnTo("//evil.example"), null);
   assert.equal(safeReturnTo("/pair/not-a-uuid"), null);
   assert.equal(safeReturnTo("/login"), null);
+  assert.equal(resolveReturnTo(`/pair/${ID}`, null), `/pair/${ID}`);
+  assert.equal(resolveReturnTo(null, `/pair/${ID}`), `/pair/${ID}`);
+  assert.equal(resolveReturnTo("/portal", `/pair/${ID}`), `/pair/${ID}`);
+  assert.equal(resolveReturnTo(`/pair/${ID}`, "/portal"), `/pair/${ID}`);
+  assert.equal(resolveReturnTo(null, "/portal"), null);
+  assert.equal(resolveReturnTo(null, "/portal/devices"), "/portal/devices");
 });
 
 test("origin must match this host when the header is present", () => {

@@ -1,5 +1,6 @@
 // Shared request helpers for /api/auth/pair/* — origin check, cookies,
-// no-store responses.
+// no-store responses. Pair/device cookies are olb_pair / olb_device with
+// SameSite=Lax (Tesla Chromium rejects __Host- and Strict).
 
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
