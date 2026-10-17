@@ -325,6 +325,24 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(settings, /Generate code/);
 });
 
+test("guest Game date CSS constrains the iOS Safari native date field", () => {
+  const css = readFileSync(join(import.meta.dirname, "../../app/film/film.module.css"), "utf8");
+  assert.match(css, /\.card\s*\{[\s\S]*?min-width:\s*0/);
+  assert.match(css, /\.field\s*\{[\s\S]*?min-width:\s*0/);
+  assert.match(css, /\.input\s*\{[\s\S]*?box-sizing:\s*border-box/);
+  assert.match(css, /\.input\s*\{[\s\S]*?height:\s*52px/);
+  assert.match(css, /\.input\s*\{[\s\S]*?line-height:\s*52px/);
+  assert.match(css, /\.input\[type="date"\][\s\S]*-webkit-appearance:\s*none/);
+  assert.match(css, /\.input\[type="date"\][\s\S]*display:\s*block/);
+  assert.match(css, /\.input\[type="date"\][\s\S]*width:\s*100%/);
+  assert.match(css, /\.input\[type="date"\][\s\S]*max-width:\s*100%/);
+  assert.match(css, /\.input\[type="date"\][\s\S]*box-sizing:\s*border-box/);
+  assert.match(css, /\.input\[type="date"\][\s\S]*min-width:\s*0/);
+  assert.match(css, /\.input\[type="date"\][\s\S]*line-height:\s*52px/);
+  assert.match(css, /::-webkit-date-and-time-value[\s\S]*text-align:\s*left/);
+  assert.match(css, /::-webkit-date-and-time-value[\s\S]*margin:\s*0/);
+});
+
 test("guest upload status: all-done, size, and local finish time", () => {
   assert.equal(allUploadsFinished([]), false);
   assert.equal(allUploadsFinished([{ status: "uploading" }]), false);

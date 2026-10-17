@@ -8,6 +8,8 @@
 
 .inner {
   width: min(560px, calc(100% - 32px));
+  max-width: 100%;
+  min-width: 0;
   margin: 0 auto;
   padding: 28px 0 64px;
   display: flex;
@@ -84,6 +86,7 @@
   border: 1px solid var(--gw-border);
   border-radius: 16px;
   background: var(--gw-surface);
+  min-width: 0;
 }
 
 .teams {
@@ -279,19 +282,43 @@
 }
 
 .input {
+  box-sizing: border-box;
   height: 52px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border-radius: 10px;
   border: 1px solid var(--gw-border);
   padding: 0 14px;
   font-size: 16px;
+  line-height: 52px;
   background: var(--gw-bg);
   color: var(--gw-fg);
 }
 
+/* iOS Safari's native date field ignores height/padding and has a large
+   intrinsic min-width, so it overflowed the card and sat top-aligned. */
 .input[type="date"] {
-  min-height: 52px;
+  -webkit-appearance: none;
+  appearance: none;
   display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--gw-bg);
+  color: var(--gw-fg);
+  font-size: 16px;
+  line-height: 52px;
+}
+
+.input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
 }
 
 .label {
@@ -312,6 +339,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .hint {
