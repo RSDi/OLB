@@ -13,10 +13,11 @@ import {
 import { RELEASES } from "../../lib/release-notes/releases.ts";
 
 test("the 10/16 seed entries are newest-first with derived versions from 26.10.0", () => {
-  assert.equal(RELEASES.length, 6);
+  assert.equal(RELEASES.length, 7);
   assert.deepEqual(
     RELEASES.map((r) => [r.version, r.title]),
     [
+      ["26.10.6", "Sign in with phone"],
       ["26.10.5", "Age eligibility and swing-ups"],
       ["26.10.4", "See who gets it, then tick families"],
       ["26.10.3", "Tick families off before you send"],
@@ -25,14 +26,16 @@ test("the 10/16 seed entries are newest-first with derived versions from 26.10.0
       ["26.10.0", "Staying elsewhere and sibling marking"],
     ]
   );
-  assert.ok(RELEASES.every((r) => r.date === "October 16, 2026"));
+  assert.equal(RELEASES[0].date, "October 17, 2026");
+  assert.ok(RELEASES.slice(1).every((r) => r.date === "October 16, 2026"));
   assert.ok(RELEASES.every((r) => r.features.length >= 2));
-  assert.deepEqual(RELEASES[0].tour, ["settings-season", "directory"]);
-  assert.deepEqual(RELEASES[1].tour, ["email-families-send", "slack-dms-send"]);
+  assert.equal(RELEASES[0].tour, undefined);
+  assert.deepEqual(RELEASES[1].tour, ["settings-season", "directory"]);
   assert.deepEqual(RELEASES[2].tour, ["email-families-send", "slack-dms-send"]);
-  assert.equal(RELEASES[3].tour, undefined);
-  assert.equal(RELEASES[4].tour, "hotel-covered-sibling");
-  assert.equal(RELEASES[5].tour, "hotel-staying-elsewhere");
+  assert.deepEqual(RELEASES[3].tour, ["email-families-send", "slack-dms-send"]);
+  assert.equal(RELEASES[4].tour, undefined);
+  assert.equal(RELEASES[5].tour, "hotel-covered-sibling");
+  assert.equal(RELEASES[6].tour, "hotel-staying-elsewhere");
 });
 
 test("withVersions fills omitted versions from the oldest anchor", () => {
@@ -71,19 +74,19 @@ test("cmpVersion is numeric per segment, so 26.10.9 < 26.10.10", () => {
 test("a first visit sees only the latest; later visits see anything newer than the marker", () => {
   assert.deepEqual(
     unseenReleases(RELEASES, null).map((r) => r.version),
-    ["26.10.5"]
+    ["26.10.6"]
   );
   assert.deepEqual(
     unseenReleases(RELEASES, "26.10.1").map((r) => r.version),
-    ["26.10.5", "26.10.4", "26.10.3", "26.10.2"]
+    ["26.10.6", "26.10.5", "26.10.4", "26.10.3", "26.10.2"]
   );
-  assert.deepEqual(unseenReleases(RELEASES, "26.10.5"), []);
+  assert.deepEqual(unseenReleases(RELEASES, "26.10.6"), []);
   assert.deepEqual(unseenReleases(RELEASES, "26.11.0"), []);
 });
 
 test("nextSeenVersion advances to the latest and never goes backward", () => {
-  assert.equal(nextSeenVersion(RELEASES, null), "26.10.5");
-  assert.equal(nextSeenVersion(RELEASES, "26.10.0"), "26.10.5");
+  assert.equal(nextSeenVersion(RELEASES, null), "26.10.6");
+  assert.equal(nextSeenVersion(RELEASES, "26.10.0"), "26.10.6");
   assert.equal(nextSeenVersion(RELEASES, "26.11.0"), "26.11.0");
   assert.equal(nextSeenVersion([], "26.10.0"), "26.10.0");
 });

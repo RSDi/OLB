@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "../../../lib/supabase/server";
 import { resolveMembership } from "../../../lib/auth/resolve-membership";
 import { logSignIn } from "../../../lib/activity/log";
+import { safeReturnTo } from "../../../lib/auth/pairing";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -46,5 +47,6 @@ export async function GET(request: Request) {
 
   await logSignIn(supabase, user.id, code ? "oauth" : "email_link", request.headers.get("user-agent"));
 
-  return NextResponse.redirect(`${origin}/portal`);
+  const dest = safeReturnTo(next) ?? "/portal";
+  return NextResponse.redirect(`${origin}${dest}`);
 }

@@ -39,6 +39,7 @@ import {
   type MemberStatus,
 } from "./permissions";
 import { seesFullUi } from "./feature-preview";
+import { canApprovePairing } from "./pairing";
 
 export interface Viewer {
   userId: string;
@@ -84,6 +85,9 @@ export interface Viewer {
   permissions: string[];
   // Staged rollout: sees the nav items and Settings tabs still in preview.
   seesFullUi: boolean;
+  // PAIRING_ALLOWED_EMAILS (defaults to jeff@malone.net): Sign in with phone
+  // approve + Signed-in devices.
+  canPairDevices: boolean;
 }
 
 // The signed-in user, verified, once per request. Server pages use this
@@ -171,6 +175,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canOpenSettings: canOpenSettings(member),
     permissions: member.permissions ?? [],
     seesFullUi: seesFullUi(user.email),
+    canPairDevices: canApprovePairing(user.email),
   };
 });
 

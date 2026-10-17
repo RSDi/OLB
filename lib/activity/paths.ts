@@ -12,6 +12,7 @@ const SECTIONS: Record<string, string> = {
   guide: "User Guide",
   settings: "Settings",
   activity: "Activity",
+  devices: "Signed-in devices",
   teams: "Teams",
   events: "Planning",
   tasks: "Opportunities",
