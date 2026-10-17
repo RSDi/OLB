@@ -13,7 +13,9 @@ export function tusEndpoint(supabaseUrl: string): string {
   const raw = supabaseUrl.replace(/\/+$/, "");
   try {
     const u = new URL(raw);
-    const host = u.hostname.replace(/\.supabase\.co$/i, ".storage.supabase.co");
+    const host = /\.storage\.supabase\.co$/i.test(u.hostname)
+      ? u.hostname
+      : u.hostname.replace(/\.supabase\.co$/i, ".storage.supabase.co");
     return `${u.protocol}//${host}/storage/v1/upload/resumable/sign`;
   } catch {
     return `${raw}/storage/v1/upload/resumable/sign`;
