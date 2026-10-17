@@ -1,8 +1,9 @@
 // POST /film/upload-token — validate the team-code session, log a holding
-// row, mint a short-lived signed TUS token with the service-role key
-// (createSignedUploadUrl). The browser then TUS-uploads to
-// /upload/resumable/sign with that token as x-signature. This route never
-// sees the file bytes and never sends the service-role key to the client.
+// row, mint a short-lived signed upload token with the service-role key
+// (createSignedUploadUrl), then create the TUS upload on Storage from this
+// server. The browser PATCHes file bytes to the returned Location. This
+// route never sees the file bytes and never sends the service-role key to
+// the client.
 
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -50,7 +51,11 @@ export async function POST(request: Request) {
   const path = filmStoragePath(team.slug, id, checked.filename);
   let minted;
   try {
-    minted = await filmStorage().mintUpload({ path, contentType: checked.contentType });
+    minted = await filmStorage().mintUpload({
+      path,
+      contentType: checked.contentType,
+      sizeBytes: checked.sizeBytes,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Couldn't start the upload.";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -74,13 +79,17 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!minted.uploadUrl) {
+    return NextResponse.json({ error: "Couldn't start the resumable upload." }, { status: 500 });
+  }
+
   return NextResponse.json({
     uploadId: id,
     bucket: minted.bucket || GAME_FILM_BUCKET,
     path: minted.path,
     endpoint: minted.endpoint,
     token: minted.token,
-    gatewayJwt: minted.gatewayJwt ?? "",
+    uploadUrl: minted.uploadUrl,
     contentType: checked.contentType,
   });
 }

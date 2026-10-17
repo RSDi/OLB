@@ -1,31 +1,18 @@
 // Browser-safe TUS helpers for the signed-upload path.
 // Keep this file free of server-only imports (admin client, service role).
 //
-// Hosted `*.storage.supabase.co` still runs a JWT check on Authorization /
-// apikey *before* `/upload/resumable/sign` reads `x-signature`. The new
-// `sb_publishable_…` key is not a compact JWS, so sending it (or sending
-// nothing) returns "Invalid Compact JWS".
-//
-// We send a compact-JWS on Authorization + apikey: the legacy anon JWT if
-// we have one, otherwise the signed-upload token (itself a JWT). The
-// publishable key is never used as a bearer.
+// Hosted Storage's /upload/resumable/sign authenticates with x-signature
+// only (the createSignedUploadUrl token). It is a compact JWS. XMLHttpRequest
+// (tus-js-client in Safari) *merges* duplicate setRequestHeader calls with a
+// comma, so setting x-signature from both Uppy `headers` and `onBeforeRequest`
+// turns a valid token into `token, token` — and Storage returns plain-text
+// `Invalid Compact JWS`. Set each header once.
 
 export function isCompactJws(value: string | null | undefined): boolean {
   const raw = (value ?? "").trim();
-  if (!raw || raw.startsWith("sb_")) return false;
+  if (!raw || raw.startsWith("sb_") || raw.includes(",") || /\s/.test(raw)) return false;
   const parts = raw.split(".");
   return parts.length === 3 && parts.every((p) => p.length > 0);
-}
-
-export function filmGatewayJwt(env: Record<string, string | undefined> = process.env): string {
-  for (const key of [
-    env.NEXT_PUBLIC_SUPABASE_LEGACY_ANON_KEY,
-    env.SUPABASE_LEGACY_ANON_KEY,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  ]) {
-    if (isCompactJws(key)) return key!.trim();
-  }
-  return "";
 }
 
 export function tusEndpoint(supabaseUrl: string, useDirectStorageHost = true): string {
@@ -43,17 +30,35 @@ export function tusEndpoint(supabaseUrl: string, useDirectStorageHost = true): s
   }
 }
 
-export function tusSignedHeaders(
-  token: string,
-  gatewayJwt = ""
-): Record<string, string> {
+export function tusSignedHeaders(token: string): Record<string, string> {
   const signature = token.trim();
   const headers: Record<string, string> = { "x-upsert": "false" };
   if (signature) headers["x-signature"] = signature;
-  const jwt = isCompactJws(gatewayJwt) ? gatewayJwt.trim() : isCompactJws(signature) ? signature : "";
-  if (jwt) {
-    headers.authorization = `Bearer ${jwt}`;
-    headers.apikey = jwt;
-  }
   return headers;
+}
+
+export function tusUploadMetadata(fields: {
+  bucketName: string;
+  objectName: string;
+  contentType: string;
+  cacheControl?: string;
+}): string {
+  const pairs: [string, string][] = [
+    ["bucketName", fields.bucketName],
+    ["objectName", fields.objectName],
+    ["contentType", fields.contentType],
+    ["cacheControl", fields.cacheControl ?? "3600"],
+  ];
+  return pairs
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key} ${utf8ToBase64(value)}`)
+    .join(",");
+}
+
+function utf8ToBase64(value: string): string {
+  if (typeof Buffer !== "undefined") return Buffer.from(value, "utf8").toString("base64");
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
 }

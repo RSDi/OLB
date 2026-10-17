@@ -11,9 +11,10 @@ cron path, and migration `0142_game_film.sql`.
 ## Go live (Jeff)
 
 OLB does **not** auto-run migrations. Do these by hand, then redeploy.
-This TUS JWT fix and the typed team-word codes do **not** add a new
-migration; 0142 is still the one to run if it is not on the project yet.
-Uniqueness of codes is checked in app code against the existing hashes.
+This TUS create-on-the-server fix and the typed team-word codes do **not**
+add a new migration; 0142 is still the one to run if it is not on the
+project yet. Uniqueness of codes is checked in app code against the
+existing hashes.
 
 1. **Run the SQL** in the Supabase SQL editor: `supabase/migrations/0142_game_film.sql`.
    That creates `game_film_uploads`, `game_film_managers`, the private
@@ -26,14 +27,11 @@ Uniqueness of codes is checked in app code against the existing hashes.
 3. **Add env vars in Vercel** (Production, and Preview if you want to try it):
    - `FILM_SESSION_SECRET` — long random string (signs the team-unlock cookie)
    - `CRON_SECRET` — already used by the other crons; the cleanup job uses it too
-   - `NEXT_PUBLIC_SUPABASE_LEGACY_ANON_KEY` — the **legacy anon JWT** (`eyJ…`)
-     from Supabase → Settings → API Keys → **Legacy API keys**. Required for
-     guest TUS if `NEXT_PUBLIC_SUPABASE_ANON_KEY` is `sb_publishable_…` (not
-     a JWT). Keep legacy API keys **enabled**. The guest client sends this
-     JWT as `apikey` + `Authorization: Bearer` alongside `x-signature`.
    Existing `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are
-   reused to mint the signed upload token on the server. There is no
-   `FILM_ADMIN_CODE` and no `TEAM_CODE_*` / `FILM_TEAMS`.
+   reused to mint the signed upload token **and create the TUS upload** on
+   the server. The phone never POSTs to Storage and never needs a JWT
+   `anon` key. `NEXT_PUBLIC_SUPABASE_LEGACY_ANON_KEY` is not used. There is
+   no `FILM_ADMIN_CODE` and no `TEAM_CODE_*` / `FILM_TEAMS`.
 4. **Grant permissions.** Super-admins see **Film** and **Settings → Film**
    immediately. For everyone else, in Settings → Access Profiles or a person's
    extras:
@@ -76,8 +74,7 @@ hash, so rotating the env var doesn't lock the codes.
    `lib/help/tours.ts`.
 4. Remove `/api/cron/film-cleanup` from `vercel.json` and
    `app/api/cron/film-cleanup`.
-5. Remove `FILM_SESSION_SECRET` and `NEXT_PUBLIC_SUPABASE_LEGACY_ANON_KEY`
-   from Vercel and `.env.example`.
+5. Remove `FILM_SESSION_SECRET` from Vercel and `.env.example`.
 6. Remove `film` / `t` from `lib/website/content.ts` `RESERVED_SLUGS` and
    `/film` from `SITE_PAGES`.
 7. In Supabase: drop table `game_film_uploads` and `game_film_managers`, drop
@@ -90,14 +87,14 @@ hash, so rotating the env var doesn't lock the codes.
 
 - `/film` — pick a team (Directory teams that are On, with a slug and a code).
 - `/t/<slug>` — shared code (cookie HMAC with `FILM_SESSION_SECRET` and that
-  team's `film_code_version`), then Uppy + TUS to
-  `{project}.storage.supabase.co/storage/v1/upload/resumable/sign`. The server
-  only validates (video MIME including iPhone `.mov`/HEVC, 20 GB, name
-  required, per-IP rate limit) and mints `createSignedUploadUrl`. The client
-  sends that token as `x-signature`, plus a compact-JWS on `Authorization`
-  and `apikey` (legacy anon JWT, or the signed token itself). The
-  `sb_publishable_…` key is never sent as a bearer — hosted Storage still
-  JWT-checks those headers on `/upload/resumable/sign`.
+  team's `film_code_version`), then Uppy + TUS. The server validates (video
+  MIME including iPhone `.mov`/HEVC, 20 GB, name required, per-IP rate
+  limit), mints `createSignedUploadUrl` with the service role, and **POSTs
+  the TUS create** to `{project}.storage.supabase.co/storage/v1/upload/resumable/sign`
+  with `x-signature` set once. The phone only PATCHes 6 MiB chunks to that
+  Location, sending `x-signature` once (never `Authorization` / `apikey`,
+  and never from both Uppy `headers` and `onBeforeRequest` — XHR would
+  comma-merge them into an invalid JWS).
 - `/portal/film` — portal login + `film_view` / `film_manage` / video manager.
 - **Settings → Film** — `film_manage` only.
 - Cron deletes objects **30 days after** `status = moved`.

@@ -1,6 +1,6 @@
 "use client";
-// Parent upload page: shared-code gate, then Uppy + TUS straight to Supabase
-// Storage. The file bytes never go through this site's server.
+// Parent upload page: shared-code gate, then Uppy + TUS. The server creates
+// the TUS upload; this page PATCHes file bytes straight to Supabase Storage.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
@@ -32,7 +32,7 @@ type TokenRes = {
   path: string;
   endpoint: string;
   token: string;
-  gatewayJwt?: string;
+  uploadUrl: string;
   contentType: string;
 };
 
@@ -70,22 +70,13 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
       endpoint: "https://invalid.example/tus",
       chunkSize: TUS_CHUNK_SIZE,
       retryDelays: [0, 3000, 5000, 10000, 20000],
-      uploadDataDuringCreation: true,
+      // Server already created the TUS upload. The phone only PATCHes.
+      uploadDataDuringCreation: false,
       removeFingerprintOnSuccess: true,
       allowedMetaFields: ["bucketName", "objectName", "contentType", "cacheControl"],
-      // /sign still needs a compact-JWS on Authorization/apikey (hosted
-      // Storage). Prefer the legacy anon JWT; fall back to the signed token.
-      // Never send a publishable API key as a bearer.
-      headers: (file) =>
-        tusSignedHeaders(String(file.meta.filmToken ?? ""), String(file.meta.filmGatewayJwt ?? "")),
-      onBeforeRequest: (req, file) => {
-        const token = file.meta.filmToken;
-        if (typeof token !== "string" || !token) return;
-        const gateway = typeof file.meta.filmGatewayJwt === "string" ? file.meta.filmGatewayJwt : "";
-        for (const [key, value] of Object.entries(tusSignedHeaders(token, gateway))) {
-          req.setHeader(key, value);
-        }
-      },
+      // Set x-signature once. A second copy of the same header is merged with
+      // a comma by Safari XHR, and Storage then rejects it as Invalid Compact JWS.
+      headers: (file) => tusSignedHeaders(String(file.meta.filmToken ?? "")),
     });
     return instance;
   }, []);
@@ -169,19 +160,19 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
         }),
       });
       const body = (await res.json().catch(() => ({}))) as TokenRes & { error?: string };
-      if (!res.ok || !body.token) {
+      if (!res.ok || !body.token || !body.uploadUrl) {
         uppy.removeFile(fileId);
         setFormError(body.error ?? "Couldn't start that upload.");
         return false;
       }
       uppy.getPlugin("Tus")?.setOptions({ endpoint: body.endpoint });
+      uppy.setFileState(fileId, { tus: { uploadUrl: body.uploadUrl } });
       uppy.setFileMeta(fileId, {
         bucketName: body.bucket,
         objectName: body.path,
         contentType: body.contentType || file.type,
         cacheControl: "3600",
         filmToken: body.token,
-        filmGatewayJwt: body.gatewayJwt ?? "",
         filmUploadId: body.uploadId,
       });
       return true;
