@@ -13,6 +13,8 @@ import {
   youtubeInitiateHeaders,
   youtubeTitle,
   youtubeWatchUrl,
+  youtubePlaylistUrl,
+  parseYoutubePlaylistId,
   YOUTUBE_CHUNK_BYTES,
 } from "../../lib/film/youtube-meta.ts";
 import { youtubeAuthorizeUrl, youtubeOAuthConfigured, YOUTUBE_SCOPES } from "../../lib/film/youtube-oauth.ts";
@@ -35,6 +37,11 @@ function upload(partial: Partial<FilmUpload> & Pick<FilmUpload, "id" | "team" | 
     youtube_video_id: null,
     youtube_error: null,
     youtube_updated_at: null,
+    youtube_playlist_id: null,
+    youtube_playlist_status: null,
+    youtube_playlist_error: null,
+    youtube_playlist_item_id: null,
+    youtube_playlist_updated_at: null,
     ...partial,
   };
 }
@@ -53,6 +60,18 @@ test("YouTube title is Team vs Opponent – M/D/YYYY", () => {
     theirScore: 38,
   }), /Final: 45–38/);
   assert.equal(youtubeWatchUrl("abc123"), "https://www.youtube.com/watch?v=abc123");
+});
+
+test("parseYoutubePlaylistId accepts a list= URL or a bare id", () => {
+  const gold = "PLhxMrx8aMydMcn6yvxHntL0ng9dN-ft1f";
+  assert.deepEqual(parseYoutubePlaylistId(`https://www.youtube.com/playlist?list=${gold}`), { ok: true, id: gold });
+  assert.deepEqual(parseYoutubePlaylistId(`https://www.youtube.com/watch?v=abc&list=${gold}`), { ok: true, id: gold });
+  assert.deepEqual(parseYoutubePlaylistId(gold), { ok: true, id: gold });
+  assert.deepEqual(parseYoutubePlaylistId(""), { ok: true, id: null });
+  assert.deepEqual(parseYoutubePlaylistId("   "), { ok: true, id: null });
+  assert.equal(parseYoutubePlaylistId("https://www.youtube.com/watch?v=abc").ok, false);
+  assert.equal(parseYoutubePlaylistId("nope").ok, false);
+  assert.equal(youtubePlaylistUrl(gold), `https://www.youtube.com/playlist?list=${gold}`);
 });
 
 test("inbox groups by team then game date and opponent", () => {
@@ -109,6 +128,8 @@ test("OAuth authorize URL asks for youtube.upload, offline, and consent", () => 
   assert.match(url, /prompt=consent/);
   assert.match(url, /youtube\.upload/);
   assert.ok(YOUTUBE_SCOPES.some((s) => s.endsWith("youtube.upload")));
+  assert.ok(YOUTUBE_SCOPES.includes("https://www.googleapis.com/auth/youtube"));
+  assert.ok(!YOUTUBE_SCOPES.includes("https://www.googleapis.com/auth/youtube.force-ssl"));
 });
 
 test("Film inbox plays in-app and Settings has Connect YouTube", () => {
@@ -124,7 +145,12 @@ test("Film inbox plays in-app and Settings has Connect YouTube", () => {
   assert.match(inbox, /formatFilmInboxHeading/);
   assert.match(inbox, /Close player/);
   assert.match(inbox, /Retry YouTube/);
+  assert.match(inbox, /Retry playlist/);
+  assert.match(inbox, /YouTube playlist/);
+  assert.match(inbox, /updateFilmPlaylistOverride/);
   assert.match(settings, /Connect YouTube/);
+  assert.match(settings, /www\.googleapis\.com\/auth\/youtube/);
+  assert.match(settings, /Data Access/);
   assert.match(settings, /Disconnect YouTube/);
   assert.match(settings, /Unlisted/);
   assert.match(complete, /enqueueYoutubeIfConnected/);
@@ -133,4 +159,18 @@ test("Film inbox plays in-app and Settings has Connect YouTube", () => {
   assert.match(cron, /maxDuration = 300/);
   assert.match(vercel, /\/api\/cron\/film-youtube/);
   assert.match(vercel, /\* \* \* \* \*/);
+  const queue = readFileSync(join(import.meta.dirname, "../../lib/film/youtube.ts"), "utf8");
+  const addStart = queue.indexOf("async function addVideoToPlaylist");
+  const addFn = queue.slice(addStart, queue.indexOf("function canClaim"));
+  assert.match(addFn, /setFilmPlaylistStatus/);
+  assert.match(addFn, /youtube_playlist_status: "failed"/);
+  assert.doesNotMatch(addFn, /setFilmYoutubeStatus/);
+  const playlist = readFileSync(join(import.meta.dirname, "../../lib/film/youtube-playlist.ts"), "utf8");
+  assert.match(playlist, /playlistItems/);
+  assert.match(playlist, /playlistItemDuplicate/);
+  const tab = readFileSync(join(import.meta.dirname, "../../app/portal/settings/FilmSettingsTab.tsx"), "utf8");
+  assert.match(tab, /Save playlist/);
+  assert.match(tab, /film-settings-playlist/);
+  const admin = readFileSync(join(import.meta.dirname, "../../lib/film/admin-actions.ts"), "utf8");
+  assert.match(admin, /export async function updateFilmPlaylistOverride[\s\S]*?requireFilmManage\(\)/);
 });

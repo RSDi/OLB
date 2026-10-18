@@ -74,8 +74,13 @@ export function FilmYoutubeCard() {
       <div style={{ fontWeight: 800, fontSize: 15 }}>YouTube</div>
       <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
         Connect the Omaha Lightning YouTube channel once. After a family finishes an upload, a background
-        job sends the file to that channel. Default privacy is <strong>Unlisted</strong>. Unverified Google
-        apps may force videos to <strong>Private</strong> until Google audits the app.
+        job sends the file to that channel, then into that team&apos;s playlist if one is set below.
+        Default privacy is <strong>Unlisted</strong>. Unverified Google apps may force videos to{" "}
+        <strong>Private</strong> until Google audits the app. Playlists need the extra Google{" "}
+        <strong>YouTube</strong> permission — add{" "}
+        <code style={{ fontSize: 12 }}>https://www.googleapis.com/auth/youtube</code> under Data Access
+        on the consent screen, then <strong>Disconnect YouTube</strong> and <strong>Connect YouTube</strong>{" "}
+        again.
       </p>
       {notice && (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-success)" }}>{notice}</p>

@@ -17,11 +17,14 @@ import {
   removeFilmManager,
   renameFilmTeam,
   saveFilmTeamPage,
+  saveFilmTeamPlaylist,
   setFilmTeamCode,
   suggestFilmCode,
   type FilmMemberOption,
   type FilmSettingsTeam,
 } from "../../../lib/film/team-actions";
+import { loadYoutubeSettings } from "../../../lib/film/youtube-actions";
+import { parseYoutubePlaylistId, youtubePlaylistUrl, type YoutubeChannelPlaylist } from "../../../lib/film/youtube-meta";
 
 function ErrorBox({ text }: { text: string }) {
   return (
@@ -50,6 +53,8 @@ export function FilmSettingsTab() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [playlists, setPlaylists] = useState<YoutubeChannelPlaylist[]>([]);
+  const [playlistError, setPlaylistError] = useState<string | null>(null);
 
   const apply = useCallback((res: Awaited<ReturnType<typeof loadFilmSettings>>) => {
     if ("error" in res) {
@@ -68,6 +73,11 @@ export function FilmSettingsTab() {
 
   useEffect(() => {
     loadFilmSettings().then(apply);
+    loadYoutubeSettings().then((res) => {
+      if ("error" in res) return;
+      setPlaylists(res.playlists);
+      setPlaylistError(res.playlistError);
+    });
   }, [apply]);
 
   async function add() {
@@ -106,6 +116,12 @@ export function FilmSettingsTab() {
 
       <FilmYoutubeCard />
 
+      {playlistError && (
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
+          {playlistError}
+        </p>
+      )}
+
       {error && <ErrorBox text={error} />}
 
       {adding && (
@@ -138,7 +154,14 @@ export function FilmSettingsTab() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {teams.map((t) => (
-            <TeamCard key={t.id} team={t} members={members} onChanged={load} onError={setError} />
+            <TeamCard
+              key={t.id}
+              team={t}
+              members={members}
+              playlists={playlists}
+              onChanged={load}
+              onError={setError}
+            />
           ))}
         </div>
       )}
@@ -149,11 +172,13 @@ export function FilmSettingsTab() {
 function TeamCard({
   team,
   members,
+  playlists,
   onChanged,
   onError,
 }: {
   team: FilmSettingsTeam;
   members: FilmMemberOption[];
+  playlists: YoutubeChannelPlaylist[];
   onChanged: () => Promise<void>;
   onError: (msg: string | null) => void;
 }) {
@@ -168,7 +193,10 @@ function TeamCard({
   const [addManager, setAddManager] = useState("");
   const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
   const [copied, setCopied] = useState(false);
+  const [playlistDraft, setPlaylistDraft] = useState(team.youtubePlaylistId ?? "");
   const uploadUrl = filmUploadUrl(origin, team.slug);
+  const parsedDraft = parseYoutubePlaylistId(playlistDraft);
+  const selectedPlaylistId = parsedDraft.ok ? parsedDraft.id ?? "" : "";
 
   async function run<T extends { error?: string }>(fn: () => Promise<T>, ok?: (res: T) => void) {
     setBusy(true);
@@ -285,6 +313,51 @@ function TeamCard({
             Families can use this once a code is set and the team is On.
           </div>
         )}
+      </div>
+
+      <div data-tour="film-settings-playlist" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <Input
+          label="YouTube playlist"
+          help="Paste a playlist link or id (the list= value). New film for this team is added after YouTube upload finishes. Leave blank for none."
+          value={playlistDraft}
+          placeholder="https://www.youtube.com/playlist?list=PLhxMrx8aMydMcn6yvxHntL0ng9dN-ft1f"
+          onChange={(e) => setPlaylistDraft(e.target.value)}
+        />
+        {playlists.length > 0 && (
+          <Select
+            label="Or pick from the channel"
+            value={selectedPlaylistId}
+            onChange={(e) => setPlaylistDraft(e.target.value)}
+          >
+            <option value="">Team default — none</option>
+            {playlists.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </Select>
+        )}
+        {team.youtubePlaylistId && (
+          <a href={youtubePlaylistUrl(team.youtubePlaylistId)} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 700 }}>
+            Open playlist
+          </a>
+        )}
+        <div>
+          <Pill
+            size="sm"
+            disabled={busy || playlistDraft === (team.youtubePlaylistId ?? "")}
+            onClick={() =>
+              void run(
+                () => saveFilmTeamPlaylist(team.id, playlistDraft),
+                (res) => {
+                  if ("youtubePlaylistId" in res) setPlaylistDraft(res.youtubePlaylistId ?? "");
+                }
+              )
+            }
+          >
+            Save playlist
+          </Pill>
+        </div>
       </div>
 
       <div data-tour="film-settings-code" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

@@ -60,6 +60,7 @@ function team(partial: Partial<FilmTeamRow> & Pick<FilmTeamRow, "id" | "slug">):
     codeVersion: 1,
     codeHash: hashFilmCode(partial.id, "white-code"),
     suggestedCode: "white14",
+    youtubePlaylistId: null,
     ...partial,
   };
 }
@@ -325,6 +326,8 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(inbox, /"Save"/);
   assert.match(inbox, />\s*Cancel\s*</);
   assert.match(inbox, /updateFilmGameFields/);
+  assert.match(inbox, /updateFilmPlaylistOverride/);
+  assert.match(inbox, /Retry playlist/);
   assert.match(inbox, /Missing:/);
   const inboxCss = readFileSync(join(import.meta.dirname, "../../app/portal/film/inbox.module.css"), "utf8");
   assert.match(inboxCss, /\.input\[type="date"\][\s\S]*-webkit-appearance:\s*none/);
@@ -341,6 +344,7 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(uploads, /our_score: input\.ourScore/);
   assert.match(uploads, /FILM_UPLOAD_COLUMNS/);
   assert.match(uploads, /game_date, opponent, our_score, their_score, youtube_status/);
+  assert.match(uploads, /youtube_playlist_id, youtube_playlist_status/);
   assert.equal(client.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY"), false);
   assert.equal(client.includes("sb_publishable"), false);
   assert.doesNotMatch(client, /onBeforeRequest/);
@@ -357,6 +361,10 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(settings, /suggestFilmCode\(team\.id\)/);
   assert.match(settings, /toLowerCase\(\)/);
   assert.match(settings, /Generate code/);
+  assert.match(settings, /YouTube playlist/);
+  assert.match(settings, /Save playlist/);
+  assert.match(settings, /Or pick from the channel/);
+  assert.match(settings, /saveFilmTeamPlaylist/);
 });
 
 test("guest Game date CSS constrains the iOS Safari native date field", () => {

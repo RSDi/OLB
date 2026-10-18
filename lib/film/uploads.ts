@@ -5,11 +5,18 @@
 
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "../supabase/admin";
-import { GAME_FILM_BUCKET, MOVED_RETENTION_DAYS, type FilmStatus, type FilmUpload, type YoutubeStatus } from "./types.ts";
+import {
+  GAME_FILM_BUCKET,
+  MOVED_RETENTION_DAYS,
+  type FilmStatus,
+  type FilmUpload,
+  type YoutubePlaylistStatus,
+  type YoutubeStatus,
+} from "./types.ts";
 import { storageObjectName } from "./validation.ts";
 
 export const FILM_UPLOAD_COLUMNS =
-  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at";
+  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at";
 
 export function filmStoragePath(team: string, uploadId: string, filename: string): string {
   const now = new Date();
@@ -110,6 +117,81 @@ export async function updateFilmUploadGame(
     .maybeSingle();
   if (error) throw new Error(error.message);
   return (data as FilmUpload | null) ?? null;
+}
+
+export async function updateFilmUploadPlaylist(
+  id: string,
+  playlistId: string | null
+): Promise<FilmUpload | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .update({
+      youtube_playlist_id: playlistId,
+      youtube_playlist_updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select(FILM_UPLOAD_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload | null) ?? null;
+}
+
+export async function setFilmPlaylistStatus(
+  id: string,
+  patch: {
+    youtube_playlist_status: YoutubePlaylistStatus | null;
+    youtube_playlist_error?: string | null;
+    youtube_playlist_item_id?: string | null;
+  }
+): Promise<FilmUpload | null> {
+  const admin = createAdminClient();
+  const update: Record<string, unknown> = {
+    youtube_playlist_status: patch.youtube_playlist_status,
+    youtube_playlist_updated_at: new Date().toISOString(),
+  };
+  if (patch.youtube_playlist_error !== undefined) update.youtube_playlist_error = patch.youtube_playlist_error;
+  if (patch.youtube_playlist_item_id !== undefined) update.youtube_playlist_item_id = patch.youtube_playlist_item_id;
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .update(update)
+    .eq("id", id)
+    .select(FILM_UPLOAD_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload | null) ?? null;
+}
+
+export async function listPlaylistWork(uploadId?: string): Promise<FilmUpload[]> {
+  const admin = createAdminClient();
+  let query = admin
+    .from("game_film_uploads")
+    .select(FILM_UPLOAD_COLUMNS)
+    .eq("youtube_status", "done")
+    .eq("youtube_playlist_status", "queued")
+    .not("youtube_video_id", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(20);
+  if (uploadId) query = query.eq("id", uploadId);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload[]) ?? [];
+}
+
+export async function teamYoutubePlaylistId(teamId: string | null, slug: string): Promise<string | null> {
+  const admin = createAdminClient();
+  if (teamId) {
+    const { data, error } = await admin.from("olb_teams").select("youtube_playlist_id").eq("id", teamId).maybeSingle();
+    if (error) throw new Error(error.message);
+    const id = (data as { youtube_playlist_id: string | null } | null)?.youtube_playlist_id?.trim();
+    if (id) return id;
+  }
+  if (slug) {
+    const { data, error } = await admin.from("olb_teams").select("youtube_playlist_id").eq("film_slug", slug).maybeSingle();
+    if (error) throw new Error(error.message);
+    return (data as { youtube_playlist_id: string | null } | null)?.youtube_playlist_id?.trim() || null;
+  }
+  return null;
 }
 
 export async function setFilmStatus(id: string, status: FilmStatus): Promise<FilmUpload | null> {

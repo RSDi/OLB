@@ -22,6 +22,7 @@ import {
   slugifyFilmTeam,
   type FilmTeamRow,
 } from "./teams.ts";
+import { parseYoutubePlaylistId } from "./youtube-meta.ts";
 
 function refresh() {
   revalidatePath("/portal/settings");
@@ -77,6 +78,7 @@ export async function loadFilmSettings(): Promise<
         hasSlug: t.hasSlug,
         codeVersion: t.codeVersion,
         suggestedCode: t.suggestedCode,
+        youtubePlaylistId: t.youtubePlaylistId,
         managers: managersByTeam.get(t.id) ?? [],
       })),
     };
@@ -161,6 +163,27 @@ async function otherTeamCodeHashes(exceptId: string): Promise<{ id: string; code
     id: row.id,
     codeHash: row.film_code_hash,
   }));
+}
+
+export async function saveFilmTeamPlaylist(
+  id: string,
+  raw: string
+): Promise<{ error?: string; youtubePlaylistId?: string | null }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  const parsed = parseYoutubePlaylistId(raw);
+  if (!parsed.ok) return { error: parsed.error };
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("olb_teams")
+    .update({
+      youtube_playlist_id: parsed.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  refresh();
+  return { youtubePlaylistId: parsed.id };
 }
 
 export async function setFilmTeamCode(

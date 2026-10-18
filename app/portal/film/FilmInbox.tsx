@@ -10,15 +10,16 @@ import {
   restoreFilmHolding,
   signedFilmDownload,
   updateFilmGameFields,
+  updateFilmPlaylistOverride,
 } from "../../../lib/film/admin-actions";
-import { retryFilmYoutube } from "../../../lib/film/youtube-actions";
+import { retryFilmPlaylist, retryFilmYoutube } from "../../../lib/film/youtube-actions";
 import {
   formatFilmInboxHeading,
   missingFilmGameLabels,
   OPPONENT_MAX,
 } from "../../../lib/film/game-meta";
-import { groupUploadsByTeamAndGame, youtubeWatchUrl } from "../../../lib/film/youtube-meta";
-import type { FilmStatus, FilmUpload, YoutubeStatus } from "../../../lib/film/types";
+import { groupUploadsByTeamAndGame, youtubePlaylistUrl, youtubeWatchUrl } from "../../../lib/film/youtube-meta";
+import type { FilmStatus, FilmUpload, YoutubePlaylistStatus, YoutubeStatus } from "../../../lib/film/types";
 import styles from "./inbox.module.css";
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
   canManage: boolean;
   loadError: string | null;
   parentLinks: { slug: string; label: string }[];
+  teamPlaylists: Record<string, string>;
 }
 
 type Filter = "all" | FilmStatus;
@@ -54,13 +56,26 @@ function youtubeLabel(status: YoutubeStatus | null, videoId: string | null): str
   return null;
 }
 
+function playlistLabel(
+  status: YoutubePlaylistStatus | null,
+  playlistId: string | null,
+  youtubeDone: boolean
+): { text: string; href: string | null; failed: boolean } | null {
+  const href = playlistId ? youtubePlaylistUrl(playlistId) : null;
+  if (status === "done") return { text: "In playlist", href, failed: false };
+  if (status === "queued") return { text: "Adding to playlist", href, failed: false };
+  if (status === "failed") return { text: "Playlist failed", href: null, failed: true };
+  if (youtubeDone && playlistId) return { text: "Not in playlist yet", href, failed: false };
+  return null;
+}
+
 function digitsOnly(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, 3);
 }
 
-type GamePatch = Pick<FilmUpload, "game_date" | "opponent" | "our_score" | "their_score">;
+type GamePatch = Pick<FilmUpload, "game_date" | "opponent" | "our_score" | "their_score" | "youtube_playlist_id">;
 
-export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props) {
+export function FilmInbox({ uploads, canManage, loadError, parentLinks, teamPlaylists }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
@@ -138,7 +153,9 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
       <p style={{ margin: 0, fontSize: 14, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
         Videos families upload from their phones, listed by team and game. <strong>Play</strong> watches
         them here. After YouTube is connected in <strong>Settings → Film</strong>, new uploads go up
-        unlisted in the background. Files marked <strong>Moved</strong> are deleted after 30 days.
+        unlisted in the background, then into that team&apos;s playlist if one is set. A playlist miss
+        does not mark the YouTube upload failed. Files marked <strong>Moved</strong> are deleted after
+        30 days.
       </p>
 
       {parentLinks.length > 0 && (
@@ -246,12 +263,14 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
                     <FilmRow
                       key={row.id}
                       row={row}
+                      teamPlaylistId={teamPlaylists[row.team] ?? null}
                       busy={busy === row.id}
                       playing={playing?.id === row.id}
                       canManage={canManage}
                       onPlay={() => void play(row)}
                       onDownload={() => void download(row.id)}
                       onRetryYoutube={() => void run(row.id, retryFilmYoutube)}
+                      onRetryPlaylist={() => void run(row.id, retryFilmPlaylist)}
                       onMoved={() => void run(row.id, markFilmMoved)}
                       onHolding={() => void run(row.id, restoreFilmHolding)}
                       onPatched={(patch) => setPatches((prev) => ({ ...prev, [row.id]: patch }))}
@@ -274,24 +293,28 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
 
 function FilmRow({
   row,
+  teamPlaylistId,
   busy,
   playing,
   canManage,
   onPlay,
   onDownload,
   onRetryYoutube,
+  onRetryPlaylist,
   onMoved,
   onHolding,
   onDelete,
   onPatched,
 }: {
   row: FilmUpload;
+  teamPlaylistId: string | null;
   busy: boolean;
   playing: boolean;
   canManage: boolean;
   onPlay: () => void;
   onDownload: () => void;
   onRetryYoutube: () => void;
+  onRetryPlaylist: () => void;
   onMoved: () => void;
   onHolding: () => void;
   onDelete: () => void;
@@ -299,12 +322,25 @@ function FilmRow({
 }) {
   const [editing, setEditing] = useState(false);
   const yt = youtubeLabel(row.youtube_status, row.youtube_video_id);
+  const effectivePlaylist = (row.youtube_playlist_id || teamPlaylistId || "").trim() || null;
+  const pl = playlistLabel(
+    row.youtube_playlist_status,
+    effectivePlaylist,
+    row.youtube_status === "done" && !!row.youtube_video_id
+  );
   const missing = missingFilmGameLabels({
     gameDate: row.game_date,
     opponent: row.opponent,
     ourScore: row.our_score,
     theirScore: row.their_score,
   });
+  const canRetryPlaylist =
+    canManage &&
+    row.youtube_status === "done" &&
+    !!row.youtube_video_id &&
+    !!effectivePlaylist &&
+    row.youtube_playlist_status !== "done" &&
+    row.youtube_playlist_status !== "queued";
   return (
     <div
       data-tour="film-row"
@@ -326,18 +362,32 @@ function FilmRow({
           {missing.length > 0 && !editing && (
             <p className={styles.missing}>Missing: {missing.join(", ")}</p>
           )}
-          {yt && (
-            <div style={{ fontSize: 13, fontWeight: 700, marginTop: 6 }}>
-              {row.youtube_status === "done" && row.youtube_video_id ? (
-                <a href={youtubeWatchUrl(row.youtube_video_id)} target="_blank" rel="noopener noreferrer">
-                  {yt}
-                </a>
-              ) : (
-                yt
-              )}
-              {row.youtube_status === "failed" && row.youtube_error ? ` — ${row.youtube_error}` : ""}
-            </div>
-          )}
+          <div data-tour="film-playlist">
+            {yt && (
+              <div style={{ fontSize: 13, fontWeight: 700, marginTop: 6 }}>
+                {row.youtube_status === "done" && row.youtube_video_id ? (
+                  <a href={youtubeWatchUrl(row.youtube_video_id)} target="_blank" rel="noopener noreferrer">
+                    {yt}
+                  </a>
+                ) : (
+                  yt
+                )}
+                {row.youtube_status === "failed" && row.youtube_error ? ` — ${row.youtube_error}` : ""}
+              </div>
+            )}
+            {pl && (
+              <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4, color: pl.failed ? "var(--gw-error)" : undefined }}>
+                {pl.href && !pl.failed ? (
+                  <a href={pl.href} target="_blank" rel="noopener noreferrer">
+                    {pl.text}
+                  </a>
+                ) : (
+                  pl.text
+                )}
+                {pl.failed && row.youtube_playlist_error ? ` — ${row.youtube_playlist_error}` : ""}
+              </div>
+            )}
+          </div>
         </div>
         <span
           style={{
@@ -358,6 +408,7 @@ function FilmRow({
       {editing ? (
         <FilmGameEditor
           row={row}
+          teamPlaylistId={teamPlaylistId}
           onCancel={() => setEditing(false)}
           onSaved={(patch) => {
             onPatched(patch);
@@ -388,6 +439,13 @@ function FilmRow({
             <Pill size="sm" onClick={onRetryYoutube} disabled={busy}>
               {row.youtube_status === "failed" ? "Retry YouTube" : "Send to YouTube"}
             </Pill>
+          )}
+          {canRetryPlaylist && (
+            <span data-tour="film-playlist-retry">
+              <Pill size="sm" onClick={onRetryPlaylist} disabled={busy}>
+                {row.youtube_playlist_status === "failed" ? "Retry playlist" : "Add to playlist"}
+              </Pill>
+            </span>
           )}
           {canManage && (
             <span data-tour="film-edit">
@@ -423,10 +481,12 @@ function FilmRow({
 
 function FilmGameEditor({
   row,
+  teamPlaylistId,
   onCancel,
   onSaved,
 }: {
   row: FilmUpload;
+  teamPlaylistId: string | null;
   onCancel: () => void;
   onSaved: (patch: GamePatch) => void;
 }) {
@@ -435,6 +495,7 @@ function FilmGameEditor({
   const [opponent, setOpponent] = useState(row.opponent ?? "");
   const [ourScore, setOurScore] = useState(row.our_score == null ? "" : String(row.our_score));
   const [theirScore, setTheirScore] = useState(row.their_score == null ? "" : String(row.their_score));
+  const [playlistDraft, setPlaylistDraft] = useState(row.youtube_playlist_id ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -448,12 +509,29 @@ function FilmGameEditor({
       ourScore,
       theirScore,
     });
-    setSaving(false);
     if (result.error) {
+      setSaving(false);
       setError(result.error);
       return;
     }
-    if (result.upload) onSaved(result.upload);
+    let playlistId = row.youtube_playlist_id;
+    if (playlistDraft !== (row.youtube_playlist_id ?? "")) {
+      const playlist = await updateFilmPlaylistOverride(row.id, playlistDraft);
+      if (playlist.error) {
+        setSaving(false);
+        setError(playlist.error);
+        return;
+      }
+      playlistId = playlist.youtube_playlist_id ?? null;
+    }
+    setSaving(false);
+    onSaved({
+      game_date: result.upload?.game_date ?? row.game_date,
+      opponent: result.upload?.opponent ?? row.opponent,
+      our_score: result.upload?.our_score ?? row.our_score,
+      their_score: result.upload?.their_score ?? row.their_score,
+      youtube_playlist_id: playlistId,
+    });
     startTransition(() => router.refresh());
   }
 
@@ -522,6 +600,25 @@ function FilmGameEditor({
           </label>
         </div>
       </fieldset>
+      <label className={styles.field}>
+        <span className={styles.label}>YouTube playlist</span>
+        <p className={styles.hint}>
+          Optional for this video. Leave blank to use the team playlist
+          {teamPlaylistId ? " from Settings → Film" : ""}. Paste a playlist link or id.
+        </p>
+        <input
+          className={styles.input}
+          value={playlistDraft}
+          onChange={(e) => setPlaylistDraft(e.target.value)}
+          placeholder={
+            teamPlaylistId
+              ? youtubePlaylistUrl(teamPlaylistId)
+              : "https://www.youtube.com/playlist?list=PLhxMrx8aMydMcn6yvxHntL0ng9dN-ft1f"
+          }
+          autoComplete="off"
+          enterKeyHint="done"
+        />
+      </label>
       {error && <p className={styles.error}>{error}</p>}
       <div className={styles.actions}>
         <Pill size="sm" variant="accent" type="submit" disabled={saving}>
