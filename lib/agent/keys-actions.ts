@@ -6,8 +6,6 @@ import { revalidatePath } from "next/cache";
 import { requireSuperAdmin } from "../auth/guards.ts";
 import { cleanAgentKeyName, type PublicAgentKey } from "./keys.ts";
 import { cleanAgentScopes } from "./scopes.ts";
-
-export type { PublicAgentKey };
 import { insertAgentKey, listPublicAgentKeys, revokeAgentKeyRow } from "./keys-store.ts";
 
 function refresh() {

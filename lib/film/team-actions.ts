@@ -5,7 +5,6 @@
 import { revalidatePath } from "next/cache";
 import { requireFilmManage } from "../auth/guards.ts";
 import { createAdminClient } from "../supabase/admin.ts";
-import { teamLabel } from "../teams/volunteer-options.ts";
 import {
   filmCodeProblem,
   filmCodeUsedByOther,
@@ -339,5 +338,3 @@ async function uniqueSlug(
   }
   return `${root}-${Date.now().toString(36)}`.slice(0, 40);
 }
-
-export { teamLabel };

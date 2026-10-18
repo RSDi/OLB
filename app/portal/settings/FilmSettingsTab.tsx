@@ -76,16 +76,23 @@ export function FilmSettingsTab() {
     setLoading(false);
   }, []);
 
-  const load = useCallback(async () => apply(await loadFilmSettings()), [apply]);
+  const failedLoad = useCallback(() => {
+    setError("Couldn't load. Refresh the page.");
+    setLoading(false);
+  }, []);
+
+  const load = useCallback(() => loadFilmSettings().then(apply).catch(failedLoad), [apply, failedLoad]);
 
   useEffect(() => {
-    loadFilmSettings().then(apply);
-    loadYoutubeSettings().then((res) => {
-      if ("error" in res) return;
-      setPlaylists(res.playlists);
-      setPlaylistError(res.playlistError);
-    });
-  }, [apply]);
+    loadFilmSettings().then(apply).catch(failedLoad);
+    loadYoutubeSettings()
+      .then((res) => {
+        if ("error" in res) return;
+        setPlaylists(res.playlists);
+        setPlaylistError(res.playlistError);
+      })
+      .catch(() => setPlaylistError("Couldn't load. Refresh the page."));
+  }, [apply, failedLoad]);
 
   async function add() {
     setError(null);
