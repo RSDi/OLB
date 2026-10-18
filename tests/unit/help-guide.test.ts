@@ -18,7 +18,6 @@ import {
 // released, take it off this list and give it a guide section.
 const PREVIEW_ROUTES = [
   "/portal",
-  "/portal/events",
   "/portal/tasks",
   "/portal/pm",
   "/portal/requests",
