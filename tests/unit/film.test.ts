@@ -345,6 +345,7 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(uploads, /FILM_UPLOAD_COLUMNS/);
   assert.match(uploads, /game_date, opponent, our_score, their_score, youtube_status/);
   assert.match(uploads, /youtube_playlist_id, youtube_playlist_status/);
+  assert.match(uploads, /youtube_privacy, youtube_processing, youtube_synced_at/);
   assert.equal(client.includes("NEXT_PUBLIC_SUPABASE_ANON_KEY"), false);
   assert.equal(client.includes("sb_publishable"), false);
   assert.doesNotMatch(client, /onBeforeRequest/);

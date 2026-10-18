@@ -380,6 +380,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "After YouTube, the video is added to the team's playlist. **In playlist** opens it. If that step failed, the video stays on YouTube — tap **Retry playlist**.",
       },
       {
+        target: "film-youtube-status",
+        title: "YouTube privacy",
+        body: "Each video on YouTube shows the privacy YouTube actually has — **Public**, **Unlisted**, or **Private** — and whether it is still **Processing**. Tap **Refresh YouTube status** to read it from YouTube. You don't need YouTube Studio.",
+      },
+      {
         target: "film-moved",
         title: "Mark moved",
         body: "Once the video is on YouTube or a drive, tap **Mark moved**. Files marked moved are deleted after 30 days. You only see this with **Game film (manage)**.",

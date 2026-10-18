@@ -1,9 +1,11 @@
 "use server";
-// Settings → Film YouTube connection and inbox retry. film_manage only.
+// Settings → Film YouTube connection, inbox retry, and a read-only
+// refresh of each video's real YouTube privacy. Connect/retry need
+// film_manage; status refresh is anyone who can open Film.
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { requireFilmManage } from "../auth/guards";
+import { requireFilmAccess, requireFilmManage } from "../auth/guards";
 import { refreshYoutubeAccess, youtubeOAuthConfigured } from "./youtube-oauth.ts";
 import {
   disconnectYoutube,
@@ -15,6 +17,7 @@ import {
 import type { YoutubeChannelPlaylist, YoutubePrivacy } from "./youtube-meta.ts";
 import { listYoutubeChannelPlaylists } from "./youtube-playlist.ts";
 import { processYoutubeQueue, retryPlaylistAdd, retryYoutubeUpload, YOUTUBE_KICK_BUDGET_MS } from "./youtube.ts";
+import { syncYoutubeVideoStatus } from "./youtube-status.ts";
 
 function refresh() {
   revalidatePath("/portal/film");
@@ -90,6 +93,27 @@ export async function retryFilmPlaylist(id: string): Promise<{ error?: string; o
     return { ok: true };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Couldn't retry the playlist." };
+  }
+}
+
+export async function refreshFilmYoutubeStatus(): Promise<{
+  error?: string;
+  ok?: true;
+  updated?: number;
+  considered?: number;
+}> {
+  const gate = await requireFilmAccess();
+  if ("error" in gate) return { error: gate.error };
+  try {
+    const result = await syncYoutubeVideoStatus({
+      force: true,
+      teamIds: gate.allTeams ? undefined : gate.teamIds,
+    });
+    if (result.skipped) return { error: result.skipped };
+    refresh();
+    return { ok: true, updated: result.updated, considered: result.considered };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Couldn't read YouTube status." };
   }
 }
 

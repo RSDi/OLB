@@ -11,12 +11,14 @@ import {
   type FilmStatus,
   type FilmUpload,
   type YoutubePlaylistStatus,
+  type YoutubePrivacy,
+  type YoutubeProcessing,
   type YoutubeStatus,
 } from "./types.ts";
 import { storageObjectName } from "./validation.ts";
 
 export const FILM_UPLOAD_COLUMNS =
-  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at";
+  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at";
 
 export function filmStoragePath(team: string, uploadId: string, filename: string): string {
   const now = new Date();
@@ -230,6 +232,50 @@ export async function listExpiredMovedUploads(now = new Date()): Promise<FilmUpl
     .lt("moved_at", cutoff);
   if (error) throw new Error(error.message);
   return (data as FilmUpload[]) ?? [];
+}
+
+export async function listFilmYoutubeVideos(opts?: {
+  teamIds?: string[];
+  videoIds?: string[];
+}): Promise<FilmUpload[]> {
+  const admin = createAdminClient();
+  let query = admin
+    .from("game_film_uploads")
+    .select(FILM_UPLOAD_COLUMNS)
+    .not("youtube_video_id", "is", null)
+    .order("created_at", { ascending: true });
+  if (opts?.teamIds) {
+    if (opts.teamIds.length === 0) return [];
+    query = query.in("team_id", opts.teamIds);
+  }
+  if (opts?.videoIds && opts.videoIds.length > 0) {
+    query = query.in("youtube_video_id", opts.videoIds);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload[]) ?? [];
+}
+
+export async function setFilmYoutubeLiveStatus(
+  id: string,
+  patch: {
+    youtube_privacy: YoutubePrivacy | null;
+    youtube_processing: YoutubeProcessing | null;
+  }
+): Promise<FilmUpload | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .update({
+      youtube_privacy: patch.youtube_privacy,
+      youtube_processing: patch.youtube_processing,
+      youtube_synced_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select(FILM_UPLOAD_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload | null) ?? null;
 }
 
 export async function setFilmYoutubeStatus(
