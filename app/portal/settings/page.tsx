@@ -223,7 +223,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     { key: "integrations", label: "Integrations", group: "System", visible: true, tour: "settings-tab-integrations", keywords: "slack google connect" },
     // Hotel rooming list (Travel + board). Planning spreadsheet stays preview-only inside the tab.
     { key: "import", label: "Import", group: "System", visible: fullUi || canManageTravel(me) || board, tour: "settings-tab-import", keywords: "hotel rooming list pdf csv booked travel spreadsheet upload" },
-    { key: "agent_keys", label: "Agent keys", group: "System", visible: isSuperAdmin(me), tour: "settings-tab-agent-keys", keywords: "agent api key film youtube read-only bearer" },
+    { key: "agent_keys", label: "Agent keys", group: "System", visible: isSuperAdmin(me), tour: "settings-tab-agent-keys", keywords: "agent api key film youtube read-only bearer email archive" },
     { key: "audit_log", label: "Audit Log", group: "System", visible: true, tour: "settings-tab-audit-log", keywords: "history changes who" },
     { key: "deleted", label: "Deleted", group: "System", visible: showDeleted, tour: "settings-tab-deleted", keywords: "restore undelete trash" },
   ];

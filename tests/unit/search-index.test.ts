@@ -162,7 +162,7 @@ test("the indexer embeds new text once, skips unchanged text, and removes what's
   assert.match(String(pb[0].content), /^Uniforms\nOrdering and care[\s\S]*Order jerseys by Oct 1\.[\s\S]*Wash cold\./);
   const thread = chunks.find((c) => c.entity_type === "slack");
   assert.equal(thread?.entity_id, "m1", "a thread follows its first message's visibility");
-  assert.equal(thread?.href, "/portal/slack-archive/C1#msg-100.1");
+  assert.equal(thread?.href, "/portal/archives/slack/C1#msg-100.1");
   assert.match(String(thread?.title), /^#12u-parents: Jersey sizes due Friday/);
   assert.match(String(thread?.content), /Coach \(Sep 1, 2026\): Jersey sizes due Friday\n\nPat \(Sep 1, 2026\): Thanks!/);
   assert.equal(first.embedded.length, 2);

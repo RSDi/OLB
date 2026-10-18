@@ -55,10 +55,12 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/docs/new":    { title: "New playbook", subtitle: "Operations" },
   "/portal/directory/registrations": { title: "Registrations", subtitle: "Directory" },
   "/portal/settings":    { title: "Settings",     subtitle: "" },
-  "/portal/slack-archive":            { title: "Slack Archive", subtitle: "" },
-  "/portal/slack-archive/search":     { title: "Search archive", subtitle: "Slack Archive" },
-  "/portal/slack-archive/exceptions": { title: "Exceptions",     subtitle: "Slack Archive" },
-  "/portal/slack-archive/album":      { title: "Photo Album",    subtitle: "Slack Archive" },
+  "/portal/archives":                 { title: "Archives",       subtitle: "" },
+  "/portal/archives/slack":            { title: "Slack",          subtitle: "Archives" },
+  "/portal/archives/slack/search":     { title: "Search archive", subtitle: "Archives" },
+  "/portal/archives/slack/exceptions": { title: "Exceptions",     subtitle: "Archives" },
+  "/portal/archives/album":            { title: "Photo Album",    subtitle: "Archives" },
+  "/portal/archives/email":            { title: "Email",          subtitle: "Archives" },
   "/portal/guide":       { title: "User Guide",   subtitle: "Help" },
   "/portal/search":      { title: "Search",       subtitle: "" },
   "/portal/search/log":  { title: "Search log",   subtitle: "Search" },
@@ -223,8 +225,10 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       ? { title: "History", subtitle: "Operations" }
       : pathname.startsWith("/portal/docs/")
       ? { title: "Playbook", subtitle: "Operations" }
-      : pathname.startsWith("/portal/slack-archive/")
-      ? { title: "Channel", subtitle: "Slack Archive" }
+      : pathname.startsWith("/portal/archives/email/")
+      ? { title: "Email", subtitle: "Archives" }
+      : pathname.startsWith("/portal/archives/slack/")
+      ? { title: "Channel", subtitle: "Archives" }
       : pathname.startsWith("/portal/links/")
       ? { title: sidebarLinks.find(l => pathname === `/portal/links/${l.id}`)?.label ?? "Link", subtitle: "" }
       : { title: "Portal", subtitle: "" });

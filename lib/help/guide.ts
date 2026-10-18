@@ -9,7 +9,7 @@
 // KEEP IT CURRENT: any change people can see (a new page, a renamed button, a
 // feature released from preview) updates the matching section here in the
 // same change, and bumps GUIDE_UPDATED. Sections follow the sidebar (Directory,
-// HS Schedule, External Contacts, Playbooks, Slack Archive, Activity, then Settings with
+// HS Schedule, External Contacts, Playbooks, Archives, Activity, then Settings with
 // its sections in the order of its tabs), each page's how-to beside it. tests/unit/help-guide.test.ts fails
 // when a portal page has no section. The guided tours in ./tours.ts retell
 // sections step by step, pointed at the real buttons — keep them in step too.
@@ -123,7 +123,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **Playbooks** — how-to guides and step-by-step checklists.
 - **Film** — game videos families uploaded from their phones. It appears if you have the **Game film** permission.
 - **Payments** — what you owe for the season and what you've paid. It appears once the Treasurer has your family's balance ready.
-- **Slack Archive** — past messages, photos and files from the club's Slack.
+- **Archives** — past Slack messages and photos, and (for the board) emails copied in so you don't need Jeff's Gmail.
 - **User Guide** — this page, near the bottom of the sidebar.
 - **Notifications** — turn on notifications for your phone or computer (see **Notifications** below).
 - **Sign out** — at the very bottom.
@@ -607,7 +607,7 @@ Hotels and places to eat themselves stay in **External Contacts** (see *Hotels a
     body: `For the travel coordinator: the high school season weekend by weekend, to plan the hotel blocks and team meals. It's **HS Schedule** in the sidebar. You see all of it; the coaches and the board keep the games and teams up to date (**View only** at the top for those). You add **Hotel stays** on each weekend that needs a room block.
 
 - **The grid.** A row per weekend: the dates, **Where** and the trip (**Local**, **Day trip**, **Overnight**…), the event, a column for each of our teams (V, JV1, JV2…) with its games, and **Notes** (the venue and game times). The event's color says how it stands: **Tentative** (red), **Need to secure facility** (yellow), **Final details in process** (pale yellow) and **Facility secured** (green).
-- **Hotel stays.** Tap a weekend's event. Under **Hotel stays**, **Add hotel stay** links the hotel from External Contacts, with how to book, the group code and who must register (everyone, or some teams). **Track Booked in block in Directory ›** opens the Directory filtered to who's **Not yet known** — see *Hotel stays*. A weekend the club hosts shows **We host · Plan it**; coaches and the board keep that plan.
+- **Hotel stays.** Tap a weekend's event. Under **Hotel stays**, **Add hotel stay** links the hotel from External Contacts, with how to book, the group code and who must register (everyone, or some teams). **Track Booked in block in Directory ›** opens the Directory filtered to who's **Not yet known** — see *Hotel stays*.
 - **Where to stay and eat.** On a weekend away, a bed and a fork under **Where** count the hotels and places to eat saved there (by city). Tap them for the list, with the places that have your notes first. They're the ones you keep in **External Contacts**.
 - **Who's coming.** Hover over a team's count (tap it on a phone) to see its games and the teams it plays. Scroll or click in the card and it stays open, with an **✕** to close it.
 - **Seasons.** The arrows beside the season's name move between seasons. **View** → **Compare with** puts another season's same weekend beside each row. **Search events, places, teams** finds a weekend by its event, place or a team coming.`,
@@ -894,12 +894,14 @@ On the phone, after you tap **Approve**, you'll see **Device signed in** and a *
   },
   {
     id: "slack-archive",
-    title: "Slack Archive",
-    group: "Slack Archive",
+    title: "Archives: Slack",
+    group: "Archives",
     audience: "everyone",
-    routes: ["/portal/slack-archive"],
-    keywords: ["slack", "archive", "messages", "channels", "threads", "history", "private", "jump to date", "filter", "link", "attachments", "files"],
-    body: `The full history of the club's Slack channels, updated every night — so nothing gets lost when Slack hides older messages.
+    routes: ["/portal/archives/slack", "/portal/slack-archive"],
+    keywords: ["slack", "archive", "archives", "messages", "channels", "threads", "history", "private", "jump to date", "filter", "link", "attachments", "files"],
+    body: `**Archives** in the sidebar has three tabs: **Slack**, **Email** (board only), and **Album**. This is the Slack tab — the full history of the club's Slack channels, updated every night, so nothing gets lost when Slack hides older messages.
+
+Old links to Slack Archive still work. They open here, and a link that pointed at one message (\`#msg-…\`) still jumps to that message.
 
 **Which channels you see.** Every public channel, plus the private channels you're a member of in Slack. That's matched by email, so your portal email needs to be the same one you use in Slack.
 
@@ -919,11 +921,11 @@ On the phone, after you tap **Approve**, you'll see **Device signed in** and a *
   {
     id: "slack-archive-search",
     title: "Searching the Slack Archive",
-    group: "Slack Archive",
+    group: "Archives",
     audience: "everyone",
-    routes: ["/portal/slack-archive/search"],
+    routes: ["/portal/archives/slack/search", "/portal/slack-archive/search"],
     keywords: ["slack", "search", "find", "message", "exact phrase", "quotes", "exclude", "user", "channel"],
-    body: `Find an old message. Open **Search archive →** from the Slack Archive.
+    body: `Find an old message. Open **Search archive →** from Archives → Slack.
 
 - Type words to find messages with all of them. Put **"an exact phrase"** in quotes, and put a minus in front of a word (**-hotel**) to leave it out.
 - Narrow it down with the **Channel** and **User** pickers — or leave the text empty and pick a person to see everything they've posted.
@@ -935,11 +937,11 @@ Quick lookups work from the top-bar search too — Slack messages show up there 
   {
     id: "slack-archive-album",
     title: "Photo Album",
-    group: "Slack Archive",
+    group: "Archives",
     audience: "everyone",
-    routes: ["/portal/slack-archive/album"],
+    routes: ["/portal/archives/album", "/portal/slack-archive/album"],
     keywords: ["photos", "pictures", "videos", "album", "gallery", "download", "month", "slideshow", "gif"],
-    body: `Every photo and video shared in the Slack channels you can see, arranged by month. Open it from the **Photo Album** card on the Slack Archive.
+    body: `Every photo and video shared in the Slack channels you can see, arranged by month. Open it from the **Album** tab, or the **Photo Album** card on Archives → Slack.
 
 - **Search** captions, people, channels or a month (e.g. "june 2024").
 - Show **All**, just **Photos** or just **Videos**, and narrow by **Channel** or **People**.
@@ -950,11 +952,26 @@ Quick lookups work from the top-bar search too — Slack messages show up there 
 If the page has been open a long time and pictures stop loading, tap **Reload previews**.`,
   },
   {
+    id: "archives-email",
+    title: "Archives: Email",
+    group: "Archives",
+    audience: "staff",
+    routes: ["/portal/archives/email"],
+    keywords: ["email", "gmail", "archive", "thread", "attachment", "board meeting", "agenda", "import"],
+    body: `Copies of emails the board has referenced, so everyone can open them without Jeff's Gmail. Open **Archives → Email**. Board only.
+
+- The list on the left is archived threads. **Search emails…** looks at subject, snippet and people. **Linked to** narrows to a board meeting; **Source** is which mailbox it came from.
+- Tap a thread to read it. You'll see who it was from, the body, any attachments, and **Linked from** chips that open the board meeting that cited it.
+- On a board meeting, **Linked emails (archived)** in the right column opens the same threads. An email-looking link in the agenda also goes here, not to Gmail.
+
+Jeff's agent copies a thread in. There is no "upload an .eml" button on this page.`,
+  },
+  {
     id: "slack-archive-admin",
     title: "Managing the Slack Archive",
-    group: "Slack Archive",
+    group: "Archives",
     audience: "super_admin",
-    routes: ["/portal/slack-archive/exceptions"],
+    routes: ["/portal/archives/slack/exceptions", "/portal/slack-archive/exceptions"],
     keywords: ["slack", "add channel", "channel id", "sync", "sync now", "refresh access", "deactivate", "exceptions", "errors", "previews", "compress", "large files"],
     body: `Super-admins choose which Slack channels are archived and keep an eye on the nightly sync.
 
@@ -1007,7 +1024,7 @@ Activity is recorded from the day it went live.`,
 
 | | Member | Board | Super-admin |
 |---|---|---|---|
-| Directory, Playbooks, Slack Archive | ✓ | ✓ | ✓ |
+| Directory, Playbooks, Archives | ✓ | ✓ | ✓ |
 | See every player, fees, waivers and volunteer interests | With **See all players** | ✓ | ✓ |
 | Member notes on profiles | With **Member notes** | ✓ | ✓ |
 | External Contacts: add, edit, history | With **External Contacts** | ✓ | ✓ |
@@ -1417,13 +1434,16 @@ You can keep importing lists from different hotels the same way; each run attach
     title: "Settings: Agent keys",
     group: "Settings",
     audience: "super_admin",
-    keywords: ["agent", "api key", "bearer", "film", "youtube", "read-only", "hash"],
-    body: `Give a club agent a read-only key so it can list game film without signing in as a person. Open **Settings → Agent keys**. Super-admins only.
+    // No routes: Settings' default "i" stays Members; the Agent keys tab sets
+    // this section via TAB_HELP (same pattern as Teams, Requirements, …).
+    keywords: ["agent", "api key", "bearer", "film", "youtube", "read-only", "hash", "email", "archive", "write"],
+    body: `Give a club agent a key so it can list game film or copy emails into Archives, without signing in as a person. Open **Settings → Agent keys**. Super-admins only.
 
 - **Name** — a label only you see, like **Film reader**.
+- **Permissions** — tick **Read game film** and/or **Import email archive**. A film-only key cannot import mail.
 - **Create key** makes a long key starting with **olb_ag_**. We show it once: **Copy key** now. We store a hash, so there is no reveal later. **Revoke** if it leaks; anything using it stops.
-- The agent sends **Authorization: Bearer** and that key to **GET /api/agent/film** (every game, filter with **team**, **from**, and **to**) and **GET /api/agent/film/health** (YouTube connected, default privacy, each team's playlist, whether the playlist migration is applied, and counts of film not sent or stuck).
-- Responses never include team upload codes or YouTube tokens. The key cannot change anything.`,
+- The agent sends **Authorization: Bearer** and that key to **GET /api/agent/film**, **GET /api/agent/film/health**, and (with import permission) **POST /api/agent/email-archive**.
+- Responses never include team upload codes, YouTube tokens, or storage paths.`,
   },
   {
     id: "settings-audit-log",

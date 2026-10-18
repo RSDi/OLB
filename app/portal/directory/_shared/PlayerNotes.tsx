@@ -7,7 +7,7 @@ import { MarkdownView } from "../../../components/MarkdownView";
 import { Pill, Textarea } from "../../../components/ui";
 import { ErrorNote, capStyle } from "../../payments/parts";
 import { muted } from "./PlayerParts";
-import { SlackText } from "../../slack-archive/_shared/SlackText";
+import { SlackText } from "../../archives/slack/_shared/SlackText";
 import { CHURCH_TZ } from "../../../../lib/dates/today";
 import { messageHref } from "../../../../lib/slack-archive/anchors";
 import { resolveEmojiShortcode } from "../../../../lib/slack-archive/emoji";

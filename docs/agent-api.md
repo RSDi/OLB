@@ -1,18 +1,25 @@
-# Agent API (read-only)
+# Agent API
 
-Club agents can list game film without signing in as a person. There is no
-env-var token. Super-admins mint hashed keys in **Settings → Agent keys**.
+Club agents can list game film and import emails into Archives without
+signing in as a person. There is no env-var token. Super-admins mint hashed
+keys in **Settings → Agent keys**, and pick permissions:
 
-OLB does **not** auto-run migrations. Apply `0146_agent_keys.sql` in the
-Supabase SQL editor after 0145, redeploy, then create a key. Merge #208
-before the 0147 / 0148 film PRs. 0149 is reserved for email-archive; 0150
-is already on main. To remove: `supabase/removal/0146_agent_keys_down.sql`.
+- **Read game film** (`read`) — `GET /api/agent/film` and `GET /api/agent/film/health`
+- **Import email archive** (`email_archive:write`) — `POST /api/agent/email-archive`
+
+A film-only key cannot import mail. Keys minted before migration 0149 behave
+as `{read}`.
+
+**Depends on** hashed keys (`0146_agent_keys.sql`, #208). Apply
+`0149_email_archive.sql` after 0148. 0150 (hosted tournaments, #175) is
+already on main. OLB does **not** auto-run migrations.
 
 ## Create a key
 
 1. Sign in as a super-admin.
 2. **Settings → Agent keys**.
-3. Type a **Name** (for example `Film reader`) and tap **Create key**.
+3. Type a **Name** (for example `Film reader`), tick the permissions it
+   needs, and tap **Create key**.
 4. **Copy key** now. The full key is shown once (`olb_ag_…`). We store a
    hash; there is no reveal later.
 5. **Revoke** if it leaks.
@@ -23,8 +30,8 @@ Send it as a Bearer token:
 Authorization: Bearer olb_ag_…
 ```
 
-Wrong, missing, or revoked → `401 { "error": "unauthorized" }`. The endpoints
-are GET only; POST/PATCH/DELETE are `405`.
+Wrong, missing, revoked, or missing the scope → `401 { "error": "unauthorized" }`.
+Film routes are GET only (POST is `405`). Email archive is POST only.
 
 ## GET /api/agent/film
 
@@ -142,5 +149,58 @@ id, whether migration 0145 is on the live schema, and counts:
     "stuck": 0,
     "failed": 0
   }
+}
+```
+
+## POST /api/agent/email-archive
+
+Copy a Gmail thread into **Archives → Email**. Needs `email_archive:write`.
+A `{read}`-only key returns 401. Apply `0149_email_archive.sql` first.
+
+JSON body:
+
+```json
+{
+  "gmailThreadId": "1a13bbc3cc52c26e",
+  "sourceMailbox": "Lightning Gmail",
+  "addedBy": "Jeff's agent",
+  "links": [
+    { "month": "2026-10", "agendaItemLabel": "Item 4 · Fundraising" }
+  ],
+  "messages": [
+    {
+      "gmailMessageId": "19abc",
+      "from": "Lyla Santo <lyla.santo.08@gmail.com>",
+      "to": ["LightningBasketballOmaha@gmail.com"],
+      "sentAt": "2026-10-14T18:45:00Z",
+      "subject": "Fundraising opportunity at Nelson Farm",
+      "bodyText": "Hi! …",
+      "bodyHtml": "<p>Hi!</p>",
+      "snippet": "Nelson Produce Farm is looking for local sports teams…",
+      "attachments": [
+        { "filename": "flyer.pdf", "mime": "application/pdf", "contentBase64": "JVBERi0…" }
+      ]
+    }
+  ]
+}
+```
+
+`links[].month` is `YYYY-MM` (looks up that month's board meeting). You can
+send `planningMeetingId` instead. If the meeting isn't saved yet, the thread
+is still archived and the response lists a warning.
+
+HTML is sanitized before storage (no scripts, no images). Attachments land
+in the private `email-archive-files` bucket. The JSON response never includes
+storage paths:
+
+```json
+{
+  "thread": {
+    "gmailThreadId": "1a13bbc3cc52c26e",
+    "url": "/portal/archives/email/1a13bbc3cc52c26e",
+    "messageCount": 1
+  },
+  "created": true,
+  "warnings": []
 }
 ```

@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Input, Pill, Textarea } from "../../../components/ui";
-import { ErrorNote, Sheet } from "../../payments/parts";
-import { listNoteTargets, saveSlackToNotes, type NoteTarget } from "../../../../lib/teams/player-note-actions";
+import { Input, Pill, Textarea } from "../../../../components/ui";
+import { ErrorNote, Sheet } from "../../../payments/parts";
+import { listNoteTargets, saveSlackToNotes, type NoteTarget } from "../../../../../lib/teams/player-note-actions";
 
 const muted: React.CSSProperties = { fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 };
 

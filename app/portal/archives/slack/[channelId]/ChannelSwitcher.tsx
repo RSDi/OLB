@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Icons } from "../../../components/icons";
+import { Icons } from "../../../../components/icons";
 
 export interface ChannelSwitcherItem {
   slackChannelId: string;
@@ -42,7 +42,7 @@ export function ChannelSwitcher({
   function go(slackChannelId: string) {
     setOpen(false);
     if (slackChannelId !== currentChannelId) {
-      router.push(`/portal/slack-archive/${encodeURIComponent(slackChannelId)}`);
+      router.push(`/portal/archives/slack/${encodeURIComponent(slackChannelId)}`);
     }
   }
 

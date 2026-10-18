@@ -9,7 +9,7 @@ export function messageAnchorId(ts: string): string {
 }
 
 export function messageHref(channelId: string, ts: string): string {
-  return `/portal/slack-archive/${encodeURIComponent(channelId)}#${messageAnchorId(ts)}`;
+  return `/portal/archives/slack/${encodeURIComponent(channelId)}#${messageAnchorId(ts)}`;
 }
 
 // The message a URL hash points at ("#msg-1695321234.123456"), or null.

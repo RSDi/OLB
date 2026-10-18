@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
-import { emojify } from "../../../../lib/slack-archive/emoji";
-import { parseSlackText, type SlackLine, type SlackRun } from "../../../../lib/slack-archive/mrkdwn";
+import { emojify } from "../../../../../lib/slack-archive/emoji";
+import { parseSlackText, type SlackLine, type SlackRun } from "../../../../../lib/slack-archive/mrkdwn";
 
 // An archived message's text, laid out the way Slack shows it: bold, line
 // breaks, bullet lists, quotes and code (lib/slack-archive/mrkdwn.ts has the

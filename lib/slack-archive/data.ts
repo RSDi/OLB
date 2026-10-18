@@ -1,4 +1,4 @@
-// Server-side loaders for /portal/slack-archive. Super-admin only — RLS on
+// Server-side loaders for /portal/archives/slack. Super-admin only — RLS on
 // slack_archive_channels/messages/sync_state (migration 0077) already scopes
 // reads to public.is_super_admin(), but loadArchiveViewer() redirects before
 // any query runs, mirroring lib/reelnotes/data.ts's loadReelNotesViewer().
@@ -43,7 +43,7 @@ export async function loadArchiveViewer(): Promise<Viewer> {
 // exceptions, compression, previews) — still super-admin only.
 export async function loadArchiveAdmin(): Promise<Viewer> {
   const viewer = await getViewer();
-  if (!viewer?.isSuperAdmin) redirect("/portal/slack-archive");
+  if (!viewer?.isSuperAdmin) redirect("/portal/archives/slack");
   return viewer;
 }
 
@@ -630,7 +630,7 @@ export interface AlbumPreviewTile {
   url: string;
 }
 
-// A few of the newest photos for the album card on /portal/slack-archive.
+// A few of the newest photos for the album card on /portal/archives/slack.
 // One small query (the latest posts with attachments) rather than the full
 // album scan, so the channel list page stays quick. Best-effort: any failure
 // just leaves the card without pictures.

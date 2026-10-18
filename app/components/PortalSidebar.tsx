@@ -44,7 +44,7 @@ interface NavItem {
 // top-level item — it lives under Settings → Integrations.
 const NAV: NavItem[] = [
   { href: "/portal", label: "Dashboard", icon: <Icons.LayoutDashboard width={16} height={16}/>, exact: true, previewOnly: true },
-  { href: "/portal/events", label: "Planning", icon: <Icons.Calendar width={16} height={16}/>, staffOnly: true },
+  { href: "/portal/events", label: "Planning", icon: <Icons.Calendar width={16} height={16}/>, previewOnly: true },
   { href: "/portal/tasks", label: "Opportunities", icon: <Icons.CheckCircle width={16} height={16}/>, previewOnly: true },
   { href: "/portal/directory", label: "Directory", icon: <Icons.Users width={16} height={16}/>, tour: "nav-directory" },
   // The high school season weekend by weekend, for coaches and the board,
@@ -65,8 +65,8 @@ const NAV: NavItem[] = [
   // Pinned to the bottom of the nav (BOTTOM_HREFS).
   { href: "/portal/devices", label: "Signed-in devices", icon: <Icons.Phone width={16} height={16}/>, pairingOnly: true, tour: "nav-devices" },
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, approvedOnly: true, tour: "nav-settings" },
-  // Slack Channel Archive: siloed feature, super-admin-only for now.
-  { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
+  // Archives: Slack, Email (board), Photo Album. Approved members.
+  { href: "/portal/archives", label: "Archives", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
   // bottom of the nav, above Settings (BOTTOM_HREFS).
   { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/>, tour: "nav-guide" },

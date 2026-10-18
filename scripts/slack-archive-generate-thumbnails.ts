@@ -1,6 +1,6 @@
 /*
  * Makes the small preview images the Slack archive's photo album shows in
- * its grid (/portal/slack-archive/album), so browsing the album doesn't
+ * its grid (/portal/archives/album), so browsing the album doesn't
  * mean downloading every full-size phone photo.
  *
  * Usage:

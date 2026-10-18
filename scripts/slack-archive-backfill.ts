@@ -4,7 +4,7 @@
  * Usage:
  *   npx tsx --env-file=.env.local scripts/slack-archive-backfill.ts
  *
- * Register the channel first via the /portal/slack-archive UI (super-admin
+ * Register the channel first via the /portal/archives/slack UI (super-admin
  * only), then run this to pull its entire history in one go. Reuses the
  * exact same engine as the nightly cron (lib/slack-archive/sync.ts) — the
  * only difference is this has no time budget, since a local process has no

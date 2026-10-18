@@ -135,7 +135,7 @@ test("each page tour is offered from its own page's ⓘ panel, and only there", 
     assert.equal(tourForPath(t.route, { ...SUPER, seesFullUi: true })?.id, t.id, `${t.route} should offer ${t.id}`);
   }
   // Inside a channel, the channel-list tour would point at nothing.
-  assert.equal(tourForPath("/portal/slack-archive/C0123", MEMBER), null);
+  assert.equal(tourForPath("/portal/archives/slack/C0123", MEMBER), null);
   assert.equal(tourForPath("/portal/guide", MEMBER), null);
 });
 

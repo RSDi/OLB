@@ -3,10 +3,10 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Icons } from "../../components/icons";
-import { Input, Pill } from "../../components/ui";
-import { addArchiveChannel, refreshArchiveAccessNow, setArchiveChannelActive } from "../../../lib/slack-archive/channel-actions";
-import type { ArchiveChannel } from "../../../lib/slack-archive/data";
+import { Icons } from "../../../components/icons";
+import { Input, Pill } from "../../../components/ui";
+import { addArchiveChannel, refreshArchiveAccessNow, setArchiveChannelActive } from "../../../../lib/slack-archive/channel-actions";
+import type { ArchiveChannel } from "../../../../lib/slack-archive/data";
 
 // Super admins get the registry controls (add, deactivate, sync status,
 // access status); everyone else just gets the list of channels they can read.
@@ -160,7 +160,7 @@ function ChannelRow({
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <Link
-          href={`/portal/slack-archive/${encodeURIComponent(channel.slack_channel_id)}`}
+          href={`/portal/archives/slack/${encodeURIComponent(channel.slack_channel_id)}`}
           style={{ fontSize: 14, fontWeight: 700, color: "var(--gw-fg)", lineHeight: 1.2, textDecoration: "none" }}
         >
           {channel.label}

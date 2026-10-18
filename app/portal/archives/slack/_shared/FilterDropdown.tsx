@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Icons } from "../../../components/icons";
-import { ClearSearchButton, Pill } from "../../../components/ui";
+import { Icons } from "../../../../components/icons";
+import { ClearSearchButton, Pill } from "../../../../components/ui";
 
 // Shared searchable multi-select popover for the search page's channel/user
 // filters and the channel page's author filter — the one component this

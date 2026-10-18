@@ -63,7 +63,9 @@ test("recorded paths read as words", () => {
   assert.equal(pathLabel("/portal/directory/teams/abc"), "Directory · Team page");
   assert.equal(pathLabel("/portal/docs/abc/history"), "Playbooks · Playbook · History");
   assert.equal(pathLabel("/portal/contacts/abc/edit"), "External Contacts · Contact · Edit");
-  assert.equal(pathLabel("/portal/slack-archive/search?q=tournament"), "Slack Archive · Search · Search: tournament");
+  assert.equal(pathLabel("/portal/archives/slack/search?q=tournament"), "Archives · Slack · Search: tournament");
+  assert.equal(pathLabel("/portal/archives/slack/exceptions"), "Archives · Exceptions");
+  assert.equal(pathLabel("/portal/archives/email/1a13bbc3cc52c26e"), "Archives · Email");
   assert.equal(pathLabel("/portal/devices"), "Signed-in devices");
   assert.equal(pathLabel("/portal"), "Dashboard");
   assert.equal(pathLabel("/portal/something-new"), "something-new");

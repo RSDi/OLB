@@ -22,7 +22,7 @@ import {
   type AlbumUrlState,
 } from "../../../../lib/slack-archive/album";
 import { emojify } from "../../../../lib/slack-archive/emoji";
-import { FilterDropdown, type FilterDropdownItem } from "../_shared/FilterDropdown";
+import { FilterDropdown, type FilterDropdownItem } from "../slack/_shared/FilterDropdown";
 import { AlbumLightbox } from "./AlbumLightbox";
 import { MonthJump, type MonthJumpEntry } from "./MonthJump";
 

@@ -7,7 +7,7 @@ import { CHURCH_TZ } from "../../../../lib/dates/today";
 import { albumMediaHref, type AlbumItem } from "../../../../lib/slack-archive/album";
 import { messageHref } from "../../../../lib/slack-archive/anchors";
 import { emojify } from "../../../../lib/slack-archive/emoji";
-import { SlackText } from "../_shared/SlackText";
+import { SlackText } from "../slack/_shared/SlackText";
 import { albumFontVariables } from "./fonts";
 
 const LONG_DATE = new Intl.DateTimeFormat("en-US", {
@@ -134,7 +134,7 @@ export function AlbumLightbox({
   }
 
   async function copyLink() {
-    const url = `${window.location.origin}/portal/slack-archive/album?photo=${encodeURIComponent(item.id)}`;
+    const url = `${window.location.origin}/portal/archives/album?photo=${encodeURIComponent(item.id)}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopiedId(item.id);
@@ -328,7 +328,7 @@ export function AlbumLightbox({
             <div className="rsd-lightbox-when">{LONG_DATE.format(postedAt)}</div>
             <div className="rsd-lightbox-where">
               in{" "}
-              <a href={`/portal/slack-archive/${encodeURIComponent(item.channelId)}`} target="_blank" rel="noopener noreferrer">
+              <a href={`/portal/archives/slack/${encodeURIComponent(item.channelId)}`} target="_blank" rel="noopener noreferrer">
                 {channelLabel}
               </a>
             </div>

@@ -25,6 +25,8 @@ import {
   seasonOfMonth,
 } from "../../../../../lib/planning/season";
 import { MigrationNotice } from "../../_planning/nav";
+import { loadMeetingEmailLinks } from "../../../../../lib/email-archive/data";
+import { MeetingArchiveRail } from "./MeetingArchiveRail";
 import { MeetingForm } from "./MeetingForm";
 
 const THIS_MONTH = "this-month";
@@ -71,6 +73,7 @@ export default async function MeetingPage({ params }: { params: Promise<{ month:
   const rel = relativeMonth(month, current);
   const prev = addMonths(month, -1);
   const next = addMonths(month, 1);
+  const linkedEmails = historyReady ? await loadMeetingEmailLinks(state.meetingId) : [];
 
   return (
     <>
@@ -101,14 +104,17 @@ export default async function MeetingPage({ params }: { params: Promise<{ month:
       {!tpl.ok || !historyReady ? (
         <MigrationNotice />
       ) : (
-        <MeetingForm
-          month={month}
-          server={state}
-          draftAgenda={agendaDraft(tpl.templates, monthNumber(month))}
-          thisMonth={thisMonth}
-          earlier={earlier}
-          me={{ userId: viewer.userId, name: names.get(viewer.userId) ?? "A board member" }}
-        />
+        <div className="rsd-meeting-grid">
+          <MeetingForm
+            month={month}
+            server={state}
+            draftAgenda={agendaDraft(tpl.templates, monthNumber(month))}
+            thisMonth={thisMonth}
+            earlier={earlier}
+            me={{ userId: viewer.userId, name: names.get(viewer.userId) ?? "A board member" }}
+          />
+          <MeetingArchiveRail emails={linkedEmails} />
+        </div>
       )}
     </>
   );

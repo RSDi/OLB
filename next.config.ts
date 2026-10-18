@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     // The maintenance area was renamed to Tasks & Projects; keep old links working.
     return [
+      { source: "/portal/archives", destination: "/portal/archives/slack", permanent: false },
       { source: "/portal/maintenance", destination: "/portal/tasks", permanent: false },
       { source: "/portal/maintenance/:path*", destination: "/portal/tasks/:path*", permanent: false },
       // Dave's Idea was renamed to ReelNotes; keep old links + installed PWAs working.

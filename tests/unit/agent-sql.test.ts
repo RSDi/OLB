@@ -6,13 +6,14 @@ import { join } from "node:path";
 const root = join(import.meta.dirname, "../..");
 const migration = readFileSync(join(root, "supabase/migrations/0146_agent_keys.sql"), "utf8");
 
-test("0146 is reserved for agent keys (0149 email-archive, 0150 already on main)", () => {
+test("0146 is agent keys; 0149 is email-archive; 0150 is already on main", () => {
   const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
   assert.ok(names.includes("0145_game_film_youtube_playlists.sql"));
   assert.ok(names.includes("0146_agent_keys.sql"));
+  assert.ok(names.includes("0149_email_archive.sql"));
   assert.ok(names.includes("0150_hosted_tournaments.sql"));
   assert.equal(names.filter((n) => n.startsWith("0146")).length, 1, "only one 0146 migration");
-  assert.equal(names.filter((n) => n.startsWith("0149")).length, 0, "0149 is reserved for email-archive");
+  assert.equal(names.filter((n) => n.startsWith("0149")).length, 1, "0149 is email-archive");
 });
 
 test("0146 has a removal script outside migrations", () => {

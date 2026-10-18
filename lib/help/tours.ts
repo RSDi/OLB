@@ -127,8 +127,8 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "nav-slack-archive",
         sidebar: true,
-        title: "Slack Archive",
-        body: "Past messages, photos and files from the club's Slack, so nothing gets lost when Slack hides older messages.",
+        title: "Archives",
+        body: "Past Slack messages and photos, so nothing gets lost. Board members also see an Email tab for copies of emails they reference — those open here, not in Jeff's Gmail.",
       },
       {
         target: "nav-contacts",
@@ -455,7 +455,7 @@ export const GUIDE_TOURS: GuideTour[] = [
     id: "slack-archive",
     sectionId: "slack-archive",
     title: "Slack Archive tour",
-    route: "/portal/slack-archive",
+    route: "/portal/archives/slack",
     steps: [
       {
         target: "page-title",
@@ -495,7 +495,7 @@ export const GUIDE_TOURS: GuideTour[] = [
     id: "slack-archive-search",
     sectionId: "slack-archive-search",
     title: "Archive search tour",
-    route: "/portal/slack-archive/search",
+    route: "/portal/archives/slack/search",
     steps: [
       {
         target: "archive-search-text",
@@ -513,7 +513,7 @@ export const GUIDE_TOURS: GuideTour[] = [
     id: "slack-archive-album",
     sectionId: "slack-archive-album",
     title: "Photo Album tour",
-    route: "/portal/slack-archive/album",
+    route: "/portal/archives/album",
     steps: [
       {
         target: "album-search",
@@ -529,6 +529,29 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "album-tile",
         title: "Open a photo",
         body: "Tap a photo to see it full-screen. Use the arrows to move through them, **View in conversation** to see the Slack thread, and **Download original** to save it.",
+      },
+    ],
+  },
+  {
+    id: "archives-email",
+    sectionId: "archives-email",
+    title: "Archived email tour",
+    route: "/portal/archives/email",
+    steps: [
+      {
+        target: "archives-tab-email",
+        title: "Email",
+        body: "Copies of emails the board has referenced. Board only — parents don't see this tab.",
+      },
+      {
+        target: "archives-email-search",
+        title: "Find a thread",
+        body: "**Search emails…** looks at subject, snippet and people. **Linked to** and **Source** narrow the list.",
+      },
+      {
+        target: "archives-email-thread",
+        title: "The thread",
+        body: "Who it was from, the body, attachments, and **Linked from** chips back to the board meeting that cited it.",
       },
     ],
   },
@@ -1618,20 +1641,20 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "settings-tab-agent-keys",
         title: "Settings → Agent keys",
-        body: "Read-only keys for club agents. Super-admins mint them here. Game film is what they can see today.",
+        body: "Keys for club agents. Super-admins mint them here. Tick **Read game film** and/or **Import email archive**.",
       },
       {
         target: "agent-keys-create",
         click: "settings-tab-agent-keys",
         interactive: true,
         title: "Create a key",
-        body: "Give it a **Name** (only you see this) and tap **Create key**. Copy the key when it appears — we won't show it again.",
+        body: "Give it a **Name** (only you see this), tick the permissions it needs, and tap **Create key**. Copy the key when it appears — we won't show it again.",
       },
       {
         target: "agent-keys-reveal",
         click: "settings-tab-agent-keys",
         title: "Copy it now",
-        body: "This banner is the only time the full key is on screen. **Copy key**, then send **Authorization: Bearer** plus the key to **/api/agent/film**.",
+        body: "This banner is the only time the full key is on screen. **Copy key**, then send **Authorization: Bearer** plus the key. Film list is **GET /api/agent/film**; importing mail is **POST /api/agent/email-archive**.",
       },
       {
         target: "agent-keys-row",
@@ -1954,7 +1977,13 @@ export const GUIDE_TOURS: GuideTour[] = [
         route: "/portal/events/meetings/this-month",
         target: "meeting-agenda",
         title: "Agenda",
-        body: "Drafted from this month's topics in the Template. Edit it freely.",
+        body: "Drafted from this month's topics in the Template. Edit it freely. An Archives email or Slack link in the agenda opens the copy, not Gmail.",
+      },
+      {
+        route: "/portal/events/meetings/this-month",
+        target: "meeting-linked-emails",
+        title: "Linked emails",
+        body: "**Linked emails (archived)** opens the copies in Archives → Email, so the board doesn't need Jeff's Gmail.",
       },
       {
         route: "/portal/events/meetings/this-month",

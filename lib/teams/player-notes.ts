@@ -98,7 +98,7 @@ export function cleanAttachments(noteId: string, list: unknown): { value: NoteAt
 
 // Plain text with links: the note's body as markdown, where a bare
 // https://… link or [words](link) is clickable, and so is a link to a portal
-// page such as a Slack Archive message ([the thread](/portal/slack-archive/…)).
+// page such as a Slack Archive message ([the thread](/portal/archives/slack/…)).
 export function cleanNoteBody(body: unknown): string {
   return (typeof body === "string" ? body : "").replace(/\r\n/g, "\n").trim().slice(0, NOTE_BODY_MAX);
 }

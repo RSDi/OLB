@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Icons } from "../../../components/icons";
+import { Icons } from "../../../../components/icons";
 
 export type PreviewKind = "image" | "video" | "audio";
 

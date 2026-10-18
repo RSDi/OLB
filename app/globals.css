@@ -1995,3 +1995,41 @@ main::-webkit-scrollbar-track { background: transparent; }
    weekend), and a team's plain count shows its box on hover. */
 .hs-row:hover > td { box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.025); }
 .hs-cell:hover { border-color: var(--gw-border) !important; background: var(--gw-bg-elev) !important; }
+
+/* Archives → Email split list + thread, and archive chips in meeting agendas. */
+.rsd-email-split {
+  display: grid;
+  grid-template-columns: minmax(260px, 380px) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.rsd-email-row:first-child { border-top: 0 !important; }
+.rsd-email-body p { line-height: 1.55; margin: 10px 0; }
+.rsd-email-body ul, .rsd-email-body ol { padding-left: 20px; margin: 8px 0; }
+.rsd-archive-link {
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 6px;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.rsd-archive-link-email {
+  color: #1155cc;
+  background: #eef4ff;
+  border: 1px solid #cddcff;
+}
+.rsd-archive-link-slack {
+  color: #5b2e91;
+  background: #f4effa;
+  border: 1px solid #e0d3f0;
+}
+.rsd-meeting-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 280px);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .rsd-email-split,
+  .rsd-meeting-grid { grid-template-columns: 1fr; }
+}

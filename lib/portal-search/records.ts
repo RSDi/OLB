@@ -61,7 +61,7 @@ async function searchSlack(
       id: row.id,
       title: row.message_text.replace(/\s+/g, " ").slice(0, 140),
       subtitle: [where, row.author_name, day(row.posted_at)].filter(Boolean).join(" · "),
-      href: `/portal/slack-archive/${encodeURIComponent(row.channel_id)}#msg-${row.ts}`,
+      href: `/portal/archives/slack/${encodeURIComponent(row.channel_id)}#msg-${row.ts}`,
       rank: row.rank,
     };
   });

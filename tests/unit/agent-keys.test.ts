@@ -76,11 +76,17 @@ test("agent routes are GET-only Bearer gates and never load YouTube secrets", ()
     assert.doesNotMatch(src, /CRON_SECRET/);
     assert.doesNotMatch(src, /OLB_ROADMAP_BOT_TOKEN/);
   }
-  assert.match(http, /listActiveAgentKeyHashes/);
+  assert.match(http, /listActiveAgentKeys/);
   assert.match(http, /unauthorized/);
   assert.match(tab, />\s*Create key\s*</);
   assert.match(tab, />\s*Revoke\s*</);
   assert.match(tab, /Copy this now/);
+  assert.match(tab, /Import email archive/);
   assert.match(actions, /requireSuperAdmin/);
   assert.doesNotMatch(tab, /key_hash/);
+  const email = readFileSync(join(import.meta.dirname, "../../app/api/agent/email-archive/route.ts"), "utf8");
+  assert.match(email, /export async function POST/);
+  assert.doesNotMatch(email, /export async function GET/);
+  assert.match(email, /email_archive:write/);
+  assert.doesNotMatch(email, /CRON_SECRET/);
 });

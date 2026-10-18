@@ -1,4 +1,4 @@
-// Pure helpers for the Slack archive's photo album (/portal/slack-archive/album):
+// Pure helpers for the Slack archive's photo album (/portal/archives/album):
 // which archived attachments count as album media, where their preview
 // thumbnails live, how message rows become album items, and the client-side
 // search, filtering, and month grouping.
@@ -13,7 +13,7 @@ import type { ArchivedFile } from "./files";
 export type AlbumMediaKind = "image" | "video";
 
 // Same mimetype-first, extension-fallback rule as the channel page's
-// attachment chips (app/portal/slack-archive/[channelId]/MessageList.tsx) —
+// attachment chips (app/portal/archives/slack/[channelId]/MessageList.tsx) —
 // Slack occasionally reports a generic mimetype for a perfectly normal
 // photo or phone video.
 const VIDEO_EXT = /\.(mp4|mov|webm|m4v|ogv)$/i;
@@ -62,12 +62,12 @@ export function thumbnailPathFor(storagePath: string): string {
 }
 
 // Full-size originals are served through a same-origin route that signs a
-// fresh URL per request (app/portal/slack-archive/media/[...path]/route.ts),
+// fresh URL per request (app/portal/archives/slack/media/[...path]/route.ts),
 // so a viewer left open past a signed URL's expiry still loads the original.
 export function albumMediaHref(storagePath: string, opts: { download?: string } = {}): string {
   const encoded = storagePath.split("/").map(encodeURIComponent).join("/");
   const query = opts.download ? `?download=${encodeURIComponent(opts.download)}` : "";
-  return `/portal/slack-archive/media/${encoded}${query}`;
+  return `/portal/archives/slack/media/${encoded}${query}`;
 }
 
 export interface AlbumItem {
