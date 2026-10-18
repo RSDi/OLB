@@ -25,6 +25,7 @@ import {
   taskDescription,
   taskMonth,
 } from "../../lib/planning/logic.ts";
+import { canUsePlanning } from "../../lib/planning/access.ts";
 import type { PlanningTemplate } from "../../lib/planning/types.ts";
 
 function tpl(over: Partial<PlanningTemplate> & { id: string }): PlanningTemplate {
@@ -134,6 +135,13 @@ test("template lines list year-round first, then August through July", () => {
     tpl({ id: "dec", month: 12, title: "December" }),
   ]);
   assert.deepEqual(sorted.map((t) => t.id), ["yr", "aug", "dec", "jan", "jul"]);
+});
+
+test("Planning is for the board, not a preview-account list", () => {
+  assert.equal(canUsePlanning({ isStaff: true }), true);
+  assert.equal(canUsePlanning({ isStaff: false }), false);
+  assert.equal(canUsePlanning(null), false);
+  assert.equal(canUsePlanning(undefined), false);
 });
 
 test("route params only accept real months and seasons", () => {

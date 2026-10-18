@@ -44,7 +44,7 @@ import {
   loadContactPickerOptions,
 } from "../../contacts/_shared/data";
 import { memberDisplayName, memberFirstName } from "../../../../lib/members/display";
-import { seesFullUi } from "../../../../lib/auth/feature-preview";
+import { canUsePlanning } from "../../../../lib/planning/access";
 import { loadTaskPlanning } from "../../../../lib/planning/data";
 import { TaskPlanningCard } from "../../events/_planning/TaskPlanningCard";
 
@@ -467,8 +467,8 @@ export default async function TicketDetailPage({
   const canComment = staff || ticket.submitted_by === user.id;
 
   // A task from the Planning template: its season and month, role, playbook
-  // and board meeting notes. Planning is in staged rollout (lib/planning/access.ts).
-  const planning = staff && seesFullUi(user.email) ? await loadTaskPlanning(supabase, ticket.id) : null;
+  // and board meeting notes (lib/planning/access.ts).
+  const planning = canUsePlanning({ isStaff: staff }) ? await loadTaskPlanning(supabase, ticket.id) : null;
 
   return (
     <>

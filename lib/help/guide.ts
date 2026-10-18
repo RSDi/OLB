@@ -233,7 +233,6 @@ The cost is an estimate from the AI's token counts. It doesn't include the small
     title: "Planning",
     group: "Planning",
     audience: "staff",
-    preview: true,
     keywords: ["planning", "events", "calendar", "timeline", "responsibilities", "president", "athletic director", "ad", "treasurer", "communications", "coaches", "template", "review", "keep", "toss", "season", "year", "board meeting", "minutes", "agenda", "playbook"],
     routes: ["/portal/events"],
     body: `Planning is the board's year as a calendar: the events, a board meeting every month, and the tasks each role takes care of, built from a template the board reuses every season. A season runs August through July.
@@ -1162,7 +1161,6 @@ Use the arrows to change the order (it's the order of the chips in the Directory
     title: "Settings: Planning Roles",
     group: "Settings",
     audience: "staff",
-    preview: true,
     keywords: ["planning", "roles", "president", "athletic director", "treasurer", "communications", "coaches", "held by", "assign"],
     body: `The roles Planning's tasks belong to: President, Athletic Director, Treasurer, Communications and Coaches to start. Open **Settings → Planning Roles**.
 
