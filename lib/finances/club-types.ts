@@ -121,6 +121,8 @@ export interface HostedEvent {
   ends_on: string | null;
   note: string | null;
   archived_at: string | null;
+  // Its planning page on the HS Schedule (0150), when it's linked to one.
+  plan_weekend_id?: string | null;
 }
 
 export interface ProgramLevel {

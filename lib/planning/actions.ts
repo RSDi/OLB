@@ -3,8 +3,8 @@
 // Planning's writes: sending a season's template to Review, keeping or
 // tossing what comes out, ticking tasks off, the template itself, the roles
 // (Settings → Planning Roles) and the monthly board meetings. Every one is
-// gated by requirePlanner (board + staged rollout); RLS limits the tables to
-// the board as well.
+// gated by requirePlanner (the board); RLS limits the tables to the board
+// as well.
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";

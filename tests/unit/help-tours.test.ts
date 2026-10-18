@@ -162,15 +162,14 @@ test("the requirements walkthrough: three parts, for the board, from both guide 
   assert.ok(steps.slice(p2).every((s) => s.route === "/portal/directory"));
 });
 
-test("the Planning walkthrough: five parts, only for the preview account, from both guide sections", () => {
-  const jeff: GuideViewer = { ...SUPER, seesFullUi: true };
-  assert.equal(tourForSection("planning", jeff)?.id, PLANNING_TOUR_ID);
-  assert.equal(tourForSection("settings-planning-roles", jeff)?.id, PLANNING_TOUR_ID);
-  // Planning is in staged rollout: another super-admin (Rachel) doesn't get it yet.
-  assert.equal(tourForSection("planning", SUPER), null);
-  assert.equal(tourForPath("/portal/events", jeff)?.id, PLANNING_TOUR_ID);
-  assert.equal(tourForPath("/portal/events", ADMIN), null);
-  const steps = tourStepsFor(GUIDE_TOURS.find((t) => t.id === PLANNING_TOUR_ID)!, jeff);
+test("the Planning walkthrough: five parts, for the board, from both guide sections", () => {
+  assert.equal(tourForSection("planning", SUPER)?.id, PLANNING_TOUR_ID);
+  assert.equal(tourForSection("settings-planning-roles", SUPER)?.id, PLANNING_TOUR_ID);
+  assert.equal(tourForSection("planning", ADMIN)?.id, PLANNING_TOUR_ID);
+  assert.equal(tourForSection("planning", MEMBER), null);
+  assert.equal(tourForPath("/portal/events", ADMIN)?.id, PLANNING_TOUR_ID);
+  assert.equal(tourForPath("/portal/events", MEMBER), null);
+  const steps = tourStepsFor(GUIDE_TOURS.find((t) => t.id === PLANNING_TOUR_ID)!, ADMIN);
   assert.deepEqual(
     steps.filter((s) => s.part).map((s) => s.part),
     ["The calendar", "Review a season", "The template", "Board meetings", "Who holds each role"]
