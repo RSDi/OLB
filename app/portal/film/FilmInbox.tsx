@@ -208,8 +208,7 @@ export function FilmInbox({
         does not mark the YouTube upload failed. Each YouTube card shows the privacy YouTube actually
         has — <strong>Public</strong>, <strong>Unlisted</strong>, or <strong>Private</strong> — and
         whether YouTube is still processing it. That can differ from the default in Settings (Google
-        sometimes forces Private). <strong>Refresh YouTube status</strong> reads it from YouTube; you
-        don&apos;t need Studio. Slack posts wait here for <strong>Approve</strong> — anyone with{" "}
+        sometimes forces Private). <strong>Refresh YouTube status</strong> reads it from YouTube; you don&apos;t need Studio. Slack posts wait here for <strong>Approve</strong> — anyone with{" "}
         <strong>Teams &amp; volunteers</strong> can tap it. Nothing goes out on its own. Discarded
         posts can be restored for 30 days. Files marked <strong>Moved</strong> are deleted after 30
         days.
