@@ -9,11 +9,17 @@ import {
   markFilmMoved,
   restoreFilmHolding,
   signedFilmDownload,
+  updateFilmGameFields,
 } from "../../../lib/film/admin-actions";
 import { retryFilmYoutube } from "../../../lib/film/youtube-actions";
-import { formatFilmGameLine } from "../../../lib/film/game-meta";
+import {
+  formatFilmInboxHeading,
+  missingFilmGameLabels,
+  OPPONENT_MAX,
+} from "../../../lib/film/game-meta";
 import { groupUploadsByTeamAndGame, youtubeWatchUrl } from "../../../lib/film/youtube-meta";
 import type { FilmStatus, FilmUpload, YoutubeStatus } from "../../../lib/film/types";
+import styles from "./inbox.module.css";
 
 interface Props {
   uploads: FilmUpload[];
@@ -48,6 +54,12 @@ function youtubeLabel(status: YoutubeStatus | null, videoId: string | null): str
   return null;
 }
 
+function digitsOnly(raw: string): string {
+  return raw.replace(/\D/g, "").slice(0, 3);
+}
+
+type GamePatch = Pick<FilmUpload, "game_date" | "opponent" | "our_score" | "their_score">;
+
 export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
@@ -55,6 +67,7 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState<{ id: string; url: string; name: string } | null>(null);
+  const [patches, setPatches] = useState<Record<string, GamePatch>>({});
   const [, startTransition] = useTransition();
 
   const labels = useMemo(() => {
@@ -63,21 +76,26 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
     return map;
   }, [parentLinks]);
 
+  const rows = useMemo(
+    () => uploads.map((u) => (patches[u.id] ? { ...u, ...patches[u.id] } : u)),
+    [uploads, patches]
+  );
+
   const shown = useMemo(() => {
-    let rows = filter === "all" ? uploads : uploads.filter((u) => u.status === filter);
-    if (teamFilter !== "all") rows = rows.filter((u) => u.team === teamFilter);
-    return rows;
-  }, [filter, teamFilter, uploads]);
+    let list = filter === "all" ? rows : rows.filter((u) => u.status === filter);
+    if (teamFilter !== "all") list = list.filter((u) => u.team === teamFilter);
+    return list;
+  }, [filter, teamFilter, rows]);
 
   const grouped = useMemo(() => groupUploadsByTeamAndGame(shown, labels), [shown, labels]);
 
   const teams = useMemo(() => {
     const seen = new Map<string, string>();
-    for (const u of uploads) {
+    for (const u of rows) {
       if (!seen.has(u.team)) seen.set(u.team, labels[u.team] || u.team);
     }
     return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [uploads, labels]);
+  }, [rows, labels]);
 
   async function run(id: string, fn: (id: string) => Promise<{ error?: string }>) {
     setBusy(id);
@@ -217,7 +235,12 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
               {team.games.map((game) => (
                 <div key={game.key} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div style={{ fontSize: 15, fontWeight: 800 }}>
-                    {game.line || formatFilmGameLine({ gameDate: game.gameDate, opponent: game.opponent }) || "Game"}
+                    {formatFilmInboxHeading({
+                      gameDate: game.gameDate,
+                      opponent: game.opponent,
+                      ourScore: game.ourScore,
+                      theirScore: game.theirScore,
+                    })}
                   </div>
                   {game.uploads.map((row) => (
                     <FilmRow
@@ -231,6 +254,7 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks }: Props)
                       onRetryYoutube={() => void run(row.id, retryFilmYoutube)}
                       onMoved={() => void run(row.id, markFilmMoved)}
                       onHolding={() => void run(row.id, restoreFilmHolding)}
+                      onPatched={(patch) => setPatches((prev) => ({ ...prev, [row.id]: patch }))}
                       onDelete={() => {
                         if (confirm(`Delete ${row.filename}? This cannot be undone.`)) {
                           void run(row.id, deleteFilmUpload);
@@ -259,6 +283,7 @@ function FilmRow({
   onMoved,
   onHolding,
   onDelete,
+  onPatched,
 }: {
   row: FilmUpload;
   busy: boolean;
@@ -270,8 +295,16 @@ function FilmRow({
   onMoved: () => void;
   onHolding: () => void;
   onDelete: () => void;
+  onPatched: (patch: GamePatch) => void;
 }) {
+  const [editing, setEditing] = useState(false);
   const yt = youtubeLabel(row.youtube_status, row.youtube_video_id);
+  const missing = missingFilmGameLabels({
+    gameDate: row.game_date,
+    opponent: row.opponent,
+    ourScore: row.our_score,
+    theirScore: row.their_score,
+  });
   return (
     <div
       data-tour="film-row"
@@ -290,6 +323,9 @@ function FilmRow({
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
             {row.uploader_name} · {formatBytes(row.size_bytes)} · {formatWhen(row.created_at)}
           </div>
+          {missing.length > 0 && !editing && (
+            <p className={styles.missing}>Missing: {missing.join(", ")}</p>
+          )}
           {yt && (
             <div style={{ fontSize: 13, fontWeight: 700, marginTop: 6 }}>
               {row.youtube_status === "done" && row.youtube_video_id ? (
@@ -319,50 +355,182 @@ function FilmRow({
           {row.status === "moved" ? "Moved" : "Holding"}
         </span>
       </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <span data-tour="film-play">
-          <Pill size="sm" variant="accent" onClick={onPlay} disabled={busy}>
-            Play
-          </Pill>
-        </span>
-        <span data-tour="film-download">
-          <Pill size="sm" onClick={onDownload} disabled={busy}>
-            Download
-          </Pill>
-        </span>
-        {row.youtube_status === "done" && row.youtube_video_id && (
-          <Pill
-            size="sm"
-            onClick={() => window.open(youtubeWatchUrl(row.youtube_video_id!), "_blank", "noopener,noreferrer")}
-          >
-            YouTube
-          </Pill>
-        )}
-        {canManage && (row.youtube_status === "failed" || !row.youtube_status) && (
-          <Pill size="sm" onClick={onRetryYoutube} disabled={busy}>
-            {row.youtube_status === "failed" ? "Retry YouTube" : "Send to YouTube"}
-          </Pill>
-        )}
-        {canManage && row.status === "holding" && (
-          <span data-tour="film-moved">
-            <Pill size="sm" onClick={onMoved} disabled={busy}>
-              Mark moved
+      {editing ? (
+        <FilmGameEditor
+          row={row}
+          onCancel={() => setEditing(false)}
+          onSaved={(patch) => {
+            onPatched(patch);
+            setEditing(false);
+          }}
+        />
+      ) : (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <span data-tour="film-play">
+            <Pill size="sm" variant="accent" onClick={onPlay} disabled={busy}>
+              Play
             </Pill>
           </span>
-        )}
-        {canManage && row.status === "moved" && (
-          <Pill size="sm" onClick={onHolding} disabled={busy}>
-            Back to holding
-          </Pill>
-        )}
-        {canManage && (
-          <span data-tour="film-delete">
-            <Pill size="sm" variant="ghost" onClick={onDelete} disabled={busy}>
-              Delete
+          <span data-tour="film-download">
+            <Pill size="sm" onClick={onDownload} disabled={busy}>
+              Download
             </Pill>
           </span>
-        )}
-      </div>
+          {row.youtube_status === "done" && row.youtube_video_id && (
+            <Pill
+              size="sm"
+              onClick={() => window.open(youtubeWatchUrl(row.youtube_video_id!), "_blank", "noopener,noreferrer")}
+            >
+              YouTube
+            </Pill>
+          )}
+          {canManage && (row.youtube_status === "failed" || !row.youtube_status) && (
+            <Pill size="sm" onClick={onRetryYoutube} disabled={busy}>
+              {row.youtube_status === "failed" ? "Retry YouTube" : "Send to YouTube"}
+            </Pill>
+          )}
+          {canManage && (
+            <span data-tour="film-edit">
+              <Pill size="sm" onClick={() => setEditing(true)} disabled={busy}>
+                Edit
+              </Pill>
+            </span>
+          )}
+          {canManage && row.status === "holding" && (
+            <span data-tour="film-moved">
+              <Pill size="sm" onClick={onMoved} disabled={busy}>
+                Mark moved
+              </Pill>
+            </span>
+          )}
+          {canManage && row.status === "moved" && (
+            <Pill size="sm" onClick={onHolding} disabled={busy}>
+              Back to holding
+            </Pill>
+          )}
+          {canManage && (
+            <span data-tour="film-delete">
+              <Pill size="sm" variant="ghost" onClick={onDelete} disabled={busy}>
+                Delete
+              </Pill>
+            </span>
+          )}
+        </div>
+      )}
     </div>
+  );
+}
+
+function FilmGameEditor({
+  row,
+  onCancel,
+  onSaved,
+}: {
+  row: FilmUpload;
+  onCancel: () => void;
+  onSaved: (patch: GamePatch) => void;
+}) {
+  const router = useRouter();
+  const [gameDate, setGameDate] = useState(row.game_date ?? "");
+  const [opponent, setOpponent] = useState(row.opponent ?? "");
+  const [ourScore, setOurScore] = useState(row.our_score == null ? "" : String(row.our_score));
+  const [theirScore, setTheirScore] = useState(row.their_score == null ? "" : String(row.their_score));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    const result = await updateFilmGameFields(row.id, {
+      gameDate,
+      opponent,
+      ourScore,
+      theirScore,
+    });
+    setSaving(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (result.upload) onSaved(result.upload);
+    startTransition(() => router.refresh());
+  }
+
+  return (
+    <form
+      className={styles.form}
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save();
+      }}
+    >
+      <label className={styles.field}>
+        <span className={styles.label}>Game date</span>
+        <input
+          className={styles.input}
+          type="date"
+          value={gameDate}
+          onChange={(e) => setGameDate(e.target.value)}
+          required
+        />
+      </label>
+      <label className={styles.field}>
+        <span className={styles.label}>Opponent</span>
+        <input
+          className={styles.input}
+          value={opponent}
+          onChange={(e) => setOpponent(e.target.value)}
+          placeholder="Who did we play?"
+          autoComplete="off"
+          autoCapitalize="words"
+          enterKeyHint="next"
+          maxLength={OPPONENT_MAX}
+        />
+      </label>
+      <fieldset className={styles.scoreFields}>
+        <legend className={styles.label}>Score</legend>
+        <p className={styles.hint}>Optional — leave blank if you don&apos;t have it.</p>
+        <div className={styles.scoreRow}>
+          <label className={styles.field}>
+            <span className={styles.subLabel}>Our score</span>
+            <input
+              className={styles.input}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              maxLength={3}
+              value={ourScore}
+              onChange={(e) => setOurScore(digitsOnly(e.target.value))}
+              placeholder="—"
+            />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.subLabel}>Their score</span>
+            <input
+              className={styles.input}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              maxLength={3}
+              value={theirScore}
+              onChange={(e) => setTheirScore(digitsOnly(e.target.value))}
+              placeholder="—"
+            />
+          </label>
+        </div>
+      </fieldset>
+      {error && <p className={styles.error}>{error}</p>}
+      <div className={styles.actions}>
+        <Pill size="sm" variant="accent" type="submit" disabled={saving}>
+          {saving ? "Saving…" : "Save"}
+        </Pill>
+        <Pill size="sm" variant="ghost" onClick={onCancel} disabled={saving}>
+          Cancel
+        </Pill>
+      </div>
+    </form>
   );
 }

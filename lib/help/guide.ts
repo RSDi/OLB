@@ -690,18 +690,18 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     permission: "film_view",
     alsoPermissions: ["film_manage"],
     routes: ["/portal/film"],
-    keywords: ["film", "game film", "video", "upload", "download", "play", "moved", "youtube", "holding", "delete", "coach inbox", "game date", "opponent", "score", "unlisted"],
+    keywords: ["film", "game film", "video", "upload", "download", "play", "moved", "youtube", "holding", "delete", "edit", "coach inbox", "game date", "opponent", "score", "unlisted"],
     body: `Game videos families send in from their phones, under **Film** in the sidebar. You see this if a super-admin gave you **Game film** (or **Game film (manage)**) in Settings → Members.
 
 Families don't sign in here. They open the team upload link they were sent (the full **https://…/t/…** address from **Settings → Film**), enter that team's shared code, then fill in **Your name**, **Game date** (it starts on today), **Opponent**, and **Our score** / **Their score** if they know it — scores can stay blank if the game isn't over — and upload. The page has a **Tip: record in 1080p at 30 fps (iPhone: Settings → Camera → Record Video).** Ask them to **keep the page open and keep the phone plugged in** until they see **✓ Uploaded** on each file and the green **All videos uploaded — you can close this page.** If a file says **Failed**, they tap **Retry**.
 
 **On this page**
 
-- Videos are grouped by team, then by game date, opponent, and score.
+- Videos are grouped by team, then by game date, opponent, and score. A video with no date sits under **No game date** (not a generic "Game") until someone fills one in.
 - **Play** watches the file in this page (it works on a phone). **Close player** puts the player away. **Download** still saves a copy.
 - **Every team** (and each team name) filters the list when more than one team has film. **All**, **Holding** and **Moved** filter by whether it's been copied off.
 - After YouTube is connected in **Settings → Film**, new uploads go to that channel in the background (unlisted unless you change it). **On YouTube** / **YouTube** opens the video. If it failed, **Retry YouTube** tries again. **Send to YouTube** is for older files that never went up.
-- If you have **Game film (manage)**: **Mark moved** once it's copied off. **Back to holding** undoes that. **Delete** removes the file for good.
+- If you have **Game film (manage)**: **Edit** on a video to change **Game date**, **Opponent**, and **Our score** / **Their score**, then **Save** (or **Cancel**). The heading above the video updates. Cards that are missing a date, opponent, or score say **Missing:** so you can fill them in. **Mark moved** once it's copied off. **Back to holding** undoes that. **Delete** removes the file for good.
 - Files marked **Moved** are deleted automatically after 30 days.
 
 Share the team upload link and code with families, not this inbox. Super-admins and anyone with **Game film (manage)** set those codes and connect YouTube in **Settings → Film**.`

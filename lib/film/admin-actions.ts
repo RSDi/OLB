@@ -6,7 +6,9 @@ import { revalidatePath } from "next/cache";
 import { requireFilmAccess, requireFilmManage } from "../auth/guards";
 import { SIGNED_DOWNLOAD_TTL_S } from "./types.ts";
 import { filmStorage } from "./storage.ts";
-import { deleteFilmUploadRow, getFilmUpload, setFilmStatus } from "./uploads.ts";
+import { churchToday } from "../dates/today.ts";
+import { parseFilmGameFields } from "./game-meta.ts";
+import { deleteFilmUploadRow, getFilmUpload, setFilmStatus, updateFilmUploadGame } from "./uploads.ts";
 
 function refresh() {
   revalidatePath("/portal/film");
@@ -50,6 +52,34 @@ export async function restoreFilmHolding(
   if (!row) return { error: "That upload isn't there any more." };
   refresh();
   return { ok: true };
+}
+
+export async function updateFilmGameFields(
+  id: string,
+  input: {
+    gameDate?: unknown;
+    opponent?: unknown;
+    ourScore?: unknown;
+    theirScore?: unknown;
+  }
+): Promise<{ error?: string; ok?: true; upload?: { game_date: string | null; opponent: string | null; our_score: number | null; their_score: number | null } }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  if (!id || typeof id !== "string") return { error: "That upload isn't there any more." };
+  const parsed = parseFilmGameFields(input, churchToday(), { emptyDate: "error" });
+  if (!parsed.ok) return { error: parsed.error };
+  const row = await updateFilmUploadGame(id, parsed);
+  if (!row) return { error: "That upload isn't there any more." };
+  refresh();
+  return {
+    ok: true,
+    upload: {
+      game_date: row.game_date,
+      opponent: row.opponent,
+      our_score: row.our_score,
+      their_score: row.their_score,
+    },
+  };
 }
 
 export async function deleteFilmUpload(

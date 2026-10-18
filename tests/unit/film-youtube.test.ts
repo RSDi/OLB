@@ -60,10 +60,13 @@ test("inbox groups by team then game date and opponent", () => {
     upload({ id: "1", team: "gold14", filename: "a.mov" }),
     upload({ id: "2", team: "gold14", filename: "b.mov", opponent: "Millard", game_date: "2026-10-10" }),
     upload({ id: "3", team: "white14", filename: "c.mov" }),
+    upload({ id: "4", team: "gold14", filename: "d.mov", game_date: null, opponent: null, our_score: null, their_score: null }),
   ], { gold14: "14U Gold", white14: "14U White" });
   assert.equal(groups[0]?.label, "14U Gold");
-  assert.equal(groups[0]?.games.length, 2);
+  assert.equal(groups[0]?.games.length, 3);
   assert.equal(groups[0]?.games[0]?.gameDate, "2026-10-17");
+  const undated = groups[0]?.games.find((g) => g.gameDate == null);
+  assert.equal(undated?.line, null);
   assert.equal(groups[1]?.label, "14U White");
 });
 
@@ -117,6 +120,8 @@ test("Film inbox plays in-app and Settings has Connect YouTube", () => {
   assert.match(inbox, />Play</);
   assert.match(inbox, /playsInline/);
   assert.match(inbox, /groupUploadsByTeamAndGame/);
+  assert.match(inbox, />\s*Edit\s*</);
+  assert.match(inbox, /formatFilmInboxHeading/);
   assert.match(inbox, /Close player/);
   assert.match(inbox, /Retry YouTube/);
   assert.match(settings, /Connect YouTube/);

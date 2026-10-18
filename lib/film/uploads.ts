@@ -87,6 +87,31 @@ export async function getFilmUpload(id: string): Promise<FilmUpload | null> {
   return (data as FilmUpload | null) ?? null;
 }
 
+export async function updateFilmUploadGame(
+  id: string,
+  fields: {
+    gameDate: string;
+    opponent: string | null;
+    ourScore: number | null;
+    theirScore: number | null;
+  }
+): Promise<FilmUpload | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .update({
+      game_date: fields.gameDate,
+      opponent: fields.opponent,
+      our_score: fields.ourScore,
+      their_score: fields.theirScore,
+    })
+    .eq("id", id)
+    .select(FILM_UPLOAD_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload | null) ?? null;
+}
+
 export async function setFilmStatus(id: string, status: FilmStatus): Promise<FilmUpload | null> {
   const admin = createAdminClient();
   const patch =
