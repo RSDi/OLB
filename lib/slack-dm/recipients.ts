@@ -56,6 +56,17 @@ export function dmPeople(
   return { people: [...byEmail.values()], noContact };
 }
 
+// People whose players are in the families ticked. A parent of two families
+// is kept only for the players still ticked, so {player} doesn't name a
+// child whose family was left out.
+export function clipPeopleToFamilies<T extends { playerIds: string[]; players: string[] }>(people: T[], selectedPlayerIds: Set<string>): T[] {
+  return people.flatMap((p) => {
+    const keep = p.playerIds.map((id, i) => ({ id, name: p.players[i] })).filter((x) => selectedPlayerIds.has(x.id));
+    if (keep.length === 0) return [];
+    return [{ ...p, playerIds: keep.map((x) => x.id), players: keep.map((x) => x.name ?? "") }];
+  });
+}
+
 const ROLE_WORDS = new Set(["dad", "mom", "guardian"]);
 
 // The first name to greet them by. Empty when the roster only knows them as

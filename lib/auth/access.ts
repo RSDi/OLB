@@ -33,7 +33,9 @@ export type PermissionKey =
   | "hs_schedule"
   // Super-admin powers anyone can be given (0123).
   | "teams"
-  | "site_links";
+  | "site_links"
+  | "film_view"
+  | "film_manage";
 
 // The member columns each permission lived in before 0122. Still used to read
 // grants on a database without 0122, and nothing else.
@@ -63,7 +65,13 @@ export interface PermissionDef {
 export const PERMISSIONS: PermissionDef[] = [
   { key: "payments", label: "Payments", desc: "See every family's balance and record payments", group: "manage", legacyColumn: "can_manage_finances" },
   { key: "registrations", label: "Registrations", desc: "Review registrations, put players on teams and edit players", group: "manage", legacyColumn: "can_manage_registrations" },
-  { key: "travel", label: "Travel", desc: "Add and edit the hotels and places to eat in External Contacts", group: "manage", legacyColumn: "can_manage_travel" },
+  {
+    key: "travel",
+    label: "Travel",
+    desc: "Hotels and food in External Contacts, hotel stays on the HS Schedule (booking instructions and Booked in block tracking), import a hotel rooming list in Settings, and email or Slack families about travel",
+    group: "manage",
+    legacyColumn: "can_manage_travel",
+  },
   { key: "slack_dm", label: "Slack DMs", desc: "Send families Slack DMs from the Directory, as themselves", group: "manage", legacyColumn: "can_slack_dm" },
   { key: "uniforms", label: "Uniforms", desc: "Set the uniform items, prices and sizes, and run the uniform order", group: "manage" },
   { key: "finances_view", label: "See club finances", desc: "See the club's Snapshot: money in and out, budget vs paid, teams and programs. No family names or balances", group: "board" },
@@ -79,6 +87,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "hs_schedule", label: "Plan HS Schedule", desc: "Change the HS Schedule, like coaches do", group: "board" },
   { key: "teams", label: "Teams & volunteers", desc: "Set up teams and volunteer roles, and fill team spots. Putting someone in a leadership spot makes them a coach", group: "setup" },
   { key: "site_links", label: "Sidebar Links & Public Directory", desc: "Change the links in everyone's sidebar and the public Directory link", group: "setup" },
+  { key: "film_view", label: "Game film", desc: "Open Film in the sidebar: list game videos families uploaded and download them", group: "manage" },
+  { key: "film_manage", label: "Game film (manage)", desc: "Settings → Film (team upload pages and codes), mark game film moved or delete it. Also lets you open Film", group: "manage" },
 ];
 
 export const PERMISSION_GROUPS: { key: PermissionDef["group"]; label: string }[] = [

@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   appliesTo,
   cleanRequirementInput,
+  doneWord,
   formatAmount,
   indexRows,
   parseAmount,
@@ -21,6 +22,7 @@ const base: RequirementInput = {
   kind: "task",
   amount: "",
   allowFile: true,
+  doneLabel: "",
   dueOn: "",
   teamIds: null,
   active: true,
@@ -59,6 +61,15 @@ test("labels a fee with its amount", () => {
   assert.equal(requirementLabel({ name: "Handbook signature", kind: "task", amount_cents: null }), "Handbook signature");
 });
 
+test("done word: Done, Paid, or a custom done_label like Booked", () => {
+  assert.equal(doneWord("task"), "Done");
+  assert.equal(doneWord("fee"), "Paid");
+  assert.equal(doneWord({ kind: "task", done_label: null }), "Done");
+  assert.equal(doneWord({ kind: "fee", done_label: null }), "Paid");
+  assert.equal(doneWord({ kind: "task", done_label: "Booked" }), "Booked");
+  assert.equal(doneWord({ kind: "fee", done_label: "  Collected  " }), "Collected");
+});
+
 test("a requirement with no teams covers everyone", () => {
   assert.equal(appliesTo({ team_ids: null }, { team_id: "t1" }), true);
   assert.equal(appliesTo({ team_ids: [] }, { team_id: null }), true);
@@ -85,8 +96,27 @@ test("cleans a task", () => {
   assert.equal(c.name, "Handbook signature");
   assert.equal(c.description, null);
   assert.equal(c.amount_cents, null);
+  assert.equal(c.done_label, null);
   assert.equal(c.due_on, null);
   assert.equal(c.team_ids, null);
+});
+
+test("cleans hotel registration with Booked label", () => {
+  const c = cleanRequirementInput({
+    ...base,
+    name: "Hotel registration",
+    description: "Family has registered for the hotel.",
+    allowFile: false,
+    doneLabel: "  Booked ",
+  });
+  assert.ok(!("error" in c));
+  assert.equal(c.name, "Hotel registration");
+  assert.equal(c.done_label, "Booked");
+  assert.equal(c.allow_file, false);
+});
+
+test("rejects a too-long done label", () => {
+  assert.ok("error" in cleanRequirementInput({ ...base, doneLabel: "x".repeat(21) }));
 });
 
 test("a task never keeps an amount", () => {

@@ -3,6 +3,7 @@
 // Pure and safe to import from client components.
 
 import {
+  DONE_LABEL_MAX,
   REQUIREMENT_NAME_MAX,
   type PlayerRequirement,
   type Requirement,
@@ -52,9 +53,13 @@ export function requirementLabel(req: Pick<Requirement, "name" | "kind" | "amoun
   return req.kind === "fee" && req.amount_cents != null ? `${req.name} ${formatAmount(req.amount_cents)}` : req.name;
 }
 
-// "Done" for a task, "Paid" for a fee.
-export function doneWord(kind: RequirementKind): string {
-  return kind === "fee" ? "Paid" : "Done";
+// "Booked" when a requirement sets done_label; otherwise "Done" for a task
+// and "Paid" for a fee.
+export function doneWord(req: Pick<Requirement, "kind" | "done_label"> | RequirementKind): string {
+  if (typeof req === "string") return req === "fee" ? "Paid" : "Done";
+  const label = req.done_label?.trim();
+  if (label) return label;
+  return req.kind === "fee" ? "Paid" : "Done";
 }
 
 export interface RequirementInput {
@@ -63,6 +68,7 @@ export interface RequirementInput {
   kind: RequirementKind;
   amount: string;
   allowFile: boolean;
+  doneLabel: string;
   dueOn: string;
   teamIds: string[] | null;
   active: boolean;
@@ -74,6 +80,7 @@ export interface CleanRequirement {
   kind: RequirementKind;
   amount_cents: number | null;
   allow_file: boolean;
+  done_label: string | null;
   due_on: string | null;
   team_ids: string[] | null;
   active: boolean;
@@ -93,6 +100,11 @@ export function cleanRequirementInput(input: RequirementInput): { error: string 
     if (amount == null) return { error: "Enter the fee amount, like 25 or $25.00." };
   }
 
+  const doneLabel = input.doneLabel.trim();
+  if (doneLabel.length > DONE_LABEL_MAX) {
+    return { error: `Keep "Mark complete as" to ${DONE_LABEL_MAX} characters or fewer.` };
+  }
+
   const dueOn = input.dueOn.trim();
   if (dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(dueOn)) return { error: "Enter a valid due date." };
 
@@ -107,6 +119,7 @@ export function cleanRequirementInput(input: RequirementInput): { error: string 
     kind: input.kind,
     amount_cents: amount,
     allow_file: input.allowFile,
+    done_label: doneLabel || null,
     due_on: dueOn || null,
     team_ids: teamIds,
     active: input.active,

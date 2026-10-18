@@ -1,18 +1,19 @@
-// The roadmap's rules (/portal/roadmap, migration 0129), pure and with no
-// server imports: the actions check input with these and the board renders
-// with them, so both agree. The tests use them too.
+// The roadmap's rules (/portal/roadmap, migrations 0129 and 0136), pure and
+// with no server imports: the actions check input with these and the board
+// renders with them, so both agree. The tests use them too.
 
 // Parts of the app an item belongs to. Adding one is a code change here, not
 // a migration.
 export const AREAS = ["Portal", "Website", "Registration", "Payments", "HS Schedule", "Slack & email"] as const;
 export type Area = (typeof AREAS)[number];
 
-export type Status = "released" | "progress" | "planned" | "proposed";
+export type Status = "released" | "preview" | "progress" | "planned" | "proposed";
 
 // The board's columns, left to right. `hint` is for the board, `publicHint`
 // for families reading the shared link.
 export const STATUSES: { key: Status; label: string; hint: string; publicHint: string }[] = [
   { key: "released", label: "Released", hint: "Live in the app, newest first.", publicHint: "Live now." },
+  { key: "preview", label: "Preview", hint: "Up on a preview, not live yet.", publicHint: "A preview you can try." },
   { key: "progress", label: "In progress", hint: "Being built now.", publicHint: "Being built now." },
   { key: "planned", label: "Planned", hint: "Decided on, not started.", publicHint: "On the way, not started yet." },
   { key: "proposed", label: "Proposed", hint: "Ideas, not decided yet.", publicHint: "Ideas we're thinking about." },
@@ -20,6 +21,7 @@ export const STATUSES: { key: Status; label: string; hint: string; publicHint: s
 
 export const TITLE_MAX = 120;
 export const DESCRIPTION_MAX = 2000;
+export const PREVIEW_URL_MAX = 500;
 
 export interface RoadmapItem {
   id: string;
@@ -29,7 +31,12 @@ export interface RoadmapItem {
   status: Status;
   // The day it went live. Only released items have one.
   released_on: string | null;
+  preview_url: string | null;
   created_at: string;
+  // Who approved a Proposed item onto Planned, and when. Null until Approve.
+  approved_by: string | null;
+  approved_at: string | null;
+  approved_by_name: string | null;
 }
 
 export interface RoadmapItemInput {
@@ -38,6 +45,7 @@ export interface RoadmapItemInput {
   area: string;
   status: string;
   releasedOn: string;
+  previewUrl?: string;
 }
 
 export interface CleanRoadmapItem {
@@ -46,6 +54,7 @@ export interface CleanRoadmapItem {
   area: Area;
   status: Status;
   released_on: string | null;
+  preview_url: string | null;
 }
 
 export function isArea(v: string): v is Area {
@@ -62,6 +71,28 @@ function isDay(v: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
 }
 
+// A Vercel preview (or other http/https) link, or what's wrong with it.
+// Required when the item is in the Preview column.
+export function cleanPreviewUrl(raw: string, required: boolean): { error: string } | { preview_url: string | null } {
+  const v = raw.trim();
+  if (!v) {
+    if (required) return { error: "Add the preview link." };
+    return { preview_url: null };
+  }
+  if (v.length > PREVIEW_URL_MAX) {
+    return { error: `Keep the preview link to ${PREVIEW_URL_MAX} characters or fewer.` };
+  }
+  try {
+    const u = new URL(v);
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
+      return { error: "The preview link has to be an http or https address." };
+    }
+  } catch {
+    return { error: "The preview link has to be an http or https address." };
+  }
+  return { preview_url: v };
+}
+
 // The row to save, or what's wrong with the form.
 export function cleanRoadmapItem(input: RoadmapItemInput): { error: string } | CleanRoadmapItem {
   const title = input.title.trim();
@@ -73,16 +104,20 @@ export function cleanRoadmapItem(input: RoadmapItemInput): { error: string } | C
   }
   if (!isArea(input.area)) return { error: "Pick an area." };
   if (!isStatus(input.status)) return { error: "Pick a column." };
+  const url = cleanPreviewUrl(input.previewUrl ?? "", input.status === "preview");
+  if ("error" in url) return url;
   if (input.status !== "released") {
-    return { title, description, area: input.area, status: input.status, released_on: null };
+    return { title, description, area: input.area, status: input.status, released_on: null, preview_url: url.preview_url };
   }
   const day = input.releasedOn.trim();
   if (!isDay(day)) return { error: "Enter the day it went live." };
-  return { title, description, area: input.area, status: "released", released_on: day };
+  return { title, description, area: input.area, status: "released", released_on: day, preview_url: url.preview_url };
 }
 
 // One column's items: released newest first, the rest oldest first, so a new
-// idea lands at the bottom of its column.
+// idea lands at the bottom of its column. Area filtering happens before this
+// — the board's area chips pass a subset in, and each column still sorts
+// the same way.
 export function columnItems(items: RoadmapItem[], status: Status): RoadmapItem[] {
   const list = items.filter((i) => i.status === status);
   if (status === "released") {
@@ -110,4 +145,17 @@ export function todayIso(now: Date = new Date()): string {
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
   return `${now.getFullYear()}-${m}-${d}`;
+}
+
+// "Approved by Jeff Malone on Oct 16" for a Planned card. Needs both a name
+// and a timestamp; otherwise the card stays quiet.
+export function formatApprovedBy(
+  name: string | null | undefined,
+  at: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  const who = name?.trim() ?? "";
+  const day = (at ?? "").slice(0, 10);
+  if (!who || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  return `Approved by ${who} on ${formatDay(day, now)}`;
 }

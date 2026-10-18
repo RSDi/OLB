@@ -2,8 +2,8 @@
 // per family, and {name} / {player} filled in for each.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { playerTarget, type PlayerWithParents } from "../../lib/teams/family-mail.ts";
-import { dmPeople, fillDm, greetingName, roleWords, safeReturnPath, slackText } from "../../lib/slack-dm/recipients.ts";
+import { ALL_RECIPIENTS, chosenFamilies, familyId, groupByFamily, playerTarget, type PlayerWithParents } from "../../lib/teams/family-mail.ts";
+import { clipPeopleToFamilies, dmPeople, fillDm, greetingName, roleWords, safeReturnPath, slackText } from "../../lib/slack-dm/recipients.ts";
 
 type Parent = PlayerWithParents["parents"][number];
 const dad: Parent = { relationship: "father", member: { full_name: "Chris Carter", email: "chris@example.com" } };
@@ -20,6 +20,43 @@ test("each parent gets their own DM, not one per family", () => {
     ]
   );
   assert.deepEqual(noContact, []);
+});
+
+test("unticking a family drops its people, and a shared parent keeps only the ticked kids", () => {
+  const sam = playerTarget(player("a", "Sam Carter", [dad, mom], "sam@example.com"));
+  const evan = playerTarget(player("b", "Evan Carter", [mom, dad]));
+  const ava = playerTarget(player("c", "Ava Lane", [mom, { relationship: "father", member: { full_name: "Tom Lane", email: "tom@example.com" } }]));
+  const targets = [sam, evan, ava];
+  const { groups } = groupByFamily(targets, (t) => t.contacts);
+  const carters = familyId(groups[0].players);
+  const chosen = chosenFamilies(targets, (t) => t.contacts, ALL_RECIPIENTS, [carters]);
+  const { people } = dmPeople(
+    chosen.groups.flatMap((g) => g.players),
+    ALL_RECIPIENTS
+  );
+  assert.deepEqual(
+    people.map((p) => [p.email, p.players.map((t) => t.first_name)]),
+    [
+      ["chris@example.com", ["Sam", "Evan"]],
+      ["jamie@example.com", ["Sam", "Evan"]],
+      ["sam@example.com", ["Sam"]],
+    ]
+  );
+
+  const lookedUp = dmPeople(targets, ALL_RECIPIENTS).people.map((p) => ({
+    email: p.email,
+    players: p.players.map((t) => t.first_name),
+    playerIds: p.players.map((t) => t.id),
+  }));
+  const clipped = clipPeopleToFamilies(lookedUp, new Set(["a", "b"]));
+  assert.deepEqual(
+    clipped.map((p) => [p.email, p.players]),
+    [
+      ["chris@example.com", ["Sam", "Evan"]],
+      ["jamie@example.com", ["Sam", "Evan"]],
+      ["sam@example.com", ["Sam"]],
+    ]
+  );
 });
 
 test("a parent of brothers and sisters gets one DM naming all of them", () => {

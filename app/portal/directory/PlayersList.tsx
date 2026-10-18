@@ -6,6 +6,14 @@ import { Icons } from "../../components/icons";
 import { MapLink } from "../../components/MapLink";
 import { ClearSearchButton } from "../../components/ui";
 import { ageFromDob } from "../../../lib/teams/age";
+import {
+  agesOutLabel,
+  playerEligibility,
+  practiceDaysOverlap,
+  swingKind,
+  weekendsSharedWith,
+  type EligibilityContext,
+} from "../../../lib/teams/eligibility";
 import type { DirectoryPlayer } from "./_shared/data";
 import { JerseyNumber, TeamBanner, TeamDot } from "./_shared/TeamBanner";
 import type { OlbVolunteerRole } from "../../../lib/teams/types";
@@ -20,8 +28,23 @@ import {
   stateFor,
   type RequirementState,
 } from "../../../lib/requirements/logic";
+import {
+  countStayStates,
+  indexStayRows,
+  siblingsOnStay,
+  stayCoveredWord,
+  stayDoneWord,
+  stayFilterLabel,
+  stayMissingWord,
+  stayStateFor,
+  stayStateWord,
+  stayWaivedWord,
+  type StaySiblingPlayer,
+} from "../../../lib/hs-hotel-stays/logic";
+import type { HotelStayPlayer, HotelStayView } from "../../../lib/hs-hotel-stays/types";
 import { RequirementDialog } from "./RequirementDialog";
-import { ContactLine, ParentBlock, RequirementChips, TeamPicker, formatDate, muted, playerAddress } from "./_shared/PlayerParts";
+import { HotelStayDialog } from "./HotelStayDialog";
+import { ContactLine, HotelStayChips, ParentBlock, RequirementChips, TeamPicker, formatDate, muted, playerAddress } from "./_shared/PlayerParts";
 import { FilterSelect, SegButton } from "../../components/FilterControls";
 import { Pill } from "../../components/ui";
 import { ComposeSheet } from "./_shared/Messaging";
@@ -58,11 +81,17 @@ type ReqShow = "missing" | "done" | "waived" | "all";
 export function PlayersList({
   players,
   isStaff,
+  canSeeBirthdates,
+  eligibility,
   teams,
   roles,
   canViewAges,
   requirements,
   requirementRows,
+  hotelStays,
+  hotelStayRows,
+  canManageHotelStays,
+  initialStayId,
   canPlace,
   canEmail,
   canSlack,
@@ -71,19 +100,28 @@ export function PlayersList({
 }: {
   players: DirectoryPlayer[];
   isStaff: boolean;
+  // Board only (0140): birthdays, age at season end, eligibility chips, swing-up.
+  canSeeBirthdates: boolean;
+  eligibility: EligibilityContext | null;
   teams: TeamWithStaff[];
   roles: OlbVolunteerRole[];
   canViewAges: boolean;
   // Staff only (0098); empty for everyone else.
   requirements: Requirement[];
   requirementRows: PlayerRequirement[];
+  // Hotel stays (0135): Travel and the board; empty for everyone else.
+  hotelStays: HotelStayView[];
+  hotelStayRows: HotelStayPlayer[];
+  canManageHotelStays: boolean;
+  // Deep link from HS Schedule (?hotelStay=).
+  initialStayId: string | null;
   // The Registrations grant (0102): a team picker on every player, and the
   // new-registrations banner.
   canPlace: boolean;
-  // The board and the Registrations grant: Email families, to the players
+  // Board, Registrations, or Travel (0134): Email families, to the players
   // in view.
   canEmail: boolean;
-  // The Slack DMs grant (0118): Slack families, to the players in view.
+  // Slack DMs grant or Travel (0118/0134): Slack families, to the players in view.
   canSlack: boolean;
   // New, waitlisted and removed registrations; null without the grant.
   registrations: { waiting: number; waitlist: number; removed: number } | null;
@@ -98,12 +136,27 @@ export function PlayersList({
   const [group, setGroup] = useState("all");
   const [reqId, setReqId] = useState("all");
   const [reqShow, setReqShow] = useState<ReqShow>("missing");
+  const [stayId, setStayId] = useState(
+    initialStayId && hotelStays.some((s) => s.id === initialStayId) ? initialStayId : "all"
+  );
+  const [stayShow, setStayShow] = useState<ReqShow>("missing");
   const [open, setOpen] = useState<{ player: DirectoryPlayer; requirement: Requirement } | null>(null);
+  const [openStay, setOpenStay] = useState<{ player: DirectoryPlayer; stay: HotelStayView } | null>(null);
   const [emailing, setEmailing] = useState(false);
   const [slacking, setSlacking] = useState(false);
+  // Board: "Available to swing up" — pick a target team, list who can move.
+  const [swingTeamId, setSwingTeamId] = useState("");
+  const [hideConflicts, setHideConflicts] = useState(false);
 
   const rows = useMemo(() => indexRows(requirementRows), [requirementRows]);
+  const stayRows = useMemo(() => indexStayRows(hotelStayRows), [hotelStayRows]);
   const pickedReq = requirements.find((r) => r.id === reqId) ?? null;
+  const pickedStay = hotelStays.find((s) => s.id === stayId) ?? null;
+  // Open stays show as chips; closed ones only via the filter.
+  const chipStays = useMemo(
+    () => hotelStays.filter((s) => s.status === "open" || s.status === "draft" || s.id === stayId),
+    [hotelStays, stayId]
+  );
 
   const groupNames = useMemo(
     () =>
@@ -173,29 +226,92 @@ export function PlayersList({
     return c;
   }, [sections, pickedReq, rows]);
 
+  const stayPlayers = useMemo<StaySiblingPlayer[]>(
+    () =>
+      players.map((p) => ({
+        id: p.id,
+        full_name: p.full_name,
+        team_id: p.team_id,
+        parent_ids: p.parents.map((pa) => pa.member!.id),
+      })),
+    [players]
+  );
+
+  const stayCounts = useMemo(() => {
+    if (!pickedStay) return { done: 0, waived: 0, missing: 0, covered: 0, "n/a": 0 };
+    return countStayStates(
+      sections.flatMap((g) => g.players),
+      pickedStay,
+      stayRows,
+      stayPlayers
+    );
+  }, [sections, pickedStay, stayRows, stayPlayers]);
+
+  const swingTarget = canSeeBirthdates && eligibility ? teams.find((t) => t.id === swingTeamId) ?? null : null;
+
   const shownSections = useMemo(() => {
-    if (!pickedReq) return sections;
-    return sections.map((g) => ({
-      ...g,
-      players: g.players.filter((p) => {
-        const st = stateFor(p, pickedReq, rows);
-        return st !== "n/a" && (reqShow === "all" || st === reqShow);
-      }),
-    }));
-  }, [sections, pickedReq, rows, reqShow]);
+    const narrowed = (() => {
+      if (pickedStay) {
+        return sections.map((g) => ({
+          ...g,
+          players: g.players.filter((p) => {
+            const st = stayStateFor(p, pickedStay, stayRows, stayPlayers);
+            return st !== "n/a" && (stayShow === "all" || st === stayShow);
+          }),
+        }));
+      }
+      if (!pickedReq) return sections;
+      return sections.map((g) => ({
+        ...g,
+        players: g.players.filter((p) => {
+          const st = stateFor(p, pickedReq, rows);
+          return st !== "n/a" && (reqShow === "all" || st === reqShow);
+        }),
+      }));
+    })();
+    if (!swingTarget || !eligibility) return narrowed;
+    const pool = narrowed.flatMap((g) => g.players);
+    const up: DirectoryPlayer[] = [];
+    const down: DirectoryPlayer[] = [];
+    for (const p of pool) {
+      const kind = swingKind(
+        { dob: p.dob, teamId: p.team_id, teamAgeGroup: p.team?.age_group ?? p.age_group },
+        { teamId: swingTarget.id, ageGroup: swingTarget.age_group },
+        eligibility.seasonEndsOn,
+        eligibility.caps
+      );
+      if (!kind) continue;
+      const sameWeekend = weekendsSharedWith(p.team_id, swingTarget.id, eligibility.weekends).length > 0;
+      const samePractice = practiceDaysOverlap(p.team_id ? teams.find((t) => t.id === p.team_id)?.practice_times : null, swingTarget.practice_times);
+      if (hideConflicts && (sameWeekend || samePractice)) continue;
+      (kind === "up" ? up : down).push(p);
+    }
+    return [
+      { key: "swing-up", title: `Can play up to ${teamLabel(swingTarget)}`, team: null as TeamWithStaff | null, players: up },
+      { key: "swing-down", title: `Age-eligible to move down to ${teamLabel(swingTarget)}`, team: null, players: down },
+    ];
+  }, [sections, pickedReq, rows, reqShow, pickedStay, stayRows, stayPlayers, stayShow, swingTarget, eligibility, hideConflicts, teams]);
 
   const showTeamFilter = view === "team" && teams.length > 0;
   const showGroupFilter = view === "age" && groupNames.length > 1;
   const pickedTeam = view === "team" && teamId !== "all" ? teams.find((t) => t.id === teamId) ?? null : null;
   const shown = shownSections.reduce((n, g) => n + g.players.length, 0);
   const reqTotal = reqCounts.done + reqCounts.waived + reqCounts.missing;
+  const stayTotal = stayCounts.done + stayCounts.waived + stayCounts.missing;
   const season = players[0]?.board?.season;
   // Who Email families and Slack families write to: the players in view, as
   // the filters say.
   const inView = shownSections.flatMap((g) => g.players);
   const scope = [
     view === "team" ? (pickedTeam ? teamLabel(pickedTeam) : teamId === NO_TEAM ? "No team yet" : null) : group !== "all" ? group : null,
-    pickedReq && reqShow !== "all" && `${reqShow === "missing" ? "Missing" : reqShow === "done" ? doneWord(pickedReq.kind) : "Waived"}: ${pickedReq.name}`,
+    pickedStay &&
+      stayShow !== "all" &&
+      `${stayStateWord(stayShow)}: ${pickedStay.name}`,
+    !pickedStay &&
+      pickedReq &&
+      reqShow !== "all" &&
+      `${reqShow === "missing" ? "Missing" : reqShow === "done" ? doneWord(pickedReq) : "Waived"}: ${pickedReq.name}`,
+    swingTarget && `Available to swing up to ${teamLabel(swingTarget)}`,
     query.trim() && `Search "${query.trim()}"`,
   ].filter(Boolean);
 
@@ -255,7 +371,7 @@ export function PlayersList({
         </div>
       </div>
 
-      {(showTeamFilter || showGroupFilter || requirements.length > 0) && (
+      {(showTeamFilter || showGroupFilter || requirements.length > 0 || canSeeBirthdates) && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {showTeamFilter && (
             <FilterSelect
@@ -302,6 +418,91 @@ export function PlayersList({
               ))}
             </FilterSelect>
           )}
+          {canSeeBirthdates && eligibility && teams.length > 0 && (
+            <>
+              <FilterSelect
+                value={swingTeamId}
+                onChange={(e) => setSwingTeamId(e.target.value)}
+                aria-label="Available to swing up"
+                data-tour="directory-swing-up"
+                grow
+                active={!!swingTarget}
+                leading={swingTarget ? <TeamDot color={swingTarget.color} /> : undefined}
+              >
+                <option value="">Available to swing up</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {teamLabel(t)}
+                  </option>
+                ))}
+              </FilterSelect>
+              {swingTarget && (
+                <label
+                  data-tour="directory-swing-conflicts"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={hideConflicts}
+                    onChange={(e) => setHideConflicts(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: "var(--rsd-accent)" }}
+                  />
+                  Hide if their team plays the same weekend
+                </label>
+              )}
+            </>
+          )}
+          {hotelStays.length > 0 && canManageHotelStays && (
+            <>
+              <FilterSelect
+                value={stayId}
+                onChange={(e) => {
+                  setStayId(e.target.value);
+                  setStayShow("missing");
+                  if (e.target.value !== "all") setReqId("all");
+                }}
+                aria-label="Filter by hotel stay"
+                data-tour="hotel-stay-filter"
+                // Stay labels are long; grow keeps the chip phone-sized.
+                grow
+                active={stayId !== "all"}
+              >
+                <option value="all">All hotel stays</option>
+                {hotelStays.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {stayFilterLabel(s)}
+                  </option>
+                ))}
+              </FilterSelect>
+              {pickedStay && (
+                <div
+                  role="group"
+                  aria-label={`Show players by ${pickedStay.name}`}
+                  data-tour="hotel-stay-status"
+                  style={{ display: "inline-flex", flexWrap: "wrap", maxWidth: "100%", gap: 2, padding: 3, borderRadius: 10, background: "var(--gw-border)" }}
+                >
+                  <SegButton
+                    label={`${stayMissingWord()} ${stayCounts.missing}`}
+                    active={stayShow === "missing"}
+                    onClick={() => setStayShow("missing")}
+                  />
+                  <SegButton
+                    label={`${stayDoneWord()} ${stayCounts.done}`}
+                    active={stayShow === "done"}
+                    onClick={() => setStayShow("done")}
+                  />
+                  {(stayCounts.waived > 0 || stayShow === "waived") && (
+                    <SegButton
+                      label={`${stayWaivedWord()} ${stayCounts.waived}`}
+                      active={stayShow === "waived"}
+                      onClick={() => setStayShow("waived")}
+                    />
+                  )}
+                  <SegButton label="All" active={stayShow === "all"} onClick={() => setStayShow("all")} />
+                </div>
+              )}
+            </>
+          )}
           {requirements.length > 0 && (
             <div data-tour="directory-requirements" style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <FilterSelect
@@ -309,6 +510,7 @@ export function PlayersList({
                 onChange={(e) => {
                   setReqId(e.target.value);
                   setReqShow("missing");
+                  if (e.target.value !== "all") setStayId("all");
                 }}
                 aria-label="Filter by requirement"
                 data-tour="requirement-filter"
@@ -321,7 +523,7 @@ export function PlayersList({
                   </option>
                 ))}
               </FilterSelect>
-              {pickedReq && (
+              {pickedReq && !pickedStay && (
                 <div
                   role="group"
                   aria-label={`Show players by ${pickedReq.name}`}
@@ -330,7 +532,7 @@ export function PlayersList({
                 >
                   <SegButton label={`Missing ${reqCounts.missing}`} active={reqShow === "missing"} onClick={() => setReqShow("missing")} />
                   <SegButton
-                    label={`${doneWord(pickedReq.kind)} ${reqCounts.done}`}
+                    label={`${doneWord(pickedReq)} ${reqCounts.done}`}
                     active={reqShow === "done"}
                     onClick={() => setReqShow("done")}
                   />
@@ -353,8 +555,13 @@ export function PlayersList({
         <div data-tour="requirement-summary" style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
           {shown} {shown === 1 ? "player" : "players"}
           {season && ` · ${season} season`}
-          {pickedReq &&
-            ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${pickedReq.kind === "fee" ? "paid" : "done"}` +
+          {pickedStay &&
+            ` · ${pickedStay.name}: ${stayCounts.done + stayCounts.waived} of ${stayTotal} ${stayDoneWord().toLowerCase()}` +
+              (stayCounts.waived > 0 ? ` (${stayCounts.waived} ${stayWaivedWord().toLowerCase()})` : "") +
+              (stayCounts.covered > 0 ? ` · ${stayCounts.covered} ${stayCoveredWord().toLowerCase()}` : "")}
+          {!pickedStay &&
+            pickedReq &&
+            ` · ${pickedReq.name}: ${reqCounts.done + reqCounts.waived} of ${reqTotal} ${doneWord(pickedReq).toLowerCase()}` +
               (reqCounts.waived > 0 ? ` (${reqCounts.waived} waived)` : "")}
         </div>
         {(canEmail || canSlack) && shown > 0 && (
@@ -382,12 +589,18 @@ export function PlayersList({
       ) : shown === 0 ? (
         <Empty
           text={
-            pickedReq && reqShow === "missing" && reqTotal > 0
-              ? `Nobody here is missing ${pickedReq.name}.`
+            pickedStay && stayShow === "missing" && stayTotal > 0
+              ? `Nobody here is ${stayMissingWord().toLowerCase()} for ${pickedStay.name}.`
+              : pickedReq && reqShow === "missing" && reqTotal > 0
+                ? `Nobody here is missing ${pickedReq.name}.`
               : pickedReq && reqShow !== "all" && reqTotal > 0
                 ? "No players match."
                 : query
                   ? "No matches."
+                  : swingTarget
+                    ? hideConflicts
+                      ? `Nobody else is age-eligible for ${teamLabel(swingTarget)} without a same-weekend game.`
+                      : `Nobody else is age-eligible for ${teamLabel(swingTarget)}.`
                   : teamId === NO_TEAM
                     ? "Everyone is on a team."
                     : "No players on this team yet."
@@ -398,7 +611,7 @@ export function PlayersList({
           .filter((g) => g.players.length > 0)
           .map((g) => (
             <section key={g.key} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {!pickedTeam && (
+              {(!pickedTeam || swingTarget) && (
                 <h2
                   style={{
                     margin: 0,
@@ -447,11 +660,19 @@ export function PlayersList({
                     key={p.id}
                     player={p}
                     isStaff={isStaff}
+                    canSeeBirthdates={canSeeBirthdates}
+                    eligibility={eligibility}
+                    swingTarget={swingTarget}
                     teams={canPlace ? teams : null}
+                    allTeams={teams}
                     border={i < g.players.length - 1}
                     requirements={requirements}
                     rows={rows}
                     onOpenRequirement={(requirement) => setOpen({ player: p, requirement })}
+                    hotelStays={canManageHotelStays ? chipStays : []}
+                    stayRows={stayRows}
+                    stayPlayers={stayPlayers}
+                    onOpenStay={(stay) => setOpenStay({ player: p, stay })}
                     notes={noteCounts?.[p.id] ?? 0}
                   />
                 ))}
@@ -487,6 +708,19 @@ export function PlayersList({
           requirement={open.requirement}
           row={rows.get(rowKey(open.player.id, open.requirement.id)) ?? null}
           onClose={() => setOpen(null)}
+        />
+      )}
+
+      {openStay && (
+        <HotelStayDialog
+          player={openStay.player}
+          stay={openStay.stay}
+          row={stayRows.get(`${openStay.player.id}:${openStay.stay.id}`) ?? null}
+          siblings={siblingsOnStay(openStay.player.id, openStay.stay, stayPlayers)}
+          onClose={() => {
+            setOpenStay(null);
+            router.refresh();
+          }}
         />
       )}
     </>
@@ -605,26 +839,51 @@ function Empty({ text }: { text: string }) {
 function PlayerRow({
   player: p,
   isStaff,
+  canSeeBirthdates,
+  eligibility,
+  swingTarget,
   teams,
+  allTeams,
   border,
   requirements,
   rows,
   onOpenRequirement,
+  hotelStays,
+  stayRows,
+  stayPlayers,
+  onOpenStay,
   notes,
 }: {
   player: DirectoryPlayer;
   isStaff: boolean;
+  canSeeBirthdates: boolean;
+  eligibility: EligibilityContext | null;
+  swingTarget: TeamWithStaff | null;
   // Set for the Registrations grant: the team picker.
   teams: TeamWithStaff[] | null;
+  allTeams: TeamWithStaff[];
   border: boolean;
   requirements: Requirement[];
   rows: Map<string, PlayerRequirement>;
   onOpenRequirement: (r: Requirement) => void;
+  hotelStays: HotelStayView[];
+  stayRows: Map<string, HotelStayPlayer>;
+  stayPlayers: StaySiblingPlayer[];
+  onOpenStay: (s: HotelStayView) => void;
   // How many notes the player has (0124); 0 shows nothing.
   notes: number;
 }) {
-  const age = ageFromDob(p.dob);
-  const born = formatDate(p.dob);
+  const age = canSeeBirthdates ? ageFromDob(p.dob) : null;
+  const born = canSeeBirthdates ? formatDate(p.dob) : null;
+  const rosterLevel = p.team?.age_group ?? p.age_group;
+  const info = canSeeBirthdates && eligibility ? playerEligibility(p.dob, rosterLevel, eligibility.seasonEndsOn, eligibility.caps) : null;
+  const sharedWeekends =
+    canSeeBirthdates && eligibility && swingTarget
+      ? weekendsSharedWith(p.team_id, swingTarget.id, eligibility.weekends)
+      : [];
+  const samePractice =
+    !!swingTarget &&
+    practiceDaysOverlap(p.team_id ? allTeams.find((t) => t.id === p.team_id)?.practice_times : null, swingTarget.practice_times);
   const addr = playerAddress(p);
   const ownEmail = playerOwnEmail(p);
   const staffFacts = [
@@ -672,6 +931,19 @@ function PlayerRow({
               {notes === 1 ? "1 note" : `${notes} notes`}
             </Link>
           )}
+          {canSeeBirthdates && info?.agesOut && (
+            <span className="rsd-chip rsd-chip-error" data-tour="directory-ages-out" title={`Ages out of ${info.agesOut.level} on ${info.agesOut.on}`}>
+              {agesOutLabel(info.agesOut.on)}
+            </span>
+          )}
+          {canSeeBirthdates && sharedWeekends.length > 0 && (
+            <span className="rsd-chip rsd-chip-mute" title={sharedWeekends.map((w) => w.label).join(", ")}>
+              Plays same weekend
+            </span>
+          )}
+          {canSeeBirthdates && samePractice && sharedWeekends.length === 0 && (
+            <span className="rsd-chip rsd-chip-mute">Same practice day</span>
+          )}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
           {/* Only people who can see an opted-out player get it at all: the
               board, the Treasurer, and the player's own parents (0101). */}
@@ -684,11 +956,17 @@ function PlayerRow({
             </span>
           )}
         </div>
-        {(age != null || born) && (
+        {canSeeBirthdates && (age != null || born || info) && (
           <div style={muted}>
-            {age != null && `Age ${age}`}
-            {age != null && born && " · "}
-            {born && `Born ${born}`}
+            {[
+              age != null && `Age ${age}`,
+              born && `Born ${born}`,
+              info?.ageAtSeasonEnd != null && `Age ${info.ageAtSeasonEnd} at season end`,
+              info?.lowestLevel && `Eligible ${info.lowestLevel}`,
+              !p.dob && "No birthday on file",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </div>
         )}
         {addr && (
@@ -704,6 +982,9 @@ function PlayerRow({
         {isStaff && staffFacts.length > 0 && <div style={muted}>{staffFacts.join(" · ")}</div>}
         {requirements.length > 0 && (
           <RequirementChips player={p} requirements={requirements} rows={rows} onOpen={onOpenRequirement} />
+        )}
+        {hotelStays.length > 0 && (
+          <HotelStayChips player={p} stays={hotelStays} rows={stayRows} stayPlayers={stayPlayers} onOpen={onOpenStay} />
         )}
         {teams && <TeamPicker player={p} teams={teams} />}
       </div>

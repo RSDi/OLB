@@ -11,6 +11,17 @@ import { teamColorHex, teamLabel } from "../../../../lib/teams/volunteer-options
 import type { DirectoryParent, DirectoryPlayer } from "./data";
 import type { PlayerRequirement, Requirement } from "../../../../lib/requirements/types";
 import { doneWord, requirementLabel, rowKey, stateFor } from "../../../../lib/requirements/logic";
+import type { HotelStayPlayer, HotelStayView } from "../../../../lib/hs-hotel-stays/types";
+import {
+  coveredSiblingOnStay,
+  stayCoveredLabel,
+  stayCoveredWord,
+  stayDoneWord,
+  stayRowKey,
+  stayStateFor,
+  stayWaivedWord,
+  type StaySiblingPlayer,
+} from "../../../../lib/hs-hotel-stays/logic";
 import { ComboSelect } from "../../../components/ComboSelect";
 
 export function formatDate(iso: string | null): string | null {
@@ -70,7 +81,7 @@ export function RequirementChips({
         const title =
           state === "missing"
             ? `Mark ${r.name} for ${player.full_name}`
-            : `${state === "done" ? doneWord(r.kind) : "Waived"}${row?.note ? ` · ${row.note}` : ""}${row?.file_path ? " · Scan attached" : ""}`;
+            : `${state === "done" ? doneWord(r) : "Waived"}${row?.note ? ` · ${row.note}` : ""}${row?.file_path ? " · Scan attached" : ""}`;
         return (
           <button
             key={r.id}
@@ -84,6 +95,77 @@ export function RequirementChips({
             {state === "done" && <Icons.CheckCircle width={11} height={11} />}
             {text}
             {row?.file_path && <Icons.FileText width={11} height={11} />}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// One chip per open hotel stay that applies to the player (0135).
+export function HotelStayChips({
+  player,
+  stays,
+  rows,
+  stayPlayers = [],
+  onOpen,
+}: {
+  player: DirectoryPlayer;
+  stays: HotelStayView[];
+  rows: Map<string, HotelStayPlayer>;
+  stayPlayers?: StaySiblingPlayer[];
+  onOpen: (s: HotelStayView) => void;
+}) {
+  const chips = stays
+    .map((s) => {
+      const state = stayStateFor(player, s, rows, stayPlayers);
+      const coveredBy = state === "covered" ? coveredSiblingOnStay(player.id, s, rows, stayPlayers) : null;
+      return { s, state, row: rows.get(stayRowKey(player.id, s.id)), coveredBy };
+    })
+    .filter((c) => c.state !== "n/a");
+  if (chips.length === 0) return null;
+  const done = stayDoneWord();
+  const waived = stayWaivedWord();
+  const covered = stayCoveredWord();
+  return (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 2 }} data-tour="hotel-stay-chips">
+      {chips.map(({ s, state, row, coveredBy }) => {
+        const variant =
+          state === "done"
+            ? "rsd-chip-success"
+            : state === "waived" || state === "covered"
+              ? "rsd-chip-mute"
+              : "rsd-chip-error";
+        const note = row?.note?.trim() || "";
+        const coveredText = coveredBy ? stayCoveredLabel(coveredBy.full_name) : covered;
+        const text =
+          state === "done"
+            ? s.name
+            : state === "waived"
+              ? note
+                ? `${s.name} ${waived.toLowerCase()} · ${note}`
+                : `${s.name} ${waived.toLowerCase()}`
+              : state === "covered"
+                ? `${s.name} · ${coveredText}`
+                : `Needs ${s.name}`;
+        const title =
+          state === "missing"
+            ? `Mark ${s.name} for ${player.full_name}`
+            : state === "covered"
+              ? `${coveredText} · ${s.hotel_name}`
+              : `${state === "done" ? done : waived}${note ? ` · ${note}` : ""} · ${s.hotel_name}`;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onOpen(s)}
+            data-tour="hotel-stay-chip"
+            className={`rsd-chip ${variant}`}
+            title={title}
+            style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
+          >
+            {state === "done" && <Icons.CheckCircle width={11} height={11} />}
+            {text}
           </button>
         );
       })}

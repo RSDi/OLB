@@ -10,7 +10,7 @@ import { StartHosting } from "./_components/StartHosting";
 
 const TABS: HostedTab[] = ["plan", "teams", "schedule", "brackets", "money", "messages"];
 
-// A tournament we host (0134): /portal/schedule/hosted/<weekend id>, the
+// A tournament we host (0150): /portal/schedule/hosted/<weekend id>, the
 // planning page for a weekend on the HS Schedule ticked "We host this
 // tournament". The HS Schedule's planners (the board and the coaches) use
 // it; ?tab= picks Checklist, Teams, Schedule, Brackets, Money or Email.
@@ -43,7 +43,7 @@ export default async function HostedTournamentPage({
   if (loaded.kind === "migration") {
     return (
       <Note title="Tournament planning isn't set up in the database yet">
-        Apply <code>supabase/migrations/0134_hosted_tournaments.sql</code> in the Supabase SQL editor (it runs by itself when
+        Apply <code>supabase/migrations/0150_hosted_tournaments.sql</code> in the Supabase SQL editor (it runs by itself when
         merged to main).
       </Note>
     );

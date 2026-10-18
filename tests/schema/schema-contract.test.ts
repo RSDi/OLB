@@ -45,7 +45,7 @@ const skip = env ? false : "no Supabase env — schema probes skipped (unit test
 // here whenever a migration adds a column the code starts using.
 const CONTRACT: Record<string, string> = {
   members:
-    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel,can_slack_dm,can_manage_website,access_profile_id,extra_permissions",
+    "id,user_id,email,full_name,avatar_url,phone,birthday,role,status,requested_at,reviewed_at,reviewed_by,address,home_phone,nickname,anniversary,membership_status,directory_category,deceased_at,deleted_at,can_edit_settings,can_delete_settings,can_undelete_settings,access_revoked_at,volunteer_interests,can_manage_finances,can_manage_registrations,can_manage_travel,can_slack_dm,can_manage_website,access_profile_id,extra_permissions,releases_seen_version",
   access_profiles: "id,name,base_role,permissions,is_builtin",
   maintenance_requests:
     "id,description,status,review_status,decline_reason,decision_note,reviewed_at,reviewed_by,details,cost,created_at,updated_at,submitted_by,assigned_to,category_id,area_id,priority_id,project_id,slack_channel_id,slack_message_ts,event_id,occurrence_date,deleted_at,planning_template_id,planning_season",
@@ -80,8 +80,9 @@ const CONTRACT: Record<string, string> = {
     "id,recording_id,text,routed_to,done,sort_order,priority,owner_member_id,supporter_member_ids,suggested_assignee_name,suggested_member_id,suggested_supporter_names,transcript_ms,anchor_quote,task_id,dismissed",
   slack_archive_channels: "id,slack_channel_id,label,active,added_by,created_at,is_private,access_checked_at,access_error",
   slack_archive_channel_members: "channel_id,member_id,created_at",
-  olb_boards: "id,season,name,parent_balances_visible",
-  olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at",
+  olb_boards: "id,season,name,parent_balances_visible,season_ends_on",
+  olb_age_caps: "id,board_id,age_group,max_age,sort_order,created_at,updated_at",
+  olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at,film_slug,film_enabled,film_code_hash,film_code_version,youtube_playlist_id",
   olb_players:
     "id,board_id,team_id,full_name,dob,grade,sort_order,import_flag,updated_at,age_group,new_to_program,address_line1,address_line2,city,state,postal_code,phone,email,registration_fee,payment_method,shirt_size,waiver_signed,waiver_signed_on,directory_optin,registered_at",
   olb_player_parents: "player_id,member_id,relationship",
@@ -91,9 +92,13 @@ const CONTRACT: Record<string, string> = {
   olb_import_batches: "id,board_id,filename,summary",
   sidebar_links: "id,label,url,open_in_new_tab,open_in_frame,sort_order,created_by",
   olb_requirements:
-    "id,name,description,kind,amount_cents,allow_file,due_on,team_ids,active,sort_order,created_by,created_at,updated_at,deleted_at",
+    "id,name,description,kind,amount_cents,allow_file,done_label,due_on,team_ids,active,sort_order,created_by,created_at,updated_at,deleted_at",
   olb_player_requirements:
     "player_id,requirement_id,status,completed_on,note,file_path,file_name,marked_by,created_at,updated_at",
+  // Hotel stays on HS Schedule weekends (0135).
+  hs_hotel_stays:
+    "id,weekend_id,hotel_contact_id,name,team_ids,booking_instructions,booking_url,booking_code,cutoff_on,rate_notes,status,sort_order,created_by,updated_by,created_at,updated_at",
+  hs_hotel_stay_players: "stay_id,player_id,status,completed_on,note,marked_by,created_at,updated_at",
   olb_charges:
     "id,board_id,player_id,kind,category,description,amount_cents,entry_date,note,created_by,created_at,voided_at,voided_by",
   olb_payments:
@@ -120,6 +125,9 @@ const CONTRACT: Record<string, string> = {
   activity_user_last_view: "user_id,last_seen_path",
   activity_top_pages_30d: "page,views,people",
   activity_daily_30d: "day,people,views",
+  // Phone-to-device QR pairing (0141). Service role only.
+  device_pairings:
+    "id,host,secret_hash,user_code_hmac,status,wrong_picks,device_ua,device_ip,device_city,created_at,expires_at,approved_at,approved_by_email,approved_by_user_id,approver_sid,approver_ip,consumed_at,session_id,session_expires_at,last_poll_at,revoked_at,revoked_by_email",
   // Planning (0104).
   planning_roles: "id,name,chip_class,member_id,sort_order,seed_key,created_at,updated_at,deleted_at",
   planning_templates: "id,kind,title,notes,month,role_id,playbook_id,sort_order,seed_key,created_by,created_at,updated_at,deleted_at",
@@ -136,7 +144,7 @@ const CONTRACT: Record<string, string> = {
   hs_weekend_games: "weekend_id,level_id,games,unsure,note,updated_by,updated_at",
   hs_opponents:
     "id,weekend_id,level_id,contact_id,name,status,our_score,their_score,note,sort_order,created_by,updated_by,created_at,updated_at",
-  // Tournaments we host (0134).
+  // Tournaments we host (0150).
   hs_hosted:
     "weekend_id,hosted,short_name,finance_event_id,game_minutes,courts,days,team_fee_cents,facility,concessions,rules,admission,created_by,updated_by,created_at,updated_at",
   hs_hosted_steps: "id,weekend_id,section,label,due_on,done_on,done_by,note,sort_order,created_at,updated_at",
@@ -147,6 +155,17 @@ const CONTRACT: Record<string, string> = {
   hs_hosted_money: "id,weekend_id,kind,category,label,qty,unit_cents,division_id,note,sort_order,created_at,updated_at",
   hs_hosted_finance: "weekend_id,money_key,budget_line_id,income_id,synced_at",
   hs_hosted_messages: "id,weekend_id,subject,body,sent_to,sent_count,sent_by,sent_at",
+  // Roadmap (0129, 0136, 0139).
+  olb_roadmap_items:
+    "id,title,description,area,status,released_on,preview_url,created_by,created_at,updated_at,deleted_at,approved_by,approved_at",
+  olb_roadmap_link: "id,key,updated_at",
+  // Game film (0142, 0143, 0144, 0145).
+  game_film_uploads:
+    "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score,youtube_status,youtube_video_id,youtube_error,youtube_updated_at,youtube_playlist_id,youtube_playlist_status,youtube_playlist_error,youtube_playlist_item_id,youtube_playlist_updated_at",
+  game_film_managers: "team_id,user_id,created_at",
+  game_film_youtube:
+    "id,refresh_token_enc,channel_id,channel_title,connected_at,connected_by,privacy_status,made_for_kids,updated_at",
+  game_film_youtube_jobs: "upload_id,upload_uri,bytes_sent,attempts,updated_at",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {
@@ -195,6 +214,20 @@ test("rpc: decrement_supply exists", { skip }, async () => {
   });
   const body = await res.text();
   assert.ok(!body.includes("PGRST202"), `decrement_supply missing: ${body.slice(0, 200)}`);
+});
+
+test("rpc: hotel_stay_season_players exists (0137)", { skip }, async () => {
+  const res = await fetch(`${env!.url}/rest/v1/rpc/hotel_stay_season_players`, {
+    method: "POST",
+    headers: {
+      apikey: env!.key,
+      Authorization: `Bearer ${env!.key}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  const body = await res.text();
+  assert.ok(!body.includes("PGRST202"), `hotel_stay_season_players missing: ${body.slice(0, 200)}`);
 });
 
 test("rpc: my_permissions exists (0122)", { skip }, async () => {

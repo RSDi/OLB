@@ -53,9 +53,9 @@ export function isSuperAdmin(m: MemberLike | null | undefined): boolean {
 }
 
 // --- Settings grants ---------------------------------------------------------
-// Board members (role = admin) can VIEW Settings, but editing,
+// Every approved member can open Settings (Release Notes). Editing,
 // deleting, and restoring each require a standing grant a super-admin gives
-// them. Super-admins implicitly hold every grant.
+// a board member. Super-admins implicitly hold every grant.
 
 export function canEditSettings(m: MemberLike | null | undefined): boolean {
   if (isSuperAdmin(m)) return true;
@@ -114,21 +114,30 @@ export function canViewFinances(m: MemberLike | null | undefined): boolean {
 }
 
 // --- Travel --------------------------------------------------------------------
-// The travel coordinator: reading, adding and editing the External Contacts
-// of the travel types (Hotels, Food). Mirrors public.can_manage_travel() (0110).
+// The travel coordinator: hotels/food in External Contacts (0110), hotel
+// registration check-off and family email/Slack follow-ups (0134). Mirrors
+// public.can_manage_travel().
 
 export function canManageTravel(m: MemberLike | null | undefined): boolean {
   if (!m || m.status !== "approved") return false;
   return m.role === "super_admin" || !!m.can_manage_travel;
 }
 
+// Emailing families from the Directory: the board, Registrations, or Travel
+// (0134 hotel follow-ups).
+
+export function canEmailFamilies(m: MemberLike | null | undefined): boolean {
+  return isStaff(m) || canManageRegistrations(m) || canManageTravel(m);
+}
+
 // --- Slack DMs -----------------------------------------------------------------
 // Messaging the families of the Directory players you can see, one Slack DM
-// per person, sent as you. Mirrors public.can_slack_dm() (0118).
+// per person, sent as you. The Slack DMs grant (0118) or Travel (0134).
+// Mirrors public.can_slack_dm().
 
 export function canSlackDm(m: MemberLike | null | undefined): boolean {
   if (!m || m.status !== "approved") return false;
-  return m.role === "super_admin" || !!m.can_slack_dm;
+  return m.role === "super_admin" || !!m.can_slack_dm || canManageTravel(m);
 }
 
 // --- Website -------------------------------------------------------------------
@@ -155,8 +164,9 @@ export function hasPermission(m: MemberLike | null | undefined, key: string): bo
 export const canSeeAllPlayers = (m: MemberLike | null | undefined) =>
   isStaff(m) || hasPermission(m, "see_all_players");
 export const canMemberNotes = (m: MemberLike | null | undefined) => isStaff(m) || hasPermission(m, "member_notes");
+// Board, Check off requirements, or Travel (0134 hotel registration).
 export const canCheckRequirements = (m: MemberLike | null | undefined) =>
-  isStaff(m) || hasPermission(m, "player_requirements");
+  isStaff(m) || hasPermission(m, "player_requirements") || canManageTravel(m);
 export const canApproveMembers = (m: MemberLike | null | undefined) =>
   isStaff(m) || hasPermission(m, "approve_members");
 export const canEditContacts = (m: MemberLike | null | undefined) => isStaff(m) || hasPermission(m, "contacts_edit");
@@ -167,10 +177,16 @@ export const canPlanHsSchedule = (m: MemberLike | null | undefined) => isStaff(m
 export const canManageTeams = (m: MemberLike | null | undefined) => hasPermission(m, "teams");
 export const canManageSiteLinks = (m: MemberLike | null | undefined) => hasPermission(m, "site_links");
 
-// Someone who isn't Board but holds a permission that lives in Settings opens
-// Settings and sees only those tabs.
+// Game film inbox (0142). View lists and downloads; manage marks moved / deletes.
+// Manage includes view, so a coach given only "Game film (manage)" still opens Film.
+export const canManageFilm = (m: MemberLike | null | undefined) => hasPermission(m, "film_manage");
+export const canViewFilm = (m: MemberLike | null | undefined) =>
+  hasPermission(m, "film_view") || canManageFilm(m);
+
+// Every approved member opens Settings (Release Notes, plus any tabs their
+// permissions add). Pending and denied accounts stay out.
 export const canOpenSettings = (m: MemberLike | null | undefined) =>
-  isStaff(m) || canApproveMembers(m) || canManageTeams(m) || canManageSiteLinks(m) || canManageRegistrations(m);
+  !!m && m.status === "approved";
 
 // Add/rename settings items needs the edit grant; (was: any staff).
 export const canManageAreas = canEditSettings;

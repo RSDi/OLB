@@ -1,4 +1,4 @@
-// Loading a hosted tournament's planning page (0134). The plan is read as the
+// Loading a hosted tournament's planning page (0150). The plan is read as the
 // viewer (RLS: the HS Schedule's planners); the programs' emails too, so a
 // coach only gets the ones External Contacts shares with coaches. What
 // Finances has for it is read with the service role, and only for someone
@@ -28,7 +28,7 @@ import {
 type Weekend = HostedPageData["weekend"];
 
 // The weekend ids ticked "We host this tournament", for the schedule's
-// "We host" chips. Empty before 0134 is in.
+// "We host" chips. Empty before 0150 is in.
 export async function loadHostedWeekendIds(supabase: SupabaseClient, weekendIds: string[]): Promise<string[]> {
   if (weekendIds.length === 0) return [];
   const out: string[] = [];
@@ -46,7 +46,7 @@ export async function loadHostedWeekendIds(supabase: SupabaseClient, weekendIds:
 
 export type HostedLoad =
   | { kind: "missing" } // no such weekend (or not the viewer's to see)
-  | { kind: "migration" } // 0134 isn't in yet
+  | { kind: "migration" } // 0150 isn't in yet
   | { kind: "not_hosted"; weekend: Weekend }
   | { kind: "ok"; data: HostedPageData };
 

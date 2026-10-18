@@ -11,6 +11,8 @@ import {
   canManageUniforms,
   canManageFinances,
   canManageWebsite,
+  canManageTravel,
+  canManageFilm,
   canOpenSettings,
   isStaff,
   isSuperAdmin,
@@ -25,6 +27,8 @@ import { AssetsTab } from "./AssetsTab";
 import { TypesTab } from "./TypesTab";
 import { SuppliesTab } from "./SuppliesTab";
 import { TeamsSettingsTab } from "./TeamsSettingsTab";
+import { FilmSettingsTab } from "./FilmSettingsTab";
+import { SeasonTab } from "./SeasonTab";
 import { VolunteerRolesTab } from "./VolunteerRolesTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
 import { TaskCategoriesTab } from "./TaskCategoriesTab";
@@ -45,6 +49,7 @@ import { PlanningRolesTab } from "./PlanningRolesTab";
 import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { WebsiteTab } from "./WebsiteTab";
 import { AccessProfilesTab } from "./AccessProfilesTab";
+import { ReleaseNotesTab } from "./ReleaseNotesTab";
 import { usePageHelp } from "../../components/PageHelp";
 import { Icons } from "../../components/icons";
 
@@ -52,7 +57,7 @@ import { Icons } from "../../components/icons";
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
 // Website is released to whoever holds its grant (and super-admins).
-const RELEASED_TABS = new Set<string>(["members", "teams", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "film", "season", "volunteer_roles", "requirements", "email_templates", "registration_emails", "website", "release_notes", "import"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "access_profiles",
   "playbooks",
@@ -68,6 +73,8 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   members: "settings-members",
   access_profiles: "settings-access-profiles",
   teams: "settings-teams",
+  film: "settings-film",
+  season: "settings-season",
   volunteer_roles: "settings-volunteer-roles",
   requirements: "settings-requirements",
   email_templates: "settings-email-templates",
@@ -76,10 +83,12 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   uniforms: "settings-uniforms",
   fees: "settings-fees",
   website: "settings-website",
+  release_notes: "settings-release-notes",
   playbooks: "settings-playbooks",
   sidebar_links: "settings-sidebar-links",
   public_directory: "settings-public-directory",
   contact_categories: "settings-contact-types",
+  import: "settings-hotel-import",
   audit_log: "settings-audit-log",
 };
 
@@ -92,6 +101,8 @@ type Tab =
   | "types"
   | "supplies"
   | "teams"
+  | "film"
+  | "season"
   | "volunteer_roles"
   | "requirements"
   | "email_templates"
@@ -100,6 +111,7 @@ type Tab =
   | "uniforms"
   | "fees"
   | "website"
+  | "release_notes"
   | "planning_roles"
   | "event_categories"
   | "task_categories"
@@ -142,6 +154,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
   // tab stay super-admin-only via canManage.
   const showMembers = canApproveMembers(me);
   const teams = canManageTeams(me);
+  const film = canManageFilm(me);
   const siteLinks = canManageSiteLinks(me);
   // Someone off the board who holds one of the permissions above sees only
   // those tabs; the rest of Settings is the board's.
@@ -149,6 +162,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
   const GRANTED_TABS: Partial<Record<Tab, boolean>> = {
     members: showMembers,
     teams,
+    film,
     volunteer_roles: teams,
     sidebar_links: siteLinks,
     public_directory: siteLinks,
@@ -156,6 +170,10 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     registration_automations: workflowOn && canManageRegistrations(me),
     uniforms: workflowOn && canManageUniforms(me),
     fees: financesOn && canManageFinances(me),
+    // Hotel rooming-list import for the travel coordinator.
+    import: canManageTravel(me),
+    // Every approved member: what's shipped.
+    release_notes: true,
   };
   // Deleted tab stays super-admin-only until the RLS follow-up lets board
   // members with the undelete grant see + restore soft-deleted rows.
@@ -166,6 +184,8 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     // Named bundles of permissions handed out in Members (0122).
     { key: "access_profiles", label: "Access Profiles", group: "People & Access", visible: isSuperAdmin(me), tour: "settings-tab-access-profiles", keywords: "permissions roles grants treasurer" },
     { key: "teams", label: "Teams", group: "People & Access", visible: teams, tour: "settings-tab-teams", keywords: "coaches roster squads" },
+    { key: "film", label: "Film", group: "People & Access", visible: film, tour: "settings-tab-film", keywords: "game film video upload code teams coaches" },
+    { key: "season", label: "Season", group: "People & Access", visible: board, tour: "settings-tab-season", keywords: "season end date age cap eligibility 14u 12u 10u play up conqueror birthday" },
     { key: "volunteer_roles", label: "Volunteer Roles", group: "People & Access", visible: teams, tour: "settings-tab-volunteer-roles", keywords: "volunteers parents jobs" },
     { key: "requirements", label: "Requirements", group: "People & Access", visible: canEditSettings(me), tour: "settings-tab-requirements", keywords: "forms fees players registration hand in pay" },
     // Planning (lib/planning/access.ts): staged rollout, so only the preview
@@ -192,12 +212,13 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     { key: "contact_categories", label: "Contact Types", group: "Communication", visible: true, tour: "settings-tab-contact-categories", keywords: "contacts categories" },
     // The public club website's menu, page text and pictures (0120).
     { key: "website", label: "Website", group: "Website & Portal", visible: canManageWebsite(me), tour: "settings-tab-website", keywords: "public site pages pictures publish" },
+    { key: "release_notes", label: "Release Notes", group: "Website & Portal", visible: true, tour: "settings-tab-release-notes", keywords: "release notes shipped changelog whats new show me how walkthrough demo" },
     { key: "sidebar_links", label: "Sidebar Links", group: "Website & Portal", visible: siteLinks, tour: "settings-tab-sidebar-links", keywords: "links menu" },
     // The key in the public Directory's link (0119).
     { key: "public_directory", label: "Public Directory", group: "Website & Portal", visible: siteLinks, tour: "settings-tab-public-directory", keywords: "directory link key" },
     { key: "integrations", label: "Integrations", group: "System", visible: true, tour: "settings-tab-integrations", keywords: "slack google connect" },
-    // The spreadsheet import, kept for the preview accounts only.
-    { key: "import", label: "Import", group: "System", visible: fullUi, tour: "settings-tab-import", keywords: "spreadsheet upload csv" },
+    // Hotel rooming list (Travel + board). Planning spreadsheet stays preview-only inside the tab.
+    { key: "import", label: "Import", group: "System", visible: fullUi || canManageTravel(me) || board, tour: "settings-tab-import", keywords: "hotel rooming list pdf csv booked travel spreadsheet upload" },
     { key: "audit_log", label: "Audit Log", group: "System", visible: true, tour: "settings-tab-audit-log", keywords: "history changes who" },
     { key: "deleted", label: "Deleted", group: "System", visible: showDeleted, tour: "settings-tab-deleted", keywords: "restore undelete trash" },
   ];
@@ -279,7 +300,7 @@ export default function SettingsPage() {
       // preview bar links to the Website tab to publish). Otherwise all
       // board staff land on Members — any of them can work the approval
       // queue (D1) — and someone off the board lands on the first tab they
-      // have.
+      // have (Release Notes, unless a grant opens another).
       const wanted = new URLSearchParams(window.location.search).get("tab");
       const mine = visibleTabs(memberLike!, preview, on, booksOn);
       const linked = mine.find((t) => t.key === wanted);
@@ -287,7 +308,11 @@ export default function SettingsPage() {
         ? "members"
         : canManageTeams(memberLike)
         ? "teams"
-        : "sidebar_links";
+        : canManageTravel(memberLike)
+        ? "import"
+        : canManageFilm(memberLike)
+        ? "film"
+        : "release_notes";
       setTab(linked ? linked.key : mine.some((t) => t.key === landing) ? landing : mine[0]?.key ?? landing);
       setAuthChecked(true);
     })();
@@ -338,6 +363,8 @@ export default function SettingsPage() {
       {tab === "types" && has("types") && <TypesTab me={me} />}
       {tab === "supplies" && has("supplies") && <SuppliesTab me={me} />}
       {tab === "teams" && has("teams") && <TeamsSettingsTab />}
+      {tab === "film" && has("film") && <FilmSettingsTab />}
+      {tab === "season" && has("season") && <SeasonTab />}
       {tab === "volunteer_roles" && has("volunteer_roles") && <VolunteerRolesTab />}
       {tab === "requirements" && has("requirements") && <RequirementsTab me={me} />}
       {tab === "email_templates" && has("email_templates") && <EmailTemplatesTab />}
@@ -346,6 +373,7 @@ export default function SettingsPage() {
       {tab === "uniforms" && has("uniforms") && <UniformsTab />}
       {tab === "fees" && has("fees") && <FeesTab />}
       {tab === "website" && has("website") && <WebsiteTab />}
+      {tab === "release_notes" && has("release_notes") && <ReleaseNotesTab me={me} />}
       {tab === "planning_roles" && has("planning_roles") && <PlanningRolesTab />}
       {tab === "event_categories" && has("event_categories") && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && has("task_categories") && <TaskCategoriesTab me={me} />}
@@ -354,7 +382,7 @@ export default function SettingsPage() {
       {tab === "public_directory" && has("public_directory") && <PublicDirectoryTab />}
       {tab === "contact_categories" && has("contact_categories") && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && has("integrations") && <IntegrationsTab />}
-      {tab === "import" && has("import") && <ImportTab />}
+      {tab === "import" && has("import") && <ImportTab showPlanningImport={fullUi} />}
       {tab === "audit_log" && has("audit_log") && <AuditLogTab />}
       {tab === "deleted" && has("deleted") && <DeletedTab />}
     </>

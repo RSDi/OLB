@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthSection } from "../_components/AuthSection";
+import { safeReturnTo } from "../../../lib/auth/pairing";
 import { LoginForm } from "./LoginForm";
 
 export const metadata: Metadata = { title: "Login" };
@@ -11,12 +12,13 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { status, error } = await searchParams;
+  const { status, error, next } = await searchParams;
   return (
     <AuthSection title="Member login." intro="Sign in to the member portal.">
       <LoginForm
         status={typeof status === "string" ? status : null}
         urlError={typeof error === "string" ? error : null}
+        next={safeReturnTo(typeof next === "string" ? next : null)}
       />
     </AuthSection>
   );

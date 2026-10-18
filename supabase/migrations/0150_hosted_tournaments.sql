@@ -1,4 +1,4 @@
--- 0134_hosted_tournaments.sql
+-- 0150_hosted_tournaments.sql
 --
 -- Tournaments we host (the Missouri River Shootout): a weekend on the HS
 -- Schedule ticked "We host this tournament" gets a planning page of its own
@@ -52,9 +52,10 @@
 -- and only can_view_finances() sees what's been paid and received. Helper
 -- calls are wrapped in (select …) per AGENTS.md.
 --
--- To remove: supabase/removal/0134_hosted_tournaments_down.sql.
+-- To remove: supabase/removal/0150_hosted_tournaments_down.sql.
 --
--- Apply via the Supabase SQL editor, after 0133. Idempotent.
+-- Apply via the Supabase SQL editor, after 0145. 0146–0149 are reserved
+-- for other open PRs. Idempotent.
 
 begin;
 

@@ -1,4 +1,4 @@
-// Tournaments we host (0134): the checklist a new plan starts with, brackets
+// Tournaments we host (0150): the checklist a new plan starts with, brackets
 // and round robins, filling the courts, the money, and the program email.
 // Pure and safe to import from client components; tested in
 // tests/unit/hosted.test.ts.

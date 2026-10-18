@@ -12,8 +12,9 @@ import {
   updateRequirement,
   type RequirementResult,
 } from "../../../lib/requirements/actions";
-import { formatAmount, type RequirementInput } from "../../../lib/requirements/logic";
+import { doneWord, formatAmount, type RequirementInput } from "../../../lib/requirements/logic";
 import {
+  DONE_LABEL_MAX,
   REQUIREMENT_COLUMNS,
   REQUIREMENT_NAME_MAX,
   type Requirement,
@@ -77,6 +78,7 @@ function toInput(r: Requirement): RequirementInput {
     kind: r.kind,
     amount: r.amount_cents != null ? (r.amount_cents / 100).toFixed(2) : "",
     allowFile: r.allow_file,
+    doneLabel: r.done_label ?? "",
     dueOn: r.due_on ?? "",
     teamIds: r.team_ids,
     active: r.active,
@@ -84,8 +86,9 @@ function toInput(r: Requirement): RequirementInput {
 }
 
 // Settings → Requirements: what every player has to hand in or pay — the
-// handbook signature, a tournament fee — tracked per player in the Directory.
-// Super-admins and board members with the settings grants.
+// handbook signature, hotel registration, a tournament fee — tracked per
+// player in the Directory. Super-admins and board members with the settings
+// grants.
 export function RequirementsTab({ me }: { me: MemberLike }) {
   const router = useRouter();
   const canDelete = canDeleteSettings(me);
@@ -153,8 +156,9 @@ export function RequirementsTab({ me }: { me: MemberLike }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 540 }}>
-          What players need to hand in or pay — the handbook signature page, a tournament fee, a form. The board
-          checks players off in the Directory and can filter it to see who&apos;s still missing each one.
+          What players need to hand in or pay — the handbook signature, hotel registration, a tournament fee.
+          The board (and the travel coordinator for hotel registration) checks players off in the Directory and
+          can filter it to see who&apos;s still missing each one.
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {!adding && (
@@ -204,6 +208,7 @@ export function RequirementsTab({ me }: { me: MemberLike }) {
               : "All players";
             const facts = [
               r.kind === "fee" ? `Fee${r.amount_cents != null ? ` · ${formatAmount(r.amount_cents)}` : ""}` : "Task / form",
+              r.done_label && `Marked ${doneWord(r)}`,
               scope,
               r.due_on && `Due ${formatDue(r.due_on)}`,
               r.allow_file && "Scan upload",
@@ -288,6 +293,7 @@ function RequirementForm({
   const [kind, setKind] = useState<RequirementKind>(initial?.kind ?? "task");
   const [amount, setAmount] = useState(initial?.amount ?? "");
   const [allowFile, setAllowFile] = useState(initial?.allowFile ?? true);
+  const [doneLabel, setDoneLabel] = useState(initial?.doneLabel ?? "");
   const [dueOn, setDueOn] = useState(initial?.dueOn ?? "");
   const [allTeams, setAllTeams] = useState(!initial?.teamIds?.length);
   const [teamIds, setTeamIds] = useState<string[]>(initial?.teamIds ?? []);
@@ -310,6 +316,7 @@ function RequirementForm({
       kind,
       amount: kind === "fee" ? amount : "",
       allowFile,
+      doneLabel,
       dueOn,
       teamIds: allTeams ? null : teamIds,
       active,
@@ -336,7 +343,7 @@ function RequirementForm({
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Handbook signature"
             maxLength={REQUIREMENT_NAME_MAX}
-            help="What the board sees on each player, like Handbook signature or Tournament fee."
+            help="What the board sees on each player, like Handbook signature or Hotel registration."
             autoFocus
             required
           />
@@ -346,7 +353,7 @@ function RequirementForm({
             label="Type"
             value={kind}
             onChange={(e) => setKind(e.target.value as RequirementKind)}
-            help="A fee is marked Paid; anything else is marked Done."
+            help="A fee is marked Paid by default; anything else is marked Done. Override with Mark complete as."
           >
             <option value="task">Task / form</option>
             <option value="fee">Fee</option>
@@ -362,6 +369,14 @@ function RequirementForm({
             required
           />
         )}
+        <Input
+          label="Mark complete as"
+          value={doneLabel}
+          onChange={(e) => setDoneLabel(e.target.value)}
+          placeholder={kind === "fee" ? "Paid" : "Done"}
+          maxLength={DONE_LABEL_MAX}
+          help='Optional. What the green chip and filter say — e.g. Booked for hotel registration. Leave blank for Done or Paid.'
+        />
         <div data-tour="requirement-due">
           <Input
             label="Due date"

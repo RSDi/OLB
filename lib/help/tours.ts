@@ -8,6 +8,8 @@
 //     guide section that has one.
 //   - "Show me around" in the top-bar "i" panel, for the page you're on (on
 //     Settings, the open tab: see usePageHelp in app/components/PageHelp.tsx).
+//   - "Show me how →" on a Settings → Release Notes entry that changed
+//     something this person can use (a `releaseOnly` tour).
 //   - The welcome tour starts by itself for new accounts only (see
 //     autoStartsWelcomeTour); everyone else starts it from the User Guide.
 //
@@ -50,8 +52,9 @@ export interface TourStep {
   // step goes there.
   route?: string;
   // Moving forward: click this `data-tour` element to bring the step's
-  // element into view (a tab, an "Add" button, a chip that opens a sheet),
-  // unless it's already showing.
+  // element into view (a tab, an "Add" button, a chip that opens a sheet,
+  // a <details> summary), unless it's already showing. A <details> is opened
+  // and left open, not toggled.
   click?: string;
   // Moving forward: click this `data-tour` element first if it's on the page,
   // e.g. to close a sheet a previous step opened.
@@ -80,6 +83,10 @@ export interface GuideTour {
   // first.
   route: string;
   steps: TourStep[];
+  // Written for one release note's "Show me how →": walks to just what that
+  // release changed. Kept off the ⓘ panel and the guide's section buttons,
+  // which start the screen's full tour.
+  releaseOnly?: boolean;
 }
 
 export const GUIDE_TOURS: GuideTour[] = [
@@ -145,9 +152,8 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "nav-settings",
         sidebar: true,
-        audience: "staff",
         title: "Settings",
-        body: "Approve new sign-ups and manage member accounts. A red badge here counts the access requests waiting for you.",
+        body: "What's new in the portal lives here, under **Release Notes**. A **What's new** card also pops up in the bottom-right when something ships. Board members also approve new sign-ups and manage accounts here; a red badge counts access requests waiting for you.",
       },
       {
         target: "sidebar-collapse",
@@ -212,18 +218,30 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "directory-email",
         audience: "messaging",
         title: "Email families",
-        body: "Writes to the families of the players the list is showing, one email per family. Pick a team, an age group, or a requirement's **Missing** first to narrow who gets it.",
+        body: "Writes to the families of the players the list is showing, one email per family. Pick a team, an age group, or a requirement's **Missing** first to narrow who gets it. In the window, untick a family to leave them out.",
       },
       {
         target: "directory-slack",
         audience: "slack",
         title: "Slack families",
-        body: "Sends each parent of the players the list is showing their own Slack DM, from you. Replies come back to you in Slack. Narrow the list first, the same way as for email.",
+        body: "Sends each parent of the players the list is showing their own Slack DM, from you. Replies come back to you in Slack. Narrow the list first, the same way as for email. In the window, untick a family to leave them out.",
       },
       {
         target: "directory-player",
         title: "Each player",
-        body: "Jersey number, team, age and birthday, address, and their parents' phone and email. A **New** chip means it's their first season with us.",
+        body: "Jersey number, team, address, and their parents' phone and email. A **New** chip means it's their first season with us.",
+      },
+      {
+        target: "directory-player",
+        audience: "staff",
+        title: "Age and eligibility",
+        body: "The board sees each player's age and birthday, the lowest level they're eligible for through the season end date, and **Ages out** when they're rostered on a level they age out of.",
+      },
+      {
+        target: "directory-swing-up",
+        audience: "staff",
+        title: "Available to swing up",
+        body: "Pick a team (for example **14U White**) to list younger players who can play up, and older players still age-eligible to move down, with age at season end and current team. Tick **Hide if their team plays the same weekend** when the schedule already has their team on that weekend.",
       },
       {
         target: "directory-place",
@@ -322,6 +340,58 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "film",
+    sectionId: "film",
+    title: "Film tour",
+    route: "/portal/film",
+    steps: [
+      {
+        title: "Game film",
+        body: "Videos families uploaded from their phones, grouped by team and game. Play them here, or wait for YouTube if that's connected.",
+      },
+      {
+        target: "film-filter",
+        title: "Holding or moved",
+        body: "**All** is everything. **Holding** is still waiting to be copied off. **Moved** is already saved elsewhere.",
+      },
+      {
+        target: "film-team-filter",
+        title: "By team",
+        body: "When more than one team has film, tap a team name to see only that team's games.",
+      },
+      {
+        target: "film-play",
+        title: "Play",
+        body: "**Play** watches the video on this page. It works on a phone. **Close player** puts the player away.",
+      },
+      {
+        target: "film-download",
+        title: "Download",
+        body: "Opens a temporary link to the file. Save it before you mark it moved.",
+      },
+      {
+        target: "film-edit",
+        title: "Edit the game",
+        body: "**Edit** lets you fix **Game date**, **Opponent**, the score, and an optional **YouTube playlist** for this video. **Save** updates the heading above the video. You only see this with **Game film (manage)**.",
+      },
+      {
+        target: "film-playlist",
+        title: "Playlist",
+        body: "After YouTube, the video is added to the team's playlist. **In playlist** opens it. If that step failed, the video stays on YouTube — tap **Retry playlist**.",
+      },
+      {
+        target: "film-moved",
+        title: "Mark moved",
+        body: "Once the video is on YouTube or a drive, tap **Mark moved**. Files marked moved are deleted after 30 days. You only see this with **Game film (manage)**.",
+      },
+      {
+        target: "film-delete",
+        title: "Delete",
+        body: "**Delete** removes the file for good. Same permission as **Mark moved**.",
+      },
+    ],
+  },
+  {
     id: "payments",
     sectionId: "payments",
     title: "Finances tour",
@@ -350,7 +420,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "payments-message",
         title: "Write to the families listed",
-        body: "**Email families** or **Slack families** writes to every family showing. **{balance}** becomes what each one owes. The weekly reminder is set up in **Settings → Fees**.",
+        body: "**Email families** or **Slack families** writes to every family showing. Untick a family in the window to leave them out. **{balance}** becomes what each one owes. The weekly reminder is set up in **Settings → Fees**.",
       },
       {
         target: "payments-parent-link",
@@ -571,6 +641,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         title: "Add a weekend",
         body: "Its dates, event, place, trip, status, notes and facility; then its games and teams.",
       },
+      {
+        target: "schedule-hosted",
+        title: "We host this tournament",
+        body: "A weekend the club runs (the Missouri River Shootout) shows **We host · Plan it**. Open it for the checklist, teams, courts, brackets, money and emails.",
+      },
     ],
   },
   {
@@ -651,6 +726,101 @@ export const GUIDE_TOURS: GuideTour[] = [
         interactive: true,
         title: "Save it",
         body: "Tap **Create team** to save, or **Cancel** to leave things as they are.",
+      },
+    ],
+  },
+  {
+    id: "settings-film",
+    sectionId: "settings-film",
+    title: "Film teams walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-film",
+        title: "Settings → Film",
+        body: "The same Directory teams, with a family upload page and a shared code for each one you turn on. **YouTube** is at the top of this tab.",
+      },
+      {
+        target: "film-settings-youtube",
+        click: "settings-tab-film",
+        title: "Connect YouTube",
+        body: "**Connect YouTube** once with the club channel. New uploads then go up unlisted in the background, then into that team's playlist if one is set. **Disconnect YouTube** stops that.",
+      },
+      {
+        target: "film-settings-playlist",
+        click: "settings-tab-film",
+        title: "Team playlist",
+        body: "**YouTube playlist** is the playlist new film for this team is added to. Paste a link or id, or pick from the channel, then **Save playlist**.",
+      },
+      {
+        target: "film-settings-row",
+        click: "settings-tab-film",
+        title: "Each team",
+        body: "**On** shows it on **/film**. **Rename** changes the Directory name. **Upload address** is the end of the family link.",
+      },
+      {
+        target: "film-settings-upload-url",
+        click: "settings-tab-film",
+        title: "The upload link",
+        body: "Each team shows the full **https://…** upload link. **Copy** puts that link on the clipboard — not the team's code.",
+      },
+      {
+        target: "film-settings-code",
+        click: "settings-tab-film",
+        title: "The upload code",
+        body: "**Set code** to type a short word like **white14** (we suggest one from the team name). **Generate code** makes a random one. Copy it — we store it hashed and won't show it again.",
+      },
+      {
+        target: "film-settings-add",
+        click: "settings-tab-film",
+        title: "New team",
+        body: "Adds a Directory team so you can give it a film page from here.",
+      },
+    ],
+  },
+  {
+    id: "settings-season",
+    sectionId: "settings-season",
+    title: "Season walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-season",
+        title: "Settings → Season",
+        body: "The season end date and the age caps the Directory uses for eligibility. The board can change these.",
+      },
+      {
+        target: "season-end-date",
+        click: "settings-tab-season",
+        title: "Season end date",
+        body: "The last day of the season. A player ages out of a level if they turn one year over its max age on or before this day. 14U cannot turn 15; 12U cannot turn 13.",
+      },
+      {
+        target: "season-end-save",
+        click: "settings-tab-season",
+        interactive: true,
+        title: "Save the date",
+        body: "Tap **Save date** after you change it. The Directory uses the new date right away for **Ages out** and swing-ups.",
+      },
+      {
+        target: "season-age-caps",
+        click: "settings-tab-season",
+        title: "Age caps by level",
+        body: "Each row is a level and its **Max age**. Max age 14 on 14U means they must not turn 15 on or before the season end date.",
+      },
+      {
+        target: "season-age-cap-row",
+        click: "settings-tab-season",
+        interactive: true,
+        title: "Edit a cap",
+        body: "Change the **Level** name or **Max age**. **Add a level** for a grade (5th, 4th, 3rd) if you place by grade.",
+      },
+      {
+        target: "season-age-caps-save",
+        click: "settings-tab-season",
+        interactive: true,
+        title: "Save the caps",
+        body: "Tap **Save caps** when the table looks right. **Remove** deletes a row.",
       },
     ],
   },
@@ -1248,6 +1418,31 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-release-notes",
+    sectionId: "settings-release-notes",
+    title: "Release Notes walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-release-notes",
+        title: "Settings → Release Notes",
+        body: "What just shipped, newest first. Every member can read this. A **What's new** card also pops up in the bottom-right when something ships.",
+      },
+      {
+        target: "release-notes-list",
+        click: "settings-tab-release-notes",
+        title: "Each release",
+        body: "A version pill, the title, the date, and what changed. The colored dot on the line marks each one.",
+      },
+      {
+        target: "release-notes-show-how",
+        click: "settings-tab-release-notes",
+        title: "Show me how",
+        body: "When a release changed something you can use, tap **Show me how →**. A guided tour walks you through it on the real page, with **Back** / **Next**.",
+      },
+    ],
+  },
+  {
     id: "settings-sidebar-links",
     sectionId: "settings-sidebar-links",
     title: "Sidebar Links walkthrough",
@@ -1356,6 +1551,32 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-hotel-import",
+    sectionId: "settings-hotel-import",
+    title: "Hotel import walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-import",
+        title: "Settings → Import",
+        body: "For the travel coordinator: turn a hotel's **Group Rooming List** into **Booked** marks on a hotel stay.",
+      },
+      {
+        target: "hotel-rooming-import",
+        click: "settings-tab-import",
+        title: "Hotel rooming list",
+        body: "Upload the PDF the hotel sent (or a CSV), then **Preview matches**. We guess the hotel, the HS Schedule weekend and which Directory families booked.",
+      },
+      {
+        target: "hotel-rooming-file",
+        click: "settings-tab-import",
+        interactive: true,
+        title: "Pick the file",
+        body: "Text PDFs from the hotel work best (Staybridge / IHG style). A scan-only PDF needs a CSV with confirmation, name and dates instead.",
+      },
+    ],
+  },
+  {
     id: "settings-audit-log",
     sectionId: "settings-audit-log",
     title: "Audit Log walkthrough",
@@ -1442,14 +1663,14 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "requirements-add",
         click: "settings-tab-requirements",
         title: "Add requirement",
-        body: "Starts a new one. The **Handbook signature** may already be listed — tap the **pencil** on it to change it instead.",
+        body: "Starts a new one. **Handbook signature** and **Hotel registration** may already be listed — tap the **pencil** on one to change it instead.",
       },
       {
         target: "requirement-name",
         click: "requirements-add",
         interactive: true,
         title: "Name",
-        body: "What the board sees on each player's chip, like **Handbook signature**. Type it in now if you're adding one.",
+        body: "What the board sees on each player's chip, like **Handbook signature** or **Hotel registration**. Type it in now if you're adding one.",
       },
       {
         target: "requirement-kind",
@@ -1715,11 +1936,164 @@ export const GUIDE_TOURS: GuideTour[] = [
       },
     ],
   },
+  {
+    id: "email-families-send",
+    sectionId: "email-families",
+    title: "Tick families off before you send",
+    route: "/portal/directory",
+    releaseOnly: true,
+    steps: [
+      {
+        target: "directory-email",
+        title: "Email families",
+        body: "Writes to the families of the players the list is showing. Narrow the list first if you only want some of them.",
+      },
+      {
+        target: "message-recipients",
+        click: "directory-email",
+        title: "Who gets it",
+        body: "Tick **Dads**, **Moms** and **Players**. Then tick the families themselves.",
+      },
+      {
+        target: "family-send-list",
+        click: "directory-email",
+        title: "See who gets it",
+        body: "Tap **see who gets it** (the ▶) to open the list of families.",
+      },
+      {
+        target: "family-send-picks",
+        click: "family-send-list",
+        title: "Tick the families",
+        body: "Each family has a checkbox. **Select all / none** ticks every family or none.",
+      },
+      {
+        target: "family-send-picks",
+        click: "family-send-list",
+        title: "Leave a family out",
+        body: "Every family is ticked to start. Untick one to leave them out. **Select all / none** ticks every family or none. The count and **Send** follow the ticks.",
+        interactive: true,
+      },
+    ],
+  },
+  {
+    id: "slack-dms-send",
+    sectionId: "slack-dms",
+    title: "Tick families off before you Slack",
+    route: "/portal/directory",
+    releaseOnly: true,
+    steps: [
+      {
+        target: "directory-slack",
+        title: "Slack families",
+        body: "Sends each parent of the players the list is showing their own Slack DM, from you. Replies come back to you in Slack.",
+      },
+      {
+        target: "slack-recipients",
+        click: "directory-slack",
+        title: "Who gets it",
+        body: "Tick **Dads**, **Moms** and **Players**. Then tick the families themselves.",
+      },
+      {
+        target: "family-send-list",
+        click: "directory-slack",
+        title: "See who gets it",
+        body: "Tap **see who gets it** (the ▶) to open the list of families.",
+      },
+      {
+        target: "family-send-picks",
+        click: "family-send-list",
+        title: "Tick the families",
+        body: "Each family has a checkbox. **Select all / none** ticks every family or none.",
+      },
+      {
+        target: "family-send-picks",
+        click: "family-send-list",
+        title: "Leave a family out",
+        body: "Every family is ticked to start. Untick one to leave them out. **Select all / none** ticks every family or none. Changing **Dads** / **Moms** / **Players**, or the Directory filters, starts the ticks over.",
+        interactive: true,
+      },
+    ],
+  },
+  {
+    id: "hotel-covered-sibling",
+    sectionId: "hotel-registration",
+    title: "Covered via sibling",
+    route: "/portal/directory",
+    releaseOnly: true,
+    steps: [
+      {
+        target: "hotel-stay-filter",
+        pick: "hotel-stay-filter",
+        title: "Pick a hotel stay",
+        body: "On the Directory, pick the stay from **All hotel stays**, then **Not yet known** to see who still needs a mark of their own.",
+      },
+      {
+        target: "hotel-stay-status",
+        title: "Not yet known",
+        body: "Players **Covered via sibling** drop out of this count. They still show under **All**.",
+      },
+      {
+        target: "hotel-stay-chips",
+        title: "Covered via sibling",
+        body: "A player with no mark of their own shows **Covered via sibling** when a sibling is **Booked in block** or **Staying elsewhere** on the same stay.",
+      },
+    ],
+  },
+  {
+    id: "hotel-staying-elsewhere",
+    sectionId: "hotel-registration",
+    title: "Staying elsewhere",
+    route: "/portal/directory",
+    releaseOnly: true,
+    steps: [
+      {
+        target: "hotel-stay-filter",
+        pick: "hotel-stay-filter",
+        title: "Pick a hotel stay",
+        body: "On the Directory, pick the stay from **All hotel stays** — Regionals, Nationals, a weekend away.",
+      },
+      {
+        target: "hotel-stay-chip",
+        title: "A player's chip",
+        body: "Each player shows a chip for the stay. Red means **Not yet known**. Tap it to mark them.",
+      },
+      {
+        target: "hotel-stay-choice",
+        click: "hotel-stay-chip",
+        title: "Booked in block or Staying elsewhere",
+        body: "**Waived** is now **Staying elsewhere**, **Booked** is **Booked in block**, and **Missing** is **Not yet known**.",
+      },
+      {
+        target: "hotel-stay-note",
+        click: "hotel-stay-chip",
+        title: "A note for Staying elsewhere",
+        body: "**Staying elsewhere** needs a note (for example staying with family). The note shows on the chip.",
+        interactive: true,
+      },
+      {
+        target: "hotel-stay-siblings",
+        click: "hotel-stay-chip",
+        title: "Siblings",
+        body: "When you mark **Booked in block** or **Staying elsewhere**, siblings on the same stay are ticked to start, so one save covers them. Untick to mark only this player.",
+        interactive: true,
+      },
+    ],
+  },
 ];
 
 export function canSeeTour(tour: GuideTour, viewer: GuideViewer | null | undefined): boolean {
   const section = GUIDE_SECTIONS.find((s) => s.id === tour.sectionId);
-  return !!section && canSeeGuideSection(section, viewer);
+  if (section && canSeeGuideSection(section, viewer)) return true;
+  // The board marks hotel stays in the Directory too (canCheckRequirements),
+  // even though the Hotel stays guide section is written for Travel.
+  if (
+    tour.releaseOnly &&
+    tour.sectionId === "hotel-registration" &&
+    viewer?.status === "approved" &&
+    viewer.isStaff
+  )
+    return true;
+  return false;
 }
 
 // The steps this viewer should get, in order. Steps are also skipped at run
@@ -1774,8 +2148,24 @@ export const PLANNING_TOUR_ID = "planning";
 
 // The tour for a guide section, if it has one this viewer can take.
 export function tourForSection(sectionId: string, viewer: GuideViewer | null | undefined): GuideTour | null {
-  const tour = GUIDE_TOURS.find((t) => t.sectionId === sectionId || t.alsoSections?.includes(sectionId));
+  const tour = GUIDE_TOURS.find(
+    (t) => !t.releaseOnly && (t.sectionId === sectionId || t.alsoSections?.includes(sectionId))
+  );
   return tour && canSeeTour(tour, viewer) ? tour : null;
+}
+
+// A release note's "Show me how →": the first of its tour ids that this
+// person can take.
+export function releaseTour(
+  tour: string | string[] | undefined,
+  viewer: GuideViewer | null | undefined
+): GuideTour | null {
+  if (!tour) return null;
+  for (const id of Array.isArray(tour) ? tour : [tour]) {
+    const t = getTour(id);
+    if (t && canSeeTour(t, viewer) && tourStepsFor(t, viewer).length > 0) return t;
+  }
+  return null;
 }
 
 // The "Show me around" tour for a page: the tour of the page's "i" section,

@@ -35,15 +35,41 @@ const TAB_HELP: Partial<Record<PaymentsTab, string>> = {
 // Payments' tabs, as links so each has its own address.
 export function PaymentsTabs({ tabs, active }: { tabs: PaymentsTab[]; active: PaymentsTab }) {
   usePageHelp(TAB_HELP[active] ?? null);
-  // On a phone the tabs scroll sideways: keep the open one in view.
+  // On a phone the tabs scroll sideways: keep the open one in view without
+  // scrolling the page (scrollIntoView would move main up/down).
+  const nav = useRef<HTMLElement>(null);
   const current = useRef<HTMLAnchorElement>(null);
-  // Braces, not an arrow's value: newer browsers return a Promise from
-  // scrollIntoView, and React would call it as the effect's cleanup.
   useEffect(() => {
-    current.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const el = current.current;
+    const scroller = nav.current;
+    if (!el || !scroller) return;
+    const elRect = el.getBoundingClientRect();
+    const navRect = scroller.getBoundingClientRect();
+    if (elRect.left < navRect.left) scroller.scrollLeft -= navRect.left - elRect.left;
+    else if (elRect.right > navRect.right) scroller.scrollLeft += elRect.right - navRect.right;
   }, [active]);
   return (
-    <nav aria-label="Payments" style={{ display: "flex", gap: 4, overflowX: "auto", borderBottom: "1px solid var(--gw-border)", marginBottom: 4 }}>
+    <nav
+      ref={nav}
+      aria-label="Payments"
+      style={{
+        // minWidth:0 so this flex child of main can shrink; without it the
+        // row grows to fit every tab and overflow-x never scrolls — the page
+        // takes the gesture instead (vertical).
+        display: "flex",
+        flexWrap: "nowrap",
+        gap: 4,
+        minWidth: 0,
+        maxWidth: "100%",
+        overflowX: "auto",
+        overflowY: "hidden",
+        WebkitOverflowScrolling: "touch",
+        touchAction: "pan-x",
+        overscrollBehaviorX: "contain",
+        borderBottom: "1px solid var(--gw-border)",
+        marginBottom: 4,
+      }}
+    >
       {tabs.map((t) => (
         <Link
           key={t}
@@ -52,6 +78,7 @@ export function PaymentsTabs({ tabs, active }: { tabs: PaymentsTab[]; active: Pa
           aria-current={t === active ? "page" : undefined}
           data-tour={TABS[t].tour}
           style={{
+            flex: "0 0 auto",
             padding: "10px 12px",
             fontSize: 13,
             fontWeight: 700,

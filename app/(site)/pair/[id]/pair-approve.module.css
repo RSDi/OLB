@@ -1,0 +1,61 @@
+.meta {
+  margin: 0 0 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.meta div {
+  display: grid;
+  gap: 2px;
+}
+
+.meta dt {
+  font-size: var(--fs-small);
+  opacity: 0.7;
+}
+
+.meta dd {
+  margin: 0;
+}
+
+.warn {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border: 1px solid currentColor;
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+
+.pickLabel {
+  margin: 0 0 10px;
+  font-size: var(--fs-small);
+}
+
+.codes {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 20px;
+}
+
+.codeBtn {
+  width: 100%;
+  padding: 12px 10px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: calc(var(--fs-normal) * 1.25);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+}
+
+.codeOn {
+  background: #000;
+  color: var(--accent, #fbcb44);
+}
+
+.actions {
+  display: grid;
+  gap: 10px;
+}

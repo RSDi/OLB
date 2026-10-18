@@ -50,6 +50,10 @@ import type { ScheduleAction } from "./store";
 import { TeamAdder, type TeamPick } from "./TeamAdder";
 import { ComboSelect } from "../../../components/ComboSelect";
 import { TeamChips } from "./TeamChips";
+import { HotelStayPanel } from "./HotelStayPanel";
+import type { DirectoryTeam } from "./SeasonSheet";
+import type { HotelOption } from "../../../../lib/hs-hotel-stays/data";
+import type { HotelStayView } from "../../../../lib/hs-hotel-stays/types";
 
 const FACILITY_TYPES = ["facilities", "facility", "gyms", "venues", "gym rentals"];
 
@@ -63,6 +67,10 @@ export function WeekendSheet({
   contacts,
   options,
   knownTeams,
+  stays,
+  hotels,
+  directoryTeams,
+  canManageStays,
   dispatch,
   onClose,
   onSaved,
@@ -79,10 +87,14 @@ export function WeekendSheet({
   contacts: Map<string, HsContactRef>;
   options: HsContactOption[];
   knownTeams: TeamPick[];
+  stays: HotelStayView[];
+  hotels: HotelOption[];
+  directoryTeams: DirectoryTeam[];
+  canManageStays: boolean;
   dispatch: (a: ScheduleAction) => void;
   onClose: () => void;
   onSaved: (w: HsWeekend) => void;
-  // We host it (0134): its planning page, ticked here.
+  // We host it (0150): its planning page, ticked here.
   hosted?: boolean;
   onHosted?: (weekendId: string, hosted: boolean) => void;
 }) {
@@ -271,6 +283,14 @@ export function WeekendSheet({
 
       {weekend ? (
         <>
+          <HotelStayPanel
+            weekendId={weekend.id}
+            weekendEvent={weekend.event}
+            stays={stays}
+            hotels={hotels}
+            teams={directoryTeams}
+            canEdit={canManageStays}
+          />
           <GamesEditor weekend={weekend} levels={levels} games={games} dispatch={dispatch} onError={setError} />
           <TeamsEditor
             weekend={weekend}
@@ -371,7 +391,7 @@ function GamesEditor({
 
 // "We host this tournament": a weekend we run (the Missouri River Shootout)
 // gets a planning page for the facility, teams, court schedule, brackets,
-// money and emails (0134). Unticking keeps the plan for later.
+// money and emails (0150). Unticking keeps the plan for later.
 function HostedToggle({
   weekend,
   hosted,

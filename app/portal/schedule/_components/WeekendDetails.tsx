@@ -20,9 +20,13 @@ import {
 } from "../../../../lib/hs-schedule/logic";
 import type { PlacesNear } from "../../../../lib/hs-schedule/travel";
 import type { HsContactRef, HsGames, HsLevel, HsOpponent, HsWeekend } from "../../../../lib/hs-schedule/types";
+import type { HotelOption } from "../../../../lib/hs-hotel-stays/data";
+import type { HotelStayView } from "../../../../lib/hs-hotel-stays/types";
 import { Dot } from "./CellPopover";
 import { StatusChip } from "./status";
 import { TravelPlaces } from "./TravelPopover";
+import { HotelStayPanel } from "./HotelStayPanel";
+import type { DirectoryTeam } from "./SeasonSheet";
 
 export function WeekendDetails({
   weekend,
@@ -31,6 +35,10 @@ export function WeekendDetails({
   opponents,
   contacts,
   near,
+  stays,
+  hotels,
+  directoryTeams,
+  canManageStays,
   onClose,
 }: {
   weekend: HsWeekend;
@@ -40,6 +48,11 @@ export function WeekendDetails({
   contacts: Map<string, HsContactRef>;
   // The hotels and places to eat near it, on a weekend away.
   near: PlacesNear | null;
+  // Hotel stays linked to this weekend (0135).
+  stays: HotelStayView[];
+  hotels: HotelOption[];
+  directoryTeams: DirectoryTeam[];
+  canManageStays: boolean;
   onClose: () => void;
 }) {
   const playing = teamsPlaying(weekend.id, levels, games);
@@ -82,6 +95,15 @@ export function WeekendDetails({
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{weekend.details}</div>
         )}
       </div>
+
+      <HotelStayPanel
+        weekendId={weekend.id}
+        weekendEvent={weekend.event}
+        stays={stays}
+        hotels={hotels}
+        teams={directoryTeams}
+        canEdit={canManageStays}
+      />
 
       {near && (near.hotels.length > 0 || near.food.length > 0) && (
         <div style={{ display: "flex", flexDirection: "column", borderTop: "1px solid var(--gw-border)", paddingTop: 12 }}>

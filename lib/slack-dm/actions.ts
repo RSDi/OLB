@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 import { requireSlackDm, requireSlackSender } from "../auth/guards";
 import { getPreview } from "../activity/preview";
-import { ALL_RECIPIENTS, playerTarget, type Recipient } from "../teams/family-mail";
+import { ALL_RECIPIENTS, chosenFamilies, playerTarget, type Recipient } from "../teams/family-mail";
 import { readPlayers, wantedIds } from "../teams/read-players";
 import { getSlackConnection, hasDmScopes, removeSlackConnection, slackDmConfigured, type SlackConnection } from "./connection";
 import { DM_MAX, MAX_DMS, dmPeople, fillDm, slackText, type DmPerson } from "./recipients";
@@ -55,7 +55,11 @@ function pickRoles(recipients: unknown): Recipient[] {
 
 // The people picked among the players asked for, read under the caller's
 // own access.
-async function peopleFor(ids: unknown, recipients: unknown): Promise<{ people: DmPerson[]; noContact: string[] } | { error: string }> {
+async function peopleFor(
+  ids: unknown,
+  recipients: unknown,
+  familyIds?: unknown
+): Promise<{ people: DmPerson[]; noContact: string[] } | { error: string }> {
   const wanted = wantedIds(ids);
   if (wanted.length === 0) return { error: "Pick who to send it to." };
   const roles = pickRoles(recipients);
@@ -63,7 +67,17 @@ async function peopleFor(ids: unknown, recipients: unknown): Promise<{ people: D
   const db = await createClient();
   const players = await readPlayers(db, wanted);
   if (players.length === 0) return { error: "Those players aren't in the Directory any more. Refresh the page." };
-  const { people, noContact } = dmPeople(players.map(playerTarget), roles);
+  const targets = players.map(playerTarget);
+  if (familyIds !== undefined) {
+    const chosen = chosenFamilies(targets, (t) => t.contacts, roles, familyIds);
+    if (chosen.error) return { error: chosen.error };
+    const { people, noContact } = dmPeople(
+      chosen.groups.flatMap((g) => g.players),
+      roles
+    );
+    return { people, noContact: [...chosen.noEmail, ...noContact].map((t) => t.name) };
+  }
+  const { people, noContact } = dmPeople(targets, roles);
   return { people, noContact: noContact.map((t) => t.name) };
 }
 
@@ -72,6 +86,9 @@ export interface SlackCheck {
   name: string;
   roles: Recipient[];
   players: string[];
+  // The players' Directory ids, same order as `players`, so the window can
+  // drop a family without another Slack lookup.
+  playerIds: string[];
   // Their name in Slack; null when nobody in the workspace has that email.
   slack: string | null;
   // The sender themselves: no DM to yourself.
@@ -98,6 +115,7 @@ export async function checkSlackRecipients(ids: string[], recipients: Recipient[
         name: p.name,
         roles: p.roles,
         players: p.players.map((t) => t.first_name),
+        playerIds: p.players.map((t) => t.id),
         slack: user?.name || (user ? p.name : null),
         self: user?.id === r.connection.slackUserId,
       };
@@ -121,7 +139,13 @@ export interface SlackSendResult {
 // the sheet can show progress), each from the sender's own Slack, with
 // {name} and {player} filled in for them. A copy is kept on each player's
 // page.
-export async function sendSlackDms(ids: string[], recipients: Recipient[], body: string, emails: string[]): Promise<SlackSendResult> {
+export async function sendSlackDms(
+  ids: string[],
+  recipients: Recipient[],
+  body: string,
+  emails: string[],
+  familyIds: unknown
+): Promise<SlackSendResult> {
   const r = await ready();
   if ("error" in r) return { sent: [], missed: [], error: r.error };
   if ("status" in r) return { sent: [], missed: [], error: r.status.error ?? "Connect Slack first.", status: r.status };
@@ -129,7 +153,7 @@ export async function sendSlackDms(ids: string[], recipients: Recipient[], body:
   if (!text || text.length > DM_MAX) return { sent: [], missed: [], error: `Add a message (up to ${DM_MAX.toLocaleString()} characters).` };
   const only = new Set(Array.isArray(emails) ? emails.filter((e) => typeof e === "string") : []);
   if (only.size === 0 || only.size > 25) return { sent: [], missed: [], error: "Pick who to send it to." };
-  const found = await peopleFor(ids, recipients);
+  const found = await peopleFor(ids, recipients, familyIds ?? []);
   if ("error" in found) return { sent: [], missed: [], error: found.error };
   const people = found.people.filter((p) => only.has(p.email));
 

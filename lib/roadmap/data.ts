@@ -1,4 +1,4 @@
-// Roadmap reads (migration 0129). A failed read comes back as an error to
+// Roadmap reads (migrations 0129, 0136 and 0139). A failed read comes back as an error to
 // show, never as an empty board: "nothing here yet" looks just like a
 // working board with no items.
 
@@ -7,7 +7,30 @@ import { createAdminClient } from "../supabase/admin";
 import { keyOpens } from "../teams/public-directory-key";
 import type { RoadmapItem } from "./model";
 
-const ITEM_COLS = "id, title, description, area, status, released_on, created_at";
+const ITEM_COLS =
+  "id, title, description, area, status, released_on, preview_url, created_at, approved_by, approved_at, approver:members!approved_by(full_name)";
+
+function asItems(rows: unknown[] | null): RoadmapItem[] {
+  return (rows ?? []).map((raw) => {
+    const r = raw as RoadmapItem & {
+      approver?: { full_name: string | null } | { full_name: string | null }[] | null;
+    };
+    const approver = Array.isArray(r.approver) ? r.approver[0] : r.approver;
+    return {
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      area: r.area,
+      status: r.status,
+      released_on: r.released_on,
+      preview_url: r.preview_url,
+      created_at: r.created_at,
+      approved_by: r.approved_by ?? null,
+      approved_at: r.approved_at ?? null,
+      approved_by_name: approver?.full_name?.trim() || null,
+    };
+  });
+}
 
 export interface RoadmapData {
   items: RoadmapItem[];
@@ -31,7 +54,7 @@ export async function loadRoadmap(): Promise<RoadmapData> {
     return { items: [], linkKey: null, error: `The roadmap couldn't be loaded: ${failure.message}` };
   }
   return {
-    items: (items.data ?? []) as RoadmapItem[],
+    items: asItems(items.data),
     linkKey: (link.data as { key: string | null } | null)?.key ?? null,
     error: null,
   };
@@ -48,5 +71,5 @@ export async function loadPublicRoadmap(key: string): Promise<RoadmapData | null
     console.error("[loadPublicRoadmap]", error.message);
     return { items: [], linkKey: null, error: "The roadmap couldn't be loaded. Try again in a few minutes." };
   }
-  return { items: (data ?? []) as RoadmapItem[], linkKey: null, error: null };
+  return { items: asItems(data), linkKey: null, error: null };
 }

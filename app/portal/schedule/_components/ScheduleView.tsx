@@ -55,6 +55,8 @@ import { WeekendSheet } from "./WeekendSheet";
 import { WeekendDetails } from "./WeekendDetails";
 import { TravelChip, TravelPopover } from "./TravelPopover";
 import { placesNear, type PlacesNear, type TravelPlace } from "../../../../lib/hs-schedule/travel";
+import type { HotelOption } from "../../../../lib/hs-hotel-stays/data";
+import type { HotelStayView } from "../../../../lib/hs-hotel-stays/types";
 import { FilterMenu, FilterMultiSelect, FilterSelect, MenuAction, MenuHeading, MenuRow, type MultiOption } from "../../../components/FilterControls";
 
 export interface CompareWeekend {
@@ -77,11 +79,14 @@ export function ScheduleView({
   compare,
   isStaff,
   canEdit,
+  canManageStays,
   options,
   knownTeams,
   directoryTeams,
   travelPlaces,
   hostedIds,
+  hotelStays,
+  hotels,
   today,
 }: {
   schedule: HsSeasonSchedule;
@@ -90,13 +95,17 @@ export function ScheduleView({
   isStaff: boolean;
   // The board and the coaches change it; the travel coordinator only looks.
   canEdit: boolean;
+  // Travel (and the board) manage hotel stays on weekends (0135).
+  canManageStays: boolean;
   options: HsContactOption[];
   knownTeams: TeamPick[];
   directoryTeams: DirectoryTeam[];
   // Hotels and places to eat, for where to stay and eat on weekends away.
   travelPlaces: TravelPlace[];
-  // The weekends we host (0134): a "We host" link to each one's planning page.
+  // The weekends we host (0150): a "We host" link to each one's planning page.
   hostedIds: string[];
+  hotelStays: HotelStayView[];
+  hotels: HotelOption[];
   today: string;
 }) {
   const router = useRouter();
@@ -941,6 +950,10 @@ export function ScheduleView({
           opponents={state.opponents}
           contacts={contacts}
           near={nearBy.get(sheetWeekend.id) ?? null}
+          stays={hotelStays.filter((s) => s.weekend_id === sheetWeekend.id)}
+          hotels={hotels}
+          directoryTeams={directoryTeams}
+          canManageStays={canManageStays}
           onClose={() => setSheet(null)}
         />
       )}
@@ -956,6 +969,10 @@ export function ScheduleView({
           contacts={contacts}
           options={options}
           knownTeams={known}
+          stays={sheetWeekend ? hotelStays.filter((s) => s.weekend_id === sheetWeekend.id) : []}
+          hotels={hotels}
+          directoryTeams={directoryTeams}
+          canManageStays={canManageStays}
           dispatch={dispatch}
           onClose={() => setSheet(null)}
           onSaved={(w) => setSheet({ kind: "weekend", id: w.id })}
@@ -1151,7 +1168,7 @@ function WeekendRow({
   flash: boolean;
   // "This weekend" or "Next" by the date, for the one we're in or coming up.
   nowTag: string | null;
-  // We host it (0134): a link to its planning page.
+  // We host it (0150): a link to its planning page.
   hosted: boolean;
   // The season's usual days ("Thu–Sat"): a weekend on other days says so.
   usualDays: string;
@@ -1317,7 +1334,7 @@ function cellRecord(opps: HsOpponent[], levelId: string): string | null {
 }
 
 // "This weekend" / "Next", under a weekend's dates.
-// A weekend we host (0134): "We host", to its planning page.
+// A weekend we host (0150): "We host", to its planning page.
 function HostedLink({ id }: { id: string }) {
   return (
     <Link

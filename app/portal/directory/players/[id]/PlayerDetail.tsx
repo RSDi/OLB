@@ -5,6 +5,7 @@ import { Icons } from "../../../../components/icons";
 import { MapLink } from "../../../../components/MapLink";
 import { Pill } from "../../../../components/ui";
 import { ageFromDob } from "../../../../../lib/teams/age";
+import { agesOutLabel, playerEligibility, type EligibilityContext } from "../../../../../lib/teams/eligibility";
 import { teamLabel } from "../../../../../lib/teams/volunteer-options";
 import { indexRows, rowKey } from "../../../../../lib/requirements/logic";
 import type { PlayerRequirement, Requirement } from "../../../../../lib/requirements/types";
@@ -44,6 +45,8 @@ export function PlayerDetail({
   player: p,
   siblings,
   isStaff,
+  canSeeBirthdates,
+  eligibility,
   requirements,
   requirementRows,
   payments,
@@ -57,6 +60,8 @@ export function PlayerDetail({
   player: DirectoryPlayer;
   siblings: DirectoryPlayer[];
   isStaff: boolean;
+  canSeeBirthdates: boolean;
+  eligibility: EligibilityContext | null;
   requirements: Requirement[];
   requirementRows: PlayerRequirement[];
   // The family's charges and payments, when this viewer may see them.
@@ -85,14 +90,21 @@ export function PlayerDetail({
     [payments, p.id]
   );
 
-  const age = ageFromDob(p.dob);
-  const born = formatDate(p.dob);
+  const age = canSeeBirthdates ? ageFromDob(p.dob) : null;
+  const born = canSeeBirthdates ? formatDate(p.dob) : null;
+  const info =
+    canSeeBirthdates && eligibility
+      ? playerEligibility(p.dob, p.team?.age_group ?? p.age_group, eligibility.seasonEndsOn, eligibility.caps)
+      : null;
   const addr = playerAddress(p);
   // Left off when it's a parent's: it shows with them below.
   const ownEmail = playerOwnEmail(p);
   const facts = [
     age != null && `Age ${age}`,
     born && `Born ${born}`,
+    info?.ageAtSeasonEnd != null && `Age ${info.ageAtSeasonEnd} at season end`,
+    info?.lowestLevel && `Eligible ${info.lowestLevel}`,
+    canSeeBirthdates && !p.dob && "No birthday on file",
     (p.age_group ?? p.team?.age_group) && `${p.age_group ?? p.team?.age_group}`,
   ].filter(Boolean);
   const staffFacts = [
@@ -126,6 +138,11 @@ export function PlayerDetail({
             <span className="rsd-chip rsd-chip-mute">No team yet</span>
           )}
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
+          {canSeeBirthdates && info?.agesOut && (
+            <span className="rsd-chip rsd-chip-error" data-tour="player-ages-out" title={`Ages out of ${info.agesOut.level}`}>
+              {agesOutLabel(info.agesOut.on)}
+            </span>
+          )}
           {isStaff && !p.waiver_signed && <span className="rsd-chip rsd-chip-error">No waiver</span>}
           {!p.directory_optin && <span className="rsd-chip rsd-chip-mute">Not in directory</span>}
           {(canEmail || canSlack || teams) && (

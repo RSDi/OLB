@@ -1,0 +1,121 @@
+/* Same 52px field treatment as the guest /t/ form, including the iOS Safari
+   date-input fixes from the Game date overflow PR. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.input {
+  box-sizing: border-box;
+  height: 52px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid var(--gw-border);
+  padding: 0 14px;
+  font-size: 16px;
+  line-height: 52px;
+  background: var(--gw-bg);
+  color: var(--gw-fg);
+}
+
+/* iOS Safari's native date field ignores height/padding and has a large
+   intrinsic min-width, so it overflowed the card and sat top-aligned. */
+.input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--gw-bg);
+  color: var(--gw-fg);
+  font-size: 16px;
+  line-height: 52px;
+}
+
+.input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gw-fg-muted);
+}
+
+.subLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gw-fg);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hint {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gw-fg-muted);
+  line-height: 1.35;
+}
+
+.scoreFields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scoreFields legend {
+  padding: 0;
+  margin: 0 0 2px;
+}
+
+.scoreRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.error {
+  margin: 0;
+  color: var(--gw-error);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.missing {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--gw-error);
+}

@@ -1,6 +1,6 @@
 "use server";
 
-// A tournament we host and Finances (0131, 0134): link the plan to its
+// A tournament we host and Finances (0131, 0150): link the plan to its
 // tournament in Finances (Budget → Tournaments we host), and send the plan's
 // estimate to the budget, so Finances shows MRS's costs and income beside
 // what's actually been paid and received. The Payments permission (the
@@ -106,7 +106,7 @@ export async function sendToBudget(weekendId: string): Promise<HostedResult> {
   const db = g.db;
   const { data: p } = await db.from("hs_hosted").select(PLAN_COLUMNS).eq("weekend_id", weekendId).maybeSingle();
   const plan = p as HostedPlan | null;
-  if (!plan) return { error: "Tournament planning isn't set up in the database yet (migration 0134)." };
+  if (!plan) return { error: "Tournament planning isn't set up in the database yet (migration 0150)." };
   if (!plan.finance_event_id) return { error: "Link the tournament to Finances first." };
   const { data: ev } = await db.from("olb_hosted_events").select("id, board_id, name").eq("id", plan.finance_event_id).maybeSingle();
   const event = ev as { id: string; board_id: string; name: string } | null;

@@ -260,7 +260,7 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
     .is("line.voided_at", null);
   if (lineCharges.error) throw new Error(`Loading team costs: ${lineCharges.error.message}`);
 
-  // The tournaments planned on the HS Schedule (0134), for a link to each
+  // The tournaments planned on the HS Schedule (0150), for a link to each
   // one's planning page. None before that migration.
   const eventRows = (events.data as HostedEvent[] | null) ?? [];
   const plans = eventRows.length

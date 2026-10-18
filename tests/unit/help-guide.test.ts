@@ -86,6 +86,9 @@ test("members only see the member sections", () => {
   const forMember = guideSectionsFor(MEMBER);
   assert.ok(forMember.length > 0);
   assert.ok(forMember.every((s) => s.audience === "everyone"));
+  assert.ok(forMember.some((s) => s.id === "settings-release-notes"));
+  // Settings' default "i" stays Members (staff); the Release Notes tab sets
+  // its own section. Members still read Release Notes in the User Guide.
   assert.equal(guideSectionForPath("/portal/settings", MEMBER), null);
   assert.equal(guideSectionForPath("/portal/contacts", MEMBER), null);
 });
@@ -105,7 +108,7 @@ test("coaches see the coaches' sections, other members don't", () => {
   assert.ok(forCoach.every((s) => s.audience === "everyone" || s.audience === "coaches"));
   assert.equal(guideSectionForPath("/portal/schedule", COACH)?.id, "hs-schedule");
   assert.equal(guideSectionForPath("/portal/contacts/abc", COACH)?.id, "external-contacts");
-  // A tournament we host has its own help (0134).
+  // A tournament we host has its own help (0150).
   assert.equal(guideSectionForPath("/portal/schedule/hosted/abc", COACH)?.id, "hosted-tournament");
   assert.equal(guideSectionForPath("/portal/schedule/hosted/abc", MEMBER), null);
   assert.ok(!guideSectionsFor(MEMBER).some((s) => s.audience === "coaches"));
@@ -115,9 +118,10 @@ test("coaches see the coaches' sections, other members don't", () => {
   assert.ok(!guideSectionsFor({ ...COACH, status: "pending" }).some((s) => s.audience === "coaches"));
 });
 
-test("emailing families reaches the board and the Registrations permission, not other members", () => {
+test("emailing families reaches the board, Registrations, and Travel, not other members", () => {
   const REGISTRAR: GuideViewer = { ...MEMBER, canManageRegistrations: true };
-  for (const v of [ADMIN, SUPER, REGISTRAR]) assert.ok(guideSectionsFor(v).some((s) => s.id === "email-families"));
+  const TRAVEL: GuideViewer = { ...MEMBER, canManageTravel: true };
+  for (const v of [ADMIN, SUPER, REGISTRAR, TRAVEL]) assert.ok(guideSectionsFor(v).some((s) => s.id === "email-families"));
   assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "email-families"));
   assert.ok(!guideSectionsFor({ ...MEMBER, canManageFinances: true, isCoach: true }).some((s) => s.id === "email-families"));
   assert.ok(!guideSectionsFor({ ...REGISTRAR, status: "pending" }).some((s) => s.id === "email-families"));
@@ -129,6 +133,12 @@ test("the travel coordinator reads the hotels section, and the board still gets 
   assert.equal(guideSectionForPath("/portal/contacts/abc/edit", TRAVEL)?.id, "travel-contacts");
   assert.ok(!guideSectionsFor(TRAVEL).some((s) => s.audience === "staff" || s.audience === "coaches"));
   assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "travel-contacts"));
+  // Hotel stays (0135), rooming-list import, plus email/Slack follow-ups.
+  assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "hotel-registration"));
+  assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "settings-hotel-import"));
+  assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "email-families"));
+  assert.ok(guideSectionsFor(TRAVEL).some((s) => s.id === "slack-dms"));
+  assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "hotel-registration"));
   // The board's "i" on External Contacts stays the main section.
   assert.equal(guideSectionForPath("/portal/contacts", ADMIN)?.id, "external-contacts");
   assert.ok(guideSectionsFor(SUPER).some((s) => s.id === "travel-contacts"));
@@ -166,6 +176,17 @@ test("a Board power given to a member brings its section, and only that one", ()
   assert.equal(guideSectionForPath("/portal/schedule", PLANNER)?.id, "hs-schedule");
   // A permission is ignored until the account is approved.
   assert.ok(!ids({ ...APPROVER, status: "pending" }).includes("settings-members"));
+});
+
+test("Game film reaches view or manage holders, not the rest of the board", () => {
+  const view: GuideViewer = { ...MEMBER, permissions: ["film_view"] };
+  const manage: GuideViewer = { ...MEMBER, permissions: ["film_manage"] };
+  assert.equal(guideSectionForPath("/portal/film", SUPER)?.id, "film");
+  assert.equal(guideSectionForPath("/portal/film", view)?.id, "film");
+  assert.equal(guideSectionForPath("/portal/film", manage)?.id, "film");
+  assert.equal(guideSectionForPath("/portal/film", ADMIN), null);
+  assert.equal(guideSectionForPath("/portal/film", MEMBER), null);
+  assert.ok(!guideSectionsFor({ ...view, status: "pending" }).some((s) => s.id === "film"));
 });
 
 test("a pending account is treated as a member", () => {

@@ -26,11 +26,15 @@ const outline = cx(styles.button, auth.action, auth.outline);
 export function LoginForm({
   status,
   urlError,
+  next,
 }: {
   // ?status= — where sign-up and sign-in send people who aren't approved yet.
   status: string | null;
   // ?error= — set by the auth callback when a sign-in link fails.
   urlError: string | null;
+  // Safe return-to from /pair/<id> (or Signed-in devices). Existing logins
+  // never send this, so they still land on /portal.
+  next: string | null;
 }) {
   const router = useRouter();
 
@@ -44,7 +48,7 @@ export function LoginForm({
   const [codeSent, setCodeSent] = useState(false);
   const [canResend, setCanResend] = useState(false);
 
-  async function checkMembersAndRedirect(next?: string) {
+  async function checkMembersAndRedirect(after?: string) {
     // Delegate to the server route: it bootstraps the admin from ADMIN_EMAILS
     // (if applicable), inserts a pending row for brand-new users, and returns
     // the resolved member status.
@@ -66,8 +70,13 @@ export function LoginForm({
       return;
     }
 
-    router.push(next ?? "/portal");
+    router.push(after ?? next ?? "/portal");
     router.refresh();
+  }
+
+  function authCallbackUrl() {
+    const base = `${window.location.origin}/auth/callback`;
+    return next ? `${base}?next=${encodeURIComponent(next)}` : base;
   }
 
   async function handleSlack() {
@@ -75,9 +84,12 @@ export function LoginForm({
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "slack_oidc",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: authCallbackUrl(),
+      },
     });
     // On success the browser redirects to Slack and back through /auth/callback.
+    // Supabase often strips ?next= from redirectTo; olb_return_to is the backup.
     if (error) setError(friendlyAuthError(error.message));
   }
 
@@ -122,7 +134,12 @@ export function LoginForm({
     // folks go through Request access so the approval flow holds.
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: false },
+      options: {
+        shouldCreateUser: false,
+        // The in-email button is a magic link. Without this, it lands on
+        // /auth/callback with no next and the phone goes to /portal.
+        ...(next ? { emailRedirectTo: authCallbackUrl() } : {}),
+      },
     });
     setPending(null);
     if (otpError) {
@@ -314,6 +331,12 @@ export function LoginForm({
           <button type="button" onClick={() => enterCodeMode(false)} disabled={pending !== null} className={outline}>
             Email me a sign-in code
           </button>
+
+          <Or />
+
+          <Link href="/login/phone" className={outline} data-tour="sign-in-with-phone">
+            Sign in with phone
+          </Link>
         </>
       )}
 

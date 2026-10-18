@@ -1,9 +1,9 @@
 "use server";
 
-// Server actions for a tournament we host (0134): the checklist, divisions
+// Server actions for a tournament we host (0150): the checklist, divisions
 // and teams, brackets and pools, filling the courts, the budget estimate and
 // the email to the programs coming. The HS Schedule's planners (coaches and
-// the board: requireHsPlanner, and RLS from 0134) — everything runs as the
+// the board: requireHsPlanner, and RLS from 0150) — everything runs as the
 // viewer. Sending the estimate to Finances is ./finance-actions.ts.
 
 import { revalidatePath } from "next/cache";
@@ -49,7 +49,7 @@ import { loadHostedPage } from "./data";
 type Db = Awaited<ReturnType<typeof createClient>>;
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
-const MIGRATION = "Tournament planning isn't set up in the database yet (migration 0134).";
+const MIGRATION = "Tournament planning isn't set up in the database yet (migration 0150).";
 
 function refresh(weekendId: string) {
   revalidatePath(`/portal/schedule/hosted/${weekendId}`);

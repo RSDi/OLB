@@ -10,6 +10,7 @@
 //   if ("error" in gate) return { error: gate.error };
 
 import { createClient } from "../supabase/server";
+import { listFilmManagerTeamIds } from "../film/teams";
 import { loadGrants } from "./load-grants";
 import {
   isStaff,
@@ -21,6 +22,7 @@ import {
   canManageRegistrations,
   canManageUniforms,
   canManageTravel,
+  canEmailFamilies,
   canSlackDm,
   canManageWebsite,
   canMemberNotes,
@@ -29,6 +31,8 @@ import {
   canEditContacts,
   canManageTeams,
   canManageSiteLinks,
+  canViewFilm,
+  canManageFilm,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -134,13 +138,25 @@ export async function requireUniforms(): Promise<GateResult> {
   return { userId: caller.userId };
 }
 
-// Emailing families from the Directory (0116): the board, or anyone with the
-// Registrations grant.
+// Hotel stays on the HS Schedule (0135): the board, or Travel.
+export async function requireTravelOrStaff(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!isStaff(caller.member) && !canManageTravel(caller.member)) {
+    return { error: "Only the board and the travel coordinator can manage hotel stays." };
+  }
+  return { userId: caller.userId };
+}
+
+// Emailing families from the Directory (0116): the board, Registrations, or
+// Travel (0134 hotel follow-ups).
 export async function requireFamilyEmail(): Promise<GateResult> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };
-  if (!isStaff(caller.member) && !canManageRegistrations(caller.member)) {
-    return { error: "Only the board and people with the Registrations permission can email families." };
+  if (!canEmailFamilies(caller.member)) {
+    return {
+      error: "Only the board and people with the Registrations or Travel permission can email families.",
+    };
   }
   return { userId: caller.userId };
 }
@@ -195,8 +211,8 @@ export async function requirePlayerNotes(): Promise<GateResult> {
   return { userId: caller.userId };
 }
 
-// Checking players off on requirements: the board, or anyone with the Check
-// off requirements permission (0123).
+// Checking players off on requirements: the board, Check off requirements
+// (0123), or Travel (0134).
 export async function requireRequirementChecks(): Promise<GateResult> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };
@@ -222,6 +238,35 @@ export async function requireSiteLinks(): Promise<GateResult> {
   if (!caller) return { error: "You must be signed in." };
   if (!canManageSiteLinks(caller.member)) {
     return { error: "You don't have permission to change the sidebar links or the public Directory." };
+  }
+  return { userId: caller.userId };
+}
+
+// Game film inbox (0142): list/download vs mark moved/delete.
+// allTeams = global film_view / film_manage; otherwise teamIds are the
+// teams this person is a video manager for.
+export type FilmAccess = { userId: string; allTeams: boolean; teamIds: string[] };
+
+export async function requireFilmAccess(): Promise<{ error: string } | FilmAccess> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (canViewFilm(caller.member)) return { userId: caller.userId, allTeams: true, teamIds: [] };
+  const teamIds = await listFilmManagerTeamIds(caller.userId);
+  if (teamIds.length === 0) return { error: "You don't have permission to view game film." };
+  return { userId: caller.userId, allTeams: false, teamIds };
+}
+
+export async function requireFilmView(): Promise<GateResult> {
+  const access = await requireFilmAccess();
+  if ("error" in access) return access;
+  return { userId: access.userId };
+}
+
+export async function requireFilmManage(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canManageFilm(caller.member)) {
+    return { error: "You don't have permission to change game film." };
   }
   return { userId: caller.userId };
 }

@@ -1,6 +1,6 @@
--- 0134_hosted_tournaments_down.sql
+-- 0150_hosted_tournaments_down.sql
 --
--- Removes the hosted-tournament plans (0134). Kept outside
+-- Removes the hosted-tournament plans (0150). Kept outside
 -- supabase/migrations so it never runs by accident. Run it in the Supabase
 -- SQL editor only after the code is gone.
 --

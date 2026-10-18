@@ -32,6 +32,10 @@ interface NavItem {
   contactsOnly?: boolean;
   // Guided-tour anchor (lib/help/tours.ts).
   tour?: string;
+  // Sign in with phone: PAIRING_ALLOWED_EMAILS (Jeff, unless the env is set).
+  pairingOnly?: boolean;
+  // Game film inbox: film_view or film_manage (0142). Super-admins always.
+  filmOnly?: boolean;
 }
 
 // Slimmed nav (2026-06): "Make a Request" lives on the Dashboard; Review + PM
@@ -50,15 +54,17 @@ const NAV: NavItem[] = [
   // coaches read the types shared with them (Settings → Contact Types), and
   // the travel coordinator keeps the hotels and places to eat.
   { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, contactsOnly: true, tour: "nav-contacts" },
-  // What's live, being built, planned, and ideas (lib/roadmap). Preview.
+  // What's live, in preview, being built, planned, and ideas (lib/roadmap). Preview.
   { href: "/portal/roadmap", label: "Roadmap", icon: <Icons.Sparkles width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/>, tour: "nav-playbooks" },
+  { href: "/portal/film", label: "Film", icon: <Icons.Video width={16} height={16}/>, filmOnly: true, tour: "nav-film" },
   // Every family's balance for the Treasurer (the Payments grant); a parent's
   // own balance once the Treasurer turns that on.
   { href: "/portal/payments", label: "Payments", icon: <Icons.Give width={16} height={16}/>, paymentsOnly: true, tour: "nav-payments" },
-  // Board can view Settings; editing is gated per grant inside.
+  // Every approved member: Release Notes, plus any tabs their permissions add.
   // Pinned to the bottom of the nav (BOTTOM_HREFS).
-  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, staffOnly: true, tour: "nav-settings" },
+  { href: "/portal/devices", label: "Signed-in devices", icon: <Icons.Phone width={16} height={16}/>, pairingOnly: true, tour: "nav-devices" },
+  { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, approvedOnly: true, tour: "nav-settings" },
   // Slack Channel Archive: siloed feature, super-admin-only for now.
   { href: "/portal/slack-archive", label: "Slack Archive", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
@@ -100,15 +106,18 @@ export interface SidebarViewer {
   canSlackDm?: boolean;
   // The Website grant (0120): for the guide's Settings: Website section.
   canManageWebsite?: boolean;
-  // Board, or holds a permission whose page is in Settings (0123): sees the
-  // Settings item, and the pending badge when they can approve.
+  // Approved member: sees Settings (Release Notes, plus granted tabs), and
+  // the pending badge when they can approve.
   canOpenSettings?: boolean;
   // The External Contacts and Plan HS Schedule permissions (0123), on top of
   // the board, coaches and the travel coordinator.
   canEditContacts?: boolean;
   canPlanHsSchedule?: boolean;
+  canViewFilm?: boolean;
   // Every permission key they hold (0122), for the guide.
   permissions?: string[];
+  // PAIRING_ALLOWED_EMAILS: Signed-in devices.
+  canPairDevices?: boolean;
 }
 
 interface PortalSidebarProps {
@@ -160,7 +169,9 @@ export function PortalSidebar({
   const planner = isStaff || isCoach || travel || !!viewer?.canPlanHsSchedule;
   const contacts = isStaff || isCoach || travel || !!viewer?.canEditContacts;
   const seesFinances = viewer?.seesFinances ?? false;
-  const visibleItems = navItems.map(item => (item.href === "/portal/payments" && seesFinances ? { ...item, label: "Finances" } : item)).filter(item => (!item.staffOnly || settings) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts));
+  const pairing = viewer?.canPairDevices ?? false;
+  const film = viewer?.canViewFilm ?? false;
+  const visibleItems = navItems.map(item => (item.href === "/portal/payments" && seesFinances ? { ...item, label: "Finances" } : item)).filter(item => (!item.staffOnly || settings) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts) && (!item.pairingOnly || pairing) && (!item.filmOnly || film));
   const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
   const bottomItems = BOTTOM_HREFS
     .map(href => visibleItems.find(item => item.href === href))

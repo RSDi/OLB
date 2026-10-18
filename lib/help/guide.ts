@@ -24,9 +24,10 @@ import type { MemberRole, MemberStatus } from "../auth/permissions";
 // the coaches (a leadership volunteer role on a team) and the board;
 // "finance" = anyone with the Payments grant; "registrations" = anyone with
 // the Registrations grant; "travel" = anyone with the Travel grant (the
-// travel coordinator); "messaging" = the board and the Registrations grant,
-// who can email families from the Directory; "slack" = anyone with the Slack
-// DMs grant; "website" = board members with the Website grant. Super-admins always have all of them. The guide hides a section
+// travel coordinator); "messaging" = the board, the Registrations grant, and
+// Travel, who can email families from the Directory; "slack" = anyone with
+// the Slack DMs grant or Travel; "website" = board members with the Website
+// grant. Super-admins always have all of them. The guide hides a section
 // from anyone it doesn't apply to.
 export type GuideAudience = "everyone" | "coaches" | "staff" | "finance" | "registrations" | "travel" | "messaging" | "slack" | "website" | "super_admin";
 
@@ -49,6 +50,9 @@ export interface GuideSection {
   // whatever `audience` says: the help for a Board power given to someone
   // who isn't Board (0123).
   permission?: string;
+  // Extra permission keys that also reveal this section, e.g. Game film
+  // (manage) includes view.
+  alsoPermissions?: string[];
   body: string;
 }
 
@@ -76,7 +80,7 @@ export interface GuideViewer {
   permissions?: string[];
 }
 
-export const GUIDE_UPDATED = "October 2026";
+export const GUIDE_UPDATED = "October 18, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -84,7 +88,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: "Signing in",
     group: "Getting started",
     audience: "everyone",
-    keywords: ["login", "log in", "sign in", "password", "forgot", "reset", "code", "slack", "register", "request access", "pending", "approved", "denied", "account"],
+    keywords: ["login", "log in", "sign in", "password", "forgot", "reset", "code", "slack", "register", "request access", "pending", "approved", "denied", "account", "phone", "QR", "pair"],
     body: `The member portal is for Omaha Lightning families, coaches and the board. Use the **Login** button at the top of the club website (or the **Login** link at the bottom), or go straight to the login page.
 
 **Three ways to sign in**
@@ -92,6 +96,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **Continue with Slack** — the quickest. If you're in the club's Slack workspace, this gets you in right away, even if you're new.
 - **Email and password** — the account you created when you requested access.
 - **Email me a sign-in code** — no password needed. Enter your email, we email you a code, type it in and you're in. (If the email shows a sign-in button instead of a code, tapping the button works too.) Codes only work for email addresses that already have an account.
+
+**Sign in with phone** is an extra button on the login page for a screen that can't type easily (a car browser). It shows a QR code and a short code like **WDJB-MJHT**. Scan the QR with your phone. If you're not signed in there, you'll see the login page first — **Continue with Slack**, email and password, or **Email me a sign-in code** (including the button in the email) all bring you back to the approve page, not the portal. Pick the matching code, then tap **Approve** or **Deny**. After **Approve**, the other screen signs in by itself. Only an allowlisted account can approve (Jeff, unless Settings change that). Slack, email and password still work the same for everyone.
 
 **Forgot your password?** Tap **Forgot password?** next to the Password label. We'll email you a code; type it in, then choose a new password (at least 8 characters).
 
@@ -115,6 +121,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 
 - **Directory** — players, parents, teams, coaches and volunteers.
 - **Playbooks** — how-to guides and step-by-step checklists.
+- **Film** — game videos families uploaded from their phones. It appears if you have the **Game film** permission.
 - **Payments** — what you owe for the season and what you've paid. It appears once the Treasurer has your family's balance ready.
 - **Slack Archive** — past messages, photos and files from the club's Slack.
 - **User Guide** — this page, near the bottom of the sidebar.
@@ -255,19 +262,22 @@ The tabs across the top are **Calendar**, **Year**, **Review** and **Template**.
     group: "Directory",
     audience: "everyone",
     routes: ["/portal/directory"],
-    keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "profile", "family", "search"],
+    keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "profile", "family", "search", "coaches & volunteers", "volunteers", "open spot", "scorekeeper", "clock", "photographer", "eligible", "ages out", "swing up", "play up", "birthday", "season end"],
     body: `This season's players and their parents, grouped by team.
 
 - **Search** by player, parent, email or phone number (type 3 or more digits to match a phone).
 - Pick a team from the **All teams** drop-down to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed. The number next to each team is how many players are on it.
 - Coaches, other team leaders and board members can switch between **By team** and **By age group** (10U–18U), then pick one from the **All ages** drop-down.
-- Each player shows their jersey number, team, age and birthday, address, and their parents' phone and email. A player's own email shows too, unless it's the same as a parent's. A **New** chip means it's their first season with us.
+- Each player shows their jersey number, team, address, and their parents' phone and email. A player's own email shows too, unless it's the same as a parent's. A **New** chip means it's their first season with us.
+- **For the board.** Each player also shows their age and birthday, the lowest level they're eligible for through the **Season end date**, and an **Ages out** chip when they're rostered on a level they age out of (for example **Ages out 10/25/26**). Pick a team from **Available to swing up** to list younger players who can play up to that team, and older players still age-eligible to move down, with age at season end and current team. Tick **Hide if their team plays the same weekend** to drop anyone whose own team already has a game that weekend on the HS Schedule. Age caps live in **Settings → Season**.
 - Tap an address and pick **Apple Maps** or **Google Maps** to get directions.
 - Tap a player's name to open their player page, a parent's name to open their profile, and **Team page ›** to open a team's full page.
 
 **Who's listed.** Players appear when their family said yes to being in the directory on the registration form. If your family said no, you still see your own players, marked **Not in directory**; other families don't.
 
-**Public directory.** The same players and parents are also on a read-only page on the club website that opens without signing in, for anyone given its private link. Only people with the link can find it, and super-admins manage the link in **Settings → Public Directory**. It lists only families who said yes to the directory, shows no fees or payment details, and can be grouped **Alphabetical** (the default), **By city**, **By team** or **By age group**. Each group's heading says how many players are in it, like **B · 4 players**. Once you scroll down, the yellow arrow in the bottom-right corner takes you back to the top. It shows each player's age (not their birthday) and their city and ZIP code (not their street address).
+**Public directory.** The same players and parents are also on a read-only page on the club website that opens without signing in, for anyone given its private link. Only people with the link can find it, and super-admins manage the link in **Settings → Public Directory**. It lists only families who said yes to the directory, shows no fees or payment details, and can be grouped **Alphabetical** (the default), **By city**, **By team**, **By age group** or **Coaches & Volunteers**. Each group's heading says how many players are in it, like **B · 4 players**. Once you scroll down, the yellow arrow in the bottom-right corner takes you back to the top. It shows each player's age (not their birthday) and their city and ZIP code (not their street address).
+
+Under **By team**, each team's coaches are listed above the players, with their phone and email. **Volunteers** under them stays closed until you tap it (tap again to close it). The closed row names who already has a job, and how many are still open. Open it for scorekeeper, clock, photographer and any other job the club adds later. A job with nobody in it says **Open Spot**. A filled one shows the person's name, phone and email. **Coaches & Volunteers** shows the same list for every team, with **Volunteers** closed the same way. The registration form does not show who has these jobs. It only asks whether you can help, and the board assigns the spots.
 
 **Profiles.** A member's profile shows their photo, phone, email, birthday and address (tap it for **Apple Maps** or **Google Maps**), plus their players and family. Your own profile has **✎ Edit profile** — see *Your profile* below.`,
   },
@@ -292,10 +302,10 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     group: "Directory",
     audience: "everyone",
     routes: ["/portal/directory/players"],
-    keywords: ["player", "player page", "kid", "child", "son", "siblings", "brother", "sister", "parents", "mom", "dad", "balance", "payments", "fees"],
+    keywords: ["player", "player page", "kid", "child", "son", "siblings", "brother", "sister", "parents", "mom", "dad", "balance", "payments", "fees", "eligible", "ages out", "birthday"],
     body: `Everything about one player in one place. Open it by tapping a player's name in the Directory, on a team page, on a parent's profile, or on the Finances page.
 
-- **The top** shows their jersey number, team (tap it to open the team page), age and birthday, address, and the player's own phone and email (their email is left off when it's the same as a parent's, since it shows with that parent). A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**.
+- **The top** shows their jersey number, team (tap it to open the team page), address, and the player's own phone and email (their email is left off when it's the same as a parent's, since it shows with that parent). A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**. The board also sees their age and birthday, the lowest level they're eligible for through the season end date, and **Ages out** when they're rostered on a level they age out of.
 - **Parents** lists each parent with their phone and email. Tap a parent's name to open their profile. **Siblings** links to their brothers' and sisters' pages.
 - **Payments** shows what the family owes and has paid, with each charge and payment. You see it for your own kids once the Treasurer has opened balances to families, and the Treasurer sees it for everyone.
 
@@ -324,7 +334,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **The waitlist.** The **Waitlist** tab lists those families in the order they registered, with who put them there, when, and the note (**Edit note** changes it).
 
-- **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. Pick who it goes to: for one family, tick **Dad**, **Mom** and the **Player** (when they have their own email); for everyone, tick **Dads**, **Moms** and **Players**. All are ticked to start. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. For one family the player's name is already in the message; for everyone, **{player}** becomes each family's player names, and a preview shows how it reads. The message starts from the board's **Waitlist: teams are full** template (change its words in Settings → Email Templates), and **Template** swaps in any other. A copy is kept on the registration under **Messages sent**.
+- **Message everyone** writes one email to every family on the waitlist; **Send a message** on a registration writes to just that family. Pick who it goes to: for one family, tick **Dad**, **Mom** and the **Player** (when they have their own email); for everyone, tick **Dads**, **Moms** and **Players**, then tick the families themselves (every family is ticked to start; **Select all / none** ticks every family or none). It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. For one family the player's name is already in the message; for everyone, **{player}** becomes each family's player names, and a preview shows how it reads. The message starts from the board's **Waitlist: teams are full** template (change its words in Settings → Email Templates), and **Template** swaps in any other. A copy is kept on the registration under **Messages sent**.
 - **Contacted** marks that someone has reached out, with the date and who, so two people don't both call. Sending a message ticks it for you.
 - **Email from my app** opens your own email app addressed to the parents instead. **Copy all emails** copies every parent's email to paste into Bcc, and **Download spreadsheet** saves the waitlist as a file for Excel or Google Sheets.
 - The Directory has the same thing for players already on the roster: see *Emailing families*.
@@ -404,14 +414,14 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
     title: "Emailing families",
     group: "Directory",
     audience: "messaging",
-    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "messages sent", "template", "templates", "primary email", "same email", "{player}"],
-    body: `You see this if you're on the board or have the **Registrations** permission.
+    keywords: ["email", "message", "families", "parents", "dad", "mom", "guardian", "player email", "team email", "announcement", "reminder", "send", "missing", "hotel", "hotel registration", "messages sent", "template", "templates", "primary email", "same email", "{player}", "select all", "untick"],
+    body: `You see this if you're on the board, or have the **Registrations** or **Travel** permission.
 
-**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: pick a team or **No team yet**, pick an age group, search, or pick a requirement and **Missing** to remind just the families who still need it. The top of the window says who it's going to, and **see who gets it** lists each family.
+**Email the players in view.** On the Directory, **Email families** (next to how many players are showing) writes to the families of the players the list shows right now. Narrow it first: pick a team or **No team yet**, pick an age group, search, pick a requirement (like the handbook) and **Missing**, or pick a **hotel stay** (Regionals, Nationals…) and **Not yet known** to remind just the families who still need to book. The top of the window says who it's going to. Tap **see who gets it** (the ▶) to open the list of families. Every family is ticked to start; untick one to leave them out. **Select all / none** ticks every family or none. The count of families updates as you tick, and changing **Dads**, **Moms** or **Players** (or the Directory filters) starts the ticks over.
 
 **Email one family.** On a player's page, **Email family** writes to just that player's family.
 
-**Who gets it.** For one family, tick each person: **Dad**, **Mom**, a **Guardian**, and the **Player** when they have their own email. For several, tick **Dads**, **Moms** and **Players** (and **Guardians** when anyone has one). All are ticked to start. When a player's email is the same as a parent's, it's listed once, on that parent, marked **Primary email**. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. If a family has no email for the people picked, the window names them so you can reach them another way.
+**Who gets it.** For one family, tick each person: **Dad**, **Mom**, a **Guardian**, and the **Player** when they have their own email. For several, tick **Dads**, **Moms** and **Players** (and **Guardians** when anyone has one), then tick the families themselves. All are ticked to start. When a player's email is the same as a parent's, it's listed once, on that parent, marked **Primary email**. It's sent from the club's email address, one email per family (brothers and sisters get one between them), and replies go to the club's Gmail. If a family has no email for the people picked, the window names them so you can reach them another way.
 
 **Templates.** Pick one from **Template** to fill in the subject and message, then change anything you like. The board writes them in **Settings → Email Templates**.
 
@@ -424,18 +434,18 @@ In the Directory, a player with notes has a **1 note** (or **2 notes**…) chip 
     title: "Slack DMs to families",
     group: "Directory",
     audience: "slack",
-    keywords: ["slack", "dm", "direct message", "message", "families", "parents", "dad", "mom", "remind", "reminder", "missing", "handbook", "connect slack", "disconnect", "reply", "replies", "{name}", "{player}"],
-    body: `You see this if a super-admin turned on **Slack DMs** for you in **Settings → Members**: board members, coaches, the travel coordinator, anyone the club picks.
+    keywords: ["slack", "dm", "direct message", "message", "families", "parents", "dad", "mom", "remind", "reminder", "missing", "handbook", "connect slack", "disconnect", "reply", "replies", "{name}", "{player}", "select all", "untick"],
+    body: `You see this if you have the **Travel** permission, or a super-admin turned on **Slack DMs** for you in **Settings → Members**: board members, coaches, the travel coordinator, anyone the club picks.
 
 **What it does.** Sends the parents of the players you pick a Slack direct message **from you**, one to each person, never a group DM. It looks just like a message you typed yourself, so when a parent replies, the reply comes straight to you in Slack.
 
 **Connect Slack, once.** The first time, **Slack families** asks you to **Connect Slack**. A Slack window opens; tap **Allow** and it closes by itself. After that the portal can send DMs for you. To stop, tap **Disconnect Slack** at the top of the window.
 
-**Slack the players in view.** On the Directory, **Slack families** (next to **Email families**, when you have both) writes to the families of the players the list shows right now. Narrow it first: tap a team, pick an age group, search, or (for the board) pick a requirement like the handbook and **Missing**, so only the families who still need it hear from you.
+**Slack the players in view.** On the Directory, **Slack families** (next to **Email families**, when you have both) writes to the families of the players the list shows right now. Narrow it first: tap a team, pick an age group, search, pick a requirement like the handbook and **Missing**, or pick a **hotel stay** and **Not yet known**, so only the families who still need it hear from you.
 
 **Slack one family.** On a player's page, **Slack family** writes to just that player's parents.
 
-**Who gets it.** Tick **Dads**, **Moms**, **Guardians** and **Players**. The window looks each person up in the club's Slack by the email on file and lists them: a ✓ means they're on Slack and get a DM, a ✗ means no Slack account uses their email. A parent of brothers and sisters gets one DM about all of them. Nobody gets a DM from themselves. You can send up to 150 DMs at a time.
+**Who gets it.** Tick **Dads**, **Moms**, **Guardians** and **Players**. Then tap **see who gets it** (the ▶) to open the list of families: every family is ticked to start, untick one to leave them out, and **Select all / none** ticks every family or none. Changing **Dads**, **Moms** or **Players** (or the Directory filters) starts the ticks over. The window looks each person up in the club's Slack by the email on file and lists them: a ✓ means they're on Slack and get a DM, a ✗ means no Slack account uses their email. A parent of brothers and sisters gets one DM about all of them. Nobody gets a DM from themselves. You can send up to 150 DMs at a time.
 
 **Writing it.** **{name}** becomes each person's first name and **{player}** their players' names, so *Hi {name}, we still need {player}'s handbook. Can you send it over?* reads as *Hi Sarah, we still need Sam's handbook. Can you send it over?* A preview shows how it reads for the first person. **Template** fills the message in from one of the board's email templates.
 
@@ -467,8 +477,8 @@ You can only Slack the families of players you can see in the Directory. Slack D
     group: "Directory",
     audience: "staff",
     permission: "player_requirements",
-    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "fee", "fees", "paid", "owes", "waived", "scan", "scanner", "camera", "auto", "pdf", "heic", "iphone photo", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
-    body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, a tournament fee, a form. Only the board sees any of this.
+    keywords: ["requirements", "handbook", "signature", "signed", "signature page", "hotel", "hotel registration", "booked", "room block", "fee", "fees", "paid", "owes", "waived", "scan", "scanner", "camera", "auto", "pdf", "heic", "iphone photo", "upload", "photo", "missing", "collected", "checklist", "forms", "walkthrough", "show me how"],
+    body: `Keep track of what each player has handed in or paid — the signed last page of the handbook, hotel registration, a tournament fee, a form. The board sees this; the travel coordinator (the **Travel** permission) does too, so they can mark hotel registration and follow up.
 
 **On each player.** In the **Directory**, every player has a chip for each requirement that applies to them:
 
@@ -476,9 +486,11 @@ You can only Slack the families of players you can see in the Directory. Slack D
 - A green chip with a check means it's done or paid. A little page icon means a scan is attached.
 - A grey **waived** chip means you've excused them.
 
+**Hotel stays** (Regionals, Nationals, weekend trips) are separate from this list — the travel coordinator sets them on each HS Schedule weekend and tracks **Booked in block** in the Directory (see *Hotel stays*).
+
 **Checking a player off.** Tap the chip. Pick **Done** (**Paid** for a fee), **Waived** or **Not yet**, set the date, and add a **Note** if it helps (a check number, say). Then tap **Save**.
 
-**Scans.** When a requirement offers it, you can attach a copy of what you collected. Scans are private to the board.
+**Scans.** When a requirement offers it, you can attach a copy of what you collected. Scans are private to people who can check requirements off.
 
 - **Scan with camera** works like the scanner built into your phone. Point the camera at the page and hold still: once the yellow outline finds it, the ring around the round button fills and it takes the picture by itself. Tap the round button to take it sooner, or tap **Auto** to turn that off and always tap it yourself (your phone remembers). Drag the corners if they're off, then tap **Keep scan**. The page comes out straight and cleaned up. Pick **Color**, **Grayscale**, **B&W** or **Photo** (the picture as taken), tap **Add page** for more pages (it waits until you turn to the next page), then **Attach scan** to save them all as one PDF. **Photo** next to the round button scans a picture you already took.
 - **Upload scan** attaches a photo or PDF you already have. A photo opens in the scanner first, so you can drag the corners and pick a look the same way, or tap **Upload as is** to attach it untouched. iPhone photos (HEIC) work on any computer; with **Upload as is** they're saved as a JPEG so everyone can open them.
@@ -486,11 +498,47 @@ You can only Slack the families of players you can see in the Directory. Slack D
 
 If the camera won't open, allow it for this site in your browser's settings, or tap **Use a photo instead**.
 
-**Who's still missing?** Pick a requirement from the **All requirements** drop-down above the list. **Missing** shows who still needs it, with counts for **Done** (or **Paid**), **Waived** and **All**. It works together with search and the team and age-group filters, and the line above the list shows how many are done.
+**Who's still missing?** Pick a requirement from the **All requirements** drop-down above the list. **Missing** shows who still needs it, with counts for **Done** (or **Paid** / **Booked**), **Waived** and **All**. It works together with search and the team and age-group filters, and the line above the list shows how many are done. From a **Missing** list, **Email families** or **Slack families** writes to those families.
 
 Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.
 
 **Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title, or tap **ⓘ** on **Settings → Requirements** and then **Show me around**.`,
+  },
+  {
+    id: "hotel-registration",
+    title: "Hotel stays",
+    group: "Directory",
+    audience: "travel",
+    keywords: ["hotel", "hotels", "hotel stay", "hotel stays", "hotel registration", "booked", "booked in block", "staying elsewhere", "not yet known", "covered via sibling", "room block", "regionals", "nationals", "weekend", "booking", "instructions", "group code", "travel", "travel coordinator", "missing", "siblings", "email", "slack", "dm", "follow up", "families", "hs schedule"],
+    body: `For the travel coordinator: each trip that needs a hotel — **Regionals** (everyone), **Nationals** (some teams), a weekend away — is its own **hotel stay** on that weekend of the **HS Schedule**. You pick the hotel from External Contacts, write how families book, then mark who's **Booked in block** in the Directory and follow up with the rest.
+
+**Set up a stay (on the HS Schedule).** Open the weekend (tap its event). Under **Hotel stays**, tap **Add hotel stay**:
+
+- **Name** — what families see (**Regionals**, **Nationals**, **Des Moines weekend**…).
+- **Hotel** — the company in **External Contacts → Hotels** (add it there first if it isn't listed).
+- **How to book**, optional **Booking link**, **Group / booking code**, and **Book by** date.
+- **Rates / room notes** for what you paid or what worked.
+- **Who registers** — **All players**, or **Only some teams** (Nationals, a JV weekend).
+- **Status** — **Open** while families should book; **Closed** or **Canceled** when you're done.
+
+**Track Booked in block (Directory).** Tap **Track Booked in block in Directory ›** on the stay, or on the Directory pick the stay from **All hotel stays**, then **Not yet known**. The list and counts include every player on this season's roster — including families who said no to the Directory (they show **Not in directory**). Other families still don't see those players. Each player shows a chip:
+
+- Red **Needs Regionals** (or the stay's name) means their stay is **Not yet known**.
+- Green with a check means **Booked in block**.
+- Grey **staying elsewhere** means they aren't in the hotel block (staying with family, for example). The note is on the chip.
+- Grey **Covered via sibling ·** and the sibling's name means they have no mark of their own, but a brother or sister who shares a parent is **Booked in block** or **Staying elsewhere** on this stay. They are left out of the **Not yet known** count.
+
+Tap the chip: **Booked in block**, **Staying elsewhere** or **Not yet known**, a date, and a **Note**. **Staying elsewhere** needs a note (placeholder **e.g. staying with family**). **Save**.
+
+**Siblings.** If two players share a parent and both are on this stay, marking one lists the other, ticked to start — including a sibling whose family said no to the Directory. Untick them to mark only the player you opened. **Not yet known** asks whether to clear the siblings too.
+
+**Follow up.** With **Not yet known** showing, **Email families** or **Slack families**. **{player}** becomes each family's player names; for Slack, **{name}** is each parent's first name.
+
+**On the hotel's contact.** Open the hotel in External Contacts: **Hotel stays** lists every weekend you linked it to, with the event and a jump back to the schedule or Directory.
+
+**Import a rooming list.** When the hotel sends a **Group Rooming List** PDF (or a CSV), open **Settings → Import** and use **Hotel rooming list** — see *Settings: Import*.
+
+Hotels and places to eat themselves stay in **External Contacts** (see *Hotels and places to eat*).`,
   },
   {
     id: "hs-schedule",
@@ -520,7 +568,7 @@ Requirements start over each season, since each season has its own roster. The l
 
 **Change it right there.** Press **Edit** on that card. Use **−** and **+** for the games, and tick **Not sure yet** if they aren't settled. Under **Teams** is how many are coming, on the fence and not coming, with the ones not coming last. For each team tap **Yes**, **Maybe** or **No** beside its name. Under it, tap the teams of ours it plays (**V**, **JV1**, **JV2**…) to add or take one off, or **All** for every team we bring: filled means you picked that team, outlined means it's there because of **All**, and dashed is a maybe. **Add a team** (with **Add as** Yes, Maybe or No) finds programs the way coaches write them (DMW, So Metro, RR), or keeps what you type as a name. Don't know the name? Press the space bar (or the down arrow) in the empty field, or tap the arrow at its right end, to see every team, then pick one with the arrows and Enter or with a click. For a weekend that's over, **Score** records the result. Everything saves as you go.
 
-**A weekend's details.** Tap the event, or **Weekend details** on the card. At the top is how the weekend stands, where it is, its notes and details. Under them, tick **We host this tournament** for a tournament the club runs (the Missouri River Shootout): it gets a planning page, and the weekend shows **We host · Plan it** beside its event (see **Tournaments we host**). Press **Edit** to change its dates, **Where**, **Trip**, **Status**, **Notes**, **Facility** and **Details**, then **Save details** (or **Cancel**). Below that, **−** and **+** set every team's games, with **Not sure** for the ones that aren't settled, and **Teams coming** lists how many are coming and on the fence, then every team with **Yes**, **Maybe** or **No** and the teams of ours it plays (the same chips as on the card). The trash can at the end of a team's chips takes it off the weekend. Games and teams save as you change them. **Add weekend** adds one; **Delete this weekend**, at the bottom, removes one.
+**A weekend's details.** Tap the event, or **Weekend details** on the card. At the top is how the weekend stands, where it is, its notes and details. Under them, tick **We host this tournament** for a tournament the club runs (the Missouri River Shootout): it gets a planning page, and the weekend shows **We host · Plan it** beside its event (see **Tournaments we host**). **Hotel stays** on that same weekend is where Travel sets a room block (see *Hotel stays*). Press **Edit** to change its dates, **Where**, **Trip**, **Status**, **Notes**, **Facility** and **Details**, then **Save details** (or **Cancel**). Below that, **−** and **+** set every team's games, with **Not sure** for the ones that aren't settled, and **Teams coming** lists how many are coming and on the fence, then every team with **Yes**, **Maybe** or **No** and the teams of ours it plays (the same chips as on the card). The trash can at the end of a team's chips takes it off the weekend. Games and teams save as you change them. **Add weekend** adds one; **Delete this weekend**, at the bottom, removes one.
 
 **Seasons.** Use the arrows beside the season's name to move between seasons, or tap the name (**2026–27 ▾**) for the list of them all. A tag beside it says whether it's **This season**, a **Past season** or the **Next season**, and the season's notes from Season settings show under it (**more** for the rest). On the newest season, the board sees **+** in place of the right arrow to start the next one. On a computer the column headings (the season, **Where**, **Event**, our teams) stay at the top as you scroll. **⋯** beside the gear has **Print** (the grid on landscape pages, with what's showing at the top) and **Copy link** (the schedule as you're seeing it, filters and all). Pick a season under **Compare with** in **View** to put its same weekend beside each row, so you can see what we did a year ago. The gear (**Season settings**) next to **Add weekend** opens **Our teams** (a column each on the schedule): **Add team**, the arrows to reorder, the eye to hide or show one in a tap, and the pencil to rename one or link it to its team in the Directory. Below them are the season's **Notes**, with **Save notes** once you've typed. The board can also **Start 2027–28 from 2026–27** there (the same weekends a year on, with the teams that came now on the fence), add any other season with **New season** (it starts on the season after the newest one: pick **Copy 2026–27** for the same weekends a year on, or **Start empty**), or delete the season. With no seasons at all, the board presses **Start 2026–27** on the empty page. A season with no weekends yet offers **Add weekend** right there, and **Season settings** first when it has no teams of ours yet; **Compare with…** shows once it has weekends.
 
@@ -557,14 +605,13 @@ Requirements start over each season, since each season has its own roster. The l
     audience: "travel",
     routes: ["/portal/schedule"],
     keywords: ["schedule", "hs schedule", "high school", "season", "weekend", "tournament", "travel", "travel coordinator", "weekends away", "overnight", "trip", "hotel", "hotels", "room block", "food", "restaurant", "where to stay", "where to eat", "teams coming", "view only", "read-only"],
-    body: `For the travel coordinator: the high school season weekend by weekend, to plan the hotel blocks and team meals. It's **HS Schedule** in the sidebar. You see all of it; the coaches and the board keep it up to date, so there's nothing to change here (**View only** at the top).
+    body: `For the travel coordinator: the high school season weekend by weekend, to plan the hotel blocks and team meals. It's **HS Schedule** in the sidebar. You see all of it; the coaches and the board keep the games and teams up to date (**View only** at the top for those). You add **Hotel stays** on each weekend that needs a room block.
 
 - **The grid.** A row per weekend: the dates, **Where** and the trip (**Local**, **Day trip**, **Overnight**…), the event, a column for each of our teams (V, JV1, JV2…) with its games, and **Notes** (the venue and game times). The event's color says how it stands: **Tentative** (red), **Need to secure facility** (yellow), **Final details in process** (pale yellow) and **Facility secured** (green).
-- **Where to stay and eat.** On a weekend away, a bed and a fork under **Where** count the hotels and places to eat saved there. Tap them for the list, with the places that have your notes first, who to call (and the **Front desk**) and the website; tap a place's name to open it. They're the ones you keep in **External Contacts** (**Add or edit places in External Contacts** at the bottom of the list): a place shows on the weekends in its **City**, or in a city it's tagged with.
-- **Who's coming.** Hover over a team's count (tap it on a phone) to see its games and the teams it plays, with the other teams of ours each one plays in parentheses and a line for the ones not coming. Scroll or click in the card and it stays open, with an **✕** to close it.
-- **A weekend's details.** Tap the event, or **Weekend details** on a team's card. At the top are how it stands, the days, where and the trip, then the notes and details. On a weekend away, **Where to stay and eat** lists the hotels and places to eat near it, with your notes, who to call and the website. Below that are every team's games and the teams coming: how many are coming and on the fence, each team by name (with the teams of ours it plays when it's only some), and a line for the ones not coming.
-- **Show just some weekends.** Tap the **All weekends** drop-down above the schedule and tick **Facility secured** for the weekends that are set, or **Tentative** for the ones that may still change. Tick both to see them together.
-- **Seasons.** The arrows beside the season's name move between seasons. **View** → **Compare with** puts another season's same weekend beside each row, to see where we went a year ago. **Search events, places, teams** finds a weekend by its event, place or a team coming.`,
+- **Hotel stays.** Tap a weekend's event. Under **Hotel stays**, **Add hotel stay** links the hotel from External Contacts, with how to book, the group code and who must register (everyone, or some teams). **Track Booked in block in Directory ›** opens the Directory filtered to who's **Not yet known** — see *Hotel stays*. A weekend the club hosts shows **We host · Plan it**; coaches and the board keep that plan.
+- **Where to stay and eat.** On a weekend away, a bed and a fork under **Where** count the hotels and places to eat saved there (by city). Tap them for the list, with the places that have your notes first. They're the ones you keep in **External Contacts**.
+- **Who's coming.** Hover over a team's count (tap it on a phone) to see its games and the teams it plays. Scroll or click in the card and it stays open, with an **✕** to close it.
+- **Seasons.** The arrows beside the season's name move between seasons. **View** → **Compare with** puts another season's same weekend beside each row. **Search events, places, teams** finds a weekend by its event, place or a team coming.`,
   },
   {
     id: "external-contacts",
@@ -597,7 +644,7 @@ Super-admins can **Delete** a contact.`,
     group: "External Contacts",
     audience: "travel",
     routes: ["/portal/contacts"],
-    keywords: ["travel", "travel coordinator", "hotel", "hotels", "room block", "rates", "food", "restaurant", "places to eat", "dinner", "team meal", "external contacts", "tags", "closed"],
+    keywords: ["travel", "travel coordinator", "hotel", "hotels", "room block", "rates", "food", "restaurant", "places to eat", "dinner", "team meal", "external contacts", "tags", "closed", "hotel registration", "booked"],
     body: `For the travel coordinator: the hotels we book and the places that feed the team on the road, in **External Contacts** (in the sidebar). You see and change these; the rest of External Contacts is the board's.
 
 - Each hotel or restaurant is listed with the people there under it, their role, phone and email. Tap one to open it.
@@ -605,7 +652,25 @@ Super-admins can **Delete** a contact.`,
 - On a place's page, **+ Add person** adds who you deal with there, and **Edit** changes the place. If someone else saved it after you opened it, your save stops and says so, so nobody's changes are lost.
 - **Tags** put a place on the HS Schedule's weekends in a nearby city: tag a hotel in Ankeny **des moines** and it shows on Des Moines weekends as well as Ankeny's. Tag one **closed** to keep it off the schedule.
 
-You, the coaches and the board see these places under each weekend away on the **HS Schedule**, with your notes. Only the board can delete a contact.`,
+You, the coaches and the board see these places under each weekend away on the **HS Schedule**, with your notes. Only the board can delete a contact.
+
+**When we stay there.** On a hotel's page, **Hotel stays** lists each HS Schedule weekend you linked this hotel to (Regionals, Nationals, a weekend away), with booking status and links to the schedule and Directory. Set those stays up on the weekend itself — see *Hotel stays*.`,
+  },
+  {
+    id: "roadmap",
+    title: "Roadmap",
+    group: "Roadmap",
+    audience: "super_admin",
+    preview: true,
+    routes: ["/portal/roadmap"],
+    keywords: ["roadmap", "proposed", "planned", "in progress", "preview", "released", "approve", "share link", "product"],
+    body: `What's live, what's in preview, what's being built, what's planned, and ideas. Super-admins only, for now.
+
+The board is five columns: **Released**, **Preview**, **In progress**, **Planned** and **Proposed**. Filter by area at the top. **Add item** opens a sheet for the title, a short description families can read, the area, the column, the day it went live (Released), and a preview link (required in Preview).
+
+**Approve** on a Proposed card, or in that item's sheet, moves it to Planned and records who approved it and when. Planned cards then say **Approved by X on date**. Only a super-admin can approve — the page hides the button from everyone else, and the server and the database both refuse anyone who isn't.
+
+**Share link** turns on a read-only copy families can open without signing in. **New link** and **Turn off** stop the old link working.`,
   },
   {
     id: "playbooks",
@@ -640,6 +705,30 @@ You, the coaches and the board see these places under each weekend away on the *
 **Contacts.** The **Contacts** box on a playbook links the vendors or facilities it involves — tap **+ Attach** and pick from External Contacts.
 
 Super-admins can **Delete playbook** from the bottom of its page.`,
+  },
+  {
+    id: "film",
+    title: "Film",
+    group: "Film",
+    audience: "super_admin",
+    permission: "film_view",
+    alsoPermissions: ["film_manage"],
+    routes: ["/portal/film"],
+    keywords: ["film", "game film", "video", "upload", "download", "play", "moved", "youtube", "playlist", "holding", "delete", "edit", "coach inbox", "game date", "opponent", "score", "unlisted"],
+    body: `Game videos families send in from their phones, under **Film** in the sidebar. You see this if a super-admin gave you **Game film** (or **Game film (manage)**) in Settings → Members.
+
+Families don't sign in here. They open the team upload link they were sent (the full **https://…/t/…** address from **Settings → Film**), enter that team's shared code, then fill in **Your name**, **Game date** (it starts on today), **Opponent**, and **Our score** / **Their score** if they know it — scores can stay blank if the game isn't over — and upload. The page has a **Tip: record in 1080p at 30 fps (iPhone: Settings → Camera → Record Video).** Ask them to **keep the page open and keep the phone plugged in** until they see **✓ Uploaded** on each file and the green **All videos uploaded — you can close this page.** If a file says **Failed**, they tap **Retry**.
+
+**On this page**
+
+- Videos are grouped by team, then by game date, opponent, and score. A video with no date sits under **No game date** (not a generic "Game") until someone fills one in.
+- **Play** watches the file in this page (it works on a phone). **Close player** puts the player away. **Download** still saves a copy.
+- **Every team** (and each team name) filters the list when more than one team has film. **All**, **Holding** and **Moved** filter by whether it's been copied off.
+- After YouTube is connected in **Settings → Film**, new uploads go to that channel in the background (unlisted unless you change it), then into that team's playlist if one is set. **On YouTube** / **YouTube** opens the video. **In playlist** opens the playlist. If YouTube failed, **Retry YouTube** tries again. If the playlist add failed, the video stays on YouTube and the card says **Playlist failed** — tap **Retry playlist**. **Send to YouTube** and **Add to playlist** are for older files that never went up.
+- If you have **Game film (manage)**: **Edit** on a video to change **Game date**, **Opponent**, **Our score** / **Their score**, and an optional **YouTube playlist** for this video only (leave blank to use the team's playlist), then **Save** (or **Cancel**). The heading above the video updates. Cards that are missing a date, opponent, or score say **Missing:** so you can fill them in. **Mark moved** once it's copied off. **Back to holding** undoes that. **Delete** removes the file for good.
+- Files marked **Moved** are deleted automatically after 30 days.
+
+Share the team upload link and code with families, not this inbox. Super-admins and anyone with **Game film (manage)** set those codes and connect YouTube in **Settings → Film**.`
   },
   {
     id: "payments",
@@ -769,7 +858,7 @@ The board sees it under **Finances → Snapshot**, and so does anyone given **Se
     body: `Write to families about what they owe, from **Finances** (the **Payments** permission).
 
 - **Email families** and **Slack families** (next to **Download spreadsheet**) write to every family the list shows right now: pick **Owes**, **Paid up** or **All**, or search, first. In an open family, **Email family** and **Slack family** write to just them.
-- **Email** works like the Directory's: pick who gets it (Dads, Moms, Guardians, Players), start from a **Template** if you like, and send. One email per family, from the club's email address; replies go to the club's Gmail.
+- **Email** works like the Directory's: pick who gets it (Dads, Moms, Guardians, Players), then tick the families themselves (every family is ticked to start; **Select all / none** ticks every family or none), start from a **Template** if you like, and send. One email per family, from the club's email address; replies go to the club's Gmail.
 - **{balance}** becomes what the family owes, **{due_date}** their due date, **{family}** their last name and **{player}** their players' names. A preview shows how it reads for the first family.
 - **Slack** sends each person their own direct message. **From** picks **Me** (your own Slack: connect it once, and replies come to you) or **The club's Slack bot** (nobody reads replies to the bot, so say in the message how to reach you). In Slack messages, **{name}** is each person's first name.
 - A copy of every email and DM is kept on the players' pages under **Messages sent**, for the whole family.
@@ -789,6 +878,19 @@ The board sees it under **Finances → Snapshot**, and so does anyone given **Se
 - **Payments** lists what the Treasurer has recorded from you, with the date and how you paid.
 
 **To pay,** Venmo the club and put your player's name in the note, or pay by check. A payment shows here once the Treasurer records it, so it may take a few days. Questions about your balance? Email the club at the address on the page.`,
+  },
+  {
+    id: "signed-in-devices",
+    title: "Signed-in devices",
+    group: "Signed-in devices",
+    audience: "super_admin",
+    routes: ["/portal/devices"],
+    keywords: ["signed-in devices", "phone", "QR", "pair", "car", "revoke", "sign out", "approve"],
+    body: `**Signed-in devices** lists screens you signed in with **Sign in with phone** — a car browser, for example. Open it from the sidebar.
+
+Each row shows the device, city and IP, when it signed in, and when the 12-hour session ends. **Sign out** ends that one; **Sign out all devices** ends every phone-paired session. Slack, email and password sessions on your other devices are left alone.
+
+On the phone, after you tap **Approve**, you'll see **Device signed in** and a **Sign it out** button. You'll also get an email when a device is approved, with a link back here.`,
   },
   {
     id: "slack-archive",
@@ -915,12 +1017,14 @@ Activity is recorded from the day it went live.`,
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
-| Add and edit the hotels and places to eat in External Contacts; see the HS Schedule | With **Travel** | ✓ | ✓ |
+| Add and edit the hotels and places to eat in External Contacts; hotel stays on the HS Schedule; track Booked in block; import a rooming list in Settings | With **Travel** | ✓ | ✓ |
 | Send families Slack DMs from the Directory, as yourself | With **Slack DMs** | With **Slack DMs** | ✓ |
 | Change the club website's menu, page text and pictures | | With **Settings: Website** | ✓ |
 | Add, edit and remove members; change roles | | | ✓ |
 | Set up teams and volunteer roles; assign volunteers | With **Teams & volunteers** | With **Teams & volunteers** | ✓ |
 | Change the sidebar links and the public Directory link | With **Sidebar Links & Public Directory** | With **Sidebar Links & Public Directory** | ✓ |
+| See game film uploads and download them | With **Game film** | With **Game film** | ✓ |
+| Mark game film moved or delete it | With **Game film (manage)** | With **Game film (manage)** | ✓ |
 
 **Coaches** (a member in a leadership volunteer role on a team, like Head coach) also plan the **HS Schedule** with the board, and read the External Contacts types shared with them (a super-admin ticks **Coaches can see** in **Settings → Contact Types**), without changing them.
 
@@ -959,11 +1063,11 @@ Activity is recorded from the day it went live.`,
 - Pick someone's **access profile** from the drop-down on the **Approved** tab: **Member**, **Board**, any profile the club has made (like Treasurer), or **Super-admin**. The profile sets whether they're Board and what they can manage (see *Settings: Access Profiles*). Picking a new one replaces what they had, extras included.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - Tap **Access** on someone's row on the **Approved** tab to see what they can do. The number on the button counts it, and the row lists it under their name. Greyed ticks come from their profile; change those in **Settings → Access Profiles**. Tick any other box to give that one person an **extra** on top of their profile, untick to take it away. Rows with extras show **+ extras**, and rows on a profile the club made show its name.
-  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit the hotels and places to eat in External Contacts and see the HS Schedule, and **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*).
+  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, set up **hotel stays** on the HS Schedule (booking instructions and who must register), mark **Booked in block** in the Directory, import a hotel **rooming list** in Settings → Import, and email or Slack families about travel, **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too), **Game film** to open **Film** and download videos families uploaded, and **Game film (manage)** to mark those videos moved or delete them and to open **Settings → Film** (team upload codes). A person can also be a **video manager** for one team in Settings → Film, without the club-wide permission.
   - **Settings (Board)** (board members only): **Edit**, **Delete** and **Undelete** for Settings items like Requirements, and **Website** to change the club website's menu, page text and pictures (see *Settings: Website*).
   - **Board powers** (for people who aren't Board; Board has them all): **See all players** (every player, listed or not, with fees, waivers, shirts and parents' details), **Member notes**, **Check off requirements**, **Approve access requests**, **External Contacts** (see, add and edit every contact, and their history) and **Plan HS Schedule**.
   - **Club setup** (anyone): **Teams & volunteers** to set up teams and volunteer roles and fill team spots (putting someone in a leadership spot makes them a coach), and **Sidebar Links & Public Directory**.
-  - Someone who isn't Board but has **Approve access requests**, **Teams & volunteers** or **Sidebar Links & Public Directory** opens **Settings** and sees only those tabs.
+  - Every approved member opens **Settings** and sees **Release Notes**. Someone who isn't Board but has **Approve access requests**, **Teams & volunteers**, **Sidebar Links & Public Directory** or **Travel** also sees those tabs.
   - Super-admins have all of these already, so their rows have no **Access** button.
 - To see everyone at once, tap **Roles & access** (next to the tabs, on **Approved**). It's a table with a row per person: their profile drop-down, then a box for each permission. Greyed ticks come from the profile; tick or untick any other box to change that person's extras. The number under each column says how many people have it. Super-admins show ✓ everywhere, and **–** means that box is for board members only. Tap **List** to go back.
 - **Remove** a member (demote a super-admin first).
@@ -1004,6 +1108,43 @@ Put someone on a profile with the drop-down on their row in **Settings → Membe
 What you enter here shows on the team's Directory banner and team page. Players are put on teams in the Directory, with the team chip on each player.`,
   },
   {
+    id: "settings-film",
+    title: "Settings: Film",
+    group: "Settings",
+    audience: "super_admin",
+    permission: "film_manage",
+    keywords: ["film", "game film", "upload code", "team code", "video managers", "rotate", "slug", "/t/", "copy", "upload link", "youtube", "playlist", "connect youtube", "unlisted"],
+    body: `Turn Directory teams on for family uploads and set each team's code. Open **Settings → Film**. Super-admins can, and so can anyone with **Game film (manage)**.
+
+These are the same teams as **Settings → Teams**, not a second list.
+
+- **YouTube** — **Connect YouTube** signs in with the Google account that owns the Omaha Lightning channel (once). The refresh token is stored encrypted on the server, never shown. New family uploads then go to that channel in the background, and into that team's playlist if one is set. **Privacy** starts as **Unlisted**; **Private** and **Public** are there too. **Made for kids** is off unless you check it. **Disconnect YouTube** stops new uploads from going up. Unverified Google apps often force videos to private until Google audits the app. Playlists need the extra Google **YouTube** permission — add it under Data Access on the consent screen, then **Disconnect YouTube** and **Connect YouTube** again.
+- **YouTube playlist** on each team — paste a playlist link or id (the list= value), or **Or pick from the channel** if YouTube is connected. **Save playlist**. **Open playlist** checks the link. Leave blank for none. New film for that team is added after the YouTube upload finishes. A playlist miss does not mark the upload failed.
+- **+ New team** adds a Directory team (same as Settings → Teams) so you can give it a film page without leaving this tab. **Rename** changes the team's name everywhere.
+- **On** / **Off** shows or hides that team on **/film** and **/t/…**. Turn it on only after a code is set.
+- **Upload address** is the end of the family link, like **14u-white**.
+- **Upload link** is the full **https://…** address families open (this site plus **/t/** and the upload address). It is shown in full. **Copy** puts that link on the clipboard and briefly says **Copied**. It copies the link only — never the team's code.
+- **Set code** lets you type a short word families will remember, like **white14** or **gold14**. We suggest one from the team name and age. **Suggest** fills that in; **Generate code** makes a random one if you'd rather. Use 4–20 letters or numbers, unique across teams, not case sensitive. We store it hashed and **show it once** — copy it now. There is no reveal later. **Rotate code** makes a new one; phones that already unlocked that team have to enter the new code.
+- **Video managers** are portal people who can open **Film** and download that team's videos without the club-wide **Game film** permission. They cannot mark moved or delete.
+
+**FILM_SESSION_SECRET** and the YouTube client id / secret / token key stay in Vercel. Team codes do not.`,
+  },
+  {
+    id: "settings-season",
+    title: "Settings: Season",
+    group: "Settings",
+    audience: "staff",
+    keywords: ["season", "season end date", "age cap", "age caps", "eligibility", "14U", "12U", "10U", "play up", "conqueror", "max age", "birthday"],
+    body: `The season end date and the age caps the Directory uses for eligibility. Open **Settings → Season**. The board can (admin and super-admin).
+
+**Conqueror league rule.** A player at a level cannot turn older than that level's max age at any point of the season, or they have to play up. 8th / 14U cannot turn 15; 6th / 12U cannot turn 13; 5th cannot turn 12; 4th cannot turn 11; 3rd / 10U-ish cannot turn 10.
+
+- **Season end date** — the last day of the season (starts at December 31, 2026). A player ages out of a level if they turn one year over its max age on or before this day. Tap **Save date**.
+- **Age caps by level** — each row is a level (14U, 12U, 10U…) and its **Max age**. Max age 14 on 14U means they must not turn 15 on or before the season end date. **Add a level** for a grade (5th, 4th, 3rd) if you place by grade. **Remove** deletes a row. Tap **Save caps**.
+
+The Directory then shows each player's lowest eligible level and flags anyone rostered on a level they age out of. **Available to swing up** on the Directory lists who can move to a team you pick.`,
+  },
+  {
     id: "settings-volunteer-roles",
     title: "Settings: Volunteer Roles",
     group: "Settings",
@@ -1018,24 +1159,27 @@ What you enter here shows on the team's Directory banner and team page. Players 
 - **In Directory** — shows the role on the team's banner when someone picks that team in the Directory. Every role always shows on the team's own page.
 - Use the arrows to reorder, the **−/+** to change spots, and the switches to turn Leadership and In Directory on or off. Changes save right away.
 
-**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.`,
+**Assigning people.** Open a team's page (Directory → **Team page**) and tap **+ Assign** on an open spot. Pick from people who signed up to help with that role, parents on the team, or anyone else. Tap **Remove** to take someone off. Not in the list? Add them in **Settings → Members** first (no email needed), then assign them.
+
+The public Directory lists the same jobs under **By team** and **Coaches & Volunteers**. Coaching roles (a **Leadership** role, or one whose name says coach) stay open on the page. Every other role — Scorekeeper, Clock, Photographer and any role you add here — is inside **Volunteers**, which stays closed until someone taps it. An empty seat says **Open Spot**. Adding a role here is enough; it shows up on that page on its own. The registration form still only asks who is willing to help. It does not show who has the job.`,
   },
   {
     id: "settings-requirements",
     title: "Settings: Requirements",
     group: "Settings",
     audience: "staff",
-    keywords: ["requirements", "settings", "handbook", "signature", "fee", "tournament fee", "amount", "due date", "applies to", "teams", "retire", "active", "scan upload"],
-    body: `Choose what players need to hand in or pay. Open **Settings → Requirements**. Super-admins can always use this tab. A board member can too once a super-admin gives them **Settings: Edit**, through their access profile or their **Access** panel in **Settings → Members**.
+    keywords: ["requirements", "settings", "handbook", "signature", "hotel", "hotel registration", "booked", "mark complete as", "fee", "tournament fee", "amount", "due date", "applies to", "teams", "retire", "active", "scan upload"],
+    body: `Choose what players need to hand in or pay. Open **Settings → Requirements**. Super-admins can always use this tab. A board member can too once a super-admin gives them **Settings: Edit**, through their access profile or their **Access** panel in **Settings → Members**. **Handbook signature** is set up to start. Hotel room blocks are **hotel stays** on each HS Schedule weekend (see *Hotel stays*), not a season-wide requirement here.
 
 - **Add requirement** — give it a **Name** (what the board sees on each player, like Handbook signature) and a **Description** if it helps.
-- **Type** — **Task / form** is marked **Done**; **Fee** is marked **Paid** and asks for an **Amount**.
+- **Type** — **Task / form** is marked **Done** by default; **Fee** is marked **Paid** and asks for an **Amount**.
+- **Mark complete as** — optional word for the green chip and filter (leave blank for **Done** or **Paid**).
 - **Due date** is optional, a reminder for the board.
 - **Applies to** — **All players**, or **Only some teams** (a tournament fee for one team, say). Tick the teams it covers.
 - **Offer scan upload** lets the board attach a copy when they check a player off: scanned with the phone's camera, or a photo or PDF.
 - **Active** — untick it to retire a requirement. It leaves the Directory but keeps everyone's record, and you can turn it back on later.
 
-Use the arrows to change the order (it's the order of the teams in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`,
+Use the arrows to change the order (it's the order of the chips in the Directory), and the **pencil** to edit. Super-admins, and board members whose **Delete** chip is on, can remove one with the **trash** can.`
   },
   {
     id: "settings-planning-roles",
@@ -1200,6 +1344,20 @@ Pick a page (**Home**, **Philosophy**, **History**, **Summer**, **Programs**, **
 Make a page of your own, like a fall camp or a tryouts page. Under **Pages → New pages**, tap **Add page** and fill in its **Title**, its **Address** (filled in from the title: Fall Camp makes **/fall-camp**), an optional **Banner picture**, and the **Page text**. Save the draft, preview it, publish it, then add it to the **Menu** so people can find it. An address the site already uses can't be taken. Delete a page from the list (and publish) to take it down.`,
   },
   {
+    id: "settings-release-notes",
+    title: "Settings: Release Notes",
+    group: "Settings",
+    audience: "everyone",
+    keywords: ["release notes", "changelog", "what's new", "shipped", "show me how", "walkthrough", "demo", "version", "toast"],
+    body: `What just shipped in the portal. Open **Settings → Release Notes**. Every member can read it.
+
+Each release has a **version** pill, a **title**, the **date**, and a short list of what changed. Newest first, down a timeline.
+
+When something ships, a **What's new** card pops up in the bottom-right of any portal page. **See release notes** opens this list; **×** dismisses it. Opening the list also marks the notes as seen, so the card stays away until the next release.
+
+**Show me how →.** When a release changed something you can use, tap **Show me how →**. A guided tour walks you through it on the real page: **Back** / **Next**, and **Skip tour** any time. The button only shows when that tour can run for you — a hotel-stay tour for Travel, an Email families tour if you can email families, and so on.`,
+  },
+  {
     id: "settings-sidebar-links",
     title: "Settings: Sidebar Links",
     group: "Settings",
@@ -1223,15 +1381,34 @@ Every signed-in member sees the links; only super-admins can change them.`,
     group: "Settings",
     audience: "super_admin",
     permission: "site_links",
-    keywords: ["public directory", "directory link", "share", "link", "key", "no login", "without signing in", "read-only", "roster", "turn off"],
-    body: `The public Directory is a read-only copy of the Directory on the club website. It opens without signing in, for anyone you give its private link to. It lists only families who said yes to the directory, shows each player's age (not their birthday) and city and ZIP code (not their street address), and never shows fees or payments. Open **Settings → Public Directory**.
+    keywords: ["public directory", "directory link", "share", "link", "key", "no login", "without signing in", "read-only", "roster", "turn off", "coaches", "coach", "volunteers", "open spot", "scorekeeper", "clock", "photographer", "coaches & volunteers"],
+    body: `The public Directory is a read-only copy of the Directory on the club website. It opens without signing in, for anyone you give its private link to. It lists only families who said yes to the directory, shows each player's age (not their birthday) and city and ZIP code (not their street address), and never shows fees or payments. Each team's coaches and volunteers are listed too, with their phone and email. Coaches (a leadership role, or a role whose name says coach) show at the top of each team under **By team**, and all together under **Coaches & Volunteers**. Every other role — Scorekeeper, Clock, Photographer and any role you add in **Volunteer Roles** — is under **Volunteers**, closed until someone taps it. An empty seat says **Open Spot**. Assign people on the team's page in the Directory. The registration form does not list who has the job. Open **Settings → Public Directory**.
 
 - **Link** — the address to share. **Copy link** copies it; **Open** shows the page in a new tab.
 - **Key** — the end of the link. Type your own (at least 16 letters, numbers, dashes or underscores) and tap **Save key**, or tap **New random key** to have one made for you.
 - Changing the key retires the old link right away. Do it if the link has been passed around more than you'd like.
 - **Turn off** — nobody can open the page until you save a key again.
 
-Anyone with the link can see parents' names, phone numbers and emails, so share it only with families in the program.`,
+Anyone with the link can see parents', coaches' and volunteers' names, phone numbers and emails, so share it only with families in the program.`,
+  },
+  {
+    id: "settings-hotel-import",
+    title: "Settings: Import",
+    group: "Settings",
+    audience: "travel",
+    // No routes: Settings' default "i" stays Members; the Import tab sets this
+    // section via TAB_HELP (same pattern as Teams, Requirements, …).
+    keywords: ["import", "hotel", "rooming list", "group rooming list", "pdf", "csv", "booked", "confirmation", "staybridge", "ihg", "settings", "travel", "travel coordinator"],
+    body: `For the travel coordinator: turn a hotel's **Group Rooming List** into **Booked** marks on a hotel stay. Open **Settings → Import** (with **Travel**, Settings shows this tab).
+
+1. Under **Hotel rooming list**, choose the PDF the hotel sent (or a CSV/TXT export), then **Preview matches**.
+2. Check the guessed **Hotel** (from External Contacts → Hotels), **HS Schedule weekend**, and **Hotel stay**. If there's no stay yet, leave **Create new stay…** and set the name (Regionals, Nationals…).
+3. Each guest row shows our best guess for the Directory family — parents on the list match their players. Tick or untick players; leave unmatched rows alone.
+4. **Mark … Booked** writes confirmation numbers into each player's note and opens **Directory** filtered to that stay.
+
+Text PDFs from the hotel work best (Staybridge / IHG style). A scan-only PDF won't have selectable text — ask the hotel for a text PDF or a CSV with confirmation, name and dates.
+
+You can keep importing lists from different hotels the same way; each run attaches to the stay you pick.`,
   },
   {
     id: "settings-audit-log",
@@ -1261,20 +1438,27 @@ export function canSeeAudience(audience: GuideAudience, viewer: GuideViewer | nu
   if (audience === "finance") return viewer.role === "super_admin" || !!viewer.canManageFinances;
   if (audience === "registrations") return viewer.role === "super_admin" || !!viewer.canManageRegistrations;
   if (audience === "travel") return viewer.role === "super_admin" || !!viewer.canManageTravel;
-  if (audience === "messaging") return viewer.isStaff || viewer.role === "super_admin" || !!viewer.canManageRegistrations;
-  if (audience === "slack") return viewer.role === "super_admin" || !!viewer.canSlackDm;
+  if (audience === "messaging") {
+    return (
+      viewer.isStaff ||
+      viewer.role === "super_admin" ||
+      !!viewer.canManageRegistrations ||
+      !!viewer.canManageTravel
+    );
+  }
+  if (audience === "slack") {
+    return viewer.role === "super_admin" || !!viewer.canSlackDm || !!viewer.canManageTravel;
+  }
   if (audience === "website") return viewer.role === "super_admin" || !!viewer.canManageWebsite;
   return viewer.role === "super_admin";
 }
 
 export function canSeeGuideSection(section: GuideSection, viewer: GuideViewer | null | undefined): boolean {
   if (section.preview && !viewer?.seesFullUi) return false;
-  if (
-    section.permission &&
-    viewer?.status === "approved" &&
-    viewer.permissions?.includes(section.permission)
-  )
-    return true;
+  if (viewer?.status === "approved" && viewer.permissions) {
+    if (section.permission && viewer.permissions.includes(section.permission)) return true;
+    if (section.alsoPermissions?.some((p) => viewer.permissions!.includes(p))) return true;
+  }
   return canSeeAudience(section.audience, viewer);
 }
 

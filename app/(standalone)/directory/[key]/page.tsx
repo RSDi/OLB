@@ -32,7 +32,7 @@ export default async function PublicDirectoryPage({ params }: { params: Promise<
   // Super-admins set the key in Settings → Public Directory; none set means
   // the page is off. Changing it retires old links.
   if (!keyOpens(key, await loadPublicDirectoryKey())) notFound();
-  const { season, teams, players } = await loadPublicDirectory();
+  const { season, teams, players, roles, assignments } = await loadPublicDirectory();
   return (
     <div data-theme="lightning" style={{ minHeight: "100vh", background: "var(--gw-bg)", color: "var(--gw-fg)" }}>
       <div
@@ -60,7 +60,7 @@ export default async function PublicDirectoryPage({ params }: { params: Promise<
           </Link>
           <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-.01em" }}>Directory</h1>
         </header>
-        <PublicDirectoryList season={season} teams={teams} players={players} />
+        <PublicDirectoryList season={season} teams={teams} players={players} roles={roles} assignments={assignments} />
       </div>
       <ScrollToTopButton />
     </div>

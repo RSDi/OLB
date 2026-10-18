@@ -3,13 +3,15 @@ import { useState, type CSSProperties } from "react";
 import { Pill, Input, Textarea, Select } from "../../components/ui";
 import { SideSheet } from "../../components/SideSheet";
 import { Icons } from "../../components/icons";
-import { saveRoadmapItem, deleteRoadmapItem, setRoadmapLink, type RoadmapResult } from "../../../lib/roadmap/actions";
+import { saveRoadmapItem, deleteRoadmapItem, setRoadmapLink, approveRoadmapItem, type RoadmapResult } from "../../../lib/roadmap/actions";
 import {
   AREAS,
   STATUSES,
   TITLE_MAX,
   DESCRIPTION_MAX,
+  PREVIEW_URL_MAX,
   columnItems,
+  formatApprovedBy,
   formatDay,
   todayIso,
   type RoadmapItem,
@@ -25,6 +27,7 @@ type Sheet = { kind: "item"; item: RoadmapItem | null; status: Status } | { kind
 
 const DOT: Record<Status, string> = {
   released: "var(--gw-success)",
+  preview: "var(--rsd-accent)",
   progress: "var(--rsd-accent-fill)",
   planned: "var(--gw-fg-muted)",
   proposed: "var(--gw-fg-faint)",
@@ -45,6 +48,7 @@ export function RoadmapView({
   const [area, setArea] = useState<string>("all");
   const [sheet, setSheet] = useState<Sheet>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const visible = area === "all" ? items : items.filter((i) => i.area === area);
   const areaCount = (a: string) => items.filter((i) => i.area === a).length;
@@ -58,6 +62,17 @@ export function RoadmapView({
   const done = (msg: string) => {
     setSheet(null);
     flash(msg);
+  };
+
+  const approve = async (id: string) => {
+    setApprovingId(id);
+    const res = await approveRoadmapItem(id);
+    setApprovingId(null);
+    if (res.error) flash(res.error);
+    else {
+      setSheet(null);
+      flash("Approved");
+    }
   };
 
   return (
@@ -114,7 +129,13 @@ export function RoadmapView({
               </header>
               {list.length ? (
                 list.map((it) => (
-                  <Card key={it.id} it={it} onOpen={editable ? () => setSheet({ kind: "item", item: it, status: it.status }) : undefined} />
+                  <Card
+                    key={it.id}
+                    it={it}
+                    onOpen={editable ? () => setSheet({ kind: "item", item: it, status: it.status }) : undefined}
+                    onApprove={editable && it.status === "proposed" ? () => approve(it.id) : undefined}
+                    approving={approvingId === it.id}
+                  />
                 ))
               ) : (
                 <div style={{ padding: "18px 12px", border: "1px dashed var(--gw-border)", borderRadius: 12, fontSize: 13, color: "var(--gw-fg-muted)", textAlign: "center" }}>
@@ -133,6 +154,8 @@ export function RoadmapView({
           status={sheet.status}
           onClose={() => setSheet(null)}
           onDone={done}
+          onApprove={sheet.item?.status === "proposed" ? () => approve(sheet.item!.id) : undefined}
+          approving={sheet.item ? approvingId === sheet.item.id : false}
         />
       )}
       {sheet?.kind === "link" && <LinkSheet linkKey={linkKey} onClose={() => setSheet(null)} onDone={flash} />}
@@ -171,7 +194,19 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
   );
 }
 
-function Card({ it, onOpen }: { it: RoadmapItem; onOpen?: () => void }) {
+function Card({
+  it,
+  onOpen,
+  onApprove,
+  approving = false,
+}: {
+  it: RoadmapItem;
+  onOpen?: () => void;
+  onApprove?: () => void;
+  approving?: boolean;
+}) {
+  const approved = it.status === "planned" ? formatApprovedBy(it.approved_by_name, it.approved_at) : null;
+  const accent = it.status === "preview" ? "var(--rsd-accent)" : it.status === "progress" ? "var(--rsd-accent-fill)" : "var(--gw-border)";
   const style: CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -179,7 +214,7 @@ function Card({ it, onOpen }: { it: RoadmapItem; onOpen?: () => void }) {
     padding: 14,
     borderRadius: 12,
     border: "1px solid var(--gw-border)",
-    borderLeft: it.status === "progress" ? "3px solid var(--rsd-accent-fill)" : "1px solid var(--gw-border)",
+    borderLeft: accent !== "var(--gw-border)" ? `3px solid ${accent}` : "1px solid var(--gw-border)",
     background: "var(--gw-bg-elev)",
     color: "var(--gw-fg)",
     textAlign: "left",
@@ -187,24 +222,42 @@ function Card({ it, onOpen }: { it: RoadmapItem; onOpen?: () => void }) {
     width: "100%",
     cursor: onOpen ? "pointer" : "default",
   };
-  const body = (
-    <>
+  return (
+    <div className={onOpen ? "gw-press" : undefined} onClick={onOpen} style={style}>
       <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--gw-fg-muted)" }}>
         {it.area}
+        {it.status === "preview" && (
+          <span style={{ padding: "1px 7px", borderRadius: 100, border: "1px solid var(--rsd-accent)", color: "var(--rsd-accent)", letterSpacing: 0, textTransform: "none" }}>Preview</span>
+        )}
         {it.released_on && <span style={{ marginLeft: "auto", textTransform: "none", letterSpacing: 0 }}>{formatDay(it.released_on)}</span>}
       </span>
       <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.3 }}>{it.title}</span>
       {it.description && (
         <span style={{ fontSize: 13, lineHeight: 1.5, color: "var(--gw-fg-muted)", whiteSpace: "pre-wrap" }}>{it.description}</span>
       )}
-    </>
-  );
-  return onOpen ? (
-    <button type="button" onClick={onOpen} className="gw-press" style={style}>
-      {body}
-    </button>
-  ) : (
-    <div style={style}>{body}</div>
+      {approved && (
+        <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>{approved}</span>
+      )}
+      {it.preview_url && (
+        <a
+          href={it.preview_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          style={{ fontSize: 12, fontWeight: 700, color: "var(--rsd-accent)", textDecoration: "none", width: "fit-content" }}
+        >
+          Open preview
+        </a>
+      )}
+      {onApprove && (
+        <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} style={{ width: "fit-content" }}>
+          <Pill size="sm" variant="accent" disabled={approving} onClick={onApprove}>
+            {approving ? "Approving…" : "Approve"}
+          </Pill>
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -213,17 +266,22 @@ function ItemSheet({
   status: startStatus,
   onClose,
   onDone,
+  onApprove,
+  approving = false,
 }: {
   item: RoadmapItem | null;
   status: Status;
   onClose: () => void;
   onDone: (msg: string) => void;
+  onApprove?: () => void;
+  approving?: boolean;
 }) {
   const [title, setTitle] = useState(item?.title ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
   const [area, setArea] = useState<string>(item?.area ?? AREAS[0]);
   const [status, setStatus] = useState<Status>(startStatus);
   const [releasedOn, setReleasedOn] = useState(item?.released_on ?? todayIso());
+  const [previewUrl, setPreviewUrl] = useState(item?.preview_url ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -238,7 +296,7 @@ function ItemSheet({
   };
 
   const save = () =>
-    run(() => saveRoadmapItem(item?.id ?? null, { title, description, area, status, releasedOn }), item ? "Saved" : "Added");
+    run(() => saveRoadmapItem(item?.id ?? null, { title, description, area, status, releasedOn, previewUrl }), item ? "Saved" : "Added");
 
   return (
     <SideSheet
@@ -250,17 +308,22 @@ function ItemSheet({
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {item &&
             (confirmDelete ? (
-              <Pill size="sm" disabled={busy} onClick={() => run(() => deleteRoadmapItem(item.id), "Deleted")} style={{ color: "var(--gw-error)" }}>
+              <Pill size="sm" disabled={busy || approving} onClick={() => run(() => deleteRoadmapItem(item.id), "Deleted")} style={{ color: "var(--gw-error)" }}>
                 Yes, delete it
               </Pill>
             ) : (
-              <Pill size="sm" variant="ghost" disabled={busy} onClick={() => setConfirmDelete(true)}>
+              <Pill size="sm" variant="ghost" disabled={busy || approving} onClick={() => setConfirmDelete(true)}>
                 <Icons.Trash width={14} height={14} /> Delete
               </Pill>
             ))}
           <span style={{ flex: 1 }} />
-          <Pill size="sm" variant="ghost" disabled={busy} onClick={onClose}>Cancel</Pill>
-          <Pill size="sm" variant="accent" disabled={busy} onClick={save}>{busy ? "Saving…" : item ? "Save" : "Add item"}</Pill>
+          {onApprove && (
+            <Pill size="sm" variant="accent" disabled={busy || approving} onClick={onApprove}>
+              {approving ? "Approving…" : "Approve"}
+            </Pill>
+          )}
+          <Pill size="sm" variant="ghost" disabled={busy || approving} onClick={onClose}>Cancel</Pill>
+          <Pill size="sm" variant="accent" disabled={busy || approving} onClick={save}>{busy ? "Saving…" : item ? "Save" : "Add item"}</Pill>
         </div>
       }
     >
@@ -293,6 +356,15 @@ function ItemSheet({
         {status === "released" && (
           <Input label="Went live on" type="date" value={releasedOn} onChange={(e) => setReleasedOn(e.target.value)} />
         )}
+        <Input
+          label="Preview link"
+          type="url"
+          value={previewUrl}
+          onChange={(e) => setPreviewUrl(e.target.value)}
+          placeholder="https://…"
+          maxLength={PREVIEW_URL_MAX}
+          help={status === "preview" ? "The Vercel preview. Required in this column." : "A Vercel preview, if there is one. Opens in a new tab on the board."}
+        />
         {err && <div role="alert" style={{ fontSize: 13, color: "var(--gw-error)" }}>{err}</div>}
       </form>
     </SideSheet>
@@ -327,7 +399,7 @@ function LinkSheet({ linkKey, onClose, onDone }: { linkKey: string | null; onClo
     <SideSheet eyebrow="Roadmap" title="Share link" busy={busy} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 14, lineHeight: 1.6 }}>
         <p style={{ margin: 0, color: "var(--gw-fg-muted)" }}>
-          Anyone with the link can read the roadmap without signing in. They see the titles, descriptions, areas and dates, and can&apos;t change anything.
+          Anyone with the link can read the roadmap without signing in. They see the titles, descriptions, areas, dates and preview links, and can&apos;t change anything.
         </p>
         {url ? (
           <>
