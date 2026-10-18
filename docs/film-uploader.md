@@ -33,7 +33,10 @@ existing hashes.
    - `supabase/migrations/0145_game_film_youtube_playlists.sql` — team
      playlist id and per-upload playlist status. Run after 0144.
    - `supabase/migrations/0146_agent_keys.sql` — hashed read-only keys for
-     `/api/agent/*`. Run after 0145. Mint keys in **Settings → Agent keys**.
+     `/api/agent/*`. Run after 0145 (this PR, #208). Mint keys in
+     **Settings → Agent keys**. Merge order for the open film PRs:
+     #208 (0146) → #207 (0147 privacy) → #209 (0148 templates).
+     0149 is reserved for the email-archive PR; 0150 is already on main.
 2. **Raise the project's Storage file-size limit** in the Supabase dashboard
    (Project Settings → Storage) if it is still the default (often 50 MB). The
    bucket is 20 GB; the project cap has to be at least that.

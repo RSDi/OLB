@@ -4,7 +4,9 @@ Club agents can list game film without signing in as a person. There is no
 env-var token. Super-admins mint hashed keys in **Settings → Agent keys**.
 
 OLB does **not** auto-run migrations. Apply `0146_agent_keys.sql` in the
-Supabase SQL editor, redeploy, then create a key.
+Supabase SQL editor after 0145, redeploy, then create a key. Merge #208
+before the 0147 / 0148 film PRs. 0149 is reserved for email-archive; 0150
+is already on main. To remove: `supabase/removal/0146_agent_keys_down.sql`.
 
 ## Create a key
 

@@ -5,6 +5,11 @@
 -- No grant to authenticated: the app uses the service role after a
 -- super-admin check (same shape as game_film_youtube).
 --
+-- Numbering: 0146 is this PR. Apply after 0145. Later film PRs are 0147
+-- (YouTube privacy) then 0148 (templates). 0149 is reserved for the
+-- email-archive PR. 0150_hosted_tournaments.sql is already on main.
+-- To remove: supabase/removal/0146_agent_keys_down.sql.
+--
 -- OLB does NOT auto-run migrations. Apply this in the Supabase SQL editor
 -- after 0145. Idempotent.
 
