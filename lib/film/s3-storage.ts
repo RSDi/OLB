@@ -19,5 +19,8 @@ export function s3FilmStorage(): FilmStorageProvider {
     deleteObject(): Promise<void> {
       return notImplemented();
     },
+    objectExists(): Promise<boolean> {
+      return notImplemented();
+    },
   };
 }

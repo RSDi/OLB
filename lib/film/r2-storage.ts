@@ -19,5 +19,8 @@ export function r2FilmStorage(): FilmStorageProvider {
     deleteObject(): Promise<void> {
       return notImplemented();
     },
+    objectExists(): Promise<boolean> {
+      return notImplemented();
+    },
   };
 }
