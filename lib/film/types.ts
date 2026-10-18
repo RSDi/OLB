@@ -19,6 +19,8 @@ export const MOVED_RETENTION_DAYS = 30;
 export type FilmStatus = "holding" | "moved";
 export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
 export type YoutubePlaylistStatus = "queued" | "done" | "failed";
+export type YoutubePrivacy = "public" | "unlisted" | "private";
+export type YoutubeProcessing = "uploaded" | "processed" | "failed" | "rejected" | "deleted" | "missing";
 
 export interface FilmTeam {
   slug: string;
@@ -50,6 +52,12 @@ export interface FilmUpload {
   youtube_playlist_error: string | null;
   youtube_playlist_item_id: string | null;
   youtube_playlist_updated_at: string | null;
+  // Real YouTube status from videos.list part=status. Shared with GET
+  // /api/agent/film: youtube_privacy + youtube_synced_at. youtube_processing
+  // is uploadStatus (uploaded / processed / failed / rejected / deleted / missing).
+  youtube_privacy: YoutubePrivacy | null;
+  youtube_processing: YoutubeProcessing | null;
+  youtube_synced_at: string | null;
 }
 
 export interface MintedUpload {

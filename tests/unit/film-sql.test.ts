@@ -21,6 +21,30 @@ test("0143 is the next numbered migration after 0142", () => {
   assert.equal(names.filter((n) => n.startsWith("0143")).length, 1, "only one 0143 migration");
 });
 
+test("0147 stores YouTube privacy and processing read from videos.list", () => {
+  const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
+  const privacy = readFileSync(join(root, "supabase/migrations/0147_game_film_youtube_privacy.sql"), "utf8");
+  const down = readFileSync(join(root, "supabase/removal/0147_game_film_youtube_privacy_down.sql"), "utf8");
+  assert.ok(names.includes("0145_game_film_youtube_playlists.sql"));
+  assert.ok(names.includes("0147_game_film_youtube_privacy.sql"));
+  assert.ok(names.includes("0150_hosted_tournaments.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0147")).length, 1, "only one 0147 migration");
+  assert.ok(names.includes("0146_agent_keys.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0146")).length, 1, "0146 is agent keys from #208");
+  assert.match(privacy, /after 0146/);
+  assert.ok(down.includes("drop column if exists youtube_privacy"));
+  assert.ok(privacy.includes("add column if not exists youtube_privacy"));
+  assert.ok(privacy.includes("add column if not exists youtube_processing"));
+  assert.ok(privacy.includes("add column if not exists youtube_synced_at"));
+  assert.ok(privacy.includes("check (youtube_privacy in ('public', 'unlisted', 'private'))"));
+  assert.ok(privacy.includes("check (youtube_processing in ('uploaded', 'processed', 'failed', 'rejected', 'deleted', 'missing'))"));
+  assert.ok(privacy.includes("game_film_uploads_youtube_synced_at_idx"));
+  assert.ok(privacy.includes("OLB does NOT auto-run"));
+  assert.ok(privacy.includes("does NOT write privacy"));
+  assert.ok(!privacy.includes("drop table"));
+  assert.ok(!privacy.includes("to anon"));
+});
+
 test("0145 is the next numbered migration after 0144", () => {
   const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
   const playlists = readFileSync(join(root, "supabase/migrations/0145_game_film_youtube_playlists.sql"), "utf8");
