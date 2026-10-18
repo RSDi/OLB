@@ -61,6 +61,13 @@ function team(partial: Partial<FilmTeamRow> & Pick<FilmTeamRow, "id" | "slug">):
     codeHash: hashFilmCode(partial.id, "white-code"),
     suggestedCode: "white14",
     youtubePlaylistId: null,
+    youtubeTitleTemplate: null,
+    youtubeDescriptionTemplate: null,
+    includeStatsBook: false,
+    includePlayers: false,
+    includeTournament: false,
+    includePlaylistLink: false,
+    slackChannelId: null,
     ...partial,
   };
 }
@@ -365,6 +372,7 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(settings, /Save playlist/);
   assert.match(settings, /Or pick from the channel/);
   assert.match(settings, /saveFilmTeamPlaylist/);
+  assert.match(settings, /saveFilmTeamTemplate/);
 });
 
 test("guest Game date CSS constrains the iOS Safari native date field", () => {

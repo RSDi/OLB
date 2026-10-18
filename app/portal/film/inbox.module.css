@@ -119,3 +119,30 @@
   line-height: 1.35;
   color: var(--gw-error);
 }
+
+.textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 160px;
+  border-radius: 10px;
+  border: 1px solid var(--gw-border);
+  padding: 12px 14px;
+  font-size: 15px;
+  line-height: 1.45;
+  background: var(--gw-bg);
+  color: var(--gw-fg);
+  resize: vertical;
+  font-family: inherit;
+}
+
+.draftBody {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--gw-fg);
+}

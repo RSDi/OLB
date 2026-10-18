@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../components/icons";
-import { Input, Pill, Select } from "../../components/ui";
+import { Input, Pill, Select, Textarea } from "../../components/ui";
 import { copyText } from "../../../lib/copy-text";
 import { filmUploadUrl } from "../../../lib/film/upload-url";
 import { FilmYoutubeCard } from "./FilmYoutubeCard";
@@ -18,13 +18,20 @@ import {
   renameFilmTeam,
   saveFilmTeamPage,
   saveFilmTeamPlaylist,
+  saveFilmTeamTemplate,
   setFilmTeamCode,
   suggestFilmCode,
   type FilmMemberOption,
   type FilmSettingsTeam,
 } from "../../../lib/film/team-actions";
 import { loadYoutubeSettings } from "../../../lib/film/youtube-actions";
-import { parseYoutubePlaylistId, youtubePlaylistUrl, type YoutubeChannelPlaylist } from "../../../lib/film/youtube-meta";
+import {
+  DEFAULT_YOUTUBE_DESCRIPTION_TEMPLATE,
+  DEFAULT_YOUTUBE_TITLE_TEMPLATE,
+  parseYoutubePlaylistId,
+  youtubePlaylistUrl,
+  type YoutubeChannelPlaylist,
+} from "../../../lib/film/youtube-meta";
 
 function ErrorBox({ text }: { text: string }) {
   return (
@@ -194,6 +201,15 @@ function TeamCard({
   const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
   const [copied, setCopied] = useState(false);
   const [playlistDraft, setPlaylistDraft] = useState(team.youtubePlaylistId ?? "");
+  const [titleTemplate, setTitleTemplate] = useState(team.youtubeTitleTemplate || DEFAULT_YOUTUBE_TITLE_TEMPLATE);
+  const [descriptionTemplate, setDescriptionTemplate] = useState(
+    team.youtubeDescriptionTemplate || DEFAULT_YOUTUBE_DESCRIPTION_TEMPLATE
+  );
+  const [includeStatsBook, setIncludeStatsBook] = useState(team.includeStatsBook);
+  const [includePlayers, setIncludePlayers] = useState(team.includePlayers);
+  const [includeTournament, setIncludeTournament] = useState(team.includeTournament);
+  const [includePlaylistLink, setIncludePlaylistLink] = useState(team.includePlaylistLink);
+  const [slackChannelId, setSlackChannelId] = useState(team.slackChannelId ?? "");
   const uploadUrl = filmUploadUrl(origin, team.slug);
   const parsedDraft = parseYoutubePlaylistId(playlistDraft);
   const selectedPlaylistId = parsedDraft.ok ? parsedDraft.id ?? "" : "";
@@ -358,6 +374,132 @@ function TeamCard({
             Save playlist
           </Pill>
         </div>
+      </div>
+
+      <div data-tour="film-settings-template" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <Input
+          label="YouTube title template"
+          help="Placeholders: {dot} {team} {opponent} {date}. {dot} is a green circle on a win and a red circle on a loss; it is left off on a tie or when there is no score. No W/L text."
+          value={titleTemplate}
+          onChange={(e) => setTitleTemplate(e.target.value)}
+        />
+        <Textarea
+          label="YouTube description template"
+          help="One placeholder per line drops that line if it has nothing to show. {result_line} is Congrats on the win! or Better luck next time! {youtube_link} is filled in after the video is on YouTube. Extras: {players} {tournament} {stats_book} {playlist_link}."
+          value={descriptionTemplate}
+          onChange={(e) => setDescriptionTemplate(e.target.value)}
+          rows={9}
+        />
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Pill
+            size="sm"
+            onClick={() => {
+              setTitleTemplate(DEFAULT_YOUTUBE_TITLE_TEMPLATE);
+              setDescriptionTemplate(DEFAULT_YOUTUBE_DESCRIPTION_TEMPLATE);
+            }}
+          >
+            Reset to default
+          </Pill>
+        </div>
+      </div>
+
+      <div data-tour="film-settings-extras" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          Extra lines
+        </div>
+        <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
+          Off to start. When off, nothing extra appears in the title, description, or Slack text.
+        </div>
+        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={includePlayers}
+            onChange={(e) => setIncludePlayers(e.target.checked)}
+            style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--rsd-accent)" }}
+          />
+          <span>
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Players list</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+              Names from this team&apos;s Directory roster.
+            </span>
+          </span>
+        </label>
+        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={includePlaylistLink}
+            onChange={(e) => setIncludePlaylistLink(e.target.checked)}
+            style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--rsd-accent)" }}
+          />
+          <span>
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Playlist link</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+              The team or per-video YouTube playlist URL.
+            </span>
+          </span>
+        </label>
+        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={includeTournament}
+            onChange={(e) => setIncludeTournament(e.target.checked)}
+            style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--rsd-accent)" }}
+          />
+          <span>
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Tournament name</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+              Ready as {"{tournament}"}, but film uploads do not store a tournament yet — the line stays off until they do.
+            </span>
+          </span>
+        </label>
+        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={includeStatsBook}
+            onChange={(e) => setIncludeStatsBook(e.target.checked)}
+            style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--rsd-accent)" }}
+          />
+          <span>
+            <span style={{ fontSize: 13.5, fontWeight: 700 }}>Stats book</span>
+            <span style={{ display: "block", fontSize: 12.5, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+              Ready as {"{stats_book}"}. There is no stats-book field yet, so the line stays empty.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <div data-tour="film-settings-slack" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <Input
+          label="Slack channel ID"
+          help="Where Sparky posts after someone taps Approve on Film. Paste the channel ID (starts with C), not the #name. Leave blank to keep Approve off."
+          value={slackChannelId}
+          onChange={(e) => setSlackChannelId(e.target.value)}
+          placeholder="C0123456789"
+          autoComplete="off"
+        />
+      </div>
+
+      <div>
+        <Pill
+          size="sm"
+          variant="accent"
+          disabled={busy}
+          onClick={() =>
+            void run(() =>
+              saveFilmTeamTemplate(team.id, {
+                titleTemplate,
+                descriptionTemplate,
+                includeStatsBook,
+                includePlayers,
+                includeTournament,
+                includePlaylistLink,
+                slackChannelId,
+              })
+            )
+          }
+        >
+          Save template
+        </Pill>
       </div>
 
       <div data-tour="film-settings-code" style={{ display: "flex", flexDirection: "column", gap: 8 }}>

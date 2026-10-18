@@ -12,6 +12,11 @@ import {
   updateFilmGameFields,
   updateFilmPlaylistOverride,
 } from "../../../lib/film/admin-actions";
+import {
+  approveFilmSlackDraft,
+  discardPendingFilmSlackDraft,
+  editFilmSlackDraft,
+} from "../../../lib/film/slack-actions";
 import { retryFilmPlaylist, retryFilmYoutube } from "../../../lib/film/youtube-actions";
 import {
   formatFilmInboxHeading,
@@ -19,12 +24,14 @@ import {
   OPPONENT_MAX,
 } from "../../../lib/film/game-meta";
 import { groupUploadsByTeamAndGame, youtubePlaylistUrl, youtubeWatchUrl } from "../../../lib/film/youtube-meta";
-import type { FilmStatus, FilmUpload, YoutubePlaylistStatus, YoutubeStatus } from "../../../lib/film/types";
+import type { FilmSlackDraftView, FilmStatus, FilmUpload, YoutubePlaylistStatus, YoutubeStatus } from "../../../lib/film/types";
 import styles from "./inbox.module.css";
 
 interface Props {
   uploads: FilmUpload[];
+  slackDrafts: FilmSlackDraftView[];
   canManage: boolean;
+  slackConfigured: boolean;
   loadError: string | null;
   parentLinks: { slug: string; label: string }[];
   teamPlaylists: Record<string, string>;
@@ -75,7 +82,7 @@ function digitsOnly(raw: string): string {
 
 type GamePatch = Pick<FilmUpload, "game_date" | "opponent" | "our_score" | "their_score" | "youtube_playlist_id">;
 
-export function FilmInbox({ uploads, canManage, loadError, parentLinks, teamPlaylists }: Props) {
+export function FilmInbox({ uploads, slackDrafts, canManage, slackConfigured, loadError, parentLinks, teamPlaylists }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
@@ -154,9 +161,30 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks, teamPlay
         Videos families upload from their phones, listed by team and game. <strong>Play</strong> watches
         them here. After YouTube is connected in <strong>Settings → Film</strong>, new uploads go up
         unlisted in the background, then into that team&apos;s playlist if one is set. A playlist miss
-        does not mark the YouTube upload failed. Files marked <strong>Moved</strong> are deleted after
+        does not mark the YouTube upload failed. Slack posts wait here for <strong>Approve</strong> —
+        nothing goes out on its own. Files marked <strong>Moved</strong> are deleted after
         30 days.
       </p>
+
+      {slackDrafts.length > 0 && (
+        <section data-tour="film-slack-drafts" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Pending Slack posts</h2>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
+            Same text as the YouTube description. Sparky posts it only after someone with{" "}
+            <strong>Game film (manage)</strong> taps <strong>Approve</strong>.
+          </p>
+          {slackDrafts.map((draft) => (
+            <SlackDraftCard
+              key={draft.id}
+              draft={draft}
+              canManage={canManage}
+              slackConfigured={slackConfigured}
+              busy={busy === draft.id}
+              onRun={(fn) => void run(draft.id, fn)}
+            />
+          ))}
+        </section>
+      )}
 
       {parentLinks.length > 0 && (
         <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
@@ -629,5 +657,120 @@ function FilmGameEditor({
         </Pill>
       </div>
     </form>
+  );
+}
+
+function SlackDraftCard({
+  draft,
+  canManage,
+  slackConfigured,
+  busy,
+  onRun,
+}: {
+  draft: FilmSlackDraftView;
+  canManage: boolean;
+  slackConfigured: boolean;
+  busy: boolean;
+  onRun: (fn: (id: string) => Promise<{ error?: string }>) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [body, setBody] = useState(draft.body);
+  const noChannel = !draft.channel_id?.trim();
+  const approveBlocked = noChannel || !slackConfigured;
+
+  return (
+    <div className="rsd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div>
+        <div style={{ fontWeight: 800, fontSize: 15 }}>{draft.team_label}</div>
+        <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
+          {draft.filename} · waiting for approval
+        </div>
+      </div>
+      {editing ? (
+        <form
+          className={styles.form}
+          onSubmit={(e) => {
+            e.preventDefault();
+            onRun(async (id) => {
+              const result = await editFilmSlackDraft(id, body);
+              if (!result.error) setEditing(false);
+              return result;
+            });
+          }}
+        >
+          <label className={styles.field}>
+            <span className={styles.label}>Slack post</span>
+            <textarea
+              className={styles.textarea}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={8}
+              required
+            />
+          </label>
+          <div className={styles.actions}>
+            <Pill size="sm" variant="accent" type="submit" disabled={busy || !body.trim()}>
+              Save
+            </Pill>
+            <Pill
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setBody(draft.body);
+                setEditing(false);
+              }}
+            >
+              Cancel
+            </Pill>
+          </div>
+        </form>
+      ) : (
+        <>
+          <pre className={styles.draftBody}>{draft.body}</pre>
+          {canManage && noChannel && (
+            <p className={styles.hint}>
+              Approve is off until this team has a Slack channel ID in Settings → Film.
+            </p>
+          )}
+          {canManage && !noChannel && !slackConfigured && (
+            <p className={styles.hint}>Approve is off until Sparky&apos;s Slack bot token is set.</p>
+          )}
+          {canManage && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <span data-tour="film-slack-approve">
+                <Pill
+                  size="sm"
+                  variant="accent"
+                  disabled={busy || approveBlocked}
+                  onClick={() => onRun((id) => approveFilmSlackDraft(id))}
+                >
+                  Approve
+                </Pill>
+              </span>
+              <span data-tour="film-slack-edit">
+                <Pill size="sm" disabled={busy} onClick={() => setEditing(true)}>
+                  Edit
+                </Pill>
+              </span>
+              <span data-tour="film-slack-discard">
+                <Pill
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    if (confirm("Discard this Slack post? It will not go out.")) {
+                      onRun((id) => discardPendingFilmSlackDraft(id));
+                    }
+                  }}
+                >
+                  Discard
+                </Pill>
+              </span>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

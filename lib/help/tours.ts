@@ -380,6 +380,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "After YouTube, the video is added to the team's playlist. **In playlist** opens it. If that step failed, the video stays on YouTube — tap **Retry playlist**.",
       },
       {
+        target: "film-slack-drafts",
+        title: "Pending Slack posts",
+        body: "After a video is on YouTube, the Slack text waits here. **Approve** is the only way Sparky posts it. **Edit** changes the words; **Discard** throws it away.",
+      },
+      {
         target: "film-moved",
         title: "Mark moved",
         body: "Once the video is on YouTube or a drive, tap **Mark moved**. Files marked moved are deleted after 30 days. You only see this with **Game film (manage)**.",
@@ -746,6 +751,24 @@ export const GUIDE_TOURS: GuideTour[] = [
         click: "settings-tab-film",
         title: "Team playlist",
         body: "**YouTube playlist** is the playlist new film for this team is added to. Paste a link or id, or pick from the channel, then **Save playlist**.",
+      },
+      {
+        target: "film-settings-template",
+        click: "settings-tab-film",
+        title: "YouTube wording",
+        body: "**YouTube title template** and **YouTube description template** are this team's wording, with placeholders for the team, opponent, date, score, and watch link. **Reset to default** puts the club wording back. **Save template** keeps it.",
+      },
+      {
+        target: "film-settings-extras",
+        click: "settings-tab-film",
+        title: "Extra lines",
+        body: "**Players list**, **Playlist link**, **Tournament name**, and **Stats book** are off to start. Turn one on only if you want that extra line in the YouTube and Slack text.",
+      },
+      {
+        target: "film-settings-slack",
+        click: "settings-tab-film",
+        title: "Slack channel",
+        body: "**Slack channel ID** is where Sparky posts after someone taps **Approve** on Film. Paste the C… id, not the #name.",
       },
       {
         target: "film-settings-row",

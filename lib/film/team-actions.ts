@@ -22,7 +22,12 @@ import {
   slugifyFilmTeam,
   type FilmTeamRow,
 } from "./teams.ts";
-import { parseYoutubePlaylistId } from "./youtube-meta.ts";
+import { parseFilmSlackChannelId } from "./slack-drafts.ts";
+import {
+  DEFAULT_YOUTUBE_DESCRIPTION_TEMPLATE,
+  DEFAULT_YOUTUBE_TITLE_TEMPLATE,
+  parseYoutubePlaylistId,
+} from "./youtube-meta.ts";
 
 function refresh() {
   revalidatePath("/portal/settings");
@@ -79,6 +84,13 @@ export async function loadFilmSettings(): Promise<
         codeVersion: t.codeVersion,
         suggestedCode: t.suggestedCode,
         youtubePlaylistId: t.youtubePlaylistId,
+        youtubeTitleTemplate: t.youtubeTitleTemplate,
+        youtubeDescriptionTemplate: t.youtubeDescriptionTemplate,
+        includeStatsBook: t.includeStatsBook,
+        includePlayers: t.includePlayers,
+        includeTournament: t.includeTournament,
+        includePlaylistLink: t.includePlaylistLink,
+        slackChannelId: t.slackChannelId,
         managers: managersByTeam.get(t.id) ?? [],
       })),
     };
@@ -184,6 +196,45 @@ export async function saveFilmTeamPlaylist(
   if (error) return { error: error.message };
   refresh();
   return { youtubePlaylistId: parsed.id };
+}
+
+export async function saveFilmTeamTemplate(
+  id: string,
+  input: {
+    titleTemplate: string;
+    descriptionTemplate: string;
+    includeStatsBook: boolean;
+    includePlayers: boolean;
+    includeTournament: boolean;
+    includePlaylistLink: boolean;
+    slackChannelId: string;
+  }
+): Promise<{ error?: string }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  const title = input.titleTemplate.trim() || DEFAULT_YOUTUBE_TITLE_TEMPLATE;
+  const description = input.descriptionTemplate.trim() || DEFAULT_YOUTUBE_DESCRIPTION_TEMPLATE;
+  if (title.length > 200) return { error: "Keep the title template under 200 characters." };
+  if (description.length > 4000) return { error: "Keep the description template under 4000 characters." };
+  const channel = parseFilmSlackChannelId(input.slackChannelId);
+  if (!channel.ok) return { error: channel.error };
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("olb_teams")
+    .update({
+      film_youtube_title_template: title,
+      film_youtube_description_template: description,
+      film_include_stats_book: !!input.includeStatsBook,
+      film_include_players: !!input.includePlayers,
+      film_include_tournament: !!input.includeTournament,
+      film_include_playlist_link: !!input.includePlaylistLink,
+      film_slack_channel_id: channel.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  refresh();
+  return {};
 }
 
 export async function setFilmTeamCode(

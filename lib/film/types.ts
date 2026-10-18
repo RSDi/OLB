@@ -19,6 +19,7 @@ export const MOVED_RETENTION_DAYS = 30;
 export type FilmStatus = "holding" | "moved";
 export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
 export type YoutubePlaylistStatus = "queued" | "done" | "failed";
+export type FilmSlackDraftStatus = "pending" | "posting" | "posted" | "discarded";
 
 export interface FilmTeam {
   slug: string;
@@ -50,6 +51,27 @@ export interface FilmUpload {
   youtube_playlist_error: string | null;
   youtube_playlist_item_id: string | null;
   youtube_playlist_updated_at: string | null;
+}
+
+export interface FilmSlackDraft {
+  id: string;
+  upload_id: string;
+  team_id: string | null;
+  channel_id: string | null;
+  body: string;
+  status: FilmSlackDraftStatus;
+  slack_ts: string | null;
+  posted_channel_id: string | null;
+  posted_at: string | null;
+  posted_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FilmSlackDraftView extends FilmSlackDraft {
+  filename: string;
+  team_label: string;
+  team_slug: string;
 }
 
 export interface MintedUpload {

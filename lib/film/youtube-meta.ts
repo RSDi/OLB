@@ -1,6 +1,6 @@
 // Titles, descriptions, and inbox grouping for game film / YouTube.
 
-import { formatFilmGameLine, formatFilmScore } from "./game-meta.ts";
+import { formatFilmGameLine } from "./game-meta.ts";
 import type { FilmUpload } from "./types.ts";
 
 export const YOUTUBE_TITLE_MAX = 100;
@@ -63,42 +63,126 @@ export function parseYoutubePlaylistId(
 
 export type YoutubeChannelPlaylist = { id: string; title: string };
 
-export function youtubeTitle(input: {
-  teamLabel: string;
-  opponent?: string | null;
-  gameDate?: string | null;
-}): string {
-  const team = input.teamLabel.trim() || "OLB";
-  const date = formatFilmMdy(input.gameDate);
-  const vs = input.opponent?.trim();
-  let title = vs ? `${team} vs ${vs}` : team;
-  if (date) title = `${title} – ${date}`;
-  if (title.length <= YOUTUBE_TITLE_MAX) return title;
-  return title.slice(0, YOUTUBE_TITLE_MAX - 1).trimEnd() + "…";
-}
+export const DEFAULT_YOUTUBE_TITLE_TEMPLATE = "{dot} {team} vs {opponent} – {date}";
 
-export function youtubeDescription(input: {
+export const DEFAULT_YOUTUBE_DESCRIPTION_TEMPLATE = [
+  "{team} vs {opponent}, {date}",
+  "{result_line}",
+  "Final: {our_score}–{their_score}",
+  "Watch: {youtube_link}",
+  "Players: {players}",
+  "Tournament: {tournament}",
+  "Stats: {stats_book}",
+  "Playlist: {playlist_link}",
+  "Go Lightning! ⚡",
+].join("\n");
+
+export type YoutubeTemplateExtras = {
+  includeStatsBook?: boolean;
+  includePlayers?: boolean;
+  includeTournament?: boolean;
+  includePlaylistLink?: boolean;
+};
+
+export type YoutubeTemplateInput = {
   teamLabel: string;
   opponent?: string | null;
   gameDate?: string | null;
   ourScore?: number | null;
   theirScore?: number | null;
+  youtubeVideoId?: string | null;
+  playlistId?: string | null;
+  players?: string[] | null;
+  tournamentName?: string | null;
+  statsBook?: string | null;
   uploaderName?: string | null;
-}): string {
-  const lines = ["Omaha Lightning game film."];
-  const game = formatFilmGameLine({
-    gameDate: input.gameDate,
-    opponent: input.opponent,
-    ourScore: input.ourScore,
-    theirScore: input.theirScore,
-  });
-  if (game) lines.push("", game);
-  const score = formatFilmScore(input.ourScore, input.theirScore);
-  if (score && input.ourScore != null && input.theirScore != null) {
-    lines.push(`Final: ${score}`);
-  }
-  if (input.uploaderName) lines.push("", `Uploaded by ${input.uploaderName}`);
-  return lines.join("\n");
+  extras?: YoutubeTemplateExtras;
+  titleTemplate?: string | null;
+  descriptionTemplate?: string | null;
+};
+
+export type FilmResultKind = "win" | "loss" | "tie" | "none";
+
+export function filmResultKind(ourScore?: number | null, theirScore?: number | null): FilmResultKind {
+  if (ourScore == null || theirScore == null) return "none";
+  if (ourScore > theirScore) return "win";
+  if (ourScore < theirScore) return "loss";
+  return "tie";
+}
+
+export function youtubeTemplateValues(input: YoutubeTemplateInput): Record<string, string> {
+  const result = filmResultKind(input.ourScore, input.theirScore);
+  const extras = input.extras ?? {};
+  const players = extras.includePlayers
+    ? (input.players ?? []).map((name) => name.trim()).filter(Boolean)
+    : [];
+  const tournament = extras.includeTournament ? input.tournamentName?.trim() || "" : "";
+  const statsBook = extras.includeStatsBook ? input.statsBook?.trim() || "" : "";
+  const playlistId = extras.includePlaylistLink ? input.playlistId?.trim() || "" : "";
+  return {
+    dot: result === "win" ? "🟢" : result === "loss" ? "🔴" : "",
+    team: input.teamLabel.trim() || "OLB",
+    opponent: input.opponent?.trim() || "",
+    date: formatFilmMdy(input.gameDate) || "",
+    result_line:
+      result === "win" ? "Congrats on the win!" : result === "loss" ? "Better luck next time!" : "",
+    our_score: result === "none" ? "" : String(input.ourScore),
+    their_score: result === "none" ? "" : String(input.theirScore),
+    youtube_link: input.youtubeVideoId ? youtubeWatchUrl(input.youtubeVideoId) : "",
+    playlist_link: playlistId ? youtubePlaylistUrl(playlistId) : "",
+    players: players.join(", "),
+    tournament,
+    stats_book: statsBook,
+    uploader: input.uploaderName?.trim() || "",
+  };
+}
+
+const PLACEHOLDER_RE = /\{([a-z_]+)\}/g;
+const LABEL_ONLY_RE =
+  /^(Final:\s*[–—-]?\s*|Watch:\s*|Players:\s*|Tournament:\s*|Stats:\s*|Playlist:\s*|Uploaded by\s*)$/i;
+
+function tidyTemplateLine(line: string): string {
+  return line
+    .replace(/\s+vs\s+,/g, ",")
+    .replace(/\s+vs\s+[–—-]\s*/g, " – ")
+    .replace(/\s+vs\s*$/g, "")
+    .replace(/\s+,(\s*,)*/g, ",")
+    .replace(/,\s*$/g, "")
+    .replace(/\s+[–—-]\s*$/g, "")
+    .replace(/^[–—-]\s*/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .replace(LABEL_ONLY_RE, "")
+    .replace(/^Final:\s+[–—-]\s*$/i, "")
+    .trim();
+}
+
+export function renderYoutubeTemplate(template: string, values: Record<string, string>): string {
+  const resolved = template.replace(/\{dot\}(\s*)/g, (_, space: string) =>
+    values.dot ? `${values.dot}${space}` : ""
+  );
+  const filled = resolved.replace(PLACEHOLDER_RE, (match, key: string) =>
+    Object.prototype.hasOwnProperty.call(values, key) ? values[key] ?? "" : match
+  );
+  return filled
+    .split(/\r?\n/)
+    .map((line) => tidyTemplateLine(line))
+    .filter((line) => line.length > 0)
+    .join("\n");
+}
+
+export function youtubeTitle(input: YoutubeTemplateInput): string {
+  const values = youtubeTemplateValues(input);
+  const template = input.titleTemplate?.trim() || DEFAULT_YOUTUBE_TITLE_TEMPLATE;
+  const title = renderYoutubeTemplate(template, values) || values.team;
+  if (title.length <= YOUTUBE_TITLE_MAX) return title;
+  return title.slice(0, YOUTUBE_TITLE_MAX - 1).trimEnd() + "…";
+}
+
+export function youtubeDescription(input: YoutubeTemplateInput): string {
+  const values = youtubeTemplateValues(input);
+  const template = input.descriptionTemplate?.trim() || DEFAULT_YOUTUBE_DESCRIPTION_TEMPLATE;
+  return renderYoutubeTemplate(template, values);
 }
 
 export function youtubeInitiateHeaders(accessToken: string, sizeBytes: number, contentType: string): Record<string, string> {

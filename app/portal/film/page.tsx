@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { getViewer } from "../../../lib/auth/viewer";
+import { slackBotConfigured } from "../../../lib/notifications/slack";
+import { listPendingFilmSlackDraftViews } from "../../../lib/film/slack-drafts";
 import { listFilmUploads } from "../../../lib/film/uploads";
 import { listEnabledFilmTeams } from "../../../lib/film/teams";
-import type { FilmUpload } from "../../../lib/film/types";
+import type { FilmSlackDraftView, FilmUpload } from "../../../lib/film/types";
 import { FilmInbox } from "./FilmInbox";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +25,18 @@ export default async function FilmInboxPage() {
   }
 
   let uploads: FilmUpload[] = [];
+  let slackDrafts: FilmSlackDraftView[] = [];
   let loadError: string | null = null;
+  const teamScope = viewer.canViewAllFilm ? undefined : viewer.filmTeamIds;
   try {
-    uploads = await listFilmUploads(viewer.canViewAllFilm ? undefined : viewer.filmTeamIds);
+    uploads = await listFilmUploads(teamScope);
   } catch (err) {
     loadError = err instanceof Error ? err.message : "Couldn't load uploads.";
+  }
+  try {
+    slackDrafts = await listPendingFilmSlackDraftViews(teamScope);
+  } catch {
+    slackDrafts = [];
   }
 
   let parentLinks: { slug: string; label: string }[] = [];
@@ -47,7 +56,9 @@ export default async function FilmInboxPage() {
   return (
     <FilmInbox
       uploads={uploads}
+      slackDrafts={slackDrafts}
       canManage={viewer.canManageFilm}
+      slackConfigured={slackBotConfigured()}
       loadError={loadError}
       parentLinks={parentLinks}
       teamPlaylists={teamPlaylists}

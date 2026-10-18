@@ -1,7 +1,7 @@
 // Google OAuth for the club YouTube channel. Server-only.
 // youtube.upload — resumable videos.insert
 // youtube.readonly — channel name + playlists.list
-// youtube — playlistItems.insert (upload/readonly are not enough)
+// youtube — playlistItems.insert and videos.update (upload/readonly are not enough)
 // After adding youtube on the consent screen, Jeff must Disconnect + Connect
 // again so Google issues a refresh token with the new scope.
 

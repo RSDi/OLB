@@ -8,7 +8,8 @@
 // cron continues. after() on complete starts the first chunks so a short clip
 // may land before the next minute. Same CRON_SECRET as the other jobs.
 
-import { getFilmTeamBySlug } from "./teams.ts";
+import { getFilmTeamById, getFilmTeamBySlug, listTeamPlayerNames } from "./teams.ts";
+import { createFilmSlackDraftIfNeeded } from "./slack-drafts.ts";
 import { filmStorage } from "./storage.ts";
 import {
   claimYoutubeWork,
@@ -29,6 +30,7 @@ import {
   youtubeDescription,
   youtubeInitiateHeaders,
   youtubeTitle,
+  type YoutubeTemplateInput,
 } from "./youtube-meta.ts";
 import { refreshYoutubeAccess, youtubeOAuthConfigured } from "./youtube-oauth.ts";
 import { insertYoutubePlaylistItem } from "./youtube-playlist.ts";
@@ -36,6 +38,7 @@ import { getYoutubeConnectionSecret } from "./youtube-settings.ts";
 import type { FilmUpload } from "./types.ts";
 
 const INITIATE_URL = "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status";
+const VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos?part=snippet";
 const STALE_MS = 4 * 60 * 1000;
 export const YOUTUBE_TICK_BUDGET_MS = 240_000;
 export const YOUTUBE_KICK_BUDGET_MS = 20_000;
@@ -232,6 +235,7 @@ async function pushOne(
         youtube_error: null,
       });
       await upsertYoutubeJob(row.id, { upload_uri: null, bytes_sent: total });
+      await afterYoutubeInsert(row, resume.videoId, opts.access);
       await queuePlaylistIfNeeded(row.id);
       await addVideoToPlaylist({ ...row, youtube_status: "done", youtube_video_id: resume.videoId }, opts.access);
       return "done";
@@ -267,6 +271,7 @@ async function pushOne(
         youtube_error: null,
       });
       await upsertYoutubeJob(row.id, { upload_uri: null, bytes_sent: total });
+      await afterYoutubeInsert(row, json.id, opts.access);
       await queuePlaylistIfNeeded(row.id);
       await addVideoToPlaylist({ ...row, youtube_status: "done", youtube_video_id: json.id }, opts.access);
       return "done";
@@ -294,19 +299,11 @@ async function initiateUpload(
     type: string;
   }
 ): Promise<string> {
-  const team = await getFilmTeamBySlug(row.team).catch(() => null);
-  const label = team?.label || row.team;
+  const ctx = await filmYoutubeContext(row);
   const body = JSON.stringify({
     snippet: {
-      title: youtubeTitle({ teamLabel: label, opponent: row.opponent, gameDate: row.game_date }),
-      description: youtubeDescription({
-        teamLabel: label,
-        opponent: row.opponent,
-        gameDate: row.game_date,
-        ourScore: row.our_score,
-        theirScore: row.their_score,
-        uploaderName: row.uploader_name,
-      }),
+      title: youtubeTitle(ctx.input),
+      description: youtubeDescription(ctx.input),
       categoryId: "17",
     },
     status: {
@@ -357,6 +354,89 @@ async function objectSize(row: FilmUpload): Promise<number> {
   const len = Number(head.headers.get("content-length") ?? 0);
   if (!Number.isFinite(len) || len <= 0) throw new Error("Couldn't tell how large that video is.");
   return len;
+}
+
+async function filmYoutubeContext(row: FilmUpload): Promise<{
+  teamId: string | null;
+  slackChannelId: string | null;
+  input: YoutubeTemplateInput;
+}> {
+  const team =
+    (row.team_id ? await getFilmTeamById(row.team_id).catch(() => null) : null) ??
+    (await getFilmTeamBySlug(row.team).catch(() => null));
+  const extras = {
+    includeStatsBook: team?.includeStatsBook ?? false,
+    includePlayers: team?.includePlayers ?? false,
+    includeTournament: team?.includeTournament ?? false,
+    includePlaylistLink: team?.includePlaylistLink ?? false,
+  };
+  const players = extras.includePlayers && team?.id ? await listTeamPlayerNames(team.id).catch(() => []) : [];
+  const playlistId = row.youtube_playlist_id?.trim() || team?.youtubePlaylistId || null;
+  return {
+    teamId: team?.id ?? row.team_id,
+    slackChannelId: team?.slackChannelId ?? null,
+    input: {
+      teamLabel: team?.label || row.team,
+      opponent: row.opponent,
+      gameDate: row.game_date,
+      ourScore: row.our_score,
+      theirScore: row.their_score,
+      playlistId,
+      players,
+      extras,
+      titleTemplate: team?.youtubeTitleTemplate,
+      descriptionTemplate: team?.youtubeDescriptionTemplate,
+      uploaderName: row.uploader_name,
+    },
+  };
+}
+
+async function afterYoutubeInsert(row: FilmUpload, videoId: string, access: string): Promise<void> {
+  const ctx = await filmYoutubeContext(row);
+  const title = youtubeTitle(ctx.input);
+  const description = youtubeDescription({ ...ctx.input, youtubeVideoId: videoId });
+  try {
+    await updateYoutubeVideoSnippet(access, videoId, title, description);
+  } catch (err) {
+    console.error("[film-youtube] videos.update failed:", err instanceof Error ? err.message : err);
+  }
+  try {
+    await createFilmSlackDraftIfNeeded({
+      uploadId: row.id,
+      teamId: ctx.teamId,
+      channelId: ctx.slackChannelId,
+      body: description,
+    });
+  } catch (err) {
+    console.error("[film-youtube] slack draft failed:", err instanceof Error ? err.message : err);
+  }
+}
+
+async function updateYoutubeVideoSnippet(
+  access: string,
+  videoId: string,
+  title: string,
+  description: string
+): Promise<void> {
+  const res = await fetch(VIDEOS_URL, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${access}`,
+      "Content-Type": "application/json; charset=UTF-8",
+    },
+    body: JSON.stringify({
+      id: videoId,
+      snippet: {
+        title,
+        description,
+        categoryId: "17",
+      },
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(youtubeErrorMessage(res.status, errText));
+  }
 }
 
 function youtubeErrorMessage(status: number, body: string): string {
