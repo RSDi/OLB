@@ -21,6 +21,24 @@ test("0143 is the next numbered migration after 0142", () => {
   assert.equal(names.filter((n) => n.startsWith("0143")).length, 1, "only one 0143 migration");
 });
 
+test("0145 is the next numbered migration after 0144", () => {
+  const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
+  const playlists = readFileSync(join(root, "supabase/migrations/0145_game_film_youtube_playlists.sql"), "utf8");
+  assert.ok(names.includes("0144_game_film_youtube.sql"));
+  assert.ok(names.includes("0145_game_film_youtube_playlists.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0145")).length, 1, "only one 0145 migration");
+  assert.ok(playlists.includes("add column if not exists youtube_playlist_id"));
+  assert.ok(playlists.includes("youtube_playlist_status"));
+  assert.ok(playlists.includes("check (youtube_playlist_status in ('queued', 'done', 'failed'))"));
+  assert.ok(playlists.includes("youtube_playlist_error"));
+  assert.ok(playlists.includes("youtube_playlist_item_id"));
+  assert.ok(playlists.includes("game_film_uploads_youtube_playlist_status_idx"));
+  assert.ok(playlists.includes("alter table public.olb_teams"));
+  assert.ok(playlists.includes("OLB does NOT auto-run"));
+  assert.ok(!playlists.includes("drop table"));
+  assert.ok(!playlists.includes("to anon"));
+});
+
 test("0144 is the next numbered migration after 0143", () => {
   const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
   const youtube = readFileSync(join(root, "supabase/migrations/0144_game_film_youtube.sql"), "utf8");

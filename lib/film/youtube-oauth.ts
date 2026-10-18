@@ -1,6 +1,9 @@
-// Google OAuth for the club YouTube channel. Server-only. Scope is
-// youtube.upload (plus readonly so we can show which channel connected).
-// The refresh token is encrypted before it is stored.
+// Google OAuth for the club YouTube channel. Server-only.
+// youtube.upload — resumable videos.insert
+// youtube.readonly — channel name + playlists.list
+// youtube — playlistItems.insert (upload/readonly are not enough)
+// After adding youtube on the consent screen, Jeff must Disconnect + Connect
+// again so Google issues a refresh token with the new scope.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
@@ -10,6 +13,7 @@ export const YOUTUBE_CALLBACK_PATH = "/api/film/youtube/callback";
 export const YOUTUBE_SCOPES = [
   "https://www.googleapis.com/auth/youtube.upload",
   "https://www.googleapis.com/auth/youtube.readonly",
+  "https://www.googleapis.com/auth/youtube",
 ];
 export const YOUTUBE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 export const YOUTUBE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";

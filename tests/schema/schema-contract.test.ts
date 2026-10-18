@@ -82,7 +82,7 @@ const CONTRACT: Record<string, string> = {
   slack_archive_channel_members: "channel_id,member_id,created_at",
   olb_boards: "id,season,name,parent_balances_visible,season_ends_on",
   olb_age_caps: "id,board_id,age_group,max_age,sort_order,created_at,updated_at",
-  olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at,film_slug,film_enabled,film_code_hash,film_code_version",
+  olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at,film_slug,film_enabled,film_code_hash,film_code_version,youtube_playlist_id",
   olb_players:
     "id,board_id,team_id,full_name,dob,grade,sort_order,import_flag,updated_at,age_group,new_to_program,address_line1,address_line2,city,state,postal_code,phone,email,registration_fee,payment_method,shirt_size,waiver_signed,waiver_signed_on,directory_optin,registered_at",
   olb_player_parents: "player_id,member_id,relationship",
@@ -148,9 +148,9 @@ const CONTRACT: Record<string, string> = {
   olb_roadmap_items:
     "id,title,description,area,status,released_on,preview_url,created_by,created_at,updated_at,deleted_at,approved_by,approved_at",
   olb_roadmap_link: "id,key,updated_at",
-  // Game film (0142, 0143, 0144).
+  // Game film (0142, 0143, 0144, 0145).
   game_film_uploads:
-    "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score,youtube_status,youtube_video_id,youtube_error,youtube_updated_at",
+    "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score,youtube_status,youtube_video_id,youtube_error,youtube_updated_at,youtube_playlist_id,youtube_playlist_status,youtube_playlist_error,youtube_playlist_item_id,youtube_playlist_updated_at",
   game_film_managers: "team_id,user_id,created_at",
   game_film_youtube:
     "id,refresh_token_enc,channel_id,channel_title,connected_at,connected_by,privacy_status,made_for_kids,updated_at",

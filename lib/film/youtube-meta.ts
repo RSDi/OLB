@@ -9,6 +9,9 @@ export const YOUTUBE_MAX_ATTEMPTS = 5;
 
 export type YoutubePrivacy = "unlisted" | "private" | "public";
 export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
+export type YoutubePlaylistStatus = "queued" | "done" | "failed";
+
+const PLAYLIST_ID_RE = /^[A-Za-z0-9_-]{10,80}$/;
 
 export type YoutubeConnection = {
   connected: boolean;
@@ -29,6 +32,36 @@ export function formatFilmMdy(iso: string | null | undefined): string | null {
 export function youtubeWatchUrl(videoId: string): string {
   return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
 }
+
+export function youtubePlaylistUrl(playlistId: string): string {
+  return `https://www.youtube.com/playlist?list=${encodeURIComponent(playlistId)}`;
+}
+
+/** Accept a playlist URL (`?list=`) or a bare id. Empty is none. */
+export function parseYoutubePlaylistId(
+  raw: unknown
+): { ok: true; id: string | null } | { ok: false; error: string } {
+  if (raw == null) return { ok: true, id: null };
+  if (typeof raw !== "string") return { ok: false, error: "Paste a playlist link or id." };
+  const s = raw.trim();
+  if (!s) return { ok: true, id: null };
+  let id = s;
+  const listMatch = /(?:[?&]list=)([A-Za-z0-9_-]+)/.exec(s);
+  if (listMatch) {
+    id = listMatch[1]!;
+  } else if (/^https?:\/\//i.test(s)) {
+    try {
+      const fromUrl = new URL(s).searchParams.get("list");
+      if (fromUrl) id = fromUrl;
+    } catch {
+      return { ok: false, error: "That doesn't look like a YouTube playlist." };
+    }
+  }
+  if (!PLAYLIST_ID_RE.test(id)) return { ok: false, error: "That doesn't look like a YouTube playlist." };
+  return { ok: true, id };
+}
+
+export type YoutubeChannelPlaylist = { id: string; title: string };
 
 export function youtubeTitle(input: {
   teamLabel: string;

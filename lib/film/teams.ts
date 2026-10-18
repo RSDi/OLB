@@ -19,6 +19,7 @@ export type FilmTeamRow = FilmTeam & {
   codeVersion: number;
   codeHash: string | null;
   suggestedCode: string;
+  youtubePlaylistId: string | null;
 };
 
 type TeamQueryRow = {
@@ -30,6 +31,7 @@ type TeamQueryRow = {
   film_enabled: boolean | null;
   film_code_hash: string | null;
   film_code_version: number | null;
+  youtube_playlist_id: string | null;
 };
 
 export function slugifyFilmTeam(name: string): string {
@@ -64,11 +66,12 @@ function toFilmTeam(row: TeamQueryRow): FilmTeamRow {
     codeVersion: row.film_code_version ?? 1,
     codeHash: row.film_code_hash,
     suggestedCode: suggestTeamWordCode({ name: row.name, ageGroup: row.age_group, label: teamLabel(row) }),
+    youtubePlaylistId: row.youtube_playlist_id?.trim() || null,
   };
 }
 
 const TEAM_COLS =
-  "id, board_id, name, age_group, film_slug, film_enabled, film_code_hash, film_code_version";
+  "id, board_id, name, age_group, film_slug, film_enabled, film_code_hash, film_code_version, youtube_playlist_id";
 
 async function currentBoardId(): Promise<string | null> {
   const admin = createAdminClient();

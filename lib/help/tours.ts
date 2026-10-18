@@ -372,7 +372,12 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "film-edit",
         title: "Edit the game",
-        body: "**Edit** lets you fix **Game date**, **Opponent**, and the score. **Save** updates the heading above the video. You only see this with **Game film (manage)**.",
+        body: "**Edit** lets you fix **Game date**, **Opponent**, the score, and an optional **YouTube playlist** for this video. **Save** updates the heading above the video. You only see this with **Game film (manage)**.",
+      },
+      {
+        target: "film-playlist",
+        title: "Playlist",
+        body: "After YouTube, the video is added to the team's playlist. **In playlist** opens it. If that step failed, the video stays on YouTube — tap **Retry playlist**.",
       },
       {
         target: "film-moved",
@@ -734,7 +739,13 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "film-settings-youtube",
         click: "settings-tab-film",
         title: "Connect YouTube",
-        body: "**Connect YouTube** once with the club channel. New uploads then go up unlisted in the background. **Disconnect YouTube** stops that.",
+        body: "**Connect YouTube** once with the club channel. New uploads then go up unlisted in the background, then into that team's playlist if one is set. **Disconnect YouTube** stops that.",
+      },
+      {
+        target: "film-settings-playlist",
+        click: "settings-tab-film",
+        title: "Team playlist",
+        body: "**YouTube playlist** is the playlist new film for this team is added to. Paste a link or id, or pick from the channel, then **Save playlist**.",
       },
       {
         target: "film-settings-row",

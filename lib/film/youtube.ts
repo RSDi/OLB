@@ -14,8 +14,11 @@ import {
   claimYoutubeWork,
   getFilmUpload,
   getYoutubeJob,
+  listPlaylistWork,
   listYoutubeWork,
+  setFilmPlaylistStatus,
   setFilmYoutubeStatus,
+  teamYoutubePlaylistId,
   upsertYoutubeJob,
 } from "./uploads.ts";
 import {
@@ -28,6 +31,7 @@ import {
   youtubeTitle,
 } from "./youtube-meta.ts";
 import { refreshYoutubeAccess, youtubeOAuthConfigured } from "./youtube-oauth.ts";
+import { insertYoutubePlaylistItem } from "./youtube-playlist.ts";
 import { getYoutubeConnectionSecret } from "./youtube-settings.ts";
 import type { FilmUpload } from "./types.ts";
 
@@ -107,26 +111,87 @@ export async function processYoutubeQueue(opts?: {
 
   const rows = await listYoutubeWork(opts?.uploadId);
   const candidate = rows.find((row) => canClaim(row, started)) ?? null;
-  if (!candidate) return result;
-  const pick = await claimYoutubeWork(candidate.id, new Date(started));
-  if (!pick) return result;
+  if (candidate) {
+    const pick = await claimYoutubeWork(candidate.id, new Date(started));
+    if (pick) {
+      result.processed = 1;
+      try {
+        const outcome = await pushOne(pick, {
+          access,
+          privacy: secret.privacyStatus,
+          madeForKids: secret.madeForKids,
+          deadline: started + budgetMs,
+        });
+        if (outcome === "done") result.done = 1;
+        else if (outcome === "failed") result.failed = 1;
+        else result.continued = 1;
+      } catch (err) {
+        await failOrRequeue(pick.id, err instanceof Error ? err.message : "YouTube upload failed.");
+        result.failed = 1;
+      }
+    }
+  }
 
-  result.processed = 1;
-  try {
-    const outcome = await pushOne(pick, {
-      access,
-      privacy: secret.privacyStatus,
-      madeForKids: secret.madeForKids,
-      deadline: started + budgetMs,
-    });
-    if (outcome === "done") result.done = 1;
-    else if (outcome === "failed") result.failed = 1;
-    else result.continued = 1;
-  } catch (err) {
-    await failOrRequeue(pick.id, err instanceof Error ? err.message : "YouTube upload failed.");
-    result.failed = 1;
+  if (Date.now() < started + budgetMs) {
+    await processPlaylistQueue({ access, uploadId: opts?.uploadId });
   }
   return result;
+}
+
+async function resolvePlaylistId(row: FilmUpload): Promise<string | null> {
+  const override = row.youtube_playlist_id?.trim();
+  if (override) return override;
+  return teamYoutubePlaylistId(row.team_id, row.team);
+}
+
+export async function queuePlaylistIfNeeded(uploadId: string): Promise<void> {
+  const row = await getFilmUpload(uploadId);
+  if (!row?.youtube_video_id || row.youtube_status !== "done") return;
+  if (row.youtube_playlist_status === "done") return;
+  const playlistId = await resolvePlaylistId(row);
+  if (!playlistId) return;
+  if (row.youtube_playlist_status === "queued") return;
+  await setFilmPlaylistStatus(uploadId, { youtube_playlist_status: "queued", youtube_playlist_error: null });
+}
+
+export async function retryPlaylistAdd(uploadId: string): Promise<void> {
+  const row = await getFilmUpload(uploadId);
+  if (!row) throw new Error("That upload isn't there any more.");
+  if (row.youtube_status !== "done" || !row.youtube_video_id) {
+    throw new Error("Send the video to YouTube before adding it to a playlist.");
+  }
+  const playlistId = await resolvePlaylistId(row);
+  if (!playlistId) throw new Error("Set a playlist on this video or on the team in Settings → Film.");
+  await setFilmPlaylistStatus(uploadId, { youtube_playlist_status: "queued", youtube_playlist_error: null });
+}
+
+async function processPlaylistQueue(opts: { access: string; uploadId?: string }): Promise<void> {
+  const rows = await listPlaylistWork(opts.uploadId);
+  for (const row of rows) {
+    await addVideoToPlaylist(row, opts.access);
+  }
+}
+
+async function addVideoToPlaylist(row: FilmUpload, access: string): Promise<void> {
+  if (!row.youtube_video_id) return;
+  const playlistId = await resolvePlaylistId(row);
+  if (!playlistId) {
+    await setFilmPlaylistStatus(row.id, { youtube_playlist_status: null, youtube_playlist_error: null });
+    return;
+  }
+  try {
+    const inserted = await insertYoutubePlaylistItem(access, playlistId, row.youtube_video_id);
+    await setFilmPlaylistStatus(row.id, {
+      youtube_playlist_status: "done",
+      youtube_playlist_error: null,
+      youtube_playlist_item_id: inserted.itemId,
+    });
+  } catch (err) {
+    await setFilmPlaylistStatus(row.id, {
+      youtube_playlist_status: "failed",
+      youtube_playlist_error: err instanceof Error ? err.message : "Couldn't add the video to the playlist.",
+    });
+  }
 }
 
 function canClaim(row: FilmUpload, now: number): boolean {
@@ -167,6 +232,8 @@ async function pushOne(
         youtube_error: null,
       });
       await upsertYoutubeJob(row.id, { upload_uri: null, bytes_sent: total });
+      await queuePlaylistIfNeeded(row.id);
+      await addVideoToPlaylist({ ...row, youtube_status: "done", youtube_video_id: resume.videoId }, opts.access);
       return "done";
     }
     if (resume.sent !== job.bytes_sent) {
@@ -200,6 +267,8 @@ async function pushOne(
         youtube_error: null,
       });
       await upsertYoutubeJob(row.id, { upload_uri: null, bytes_sent: total });
+      await queuePlaylistIfNeeded(row.id);
+      await addVideoToPlaylist({ ...row, youtube_status: "done", youtube_video_id: json.id }, opts.access);
       return "done";
     }
     if (put.status === 308) {

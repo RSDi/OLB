@@ -31,11 +31,15 @@ export default async function FilmInboxPage() {
   }
 
   let parentLinks: { slug: string; label: string }[] = [];
+  const teamPlaylists: Record<string, string> = {};
   try {
     const teams = await listEnabledFilmTeams();
     parentLinks = viewer.canViewAllFilm
       ? teams.map((t) => ({ slug: t.slug, label: t.label }))
       : teams.filter((t) => t.id && viewer.filmTeamIds.includes(t.id)).map((t) => ({ slug: t.slug, label: t.label }));
+    for (const t of teams) {
+      if (t.youtubePlaylistId) teamPlaylists[t.slug] = t.youtubePlaylistId;
+    }
   } catch {
     parentLinks = [];
   }
@@ -46,6 +50,7 @@ export default async function FilmInboxPage() {
       canManage={viewer.canManageFilm}
       loadError={loadError}
       parentLinks={parentLinks}
+      teamPlaylists={teamPlaylists}
     />
   );
 }

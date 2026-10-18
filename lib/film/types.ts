@@ -18,6 +18,7 @@ export const MOVED_RETENTION_DAYS = 30;
 
 export type FilmStatus = "holding" | "moved";
 export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
+export type YoutubePlaylistStatus = "queued" | "done" | "failed";
 
 export interface FilmTeam {
   slug: string;
@@ -44,6 +45,11 @@ export interface FilmUpload {
   youtube_video_id: string | null;
   youtube_error: string | null;
   youtube_updated_at: string | null;
+  youtube_playlist_id: string | null;
+  youtube_playlist_status: YoutubePlaylistStatus | null;
+  youtube_playlist_error: string | null;
+  youtube_playlist_item_id: string | null;
+  youtube_playlist_updated_at: string | null;
 }
 
 export interface MintedUpload {

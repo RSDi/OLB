@@ -8,7 +8,16 @@ import { SIGNED_DOWNLOAD_TTL_S } from "./types.ts";
 import { filmStorage } from "./storage.ts";
 import { churchToday } from "../dates/today.ts";
 import { parseFilmGameFields } from "./game-meta.ts";
-import { deleteFilmUploadRow, getFilmUpload, setFilmStatus, updateFilmUploadGame } from "./uploads.ts";
+import {
+  deleteFilmUploadRow,
+  getFilmUpload,
+  setFilmStatus,
+  updateFilmUploadGame,
+  updateFilmUploadPlaylist,
+} from "./uploads.ts";
+import { parseYoutubePlaylistId } from "./youtube-meta.ts";
+import { processYoutubeQueue, queuePlaylistIfNeeded, retryPlaylistAdd, YOUTUBE_KICK_BUDGET_MS } from "./youtube.ts";
+import { after } from "next/server";
 
 function refresh() {
   revalidatePath("/portal/film");
@@ -80,6 +89,31 @@ export async function updateFilmGameFields(
       their_score: row.their_score,
     },
   };
+}
+
+export async function updateFilmPlaylistOverride(
+  id: string,
+  raw: unknown
+): Promise<{ error?: string; ok?: true; youtube_playlist_id?: string | null }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  if (!id || typeof id !== "string") return { error: "That upload isn't there any more." };
+  const parsed = parseYoutubePlaylistId(raw);
+  if (!parsed.ok) return { error: parsed.error };
+  const row = await updateFilmUploadPlaylist(id, parsed.id);
+  if (!row) return { error: "That upload isn't there any more." };
+  if (row.youtube_status === "done" && row.youtube_video_id && parsed.id) {
+    try {
+      await retryPlaylistAdd(id);
+      after(() => {
+        void processYoutubeQueue({ budgetMs: YOUTUBE_KICK_BUDGET_MS, uploadId: id });
+      });
+    } catch {
+      await queuePlaylistIfNeeded(id);
+    }
+  }
+  refresh();
+  return { ok: true, youtube_playlist_id: row.youtube_playlist_id };
 }
 
 export async function deleteFilmUpload(
