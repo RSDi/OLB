@@ -75,4 +75,5 @@ export interface FilmStorageProvider {
   mintUpload(input: { path: string; contentType: string; sizeBytes: number }): Promise<MintedUpload>;
   signedDownloadUrl(path: string, expiresInSeconds: number): Promise<string>;
   deleteObject(path: string): Promise<void>;
+  objectExists(path: string): Promise<boolean>;
 }

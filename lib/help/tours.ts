@@ -1582,6 +1582,38 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-agent-keys",
+    sectionId: "settings-agent-keys",
+    title: "Agent keys walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-agent-keys",
+        title: "Settings → Agent keys",
+        body: "Read-only keys for club agents. Super-admins mint them here. Game film is what they can see today.",
+      },
+      {
+        target: "agent-keys-create",
+        click: "settings-tab-agent-keys",
+        interactive: true,
+        title: "Create a key",
+        body: "Give it a **Name** (only you see this) and tap **Create key**. Copy the key when it appears — we won't show it again.",
+      },
+      {
+        target: "agent-keys-reveal",
+        click: "settings-tab-agent-keys",
+        title: "Copy it now",
+        body: "This banner is the only time the full key is on screen. **Copy key**, then send **Authorization: Bearer** plus the key to **/api/agent/film**.",
+      },
+      {
+        target: "agent-keys-row",
+        click: "settings-tab-agent-keys",
+        title: "Each key",
+        body: "The name and a short prefix so you can tell keys apart. **Revoke** if it leaks; anything using it stops working.",
+      },
+    ],
+  },
+  {
     id: "settings-audit-log",
     sectionId: "settings-audit-log",
     title: "Audit Log walkthrough",

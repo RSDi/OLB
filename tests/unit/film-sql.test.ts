@@ -29,7 +29,8 @@ test("0147 stores YouTube privacy and processing read from videos.list", () => {
   assert.ok(names.includes("0147_game_film_youtube_privacy.sql"));
   assert.ok(names.includes("0150_hosted_tournaments.sql"));
   assert.equal(names.filter((n) => n.startsWith("0147")).length, 1, "only one 0147 migration");
-  assert.equal(names.filter((n) => n.startsWith("0146")).length, 0, "0146 belongs to #208 agent keys");
+  assert.ok(names.includes("0146_agent_keys.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0146")).length, 1, "0146 is agent keys from #208");
   assert.match(privacy, /after 0146/);
   assert.ok(down.includes("drop column if exists youtube_privacy"));
   assert.ok(privacy.includes("add column if not exists youtube_privacy"));
