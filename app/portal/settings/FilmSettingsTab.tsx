@@ -420,7 +420,7 @@ function TeamCard({
           <span>
             <span style={{ fontSize: 13.5, fontWeight: 700 }}>Players list</span>
             <span style={{ display: "block", fontSize: 12.5, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-              Names from this team&apos;s Directory roster.
+              Names from that game&apos;s lineup, or the season roster if no lineup is set.
             </span>
           </span>
         </label>

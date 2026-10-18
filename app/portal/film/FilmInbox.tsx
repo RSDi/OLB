@@ -16,7 +16,9 @@ import {
   approveFilmSlackDraft,
   discardPendingFilmSlackDraft,
   editFilmSlackDraft,
+  restoreDiscardedFilmSlackDraft,
 } from "../../../lib/film/slack-actions";
+import { filmLineupKey, type FilmRosterPlayer } from "../../../lib/film/lineup-logic";
 import { retryFilmPlaylist, retryFilmYoutube } from "../../../lib/film/youtube-actions";
 import {
   formatFilmInboxHeading,
@@ -30,11 +32,15 @@ import styles from "./inbox.module.css";
 interface Props {
   uploads: FilmUpload[];
   slackDrafts: FilmSlackDraftView[];
+  discardedDrafts: FilmSlackDraftView[];
   canManage: boolean;
+  canApproveSlack: boolean;
   slackConfigured: boolean;
   loadError: string | null;
   parentLinks: { slug: string; label: string }[];
   teamPlaylists: Record<string, string>;
+  rosters: Record<string, FilmRosterPlayer[]>;
+  lineups: Record<string, string[]>;
 }
 
 type Filter = "all" | FilmStatus;
@@ -82,7 +88,19 @@ function digitsOnly(raw: string): string {
 
 type GamePatch = Pick<FilmUpload, "game_date" | "opponent" | "our_score" | "their_score" | "youtube_playlist_id">;
 
-export function FilmInbox({ uploads, slackDrafts, canManage, slackConfigured, loadError, parentLinks, teamPlaylists }: Props) {
+export function FilmInbox({
+  uploads,
+  slackDrafts,
+  discardedDrafts,
+  canManage,
+  canApproveSlack,
+  slackConfigured,
+  loadError,
+  parentLinks,
+  teamPlaylists,
+  rosters,
+  lineups,
+}: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
@@ -162,8 +180,9 @@ export function FilmInbox({ uploads, slackDrafts, canManage, slackConfigured, lo
         them here. After YouTube is connected in <strong>Settings → Film</strong>, new uploads go up
         unlisted in the background, then into that team&apos;s playlist if one is set. A playlist miss
         does not mark the YouTube upload failed. Slack posts wait here for <strong>Approve</strong> —
-        nothing goes out on its own. Files marked <strong>Moved</strong> are deleted after
-        30 days.
+        anyone with <strong>Teams &amp; volunteers</strong> can tap it. Nothing goes out on
+        its own. Discarded posts can be restored for 30 days. Files marked{" "}
+        <strong>Moved</strong> are deleted after 30 days.
       </p>
 
       {slackDrafts.length > 0 && (
@@ -171,13 +190,34 @@ export function FilmInbox({ uploads, slackDrafts, canManage, slackConfigured, lo
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Pending Slack posts</h2>
           <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
             Same text as the YouTube description. Sparky posts it only after someone with{" "}
-            <strong>Game film (manage)</strong> taps <strong>Approve</strong>.
+            <strong>Teams &amp; volunteers</strong> (or <strong>Game film (manage)</strong>) taps{" "}
+            <strong>Approve</strong>.
           </p>
           {slackDrafts.map((draft) => (
             <SlackDraftCard
               key={draft.id}
               draft={draft}
-              canManage={canManage}
+              canApproveSlack={canApproveSlack}
+              slackConfigured={slackConfigured}
+              busy={busy === draft.id}
+              onRun={(fn) => void run(draft.id, fn)}
+            />
+          ))}
+        </section>
+      )}
+
+      {discardedDrafts.length > 0 && (
+        <section data-tour="film-slack-discarded" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Discarded Slack posts</h2>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
+            Soft-deleted. <strong>Restore</strong> brings one back for 30 days, then it is purged.
+          </p>
+          {discardedDrafts.map((draft) => (
+            <SlackDraftCard
+              key={draft.id}
+              draft={draft}
+              discarded
+              canApproveSlack={canApproveSlack}
               slackConfigured={slackConfigured}
               busy={busy === draft.id}
               onRun={(fn) => void run(draft.id, fn)}
@@ -295,6 +335,12 @@ export function FilmInbox({ uploads, slackDrafts, canManage, slackConfigured, lo
                       busy={busy === row.id}
                       playing={playing?.id === row.id}
                       canManage={canManage}
+                      roster={row.team_id ? rosters[row.team_id] ?? [] : []}
+                      lineupPlayerIds={
+                        filmLineupKey(row.team_id, row.game_date, row.opponent)
+                          ? lineups[filmLineupKey(row.team_id, row.game_date, row.opponent)!] ?? []
+                          : []
+                      }
                       onPlay={() => void play(row)}
                       onDownload={() => void download(row.id)}
                       onRetryYoutube={() => void run(row.id, retryFilmYoutube)}
@@ -325,6 +371,8 @@ function FilmRow({
   busy,
   playing,
   canManage,
+  roster,
+  lineupPlayerIds,
   onPlay,
   onDownload,
   onRetryYoutube,
@@ -339,6 +387,8 @@ function FilmRow({
   busy: boolean;
   playing: boolean;
   canManage: boolean;
+  roster: FilmRosterPlayer[];
+  lineupPlayerIds: string[];
   onPlay: () => void;
   onDownload: () => void;
   onRetryYoutube: () => void;
@@ -437,6 +487,8 @@ function FilmRow({
         <FilmGameEditor
           row={row}
           teamPlaylistId={teamPlaylistId}
+          roster={roster}
+          lineupPlayerIds={lineupPlayerIds}
           onCancel={() => setEditing(false)}
           onSaved={(patch) => {
             onPatched(patch);
@@ -510,11 +562,15 @@ function FilmRow({
 function FilmGameEditor({
   row,
   teamPlaylistId,
+  roster,
+  lineupPlayerIds,
   onCancel,
   onSaved,
 }: {
   row: FilmUpload;
   teamPlaylistId: string | null;
+  roster: FilmRosterPlayer[];
+  lineupPlayerIds: string[];
   onCancel: () => void;
   onSaved: (patch: GamePatch) => void;
 }) {
@@ -524,6 +580,7 @@ function FilmGameEditor({
   const [ourScore, setOurScore] = useState(row.our_score == null ? "" : String(row.our_score));
   const [theirScore, setTheirScore] = useState(row.their_score == null ? "" : String(row.their_score));
   const [playlistDraft, setPlaylistDraft] = useState(row.youtube_playlist_id ?? "");
+  const [pickedPlayers, setPickedPlayers] = useState<string[]>(lineupPlayerIds);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -536,6 +593,7 @@ function FilmGameEditor({
       opponent,
       ourScore,
       theirScore,
+      playerIds: pickedPlayers,
     });
     if (result.error) {
       setSaving(false);
@@ -594,6 +652,33 @@ function FilmGameEditor({
           maxLength={OPPONENT_MAX}
         />
       </label>
+      {roster.length > 0 && (
+        <fieldset className={styles.scoreFields} data-tour="film-lineup">
+          <legend className={styles.label}>Who played</legend>
+          <p className={styles.hint}>
+            Tick this game&apos;s lineup. Leave empty to use the season roster.
+          </p>
+          <div className={styles.playerList}>
+            {roster.map((player) => {
+              const checked = pickedPlayers.includes(player.id);
+              return (
+                <label key={player.id} className={styles.playerRow}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      setPickedPlayers((prev) =>
+                        prev.includes(player.id) ? prev.filter((id) => id !== player.id) : [...prev, player.id]
+                      );
+                    }}
+                  />
+                  <span>{player.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
       <fieldset className={styles.scoreFields}>
         <legend className={styles.label}>Score</legend>
         <p className={styles.hint}>Optional — leave blank if you don&apos;t have it.</p>
@@ -662,13 +747,15 @@ function FilmGameEditor({
 
 function SlackDraftCard({
   draft,
-  canManage,
+  discarded = false,
+  canApproveSlack,
   slackConfigured,
   busy,
   onRun,
 }: {
   draft: FilmSlackDraftView;
-  canManage: boolean;
+  discarded?: boolean;
+  canApproveSlack: boolean;
   slackConfigured: boolean;
   busy: boolean;
   onRun: (fn: (id: string) => Promise<{ error?: string }>) => void;
@@ -683,7 +770,7 @@ function SlackDraftCard({
       <div>
         <div style={{ fontWeight: 800, fontSize: 15 }}>{draft.team_label}</div>
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
-          {draft.filename} · waiting for approval
+          {draft.filename} · {discarded ? "discarded — restore within 30 days" : "waiting for approval"}
         </div>
       </div>
       {editing ? (
@@ -728,15 +815,24 @@ function SlackDraftCard({
       ) : (
         <>
           <pre className={styles.draftBody}>{draft.body}</pre>
-          {canManage && noChannel && (
+          {canApproveSlack && discarded && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <span data-tour="film-slack-restore">
+                <Pill size="sm" variant="accent" disabled={busy} onClick={() => onRun((id) => restoreDiscardedFilmSlackDraft(id))}>
+                  Restore
+                </Pill>
+              </span>
+            </div>
+          )}
+          {canApproveSlack && !discarded && noChannel && (
             <p className={styles.hint}>
               Approve is off until this team has a Slack channel ID in Settings → Film.
             </p>
           )}
-          {canManage && !noChannel && !slackConfigured && (
+          {canApproveSlack && !discarded && !noChannel && !slackConfigured && (
             <p className={styles.hint}>Approve is off until Sparky&apos;s Slack bot token is set.</p>
           )}
-          {canManage && (
+          {canApproveSlack && !discarded && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <span data-tour="film-slack-approve">
                 <Pill
@@ -759,7 +855,7 @@ function SlackDraftCard({
                   variant="ghost"
                   disabled={busy}
                   onClick={() => {
-                    if (confirm("Discard this Slack post? It will not go out.")) {
+                    if (confirm("Discard this Slack post? You can restore it for 30 days.")) {
                       onRun((id) => discardPendingFilmSlackDraft(id));
                     }
                   }}

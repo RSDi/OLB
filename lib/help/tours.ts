@@ -372,7 +372,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "film-edit",
         title: "Edit the game",
-        body: "**Edit** lets you fix **Game date**, **Opponent**, the score, and an optional **YouTube playlist** for this video. **Save** updates the heading above the video. You only see this with **Game film (manage)**.",
+        body: "**Edit** lets you fix **Game date**, **Opponent**, **Who played**, the score, and an optional **YouTube playlist** for this video. Leave **Who played** empty to use the season roster. **Save** updates the heading above the video. You only see this with **Game film (manage)**.",
       },
       {
         target: "film-playlist",
@@ -382,7 +382,12 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "film-slack-drafts",
         title: "Pending Slack posts",
-        body: "After a video is on YouTube, the Slack text waits here. **Approve** is the only way Sparky posts it. **Edit** changes the words; **Discard** throws it away.",
+        body: "After a video is on YouTube, the Slack text waits here. Anyone with **Teams & volunteers** can tap **Approve** — that is the only way Sparky posts it. **Edit** changes the words; **Discard** keeps it for 30 days so you can **Restore** it.",
+      },
+      {
+        target: "film-lineup",
+        title: "Who played",
+        body: "On **Edit**, tick **Who played** for that game's lineup. Leave it empty and the YouTube players line uses the season roster.",
       },
       {
         target: "film-moved",

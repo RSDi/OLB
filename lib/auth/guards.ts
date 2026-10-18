@@ -33,6 +33,7 @@ import {
   canManageSiteLinks,
   canViewFilm,
   canManageFilm,
+  canApproveFilmSlack,
   type MemberLike,
   type MemberRole,
   type MemberStatus,
@@ -250,7 +251,9 @@ export type FilmAccess = { userId: string; allTeams: boolean; teamIds: string[] 
 export async function requireFilmAccess(): Promise<{ error: string } | FilmAccess> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };
-  if (canViewFilm(caller.member)) return { userId: caller.userId, allTeams: true, teamIds: [] };
+  if (canViewFilm(caller.member) || canManageTeams(caller.member)) {
+    return { userId: caller.userId, allTeams: true, teamIds: [] };
+  }
   const teamIds = await listFilmManagerTeamIds(caller.userId);
   if (teamIds.length === 0) return { error: "You don't have permission to view game film." };
   return { userId: caller.userId, allTeams: false, teamIds };
@@ -267,6 +270,15 @@ export async function requireFilmManage(): Promise<GateResult> {
   if (!caller) return { error: "You must be signed in." };
   if (!canManageFilm(caller.member)) {
     return { error: "You don't have permission to change game film." };
+  }
+  return { userId: caller.userId };
+}
+
+export async function requireFilmSlackApprove(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canApproveFilmSlack(caller.member)) {
+    return { error: "You don't have permission to approve Slack posts." };
   }
   return { userId: caller.userId };
 }

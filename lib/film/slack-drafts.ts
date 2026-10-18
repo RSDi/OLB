@@ -3,10 +3,17 @@
 
 import { createAdminClient } from "../supabase/admin.ts";
 import { teamLabel } from "../teams/volunteer-options.ts";
-import type { FilmSlackDraft, FilmSlackDraftStatus, FilmSlackDraftView } from "./types.ts";
+import { type FilmSlackDraft, type FilmSlackDraftStatus, type FilmSlackDraftView } from "./types.ts";
+import {
+  discardedDraftPurgeAt,
+  isDiscardedDraftRecoverable,
+  SLACK_DRAFT_RETAIN_MS,
+} from "./slack-logic.ts";
+
+export { discardedDraftPurgeAt, isDiscardedDraftRecoverable, SLACK_DRAFT_RETAIN_MS } from "./slack-logic.ts";
 
 export const FILM_SLACK_DRAFT_COLUMNS =
-  "id, upload_id, team_id, channel_id, body, status, slack_ts, posted_channel_id, posted_at, posted_by, created_at, updated_at";
+  "id, upload_id, team_id, channel_id, body, status, slack_ts, posted_channel_id, posted_at, posted_by, discarded_at, created_at, updated_at";
 
 const STALE_POSTING_MS = 2 * 60 * 1000;
 
@@ -42,8 +49,7 @@ export async function listPendingFilmSlackDrafts(teamIds?: string[]): Promise<Fi
   return ((data as DraftRow[] | null) ?? []).filter((row) => row.status === "pending" || isStalePosting(row));
 }
 
-export async function listPendingFilmSlackDraftViews(teamIds?: string[]): Promise<FilmSlackDraftView[]> {
-  const drafts = await listPendingFilmSlackDrafts(teamIds);
+async function toDraftViews(drafts: FilmSlackDraft[]): Promise<FilmSlackDraftView[]> {
   if (drafts.length === 0) return [];
   const admin = createAdminClient();
   const uploadIds = [...new Set(drafts.map((d) => d.upload_id))];
@@ -73,6 +79,32 @@ export async function listPendingFilmSlackDraftViews(teamIds?: string[]): Promis
       team_slug: team?.film_slug || upload?.team || "",
     };
   });
+}
+
+export async function listPendingFilmSlackDraftViews(teamIds?: string[]): Promise<FilmSlackDraftView[]> {
+  return toDraftViews(await listPendingFilmSlackDrafts(teamIds));
+}
+
+export async function listDiscardedFilmSlackDrafts(teamIds?: string[], now = new Date()): Promise<FilmSlackDraft[]> {
+  const admin = createAdminClient();
+  const since = new Date(now.getTime() - SLACK_DRAFT_RETAIN_MS).toISOString();
+  let query = admin
+    .from("game_film_slack_drafts")
+    .select(FILM_SLACK_DRAFT_COLUMNS)
+    .eq("status", "discarded")
+    .gte("discarded_at", since)
+    .order("discarded_at", { ascending: false });
+  if (teamIds) {
+    if (teamIds.length === 0) return [];
+    query = query.in("team_id", teamIds);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return ((data as DraftRow[] | null) ?? []).filter((row) => isDiscardedDraftRecoverable(row.discarded_at, now.getTime()));
+}
+
+export async function listDiscardedFilmSlackDraftViews(teamIds?: string[]): Promise<FilmSlackDraftView[]> {
+  return toDraftViews(await listDiscardedFilmSlackDrafts(teamIds));
 }
 
 export async function getFilmSlackDraft(id: string): Promise<FilmSlackDraft | null> {
@@ -105,9 +137,15 @@ export async function createFilmSlackDraftIfNeeded(input: {
 }): Promise<FilmSlackDraft | null> {
   const body = input.body.trim();
   if (!body) return null;
-  const existing = await getFilmSlackDraftByUpload(input.uploadId);
-  if (existing?.status === "posted" || existing?.status === "discarded") return existing;
+  let existing = await getFilmSlackDraftByUpload(input.uploadId);
+  if (existing?.status === "posted") return existing;
   const admin = createAdminClient();
+  if (existing?.status === "discarded") {
+    if (isDiscardedDraftRecoverable(existing.discarded_at)) return existing;
+    const { error: purgeError } = await admin.from("game_film_slack_drafts").delete().eq("id", existing.id);
+    if (purgeError) throw new Error(purgeError.message);
+    existing = null;
+  }
   const now = new Date().toISOString();
   if (existing) {
     const { data, error } = await admin
@@ -159,15 +197,46 @@ export async function updateFilmSlackDraftBody(id: string, body: string): Promis
 
 export async function discardFilmSlackDraft(id: string): Promise<FilmSlackDraft | null> {
   const admin = createAdminClient();
+  const now = new Date().toISOString();
   const { data, error } = await admin
     .from("game_film_slack_drafts")
-    .update({ status: "discarded", updated_at: new Date().toISOString() })
+    .update({ status: "discarded", discarded_at: now, updated_at: now })
     .eq("id", id)
     .in("status", ["pending", "posting"])
     .select(FILM_SLACK_DRAFT_COLUMNS)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return (data as DraftRow | null) ?? null;
+}
+
+export async function restoreFilmSlackDraft(id: string, now = new Date()): Promise<FilmSlackDraft | null> {
+  const row = await getFilmSlackDraft(id);
+  if (!row || row.status !== "discarded" || !isDiscardedDraftRecoverable(row.discarded_at, now.getTime())) {
+    return null;
+  }
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_slack_drafts")
+    .update({ status: "pending", discarded_at: null, updated_at: now.toISOString() })
+    .eq("id", id)
+    .eq("status", "discarded")
+    .select(FILM_SLACK_DRAFT_COLUMNS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as DraftRow | null) ?? null;
+}
+
+export async function purgeExpiredDiscardedFilmSlackDrafts(now = new Date()): Promise<number> {
+  const admin = createAdminClient();
+  const cutoff = new Date(now.getTime() - SLACK_DRAFT_RETAIN_MS).toISOString();
+  const { data, error } = await admin
+    .from("game_film_slack_drafts")
+    .delete()
+    .eq("status", "discarded")
+    .lt("discarded_at", cutoff)
+    .select("id");
+  if (error) throw new Error(error.message);
+  return ((data as { id: string }[] | null) ?? []).length;
 }
 
 export async function claimFilmSlackDraft(

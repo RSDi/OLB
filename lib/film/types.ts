@@ -15,6 +15,7 @@ export const FILM_SESSION_MAX_AGE_S = 7 * 24 * 60 * 60;
 
 export const SIGNED_DOWNLOAD_TTL_S = 6 * 60 * 60;
 export const MOVED_RETENTION_DAYS = 30;
+export const SLACK_DRAFT_RETAIN_DAYS = 30;
 
 export type FilmStatus = "holding" | "moved";
 export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
@@ -64,6 +65,7 @@ export interface FilmSlackDraft {
   posted_channel_id: string | null;
   posted_at: string | null;
   posted_by: string | null;
+  discarded_at: string | null;
   created_at: string;
   updated_at: string;
 }

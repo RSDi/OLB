@@ -136,6 +136,26 @@
   font-family: inherit;
 }
 
+.playerList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.playerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gw-fg);
+}
+
+.playerRow input {
+  width: 18px;
+  height: 18px;
+}
+
 .draftBody {
   margin: 0;
   white-space: pre-wrap;

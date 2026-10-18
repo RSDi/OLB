@@ -8,7 +8,8 @@
 // cron continues. after() on complete starts the first chunks so a short clip
 // may land before the next minute. Same CRON_SECRET as the other jobs.
 
-import { getFilmTeamById, getFilmTeamBySlug, listTeamPlayerNames } from "./teams.ts";
+import { getFilmTeamById, getFilmTeamBySlug } from "./teams.ts";
+import { listGamePlayerNames } from "./lineups.ts";
 import { createFilmSlackDraftIfNeeded } from "./slack-drafts.ts";
 import { filmStorage } from "./storage.ts";
 import {
@@ -370,7 +371,10 @@ async function filmYoutubeContext(row: FilmUpload): Promise<{
     includeTournament: team?.includeTournament ?? false,
     includePlaylistLink: team?.includePlaylistLink ?? false,
   };
-  const players = extras.includePlayers && team?.id ? await listTeamPlayerNames(team.id).catch(() => []) : [];
+  const players =
+    extras.includePlayers && team?.id
+      ? await listGamePlayerNames(team.id, row.game_date, row.opponent).catch(() => [])
+      : [];
   const playlistId = row.youtube_playlist_id?.trim() || team?.youtubePlaylistId || null;
   return {
     teamId: team?.id ?? row.team_id,

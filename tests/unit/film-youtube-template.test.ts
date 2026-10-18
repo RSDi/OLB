@@ -147,7 +147,9 @@ test("YouTube insert updates the description after the watch link exists and nev
   assert.match(queue, /createFilmSlackDraftIfNeeded/);
   assert.match(queue, /youtube\/v3\/videos\?part=snippet/);
   assert.doesNotMatch(queue, /postSlackPlainMessage|approveFilmSlackDraft/);
-  assert.match(actions, /requireFilmManage\(\)/);
+  assert.match(actions, /requireFilmSlackApprove\(\)/);
+  assert.match(actions, /restoreDiscardedFilmSlackDraft/);
+  assert.doesNotMatch(actions, /requireFilmManage\(\)/);
   assert.match(actions, /eq\("status", "pending"\)|status !== "pending"/);
   assert.match(actions, /claimFilmSlackDraft/);
   assert.match(actions, /alreadyPosted/);
@@ -161,7 +163,11 @@ test("YouTube insert updates the description after the watch link exists and nev
   assert.match(settings, />Stats book</);
   assert.match(settings, /Slack channel ID/);
   assert.match(inbox, />Pending Slack posts</);
+  assert.match(inbox, />Discarded Slack posts</);
   assert.match(inbox, />Approve</);
+  assert.match(inbox, />Restore</);
   assert.match(inbox, />\s*Discard\s*</);
+  assert.match(inbox, />Who played</);
   assert.match(inbox, /approveFilmSlackDraft/);
+  assert.match(inbox, /restoreDiscardedFilmSlackDraft/);
 });

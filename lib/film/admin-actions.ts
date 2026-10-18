@@ -8,6 +8,7 @@ import { SIGNED_DOWNLOAD_TTL_S } from "./types.ts";
 import { filmStorage } from "./storage.ts";
 import { churchToday } from "../dates/today.ts";
 import { parseFilmGameFields } from "./game-meta.ts";
+import { parseFilmLineupPlayerIds, saveGameLineup } from "./lineups.ts";
 import {
   deleteFilmUploadRow,
   getFilmUpload,
@@ -70,6 +71,7 @@ export async function updateFilmGameFields(
     opponent?: unknown;
     ourScore?: unknown;
     theirScore?: unknown;
+    playerIds?: unknown;
   }
 ): Promise<{ error?: string; ok?: true; upload?: { game_date: string | null; opponent: string | null; our_score: number | null; their_score: number | null } }> {
   const gate = await requireFilmManage();
@@ -77,8 +79,19 @@ export async function updateFilmGameFields(
   if (!id || typeof id !== "string") return { error: "That upload isn't there any more." };
   const parsed = parseFilmGameFields(input, churchToday(), { emptyDate: "error" });
   if (!parsed.ok) return { error: parsed.error };
+  const lineup = Object.prototype.hasOwnProperty.call(input, "playerIds")
+    ? parseFilmLineupPlayerIds(input.playerIds)
+    : null;
+  if (lineup && !lineup.ok) return { error: lineup.error };
   const row = await updateFilmUploadGame(id, parsed);
   if (!row) return { error: "That upload isn't there any more." };
+  if (lineup && row.team_id && row.game_date) {
+    try {
+      await saveGameLineup(row.team_id, row.game_date, row.opponent, lineup.ids);
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "Couldn't save who played." };
+    }
+  }
   refresh();
   return {
     ok: true,

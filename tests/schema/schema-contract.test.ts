@@ -159,7 +159,7 @@ const CONTRACT: Record<string, string> = {
   olb_roadmap_items:
     "id,title,description,area,status,released_on,preview_url,created_by,created_at,updated_at,deleted_at,approved_by,approved_at",
   olb_roadmap_link: "id,key,updated_at",
-  // Game film (0142, 0143, 0144, 0145).
+  // Game film (0142, 0143, 0144, 0145, 0148 templates / lineups / Slack drafts).
   game_film_uploads:
     "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score,youtube_status,youtube_video_id,youtube_error,youtube_updated_at,youtube_playlist_id,youtube_playlist_status,youtube_playlist_error,youtube_playlist_item_id,youtube_playlist_updated_at",
   game_film_managers: "team_id,user_id,created_at",
@@ -167,7 +167,9 @@ const CONTRACT: Record<string, string> = {
     "id,refresh_token_enc,channel_id,channel_title,connected_at,connected_by,privacy_status,made_for_kids,updated_at",
   game_film_youtube_jobs: "upload_id,upload_uri,bytes_sent,attempts,updated_at",
   game_film_slack_drafts:
-    "id,upload_id,team_id,channel_id,body,status,slack_ts,posted_channel_id,posted_at,posted_by,created_at,updated_at",
+    "id,upload_id,team_id,channel_id,body,status,slack_ts,posted_channel_id,posted_at,posted_by,discarded_at,created_at,updated_at",
+  game_film_lineups: "id,team_id,game_date,opponent,created_at,updated_at",
+  game_film_lineup_players: "lineup_id,player_id,sort_order",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {

@@ -182,6 +182,10 @@ export const canManageSiteLinks = (m: MemberLike | null | undefined) => hasPermi
 export const canManageFilm = (m: MemberLike | null | undefined) => hasPermission(m, "film_manage");
 export const canViewFilm = (m: MemberLike | null | undefined) =>
   hasPermission(m, "film_view") || canManageFilm(m);
+// Slack Approve on Film: Teams & volunteers, or Game film (manage). Super-admins
+// hold both. Not Jeff-only.
+export const canApproveFilmSlack = (m: MemberLike | null | undefined) =>
+  canManageTeams(m) || canManageFilm(m);
 
 // Every approved member opens Settings (Release Notes, plus any tabs their
 // permissions add). Pending and denied accounts stay out.
