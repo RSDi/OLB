@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { EmptyState, Pill } from "../../components/ui";
 import { Icons } from "../../components/icons";
@@ -31,11 +31,15 @@ import {
   youtubePlaylistUrl,
   youtubeWatchUrl,
 } from "../../../lib/film/youtube-meta";
-import type { FilmSlackDraftView, FilmStatus, FilmUpload, YoutubePlaylistStatus, YoutubeStatus } from "../../../lib/film/types";
+import type { FilmSlackDraftView, FilmStatus, FilmUpload, YoutubeEvent, YoutubeJob, YoutubePlaylistStatus } from "../../../lib/film/types";
+import { youtubeDisplayStatus } from "../../../lib/film/youtube-progress";
+import { YoutubeTransfer } from "./YoutubeTransfer";
 import styles from "./inbox.module.css";
 
 interface Props {
   uploads: FilmUpload[];
+  jobs: Record<string, YoutubeJob>;
+  events: Record<string, YoutubeEvent[]>;
   slackDrafts: FilmSlackDraftView[];
   discardedDrafts: FilmSlackDraftView[];
   canManage: boolean;
@@ -66,13 +70,6 @@ function formatWhen(iso: string): string {
   });
 }
 
-function youtubeLabel(status: YoutubeStatus | null, videoId: string | null): string | null {
-  if (status === "done" && videoId) return "On YouTube";
-  if (status === "queued") return "Queued for YouTube";
-  if (status === "uploading") return "Uploading to YouTube";
-  if (status === "failed") return "YouTube failed";
-  return null;
-}
 
 function playlistLabel(
   status: YoutubePlaylistStatus | null,
@@ -95,6 +92,8 @@ type GamePatch = Pick<FilmUpload, "game_date" | "opponent" | "our_score" | "thei
 
 export function FilmInbox({
   uploads,
+  jobs,
+  events,
   slackDrafts,
   discardedDrafts,
   canManage,
@@ -116,6 +115,26 @@ export function FilmInbox({
   const [playing, setPlaying] = useState<{ id: string; url: string; name: string } | null>(null);
   const [patches, setPatches] = useState<Record<string, GamePatch>>({});
   const [, startTransition] = useTransition();
+
+  const live = useMemo(
+    () =>
+      uploads.some((u) => {
+        const job = jobs[u.id];
+        const display = youtubeDisplayStatus({
+          youtubeStatus: u.youtube_status,
+          lastProgressAt: job?.last_progress_at,
+          youtubeUpdatedAt: u.youtube_updated_at,
+        });
+        return display === "queued" || display === "uploading" || display === "stalled";
+      }),
+    [uploads, jobs]
+  );
+
+  useEffect(() => {
+    if (!live) return;
+    const t = setInterval(() => startTransition(() => router.refresh()), 15_000);
+    return () => clearInterval(t);
+  }, [live, router, startTransition]);
 
   const labels = useMemo(() => {
     const map: Record<string, string> = {};
@@ -211,7 +230,11 @@ export function FilmInbox({
         sometimes forces Private). <strong>Refresh YouTube status</strong> reads it from YouTube; you don&apos;t need Studio. Slack posts wait here for <strong>Approve</strong> — anyone with{" "}
         <strong>Teams &amp; volunteers</strong> can tap it. Nothing goes out on its own. Discarded
         posts can be restored for 30 days. Files marked <strong>Moved</strong> are deleted after 30
-        days.
+        days. The board{" "}
+        <a href="/portal/film/status" className={styles.statusLink} data-tour="film-status-link">
+          Film status
+        </a>{" "}
+        page lists in-progress, stalled, failed, and done uploads across teams.
       </p>
 
       {slackDrafts.length > 0 && (
@@ -372,6 +395,8 @@ export function FilmInbox({
                     <FilmRow
                       key={row.id}
                       row={row}
+                      job={jobs[row.id] ?? null}
+                      events={events[row.id] ?? []}
                       teamPlaylistId={teamPlaylists[row.team] ?? null}
                       busy={busy === row.id}
                       playing={playing?.id === row.id}
@@ -404,6 +429,8 @@ export function FilmInbox({
 
 function FilmRow({
   row,
+  job,
+  events,
   teamPlaylistId,
   busy,
   playing,
@@ -420,6 +447,8 @@ function FilmRow({
   onPatched,
 }: {
   row: FilmUpload;
+  job: YoutubeJob | null;
+  events: YoutubeEvent[];
   teamPlaylistId: string | null;
   busy: boolean;
   playing: boolean;
@@ -436,7 +465,11 @@ function FilmRow({
   onPatched: (patch: GamePatch) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const yt = youtubeLabel(row.youtube_status, row.youtube_video_id);
+  const display = youtubeDisplayStatus({
+    youtubeStatus: row.youtube_status,
+    lastProgressAt: job?.last_progress_at,
+    youtubeUpdatedAt: row.youtube_updated_at,
+  });
   const live =
     row.youtube_status === "done" && row.youtube_video_id
       ? youtubeLiveStatusLine({
@@ -486,18 +519,7 @@ function FilmRow({
             <p className={styles.missing}>Missing: {missing.join(", ")}</p>
           )}
           <div data-tour="film-playlist">
-            {yt && (
-              <div style={{ fontSize: 13, fontWeight: 700, marginTop: 6 }}>
-                {row.youtube_status === "done" && row.youtube_video_id ? (
-                  <a href={youtubeWatchUrl(row.youtube_video_id)} target="_blank" rel="noopener noreferrer">
-                    {yt}
-                  </a>
-                ) : (
-                  yt
-                )}
-                {row.youtube_status === "failed" && row.youtube_error ? ` — ${row.youtube_error}` : ""}
-              </div>
-            )}
+            <YoutubeTransfer row={row} job={job} events={events} />
             {pl && (
               <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4, color: pl.failed ? "var(--gw-error)" : undefined }}>
                 {pl.href && !pl.failed ? (
@@ -579,10 +601,12 @@ function FilmRow({
               YouTube
             </Pill>
           )}
-          {canManage && (row.youtube_status === "failed" || !row.youtube_status) && (
-            <Pill size="sm" onClick={onRetryYoutube} disabled={busy}>
-              {row.youtube_status === "failed" ? "Retry YouTube" : "Send to YouTube"}
-            </Pill>
+          {canManage && (display === "failed" || display === "stalled" || !row.youtube_status) && (
+            <span data-tour="film-youtube-retry">
+              <Pill size="sm" onClick={onRetryYoutube} disabled={busy}>
+                {display === "failed" || display === "stalled" ? "Retry YouTube" : "Send to YouTube"}
+              </Pill>
+            </span>
           )}
           {canRetryPlaylist && (
             <span data-tour="film-playlist-retry">

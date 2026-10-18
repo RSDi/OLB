@@ -21,6 +21,7 @@ import { syncYoutubeVideoStatus } from "./youtube-status.ts";
 
 function refresh() {
   revalidatePath("/portal/film");
+  revalidatePath("/portal/film/status");
   revalidatePath("/portal/settings");
 }
 

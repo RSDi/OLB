@@ -713,7 +713,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
     permission: "film_view",
     alsoPermissions: ["film_manage", "teams"],
     routes: ["/portal/film"],
-    keywords: ["film", "game film", "video", "upload", "download", "play", "moved", "youtube", "playlist", "holding", "delete", "edit", "coach inbox", "game date", "opponent", "score", "unlisted", "public", "private", "privacy", "processing", "refresh youtube status", "slack", "approve", "sparky", "lineup", "restore", "discarded"],
+    keywords: ["film", "game film", "video", "upload", "download", "play", "moved", "youtube", "playlist", "holding", "delete", "edit", "coach inbox", "game date", "opponent", "score", "unlisted", "public", "private", "privacy", "processing", "refresh youtube status", "slack", "approve", "sparky", "lineup", "restore", "discarded", "stalled", "progress", "history", "retry youtube", "film status"],
     body: `Game videos families send in from their phones, under **Film** in the sidebar. You see this if a super-admin gave you **Game film**, **Game film (manage)**, or **Teams & volunteers** in Settings → Members.
 
 Families don't sign in here. They open the team upload link they were sent (the full **https://…/t/…** address from **Settings → Film**), enter that team's shared code, then fill in **Your name**, **Game date** (it starts on today), **Opponent**, and **Our score** / **Their score** if they know it — scores can stay blank if the game isn't over — and upload. The page has a **Tip: record in 1080p at 30 fps (iPhone: Settings → Camera → Record Video).** Ask them to **keep the page open and keep the phone plugged in** until they see **✓ Uploaded** on each file and the green **All videos uploaded — you can close this page.** If a file says **Failed**, they tap **Retry**.
@@ -723,12 +723,33 @@ Families don't sign in here. They open the team upload link they were sent (the 
 - Videos are grouped by team, then by game date, opponent, and score. A video with no date sits under **No game date** (not a generic "Game") until someone fills one in.
 - **Play** watches the file in this page (it works on a phone). **Close player** puts the player away. **Download** still saves a copy.
 - **Every team** (and each team name) filters the list when more than one team has film. **All**, **Holding** and **Moved** filter by whether it's been copied off.
-- After YouTube is connected in **Settings → Film**, new uploads go to that channel in the background (unlisted unless you change it), then into that team's playlist if one is set. The YouTube title and description come from that team's template (a green or red circle on a win or loss, no W/L text). **On YouTube** / **YouTube** opens the video. **In playlist** opens the playlist. The card also shows the privacy YouTube actually has — **Public**, **Unlisted**, or **Private** — plus whether YouTube is still **Processing** the file or it's **Ready**. That can differ from the default in Settings → Film (Google sometimes forces **Private**). **Refresh YouTube status** reads it from YouTube so you don't need Studio. If YouTube failed, **Retry YouTube** tries again. If the playlist add failed, the video stays on YouTube and the card says **Playlist failed** — tap **Retry playlist**. **Send to YouTube** and **Add to playlist** are for older files that never went up.
+- After YouTube is connected in **Settings → Film**, new uploads go to that channel in the background (unlisted unless you change it), then into that team's playlist if one is set. The YouTube title and description come from that team's template (a green or red circle on a win or loss, no W/L text). While a file is going up you see **Uploading to YouTube** with the percent, bytes uploaded of the total, how long is left, and when it started. **History** expands the log: file received, YouTube upload started, progress milestones, finished, added to playlist, each retry, and each error with a time. If YouTube failed, the card explains why in plain words (for example if the phone upload never finished) — tap **Details** for the raw error. No progress for 30 minutes becomes **Stalled** with **Retry YouTube**. **On YouTube** / **YouTube** opens the video. **In playlist** opens the playlist. The card also shows the privacy YouTube actually has — **Public**, **Unlisted**, or **Private** — plus whether YouTube is still **Processing** the file or it's **Ready**. That can differ from the default in Settings → Film (Google sometimes forces **Private**). **Refresh YouTube status** reads it from YouTube so you don't need Studio. If YouTube failed or stalled, **Retry YouTube** tries again. If the playlist add failed, the video stays on YouTube and the card says **Playlist failed** — tap **Retry playlist**. **Send to YouTube** and **Add to playlist** are for older files that never went up. **Film status** is the board list of in-progress, stalled, failed, and done uploads across teams.
 - **Pending Slack posts** appear at the top after a video is on YouTube. The text matches the YouTube description. Sparky does not post it until someone with **Teams & volunteers** (or **Game film (manage)**) taps **Approve** — not only a super-admin. **Edit** changes the text and **Save**s it. **Discard** soft-deletes it. **Discarded Slack posts** stay on this page for 30 days with **Restore**, then they are purged. **Approve** stays off if that team has no **Slack channel ID** in Settings → Film, or if Sparky isn't connected.
 - If you have **Game film (manage)**: **Edit** on a video to change **Game date**, **Opponent**, **Who played** (that game's lineup; leave empty to use the season roster), **Our score** / **Their score**, and an optional **YouTube playlist** for this video only (leave blank to use the team's playlist), then **Save** (or **Cancel**). The heading above the video updates. Cards that are missing a date, opponent, or score say **Missing:** so you can fill them in. **Mark moved** once it's copied off. **Back to holding** undoes that. **Delete** removes the file for good.
 - Files marked **Moved** are deleted automatically after 30 days.
 
 Share the team upload link and code with families, not this inbox. Super-admins and anyone with **Game film (manage)** set those codes and connect YouTube in **Settings → Film**.`
+  },
+  {
+    id: "film-status",
+    title: "Film status",
+    group: "Film",
+    audience: "super_admin",
+    permission: "film_view",
+    alsoPermissions: ["film_manage", "teams"],
+    routes: ["/portal/film/status"],
+    keywords: ["film status", "youtube", "stalled", "failed", "in progress", "progress", "retry youtube", "history", "board"],
+    body: `A board list of YouTube transfers across every team you can see, under **Film status**. Open it from **Film**, or go to **/portal/film/status**. Same people who can open **Film** can open this.
+
+**On this page**
+
+- **Needs attention** is the starting view: in progress, stalled, and failed. **In progress**, **Stalled**, **Failed**, **Done**, and **All with YouTube** filter the list.
+- Each card shows the team, game, file, and live YouTube progress — percent, bytes uploaded of the total, how long is left, and when it started.
+- **Stalled** means no bytes moved for 30 minutes. Tap **Retry YouTube** (you need **Game film (manage)**).
+- A failed card explains the error in plain words. **Details** shows the raw message. If it says the file isn't in storage, ask the uploader to send it again from the team page.
+- **History** on a card lists file received, YouTube upload started, progress milestones, finished, added to playlist, each retry, and each error, with times.
+
+This page does not replace **Film**. Play, download, edit, Slack, and playlists stay on **Film**.`,
   },
   {
     id: "payments",

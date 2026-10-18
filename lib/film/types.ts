@@ -62,6 +62,38 @@ export interface FilmUpload {
   youtube_synced_at: string | null;
 }
 
+export type YoutubeEventKind =
+  | "received"
+  | "upload_started"
+  | "progress"
+  | "finished"
+  | "playlist_added"
+  | "retry"
+  | "error"
+  | "stalled";
+
+export interface YoutubeJob {
+  upload_id: string;
+  upload_uri: string | null;
+  bytes_sent: number;
+  bytes_total: number | null;
+  attempts: number;
+  started_at: string | null;
+  last_progress_at: string | null;
+  updated_at: string;
+}
+
+export interface YoutubeEvent {
+  id: string;
+  upload_id: string;
+  at: string;
+  kind: YoutubeEventKind;
+  message: string;
+  detail: string | null;
+  bytes_sent: number | null;
+  bytes_total: number | null;
+}
+
 export interface FilmSlackDraft {
   id: string;
   upload_id: string;

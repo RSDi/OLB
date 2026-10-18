@@ -11,6 +11,9 @@ import {
   type FilmStatus,
   type FilmUpload,
   type YoutubePlaylistStatus,
+  type YoutubeEvent,
+  type YoutubeEventKind,
+  type YoutubeJob,
   type YoutubePrivacy,
   type YoutubeProcessing,
   type YoutubeStatus,
@@ -303,35 +306,46 @@ export async function setFilmYoutubeStatus(
   return (data as FilmUpload | null) ?? null;
 }
 
-export type YoutubeJob = {
-  upload_id: string;
-  upload_uri: string | null;
-  bytes_sent: number;
-  attempts: number;
-  updated_at: string;
-};
+const YOUTUBE_JOB_COLUMNS =
+  "upload_id, upload_uri, bytes_sent, bytes_total, attempts, started_at, last_progress_at, updated_at";
+const YOUTUBE_EVENT_COLUMNS = "id, upload_id, at, kind, message, detail, bytes_sent, bytes_total";
+
+export type { YoutubeEvent, YoutubeJob };
 
 export async function upsertYoutubeJob(
   uploadId: string,
-  patch: Partial<Pick<YoutubeJob, "upload_uri" | "bytes_sent" | "attempts">>
+  patch: Partial<Pick<YoutubeJob, "upload_uri" | "bytes_sent" | "bytes_total" | "attempts" | "started_at" | "last_progress_at">>
 ): Promise<YoutubeJob> {
   const admin = createAdminClient();
   const { data: existing } = await admin
     .from("game_film_youtube_jobs")
-    .select("upload_id, upload_uri, bytes_sent, attempts, updated_at")
+    .select(YOUTUBE_JOB_COLUMNS)
     .eq("upload_id", uploadId)
     .maybeSingle();
+  const now = new Date().toISOString();
+  const bytesSent = patch.bytes_sent !== undefined ? patch.bytes_sent : (existing?.bytes_sent ?? 0);
+  const progressMoved =
+    patch.bytes_sent !== undefined && Number(patch.bytes_sent) !== Number(existing?.bytes_sent ?? 0);
   const next = {
     upload_id: uploadId,
     upload_uri: patch.upload_uri !== undefined ? patch.upload_uri : (existing?.upload_uri ?? null),
-    bytes_sent: patch.bytes_sent !== undefined ? patch.bytes_sent : (existing?.bytes_sent ?? 0),
+    bytes_sent: bytesSent,
+    bytes_total: patch.bytes_total !== undefined ? patch.bytes_total : (existing?.bytes_total ?? null),
     attempts: patch.attempts !== undefined ? patch.attempts : (existing?.attempts ?? 0),
-    updated_at: new Date().toISOString(),
+    started_at:
+      patch.started_at !== undefined ? patch.started_at : (existing?.started_at ?? null),
+    last_progress_at:
+      patch.last_progress_at !== undefined
+        ? patch.last_progress_at
+        : progressMoved
+          ? now
+          : (existing?.last_progress_at ?? null),
+    updated_at: now,
   };
   const { data, error } = await admin
     .from("game_film_youtube_jobs")
     .upsert(next, { onConflict: "upload_id" })
-    .select("upload_id, upload_uri, bytes_sent, attempts, updated_at")
+    .select(YOUTUBE_JOB_COLUMNS)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't save the YouTube job.");
   return data as YoutubeJob;
@@ -341,11 +355,89 @@ export async function getYoutubeJob(uploadId: string): Promise<YoutubeJob | null
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("game_film_youtube_jobs")
-    .select("upload_id, upload_uri, bytes_sent, attempts, updated_at")
+    .select(YOUTUBE_JOB_COLUMNS)
     .eq("upload_id", uploadId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return (data as YoutubeJob | null) ?? null;
+}
+
+export async function listYoutubeJobs(uploadIds: string[]): Promise<YoutubeJob[]> {
+  if (uploadIds.length === 0) return [];
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_youtube_jobs")
+    .select(YOUTUBE_JOB_COLUMNS)
+    .in("upload_id", uploadIds);
+  if (error) throw new Error(error.message);
+  return (data as YoutubeJob[]) ?? [];
+}
+
+export async function appendYoutubeEvent(input: {
+  uploadId: string;
+  kind: YoutubeEventKind;
+  message: string;
+  detail?: string | null;
+  bytesSent?: number | null;
+  bytesTotal?: number | null;
+  at?: Date;
+}): Promise<YoutubeEvent> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_youtube_events")
+    .insert({
+      upload_id: input.uploadId,
+      kind: input.kind,
+      message: input.message,
+      detail: input.detail ?? null,
+      bytes_sent: input.bytesSent ?? null,
+      bytes_total: input.bytesTotal ?? null,
+      at: (input.at ?? new Date()).toISOString(),
+    })
+    .select(YOUTUBE_EVENT_COLUMNS)
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "Couldn't save the YouTube event.");
+  return data as YoutubeEvent;
+}
+
+export async function listYoutubeEvents(uploadIds: string[]): Promise<YoutubeEvent[]> {
+  if (uploadIds.length === 0) return [];
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_youtube_events")
+    .select(YOUTUBE_EVENT_COLUMNS)
+    .in("upload_id", uploadIds)
+    .order("at", { ascending: false })
+    .limit(Math.min(2000, Math.max(40, uploadIds.length * 40)));
+  if (error) throw new Error(error.message);
+  return ((data as YoutubeEvent[]) ?? []).slice().reverse();
+}
+
+export async function loadFilmYoutubeExtras(uploadIds: string[]): Promise<{
+  jobs: Record<string, YoutubeJob>;
+  events: Record<string, YoutubeEvent[]>;
+}> {
+  const [jobRows, eventRows] = await Promise.all([listYoutubeJobs(uploadIds), listYoutubeEvents(uploadIds)]);
+  const jobs: Record<string, YoutubeJob> = {};
+  for (const job of jobRows) jobs[job.upload_id] = job;
+  const events: Record<string, YoutubeEvent[]> = {};
+  for (const ev of eventRows) {
+    (events[ev.upload_id] ??= []).push(ev);
+  }
+  return { jobs, events };
+}
+
+export async function latestYoutubeEventKind(uploadId: string): Promise<YoutubeEventKind | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_youtube_events")
+    .select("kind")
+    .eq("upload_id", uploadId)
+    .order("at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return ((data as { kind?: YoutubeEventKind } | null)?.kind ?? null);
 }
 
 export async function claimYoutubeWork(id: string, now = new Date()): Promise<FilmUpload | null> {

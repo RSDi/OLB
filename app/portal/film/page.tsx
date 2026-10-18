@@ -5,11 +5,11 @@ import {
   listDiscardedFilmSlackDraftViews,
   listPendingFilmSlackDraftViews,
 } from "../../../lib/film/slack-drafts";
-import { listFilmUploads } from "../../../lib/film/uploads";
+import { listFilmUploads, loadFilmYoutubeExtras } from "../../../lib/film/uploads";
 import { listEnabledFilmTeams } from "../../../lib/film/teams";
 import { listGameLineupsByKey, listTeamRosters } from "../../../lib/film/lineups";
 import type { FilmRosterPlayer } from "../../../lib/film/lineups";
-import type { FilmSlackDraftView, FilmUpload } from "../../../lib/film/types";
+import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob } from "../../../lib/film/types";
 import { FilmInbox } from "./FilmInbox";
 
 export const dynamic = "force-dynamic";
@@ -31,12 +31,22 @@ export default async function FilmInboxPage() {
   }
 
   let uploads: FilmUpload[] = [];
+  let jobs: Record<string, YoutubeJob> = {};
+  let events: Record<string, YoutubeEvent[]> = {};
   let slackDrafts: FilmSlackDraftView[] = [];
   let discardedDrafts: FilmSlackDraftView[] = [];
   let loadError: string | null = null;
   const teamScope = viewer.canViewAllFilm ? undefined : viewer.filmTeamIds;
   try {
     uploads = await listFilmUploads(teamScope);
+    try {
+      const extras = await loadFilmYoutubeExtras(uploads.map((u) => u.id));
+      jobs = extras.jobs;
+      events = extras.events;
+    } catch {
+      jobs = {};
+      events = {};
+    }
   } catch (err) {
     loadError = err instanceof Error ? err.message : "Couldn't load uploads.";
   }
@@ -77,6 +87,8 @@ export default async function FilmInboxPage() {
   return (
     <FilmInbox
       uploads={uploads}
+      jobs={jobs}
+      events={events}
       slackDrafts={slackDrafts}
       discardedDrafts={discardedDrafts}
       canManage={viewer.canManageFilm}

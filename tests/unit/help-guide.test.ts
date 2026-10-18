@@ -192,6 +192,9 @@ test("Game film reaches view or manage holders, not the rest of the board", () =
   assert.equal(guideSectionForPath("/portal/film", manage)?.id, "film");
   assert.equal(guideSectionForPath("/portal/film", ADMIN), null);
   assert.equal(guideSectionForPath("/portal/film", MEMBER), null);
+  assert.equal(guideSectionForPath("/portal/film/status", SUPER)?.id, "film-status");
+  assert.equal(guideSectionForPath("/portal/film/status", view)?.id, "film-status");
+  assert.equal(guideSectionForPath("/portal/film/status", ADMIN), null);
   assert.ok(!guideSectionsFor({ ...view, status: "pending" }).some((s) => s.id === "film"));
 });
 

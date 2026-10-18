@@ -166,3 +166,99 @@
   line-height: 1.5;
   color: var(--gw-fg);
 }
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.progressLine {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gw-fg);
+}
+
+.bar {
+  height: 8px;
+  border-radius: 100px;
+  background: var(--gw-bg-elev);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 100px;
+  background: var(--rsd-accent);
+}
+
+.barFillStall {
+  background: var(--gw-warning, #c47d11);
+}
+
+.errorText {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--gw-error);
+}
+
+.details {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.rawError,
+.historyList {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--gw-bg-elev);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.history {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.history summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.historyItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--gw-border);
+}
+
+.historyItem:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.historyWhen {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gw-fg-muted);
+}
+
+.statusLink {
+  font-weight: 700;
+}

@@ -17,6 +17,7 @@ import {
 
 function refresh() {
   revalidatePath("/portal/film");
+  revalidatePath("/portal/film/status");
 }
 
 export async function editFilmSlackDraft(

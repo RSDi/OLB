@@ -380,6 +380,21 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "After YouTube, the video is added to the team's playlist. **In playlist** opens it. If that step failed, the video stays on YouTube — tap **Retry playlist**.",
       },
       {
+        target: "film-youtube-progress",
+        title: "YouTube progress",
+        body: "While a file goes up you see the percent, bytes uploaded of the total, how long is left, and when it started. **Stalled** means nothing moved for 30 minutes — tap **Retry YouTube**.",
+      },
+      {
+        target: "film-youtube-history",
+        title: "History",
+        body: "**History** lists file received, YouTube upload started, progress, finished, playlist, retries, and errors, each with a time.",
+      },
+      {
+        target: "film-status-link",
+        title: "Film status",
+        body: "The board **Film status** page lists in-progress, stalled, failed, and done uploads across teams.",
+      },
+      {
         target: "film-youtube-status",
         title: "YouTube privacy",
         body: "Each video on YouTube shows the privacy YouTube actually has — **Public**, **Unlisted**, or **Private** — and whether it is still **Processing**. Tap **Refresh YouTube status** to read it from YouTube. You don't need YouTube Studio.",
@@ -403,6 +418,33 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "film-delete",
         title: "Delete",
         body: "**Delete** removes the file for good. Same permission as **Mark moved**.",
+      },
+    ],
+  },
+  {
+    id: "film-status",
+    sectionId: "film-status",
+    title: "Film status tour",
+    route: "/portal/film/status",
+    steps: [
+      {
+        title: "YouTube across teams",
+        body: "In-progress, stalled, failed, and done YouTube transfers for every team you can see. This is the board view; **Film** still has Play and Edit.",
+      },
+      {
+        target: "film-status-filter",
+        title: "Needs attention",
+        body: "**Needs attention** is the starting view. **In progress**, **Stalled**, **Failed**, **Done**, and **All with YouTube** filter the list.",
+      },
+      {
+        target: "film-status-row",
+        title: "A transfer",
+        body: "Each card shows the team, game, file, and live progress — percent, bytes, time left, and when it started. **History** has the log.",
+      },
+      {
+        target: "film-status-retry",
+        title: "Retry YouTube",
+        body: "On a stalled or failed card, **Retry YouTube** starts a new upload session. You need **Game film (manage)**.",
       },
     ],
   },

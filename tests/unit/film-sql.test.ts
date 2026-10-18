@@ -116,6 +116,35 @@ test("0148 adds per-team YouTube templates, extras, Slack drafts, and lineups", 
   assert.ok(down.includes("drop table if exists public.game_film_lineups"));
 });
 
+test("0151 stores YouTube progress and a per-film event history", () => {
+  const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
+  const sql = readFileSync(join(root, "supabase/migrations/0151_game_film_youtube_progress.sql"), "utf8");
+  const down = readFileSync(join(root, "supabase/removal/0151_game_film_youtube_progress_down.sql"), "utf8");
+  assert.ok(names.includes("0150_hosted_tournaments.sql"));
+  assert.ok(names.includes("0151_game_film_youtube_progress.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0151")).length, 1, "only one 0151 migration");
+  assert.match(sql, /after 0150/);
+  assert.ok(sql.includes("add column if not exists started_at"));
+  assert.ok(sql.includes("add column if not exists last_progress_at"));
+  assert.ok(sql.includes("add column if not exists bytes_total"));
+  assert.ok(sql.includes("create table if not exists public.game_film_youtube_events"));
+  assert.ok(sql.includes("'received'"));
+  assert.ok(sql.includes("'upload_started'"));
+  assert.ok(sql.includes("'progress'"));
+  assert.ok(sql.includes("'finished'"));
+  assert.ok(sql.includes("'playlist_added'"));
+  assert.ok(sql.includes("'retry'"));
+  assert.ok(sql.includes("'error'"));
+  assert.ok(sql.includes("'stalled'"));
+  assert.ok(sql.includes("revoke all on table public.game_film_youtube_events"));
+  assert.ok(sql.includes("OLB does NOT auto-run"));
+  assert.ok(!sql.includes("drop table"));
+  assert.ok(!sql.includes("to anon"));
+  assert.ok(!sql.includes("youtube_status in ('queued', 'uploading', 'done', 'failed', 'stalled')"));
+  assert.ok(down.includes("drop table if exists public.game_film_youtube_events"));
+  assert.ok(down.includes("drop column if exists started_at"));
+});
+
 test("0143 adds game date, opponent, and optional score columns", () => {
   assert.ok(gameMeta.includes("add column if not exists game_date date"));
   assert.ok(gameMeta.includes("add column if not exists opponent text"));
