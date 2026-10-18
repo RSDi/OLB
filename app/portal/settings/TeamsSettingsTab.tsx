@@ -73,11 +73,15 @@ export function TeamsSettingsTab() {
     if (d.error) setError(d.error);
     setLoading(false);
   }, []);
-  const load = useCallback(async () => apply(await fetchTeams()), [apply]);
+  const failedLoad = useCallback(() => {
+    setError("Couldn't load. Refresh the page.");
+    setLoading(false);
+  }, []);
+  const load = useCallback(() => fetchTeams().then(apply).catch(failedLoad), [apply, failedLoad]);
 
   useEffect(() => {
-    fetchTeams().then(apply);
-  }, [apply]);
+    fetchTeams().then(apply).catch(failedLoad);
+  }, [apply, failedLoad]);
 
   async function save(id: string | null, input: TeamSettingsInput) {
     setError(null);

@@ -10,8 +10,8 @@ import {
   createAgentKey,
   loadAgentKeys,
   revokeAgentKey,
-  type PublicAgentKey,
 } from "../../../lib/agent/keys-actions";
+import type { PublicAgentKey } from "../../../lib/agent/keys";
 import { AGENT_SCOPE_LABELS, AGENT_SCOPES, type AgentScope } from "../../../lib/agent/scopes";
 
 function ErrorBox({ text }: { text: string }) {
