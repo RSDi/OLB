@@ -5,18 +5,25 @@
 // will kill a one-shot upload long before that finishes. YouTube's resumable
 // Data API lets us PUT 8 MiB chunks and store the session URI + byte offset
 // on game_film_youtube_jobs. Each tick spends up to ~4 minutes, then the next
-// cron continues. after() on complete starts the first chunks so a short clip
-// may land before the next minute. Same CRON_SECRET as the other jobs.
+// cron continues. after() on complete waits until the TUS object is actually
+// readable (createSignedUrl "Object not found" is a missing/incomplete file,
+// not a YouTube error), then starts the first chunks so a short clip may land
+// before the next minute. A 404 on the resumable URI starts a new session
+// instead of PUTting to a dead URL. Same CRON_SECRET as the other jobs.
 
+import { FilmStorageError, requireFilmObject } from "./object.ts";
 import { getFilmTeamById, getFilmTeamBySlug } from "./teams.ts";
 import { listGamePlayerNames } from "./lineups.ts";
 import { createFilmSlackDraftIfNeeded } from "./slack-drafts.ts";
 import { filmStorage } from "./storage.ts";
 import {
+  appendYoutubeEvent,
   claimYoutubeWork,
   getFilmUpload,
   getYoutubeJob,
+  latestYoutubeEventKind,
   listPlaylistWork,
+  listYoutubeJobs,
   listYoutubeWork,
   setFilmPlaylistStatus,
   setFilmYoutubeStatus,
@@ -35,9 +42,14 @@ import {
 } from "./youtube-meta.ts";
 import { refreshYoutubeAccess, youtubeOAuthConfigured } from "./youtube-oauth.ts";
 import { insertYoutubePlaylistItem } from "./youtube-playlist.ts";
+import {
+  crossedMilestones,
+  isYoutubeStalled,
+  youtubeEventTitle,
+} from "./youtube-progress.ts";
 import { getYoutubeConnectionSecret } from "./youtube-settings.ts";
 import { syncYoutubeVideoStatus } from "./youtube-status.ts";
-import type { FilmUpload } from "./types.ts";
+import type { FilmUpload, YoutubeEventKind } from "./types.ts";
 
 const INITIATE_URL = "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status";
 const VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos?part=snippet";
@@ -54,7 +66,7 @@ export async function enqueueYoutubeIfConnected(uploadId: string): Promise<{ que
   if (row.youtube_status === "done" || row.youtube_status === "queued" || row.youtube_status === "uploading") {
     return { queued: row.youtube_status !== "done" };
   }
-  await upsertYoutubeJob(uploadId, { upload_uri: null, bytes_sent: 0 });
+  await upsertYoutubeJob(uploadId, { upload_uri: null, bytes_sent: 0, bytes_total: row.size_bytes });
   await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
   return { queued: true };
 }
@@ -67,9 +79,13 @@ export async function retryYoutubeUpload(uploadId: string): Promise<void> {
   await upsertYoutubeJob(uploadId, {
     upload_uri: null,
     bytes_sent: 0,
+    bytes_total: row.size_bytes,
     attempts: job?.attempts ?? 0,
+    started_at: null,
+    last_progress_at: null,
   });
   await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
+  await noteYoutubeEvent(uploadId, "retry", "Retry started", null, 0, row.size_bytes);
 }
 
 export type YoutubeTickResult = {
@@ -115,6 +131,7 @@ export async function processYoutubeQueue(opts?: {
   }
 
   const rows = await listYoutubeWork(opts?.uploadId);
+  await markStalledUploads(rows, started);
   const candidate = rows.find((row) => canClaim(row, started)) ?? null;
   if (candidate) {
     const pick = await claimYoutubeWork(candidate.id, new Date(started));
@@ -131,7 +148,7 @@ export async function processYoutubeQueue(opts?: {
         else if (outcome === "failed") result.failed = 1;
         else result.continued = 1;
       } catch (err) {
-        await failOrRequeue(pick.id, err instanceof Error ? err.message : "YouTube upload failed.");
+        await failOrRequeue(pick.id, err);
         result.failed = 1;
       }
     }
@@ -191,11 +208,14 @@ async function addVideoToPlaylist(row: FilmUpload, access: string): Promise<void
       youtube_playlist_error: null,
       youtube_playlist_item_id: inserted.itemId,
     });
+    await noteYoutubeEvent(row.id, "playlist_added", "Added to playlist");
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Couldn't add the video to the playlist.";
     await setFilmPlaylistStatus(row.id, {
       youtube_playlist_status: "failed",
-      youtube_playlist_error: err instanceof Error ? err.message : "Couldn't add the video to the playlist.",
+      youtube_playlist_error: message,
     });
+    await noteYoutubeEvent(row.id, "error", "Couldn't add the video to the playlist.", message);
   }
 }
 
@@ -214,10 +234,66 @@ function canClaim(row: FilmUpload, now: number): boolean {
   return now - new Date(row.youtube_updated_at).getTime() > STALE_MS;
 }
 
-async function failOrRequeue(id: string, message: string): Promise<void> {
+async function noteYoutubeEvent(
+  uploadId: string,
+  kind: YoutubeEventKind,
+  message: string,
+  detail?: string | null,
+  bytesSent?: number | null,
+  bytesTotal?: number | null
+): Promise<void> {
+  try {
+    await appendYoutubeEvent({ uploadId, kind, message, detail, bytesSent, bytesTotal });
+  } catch (err) {
+    console.error("[film-youtube] event:", err instanceof Error ? err.message : err);
+  }
+}
+
+async function markStalledUploads(rows: FilmUpload[], now: number): Promise<void> {
+  const uploading = rows.filter((row) => row.youtube_status === "uploading");
+  if (uploading.length === 0) return;
+  const jobs = await listYoutubeJobs(uploading.map((row) => row.id));
+  const byId = new Map(jobs.map((job) => [job.upload_id, job]));
+  for (const row of uploading) {
+    const job = byId.get(row.id);
+    if (
+      !isYoutubeStalled({
+        youtubeStatus: row.youtube_status,
+        lastProgressAt: job?.last_progress_at,
+        youtubeUpdatedAt: row.youtube_updated_at,
+        now,
+      })
+    ) {
+      continue;
+    }
+    const lastKind = await latestYoutubeEventKind(row.id).catch(() => null);
+    if (lastKind === "stalled") continue;
+    await noteYoutubeEvent(
+      row.id,
+      "stalled",
+      "No progress for 30 minutes",
+      null,
+      job?.bytes_sent ?? 0,
+      job?.bytes_total ?? row.size_bytes
+    );
+  }
+}
+
+async function failOrRequeue(id: string, err: unknown): Promise<void> {
+  const message = err instanceof Error ? err.message : "YouTube upload failed.";
+  if (err instanceof FilmStorageError && err.code === "not_ready") {
+    await setFilmYoutubeStatus(id, { youtube_status: "queued", youtube_error: message });
+    return;
+  }
+  if (err instanceof FilmStorageError) {
+    await setFilmYoutubeStatus(id, { youtube_status: "failed", youtube_error: message });
+    await noteYoutubeEvent(id, "error", youtubeEventTitle("error"), message);
+    return;
+  }
   const job = await getYoutubeJob(id);
   const attempts = (job?.attempts ?? 0) + 1;
   await upsertYoutubeJob(id, { attempts, upload_uri: null, bytes_sent: 0 });
+  await noteYoutubeEvent(id, "error", youtubeEventTitle("error"), message, 0, job?.bytes_total ?? null);
   if (attempts >= YOUTUBE_MAX_ATTEMPTS) {
     await setFilmYoutubeStatus(id, { youtube_status: "failed", youtube_error: message });
   } else {
@@ -225,35 +301,78 @@ async function failOrRequeue(id: string, message: string): Promise<void> {
   }
 }
 
+async function finishYoutubeUpload(
+  row: FilmUpload,
+  videoId: string,
+  access: string,
+  total: number
+): Promise<"done"> {
+  await setFilmYoutubeStatus(row.id, {
+    youtube_status: "done",
+    youtube_video_id: videoId,
+    youtube_error: null,
+  });
+  await upsertYoutubeJob(row.id, { upload_uri: null, bytes_sent: total, bytes_total: total });
+  await noteYoutubeEvent(row.id, "finished", "Finished on YouTube", null, total, total);
+  await afterYoutubeInsert(row, videoId, access);
+  await queuePlaylistIfNeeded(row.id);
+  await addVideoToPlaylist({ ...row, youtube_status: "done", youtube_video_id: videoId }, access);
+  await syncLiveStatusQuietly(access, videoId);
+  return "done";
+}
+
+async function recordProgress(uploadId: string, prevSent: number, nextSent: number, total: number): Promise<void> {
+  for (const pct of crossedMilestones(prevSent, nextSent, total)) {
+    await noteYoutubeEvent(uploadId, "progress", `${pct}% uploaded`, null, nextSent, total);
+  }
+}
+
 async function pushOne(
   row: FilmUpload,
   opts: { access: string; privacy: "unlisted" | "private" | "public"; madeForKids: boolean; deadline: number }
 ): Promise<"done" | "continued" | "failed"> {
-  const total = await objectSize(row);
+  const total = await requireFilmObject(row);
   const type = row.content_type || "video/mp4";
-  let job = (await getYoutubeJob(row.id)) ?? (await upsertYoutubeJob(row.id, { bytes_sent: 0, upload_uri: null }));
+  let job =
+    (await getYoutubeJob(row.id)) ??
+    (await upsertYoutubeJob(row.id, { bytes_sent: 0, upload_uri: null, bytes_total: total }));
 
-  if (!job.upload_uri) {
-    const uri = await initiateUpload(row, { access: opts.access, privacy: opts.privacy, madeForKids: opts.madeForKids, total, type });
-    job = await upsertYoutubeJob(row.id, { upload_uri: uri, bytes_sent: 0 });
-  } else {
+  if (job.upload_uri) {
     const resume = await queryResumeOffset(job.upload_uri, opts.access, total);
     if (resume.videoId) {
-      await setFilmYoutubeStatus(row.id, {
-        youtube_status: "done",
-        youtube_video_id: resume.videoId,
-        youtube_error: null,
+      return finishYoutubeUpload(row, resume.videoId, opts.access, total);
+    }
+    if (resume.expired) {
+      job = await upsertYoutubeJob(row.id, {
+        upload_uri: null,
+        bytes_sent: 0,
+        bytes_total: total,
       });
-      await upsertYoutubeJob(row.id, { upload_uri: null, bytes_sent: total });
-      await afterYoutubeInsert(row, resume.videoId, opts.access);
-      await queuePlaylistIfNeeded(row.id);
-      await addVideoToPlaylist({ ...row, youtube_status: "done", youtube_video_id: resume.videoId }, opts.access);
-      await syncLiveStatusQuietly(opts.access, resume.videoId);
-      return "done";
+    } else if (resume.sent !== job.bytes_sent) {
+      const prev = job.bytes_sent;
+      job = await upsertYoutubeJob(row.id, { bytes_sent: resume.sent, bytes_total: total });
+      await recordProgress(row.id, prev, resume.sent, total);
     }
-    if (resume.sent !== job.bytes_sent) {
-      job = await upsertYoutubeJob(row.id, { bytes_sent: resume.sent });
-    }
+  }
+
+  if (!job.upload_uri) {
+    const uri = await initiateUpload(row, {
+      access: opts.access,
+      privacy: opts.privacy,
+      madeForKids: opts.madeForKids,
+      total,
+      type,
+    });
+    const startedAt = job.started_at ?? new Date().toISOString();
+    job = await upsertYoutubeJob(row.id, {
+      upload_uri: uri,
+      bytes_sent: 0,
+      bytes_total: total,
+      started_at: startedAt,
+    });
+    await noteYoutubeEvent(row.id, "upload_started", "YouTube upload started", null, 0, total);
+  } else if (!job.started_at) {
+    job = await upsertYoutubeJob(row.id, { started_at: new Date().toISOString(), bytes_total: total });
   }
 
   let bytesSent = job.bytes_sent;
@@ -265,6 +384,7 @@ async function pushOne(
     const signed = await storage.signedDownloadUrl(row.storage_path, 60 * 60);
     const chunk = await fetch(signed, { headers: { Range: `bytes=${range.start}-${range.end}` } });
     if (!chunk.ok && chunk.status !== 206) {
+      if (chunk.status === 404) throw new FilmStorageError("Object not found", "missing");
       throw new Error(`Couldn't read film bytes (${chunk.status}).`);
     }
     const buf = Buffer.from(await chunk.arrayBuffer());
@@ -276,29 +396,24 @@ async function pushOne(
     if (put.status === 200 || put.status === 201) {
       const json = (await put.json().catch(() => ({}))) as { id?: string };
       if (!json.id) throw new Error("YouTube finished but didn't return a video id.");
-      await setFilmYoutubeStatus(row.id, {
-        youtube_status: "done",
-        youtube_video_id: json.id,
-        youtube_error: null,
-      });
-      await upsertYoutubeJob(row.id, { upload_uri: null, bytes_sent: total });
-      await afterYoutubeInsert(row, json.id, opts.access);
-      await queuePlaylistIfNeeded(row.id);
-      await addVideoToPlaylist({ ...row, youtube_status: "done", youtube_video_id: json.id }, opts.access);
-      await syncLiveStatusQuietly(opts.access, json.id);
-      return "done";
+      return finishYoutubeUpload(row, json.id, opts.access, total);
     }
     if (put.status === 308) {
+      const prev = bytesSent;
       bytesSent = parseResumeRange(put.headers.get("range")) || range.start + buf.length;
-      await upsertYoutubeJob(row.id, { bytes_sent: bytesSent });
+      await upsertYoutubeJob(row.id, { bytes_sent: bytesSent, bytes_total: total });
+      await recordProgress(row.id, prev, bytesSent, total);
       continue;
+    }
+    if (put.status === 404 || put.status === 410) {
+      throw new Error("YouTube upload session expired.");
     }
     const errText = await put.text().catch(() => "");
     throw new Error(youtubeErrorMessage(put.status, errText));
   }
 
   await setFilmYoutubeStatus(row.id, { youtube_status: "uploading", youtube_error: null });
-  return bytesSent >= total ? "continued" : "continued";
+  return "continued";
 }
 
 async function initiateUpload(
@@ -341,7 +456,7 @@ async function queryResumeOffset(
   uploadUri: string,
   access: string,
   total: number
-): Promise<{ sent: number; videoId?: string }> {
+): Promise<{ sent: number; videoId?: string; expired?: boolean }> {
   const res = await fetch(uploadUri, {
     method: "PUT",
     headers: {
@@ -355,17 +470,8 @@ async function queryResumeOffset(
     return { sent: total, videoId: json.id };
   }
   if (res.status === 308) return { sent: parseResumeRange(res.headers.get("range")) };
-  if (res.status === 404) return { sent: 0 };
-  return { sent: 0 };
-}
-
-async function objectSize(row: FilmUpload): Promise<number> {
-  if (row.size_bytes && row.size_bytes > 0) return row.size_bytes;
-  const signed = await filmStorage().signedDownloadUrl(row.storage_path, 120);
-  const head = await fetch(signed, { method: "HEAD" });
-  const len = Number(head.headers.get("content-length") ?? 0);
-  if (!Number.isFinite(len) || len <= 0) throw new Error("Couldn't tell how large that video is.");
-  return len;
+  if (res.status === 404 || res.status === 410) return { sent: 0, expired: true };
+  return { sent: 0, expired: true };
 }
 
 async function filmYoutubeContext(row: FilmUpload): Promise<{

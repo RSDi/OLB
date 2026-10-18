@@ -31,6 +31,7 @@ import {
 function refresh() {
   revalidatePath("/portal/settings");
   revalidatePath("/portal/film");
+  revalidatePath("/portal/film/status");
   revalidatePath("/film");
 }
 

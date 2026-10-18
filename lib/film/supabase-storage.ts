@@ -55,16 +55,11 @@ export function supabaseFilmStorage(): FilmStorageProvider {
       if (error) throw new Error(error.message);
     },
     async objectExists(path): Promise<boolean> {
+      // createSignedUrl is what the YouTube worker calls; list()+search can
+      // miss a just-finished TUS object and is not the failure we see in logs.
       const admin = createAdminClient();
-      const slash = path.lastIndexOf("/");
-      const folder = slash === -1 ? "" : path.slice(0, slash);
-      const name = slash === -1 ? path : path.slice(slash + 1);
-      const { data, error } = await admin.storage.from(GAME_FILM_BUCKET).list(folder, {
-        limit: 20,
-        search: name,
-      });
-      if (error) return false;
-      return (data ?? []).some((obj) => obj.name === name);
+      const { data, error } = await admin.storage.from(GAME_FILM_BUCKET).createSignedUrl(path, 60);
+      return Boolean(!error && data?.signedUrl);
     },
   };
 }

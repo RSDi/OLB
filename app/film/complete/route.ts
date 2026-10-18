@@ -5,7 +5,8 @@ import { cookies } from "next/headers";
 import { after, NextResponse } from "next/server";
 import { FILM_COOKIE, parseFilmSession, sessionMatchesTeam } from "../../../lib/film/session";
 import { getFilmTeamBySlug } from "../../../lib/film/teams";
-import { getFilmUpload } from "../../../lib/film/uploads";
+import { appendYoutubeEvent, getFilmUpload } from "../../../lib/film/uploads";
+import { waitForFilmObject } from "../../../lib/film/object";
 import { enqueueYoutubeIfConnected, processYoutubeQueue, YOUTUBE_KICK_BUDGET_MS } from "../../../lib/film/youtube";
 
 export const maxDuration = 60;
@@ -31,6 +32,21 @@ export async function POST(request: Request) {
   }
   after(async () => {
     try {
+      const info = await waitForFilmObject(row.storage_path, { expectedBytes: row.size_bytes });
+      if (info.exists) {
+        await appendYoutubeEvent({
+          uploadId: id,
+          kind: "received",
+          message: "File received",
+          bytesSent: info.size,
+          bytesTotal: row.size_bytes ?? info.size,
+        });
+      }
+      // Don't fail here if Storage hasn't published the TUS object yet.
+      // The worker treats a missing object as not-ready for 15 minutes, then
+      // fails with the mapped "isn't in storage" error. A 6-second give-up
+      // was how 4–5 GB clips got "Object not found" while the file was still
+      // landing.
       const { queued } = await enqueueYoutubeIfConnected(id);
       if (queued) await processYoutubeQueue({ budgetMs: YOUTUBE_KICK_BUDGET_MS, uploadId: id });
     } catch (err) {
