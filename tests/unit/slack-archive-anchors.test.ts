@@ -6,7 +6,7 @@ import { messageAnchorId, messageHref, messageTsFromHash } from "../../lib/slack
 
 test("a message link names the channel and the message", () => {
   assert.equal(messageAnchorId("1695321234.123456"), "msg-1695321234.123456");
-  assert.equal(messageHref("C0BOLT", "1695321234.123456"), "/portal/slack-archive/C0BOLT#msg-1695321234.123456");
+  assert.equal(messageHref("C0BOLT", "1695321234.123456"), "/portal/archives/slack/C0BOLT#msg-1695321234.123456");
 });
 
 test("the linked message is read back from the URL hash", () => {

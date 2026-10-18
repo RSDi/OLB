@@ -176,7 +176,7 @@ async function loadSlackThreads(admin: SupabaseClient, keys: string[]): Promise<
       docs.set(`${channel}|${root}`, {
         entityId: first.id,
         title: `#${where}: ${short(String(said[0].message_text), 80)}`,
-        href: `/portal/slack-archive/${encodeURIComponent(channel)}#msg-${root}`,
+        href: `/portal/archives/slack/${encodeURIComponent(channel)}#msg-${root}`,
         sections: [{ text }],
       });
     }

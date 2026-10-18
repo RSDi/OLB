@@ -202,8 +202,13 @@ test("a pending account is treated as a member", () => {
 });
 
 test("a page's help is its most specific section", () => {
+  assert.equal(guideSectionForPath("/portal/archives/slack/search", MEMBER)?.id, "slack-archive-search");
   assert.equal(guideSectionForPath("/portal/slack-archive/search", MEMBER)?.id, "slack-archive-search");
+  assert.equal(guideSectionForPath("/portal/archives/slack/C0123", MEMBER)?.id, "slack-archive");
   assert.equal(guideSectionForPath("/portal/slack-archive/C0123", MEMBER)?.id, "slack-archive");
+  assert.equal(guideSectionForPath("/portal/archives/email", ADMIN)?.id, "archives-email");
+  assert.equal(guideSectionForPath("/portal/archives/email/1a13bbc3cc52c26e", ADMIN)?.id, "archives-email");
+  assert.equal(guideSectionForPath("/portal/archives/email", MEMBER), null);
   assert.equal(guideSectionForPath("/portal/docs/abc/history", MEMBER)?.id, "playbooks");
   assert.equal(guideSectionForPath("/portal/guide", MEMBER), null);
 });

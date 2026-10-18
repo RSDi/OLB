@@ -2,17 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Icons } from "../../../components/icons";
-import { Input } from "../../../components/ui";
-import { CHURCH_TZ } from "../../../../lib/dates/today";
+import { Icons } from "../../../../components/icons";
+import { Input } from "../../../../components/ui";
+import { CHURCH_TZ } from "../../../../../lib/dates/today";
 import {
   runArchiveAuthorCounts,
   runArchiveChannelCounts,
   runArchiveSearch,
-} from "../../../../lib/slack-archive/search-actions";
-import { decodeSlackEntities } from "../../../../lib/slack-archive/text";
-import { messageHref } from "../../../../lib/slack-archive/anchors";
-import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../lib/slack-archive/data";
+} from "../../../../../lib/slack-archive/search-actions";
+import { decodeSlackEntities } from "../../../../../lib/slack-archive/text";
+import { messageHref } from "../../../../../lib/slack-archive/anchors";
+import type { ArchiveAuthor, ArchiveSearchResult } from "../../../../../lib/slack-archive/data";
 import { FilterDropdown, type FilterDropdownItem } from "../_shared/FilterDropdown";
 import { SlackText } from "../_shared/SlackText";
 

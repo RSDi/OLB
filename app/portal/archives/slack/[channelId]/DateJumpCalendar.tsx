@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Icons } from "../../../components/icons";
-import { Pill } from "../../../components/ui";
+import { Icons } from "../../../../components/icons";
+import { Pill } from "../../../../components/ui";
 
 // Small month-grid popover, same visual pattern as
 // app/portal/requests/_shared/BookingCalendar.tsx (weekday header, prev/next

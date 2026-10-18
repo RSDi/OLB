@@ -1,6 +1,7 @@
-// Hashed read-only keys for /api/agent/*. Plaintext is shown once when a
-// super-admin creates a key in Settings → Agent keys; only the hash is stored.
-// Same v1.<salt>.<digest> shape as family film codes.
+// Hashed keys for /api/agent/*. Plaintext is shown once when a super-admin
+// creates a key in Settings → Agent keys; only the hash is stored. Scopes
+// (0149) pick read vs email_archive:write. Same v1.<salt>.<digest> shape as
+// family film codes.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
@@ -65,6 +66,7 @@ export type PublicAgentKey = {
   name: string;
   prefix: string;
   createdAt: string;
+  scopes: string[];
 };
 
 export function publicAgentKey(row: {
@@ -72,11 +74,13 @@ export function publicAgentKey(row: {
   name: string;
   key_prefix: string;
   created_at: string;
+  scopes?: string[] | null;
 }): PublicAgentKey {
   return {
     id: row.id,
     name: row.name,
     prefix: row.key_prefix,
     createdAt: row.created_at,
+    scopes: Array.isArray(row.scopes) && row.scopes.length ? row.scopes : ["read"],
   };
 }

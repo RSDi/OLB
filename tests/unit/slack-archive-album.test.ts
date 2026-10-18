@@ -70,10 +70,10 @@ test("thumbnailPathFor derives a path under its own prefix", () => {
 });
 
 test("albumMediaHref encodes each segment and the download name", () => {
-  assert.equal(albumMediaHref("C1/1700.1/F1-roof.jpg"), "/portal/slack-archive/media/C1/1700.1/F1-roof.jpg");
+  assert.equal(albumMediaHref("C1/1700.1/F1-roof.jpg"), "/portal/archives/slack/media/C1/1700.1/F1-roof.jpg");
   assert.equal(
     albumMediaHref("C1/1700.1/F1-roof.jpg", { download: "Roof — before.jpg" }),
-    "/portal/slack-archive/media/C1/1700.1/F1-roof.jpg?download=Roof%20%E2%80%94%20before.jpg",
+    "/portal/archives/slack/media/C1/1700.1/F1-roof.jpg?download=Roof%20%E2%80%94%20before.jpg",
   );
 });
 

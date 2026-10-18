@@ -4,14 +4,14 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { loadAlbumPreviewTiles, type AlbumPreviewTile } from "../../../lib/slack-archive/data";
-import { albumFontVariables } from "./album/fonts";
+import { loadAlbumPreviewTiles, type AlbumPreviewTile } from "../../../../lib/slack-archive/data";
+import { albumFontVariables } from "../album/fonts";
 
 const COVER_TILES = 4;
 
 export function AlbumCard() {
   return (
-    <Link href="/portal/slack-archive/album" data-tour="archive-album" className={`rsd-card rsd-album-card ${albumFontVariables}`}>
+    <Link href="/portal/archives/album" data-tour="archive-album" className={`rsd-card rsd-album-card ${albumFontVariables}`}>
       <Suspense fallback={<AlbumCover tiles={[]} />}>
         <LoadedAlbumCover />
       </Suspense>

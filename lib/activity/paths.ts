@@ -9,6 +9,7 @@ const SECTIONS: Record<string, string> = {
   contacts: "External Contacts",
   docs: "Playbooks",
   "slack-archive": "Slack Archive",
+  archives: "Archives",
   guide: "User Guide",
   settings: "Settings",
   activity: "Activity",
@@ -31,6 +32,10 @@ const SUBPAGES: Record<string, string> = {
   "slack-archive/search": "Search",
   "slack-archive/album": "Photo Album",
   "slack-archive/exceptions": "Exceptions",
+  "archives/slack": "Slack",
+  "archives/slack/exceptions": "Exceptions",
+  "archives/email": "Email",
+  "archives/album": "Photo Album",
   "teams/registrations": "Registrations",
   "teams/import": "Import roster",
   "events/new": "New event",
@@ -46,6 +51,7 @@ const ITEM_NAMES: Record<string, string> = {
   contacts: "Contact",
   docs: "Playbook",
   "slack-archive": "Channel",
+  archives: "Item",
   events: "Event",
   tasks: "Task",
   pm: "Item",
@@ -73,7 +79,14 @@ export function describePath(path: string): PathParts {
 
   let page: string | undefined;
   if (segs.length >= 2) {
-    page = SUBPAGES[`${head}/${segs[1]}`] ?? ITEM_NAMES[head] ?? segs[1];
+    for (let n = segs.length; n >= 2; n--) {
+      const named = SUBPAGES[segs.slice(0, n).join("/")];
+      if (named) {
+        page = named;
+        break;
+      }
+    }
+    page ??= ITEM_NAMES[head] ?? segs[1];
     const tail = segs[segs.length - 1];
     if (segs.length >= 3 && TAILS[tail]) page = `${page} · ${TAILS[tail]}`;
   }

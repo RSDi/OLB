@@ -1,7 +1,7 @@
 /*
  * Re-checks every archived channel's Slack privacy and membership, without
  * syncing any messages — the same thing the "Refresh access" button on
- * /portal/slack-archive does, minus its time limit.
+ * /portal/archives/slack does, minus its time limit.
  *
  * Usage:
  *   npm run slack-archive-refresh-access

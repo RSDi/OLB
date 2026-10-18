@@ -1,5 +1,5 @@
 // Parses an archived message's text the way Slack displays it, for
-// SlackText (app/portal/slack-archive/_shared/SlackText.tsx).
+// SlackText (app/portal/archives/slack/_shared/SlackText.tsx).
 //
 // message_text is Slack's own `text` for the message: its mrkdwn, with the
 // <...> tokens sync resolves swapped for names, [label](url) links, and

@@ -48,7 +48,7 @@ export async function addArchiveChannel(
     return { error: error.message };
   }
 
-  revalidatePath("/portal/slack-archive");
+  revalidatePath("/portal/archives/slack");
   return { success: true };
 }
 
@@ -64,7 +64,7 @@ export async function setArchiveChannelActive(
   const { error } = await supabase.from("slack_archive_channels").update({ active }).eq("id", id);
   if (error) return { error: error.message };
 
-  revalidatePath("/portal/slack-archive");
+  revalidatePath("/portal/archives/slack");
   return { success: true };
 }
 
@@ -95,8 +95,8 @@ export async function syncChannelNow(slackChannelId: string): Promise<SyncChanne
   const summary = await syncOneChannel(slackChannelId, { deadlineMs: SYNC_DEADLINE_MS, force: true });
   if (summary.errors.length > 0) return { error: summary.errors.join("; "), summary };
 
-  revalidatePath(`/portal/slack-archive/${encodeURIComponent(slackChannelId)}`);
-  revalidatePath("/portal/slack-archive");
+  revalidatePath(`/portal/archives/slack/${encodeURIComponent(slackChannelId)}`);
+  revalidatePath("/portal/archives/slack");
   return { summary };
 }
 
@@ -118,7 +118,7 @@ export async function refreshArchiveAccessNow(): Promise<RefreshAccessActionResu
   }
 
   const results = await refreshAllChannelAccess({ deadlineMs: SYNC_DEADLINE_MS });
-  revalidatePath("/portal/slack-archive", "layout");
+  revalidatePath("/portal/archives/slack", "layout");
 
   const failed = results.filter((r) => r.error);
   if (failed.length === 0) return { message: `Access refreshed for all ${results.length} channels.` };

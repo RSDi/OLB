@@ -159,8 +159,15 @@ const CONTRACT: Record<string, string> = {
   olb_roadmap_items:
     "id,title,description,area,status,released_on,preview_url,created_by,created_at,updated_at,deleted_at,approved_by,approved_at",
   olb_roadmap_link: "id,key,updated_at",
-  // Read-only agent keys (0146).
-  olb_agent_keys: "id,name,key_prefix,key_hash,created_by,created_at,revoked_at",
+  // Agent keys (0146) plus write scopes (0149).
+  olb_agent_keys: "id,name,key_prefix,key_hash,created_by,created_at,revoked_at,scopes",
+  // Email archive (0149).
+  email_archive_threads:
+    "id,gmail_thread_id,source_mailbox,subject,participants,first_message_at,last_message_at,message_count,added_by,created_at,updated_at",
+  email_archive_messages:
+    "id,thread_id,gmail_message_id,from_addr,to_addrs,cc_addrs,sent_at,subject,body_text,body_html,snippet,created_at",
+  email_archive_attachments: "id,message_id,filename,mime,size_bytes,storage_path,created_at",
+  email_archive_links: "id,thread_id,planning_meeting_id,agenda_item_label,created_at",
   // Game film (0142, 0143, 0144, 0145, 0147 privacy, 0148 templates / lineups / Slack drafts).
   game_film_uploads:
     "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score,youtube_status,youtube_video_id,youtube_error,youtube_updated_at,youtube_playlist_id,youtube_playlist_status,youtube_playlist_error,youtube_playlist_item_id,youtube_playlist_updated_at,youtube_privacy,youtube_processing,youtube_synced_at",

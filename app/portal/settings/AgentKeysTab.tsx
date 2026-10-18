@@ -1,6 +1,6 @@
 "use client";
 // Settings → Agent keys. Super-admins mint hashed Bearer tokens for
-// GET /api/agent/*. Plaintext is shown once; there is no reveal later.
+// /api/agent/*. Plaintext is shown once; there is no reveal later.
 
 import { useEffect, useState } from "react";
 import { Icons } from "../../components/icons";
@@ -12,6 +12,7 @@ import {
   revokeAgentKey,
   type PublicAgentKey,
 } from "../../../lib/agent/keys-actions";
+import { AGENT_SCOPE_LABELS, AGENT_SCOPES, type AgentScope } from "../../../lib/agent/scopes";
 
 function ErrorBox({ text }: { text: string }) {
   return (
@@ -35,6 +36,7 @@ function ErrorBox({ text }: { text: string }) {
 export function AgentKeysTab() {
   const [keys, setKeys] = useState<PublicAgentKey[]>([]);
   const [name, setName] = useState("");
+  const [scopes, setScopes] = useState<AgentScope[]>(["read"]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [revealed, setRevealed] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export function AgentKeysTab() {
     setPending(true);
     setError(null);
     setCopied(false);
-    const res = await createAgentKey(name);
+    const res = await createAgentKey(name, scopes);
     setPending(false);
     if ("error" in res) {
       setError(res.error);
@@ -65,6 +67,7 @@ export function AgentKeysTab() {
     }
     setRevealed(res.key);
     setName("");
+    setScopes(["read"]);
     await refresh();
   }
 
@@ -96,12 +99,12 @@ export function AgentKeysTab() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
-        Read-only keys for club agents (game film today). Send{" "}
-        <code style={{ fontWeight: 700 }}>Authorization: Bearer …</code> to{" "}
-        <code style={{ fontWeight: 700 }}>/api/agent/film</code> and{" "}
-        <code style={{ fontWeight: 700 }}>/api/agent/film/health</code>. We store a hash, never the
-        key itself — copy it when it appears. Keys cannot change anything, and responses never
-        include team codes or YouTube tokens.
+        Keys for club agents. Send <code style={{ fontWeight: 700 }}>Authorization: Bearer …</code>.
+        We store a hash, never the key itself — copy it when it appears.{" "}
+        <strong>Read game film</strong> is GET-only. <strong>Import email archive</strong> can POST
+        a thread to{" "}
+        <code style={{ fontWeight: 700 }}>/api/agent/email-archive</code>. Responses never include
+        team codes, YouTube tokens, or storage paths.
       </div>
 
       {error && <ErrorBox text={error} />}
@@ -153,7 +156,29 @@ export function AgentKeysTab() {
           required
         />
         <div>
-          <Pill type="submit" size="sm" variant="accent" disabled={pending || !name.trim()}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 8 }}>
+            Permissions
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {AGENT_SCOPES.map((s) => {
+              const on = scopes.includes(s);
+              return (
+                <label key={s} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() =>
+                      setScopes((cur) => (on ? cur.filter((x) => x !== s) : [...cur, s]))
+                    }
+                  />
+                  {AGENT_SCOPE_LABELS[s]}
+                </label>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <Pill type="submit" size="sm" variant="accent" disabled={pending || !name.trim() || scopes.length === 0}>
             Create key
           </Pill>
         </div>
@@ -161,7 +186,7 @@ export function AgentKeysTab() {
 
       {keys.length === 0 ? (
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          No keys yet. Create one to let an agent list game film.
+          No keys yet. Create one to let an agent list game film or import email.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -184,6 +209,7 @@ export function AgentKeysTab() {
                 <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
                   <code>{k.prefix}…</code>
                   {k.createdAt ? ` · ${new Date(k.createdAt).toLocaleString()}` : ""}
+                  {k.scopes?.length ? ` · ${k.scopes.map((s) => AGENT_SCOPE_LABELS[s as AgentScope] ?? s).join(" · ")}` : ""}
                 </div>
               </div>
               <Pill size="sm" disabled={pending} onClick={() => void onRevoke(k.id)}>

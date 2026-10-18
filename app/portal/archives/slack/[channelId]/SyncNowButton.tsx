@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pill } from "../../../components/ui";
-import { syncChannelNow } from "../../../../lib/slack-archive/channel-actions";
+import { Pill } from "../../../../components/ui";
+import { syncChannelNow } from "../../../../../lib/slack-archive/channel-actions";
 
 // Syncs just this one channel on demand, instead of waiting for its turn in
 // the nightly cron's shared time budget across every registered channel —

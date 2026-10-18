@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pill } from "../../../components/ui";
-import { triggerCompressionWorkflow, type CompressionRunStatus } from "../../../../lib/slack-archive/compress-actions";
+import { Pill } from "../../../../components/ui";
+import { triggerCompressionWorkflow, type CompressionRunStatus } from "../../../../../lib/slack-archive/compress-actions";
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();

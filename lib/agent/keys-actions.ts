@@ -5,6 +5,7 @@
 import { revalidatePath } from "next/cache";
 import { requireSuperAdmin } from "../auth/guards.ts";
 import { cleanAgentKeyName, type PublicAgentKey } from "./keys.ts";
+import { cleanAgentScopes } from "./scopes.ts";
 
 export type { PublicAgentKey };
 import { insertAgentKey, listPublicAgentKeys, revokeAgentKeyRow } from "./keys-store.ts";
@@ -29,12 +30,15 @@ export async function loadAgentKeys(): Promise<{ keys: PublicAgentKey[] } | { er
 
 export async function createAgentKey(
   name: unknown,
+  scopes?: unknown,
 ): Promise<{ key: string; item: PublicAgentKey } | { error: string }> {
   const gate = await requireSuperAdmin();
   if ("error" in gate) return { error: gate.error };
   const cleaned = cleanAgentKeyName(name);
   if (!cleaned.ok) return { error: cleaned.error };
-  const res = await insertAgentKey({ name: cleaned.name, createdBy: gate.userId });
+  const wanted = cleanAgentScopes(scopes);
+  if (!wanted.ok) return { error: wanted.error };
+  const res = await insertAgentKey({ name: cleaned.name, createdBy: gate.userId, scopes: wanted.scopes });
   if ("error" in res) return res;
   refresh();
   return res;
