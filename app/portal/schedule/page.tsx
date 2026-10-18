@@ -12,6 +12,7 @@ import {
   loadHsTravelPlaces,
   loadKnownTeams,
 } from "../../../lib/hs-schedule/data";
+import { loadHostedWeekendIds } from "../../../lib/hosted/data";
 import {
   loadHotelContactOptions,
   loadHotelStaysForSeason,
@@ -94,6 +95,9 @@ export default async function SchedulePage({
     canManageStays ? loadHotelContactOptions(supabase) : Promise.resolve([]),
   ]);
 
+  // The weekends we host (0150), for their "We host" link to the planning page.
+  const hostedIds = await loadHostedWeekendIds(supabase, schedule.weekends.map((w) => w.id));
+
   return (
     <ScheduleView
       // A fresh load (another season, an import) starts the page's copy over.
@@ -108,6 +112,7 @@ export default async function SchedulePage({
       knownTeams={knownTeams}
       directoryTeams={teams}
       travelPlaces={travelPlaces}
+      hostedIds={hostedIds}
       hotelStays={hotelStays}
       hotels={hotels}
       today={today}

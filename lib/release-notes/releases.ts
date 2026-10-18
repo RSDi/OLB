@@ -15,6 +15,17 @@ export {
 
 const AUTHORED: AuthoredRelease[] = [
   {
+    date: "October 18, 2026",
+    title: "Planning is open to the board",
+    color: "#1f6feb",
+    tour: "planning",
+    features: [
+      "Planning is in the sidebar for every board member, not just the preview account",
+      "Monthly board meetings, Review, the Template, and Settings → Planning Roles work the same way for the whole board",
+      "The User Guide and the ⓘ on Planning walk the board through it",
+    ],
+  },
+  {
     date: "October 17, 2026",
     title: "Phone QR comes back to Approve",
     color: "#1f6feb",
