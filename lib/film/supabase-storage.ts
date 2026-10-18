@@ -54,5 +54,17 @@ export function supabaseFilmStorage(): FilmStorageProvider {
       const { error } = await admin.storage.from(GAME_FILM_BUCKET).remove([path]);
       if (error) throw new Error(error.message);
     },
+    async objectExists(path): Promise<boolean> {
+      const admin = createAdminClient();
+      const slash = path.lastIndexOf("/");
+      const folder = slash === -1 ? "" : path.slice(0, slash);
+      const name = slash === -1 ? path : path.slice(slash + 1);
+      const { data, error } = await admin.storage.from(GAME_FILM_BUCKET).list(folder, {
+        limit: 20,
+        search: name,
+      });
+      if (error) return false;
+      return (data ?? []).some((obj) => obj.name === name);
+    },
   };
 }

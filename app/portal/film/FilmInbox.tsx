@@ -336,11 +336,7 @@ export function FilmInbox({
                       playing={playing?.id === row.id}
                       canManage={canManage}
                       roster={row.team_id ? rosters[row.team_id] ?? [] : []}
-                      lineupPlayerIds={
-                        filmLineupKey(row.team_id, row.game_date, row.opponent)
-                          ? lineups[filmLineupKey(row.team_id, row.game_date, row.opponent)!] ?? []
-                          : []
-                      }
+                      lineupPlayerIds={lineups[filmLineupKey(row.team_id, row.game_date, row.opponent) ?? ""] ?? []}
                       onPlay={() => void play(row)}
                       onDownload={() => void download(row.id)}
                       onRetryYoutube={() => void run(row.id, retryFilmYoutube)}

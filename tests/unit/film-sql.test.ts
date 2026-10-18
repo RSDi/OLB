@@ -64,7 +64,8 @@ test("0148 adds per-team YouTube templates, extras, Slack drafts, and lineups", 
   assert.ok(names.includes("0148_game_film_youtube_templates.sql"));
   assert.ok(names.includes("0150_hosted_tournaments.sql"));
   assert.equal(names.filter((n) => n.startsWith("0148")).length, 1, "only one 0148 migration");
-  assert.equal(names.filter((n) => n.startsWith("0146")).length, 0, "0146 belongs to #208 agent keys");
+  assert.ok(names.includes("0146_agent_keys.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0146")).length, 1, "0146 is agent keys from #208");
   assert.match(sql, /after 0147/);
   assert.ok(sql.includes("film_youtube_title_template"));
   assert.ok(sql.includes("film_youtube_description_template"));

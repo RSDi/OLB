@@ -7,7 +7,8 @@ they never pass through Vercel.
 This feature is namespaced so it can be torn out: `app/film`, `app/t`,
 `app/portal/film`, `lib/film`, plus one sidebar link, one Settings tab, two
 crons, and migrations `0142_game_film.sql`, `0143_game_film_game.sql`,
-and `0144_game_film_youtube.sql`.
+`0144_game_film_youtube.sql`, `0145_game_film_youtube_playlists.sql`,
+and `0146_agent_keys.sql` (read-only agent list).
 
 ## Go live (Jeff)
 
@@ -29,6 +30,13 @@ existing hashes.
    - `supabase/migrations/0144_game_film_youtube.sql` — YouTube connection
      singleton, display columns on uploads, and `game_film_youtube_jobs`
      (resumable session URI, service role only). Run after 0143.
+   - `supabase/migrations/0145_game_film_youtube_playlists.sql` — team
+     playlist id and per-upload playlist status. Run after 0144.
+   - `supabase/migrations/0146_agent_keys.sql` — hashed read-only keys for
+     `/api/agent/*`. Run after 0145 (this PR, #208). Mint keys in
+     **Settings → Agent keys**. Merge order for the open film PRs:
+     #208 (0146) → #207 (0147 privacy) → #209 (0148 templates).
+     0149 is reserved for the email-archive PR; 0150 is already on main.
 2. **Raise the project's Storage file-size limit** in the Supabase dashboard
    (Project Settings → Storage) if it is still the default (often 50 MB). The
    bucket is 20 GB; the project cap has to be at least that.
@@ -97,6 +105,22 @@ Function: same timeout class, extra moving part.
 Title: `{Team} vs {Opponent} – {M/D/YYYY}`. Description includes the score
 when both numbers are present.
 
+## Agent visibility (read-only)
+
+`GET /api/agent/film` lists every game with team, game date, upload time,
+opponent, whether the file is still in the `game-film` bucket, YouTube
+status (`not_sent` / `queued` / `uploaded` / `failed`), video id and URL,
+the club privacy setting from **Settings → Film**, playlist, and timestamps.
+Filter with `team`, `from`, and `to` (YYYY-MM-DD).
+
+`GET /api/agent/film/health` reports whether YouTube is connected (no tokens),
+the default privacy, each team's playlist id, whether 0145 has been applied
+(a select of `youtube_playlist_id`, not a catalog dump), and counts of film
+not sent (`youtube_status` is null) or stuck (`queued` / `uploading`) or
+failed.
+
+Auth is a hashed key from **Settings → Agent keys**. See `docs/agent-api.md`.
+
 ## Codes (hashed, shown once)
 
 The family upload code is stored as `v1.<salt>.<sha256>`. We show the
@@ -120,7 +144,9 @@ hash, so rotating the env var doesn't lock the codes.
 3. Remove the Film sections from `lib/help/guide.ts` and the film tours from
    `lib/help/tours.ts`.
 4. Remove `/api/cron/film-cleanup` and `/api/cron/film-youtube` from
-   `vercel.json` and those route folders. Remove `/api/film/youtube`.
+   `vercel.json` and those route folders. Remove `/api/film/youtube` and
+   `/api/agent/film`. Remove **Settings → Agent keys** if nothing else uses
+   `olb_agent_keys`.
 5. Remove `FILM_SESSION_SECRET`, `FILM_YOUTUBE_CLIENT_ID`,
    `FILM_YOUTUBE_CLIENT_SECRET`, and `FILM_YOUTUBE_TOKEN_KEY` from Vercel
    and `.env.example`.
