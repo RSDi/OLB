@@ -35,6 +35,7 @@ import {
   canManageSiteLinks,
   canViewFilm,
   canManageFilm,
+  canApproveFilmSlack,
   canOpenSettings,
   type MemberLike,
   type MemberRole,
@@ -84,6 +85,7 @@ export interface Viewer {
   canViewFilm: boolean;
   canViewAllFilm: boolean;
   canManageFilm: boolean;
+  canApproveFilmSlack: boolean;
   // Teams this person is a video manager for (empty when they have global view).
   filmTeamIds: string[];
   // Board, or holds a permission whose page is in Settings.
@@ -155,7 +157,8 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
   const row = data as { id: string; role: MemberRole; status: MemberStatus };
   const member: MemberLike = { ...grants, role: row.role, status: row.status };
-  const globalFilm = canViewFilm(member);
+  const teamsManage = canManageTeams(member);
+  const globalFilm = canViewFilm(member) || teamsManage;
   let filmTeamIds: string[] = [];
   if (!globalFilm) {
     const { data: managed } = await supabase.from("game_film_managers").select("team_id").eq("user_id", user.id);
@@ -189,6 +192,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canViewFilm: globalFilm || filmTeamIds.length > 0,
     canViewAllFilm: globalFilm,
     canManageFilm: canManageFilm(member),
+    canApproveFilmSlack: canApproveFilmSlack(member),
     filmTeamIds,
     canOpenSettings: canOpenSettings(member),
     permissions: member.permissions ?? [],

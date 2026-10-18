@@ -59,6 +59,30 @@ async function postSlackMessage(
   return body.ts && body.channel ? { ts: body.ts, channel: body.channel } : null;
 }
 
+export function slackBotConfigured(env: Record<string, string | undefined> = process.env): boolean {
+  return Boolean((env.SLACK_BOT_TOKEN ?? "").trim());
+}
+
+/** Plain-text post to a channel via Sparky. Used by Film Slack drafts after an admin Approve. */
+export async function postSlackPlainMessage(
+  channel: string,
+  text: string,
+  context: string,
+): Promise<{ ts: string; channel: string } | null> {
+  if (!slackBotConfigured()) {
+    console.warn(`[slack] SLACK_BOT_TOKEN not set — skipping ${context} message`);
+    return null;
+  }
+  const dest = channel.trim();
+  if (!dest) return null;
+  const fallback = text.trim();
+  if (!fallback) return null;
+  const blocks: SlackBlock[] = [
+    { type: "section", text: { type: "mrkdwn", text: slackEscape(fallback) } },
+  ];
+  return postSlackMessage(dest, fallback, blocks, context);
+}
+
 export async function sendNewTicketSlack({
   ticketId,
   submitterEmail,

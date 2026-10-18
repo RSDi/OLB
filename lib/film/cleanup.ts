@@ -3,12 +3,15 @@
 
 import { deleteFilmUploadRow, listExpiredMovedUploads } from "./uploads.ts";
 import { filmStorage } from "./storage.ts";
+import { purgeExpiredDiscardedFilmSlackDrafts } from "./slack-drafts.ts";
 
 export async function cleanupMovedFilm(): Promise<{
   scanned: number;
   deleted: number;
+  discardedPurged: number;
   errors: { id: string; error: string }[];
 }> {
+  const discardedPurged = await purgeExpiredDiscardedFilmSlackDrafts().catch(() => 0);
   const rows = await listExpiredMovedUploads();
   const storage = filmStorage();
   const errors: { id: string; error: string }[] = [];
@@ -31,5 +34,5 @@ export async function cleanupMovedFilm(): Promise<{
       errors.push({ id: row.id, error: err instanceof Error ? err.message : "row delete failed" });
     }
   }
-  return { scanned: rows.length, deleted, errors };
+  return { scanned: rows.length, deleted, discardedPurged, errors };
 }

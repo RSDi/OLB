@@ -49,7 +49,7 @@ function upload(partial: Partial<FilmUpload> & Pick<FilmUpload, "id" | "team" | 
   };
 }
 
-test("YouTube title is Team vs Opponent – M/D/YYYY", () => {
+test("YouTube title is Team vs Opponent – M/D/YYYY when there is no score", () => {
   assert.equal(
     youtubeTitle({ teamLabel: "14U Gold", opponent: "Elkhorn", gameDate: "2026-10-17" }),
     "14U Gold vs Elkhorn – 10/17/2026"
@@ -176,6 +176,9 @@ test("Film inbox plays in-app and Settings has Connect YouTube", () => {
   const tab = readFileSync(join(import.meta.dirname, "../../app/portal/settings/FilmSettingsTab.tsx"), "utf8");
   assert.match(tab, /Save playlist/);
   assert.match(tab, /film-settings-playlist/);
+  assert.match(tab, /Save template/);
+  assert.match(tab, /film-settings-template/);
+  assert.match(tab, /film-settings-slack/);
   const admin = readFileSync(join(import.meta.dirname, "../../lib/film/admin-actions.ts"), "utf8");
   assert.match(admin, /export async function updateFilmPlaylistOverride[\s\S]*?requireFilmManage\(\)/);
 });

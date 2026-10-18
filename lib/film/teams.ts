@@ -20,6 +20,13 @@ export type FilmTeamRow = FilmTeam & {
   codeHash: string | null;
   suggestedCode: string;
   youtubePlaylistId: string | null;
+  youtubeTitleTemplate: string | null;
+  youtubeDescriptionTemplate: string | null;
+  includeStatsBook: boolean;
+  includePlayers: boolean;
+  includeTournament: boolean;
+  includePlaylistLink: boolean;
+  slackChannelId: string | null;
 };
 
 type TeamQueryRow = {
@@ -32,6 +39,13 @@ type TeamQueryRow = {
   film_code_hash: string | null;
   film_code_version: number | null;
   youtube_playlist_id: string | null;
+  film_youtube_title_template: string | null;
+  film_youtube_description_template: string | null;
+  film_include_stats_book: boolean | null;
+  film_include_players: boolean | null;
+  film_include_tournament: boolean | null;
+  film_include_playlist_link: boolean | null;
+  film_slack_channel_id: string | null;
 };
 
 export function slugifyFilmTeam(name: string): string {
@@ -67,11 +81,18 @@ function toFilmTeam(row: TeamQueryRow): FilmTeamRow {
     codeHash: row.film_code_hash,
     suggestedCode: suggestTeamWordCode({ name: row.name, ageGroup: row.age_group, label: teamLabel(row) }),
     youtubePlaylistId: row.youtube_playlist_id?.trim() || null,
+    youtubeTitleTemplate: row.film_youtube_title_template?.trim() || null,
+    youtubeDescriptionTemplate: row.film_youtube_description_template?.trim() || null,
+    includeStatsBook: !!row.film_include_stats_book,
+    includePlayers: !!row.film_include_players,
+    includeTournament: !!row.film_include_tournament,
+    includePlaylistLink: !!row.film_include_playlist_link,
+    slackChannelId: row.film_slack_channel_id?.trim() || null,
   };
 }
 
 const TEAM_COLS =
-  "id, board_id, name, age_group, film_slug, film_enabled, film_code_hash, film_code_version, youtube_playlist_id";
+  "id, board_id, name, age_group, film_slug, film_enabled, film_code_hash, film_code_version, youtube_playlist_id, film_youtube_title_template, film_youtube_description_template, film_include_stats_book, film_include_players, film_include_tournament, film_include_playlist_link, film_slack_channel_id";
 
 async function currentBoardId(): Promise<string | null> {
   const admin = createAdminClient();
@@ -134,6 +155,21 @@ export async function listFilmManagerTeamIds(userId: string): Promise<string[]> 
   const { data, error } = await admin.from("game_film_managers").select("team_id").eq("user_id", userId);
   if (error || !data) return [];
   return (data as { team_id: string }[]).map((r) => r.team_id);
+}
+
+export async function listTeamPlayerNames(teamId: string): Promise<string[]> {
+  if (!teamId) return [];
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("olb_players")
+    .select("full_name")
+    .eq("team_id", teamId)
+    .order("sort_order", { ascending: true })
+    .order("full_name", { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data as { full_name: string | null }[] | null) ?? [])
+    .map((row) => row.full_name?.trim() || "")
+    .filter(Boolean);
 }
 
 export { currentBoardId };

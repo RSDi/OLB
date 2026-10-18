@@ -372,7 +372,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "film-edit",
         title: "Edit the game",
-        body: "**Edit** lets you fix **Game date**, **Opponent**, the score, and an optional **YouTube playlist** for this video. **Save** updates the heading above the video. You only see this with **Game film (manage)**.",
+        body: "**Edit** lets you fix **Game date**, **Opponent**, **Who played**, the score, and an optional **YouTube playlist** for this video. Leave **Who played** empty to use the season roster. **Save** updates the heading above the video. You only see this with **Game film (manage)**.",
       },
       {
         target: "film-playlist",
@@ -383,6 +383,16 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "film-youtube-status",
         title: "YouTube privacy",
         body: "Each video on YouTube shows the privacy YouTube actually has — **Public**, **Unlisted**, or **Private** — and whether it is still **Processing**. Tap **Refresh YouTube status** to read it from YouTube. You don't need YouTube Studio.",
+      },
+      {
+        target: "film-slack-drafts",
+        title: "Pending Slack posts",
+        body: "After a video is on YouTube, the Slack text waits here. Anyone with **Teams & volunteers** can tap **Approve** — that is the only way Sparky posts it. **Edit** changes the words; **Discard** keeps it for 30 days so you can **Restore** it.",
+      },
+      {
+        target: "film-lineup",
+        title: "Who played",
+        body: "On **Edit**, tick **Who played** for that game's lineup. Leave it empty and the YouTube players line uses the season roster.",
       },
       {
         target: "film-moved",
@@ -756,6 +766,24 @@ export const GUIDE_TOURS: GuideTour[] = [
         click: "settings-tab-film",
         title: "Team playlist",
         body: "**YouTube playlist** is the playlist new film for this team is added to. Paste a link or id, or pick from the channel, then **Save playlist**.",
+      },
+      {
+        target: "film-settings-template",
+        click: "settings-tab-film",
+        title: "YouTube wording",
+        body: "**YouTube title template** and **YouTube description template** are this team's wording, with placeholders for the team, opponent, date, score, and watch link. **Reset to default** puts the club wording back. **Save template** keeps it.",
+      },
+      {
+        target: "film-settings-extras",
+        click: "settings-tab-film",
+        title: "Extra lines",
+        body: "**Players list**, **Playlist link**, **Tournament name**, and **Stats book** are off to start. Turn one on only if you want that extra line in the YouTube and Slack text.",
+      },
+      {
+        target: "film-settings-slack",
+        click: "settings-tab-film",
+        title: "Slack channel",
+        body: "**Slack channel ID** is where Sparky posts after someone taps **Approve** on Film. Paste the C… id, not the #name.",
       },
       {
         target: "film-settings-row",

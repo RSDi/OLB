@@ -33,7 +33,7 @@ import {
   isVideoFile,
   validateUploadInput,
 } from "../../lib/film/validation.ts";
-import { canManageFilm, canViewFilm, hasPermission, type MemberLike } from "../../lib/auth/permissions.ts";
+import { canApproveFilmSlack, canManageFilm, canViewFilm, hasPermission, type MemberLike } from "../../lib/auth/permissions.ts";
 import { tusEndpoint } from "../../lib/film/supabase-storage.ts";
 import { isCompactJws, tusSignedHeaders, tusUploadMetadata } from "../../lib/film/tus.ts";
 import { TOKEN_LIMIT, rateLimitTake } from "../../lib/film/rate-limit.ts";
@@ -61,6 +61,13 @@ function team(partial: Partial<FilmTeamRow> & Pick<FilmTeamRow, "id" | "slug">):
     codeHash: hashFilmCode(partial.id, "white-code"),
     suggestedCode: "white14",
     youtubePlaylistId: null,
+    youtubeTitleTemplate: null,
+    youtubeDescriptionTemplate: null,
+    includeStatsBook: false,
+    includePlayers: false,
+    includeTournament: false,
+    includePlaylistLink: false,
+    slackChannelId: null,
     ...partial,
   };
 }
@@ -251,6 +258,10 @@ test("film_view lists; film_manage includes view; others are out", () => {
   assert.equal(hasPermission({ role: "super_admin", status: "approved" }, "film_view"), true);
   assert.equal(canManageFilm({ role: "super_admin", status: "approved" }), true);
   assert.equal(canViewFilm({ role: "admin", status: "approved", permissions: [] }), false);
+  assert.equal(canApproveFilmSlack(approved(["teams"])), true);
+  assert.equal(canApproveFilmSlack(approved(["film_manage"])), true);
+  assert.equal(canApproveFilmSlack(approved(["film_view"])), false);
+  assert.equal(canApproveFilmSlack({ role: "super_admin", status: "approved" }), true);
 });
 
 test("the TUS endpoint is the signed path on the direct storage hostname", () => {
@@ -366,6 +377,7 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(settings, /Save playlist/);
   assert.match(settings, /Or pick from the channel/);
   assert.match(settings, /saveFilmTeamPlaylist/);
+  assert.match(settings, /saveFilmTeamTemplate/);
 });
 
 test("guest Game date CSS constrains the iOS Safari native date field", () => {

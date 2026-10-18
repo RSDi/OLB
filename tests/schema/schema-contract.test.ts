@@ -82,7 +82,7 @@ const CONTRACT: Record<string, string> = {
   slack_archive_channel_members: "channel_id,member_id,created_at",
   olb_boards: "id,season,name,parent_balances_visible,season_ends_on",
   olb_age_caps: "id,board_id,age_group,max_age,sort_order,created_at,updated_at",
-  olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at,film_slug,film_enabled,film_code_hash,film_code_version,youtube_playlist_id",
+  olb_teams: "id,board_id,name,age_group,color,grade_label,division,practice_times,target_size,min_size,max_size,sort_order,raw_header,updated_at,film_slug,film_enabled,film_code_hash,film_code_version,youtube_playlist_id,film_youtube_title_template,film_youtube_description_template,film_include_stats_book,film_include_players,film_include_tournament,film_include_playlist_link,film_slack_channel_id",
   olb_players:
     "id,board_id,team_id,full_name,dob,grade,sort_order,import_flag,updated_at,age_group,new_to_program,address_line1,address_line2,city,state,postal_code,phone,email,registration_fee,payment_method,shirt_size,waiver_signed,waiver_signed_on,directory_optin,registered_at",
   olb_player_parents: "player_id,member_id,relationship",
@@ -161,13 +161,17 @@ const CONTRACT: Record<string, string> = {
   olb_roadmap_link: "id,key,updated_at",
   // Read-only agent keys (0146).
   olb_agent_keys: "id,name,key_prefix,key_hash,created_by,created_at,revoked_at",
-  // Game film (0142, 0143, 0144, 0145, 0147 privacy).
+  // Game film (0142, 0143, 0144, 0145, 0147 privacy, 0148 templates / lineups / Slack drafts).
   game_film_uploads:
     "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score,youtube_status,youtube_video_id,youtube_error,youtube_updated_at,youtube_playlist_id,youtube_playlist_status,youtube_playlist_error,youtube_playlist_item_id,youtube_playlist_updated_at,youtube_privacy,youtube_processing,youtube_synced_at",
   game_film_managers: "team_id,user_id,created_at",
   game_film_youtube:
     "id,refresh_token_enc,channel_id,channel_title,connected_at,connected_by,privacy_status,made_for_kids,updated_at",
   game_film_youtube_jobs: "upload_id,upload_uri,bytes_sent,attempts,updated_at",
+  game_film_slack_drafts:
+    "id,upload_id,team_id,channel_id,body,status,slack_ts,posted_channel_id,posted_at,posted_by,discarded_at,created_at,updated_at",
+  game_film_lineups: "id,team_id,game_date,opponent,created_at,updated_at",
+  game_film_lineup_players: "lineup_id,player_id,sort_order",
 };
 
 async function probe(path: string): Promise<{ status: number; body: string }> {

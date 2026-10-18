@@ -15,10 +15,12 @@ export const FILM_SESSION_MAX_AGE_S = 7 * 24 * 60 * 60;
 
 export const SIGNED_DOWNLOAD_TTL_S = 6 * 60 * 60;
 export const MOVED_RETENTION_DAYS = 30;
+export const SLACK_DRAFT_RETAIN_DAYS = 30;
 
 export type FilmStatus = "holding" | "moved";
 export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
 export type YoutubePlaylistStatus = "queued" | "done" | "failed";
+export type FilmSlackDraftStatus = "pending" | "posting" | "posted" | "discarded";
 export type YoutubePrivacy = "public" | "unlisted" | "private";
 export type YoutubeProcessing = "uploaded" | "processed" | "failed" | "rejected" | "deleted" | "missing";
 
@@ -58,6 +60,28 @@ export interface FilmUpload {
   youtube_privacy: YoutubePrivacy | null;
   youtube_processing: YoutubeProcessing | null;
   youtube_synced_at: string | null;
+}
+
+export interface FilmSlackDraft {
+  id: string;
+  upload_id: string;
+  team_id: string | null;
+  channel_id: string | null;
+  body: string;
+  status: FilmSlackDraftStatus;
+  slack_ts: string | null;
+  posted_channel_id: string | null;
+  posted_at: string | null;
+  posted_by: string | null;
+  discarded_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FilmSlackDraftView extends FilmSlackDraft {
+  filename: string;
+  team_label: string;
+  team_slug: string;
 }
 
 export interface MintedUpload {
