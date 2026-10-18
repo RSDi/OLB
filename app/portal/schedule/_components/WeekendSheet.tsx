@@ -8,6 +8,7 @@
 // them, like the grid.
 
 import { useState } from "react";
+import Link from "next/link";
 import { Icons } from "../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../components/ui";
 import { SideSheet } from "../../../components/SideSheet";
@@ -19,6 +20,7 @@ import {
   setWeekendGames,
   updateOpponent,
 } from "../../../../lib/hs-schedule/actions";
+import { setHosted } from "../../../../lib/hosted/actions";
 import {
   TRIP_TYPES,
   WEEKEND_STATUSES,
@@ -72,6 +74,8 @@ export function WeekendSheet({
   dispatch,
   onClose,
   onSaved,
+  hosted = false,
+  onHosted,
 }: {
   seasonId: string;
   // null: a new weekend, starting from `defaults`.
@@ -90,6 +94,9 @@ export function WeekendSheet({
   dispatch: (a: ScheduleAction) => void;
   onClose: () => void;
   onSaved: (w: HsWeekend) => void;
+  // We host it (0150): its planning page, ticked here.
+  hosted?: boolean;
+  onHosted?: (weekendId: string, hosted: boolean) => void;
 }) {
   const [startsOn, setStartsOn] = useState(weekend?.starts_on ?? defaults.starts_on);
   const [endsOn, setEndsOn] = useState(weekend?.ends_on ?? defaults.ends_on);
@@ -266,7 +273,12 @@ export function WeekendSheet({
 
         </>
       ) : (
-        weekend && <FieldsSummary weekend={weekend} contacts={contacts} onEdit={() => setEditing(true)} />
+        weekend && (
+          <>
+            <FieldsSummary weekend={weekend} contacts={contacts} onEdit={() => setEditing(true)} />
+            <HostedToggle weekend={weekend} hosted={hosted} onHosted={onHosted} onError={setError} />
+          </>
+        )
       )}
 
       {weekend ? (
@@ -373,6 +385,55 @@ function GamesEditor({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// "We host this tournament": a weekend we run (the Missouri River Shootout)
+// gets a planning page for the facility, teams, court schedule, brackets,
+// money and emails (0150). Unticking keeps the plan for later.
+function HostedToggle({
+  weekend,
+  hosted,
+  onHosted,
+  onError,
+}: {
+  weekend: HsWeekend;
+  hosted: boolean;
+  onHosted?: (weekendId: string, hosted: boolean) => void;
+  onError: (m: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  async function toggle(on: boolean) {
+    if (!on && !confirm("We aren't hosting this one? Its planning page is kept, and ticking this again brings it back.")) return;
+    setBusy(true);
+    const res = await setHosted(weekend.id, on);
+    setBusy(false);
+    if (res.error) return onError(res.error);
+    onHosted?.(weekend.id, on);
+  }
+  return (
+    <div
+      data-tour="schedule-weekend-hosted"
+      style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", padding: "10px 12px", border: "1px solid var(--gw-border)", borderRadius: 10, background: hosted ? "var(--rsd-accent-bg)" : "var(--gw-bg)" }}
+    >
+      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 700, flex: 1, minWidth: 200 }}>
+        <input
+          type="checkbox"
+          checked={hosted}
+          disabled={busy}
+          onChange={(e) => toggle(e.target.checked)}
+          style={{ width: 17, height: 17, accentColor: "var(--rsd-accent-fill)" }}
+        />
+        We host this tournament
+      </label>
+      {hosted ? (
+        <Link href={`/portal/schedule/hosted/${weekend.id}`} style={{ fontSize: 13, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
+          Open the tournament plan <Icons.ChevronRight width={12} height={12} />
+        </Link>
+      ) : (
+        <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>Facility checklist, teams, court schedule, brackets, budget and emails</span>
+      )}
     </div>
   );
 }
