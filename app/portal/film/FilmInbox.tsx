@@ -183,8 +183,7 @@ export function FilmInbox({ uploads, canManage, loadError, parentLinks, teamPlay
         does not mark the YouTube upload failed. Each YouTube card shows the privacy YouTube actually
         has — <strong>Public</strong>, <strong>Unlisted</strong>, or <strong>Private</strong> — and
         whether YouTube is still processing it. That can differ from the default in Settings (Google
-        sometimes forces Private). <strong>Refresh YouTube status</strong> reads it from YouTube; you
-        don&apos;t need Studio. Files marked <strong>Moved</strong> are deleted after 30 days.
+        sometimes forces Private). <strong>Refresh YouTube status</strong> reads it from YouTube; you don&apos;t need Studio. Files marked <strong>Moved</strong> are deleted after 30 days.
       </p>
 
       {parentLinks.length > 0 && (
