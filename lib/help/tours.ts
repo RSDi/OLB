@@ -380,6 +380,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "After YouTube, the video is added to the team's playlist. **In playlist** opens it. If that step failed, the video stays on YouTube — tap **Retry playlist**.",
       },
       {
+        target: "film-youtube-status",
+        title: "YouTube privacy",
+        body: "Each video on YouTube shows the privacy YouTube actually has — **Public**, **Unlisted**, or **Private** — and whether it is still **Processing**. Tap **Refresh YouTube status** to read it from YouTube. You don't need YouTube Studio.",
+      },
+      {
         target: "film-slack-drafts",
         title: "Pending Slack posts",
         body: "After a video is on YouTube, the Slack text waits here. Anyone with **Teams & volunteers** can tap **Approve** — that is the only way Sparky posts it. **Edit** changes the words; **Discard** keeps it for 30 days so you can **Restore** it.",

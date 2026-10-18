@@ -42,6 +42,9 @@ function upload(partial: Partial<FilmUpload> & Pick<FilmUpload, "id" | "team" | 
     youtube_playlist_error: null,
     youtube_playlist_item_id: null,
     youtube_playlist_updated_at: null,
+    youtube_privacy: null,
+    youtube_processing: null,
+    youtube_synced_at: null,
     ...partial,
   };
 }
@@ -148,6 +151,8 @@ test("Film inbox plays in-app and Settings has Connect YouTube", () => {
   assert.match(inbox, /Retry playlist/);
   assert.match(inbox, /YouTube playlist/);
   assert.match(inbox, /updateFilmPlaylistOverride/);
+  assert.match(inbox, /Refresh YouTube status/);
+  assert.match(inbox, /youtubeLiveStatusLine/);
   assert.match(settings, /Connect YouTube/);
   assert.match(settings, /www\.googleapis\.com\/auth\/youtube/);
   assert.match(settings, /Data Access/);

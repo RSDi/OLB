@@ -36,6 +36,7 @@ import {
 import { refreshYoutubeAccess, youtubeOAuthConfigured } from "./youtube-oauth.ts";
 import { insertYoutubePlaylistItem } from "./youtube-playlist.ts";
 import { getYoutubeConnectionSecret } from "./youtube-settings.ts";
+import { syncYoutubeVideoStatus } from "./youtube-status.ts";
 import type { FilmUpload } from "./types.ts";
 
 const INITIATE_URL = "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status";
@@ -198,6 +199,14 @@ async function addVideoToPlaylist(row: FilmUpload, access: string): Promise<void
   }
 }
 
+async function syncLiveStatusQuietly(access: string, videoId: string): Promise<void> {
+  try {
+    await syncYoutubeVideoStatus({ access, videoIds: [videoId], force: true });
+  } catch {
+    // Upload already succeeded. The cron will fill privacy on the next tick.
+  }
+}
+
 function canClaim(row: FilmUpload, now: number): boolean {
   if (row.youtube_status === "queued") return true;
   if (row.youtube_status !== "uploading") return false;
@@ -239,6 +248,7 @@ async function pushOne(
       await afterYoutubeInsert(row, resume.videoId, opts.access);
       await queuePlaylistIfNeeded(row.id);
       await addVideoToPlaylist({ ...row, youtube_status: "done", youtube_video_id: resume.videoId }, opts.access);
+      await syncLiveStatusQuietly(opts.access, resume.videoId);
       return "done";
     }
     if (resume.sent !== job.bytes_sent) {
@@ -275,6 +285,7 @@ async function pushOne(
       await afterYoutubeInsert(row, json.id, opts.access);
       await queuePlaylistIfNeeded(row.id);
       await addVideoToPlaylist({ ...row, youtube_status: "done", youtube_video_id: json.id }, opts.access);
+      await syncLiveStatusQuietly(opts.access, json.id);
       return "done";
     }
     if (put.status === 308) {

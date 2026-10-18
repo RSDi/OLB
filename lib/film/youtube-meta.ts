@@ -1,13 +1,14 @@
 // Titles, descriptions, and inbox grouping for game film / YouTube.
 
 import { formatFilmGameLine } from "./game-meta.ts";
-import type { FilmUpload } from "./types.ts";
+import type { FilmUpload, YoutubePrivacy, YoutubeProcessing } from "./types.ts";
+
+export type { YoutubePrivacy, YoutubeProcessing } from "./types.ts";
 
 export const YOUTUBE_TITLE_MAX = 100;
 export const YOUTUBE_CHUNK_BYTES = 8 * 1024 * 1024; // 8 MiB; multiple of 256 KiB
 export const YOUTUBE_MAX_ATTEMPTS = 5;
 
-export type YoutubePrivacy = "unlisted" | "private" | "public";
 export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
 export type YoutubePlaylistStatus = "queued" | "done" | "failed";
 
@@ -31,6 +32,39 @@ export function formatFilmMdy(iso: string | null | undefined): string | null {
 
 export function youtubeWatchUrl(videoId: string): string {
   return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+}
+
+export function youtubePrivacyLabel(privacy: YoutubePrivacy | null | undefined): string | null {
+  if (privacy === "public") return "Public";
+  if (privacy === "unlisted") return "Unlisted";
+  if (privacy === "private") return "Private";
+  return null;
+}
+
+export function youtubeProcessingLabel(processing: YoutubeProcessing | null | undefined): string | null {
+  if (processing === "uploaded") return "Processing";
+  if (processing === "processed") return "Ready";
+  if (processing === "failed") return "Processing failed";
+  if (processing === "rejected") return "Rejected";
+  if (processing === "deleted") return "Deleted on YouTube";
+  if (processing === "missing") return "Not on YouTube";
+  return null;
+}
+
+/** One line for a card: "Unlisted · Ready" or "Privacy not checked yet". */
+export function youtubeLiveStatusLine(row: {
+  youtube_privacy: YoutubePrivacy | null;
+  youtube_processing: YoutubeProcessing | null;
+  youtube_synced_at: string | null;
+}): string | null {
+  const privacy = youtubePrivacyLabel(row.youtube_privacy);
+  const processing = youtubeProcessingLabel(row.youtube_processing);
+  if (row.youtube_processing === "missing") return processing;
+  if (privacy && processing) return `${privacy} · ${processing}`;
+  if (privacy) return privacy;
+  if (processing) return processing;
+  if (row.youtube_synced_at) return "Privacy not reported";
+  return "Privacy not checked yet";
 }
 
 export function youtubePlaylistUrl(playlistId: string): string {

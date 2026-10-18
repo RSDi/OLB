@@ -19,13 +19,18 @@ import {
   restoreDiscardedFilmSlackDraft,
 } from "../../../lib/film/slack-actions";
 import { filmLineupKey, type FilmRosterPlayer } from "../../../lib/film/lineup-logic";
-import { retryFilmPlaylist, retryFilmYoutube } from "../../../lib/film/youtube-actions";
+import { refreshFilmYoutubeStatus, retryFilmPlaylist, retryFilmYoutube } from "../../../lib/film/youtube-actions";
 import {
   formatFilmInboxHeading,
   missingFilmGameLabels,
   OPPONENT_MAX,
 } from "../../../lib/film/game-meta";
-import { groupUploadsByTeamAndGame, youtubePlaylistUrl, youtubeWatchUrl } from "../../../lib/film/youtube-meta";
+import {
+  groupUploadsByTeamAndGame,
+  youtubeLiveStatusLine,
+  youtubePlaylistUrl,
+  youtubeWatchUrl,
+} from "../../../lib/film/youtube-meta";
 import type { FilmSlackDraftView, FilmStatus, FilmUpload, YoutubePlaylistStatus, YoutubeStatus } from "../../../lib/film/types";
 import styles from "./inbox.module.css";
 
@@ -105,7 +110,9 @@ export function FilmInbox({
   const [filter, setFilter] = useState<Filter>("all");
   const [teamFilter, setTeamFilter] = useState<string>("all");
   const [busy, setBusy] = useState<string | null>(null);
+  const [statusBusy, setStatusBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusNote, setStatusNote] = useState<string | null>(null);
   const [playing, setPlaying] = useState<{ id: string; url: string; name: string } | null>(null);
   const [patches, setPatches] = useState<Record<string, GamePatch>>({});
   const [, startTransition] = useTransition();
@@ -149,6 +156,25 @@ export function FilmInbox({
     startTransition(() => router.refresh());
   }
 
+  async function runYoutubeStatusRefresh() {
+    setStatusBusy(true);
+    setError(null);
+    setStatusNote(null);
+    const result = await refreshFilmYoutubeStatus();
+    setStatusBusy(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    const n = result.updated ?? 0;
+    setStatusNote(
+      n === 0
+        ? "YouTube status is up to date."
+        : `Updated ${n} video${n === 1 ? "" : "s"} from YouTube.`
+    );
+    startTransition(() => router.refresh());
+  }
+
   async function download(id: string) {
     setBusy(id);
     setError(null);
@@ -179,10 +205,14 @@ export function FilmInbox({
         Videos families upload from their phones, listed by team and game. <strong>Play</strong> watches
         them here. After YouTube is connected in <strong>Settings → Film</strong>, new uploads go up
         unlisted in the background, then into that team&apos;s playlist if one is set. A playlist miss
-        does not mark the YouTube upload failed. Slack posts wait here for <strong>Approve</strong> —
-        anyone with <strong>Teams &amp; volunteers</strong> can tap it. Nothing goes out on
-        its own. Discarded posts can be restored for 30 days. Files marked{" "}
-        <strong>Moved</strong> are deleted after 30 days.
+        does not mark the YouTube upload failed. Each YouTube card shows the privacy YouTube actually
+        has — <strong>Public</strong>, <strong>Unlisted</strong>, or <strong>Private</strong> — and
+        whether YouTube is still processing it. That can differ from the default in Settings (Google
+        sometimes forces Private). <strong>Refresh YouTube status</strong> reads it from YouTube; you
+        don&apos;t need Studio. Slack posts wait here for <strong>Approve</strong> — anyone with{" "}
+        <strong>Teams &amp; volunteers</strong> can tap it. Nothing goes out on its own. Discarded
+        posts can be restored for 30 days. Files marked <strong>Moved</strong> are deleted after 30
+        days.
       </p>
 
       {slackDrafts.length > 0 && (
@@ -272,12 +302,21 @@ export function FilmInbox({
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} data-tour="film-filter">
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }} data-tour="film-filter">
         {(["all", "holding", "moved"] as Filter[]).map((key) => (
           <Pill key={key} size="sm" variant={filter === key ? "dark" : "light"} onClick={() => setFilter(key)}>
             {key === "all" ? "All" : key === "holding" ? "Holding" : "Moved"}
           </Pill>
         ))}
+        <span data-tour="film-youtube-status">
+          <Pill
+            size="sm"
+            onClick={() => void runYoutubeStatusRefresh()}
+            disabled={statusBusy}
+          >
+            {statusBusy ? "Checking YouTube…" : "Refresh YouTube status"}
+          </Pill>
+        </span>
       </div>
 
       {teams.length > 1 && (
@@ -300,6 +339,9 @@ export function FilmInbox({
 
       {(loadError || error) && (
         <p style={{ margin: 0, color: "var(--gw-error)", fontWeight: 600, fontSize: 13 }}>{loadError || error}</p>
+      )}
+      {statusNote && (
+        <p style={{ margin: 0, color: "var(--gw-fg-muted)", fontWeight: 600, fontSize: 13 }}>{statusNote}</p>
       )}
 
       {shown.length === 0 ? (
@@ -396,6 +438,14 @@ function FilmRow({
 }) {
   const [editing, setEditing] = useState(false);
   const yt = youtubeLabel(row.youtube_status, row.youtube_video_id);
+  const live =
+    row.youtube_status === "done" && row.youtube_video_id
+      ? youtubeLiveStatusLine({
+          youtube_privacy: row.youtube_privacy,
+          youtube_processing: row.youtube_processing,
+          youtube_synced_at: row.youtube_synced_at,
+        })
+      : null;
   const effectivePlaylist = (row.youtube_playlist_id || teamPlaylistId || "").trim() || null;
   const pl = playlistLabel(
     row.youtube_playlist_status,
@@ -462,6 +512,25 @@ function FilmRow({
               </div>
             )}
           </div>
+          {live && (
+            <div
+              data-tour="film-youtube-privacy"
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                marginTop: 4,
+                color:
+                  row.youtube_processing === "failed" ||
+                  row.youtube_processing === "rejected" ||
+                  row.youtube_processing === "missing"
+                    ? "var(--gw-error)"
+                    : undefined,
+              }}
+            >
+              {live}
+              {row.youtube_synced_at ? ` · Checked ${formatWhen(row.youtube_synced_at)}` : ""}
+            </div>
+          )}
         </div>
         <span
           style={{
