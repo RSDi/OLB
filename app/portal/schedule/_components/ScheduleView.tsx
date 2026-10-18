@@ -84,6 +84,7 @@ export function ScheduleView({
   knownTeams,
   directoryTeams,
   travelPlaces,
+  hostedIds,
   hotelStays,
   hotels,
   today,
@@ -101,11 +102,19 @@ export function ScheduleView({
   directoryTeams: DirectoryTeam[];
   // Hotels and places to eat, for where to stay and eat on weekends away.
   travelPlaces: TravelPlace[];
+  // The weekends we host (0150): a "We host" link to each one's planning page.
+  hostedIds: string[];
   hotelStays: HotelStayView[];
   hotels: HotelOption[];
   today: string;
 }) {
   const router = useRouter();
+  const [hosted, setHosted] = useState(() => new Set(hostedIds));
+  const [hostedFrom, setHostedFrom] = useState(hostedIds);
+  if (hostedFrom !== hostedIds) {
+    setHostedFrom(hostedIds);
+    setHosted(new Set(hostedIds));
+  }
   const season = schedule.season;
   const fromServer = (x: HsSeasonSchedule) => ({
     levels: x.levels,
@@ -777,6 +786,7 @@ export function ScheduleView({
                         travelOpen={travel?.weekendId === w.id}
                         onTravel={(el) => toggleTravel(w.id, el)}
                         nowTag={nowTagOf(w.id)}
+                        hosted={hosted.has(w.id)}
                         usualDays={usualDays}
                         showNotes={showNotes}
                       />
@@ -858,6 +868,7 @@ export function ScheduleView({
                     travelOpen={travel?.weekendId === w.id}
                     onTravel={(el) => toggleTravel(w.id, el)}
                     nowTag={nowTagOf(w.id)}
+                    hosted={hosted.has(w.id)}
                   />
                 ))}
               </div>
@@ -965,6 +976,15 @@ export function ScheduleView({
           dispatch={dispatch}
           onClose={() => setSheet(null)}
           onSaved={(w) => setSheet({ kind: "weekend", id: w.id })}
+          hosted={!!sheet.id && hosted.has(sheet.id)}
+          onHosted={(id, on) =>
+            setHosted((h) => {
+              const next = new Set(h);
+              if (on) next.add(id);
+              else next.delete(id);
+              return next;
+            })
+          }
         />
       )}
       {sheet?.kind === "season" && canEdit && (
@@ -1135,6 +1155,7 @@ function WeekendRow({
   travelOpen,
   onTravel,
   nowTag,
+  hosted,
   usualDays,
   showNotes,
 }: {
@@ -1147,6 +1168,8 @@ function WeekendRow({
   flash: boolean;
   // "This weekend" or "Next" by the date, for the one we're in or coming up.
   nowTag: string | null;
+  // We host it (0150): a link to its planning page.
+  hosted: boolean;
   // The season's usual days ("Thu–Sat"): a weekend on other days says so.
   usualDays: string;
   // The Notes column, when any weekend showing has notes or a facility.
@@ -1232,6 +1255,7 @@ function WeekendRow({
           {/* Secured and off weekends already say so with their color; the
               chip is for the ones that still need something. */}
           {w.status !== "planned" && w.status !== "secured" && w.status !== "off" && <StatusChip status={w.status} small short />}
+          {hosted && <HostedLink id={w.id} />}
         </div>
         {(coming > 0 || line.fence > 0) && (
           <div style={{ marginTop: 1, lineHeight: 1.3 }} title={teamsTip(mine, contacts)}>
@@ -1310,6 +1334,20 @@ function cellRecord(opps: HsOpponent[], levelId: string): string | null {
 }
 
 // "This weekend" / "Next", under a weekend's dates.
+// A weekend we host (0150): "We host", to its planning page.
+function HostedLink({ id }: { id: string }) {
+  return (
+    <Link
+      href={`/portal/schedule/hosted/${id}`}
+      data-tour="schedule-hosted"
+      title="Open the tournament's planning page"
+      style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 800, padding: "2px 7px", borderRadius: 6, background: "var(--rsd-accent-bg)", color: "var(--gw-fg)", textDecoration: "none", whiteSpace: "nowrap" }}
+    >
+      We host · Plan it <Icons.ChevronRight width={11} height={11} />
+    </Link>
+  );
+}
+
 function NowTag({ label }: { label: string }) {
   return (
     <span
@@ -1434,6 +1472,7 @@ function WeekendCard({
   travelOpen,
   onTravel,
   nowTag,
+  hosted,
 }: {
   w: HsWeekend;
   levels: HsLevel[];
@@ -1442,6 +1481,7 @@ function WeekendCard({
   gamesAt: (w: string, l: string) => HsGames | undefined;
   today: string;
   flash: boolean;
+  hosted: boolean;
   onEvent: () => void;
   onOpen: (w: HsWeekend, l: HsLevel, el: HTMLElement, pinned: boolean) => void;
   near: PlacesNear | null;
@@ -1546,6 +1586,11 @@ function WeekendCard({
           )}
         </span>
       </button>
+      {hosted && (
+        <div>
+          <HostedLink id={w.id} />
+        </div>
+      )}
       {(w.location || w.trip || near) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
           {(w.location || w.trip) && <span>{[w.location, w.trip].filter(Boolean).join(" · ")}</span>}

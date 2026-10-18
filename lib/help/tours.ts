@@ -641,6 +641,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         title: "Add a weekend",
         body: "Its dates, event, place, trip, status, notes and facility; then its games and teams.",
       },
+      {
+        target: "schedule-hosted",
+        title: "We host this tournament",
+        body: "A weekend the club runs (the Missouri River Shootout) shows **We host · Plan it**. Open it for the checklist, teams, courts, brackets, money and emails.",
+      },
     ],
   },
   {

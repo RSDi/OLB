@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { Input, KpiCard, Pill, Select, Textarea } from "../../components/ui";
 import {
@@ -523,13 +524,19 @@ function EventsSheet({ data, onClose }: { data: ClubData; onClose: () => void })
     <Sheet eyebrow="Budget" title="Tournaments we host" busy={busy} onClose={onClose}>
       <div style={sub}>
         A tournament the club runs, like MRS, has its own costs (court rental, refs) and its own income (registration, admissions).
-        Pick it on each cost here and on each income on the Income tab, and the Snapshot shows what it made.
+        Pick it on each cost here and on each income on the Income tab, and the Snapshot shows what it made. A tournament planned
+        on the HS Schedule (We host this tournament) puts its estimate here from its plan&apos;s Money tab.
       </div>
       {data.events.map((e) => (
         <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 700 }}>{e.name}</div>
             <div style={sub}>{[e.starts_on && formatDay(e.starts_on), e.note].filter(Boolean).join(" · ") || "No date yet"}</div>
+            {e.plan_weekend_id && (
+              <Link href={`/portal/schedule/hosted/${e.plan_weekend_id}?tab=money`} style={{ fontSize: 12.5, fontWeight: 700 }}>
+                Open its plan
+              </Link>
+            )}
           </div>
           <SpendBar spend={spend.get(e.id) ?? { budget: 0, paid: 0 }} compact />
         </div>
