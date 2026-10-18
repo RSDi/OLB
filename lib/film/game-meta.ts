@@ -63,8 +63,15 @@ export function parseFilmGameFields(
     ourScore?: unknown;
     theirScore?: unknown;
   },
-  today = churchToday()
+  today = churchToday(),
+  opts?: { emptyDate?: "today" | "error" }
 ): ({ ok: true } & FilmGameFields) | { ok: false; error: string } {
+  if (opts?.emptyDate === "error") {
+    const raw = input.gameDate;
+    if (raw == null || (typeof raw === "string" && !raw.trim())) {
+      return { ok: false, error: "Pick a game date." };
+    }
+  }
   const gameDate = cleanGameDate(input.gameDate, today);
   if (!gameDate) return { ok: false, error: "Pick a game date." };
   const opponent = cleanOpponent(input.opponent);
@@ -115,4 +122,32 @@ export function formatFilmGameLine(input: {
   const score = formatFilmScore(input.ourScore, input.theirScore);
   if (score) parts.push(score);
   return parts.length ? parts.join(" · ") : null;
+}
+
+/** Inbox group heading: never the vague "Game" placeholder when the date is blank. */
+export function formatFilmInboxHeading(input: {
+  gameDate?: string | null;
+  opponent?: string | null;
+  ourScore?: number | null;
+  theirScore?: number | null;
+}): string {
+  const date = formatFilmDate(input.gameDate) ?? "No game date";
+  const parts = [date];
+  if (input.opponent) parts.push(`vs ${input.opponent}`);
+  const score = formatFilmScore(input.ourScore, input.theirScore);
+  if (score) parts.push(score);
+  return parts.join(" · ");
+}
+
+export function missingFilmGameLabels(input: {
+  gameDate?: string | null;
+  opponent?: string | null;
+  ourScore?: number | null;
+  theirScore?: number | null;
+}): string[] {
+  const missing: string[] = [];
+  if (!input.gameDate) missing.push("Game date");
+  if (!input.opponent) missing.push("Opponent");
+  if (input.ourScore == null && input.theirScore == null) missing.push("Score");
+  return missing;
 }

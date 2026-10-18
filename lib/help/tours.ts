@@ -370,6 +370,11 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Opens a temporary link to the file. Save it before you mark it moved.",
       },
       {
+        target: "film-edit",
+        title: "Edit the game",
+        body: "**Edit** lets you fix **Game date**, **Opponent**, and the score. **Save** updates the heading above the video. You only see this with **Game film (manage)**.",
+      },
+      {
         target: "film-moved",
         title: "Mark moved",
         body: "Once the video is on YouTube or a drive, tap **Mark moved**. Files marked moved are deleted after 30 days. You only see this with **Game film (manage)**.",

@@ -23,7 +23,9 @@ import {
 import {
   formatFilmDate,
   formatFilmGameLine,
+  formatFilmInboxHeading,
   formatFilmScore,
+  missingFilmGameLabels,
   parseFilmGameFields,
 } from "../../lib/film/game-meta.ts";
 import {
@@ -219,6 +221,23 @@ test("game date defaults to Chicago today; opponent and scores are optional", ()
     formatFilmGameLine({ gameDate: "2026-10-17", opponent: null, ourScore: null, theirScore: null }),
     "Oct 17, 2026"
   );
+  assert.equal(formatFilmGameLine({ gameDate: null, opponent: null }), null);
+  assert.equal(formatFilmInboxHeading({ gameDate: null, opponent: null }), "No game date");
+  assert.equal(
+    formatFilmInboxHeading({ gameDate: null, opponent: "Elkhorn Attack", ourScore: 18, theirScore: 29 }),
+    "No game date · vs Elkhorn Attack · 18–29"
+  );
+  assert.equal(
+    formatFilmInboxHeading({ gameDate: "2026-10-17", opponent: "Elkhorn Attack", ourScore: 18, theirScore: 29 }),
+    "Oct 17, 2026 · vs Elkhorn Attack · 18–29"
+  );
+  assert.deepEqual(missingFilmGameLabels({ gameDate: null, opponent: null, ourScore: null, theirScore: null }), [
+    "Game date",
+    "Opponent",
+    "Score",
+  ]);
+  assert.equal(parseFilmGameFields({ gameDate: "" }, today, { emptyDate: "error" }).ok, false);
+  assert.equal(parseFilmGameFields({ gameDate: "" }, today, { emptyDate: "today" }).ok, true);
 });
 
 test("film_view lists; film_manage includes view; others are out", () => {
@@ -299,12 +318,25 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(client, /formatFilmGameLine/);
   assert.match(client, /gameDate: snapshot\.gameDate/);
   const inbox = readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmInbox.tsx"), "utf8");
-  assert.match(inbox, /formatFilmGameLine/);
+  assert.match(inbox, /formatFilmInboxHeading/);
   assert.match(inbox, />Play</);
   assert.match(inbox, /playsInline/);
+  assert.match(inbox, />\s*Edit\s*</);
+  assert.match(inbox, /"Save"/);
+  assert.match(inbox, />\s*Cancel\s*</);
+  assert.match(inbox, /updateFilmGameFields/);
+  assert.match(inbox, /Missing:/);
+  const inboxCss = readFileSync(join(import.meta.dirname, "../../app/portal/film/inbox.module.css"), "utf8");
+  assert.match(inboxCss, /\.input\[type="date"\][\s\S]*-webkit-appearance:\s*none/);
+  assert.match(inboxCss, /::-webkit-date-and-time-value[\s\S]*text-align:\s*left/);
+  const actions = readFileSync(join(import.meta.dirname, "../../lib/film/admin-actions.ts"), "utf8");
+  assert.match(actions, /export async function updateFilmGameFields[\s\S]*?requireFilmManage\(\)/);
+  assert.match(actions, /emptyDate: "error"/);
   assert.match(route, /gameDate: body\.gameDate/);
   assert.match(route, /ourScore: checked\.ourScore/);
   const uploads = readFileSync(join(import.meta.dirname, "../../lib/film/uploads.ts"), "utf8");
+  assert.match(uploads, /updateFilmUploadGame/);
+  assert.match(uploads, /game_date: fields\.gameDate/);
   assert.match(uploads, /game_date: input\.gameDate/);
   assert.match(uploads, /our_score: input\.ourScore/);
   assert.match(uploads, /FILM_UPLOAD_COLUMNS/);
