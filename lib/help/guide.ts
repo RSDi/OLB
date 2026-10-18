@@ -1387,6 +1387,19 @@ Text PDFs from the hotel work best (Staybridge / IHG style). A scan-only PDF won
 You can keep importing lists from different hotels the same way; each run attaches to the stay you pick.`,
   },
   {
+    id: "settings-agent-keys",
+    title: "Settings: Agent keys",
+    group: "Settings",
+    audience: "super_admin",
+    keywords: ["agent", "api key", "bearer", "film", "youtube", "read-only", "hash"],
+    body: `Give a club agent a read-only key so it can list game film without signing in as a person. Open **Settings → Agent keys**. Super-admins only.
+
+- **Name** — a label only you see, like **Film reader**.
+- **Create key** makes a long key starting with **olb_ag_**. We show it once: **Copy key** now. We store a hash, so there is no reveal later. **Revoke** if it leaks; anything using it stops.
+- The agent sends **Authorization: Bearer** and that key to **GET /api/agent/film** (every game, filter with **team**, **from**, and **to**) and **GET /api/agent/film/health** (YouTube connected, default privacy, each team's playlist, whether the playlist migration is applied, and counts of film not sent or stuck).
+- Responses never include team upload codes or YouTube tokens. The key cannot change anything.`,
+  },
+  {
     id: "settings-audit-log",
     title: "Settings: Audit Log",
     group: "Settings",

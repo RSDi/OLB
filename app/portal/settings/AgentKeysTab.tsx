@@ -1,0 +1,198 @@
+"use client";
+// Settings → Agent keys. Super-admins mint hashed Bearer tokens for
+// GET /api/agent/*. Plaintext is shown once; there is no reveal later.
+
+import { useEffect, useState } from "react";
+import { Icons } from "../../components/icons";
+import { Input, Pill } from "../../components/ui";
+import { copyText } from "../../../lib/copy-text";
+import {
+  createAgentKey,
+  loadAgentKeys,
+  revokeAgentKey,
+  type PublicAgentKey,
+} from "../../../lib/agent/keys-actions";
+
+function ErrorBox({ text }: { text: string }) {
+  return (
+    <div
+      role="alert"
+      style={{
+        background: "var(--gw-error-bg)",
+        border: "1px solid rgba(229,62,62,.25)",
+        borderRadius: 10,
+        padding: "12px 16px",
+        fontSize: 13,
+        color: "var(--gw-error)",
+        fontWeight: 600,
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
+export function AgentKeysTab() {
+  const [keys, setKeys] = useState<PublicAgentKey[]>([]);
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [revealed, setRevealed] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    loadAgentKeys().then((res) => {
+      if ("error" in res) setError(res.error);
+      else setKeys(res.keys);
+    });
+  }, []);
+
+  async function refresh() {
+    const res = await loadAgentKeys();
+    if ("error" in res) setError(res.error);
+    else setKeys(res.keys);
+  }
+
+  async function onCreate() {
+    setPending(true);
+    setError(null);
+    setCopied(false);
+    const res = await createAgentKey(name);
+    setPending(false);
+    if ("error" in res) {
+      setError(res.error);
+      return;
+    }
+    setRevealed(res.key);
+    setName("");
+    await refresh();
+  }
+
+  async function onRevoke(id: string) {
+    if (!confirm("Revoke this key? Anything using it will stop working.")) return;
+    setPending(true);
+    setError(null);
+    const res = await revokeAgentKey(id);
+    setPending(false);
+    if ("error" in res) {
+      setError(res.error);
+      return;
+    }
+    if (revealed) setRevealed(null);
+    await refresh();
+  }
+
+  async function copy() {
+    if (!revealed) return;
+    const ok = await copyText(revealed);
+    if (!ok) {
+      setError("Couldn't copy. Select the key and copy it yourself.");
+      return;
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
+      <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
+        Read-only keys for club agents (game film today). Send{" "}
+        <code style={{ fontWeight: 700 }}>Authorization: Bearer …</code> to{" "}
+        <code style={{ fontWeight: 700 }}>/api/agent/film</code> and{" "}
+        <code style={{ fontWeight: 700 }}>/api/agent/film/health</code>. We store a hash, never the
+        key itself — copy it when it appears. Keys cannot change anything, and responses never
+        include team codes or YouTube tokens.
+      </div>
+
+      {error && <ErrorBox text={error} />}
+
+      {revealed && (
+        <div
+          data-tour="agent-keys-reveal"
+          style={{
+            background: "var(--gw-success-bg, #eef8f0)",
+            border: "1px solid rgba(22,163,74,.25)",
+            borderRadius: 10,
+            padding: "12px 16px",
+            fontSize: 13,
+            fontWeight: 600,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <div>
+            Copy this now. We won&apos;t show it again:{" "}
+            <code style={{ fontSize: 14, fontWeight: 800, overflowWrap: "anywhere" }}>{revealed}</code>
+          </div>
+          <div>
+            <Pill size="sm" onClick={() => void copy()}>
+              {copied ? <Icons.Check width={13} height={13} /> : <Icons.Link width={13} height={13} />}
+              {copied ? "Copied" : "Copy key"}
+            </Pill>
+          </div>
+        </div>
+      )}
+
+      <form
+        data-tour="agent-keys-create"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void onCreate();
+        }}
+        className="rsd-card"
+        style={{ padding: 18, gap: 12, display: "flex", flexDirection: "column" }}
+      >
+        <Input
+          label="Name"
+          help="A label only you see, like Film reader. Not sent with requests."
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Film reader"
+          autoComplete="off"
+          required
+        />
+        <div>
+          <Pill type="submit" size="sm" variant="accent" disabled={pending || !name.trim()}>
+            Create key
+          </Pill>
+        </div>
+      </form>
+
+      {keys.length === 0 ? (
+        <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+          No keys yet. Create one to let an agent list game film.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {keys.map((k) => (
+            <div
+              key={k.id}
+              data-tour="agent-keys-row"
+              className="rsd-card"
+              style={{
+                padding: "12px 16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700 }}>{k.name}</div>
+                <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
+                  <code>{k.prefix}…</code>
+                  {k.createdAt ? ` · ${new Date(k.createdAt).toLocaleString()}` : ""}
+                </div>
+              </div>
+              <Pill size="sm" disabled={pending} onClick={() => void onRevoke(k.id)}>
+                Revoke
+              </Pill>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -148,6 +148,13 @@ test("the travel coordinator reads the hotels section, and the board still gets 
   assert.equal(guideSectionForPath("/portal/schedule", MEMBER), null);
 });
 
+test("Settings: Agent keys is super-admin only", () => {
+  const ids = (v: GuideViewer) => guideSectionsFor(v).map((s) => s.id);
+  assert.ok(ids(SUPER).includes("settings-agent-keys"));
+  assert.ok(!ids(ADMIN).includes("settings-agent-keys"));
+  assert.ok(!ids(MEMBER).includes("settings-agent-keys"));
+});
+
 test("Settings: Website reaches the Website grant and super-admins, not the rest of the board", () => {
   const has = (v: GuideViewer) => guideSectionsFor(v).some((s) => s.id === "settings-website");
   assert.ok(has(SUPER));

@@ -28,6 +28,7 @@ import { TypesTab } from "./TypesTab";
 import { SuppliesTab } from "./SuppliesTab";
 import { TeamsSettingsTab } from "./TeamsSettingsTab";
 import { FilmSettingsTab } from "./FilmSettingsTab";
+import { AgentKeysTab } from "./AgentKeysTab";
 import { SeasonTab } from "./SeasonTab";
 import { VolunteerRolesTab } from "./VolunteerRolesTab";
 import { EventCategoriesTab } from "./EventCategoriesTab";
@@ -65,6 +66,7 @@ const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "public_directory",
   "contact_categories",
   "audit_log",
+  "agent_keys",
 ]);
 
 // The User Guide section for each tab, so the top-bar "i" (and its "Show me
@@ -90,6 +92,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   contact_categories: "settings-contact-types",
   import: "settings-hotel-import",
   audit_log: "settings-audit-log",
+  agent_keys: "settings-agent-keys",
 };
 
 type Tab =
@@ -122,6 +125,7 @@ type Tab =
   | "integrations"
   | "import"
   | "audit_log"
+  | "agent_keys"
   | "deleted";
 
 // The groups the side menu sorts the tabs into, in order.
@@ -219,6 +223,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     { key: "integrations", label: "Integrations", group: "System", visible: true, tour: "settings-tab-integrations", keywords: "slack google connect" },
     // Hotel rooming list (Travel + board). Planning spreadsheet stays preview-only inside the tab.
     { key: "import", label: "Import", group: "System", visible: fullUi || canManageTravel(me) || board, tour: "settings-tab-import", keywords: "hotel rooming list pdf csv booked travel spreadsheet upload" },
+    { key: "agent_keys", label: "Agent keys", group: "System", visible: isSuperAdmin(me), tour: "settings-tab-agent-keys", keywords: "agent api key film youtube read-only bearer" },
     { key: "audit_log", label: "Audit Log", group: "System", visible: true, tour: "settings-tab-audit-log", keywords: "history changes who" },
     { key: "deleted", label: "Deleted", group: "System", visible: showDeleted, tour: "settings-tab-deleted", keywords: "restore undelete trash" },
   ];
@@ -383,6 +388,7 @@ export default function SettingsPage() {
       {tab === "contact_categories" && has("contact_categories") && <ContactCategoriesTab me={me} />}
       {tab === "integrations" && has("integrations") && <IntegrationsTab />}
       {tab === "import" && has("import") && <ImportTab showPlanningImport={fullUi} />}
+      {tab === "agent_keys" && has("agent_keys") && <AgentKeysTab />}
       {tab === "audit_log" && has("audit_log") && <AuditLogTab />}
       {tab === "deleted" && has("deleted") && <DeletedTab />}
     </>
