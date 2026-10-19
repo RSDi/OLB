@@ -5,12 +5,17 @@ import { join } from "node:path";
 import {
   OTHER_EVENT_ID,
   OTHER_PROGRAM_ID,
+  PROGRAMS_LOAD_ERROR,
+  PROGRAMS_LOAD_RELOAD,
   applyProgramSelection,
   autoLineDescription,
+  emptyAutoFill,
   invoiceEventLabel,
   invoiceEventsFromRows,
+  pickInvoiceProgram,
   programOptionLabel,
   resolveCreateInvoiceInput,
+  shouldShowProgramsLoadError,
 } from "../src/new-invoice.ts";
 import type { EventCustomer, InvoiceEventOption } from "../src/index.ts";
 
@@ -21,6 +26,12 @@ const prairie: EventCustomer = {
   emails: ["a@example.com", "b@example.com"],
   teamCount: 2,
   divisions: "HSA",
+};
+const metro: EventCustomer = {
+  id: "c2",
+  name: "Metro",
+  emails: ["metro@example.com"],
+  teamCount: 1,
 };
 
 test("invoiceEventsFromRows lists hosted weekends newest first and skips canceled", () => {
@@ -62,6 +73,41 @@ test("applyProgramSelection fills name, emails, team count and the event fee", (
   assert.equal(filled.rate, "315");
   assert.equal(filled.desc, "Team fee · MRS 2026");
   assert.equal(filled.hostCustomerId, "c1");
+});
+
+test("editing the program email and picking again keeps the edit", () => {
+  let state = { fields: emptyAutoFill(), lastAuto: emptyAutoFill() };
+  state = pickInvoiceProgram(state, prairie, mrs);
+  assert.equal(state.fields.customerEmail, "a@example.com, b@example.com");
+  assert.equal(state.fields.qty, "2");
+  state = { ...state, fields: { ...state.fields, customerEmail: "jeff@example.com" } };
+  state = pickInvoiceProgram(state, metro, mrs);
+  assert.equal(state.fields.customerEmail, "jeff@example.com");
+  assert.equal(state.fields.customerName, "Metro");
+  assert.equal(state.fields.qty, "1");
+  state = pickInvoiceProgram(state, null, mrs);
+  assert.equal(state.fields.customerEmail, "jeff@example.com");
+  assert.equal(state.fields.customerName, "");
+});
+
+test("unedited auto-filled fields still update when the pick changes", () => {
+  let state = { fields: emptyAutoFill(), lastAuto: emptyAutoFill() };
+  state = pickInvoiceProgram(state, prairie, mrs);
+  state = pickInvoiceProgram(state, metro, mrs);
+  assert.equal(state.fields.customerEmail, "metro@example.com");
+  assert.equal(state.fields.qty, "1");
+  assert.equal(state.fields.desc, "Team fee · MRS 2026");
+});
+
+test("a failed program load is shown, not treated as nobody registered", () => {
+  assert.equal(shouldShowProgramsLoadError({ eventId: "wk-1", customersErrorByEvent: { "wk-1": true } }), true);
+  assert.equal(shouldShowProgramsLoadError({ eventId: "wk-1", customersErrorByEvent: {} }), false);
+  assert.equal(shouldShowProgramsLoadError({ eventId: "", eventsError: true }), true);
+  const form = readFileSync(join(import.meta.dirname, "../src/ui/NewInvoiceForm.tsx"), "utf8");
+  assert.match(form, /PROGRAMS_LOAD_ERROR/);
+  assert.match(form, /PROGRAMS_LOAD_RELOAD/);
+  assert.match(form, /shouldShowProgramsLoadError/);
+  assert.equal(`${PROGRAMS_LOAD_ERROR} ${PROGRAMS_LOAD_RELOAD}`, "Couldn't load registered programs. Reload");
 });
 
 test("applyProgramSelection leaves a free-text fallback blank except fee and line", () => {

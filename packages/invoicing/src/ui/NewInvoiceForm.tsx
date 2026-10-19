@@ -4,10 +4,16 @@ import { useState } from "react";
 import {
   OTHER_EVENT_ID,
   OTHER_PROGRAM_ID,
+  PROGRAMS_LOAD_ERROR,
+  PROGRAMS_LOAD_RELOAD,
   applyProgramSelection,
   autoLineDescription,
+  emptyAutoFill,
+  keepAutoFill,
   programOptionLabel,
   resolveCreateInvoiceInput,
+  shouldShowProgramsLoadError,
+  type AutoFillFields,
   type InvoiceEventOption,
 } from "../new-invoice";
 import type { CreateInvoiceInput, EventCustomer } from "../types";
@@ -18,6 +24,8 @@ export function NewInvoiceForm({
   today,
   events = [],
   customersByEvent = {},
+  customersErrorByEvent = {},
+  eventsError = false,
   defaultEvent,
   defaultFeeCents,
   backHref,
@@ -26,20 +34,24 @@ export function NewInvoiceForm({
   today: string;
   events?: InvoiceEventOption[];
   customersByEvent?: Record<string, EventCustomer[]>;
+  customersErrorByEvent?: Record<string, boolean>;
+  eventsError?: boolean;
   defaultEvent?: string;
   defaultFeeCents?: number;
   backHref: string;
   onCreate: (input: CreateInvoiceInput) => Promise<{ error?: string } | void>;
 }) {
   const initialEventId = matchEventId(events, defaultEvent);
+  const initial = emptyAutoFill(defaultFeeCents, defaultEvent);
   const [eventId, setEventId] = useState(initialEventId);
   const [customEvent, setCustomEvent] = useState(initialEventId === OTHER_EVENT_ID ? (defaultEvent ?? "") : "");
   const [programId, setProgramId] = useState("");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [qty, setQty] = useState("1");
-  const [rate, setRate] = useState(defaultFeeCents ? String(defaultFeeCents / 100) : "");
-  const [desc, setDesc] = useState(autoLineDescription(defaultEvent));
+  const [name, setName] = useState(initial.customerName);
+  const [email, setEmail] = useState(initial.customerEmail);
+  const [qty, setQty] = useState(initial.qty);
+  const [rate, setRate] = useState(initial.rate);
+  const [desc, setDesc] = useState(initial.desc);
+  const [lastAuto, setLastAuto] = useState<AutoFillFields>(initial);
   const [due, setDue] = useState("");
   const [dep, setDep] = useState("");
   const [depDue, setDepDue] = useState("");
@@ -52,29 +64,37 @@ export function NewInvoiceForm({
   const customers = hosted ? (customersByEvent[hosted.id] ?? []) : [];
   const showProgramSelect = !!hosted;
   const showProgramName = otherEvent || otherProgram;
+  const programsError = shouldShowProgramsLoadError({
+    eventId,
+    eventsError,
+    customersErrorByEvent,
+  });
+
+  function currentFields(): AutoFillFields {
+    return { customerName: name, customerEmail: email, qty, rate, desc };
+  }
+
+  function applyFilled(next: { fields: AutoFillFields; lastAuto: AutoFillFields }) {
+    setName(next.fields.customerName);
+    setEmail(next.fields.customerEmail);
+    setQty(next.fields.qty);
+    setRate(next.fields.rate);
+    setDesc(next.fields.desc);
+    setLastAuto(next.lastAuto);
+  }
 
   function applyEvent(nextId: string) {
     setEventId(nextId);
     setProgramId("");
     setCustomEvent("");
     const next = events.find((e) => e.id === nextId) ?? null;
-    const filled = applyProgramSelection(null, next);
-    setName(filled.customerName);
-    setEmail(filled.customerEmail);
-    setQty(filled.qty);
-    setRate(filled.rate || (defaultFeeCents ? String(defaultFeeCents / 100) : ""));
-    setDesc(filled.desc);
+    applyFilled(keepAutoFill(currentFields(), lastAuto, applyProgramSelection(null, next)));
   }
 
   function applyProgram(nextId: string) {
     setProgramId(nextId);
     const program = nextId && nextId !== OTHER_PROGRAM_ID ? (customers.find((c) => c.id === nextId) ?? null) : null;
-    const filled = applyProgramSelection(program, hosted);
-    setName(program ? filled.customerName : "");
-    setEmail(filled.customerEmail);
-    setQty(filled.qty);
-    if (filled.rate) setRate(filled.rate);
-    setDesc(filled.desc);
+    applyFilled(keepAutoFill(currentFields(), lastAuto, applyProgramSelection(program, hosted)));
   }
 
   async function save() {
@@ -149,6 +169,7 @@ export function NewInvoiceForm({
             </select>
           </Field>
         )}
+        {programsError && <ProgramsLoadNotice />}
         {showProgramName && (
           <Field label="Program name">
             <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Program name" />
@@ -189,6 +210,30 @@ export function NewInvoiceForm({
           {busy ? "Saving…" : "Save draft"}
         </Btn>
       </Card>
+    </div>
+  );
+}
+
+function ProgramsLoadNotice() {
+  return (
+    <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>
+      {PROGRAMS_LOAD_ERROR}{" "}
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          font: "inherit",
+          fontWeight: 800,
+          color: t.ink,
+          textDecoration: "underline",
+          cursor: "pointer",
+        }}
+      >
+        {PROGRAMS_LOAD_RELOAD}
+      </button>
     </div>
   );
 }

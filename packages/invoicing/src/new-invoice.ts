@@ -57,6 +57,61 @@ export function autoLineDescription(eventLabel: string | null | undefined): stri
   return label ? `Team fee · ${label}` : "Team fee";
 }
 
+export const PROGRAMS_LOAD_ERROR = "Couldn't load registered programs.";
+export const PROGRAMS_LOAD_RELOAD = "Reload";
+
+export type AutoFillFields = {
+  customerName: string;
+  customerEmail: string;
+  qty: string;
+  rate: string;
+  desc: string;
+};
+
+export function emptyAutoFill(defaultFeeCents?: number, defaultEvent?: string): AutoFillFields {
+  return {
+    customerName: "",
+    customerEmail: "",
+    qty: "1",
+    rate: defaultFeeCents ? String(defaultFeeCents / 100) : "",
+    desc: autoLineDescription(defaultEvent),
+  };
+}
+
+/** Refill only fields that still hold the last automatic value. User edits stay. */
+export function keepAutoFill(
+  current: AutoFillFields,
+  lastAuto: AutoFillFields,
+  nextAuto: AutoFillFields
+): { fields: AutoFillFields; lastAuto: AutoFillFields } {
+  const fields = { ...current };
+  const auto = { ...lastAuto };
+  for (const key of ["customerName", "customerEmail", "qty", "rate", "desc"] as const) {
+    if (current[key] === lastAuto[key]) {
+      fields[key] = nextAuto[key];
+      auto[key] = nextAuto[key];
+    }
+  }
+  return { fields, lastAuto: auto };
+}
+
+export function pickInvoiceProgram(
+  state: { fields: AutoFillFields; lastAuto: AutoFillFields },
+  program: EventCustomer | null,
+  event: InvoiceEventOption | null
+): { fields: AutoFillFields; lastAuto: AutoFillFields } {
+  return keepAutoFill(state.fields, state.lastAuto, applyProgramSelection(program, event));
+}
+
+export function shouldShowProgramsLoadError(input: {
+  eventId: string;
+  eventsError?: boolean;
+  customersErrorByEvent?: Record<string, boolean>;
+}): boolean {
+  if (input.eventsError) return true;
+  return !!input.eventId && !!input.customersErrorByEvent?.[input.eventId];
+}
+
 export function applyProgramSelection(
   program: EventCustomer | null,
   event: InvoiceEventOption | null
