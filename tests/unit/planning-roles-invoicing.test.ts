@@ -42,6 +42,8 @@ test("0153 lets service_role and no-session writes through (SQL editor, migratio
   assert.match(migration, /auth\.uid\(\) is null/);
   assert.match(migration, /0123/);
   assert.match(migration, /ON CONFLICT DO NOTHING/);
+  assert.match(migration, /moving another role's seed_key onto a protected key/);
+  assert.match(migration, /soft-deleted protected role/);
 });
 
 test("0153 down drops the trigger and function", () => {

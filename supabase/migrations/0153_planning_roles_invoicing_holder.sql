@@ -14,6 +14,10 @@
 -- trigger fires before the unique check. anon has no write grant, so
 -- unsigned-in API callers cannot write. Signed-in Board members still
 -- have auth.uid() set and are blocked.
+--
+-- The trigger already blocks (same super-admin / server-side rule):
+-- moving another role's seed_key onto a protected key, and restoring a
+-- soft-deleted protected role.
 
 begin;
 
