@@ -544,6 +544,10 @@ test("preview equals createBatch after send, void, and rebill", async () => {
   assert.equal(afterVoid.preview.invoiceCount, 2);
   assert.equal(afterVoid.preview.alreadyBilledCount, 0);
   assert.equal(afterVoid.billed, 3 * 31500);
+  const rebill = afterVoid.invoices!.find((v) => v.hostCustomerId === "p1");
+  assert.ok(rebill);
+  assert.notEqual(rebill!.id, prairie!.id);
+  assert.equal(rebill!.voidedAt, null);
 });
 
 test("batch preview total equals created invoice totals", async () => {

@@ -157,8 +157,8 @@ export function BatchBilling({
 
       <div style={{ background: "var(--inv-elev, #fff)", border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", borderRadius: 14, overflow: "hidden" }}>
         {customers.map((p) => {
-          const billedAlready = invoiceAlreadyBilled(invoices, p.id);
-          const eligible = batchCustomerEligible(p, invoices);
+          const billedAlready = !invoicesError && invoiceAlreadyBilled(invoices, p.id);
+          const eligible = !invoicesError && batchCustomerEligible(p, invoices);
           return (
             <div
               key={p.id}
@@ -169,7 +169,7 @@ export function BatchBilling({
                 alignItems: "center",
                 padding: "10px 14px",
                 borderBottom: "1px solid var(--inv-border, var(--gw-border, #e4e4df))",
-                opacity: eligible ? 1 : 0.55,
+                opacity: eligible || invoicesError ? 1 : 0.55,
               }}
             >
               <span style={{ minWidth: 0 }}>
@@ -180,7 +180,9 @@ export function BatchBilling({
                 {p.teamCount} {p.teamCount === 1 ? "team" : "teams"}
               </span>
               <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>
-                {billedAlready ? (
+                {invoicesError ? (
+                  formatMoney(0)
+                ) : billedAlready ? (
                   <small style={{ display: "block", color: t.muted, fontSize: 12 }}>already billed</small>
                 ) : (
                   <>

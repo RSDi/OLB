@@ -111,7 +111,7 @@ test("invoicing without HS Schedule edit does not load the full hosted page via 
   const billCtx = readFileSync(join(import.meta.dirname, "../../lib/invoicing/bill-context.ts"), "utf8");
   assert.doesNotMatch(billPage, /loadHostedPage/);
   assert.match(billPage, /loadHostedBillContext/);
-  assert.match(billPage, /invoicesError=\{listed\.ok \? null : listed\.error\}/);
+  assert.match(billPage, /invoicesError=\{viewer\.canManageInvoicing && !listed\.ok \? listed\.error : null\}/);
   assert.match(billCtx, /HOSTED_BILL_WEEKEND_COLUMNS = "id, event"/);
   assert.match(billCtx, /HOSTED_BILL_PLAN_COLUMNS = "weekend_id, hosted, short_name, team_fee_cents"/);
 });

@@ -35,7 +35,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       clubSettings={club.ok ? club.data : { freq: "3d", startDays: 7, untilPaid: true, ccEmails: [], bccEmails: [] }}
       fromEmail={org.fromEmail}
       invoices={listed.ok ? listed.data : []}
-      invoicesError={listed.ok ? null : listed.error}
+      invoicesError={viewer.canManageInvoicing && !listed.ok ? listed.error : null}
     />
   );
 }
