@@ -3,7 +3,7 @@
 // createInvoicingService().
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { EventCollection, EventCustomer, InvoiceEmail } from "./types";
+import type { EventCollection, EventCustomer, InvoiceEmail } from "./types.ts";
 
 export interface InvoicingUser {
   id: string;

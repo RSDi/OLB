@@ -2,8 +2,8 @@
 // never names host tables.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Invoice, LineItemInput, Payment, PaymentMethod, ReminderSettings } from "./types";
-import { DEFAULT_REMINDERS, normalizeReminders } from "./logic";
+import { DEFAULT_REMINDERS, type Invoice, type LineItemInput, type Payment, type PaymentMethod, type ReminderSettings } from "./types.ts";
+import { normalizeReminders } from "./logic.ts";
 
 type Db = SupabaseClient;
 

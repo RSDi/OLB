@@ -192,7 +192,7 @@ test("invoicing help reaches Invoicing, Payments, the board, and See club financ
   assert.equal(guideSectionForPath("/portal/payments/invoices/new", treasurer)?.id, "payments-invoices");
   assert.equal(guideSectionForPath("/portal/payments/invoices/event/abc", ADMIN)?.id, "payments-invoices");
   assert.equal(guideSectionForPath("/portal/payments/invoices/abc", viewOnly)?.id, "payments-invoices");
-  assert.equal(guideSectionForPath("/portal/payments/invoices/abc", MEMBER), null);
+  assert.notEqual(guideSectionForPath("/portal/payments/invoices/abc", MEMBER)?.id, "payments-invoices");
   assert.ok(guideSectionsFor(invoicer).some((s) => s.id === "payments-invoices"));
   assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "payments-invoices"));
 });

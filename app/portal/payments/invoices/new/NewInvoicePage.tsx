@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { NewInvoiceForm } from "invoicing/ui";
-import { olbInvoicePaths } from "../../../../../lib/invoicing/adapter";
+import { olbInvoicePaths } from "../../../../../lib/invoicing/paths";
 import { createInvoiceAction } from "../../../../../lib/invoicing/actions";
 
 export function NewInvoicePage({ today }: { today: string }) {

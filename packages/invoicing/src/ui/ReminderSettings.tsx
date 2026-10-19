@@ -25,7 +25,7 @@ export function ReminderSettingsCard({
   fromEmail: string;
   onChange: (next: ReminderSettings) => void | Promise<void>;
 }) {
-  const due = invoice ? reminderTargetDue(invoice) : invoice?.dueOn;
+  const due = invoice ? reminderTargetDue(invoice) : undefined;
   return (
     <Card>
       <Cap>Reminders</Cap>

@@ -42,6 +42,6 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
 
 async function weekendName(id: string): Promise<string | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const { data } = await createClient().from("hs_weekends").select("event").eq("id", id).maybeSingle();
+  const { data } = await (await createClient()).from("hs_weekends").select("event").eq("id", id).maybeSingle();
   return (data as { event: string } | null)?.event ?? null;
 }

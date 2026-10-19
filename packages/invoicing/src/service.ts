@@ -1,8 +1,8 @@
 // Host-facing operations. Every mutation checks canInvoice() on the adapter.
 
-import type { InvoicingAdapter } from "./adapter";
-import { invoiceEmailContent, reminderEmailContent } from "./emails";
-import { computeInvoice, eventCollection, invoiceBalance, normalizeReminders, shouldSendReminder } from "./logic";
+import type { InvoicingAdapter } from "./adapter.ts";
+import { invoiceEmailContent, reminderEmailContent } from "./emails.ts";
+import { computeInvoice, eventCollection, invoiceBalance, normalizeReminders, shouldSendReminder } from "./logic.ts";
 import {
   claimReminderSend,
   finishReminderSend,
@@ -18,7 +18,7 @@ import {
   replaceLines,
   saveReminderSettingsRow,
   updateInvoiceRow,
-} from "./store";
+} from "./store.ts";
 import type {
   BatchInput,
   CreateInvoiceInput,
@@ -28,7 +28,7 @@ import type {
   ReminderSettings,
   Result,
   UpdateInvoiceInput,
-} from "./types";
+} from "./types.ts";
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 

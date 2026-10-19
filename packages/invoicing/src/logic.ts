@@ -10,7 +10,7 @@ import {
   type LineItemInput,
   type ReminderFreq,
   type ReminderSettings,
-} from "./types";
+} from "./types.ts"; // explicit extension so node --test can load this file
 
 export function lineAmount(line: LineItemInput): number {
   return Math.max(0, Math.round(line.qty) * Math.max(0, Math.round(line.unitCents)));

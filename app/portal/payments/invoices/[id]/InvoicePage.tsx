@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { InvoiceDetail } from "invoicing/ui";
 import type { Invoice, OrgSettings, ReminderSettings, RecordPaymentInput, UpdateInvoiceInput } from "invoicing";
-import { olbInvoicePaths } from "../../../../../lib/invoicing/adapter";
 import { recordInvoicePaymentAction, saveInvoiceRemindersAction, sendInvoiceAction, updateInvoiceAction } from "../../../../../lib/invoicing/actions";
 
 export function InvoicePage({

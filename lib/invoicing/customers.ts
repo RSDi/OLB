@@ -61,6 +61,12 @@ export async function hostedEventCustomers(weekendId: string): Promise<EventCust
   }
 
   return [...byKey.values()]
-    .map(({ opponentIds: _o, ...c }) => c)
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      emails: row.emails,
+      teamCount: row.teamCount,
+      divisions: row.divisions,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }

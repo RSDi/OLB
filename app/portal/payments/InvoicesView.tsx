@@ -2,7 +2,7 @@
 
 import { InvoicesList } from "invoicing/ui";
 import type { Invoice } from "invoicing";
-import { olbInvoicePaths } from "../../../lib/invoicing/adapter";
+import { olbInvoicePaths } from "../../../lib/invoicing/paths";
 
 export function InvoicesView({ invoices, today, canInvoice }: { invoices: Invoice[]; today: string; canInvoice: boolean }) {
   return (

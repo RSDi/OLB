@@ -194,6 +194,8 @@ export const RESERVED_SLUGS = [
   // Game-film uploader (0142): /film landing and /t/<team> upload pages.
   "film",
   "t",
+  // Public invoice page (0152): /invoice/<token>.
+  "invoice",
 ];
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

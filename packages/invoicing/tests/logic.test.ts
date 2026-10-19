@@ -24,7 +24,7 @@ function inv(extra: Partial<Invoice> & { lines: LineItem[]; payments?: Payment[]
     dueOn: extra.dueOn ?? "2026-11-01",
     depositCents: extra.depositCents ?? 0,
     depositDueOn: extra.depositDueOn ?? null,
-    sentAt: extra.sentAt ?? "2026-10-05T12:00:00Z",
+    sentAt: extra.sentAt !== undefined ? extra.sentAt : "2026-10-05T12:00:00Z",
     viewedAt: extra.viewedAt ?? null,
     publicToken: extra.publicToken ?? "tok",
     createdBy: null,

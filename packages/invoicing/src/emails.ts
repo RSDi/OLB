@@ -1,8 +1,8 @@
 // Invoice and reminder email bodies. The host sends them through the adapter.
 
-import type { Branding, OrgSettings } from "./adapter";
-import { computeInvoice, formatDay, formatMoney, payNowCents } from "./logic";
-import type { Invoice } from "./types";
+import type { Branding, OrgSettings } from "./adapter.ts";
+import { computeInvoice, formatDay, formatMoney, payNowCents } from "./logic.ts";
+import type { Invoice } from "./types.ts";
 
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -72,7 +72,7 @@ export function invoiceEmailContent(
   <p><a href="${esc(publicUrl)}">View this invoice</a></p>
 </div>`;
 
-  return { subject: `Invoice ${invoice.number} — ${invoice.customerName}`, text, html };
+  return { subject, text, html };
 }
 
 export function reminderEmailContent(

@@ -10,7 +10,10 @@ import { invoiceMailFrom, sendInvoiceEmail } from "./mail";
 import { hostedEventCustomers } from "./customers";
 import { syncHostedInvoiceSteps } from "./hosted-sync";
 import { getPreview } from "../activity/preview";
+import { olbInvoicePaths } from "./paths";
 import type { InvoicingAdapter } from "invoicing";
+
+export { olbInvoicePaths } from "./paths";
 
 function siteUrl(): string {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
@@ -18,15 +21,6 @@ function siteUrl(): string {
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
 }
-
-export const olbInvoicePaths = {
-  list: "/portal/payments?tab=invoices",
-  detail: (id: string) => `/portal/payments/invoices/${id}`,
-  event: (eventId: string) => `/portal/payments/invoices/event/${eventId}`,
-  create: "/portal/payments/invoices/new",
-  publicInvoice: (token: string) => `/invoice/${token}`,
-  hostedChecklist: (eventId: string) => `/portal/schedule/hosted/${eventId}`,
-};
 
 export function olbInvoicingAdapter(): InvoicingAdapter {
   return {

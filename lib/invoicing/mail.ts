@@ -2,7 +2,7 @@
 // is config (MAIL_FROM / INVOICE_MAIL_FROM); reply-to is the club Gmail.
 // Non-production never emails real programs: INVOICE_TEST_EMAIL or log only.
 
-import { mailFrom, mailReplyTo } from "../notifications/mail";
+import { mailFrom, mailReplyTo } from "../notifications/mail.ts";
 import type { InvoiceEmail } from "invoicing";
 
 const RESEND = "https://api.resend.com/emails";
