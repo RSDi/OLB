@@ -110,7 +110,8 @@ export async function requireSettingsUndelete(): Promise<GateResult> {
   return { userId: caller.userId };
 }
 
-// Invoicing (0152): send, record, and remind. Treasurer / President / AD.
+// Invoicing (0152): send, record, and remind. Treasurer / President / AD
+// access profiles, plus super_admin.
 export async function requireInvoicing(): Promise<GateResult> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };

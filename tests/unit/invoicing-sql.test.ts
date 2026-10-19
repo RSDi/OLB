@@ -48,6 +48,14 @@ test("0152 inv_next_number requires invoicing and access-profile grant is guarde
   assert.match(moduleSchema, /if not coalesce\(public\.inv_can_invoice\(\), false\)/);
 });
 
+test("0152 grants invoicing on Treasurer/President/AD profiles, not per person", () => {
+  assert.match(migration, /update public\.access_profiles/);
+  assert.match(migration, /lower\(btrim\(name\)\) in \('treasurer', 'president', 'athletic director'\)/);
+  assert.match(migration, /as \$\$ select public\.has_permission\('invoicing'\) \$\$/);
+  assert.doesNotMatch(migration, /extra_permissions/);
+  assert.doesNotMatch(migration, /planning_roles/);
+});
+
 test("0152 checklist sort_order shift is skipped when bill_programs already exists", () => {
   assert.match(migration, /if exists \(/);
   assert.match(migration, /s\.step_key = 'bill_programs'/);

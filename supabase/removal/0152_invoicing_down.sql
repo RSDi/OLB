@@ -1,5 +1,5 @@
 -- Undo 0152 invoicing. Drops module tables and OLB helpers. Does not remove
--- the invoicing key from access_profiles / extra_permissions (harmless leftover).
+-- the invoicing key from access_profiles (harmless leftover).
 
 begin;
 

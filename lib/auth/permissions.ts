@@ -184,10 +184,12 @@ export const canViewFilm = (m: MemberLike | null | undefined) =>
   hasPermission(m, "film_view") || canManageFilm(m);
 
 // Invoicing other programs (0152). Send/record/remind: the invoicing
-// permission (Treasurer, President, Athletic Director). Viewing the list:
-// that, plus the board, Payments, and See club finances. Mirrors
-// public.can_manage_invoicing() / public.can_view_invoices().
-export const canManageInvoicing = (m: MemberLike | null | undefined) => hasPermission(m, "invoicing");
+// permission on the Treasurer, President, and Athletic Director access
+// profiles (whoever holds the role next gets it), plus super_admin.
+// Viewing the list: that, plus the board, Payments, and See club finances.
+// Mirrors public.can_manage_invoicing() / public.can_view_invoices().
+export const canManageInvoicing = (m: MemberLike | null | undefined) =>
+  isSuperAdmin(m) || hasPermission(m, "invoicing");
 export const canViewInvoices = (m: MemberLike | null | undefined) =>
   isStaff(m) || hasPermission(m, "invoicing") || canManageFinances(m) || hasPermission(m, "finances_view");
 // Slack Approve on Film: Teams & volunteers, or Game film (manage). Super-admins

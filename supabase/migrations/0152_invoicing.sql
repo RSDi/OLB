@@ -232,6 +232,7 @@ end $$;
 
 -- ─── OLB permission helpers ─────────────────────────────────────────────────
 
+-- Super-admins included: has_permission is true when role = super_admin.
 create or replace function public.can_manage_invoicing()
 returns boolean language sql stable security definer set search_path = public
 as $$ select public.has_permission('invoicing') $$;
@@ -258,27 +259,16 @@ grant execute on function public.can_manage_invoicing() to authenticated, servic
 revoke all on function public.can_view_invoices() from public, anon;
 grant execute on function public.can_view_invoices() to authenticated, service_role;
 
--- Treasurer, President, Athletic Director: access profiles with those names,
--- plus whoever currently holds those planning roles.
+-- Treasurer, President, Athletic Director: invoicing lives on those access
+-- profiles so whoever is put on the role next gets it. Super-admins hold
+-- every permission via has_permission (role = super_admin). Do not stamp
+-- extras on the people who happen to hold the planning roles today.
 update public.access_profiles
 set permissions = (
   select array(select distinct x from unnest(coalesce(permissions, '{}'::text[]) || array['invoicing']::text[]) as x)
 )
 where lower(btrim(name)) in ('treasurer', 'president', 'athletic director')
   and not ('invoicing' = any (coalesce(permissions, '{}'::text[])));
-
-update public.members m
-set extra_permissions = (
-  select array(select distinct x from unnest(coalesce(m.extra_permissions, '{}'::text[]) || array['invoicing']::text[]) as x)
-)
-where m.deleted_at is null
-  and m.id in (
-    select r.member_id from public.planning_roles r
-    where r.deleted_at is null
-      and r.member_id is not null
-      and r.seed_key in ('role:treasurer', 'role:president', 'role:athletic_director')
-  )
-  and not ('invoicing' = any (coalesce(m.extra_permissions, '{}'::text[])));
 
 -- ─── Hosting checklist keys (host table, not the module) ────────────────────
 

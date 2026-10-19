@@ -30,3 +30,15 @@ test("invoicing sends; board/payments/finances_view may only view", () => {
   assert.equal(hasPermission({ role: "super_admin", status: "approved" }, "invoicing"), true);
   assert.equal(canManageInvoicing({ role: "super_admin", status: "approved" }), true);
 });
+
+test("invoicing follows Treasurer/President/Athletic Director and super_admin", () => {
+  // Access-profile holders get "invoicing" in their computed permissions.
+  // The key lives on the profile, not as a per-person extra.
+  for (const role of ["Treasurer", "President", "Athletic Director"]) {
+    assert.equal(canManageInvoicing(approved(["invoicing"])), true, role);
+  }
+  assert.equal(canManageInvoicing({ role: "super_admin", status: "approved", permissions: [] }), true);
+  assert.equal(canManageInvoicing({ role: "super_admin", status: "pending" }), false);
+  assert.equal(canManageInvoicing({ role: "admin", status: "approved", permissions: [] }), false);
+  assert.equal(canManageInvoicing(approved([])), false);
+});
