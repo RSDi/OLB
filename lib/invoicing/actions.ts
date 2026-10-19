@@ -12,6 +12,7 @@ import {
 } from "invoicing";
 import { requireInvoiceView, requireInvoicing } from "../auth/guards";
 import { olbInvoicingAdapter, olbInvoicePaths } from "./adapter";
+import { hostedEventCustomers } from "./customers";
 
 function svc() {
   return createInvoicingService(olbInvoicingAdapter());
@@ -36,6 +37,18 @@ export async function getInvoiceAction(id: string) {
   const gate = await requireInvoiceView();
   if ("error" in gate) return { ok: false as const, error: gate.error };
   return svc().get(id);
+}
+
+export async function listInvoiceEventCustomersAction(eventId: string) {
+  const gate = await requireInvoicing();
+  if ("error" in gate) return { error: gate.error };
+  if (!/^[0-9a-f-]{36}$/i.test(eventId)) return { error: "Pick an event." };
+  try {
+    const customers = await hostedEventCustomers(eventId);
+    return { customers };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Couldn't load programs." };
+  }
 }
 
 export async function createInvoiceAction(input: CreateInvoiceInput) {
