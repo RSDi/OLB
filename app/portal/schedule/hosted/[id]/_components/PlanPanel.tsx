@@ -60,10 +60,19 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
             </div>
             {rows.map((s) => {
               const late = !s.done_on && s.due_on && s.due_on < today;
-              const auto = s.step_key === "invoices_sent" || s.step_key === "team_fees_collected";
+              const auto = s.step_key === "bill_programs" || s.step_key === "invoices_sent" || s.step_key === "team_fees_collected";
               const billing = data.billing;
               const hl = s.step_key === "bill_programs" || s.step_key === "invoices_sent" || s.step_key === "team_fees_collected";
-              const checked = s.step_key === "invoices_sent" ? !!billing?.allSent : s.step_key === "team_fees_collected" ? !!billing?.allCollected : !!s.done_on;
+              const checked =
+                !billing?.canView
+                  ? !!s.done_on
+                  : s.step_key === "bill_programs"
+                    ? !!billing.billed
+                    : s.step_key === "invoices_sent"
+                      ? !!billing.allSent
+                      : s.step_key === "team_fees_collected"
+                        ? !!billing.allCollected
+                        : !!s.done_on;
               return (
                 <div
                   key={s.id}
@@ -95,8 +104,10 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                       <>
                         <small style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
                           {data.plan.team_fee_cents ? `${money(data.plan.team_fee_cents)}/team` : "Set the team fee in Details"}
-                          {billing.billed ? ` · ${billing.sentCount} invoices in Finances` : " · not billed yet"}
+                          {billing.canView && billing.depositPerTeamCents > 0 ? ` · ${money(billing.depositPerTeamCents)}/team deposit` : ""}
+                          {billing.canView ? (billing.billed ? ` · ${billing.invoiceCount} invoices in Finances` : " · not billed yet") : ""}
                         </small>
+                        {billing.billed && billing.canView && <span style={{ color: "#065f46", fontWeight: 800, fontSize: 12 }}>✓ Auto-checked</span>}
                         {billing.canInvoice && (
                           <a href={`/portal/schedule/hosted/${wid}/bill`} className="rsd-btn" style={{ alignSelf: "flex-start", minHeight: 36, padding: "0 12px", borderRadius: 100, background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)", fontWeight: 700, fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
                             Bill programs → Finance
@@ -104,25 +115,25 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                         )}
                       </>
                     )}
-                    {s.step_key === "invoices_sent" && billing && (
+                    {s.step_key === "invoices_sent" && billing && billing.canView && (
                       <small style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, display: "flex", flexDirection: "column", gap: 4 }}>
                         {billing.allSent ? <span style={{ color: "#065f46", fontWeight: 800 }}>✓ Auto-checked</span> : <span>Checks itself when all {billing.programCount} are sent</span>}
                         <b style={{ color: "var(--gw-fg)" }}>
                           {billing.sentCount} of {billing.programCount} sent
                         </b>
                         <span style={{ height: 8, borderRadius: 100, background: "#fff", border: "1px solid var(--gw-border)", overflow: "hidden", display: "block" }}>
-                          <i style={{ display: "block", height: "100%", width: `${billing.programCount ? (billing.sentCount / billing.programCount) * 100 : 0}%`, background: "var(--gw-ink)" }} />
+                          <i style={{ display: "block", height: "100%", width: `${Math.min(100, billing.programCount ? (billing.sentCount / billing.programCount) * 100 : 0)}%`, background: "var(--gw-ink)" }} />
                         </span>
                       </small>
                     )}
-                    {s.step_key === "team_fees_collected" && billing && (
+                    {s.step_key === "team_fees_collected" && billing && billing.canView && (
                       <small style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, display: "flex", flexDirection: "column", gap: 4 }}>
                         {billing.allCollected ? <span style={{ color: "#065f46", fontWeight: 800 }}>✓ Auto-checked</span> : <span>Checks itself when everything is collected</span>}
                         <b style={{ color: "var(--gw-fg)" }}>
-                          {money(billing.collectedCents)} of {money(billing.billedCents || 0)} collected
+                          {billing.billed ? `${money(billing.collectedCents)} of ${money(billing.billedCents || 0)} collected` : "Not billed yet"}
                         </b>
                         <span style={{ height: 8, borderRadius: 100, background: "#fff", border: "1px solid var(--gw-border)", overflow: "hidden", display: "block" }}>
-                          <i style={{ display: "block", height: "100%", width: `${billing.billedCents ? (billing.collectedCents / billing.billedCents) * 100 : 0}%`, background: "var(--gw-ink)" }} />
+                          <i style={{ display: "block", height: "100%", width: `${Math.min(100, billing.billedCents ? (billing.collectedCents / billing.billedCents) * 100 : 0)}%`, background: "var(--gw-ink)" }} />
                         </span>
                         {billing.billed && (
                           <a href={`/portal/payments/invoices/event/${wid}`} style={{ fontWeight: 800, fontSize: 13, color: "var(--gw-fg)", textUnderlineOffset: 3 }}>

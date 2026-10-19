@@ -5,6 +5,8 @@
 --
 -- Until those helpers exist, the stubs below return false so a half-applied
 -- schema stays closed. Hosts REPLACE them.
+-- Do not re-apply this file after the host overlay (OLB: 0152): it would
+-- replace inv_can_invoice() / inv_can_view_invoices() with these stubs.
 
 create table if not exists public.inv_invoices (
   id               uuid primary key default gen_random_uuid(),
@@ -20,8 +22,14 @@ create table if not exists public.inv_invoices (
   deposit_due_on   date,
   sent_at          timestamptz,
   viewed_at        timestamptz,
+  voided_at        timestamptz,
   public_token     uuid not null unique default gen_random_uuid(),
   created_by       text,
+  cc_emails        text[],
+  bcc_emails       text[],
+  reminder_freq    text check (reminder_freq is null or reminder_freq in ('off', '3d', 'weekly', '2w')),
+  reminder_start_days int check (reminder_start_days is null or reminder_start_days in (3, 5, 7, 14)),
+  reminder_until_paid boolean,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
@@ -59,6 +67,8 @@ create table if not exists public.inv_reminder_settings (
   freq        text not null default '3d' check (freq in ('off', '3d', 'weekly', '2w')),
   start_days  int not null default 7 check (start_days in (3, 5, 7, 14)),
   until_paid  boolean not null default true,
+  cc_emails   text[] not null default '{}',
+  bcc_emails  text[] not null default '{}',
   updated_by  text,
   updated_at  timestamptz not null default now()
 );
@@ -89,6 +99,9 @@ as $$
 declare
   n int;
 begin
+  if not coalesce(public.inv_can_invoice(), false) then
+    raise exception 'forbidden';
+  end if;
   insert into public.inv_sequences (year, last_n) values (p_year, 1)
   on conflict (year) do update set last_n = public.inv_sequences.last_n + 1
   returning last_n into n;

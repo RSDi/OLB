@@ -216,9 +216,11 @@ export async function updateStep(
   if (patch.done !== undefined) {
     const { data: existing } = await g.db.from("hs_hosted_steps").select("step_key").eq("id", id).eq("weekend_id", weekendId).maybeSingle();
     const auto = (existing as { step_key: string | null } | null)?.step_key;
-    if (auto !== "invoices_sent" && auto !== "team_fees_collected") {
+    if (auto !== "invoices_sent" && auto !== "team_fees_collected" && auto !== "bill_programs") {
       row.done_on = patch.done ? new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" }) : null;
       row.done_by = patch.done ? g.userId : null;
+    } else {
+      return { notice: "This step checks itself from invoices." };
     }
   }
   if (patch.note !== undefined) row.note = longText(patch.note, 1000);

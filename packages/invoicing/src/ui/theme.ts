@@ -71,6 +71,8 @@ export function statusColors(status: string): { bg: string; fg: string } {
       return { bg: "#ede9fe", fg: "#5b21b6" };
     case "Sent":
       return { bg: "#dbeafe", fg: "#1e40af" };
+    case "Void":
+      return { bg: "#e5e7eb", fg: "#4b5563" };
     default:
       return { bg: "#f3f4f6", fg: "#374151" };
   }

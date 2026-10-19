@@ -2,8 +2,17 @@
 // never names host tables.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { DEFAULT_REMINDERS, type Invoice, type LineItemInput, type Payment, type PaymentMethod, type ReminderSettings } from "./types.ts";
-import { normalizeReminders } from "./logic.ts";
+import {
+  DEFAULT_CLUB_SETTINGS,
+  type Invoice,
+  type InvoiceClubSettings,
+  type LineItemInput,
+  type Payment,
+  type PaymentMethod,
+  type ReminderFreq,
+  type ReminderSettings,
+} from "./types.ts";
+import { normalizeClubSettings, normalizeReminders } from "./logic.ts";
 
 type Db = SupabaseClient;
 
@@ -21,10 +30,16 @@ interface InvoiceRow {
   deposit_due_on: string | null;
   sent_at: string | null;
   viewed_at: string | null;
+  voided_at: string | null;
   public_token: string;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  cc_emails: string[] | null;
+  bcc_emails: string[] | null;
+  reminder_freq: ReminderFreq | null;
+  reminder_start_days: number | null;
+  reminder_until_paid: boolean | null;
 }
 
 interface LineRow {
@@ -66,10 +81,16 @@ function mapInvoice(row: InvoiceRow, lines: LineRow[], pays: PayRow[]): Invoice 
     depositDueOn: row.deposit_due_on,
     sentAt: row.sent_at,
     viewedAt: row.viewed_at,
+    voidedAt: row.voided_at ?? null,
     publicToken: row.public_token,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    ccEmails: row.cc_emails ?? null,
+    bccEmails: row.bcc_emails ?? null,
+    reminderFreq: row.reminder_freq ?? null,
+    reminderStartDays: row.reminder_start_days ?? null,
+    reminderUntilPaid: row.reminder_until_paid ?? null,
     lines: mine.map((l) => ({
       id: l.id,
       description: l.description,
@@ -155,6 +176,8 @@ export async function insertInvoice(
     depositCents: number;
     depositDueOn: string | null;
     createdBy: string | null;
+    ccEmails?: string[] | null;
+    bccEmails?: string[] | null;
     lines: LineItemInput[];
   }
 ): Promise<Invoice> {
@@ -171,6 +194,8 @@ export async function insertInvoice(
       deposit_cents: input.depositCents,
       deposit_due_on: input.depositDueOn,
       created_by: input.createdBy,
+      cc_emails: input.ccEmails ?? null,
+      bcc_emails: input.bccEmails ?? null,
     })
     .select("*")
     .single();
@@ -207,11 +232,7 @@ export async function replaceLines(db: Db, invoiceId: string, lines: LineItemInp
   if (error) throw new Error(error.message);
 }
 
-export async function updateInvoiceRow(
-  db: Db,
-  id: string,
-  patch: Record<string, unknown>
-): Promise<void> {
+export async function updateInvoiceRow(db: Db, id: string, patch: Record<string, unknown>): Promise<void> {
   const { error } = await db.from("inv_invoices").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -232,23 +253,51 @@ export async function insertPayment(
   if (error) throw new Error(error.message);
 }
 
-export async function loadReminderSettings(db: Db): Promise<ReminderSettings> {
-  const { data, error } = await db.from("inv_reminder_settings").select("freq, start_days, until_paid").eq("id", 1).maybeSingle();
-  if (error || !data) return DEFAULT_REMINDERS;
-  const row = data as { freq: string; start_days: number; until_paid: boolean };
-  return normalizeReminders({ freq: row.freq as ReminderSettings["freq"], startDays: row.start_days, untilPaid: row.until_paid });
+export async function loadInvoiceSettings(db: Db): Promise<InvoiceClubSettings> {
+  const { data, error } = await db
+    .from("inv_reminder_settings")
+    .select("freq, start_days, until_paid, cc_emails, bcc_emails")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error || !data) return DEFAULT_CLUB_SETTINGS;
+  const row = data as {
+    freq: string;
+    start_days: number;
+    until_paid: boolean;
+    cc_emails?: string[] | null;
+    bcc_emails?: string[] | null;
+  };
+  return normalizeClubSettings({
+    freq: row.freq as ReminderSettings["freq"],
+    startDays: row.start_days,
+    untilPaid: row.until_paid,
+    ccEmails: row.cc_emails ?? [],
+    bccEmails: row.bcc_emails ?? [],
+  });
 }
 
-export async function saveReminderSettingsRow(db: Db, settings: ReminderSettings, updatedBy: string | null): Promise<void> {
+export async function loadReminderSettings(db: Db): Promise<ReminderSettings> {
+  const s = await loadInvoiceSettings(db);
+  return { freq: s.freq, startDays: s.startDays, untilPaid: s.untilPaid };
+}
+
+export async function saveInvoiceSettingsRow(db: Db, settings: InvoiceClubSettings, updatedBy: string | null): Promise<void> {
   const { error } = await db.from("inv_reminder_settings").upsert({
     id: 1,
     freq: settings.freq,
     start_days: settings.startDays,
     until_paid: settings.untilPaid,
+    cc_emails: settings.ccEmails,
+    bcc_emails: settings.bccEmails,
     updated_by: updatedBy,
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(error.message);
+}
+
+export async function saveReminderSettingsRow(db: Db, settings: ReminderSettings, updatedBy: string | null): Promise<void> {
+  const current = await loadInvoiceSettings(db);
+  await saveInvoiceSettingsRow(db, { ...current, ...normalizeReminders(settings) }, updatedBy);
 }
 
 export async function reminderSendDates(db: Db, invoiceId: string): Promise<string[]> {

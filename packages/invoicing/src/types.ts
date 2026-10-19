@@ -2,7 +2,7 @@
 // are referenced only as opaque string ids — never as foreign keys to host
 // tables.
 
-export type InvoiceStatus = "Draft" | "Sent" | "Viewed" | "Partial" | "Paid" | "Overdue";
+export type InvoiceStatus = "Draft" | "Sent" | "Viewed" | "Partial" | "Paid" | "Overdue" | "Void";
 export type PaymentMethod = "venmo" | "check";
 export type ReminderFreq = "off" | "3d" | "weekly" | "2w";
 
@@ -41,10 +41,17 @@ export interface Invoice {
   depositDueOn: string | null;
   sentAt: string | null;
   viewedAt: string | null;
+  voidedAt: string | null;
   publicToken: string;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  /** null = use club default. Empty array = no CC for this invoice. */
+  ccEmails: string[] | null;
+  bccEmails: string[] | null;
+  reminderFreq: ReminderFreq | null;
+  reminderStartDays: number | null;
+  reminderUntilPaid: boolean | null;
   lines: LineItem[];
   payments: Payment[];
 }
@@ -65,7 +72,14 @@ export interface ReminderSettings {
   untilPaid: boolean;
 }
 
+/** Club-wide invoicing settings: reminder cadence plus optional CC/BCC. Never seeded with addresses. */
+export interface InvoiceClubSettings extends ReminderSettings {
+  ccEmails: string[];
+  bccEmails: string[];
+}
+
 export const DEFAULT_REMINDERS: ReminderSettings = { freq: "3d", startDays: 7, untilPaid: true };
+export const DEFAULT_CLUB_SETTINGS: InvoiceClubSettings = { ...DEFAULT_REMINDERS, ccEmails: [], bccEmails: [] };
 
 export interface EventCollection {
   eventId: string;
@@ -75,6 +89,7 @@ export interface EventCollection {
   sentCount: number;
   paidCount: number;
   depositPaidCount: number;
+  depositInvoiceCount: number;
   teamCount: number;
   allSent: boolean;
   allCollected: boolean;
@@ -88,10 +103,9 @@ export interface EventCustomer {
   divisions?: string;
 }
 
+/** Browser may send only id + teamCount. Name and emails come from the host adapter. */
 export interface BatchCustomerInput {
   id: string;
-  name: string;
-  emails: string[];
   teamCount: number;
 }
 
@@ -105,6 +119,9 @@ export interface BatchInput {
   depositDueOn: string | null;
   lineDescription: string;
   customers: BatchCustomerInput[];
+  /** null/undefined = club default. Empty = none. */
+  ccEmails?: string[] | null;
+  bccEmails?: string[] | null;
 }
 
 export interface CreateInvoiceInput {
@@ -116,6 +133,8 @@ export interface CreateInvoiceInput {
   dueOn: string;
   depositCents?: number;
   depositDueOn?: string | null;
+  ccEmails?: string[] | null;
+  bccEmails?: string[] | null;
   lines: LineItemInput[];
 }
 
@@ -126,6 +145,11 @@ export interface UpdateInvoiceInput {
   dueOn?: string;
   depositCents?: number;
   depositDueOn?: string | null;
+  ccEmails?: string[] | null;
+  bccEmails?: string[] | null;
+  reminderFreq?: ReminderFreq | null;
+  reminderStartDays?: number | null;
+  reminderUntilPaid?: boolean | null;
   lines?: LineItemInput[];
 }
 
@@ -138,11 +162,15 @@ export interface RecordPaymentInput {
 
 export interface InvoiceEmail {
   to: string[];
+  cc?: string[];
+  bcc?: string[];
   subject: string;
   text: string;
   html: string;
   kind: "invoice" | "reminder";
   invoiceId: string;
 }
+
+export type MailSendResult = { ok: boolean; error?: string; logged?: boolean };
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };

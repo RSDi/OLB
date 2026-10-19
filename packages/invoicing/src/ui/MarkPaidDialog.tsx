@@ -97,6 +97,9 @@ export function MarkPaidDialog({
           />
         </Field>
         <div style={{ fontSize: 13, color: t.muted, fontWeight: 600 }}>{afterLabel}</div>
+        {cents > totals.balanceCents && (
+          <div style={{ fontSize: 13, fontWeight: 700, color: t.error }}>This is more than the balance ({formatMoney(totals.balanceCents)}). You can still record it.</div>
+        )}
         {error && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{error}</div>}
         <div style={{ display: "flex", gap: 8 }}>
           <Btn kind="ghost" onClick={onClose} disabled={busy}>

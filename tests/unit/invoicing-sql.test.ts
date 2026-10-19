@@ -42,6 +42,24 @@ test("0152 copies the module schema and overlays OLB permission helpers", () => 
   assert.doesNotMatch(migration, /references public\.(hs_weekends|hs_hosted|olb_|members)/i);
 });
 
+test("0152 inv_next_number requires invoicing and access-profile grant is guarded", () => {
+  assert.match(migration, /if not coalesce\(public\.inv_can_invoice\(\), false\)/);
+  assert.match(migration, /and not \('invoicing' = any \(coalesce\(permissions/);
+  assert.match(moduleSchema, /if not coalesce\(public\.inv_can_invoice\(\), false\)/);
+});
+
+test("0152 checklist sort_order shift is skipped when bill_programs already exists", () => {
+  assert.match(migration, /if exists \(/);
+  assert.match(migration, /s\.step_key = 'bill_programs'/);
+  assert.match(migration, /continue;/);
+});
+
+test("0152 never seeds CC\/BCC addresses", () => {
+  assert.doesNotMatch(migration, /lightningbasketballomaha@gmail\.com/i);
+  assert.match(migration, /cc_emails\s+text\[\] not null default '\{\}'/);
+  assert.match(migration, /bcc_emails\s+text\[\] not null default '\{\}'/);
+});
+
 test("0152 RLS wraps helper calls in (select …)", () => {
   assert.ok(migration.includes("using ((select public.inv_can_view_invoices()))"));
   assert.ok(migration.includes("using ((select public.inv_can_invoice()))"));

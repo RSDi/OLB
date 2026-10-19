@@ -157,10 +157,10 @@ const CONTRACT: Record<string, string> = {
   hs_hosted_messages: "id,weekend_id,subject,body,sent_to,sent_count,sent_by,sent_at",
   // Inter-program invoicing (0152). Opaque host ids; no FKs to OLB tables.
   inv_invoices:
-    "id,number,host_event_id,host_customer_id,customer_name,customer_email,event_label,issued_on,due_on,deposit_cents,deposit_due_on,sent_at,viewed_at,public_token,created_by,created_at,updated_at",
+    "id,number,host_event_id,host_customer_id,customer_name,customer_email,event_label,issued_on,due_on,deposit_cents,deposit_due_on,sent_at,viewed_at,voided_at,public_token,created_by,cc_emails,bcc_emails,reminder_freq,reminder_start_days,reminder_until_paid,created_at,updated_at",
   inv_line_items: "id,invoice_id,description,qty,unit_cents,sort_order",
   inv_payments: "id,invoice_id,method,amount_cents,paid_on,reference,recorded_by,created_at",
-  inv_reminder_settings: "id,freq,start_days,until_paid,updated_by,updated_at",
+  inv_reminder_settings: "id,freq,start_days,until_paid,cc_emails,bcc_emails,updated_by,updated_at",
   inv_reminder_sends: "id,invoice_id,sent_on,status,error,created_at",
   inv_sequences: "year,last_n",
   // Roadmap (0129, 0136, 0139).

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getViewer } from "../../../../../lib/auth/viewer";
 import { createClient } from "../../../../../lib/supabase/server";
+import { createAdminClient } from "../../../../../lib/supabase/admin";
 import { churchToday } from "../../../../../lib/dates/today";
 import { viewerHsScheduleAccess } from "../../../../../lib/hs-schedule/viewer";
 import { loadHostedPage } from "../../../../../lib/hosted/data";
@@ -27,18 +28,19 @@ export default async function HostedTournamentPage({
   const { tab } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const access = await viewerHsScheduleAccess(viewer);
-  if (access !== "edit") {
+  if (access !== "edit" && !viewer.canManageInvoicing) {
     return (
       <Note title="Tournament planning is for coaches and the board">
         It&apos;s planned from the HS Schedule. If you help run the tournament and can&apos;t see it, ask the board.
       </Note>
     );
   }
-  const supabase = await createClient();
+  const supabase = access === "edit" ? await createClient() : createAdminClient();
   const loaded = await loadHostedPage(supabase, id, {
     canViewFinances: viewer.canViewFinances,
     canManageFinances: viewer.canManageFinances,
     canManageInvoicing: viewer.canManageInvoicing,
+    canViewInvoices: viewer.canViewInvoices,
   });
   if (loaded.kind === "missing") notFound();
   if (loaded.kind === "migration") {

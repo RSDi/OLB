@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatDay, formatMoney, reminderCopy } from "../logic";
-import type { BatchCustomerInput, BatchInput, ReminderSettings } from "../types";
+import type { BatchInput, EventCustomer, ReminderSettings } from "../types";
 import { ActionBtn, Btn, Card, Field, inputStyle, LockNote } from "./parts";
 import { t } from "./theme";
 
@@ -17,6 +17,8 @@ export function BatchBilling({
   depositDueOn,
   canInvoice,
   reminders,
+  clubCc = [],
+  clubBcc = [],
   fromEmail,
   backHref,
   onSubmit,
@@ -24,13 +26,15 @@ export function BatchBilling({
   eventId: string;
   eventLabel: string;
   feeCents: number;
-  customers: BatchCustomerInput[];
+  customers: EventCustomer[];
   dueOn: string;
   depositOn: boolean;
   depositPerTeamCents: number;
   depositDueOn: string;
   canInvoice: boolean;
   reminders: ReminderSettings;
+  clubCc?: string[];
+  clubBcc?: string[];
   fromEmail: string;
   backHref: string;
   onSubmit: (input: BatchInput, send: boolean) => Promise<{ error?: string } | void>;
@@ -45,6 +49,9 @@ export function BatchBilling({
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [overrideCopy, setOverrideCopy] = useState(false);
+  const [cc, setCc] = useState(clubCc.join(", "));
+  const [bcc, setBcc] = useState(clubBcc.join(", "));
 
   const depCents = Math.round((parseFloat(dep.replace(/[$,]/g, "")) || 0) * 100);
   const teams = counts.reduce((s, n) => s + n, 0);
@@ -62,7 +69,9 @@ export function BatchBilling({
       depositPerTeamCents: depCents,
       depositDueOn: depOn ? depDue : null,
       lineDescription: `Team fee · ${eventLabel}`,
-      customers: customers.map((c, i) => ({ ...c, teamCount: counts[i] })),
+      customers: customers.map((c, i) => ({ id: c.id, teamCount: counts[i] })),
+      ccEmails: overrideCopy ? cc.split(/[,;]+/).map((s) => s.trim()).filter(Boolean) : null,
+      bccEmails: overrideCopy ? bcc.split(/[,;]+/).map((s) => s.trim()).filter(Boolean) : null,
     };
   }
 
@@ -156,7 +165,7 @@ export function BatchBilling({
             <span style={{ minWidth: 0 }}>
               <b style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</b>
               <small style={{ color: t.muted, fontSize: 12 }}>
-                {p.emails[0] || "No email"}
+                {p.emails.length ? p.emails.join(", ") : "No email"}
                 {counts[i] !== orig[i] ? ` · was ${orig[i]}` : ""}
               </small>
             </span>
@@ -182,13 +191,44 @@ export function BatchBilling({
             </span>
           </div>
         ))}
-        <div style={{ display: "flex", justifyContent: "space-between", padding: 14, fontWeight: 900, fontSize: 15 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "14px 14px 6px", fontWeight: 900, fontSize: 15 }}>
           <span>
             {billed} invoices · {teams} teams
           </span>
           <span>{formatMoney(G)}</span>
         </div>
+        <div style={{ padding: "0 14px 14px", fontSize: 13, fontWeight: 700, color: t.muted, display: "flex", flexDirection: "column", gap: 2 }}>
+          {depOn ? (
+            <>
+              <span>
+                Deposits due {formatDay(depDue)}: {formatMoney(DP)}
+              </span>
+              <span>
+                Balance due {formatDay(due)}: {formatMoney(G - DP)}
+              </span>
+            </>
+          ) : (
+            <span>Balance due {formatDay(due)}: {formatMoney(G)}</span>
+          )}
+        </div>
       </div>
+      <Card>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
+          <input type="checkbox" checked={overrideCopy} disabled={!canInvoice} onChange={(e) => setOverrideCopy(e.target.checked)} />
+          Override CC/BCC for this batch
+        </label>
+        <small style={{ color: t.muted }}>Club default CC: {clubCc.join(", ") || "none"} · BCC: {clubBcc.join(", ") || "none"}</small>
+        {overrideCopy && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <Field label="CC">
+              <input style={inputStyle} value={cc} disabled={!canInvoice} onChange={(e) => setCc(e.target.value)} placeholder="none" />
+            </Field>
+            <Field label="BCC">
+              <input style={inputStyle} value={bcc} disabled={!canInvoice} onChange={(e) => setBcc(e.target.value)} placeholder="none" />
+            </Field>
+          </div>
+        )}
+      </Card>
       <LockNote show={!canInvoice} />
       {error && <div style={{ color: t.error, fontWeight: 700 }}>{error}</div>}
       {canInvoice && (

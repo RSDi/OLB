@@ -55,7 +55,7 @@ export type HostedLoad =
 export async function loadHostedPage(
   supabase: SupabaseClient,
   weekendId: string,
-  viewer: { canViewFinances: boolean; canManageFinances: boolean; canManageInvoicing?: boolean }
+  viewer: { canViewFinances: boolean; canManageFinances: boolean; canManageInvoicing?: boolean; canViewInvoices?: boolean }
 ): Promise<HostedLoad> {
   const { data: w } = await supabase
     .from("hs_weekends")
@@ -112,7 +112,7 @@ export async function loadHostedPage(
   ]);
 
   const finance = viewer.canViewFinances || viewer.canManageFinances ? await loadFinance(plan, weekend, viewer.canManageFinances).catch(() => null) : null;
-  const billing = await loadBilling(weekendId, programs.length, !!viewer.canManageInvoicing);
+  const billing = await loadBilling(supabase, weekendId, programs.length, plan.team_fee_cents, !!viewer.canManageInvoicing, !!viewer.canViewInvoices);
 
   return {
     kind: "ok",
@@ -120,32 +120,52 @@ export async function loadHostedPage(
   };
 }
 
-async function loadBilling(weekendId: string, programCount: number, canInvoice: boolean): Promise<HostedPageData["billing"]> {
+async function loadBilling(
+  supabase: SupabaseClient,
+  weekendId: string,
+  programCount: number,
+  feeCents: number | null,
+  canInvoice: boolean,
+  canView: boolean
+): Promise<HostedPageData["billing"]> {
+  const empty: NonNullable<HostedPageData["billing"]> = {
+    canInvoice,
+    canView,
+    billed: false,
+    sentCount: 0,
+    invoiceCount: 0,
+    programCount,
+    allSent: false,
+    collectedCents: 0,
+    billedCents: 0,
+    allCollected: false,
+    depositPerTeamCents: 0,
+    feeCents,
+  };
+  if (!canView) return empty;
   try {
-    const invoices = await listInvoices(createAdminClient(), weekendId);
+    const invoices = await listInvoices(supabase, weekendId);
     const expected = (await hostedEventCustomers(weekendId)).filter((c) => c.teamCount > 0).length || programCount;
     const summary = eventCollection(weekendId, invoices, expected || undefined);
+    const withDeposit = invoices.filter((v) => !v.voidedAt && v.sentAt && v.depositCents > 0);
+    const teams = withDeposit.reduce((s, v) => s + v.lines.reduce((n, l) => n + Math.max(0, l.qty), 0), 0);
+    const depositPerTeamCents = teams > 0 ? Math.round(withDeposit.reduce((s, v) => s + v.depositCents, 0) / teams) : 0;
     return {
       canInvoice,
-      billed: invoices.length > 0,
+      canView,
+      billed: summary.invoiceCount > 0,
       sentCount: summary.sentCount,
+      invoiceCount: summary.invoiceCount,
       programCount: expected || programCount,
       allSent: summary.allSent,
       collectedCents: summary.collectedCents,
       billedCents: summary.billedCents,
       allCollected: summary.allCollected,
+      depositPerTeamCents,
+      feeCents,
     };
   } catch {
-    return {
-      canInvoice,
-      billed: false,
-      sentCount: 0,
-      programCount,
-      allSent: false,
-      collectedCents: 0,
-      billedCents: 0,
-      allCollected: false,
-    };
+    return empty;
   }
 }
 

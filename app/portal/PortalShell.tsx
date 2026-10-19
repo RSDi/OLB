@@ -238,8 +238,6 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       ? { title: "Invoice", subtitle: "Finances" }
       : /\/portal\/schedule\/hosted\/[^/]+\/bill$/.test(pathname)
       ? { title: "Bill programs", subtitle: "Tournament" }
-      : pathname.startsWith("/portal/schedule/hosted/")
-      ? { title: "Tournament", subtitle: "HS Schedule" }
       : pathname.startsWith("/portal/links/")
       ? { title: sidebarLinks.find(l => pathname === `/portal/links/${l.id}`)?.label ?? "Link", subtitle: "" }
       : { title: "Portal", subtitle: "" });

@@ -1,10 +1,18 @@
-// Host callback: tick "Invoices sent" and "Team fees collected" from invoice state.
+// Host callback: tick "Bill programs", "Invoices sent" and "Team fees collected"
+// from invoice state.
 
 import { churchToday } from "../dates/today";
 import { createAdminClient } from "../supabase/admin";
 import type { EventCollection } from "invoicing";
 
-const AUTO = new Set(["invoices_sent", "team_fees_collected"]);
+const AUTO = ["bill_programs", "invoices_sent", "team_fees_collected"] as const;
+
+export function autoStepDone(stepKey: string, summary: EventCollection): boolean | null {
+  if (stepKey === "bill_programs") return summary.invoiceCount > 0;
+  if (stepKey === "invoices_sent") return summary.allSent;
+  if (stepKey === "team_fees_collected") return summary.allCollected;
+  return null;
+}
 
 export async function syncHostedInvoiceSteps(summary: EventCollection): Promise<void> {
   const weekendId = summary.eventId;
@@ -18,7 +26,8 @@ export async function syncHostedInvoiceSteps(summary: EventCollection): Promise<
   if (error || !data) return;
   const today = churchToday();
   for (const row of data as { id: string; step_key: string; done_on: string | null }[]) {
-    const done = row.step_key === "invoices_sent" ? summary.allSent : summary.allCollected;
+    const done = autoStepDone(row.step_key, summary);
+    if (done == null) continue;
     if (done && !row.done_on) {
       await db.from("hs_hosted_steps").update({ done_on: today, done_by: null }).eq("id", row.id);
     } else if (!done && row.done_on) {

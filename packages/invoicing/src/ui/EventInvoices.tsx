@@ -57,7 +57,7 @@ export function EventInvoices({
         <Kpi label="Billed" value={formatMoney(T)} sub={`${summary.invoiceCount} invoices`} />
         <Kpi label="Collected" value={formatMoney(P)} sub={`${T ? Math.round((P / T) * 100) : 0}% · Venmo + checks`} />
         <Kpi label="Balance" value={formatMoney(T - P)} sub="still owed" error={T - P > 0} />
-        <Kpi label="Deposits" value={`${summary.depositPaidCount} of ${summary.invoiceCount}`} sub="paid" />
+        <Kpi label="Deposits" value={`${summary.depositPaidCount} of ${summary.depositInvoiceCount}`} sub={summary.depositInvoiceCount ? "invoices with a deposit" : "no deposits"} />
       </div>
       <Progress pct={T ? (P / T) * 100 : 0} />
       <div style={{ background: "var(--inv-elev, #fff)", border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", borderRadius: 14, overflow: "hidden" }}>

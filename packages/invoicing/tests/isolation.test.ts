@@ -20,9 +20,9 @@ function walk(dir: string): string[] {
 const IMPORT = /(?:from|import)\s+["']([^"']+)["']/g;
 const REQUIRE = /require\(\s*["']([^"']+)["']\s*\)/g;
 
-function isHostLeak(spec: string): boolean {
-  if (spec.startsWith("@/") || spec.startsWith("lib/") || spec.startsWith("app/") || spec.startsWith("tests/")) return true;
-  if (spec.includes("omaha-lightning") || spec.includes("lib/auth") || spec.includes("lib/hosted") || spec.includes("lib/invoicing")) return true;
+function isAllowed(spec: string): boolean {
+  if (spec === "react" || spec === "react-dom" || spec === "@supabase/supabase-js") return true;
+  if (spec.startsWith(".")) return true;
   return false;
 }
 
@@ -35,7 +35,7 @@ test("invoicing module core imports nothing from OLB app code", () => {
     const rel = relative(pkgRoot, file);
     for (const m of [...text.matchAll(IMPORT), ...text.matchAll(REQUIRE)]) {
       const spec = m[1];
-      if (isHostLeak(spec)) {
+      if (!isAllowed(spec)) {
         leaks.push(`${rel} imports ${spec}`);
         continue;
       }

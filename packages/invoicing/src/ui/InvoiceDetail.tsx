@@ -2,11 +2,11 @@
 
 import { useState, type CSSProperties } from "react";
 import type { InvoicingPaths, OrgSettings } from "../adapter";
-import { computeInvoice, depositPaid, formatDay, formatMoney } from "../logic";
-import type { Invoice, RecordPaymentInput, ReminderSettings } from "../types";
+import { computeInvoice, depositPaid, effectiveReminders, formatDay, formatMoney } from "../logic";
+import type { Invoice, InvoiceClubSettings, RecordPaymentInput, ReminderSettings } from "../types";
 import { MarkPaidDialog } from "./MarkPaidDialog";
 import { PayInstructions } from "./PayInstructions";
-import { ReminderSettingsCard } from "./ReminderSettings";
+import { MailCopiesCard, ReminderSettingsCard } from "./ReminderSettings";
 import { ActionBtn, Btn, Card, Cap, Field, inputStyle, LockNote, StatusPill } from "./parts";
 import { t } from "./theme";
 
@@ -16,6 +16,7 @@ export function InvoiceDetail({
   canInvoice,
   org,
   reminders,
+  clubSettings,
   fromEmail,
   backHref,
   backLabel = "Invoices",
@@ -23,6 +24,11 @@ export function InvoiceDetail({
   onSaveDraft,
   onRecordPayment,
   onRemindersChange,
+  onClubRemindersChange,
+  onClubMailCopies,
+  onInvoiceMailCopies,
+  onInvoiceRemindersOverride,
+  onVoid,
 }: {
   invoice: Invoice;
   today: string;
@@ -30,6 +36,7 @@ export function InvoiceDetail({
   org: OrgSettings;
   paths?: InvoicingPaths;
   reminders: ReminderSettings;
+  clubSettings: InvoiceClubSettings;
   fromEmail: string;
   backHref: string;
   backLabel?: string;
@@ -37,9 +44,17 @@ export function InvoiceDetail({
   onSaveDraft?: (patch: { dueOn?: string; depositCents?: number; depositDueOn?: string | null; lines?: { description: string; qty: number; unitCents: number }[] }) => Promise<{ error?: string } | void>;
   onRecordPayment: (input: RecordPaymentInput) => Promise<{ error?: string } | void>;
   onRemindersChange: (next: ReminderSettings) => void | Promise<void>;
+  onClubRemindersChange?: (next: ReminderSettings) => void | Promise<void>;
+  onClubMailCopies?: (next: { ccEmails: string[]; bccEmails: string[] }) => void | Promise<void>;
+  onInvoiceMailCopies?: (next: { ccEmails: string[] | null; bccEmails: string[] | null }) => void | Promise<void>;
+  onInvoiceRemindersOverride?: (next: ReminderSettings | null) => void | Promise<void>;
+  onVoid?: () => Promise<{ error?: string } | void>;
 }) {
   const tot = computeInvoice(invoice, today);
-  const draft = !invoice.sentAt;
+  const draft = !invoice.sentAt && !invoice.voidedAt;
+  const voided = !!invoice.voidedAt;
+  const overrideOn = invoice.reminderFreq != null || invoice.reminderStartDays != null || invoice.reminderUntilPaid != null;
+  const effective = effectiveReminders(invoice, clubSettings);
   const [payOpen, setPayOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -129,8 +144,23 @@ export function InvoiceDetail({
           <Sum label="Balance" value={formatMoney(tot.balanceCents)} em={tot.balanceCents ? `due ${formatDay(invoice.dueOn)}` : "Paid in full"} error={!!tot.balanceCents && tot.status === "Overdue"} />
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          {tot.balanceCents > 0 && invoice.sentAt && <ActionBtn canInvoice={canInvoice} label="Mark as paid" kind="accent" onClick={() => setPayOpen(true)} />}
-          <ActionBtn canInvoice={canInvoice} label={draft ? "Send invoice" : "Resend invoice"} kind="ink" onClick={send} />
+          {tot.balanceCents > 0 && invoice.sentAt && !voided && <ActionBtn canInvoice={canInvoice} label="Mark as paid" kind="accent" onClick={() => setPayOpen(true)} />}
+          {!voided && <ActionBtn canInvoice={canInvoice} label={draft ? "Send invoice" : "Resend invoice"} kind="ink" onClick={send} />}
+          {!voided && onVoid && (
+            <ActionBtn
+              canInvoice={canInvoice}
+              label="Void invoice"
+              kind="ghost"
+              onClick={async () => {
+                if (!confirm("Void this invoice? It drops out of billed and collected totals.")) return;
+                setBusy(true);
+                const res = await onVoid();
+                setBusy(false);
+                if (res && res.error) setError(res.error);
+                else setNotice("Invoice voided.");
+              }}
+            />
+          )}
         </div>
         <LockNote show={!canInvoice} />
         {error && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{error}</div>}
@@ -228,7 +258,25 @@ export function InvoiceDetail({
             </div>
             {tot.balanceCents > 0 && invoice.sentAt && <ActionBtn canInvoice={canInvoice} label="Mark as paid" kind="ghost" sm onClick={() => setPayOpen(true)} />}
           </Card>
-          <ReminderSettingsCard settings={reminders} canInvoice={canInvoice} invoice={invoice} fromEmail={fromEmail} onChange={onRemindersChange} />
+          <ReminderSettingsCard
+            settings={overrideOn ? effective : clubSettings}
+            clubSettings={clubSettings}
+            canInvoice={canInvoice && !voided}
+            invoice={invoice}
+            fromEmail={fromEmail}
+            overrideOn={overrideOn}
+            onChange={onRemindersChange}
+            onChangeClub={onClubRemindersChange}
+            onToggleOverride={(on) => onInvoiceRemindersOverride?.(on ? effective : null)}
+          />
+          <MailCopiesCard
+            canInvoice={canInvoice && !voided}
+            club={clubSettings}
+            invoiceCc={invoice.ccEmails}
+            invoiceBcc={invoice.bccEmails}
+            onSaveClub={async (next) => onClubMailCopies?.(next)}
+            onSaveInvoice={onInvoiceMailCopies}
+          />
           <Card>
             <Cap>Status</Cap>
             <div style={{ display: "flex", flexDirection: "column", paddingLeft: 6 }}>

@@ -11,7 +11,7 @@ import { hostedEventCustomers } from "./customers";
 import { syncHostedInvoiceSteps } from "./hosted-sync";
 import { getPreview } from "../activity/preview";
 import { olbInvoicePaths } from "./paths";
-import type { InvoicingAdapter } from "invoicing";
+import { loadInvoiceSettings, type InvoicingAdapter } from "invoicing";
 
 export { olbInvoicePaths } from "./paths";
 
@@ -33,8 +33,7 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
     async getCurrentUser() {
       const user = await getAuthUser();
       if (!user) return null;
-      const viewer = await getViewer();
-      return { id: user.id, email: user.email, displayName: viewer ? "Member" : user.email ?? "Member" };
+      return { id: user.id, email: user.email, displayName: user.email ?? "Member" };
     },
     async canInvoice() {
       const viewer = await getViewer();
@@ -46,6 +45,15 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
     },
     async orgSettings() {
       const checkAddress = (process.env.MAIL_CHECK_ADDRESS ?? "").split("|").map((s) => s.trim()).filter(Boolean);
+      let ccEmails: string[] = [];
+      let bccEmails: string[] = [];
+      try {
+        const settings = await loadInvoiceSettings(createAdminClient());
+        ccEmails = settings.ccEmails;
+        bccEmails = settings.bccEmails;
+      } catch {
+        // Migration not applied yet; empty is the default (never seed addresses).
+      }
       return {
         fromName: "Omaha Lightning Basketball · Finance",
         fromEmail: invoiceMailFrom(),
@@ -54,12 +62,19 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
         venmoUrl: VENMO_URL,
         checkPayee: CHECK_PAYEE,
         checkAddress,
+        ccEmails,
+        bccEmails,
       };
     },
     branding: () => ({ orgName: "Omaha Lightning Basketball", financeLabel: "Finances" }),
     paths: olbInvoicePaths,
     reminderJobPath: "/api/cron/invoice-reminders",
     listEventCustomers: hostedEventCustomers,
+    async eventFeeCents(eventId: string) {
+      const { data } = await createAdminClient().from("hs_hosted").select("team_fee_cents").eq("weekend_id", eventId).maybeSingle();
+      const cents = (data as { team_fee_cents: number | null } | null)?.team_fee_cents;
+      return cents == null ? null : Number(cents);
+    },
     onEventCollectionChanged: syncHostedInvoiceSteps,
     async sendEmail(mail) {
       try {

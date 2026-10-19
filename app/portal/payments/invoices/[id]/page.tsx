@@ -12,17 +12,19 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const { id } = await params;
   const { from } = await searchParams;
   const svc = createInvoicingService(olbInvoicingAdapter());
-  const [got, rem, org] = await Promise.all([svc.get(id), svc.reminders(), olbInvoicingAdapter().orgSettings()]);
+  const [got, club, org] = await Promise.all([svc.get(id), svc.clubSettings(), olbInvoicingAdapter().orgSettings()]);
   if (!got.ok) notFound();
   const backHref = from === "event" && got.data.hostEventId ? olbInvoicePaths.event(got.data.hostEventId) : olbInvoicePaths.list;
   const backLabel = from === "event" && got.data.eventLabel ? got.data.eventLabel : "Invoices";
+  const clubSettings = club.ok ? club.data : { freq: "3d" as const, startDays: 7, untilPaid: true, ccEmails: [], bccEmails: [] };
   return (
     <InvoicePage
       invoice={got.data}
       today={churchToday()}
       canInvoice={viewer.canManageInvoicing}
       org={org}
-      reminders={rem.ok ? rem.data : { freq: "3d", startDays: 7, untilPaid: true }}
+      reminders={{ freq: clubSettings.freq, startDays: clubSettings.startDays, untilPaid: clubSettings.untilPaid }}
+      clubSettings={clubSettings}
       fromEmail={org.fromEmail}
       backHref={backHref}
       backLabel={backLabel}

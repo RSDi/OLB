@@ -2,14 +2,17 @@
 // No I/O, no adapter, no host imports.
 
 import {
+  DEFAULT_CLUB_SETTINGS,
   DEFAULT_REMINDERS,
   type EventCollection,
   type Invoice,
+  type InvoiceClubSettings,
   type InvoiceStatus,
   type InvoiceTotals,
   type LineItemInput,
   type ReminderFreq,
   type ReminderSettings,
+  type Result,
 } from "./types.ts"; // explicit extension so node --test can load this file
 
 export function lineAmount(line: LineItemInput): number {
@@ -28,6 +31,12 @@ export function invoiceBalance(invoice: Pick<Invoice, "lines" | "payments">): nu
   return Math.max(0, invoiceTotal(invoice) - invoicePaid(invoice));
 }
 
+/** Paid in full, including a $0 invoice. Voided invoices are not paid. */
+export function invoiceFullyPaid(invoice: Pick<Invoice, "lines" | "payments" | "voidedAt">): boolean {
+  if (invoice.voidedAt) return false;
+  return invoicePaid(invoice) >= invoiceTotal(invoice);
+}
+
 export function depositPaid(invoice: Pick<Invoice, "depositCents" | "payments">): boolean {
   return invoice.depositCents > 0 && invoicePaid(invoice) >= invoice.depositCents;
 }
@@ -41,11 +50,19 @@ export function payNowCents(invoice: Pick<Invoice, "lines" | "payments" | "depos
   return balance;
 }
 
-export function invoiceStatus(invoice: Pick<Invoice, "sentAt" | "viewedAt" | "lines" | "payments" | "depositCents" | "depositDueOn" | "dueOn">, today: string): InvoiceStatus {
+export function clampDeposit(depositCents: number, totalCents: number): number {
+  return Math.max(0, Math.min(Math.round(depositCents), Math.max(0, Math.round(totalCents))));
+}
+
+export function invoiceStatus(
+  invoice: Pick<Invoice, "sentAt" | "viewedAt" | "voidedAt" | "lines" | "payments" | "depositCents" | "depositDueOn" | "dueOn">,
+  today: string
+): InvoiceStatus {
+  if (invoice.voidedAt) return "Void";
   if (!invoice.sentAt) return "Draft";
   const total = invoiceTotal(invoice);
   const paid = invoicePaid(invoice);
-  if (total > 0 && paid >= total) return "Paid";
+  if (paid >= total) return "Paid";
   const depositOverdue = invoice.depositCents > 0 && paid < invoice.depositCents && !!invoice.depositDueOn && invoice.depositDueOn < today;
   const balanceOverdue = invoice.dueOn < today;
   if (depositOverdue || balanceOverdue) return "Overdue";
@@ -68,40 +85,51 @@ export function computeInvoice(invoice: Invoice, today: string): InvoiceTotals {
   };
 }
 
+function activeInvoices(invoices: Invoice[]): Invoice[] {
+  return invoices.filter((v) => !v.voidedAt);
+}
+
 export function eventCollection(eventId: string, invoices: Invoice[], expectedCount?: number): EventCollection {
-  const billedCents = invoices.reduce((s, v) => s + invoiceTotal(v), 0);
-  const collectedCents = invoices.reduce((s, v) => s + invoicePaid(v), 0);
-  const sentCount = invoices.filter((v) => !!v.sentAt).length;
-  const paidCount = invoices.filter((v) => invoiceTotal(v) > 0 && invoicePaid(v) >= invoiceTotal(v)).length;
-  const depositPaidCount = invoices.filter((v) => depositPaid(v)).length;
-  const teamCount = invoices.reduce((s, v) => s + v.lines.reduce((n, l) => n + Math.max(0, l.qty), 0), 0);
-  const target = expectedCount ?? invoices.length;
-  const allSent = target > 0 && sentCount >= target && invoices.length >= target;
-  const allCollected = invoices.length > 0 && billedCents > 0 && collectedCents >= billedCents && paidCount === invoices.length;
+  const active = activeInvoices(invoices);
+  const sent = active.filter((v) => !!v.sentAt);
+  const billedCents = sent.reduce((s, v) => s + invoiceTotal(v), 0);
+  const collectedCents = sent.reduce((s, v) => s + invoicePaid(v), 0);
+  const sentCount = sent.length;
+  const paidCount = sent.filter((v) => invoiceFullyPaid(v)).length;
+  const withDeposit = sent.filter((v) => v.depositCents > 0);
+  const depositPaidCount = withDeposit.filter((v) => depositPaid(v)).length;
+  const teamCount = sent.reduce((s, v) => s + v.lines.reduce((n, l) => n + Math.max(0, l.qty), 0), 0);
+  const target = expectedCount ?? active.length;
+  const allSent = target > 0 && sentCount >= target;
+  const collectedCapped = sent.reduce((s, v) => s + Math.min(invoicePaid(v), invoiceTotal(v)), 0);
+  const allCollected =
+    target > 0 && sentCount >= target && paidCount >= target && sent.every((v) => invoiceFullyPaid(v)) && collectedCapped >= billedCents;
   return {
     eventId,
     billedCents,
     collectedCents,
-    invoiceCount: invoices.length,
+    invoiceCount: active.length,
     sentCount,
     paidCount,
     depositPaidCount,
+    depositInvoiceCount: withDeposit.length,
     teamCount,
     allSent,
     allCollected,
   };
 }
 
-/** "Team fees collected" for an event: every invoice paid in full. */
-export function teamFeesCollected(invoices: Invoice[]): { collectedCents: number; billedCents: number; done: boolean; nOfX: string } {
-  const billedCents = invoices.reduce((s, v) => s + invoiceTotal(v), 0);
-  const collectedCents = invoices.reduce((s, v) => s + invoicePaid(v), 0);
-  const done = invoices.length > 0 && billedCents > 0 && collectedCents >= billedCents;
+/** "Team fees collected" for an event: every expected program billed and paid. */
+export function teamFeesCollected(
+  invoices: Invoice[],
+  expectedCount?: number
+): { collectedCents: number; billedCents: number; done: boolean; nOfX: string } {
+  const summary = eventCollection("", invoices, expectedCount);
   return {
-    collectedCents,
-    billedCents,
-    done,
-    nOfX: `${collectedCents} of ${billedCents}`,
+    collectedCents: summary.collectedCents,
+    billedCents: summary.billedCents,
+    done: summary.allCollected,
+    nOfX: `${summary.collectedCents} of ${summary.billedCents}`,
   };
 }
 
@@ -132,13 +160,37 @@ export function reminderCopy(settings: ReminderSettings, dueOn: string, fromEmai
   return `Starts ${formatDay(start)} (${settings.startDays} days before ${formatDay(dueOn)}), then ${freq} ${stop}. Sent from ${fromEmail}. Covers the deposit first, then the balance.`;
 }
 
+export function effectiveReminders(
+  invoice: Pick<Invoice, "reminderFreq" | "reminderStartDays" | "reminderUntilPaid">,
+  club: ReminderSettings
+): ReminderSettings {
+  if (invoice.reminderFreq == null && invoice.reminderStartDays == null && invoice.reminderUntilPaid == null) return club;
+  return normalizeReminders({
+    freq: invoice.reminderFreq ?? club.freq,
+    startDays: invoice.reminderStartDays ?? club.startDays,
+    untilPaid: invoice.reminderUntilPaid ?? club.untilPaid,
+  });
+}
+
+export function effectiveMailCopies(
+  invoice: Pick<Invoice, "ccEmails" | "bccEmails">,
+  club: Pick<InvoiceClubSettings, "ccEmails" | "bccEmails">
+): { cc: string[]; bcc: string[] } {
+  return {
+    cc: invoice.ccEmails ?? club.ccEmails,
+    bcc: invoice.bccEmails ?? club.bccEmails,
+  };
+}
+
 export function shouldSendReminder(opts: {
-  invoice: Pick<Invoice, "sentAt" | "lines" | "payments" | "depositCents" | "depositDueOn" | "dueOn">;
+  invoice: Pick<Invoice, "sentAt" | "voidedAt" | "lines" | "payments" | "depositCents" | "depositDueOn" | "dueOn" | "reminderFreq" | "reminderStartDays" | "reminderUntilPaid">;
   settings: ReminderSettings;
   today: string;
   priorSendDates: string[];
 }): boolean {
-  const { invoice, settings, today, priorSendDates } = opts;
+  const { invoice, today, priorSendDates } = opts;
+  if (invoice.voidedAt) return false;
+  const settings = effectiveReminders(invoice, opts.settings);
   if (settings.freq === "off") return false;
   if (!invoice.sentAt) return false;
   if (invoiceBalance(invoice) <= 0) return false;
@@ -177,10 +229,42 @@ export function normalizeReminders(raw: Partial<ReminderSettings> | null | undef
   return { freq, startDays, untilPaid: raw?.untilPaid !== false };
 }
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function parseEmailList(raw: string | string[] | null | undefined): Result<string[]> {
+  const parts = (Array.isArray(raw) ? raw : String(raw ?? "").split(/[,;]+/))
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const bad = parts.filter((e) => !EMAIL.test(e));
+  if (bad.length) {
+    return { ok: false, error: `Check ${bad.length === 1 ? "this email" : "these emails"}: ${bad.join(", ")}` };
+  }
+  const seen = new Set<string>();
+  const data: string[] = [];
+  for (const e of parts) {
+    const k = e.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    data.push(e);
+  }
+  return { ok: true, data: data.slice(0, 20) };
+}
+
+export function normalizeClubSettings(raw: Partial<InvoiceClubSettings> | null | undefined): InvoiceClubSettings {
+  const reminders = normalizeReminders(raw);
+  const cc = parseEmailList(raw?.ccEmails ?? []);
+  const bcc = parseEmailList(raw?.bccEmails ?? []);
+  return {
+    ...reminders,
+    ccEmails: cc.ok ? cc.data : DEFAULT_CLUB_SETTINGS.ccEmails,
+    bccEmails: bcc.ok ? bcc.data : DEFAULT_CLUB_SETTINGS.bccEmails,
+  };
+}
+
 export function parseDollars(input: string): number | null {
   const n = Number(String(input).replace(/[$,\s]/g, ""));
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n * 100);
 }
 
-export const STATUS_FILTERS: InvoiceStatus[] = ["Draft", "Sent", "Viewed", "Partial", "Paid", "Overdue"];
+export const STATUS_FILTERS: InvoiceStatus[] = ["Draft", "Sent", "Viewed", "Partial", "Paid", "Overdue", "Void"];

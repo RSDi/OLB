@@ -175,13 +175,17 @@ export interface HostedPageData {
 
 export interface HostedBilling {
   canInvoice: boolean;
+  canView: boolean;
   billed: boolean;
   sentCount: number;
+  invoiceCount: number;
   programCount: number;
   allSent: boolean;
   collectedCents: number;
   billedCents: number;
   allCollected: boolean;
+  depositPerTeamCents: number;
+  feeCents: number | null;
 }
 
 export type HostedResult = { error?: string; notice?: string; id?: string };

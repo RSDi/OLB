@@ -1,7 +1,7 @@
 "use client";
 
 import { reminderCopy, reminderTargetDue } from "../logic";
-import type { Invoice, ReminderFreq, ReminderSettings } from "../types";
+import type { Invoice, InvoiceClubSettings, ReminderFreq, ReminderSettings } from "../types";
 import { Card, Cap, Field, LockNote } from "./parts";
 import { t } from "./theme";
 
@@ -18,25 +18,40 @@ export function ReminderSettingsCard({
   invoice,
   fromEmail,
   onChange,
+  clubSettings,
+  onChangeClub,
+  overrideOn,
+  onToggleOverride,
 }: {
   settings: ReminderSettings;
   canInvoice: boolean;
   invoice?: Invoice;
   fromEmail: string;
   onChange: (next: ReminderSettings) => void | Promise<void>;
+  clubSettings?: ReminderSettings;
+  onChangeClub?: (next: ReminderSettings) => void | Promise<void>;
+  overrideOn?: boolean;
+  onToggleOverride?: (on: boolean) => void | Promise<void>;
 }) {
   const due = invoice ? reminderTargetDue(invoice) : undefined;
+  const usingOverride = !!overrideOn && !!invoice;
   return (
     <Card>
       <Cap>Reminders</Cap>
-      <Field label="How often">
+      {invoice && onToggleOverride && (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
+          <input type="checkbox" checked={usingOverride} disabled={!canInvoice} onChange={(e) => onToggleOverride(e.target.checked)} />
+          Custom for this invoice
+        </label>
+      )}
+      <Field label={usingOverride ? "This invoice" : "Club default"}>
         <div style={{ display: "flex", border: `1px solid var(--inv-border, var(--gw-border, #e4e4df))`, borderRadius: 100, overflow: "hidden", background: "var(--inv-elev, #fff)" }}>
           {FREQS.map((f) => (
             <button
               key={f.key}
               type="button"
               disabled={!canInvoice}
-              onClick={() => onChange({ ...settings, freq: f.key })}
+              onClick={() => (usingOverride ? onChange({ ...settings, freq: f.key }) : (onChangeClub ?? onChange)({ ...(clubSettings ?? settings), freq: f.key }))}
               style={{
                 flex: 1,
                 minHeight: 40,
@@ -60,7 +75,10 @@ export function ReminderSettingsCard({
           <select
             disabled={!canInvoice}
             value={settings.startDays}
-            onChange={(e) => onChange({ ...settings, startDays: Number(e.target.value) })}
+            onChange={(e) => {
+              const next = { ...settings, startDays: Number(e.target.value) };
+              usingOverride ? onChange(next) : (onChangeClub ?? onChange)(next);
+            }}
             style={{ minHeight: 44, borderRadius: 10, border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", padding: "0 12px", fontSize: 16, fontWeight: 600, width: "100%" }}
           >
             {[3, 5, 7, 14].map((n) => (
@@ -74,7 +92,10 @@ export function ReminderSettingsCard({
           <select
             disabled={!canInvoice}
             value={settings.untilPaid ? "1" : "0"}
-            onChange={(e) => onChange({ ...settings, untilPaid: e.target.value === "1" })}
+            onChange={(e) => {
+              const next = { ...settings, untilPaid: e.target.value === "1" };
+              usingOverride ? onChange(next) : (onChangeClub ?? onChange)(next);
+            }}
             style={{ minHeight: 44, borderRadius: 10, border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", padding: "0 12px", fontSize: 16, fontWeight: 600, width: "100%" }}
           >
             <option value="1">Until paid</option>
@@ -83,7 +104,76 @@ export function ReminderSettingsCard({
         </Field>
       </div>
       <div style={{ fontSize: 13, color: t.muted, margin: 0 }}>{reminderCopy(settings, due || "2026-11-01", fromEmail)}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: t.fg }}>Anyone with invoicing permission can change this.</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: t.fg }}>
+        {usingOverride ? "This invoice only. Uncheck to use the club default." : "Club default — anyone with invoicing permission can change it. An invoice can override it."}
+      </div>
+      <LockNote show={!canInvoice} />
+    </Card>
+  );
+}
+
+export function MailCopiesCard({
+  canInvoice,
+  club,
+  invoiceCc,
+  invoiceBcc,
+  onSaveClub,
+  onSaveInvoice,
+}: {
+  canInvoice: boolean;
+  club: Pick<InvoiceClubSettings, "ccEmails" | "bccEmails">;
+  invoiceCc?: string[] | null;
+  invoiceBcc?: string[] | null;
+  onSaveClub?: (next: { ccEmails: string[]; bccEmails: string[] }) => void | Promise<void>;
+  onSaveInvoice?: (next: { ccEmails: string[] | null; bccEmails: string[] | null }) => void | Promise<void>;
+}) {
+  const override = invoiceCc !== null && invoiceCc !== undefined || invoiceBcc !== null && invoiceBcc !== undefined;
+  const cc = (override ? invoiceCc : club.ccEmails) ?? [];
+  const bcc = (override ? invoiceBcc : club.bccEmails) ?? [];
+  return (
+    <Card>
+      <Cap>CC and BCC</Cap>
+      <div style={{ fontSize: 13, color: t.muted }}>Optional. Empty is fine. Anyone with invoicing can set the club default. A single invoice or a batch can override it.</div>
+      <Field label={override && onSaveInvoice ? "CC (this invoice)" : "CC (club default)"}>
+        <input
+          disabled={!canInvoice}
+          defaultValue={cc.join(", ")}
+          placeholder="none"
+          onBlur={(e) => {
+            const list = e.target.value.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+            if (override && onSaveInvoice) onSaveInvoice({ ccEmails: list, bccEmails: bcc });
+            else onSaveClub?.({ ccEmails: list, bccEmails: (override ? invoiceBcc : club.bccEmails) ?? [] });
+          }}
+          style={{ minHeight: 44, borderRadius: 10, border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", padding: "0 12px", fontSize: 16, width: "100%" }}
+        />
+      </Field>
+      <Field label={override && onSaveInvoice ? "BCC (this invoice)" : "BCC (club default)"}>
+        <input
+          disabled={!canInvoice}
+          defaultValue={bcc.join(", ")}
+          placeholder="none"
+          onBlur={(e) => {
+            const list = e.target.value.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+            if (override && onSaveInvoice) onSaveInvoice({ ccEmails: cc, bccEmails: list });
+            else onSaveClub?.({ ccEmails: (override ? invoiceCc : club.ccEmails) ?? [], bccEmails: list });
+          }}
+          style={{ minHeight: 44, borderRadius: 10, border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", padding: "0 12px", fontSize: 16, width: "100%" }}
+        />
+      </Field>
+      {onSaveInvoice && (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
+          <input
+            type="checkbox"
+            checked={override}
+            disabled={!canInvoice}
+            onChange={(e) => {
+              if (e.target.checked) onSaveInvoice({ ccEmails: club.ccEmails, bccEmails: club.bccEmails });
+              else onSaveInvoice({ ccEmails: null, bccEmails: null });
+            }}
+          />
+          Override for this invoice
+        </label>
+      )}
       <LockNote show={!canInvoice} />
     </Card>
   );

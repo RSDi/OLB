@@ -6,4 +6,4 @@ export * from "./types";
 export * from "./logic";
 export { createInvoicingService, type InvoicingService } from "./service";
 export { invoiceEmailContent, reminderEmailContent } from "./emails";
-export { listInvoices, MIGRATION_HINT } from "./store";
+export { listInvoices, loadInvoiceSettings, MIGRATION_HINT } from "./store";

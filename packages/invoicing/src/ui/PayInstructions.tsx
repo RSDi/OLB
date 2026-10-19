@@ -7,7 +7,7 @@ import { Card, Cap } from "./parts";
 
 function memo(invoice: Invoice): string {
   const event = invoice.eventLabel?.trim();
-  const name = invoice.customerName.replace(/^Example:\s*/i, "");
+  const name = invoice.customerName.trim();
   return event ? `${event} – ${name}` : name;
 }
 

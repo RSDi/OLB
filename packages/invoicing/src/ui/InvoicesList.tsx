@@ -25,10 +25,10 @@ export function InvoicesList({
   const [filter, setFilter] = useState<"all" | InvoiceStatus>("all");
   const rows = invoices.map((v) => ({ v, tot: computeInvoice(v, today) }));
   const vis = filter === "all" ? rows : rows.filter((r) => r.tot.status === filter);
-  const open = rows.filter((r) => r.v.sentAt && r.tot.status !== "Paid");
+  const open = rows.filter((r) => r.v.sentAt && r.tot.status !== "Paid" && r.tot.status !== "Void");
   const over = rows.filter((r) => r.tot.status === "Overdue");
   const collected = rows.reduce((s, r) => s + r.tot.paidCents, 0);
-  const drafts = rows.filter((r) => !r.v.sentAt).length;
+  const drafts = rows.filter((r) => !r.v.sentAt && !r.v.voidedAt).length;
 
   const events = useMemo(() => {
     const map = new Map<string, Invoice[]>();

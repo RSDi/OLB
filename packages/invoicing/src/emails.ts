@@ -10,7 +10,7 @@ function esc(s: string): string {
 
 function memo(invoice: Invoice): string {
   const event = invoice.eventLabel?.trim();
-  const name = invoice.customerName.replace(/^Example:\s*/i, "");
+  const name = invoice.customerName.trim();
   return event ? `${event} – ${name}` : name;
 }
 
@@ -24,7 +24,7 @@ export function invoiceEmailContent(
   const totals = computeInvoice(invoice, today);
   const amount = formatMoney(payNowCents(invoice));
   const depositNote = invoice.depositCents > 0 && !totals.depositPaid ? " (deposit)" : "";
-  const subject = totals.status === "Draft" ? `${invoice.number}` : `Invoice ${invoice.number} from ${branding.orgName}`;
+  const subject = `Invoice ${invoice.number} from ${branding.orgName}`;
   const addr = org.checkAddress.length ? org.checkAddress.join(", ") : "reply to this email for the mailing address";
   const lines = invoice.lines.map((l) => `  ${l.description}  ${l.qty} × ${formatMoney(l.unitCents)} = ${formatMoney(l.qty * l.unitCents)}`).join("\n");
 

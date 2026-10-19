@@ -62,7 +62,7 @@ export function NewInvoiceForm({
           <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Program name" />
         </Field>
         <Field label="Program email">
-          <input style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="treasurer@example.com" />
+          <input style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="program email" />
         </Field>
         <Field label="Event">
           <input style={inputStyle} value={event} onChange={(e) => setEvent(e.target.value)} placeholder="MRS 2026" />

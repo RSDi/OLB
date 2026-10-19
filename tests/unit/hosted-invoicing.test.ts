@@ -1,0 +1,73 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { groupHostedCustomers } from "../../lib/invoicing/customers.ts";
+import { autoStepDone } from "../../lib/invoicing/hosted-sync.ts";
+import { eventCollection } from "invoicing";
+import type { Invoice } from "invoicing";
+
+test("hostedEventCustomers groups opponents by contact and counts visiting teams", () => {
+  const customers = groupHostedCustomers({
+    opponents: [
+      { id: "o1", contact_id: "c1", name: "Prairie A", status: "yes" },
+      { id: "o2", contact_id: "c1", name: "Prairie B", status: "yes" },
+      { id: "o3", contact_id: "c2", name: "Metro", status: "declined" },
+    ],
+    teams: [
+      { id: "t1", opponent_id: "o1", ours: false, name: "Prairie 1", division_id: "d1" },
+      { id: "t2", opponent_id: "o2", ours: false, name: "Prairie 2", division_id: "d1" },
+      { id: "t3", opponent_id: "o1", ours: true, name: "Lightning", division_id: "d1" },
+    ],
+    divisions: [{ id: "d1", name: "HS Boys", code: "HSA" }],
+    contacts: [{ id: "c1", name: "Prairie Hoops", email: "a@example.com", alt_email: "b@example.com" }],
+    people: [{ parent_contact_id: "c1", email: "c@example.com" }],
+  });
+  assert.equal(customers.length, 1);
+  assert.equal(customers[0].name, "Prairie Hoops");
+  assert.equal(customers[0].teamCount, 2);
+  assert.deepEqual(customers[0].emails, ["a@example.com", "b@example.com", "c@example.com"]);
+});
+
+test("syncHostedInvoiceSteps ticks and unticks from collection", () => {
+  const empty = eventCollection("evt", [], 8);
+  assert.equal(autoStepDone("bill_programs", empty), false);
+  assert.equal(autoStepDone("invoices_sent", empty), false);
+  assert.equal(autoStepDone("team_fees_collected", empty), false);
+
+  const billed: Invoice[] = [
+    {
+      id: "1",
+      number: "INV-2026-0001",
+      hostEventId: "evt",
+      hostCustomerId: "p1",
+      customerName: "Prairie",
+      customerEmail: "a@example.com",
+      eventLabel: "MRS",
+      issuedOn: "2026-10-05",
+      dueOn: "2026-11-01",
+      depositCents: 0,
+      depositDueOn: null,
+      sentAt: "2026-10-05T00:00:00Z",
+      viewedAt: null,
+      voidedAt: null,
+      publicToken: "t",
+      createdBy: null,
+      createdAt: "2026-10-05T00:00:00Z",
+      updatedAt: "2026-10-05T00:00:00Z",
+      ccEmails: null,
+      bccEmails: null,
+      reminderFreq: null,
+      reminderStartDays: null,
+      reminderUntilPaid: null,
+      lines: [{ id: "l", description: "fee", qty: 1, unitCents: 31500, sortOrder: 0 }],
+      payments: [{ id: "p", method: "venmo", amountCents: 31500, paidOn: "2026-10-10", reference: null, recordedBy: null, createdAt: "2026-10-10T00:00:00Z" }],
+    },
+  ];
+  const one = eventCollection("evt", billed, 1);
+  assert.equal(autoStepDone("bill_programs", one), true);
+  assert.equal(autoStepDone("invoices_sent", one), true);
+  assert.equal(autoStepDone("team_fees_collected", one), true);
+  const eight = eventCollection("evt", billed, 8);
+  assert.equal(autoStepDone("invoices_sent", eight), false);
+  assert.equal(autoStepDone("team_fees_collected", eight), false);
+  assert.equal(autoStepDone("bill_programs", eight), true);
+});
