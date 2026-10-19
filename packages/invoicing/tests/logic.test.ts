@@ -9,6 +9,7 @@ import {
   invoiceStatus,
   parseEmailList,
   payNowCents,
+  batchPreviewTotals,
   shouldSendReminder,
   formatMoney,
 } from "../src/logic.ts";
@@ -207,4 +208,20 @@ test("formatMoney drops cents on whole dollars", () => {
   assert.equal(formatMoney(301500), "$3,015");
   assert.equal(formatMoney(31500), "$315");
   assert.equal(formatMoney(199), "$1.99");
+});
+
+test("batch preview totals skip programs with no teams and use each count as-is", () => {
+  const preview = batchPreviewTotals(
+    [
+      { teamCount: 2 },
+      { teamCount: 0 },
+      { teamCount: 1 },
+    ],
+    31500,
+    5000
+  );
+  assert.equal(preview.invoiceCount, 2);
+  assert.equal(preview.teamCount, 3);
+  assert.equal(preview.totalCents, 94500);
+  assert.equal(preview.depositCents, 15000);
 });

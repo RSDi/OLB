@@ -119,6 +119,25 @@ export function eventCollection(eventId: string, invoices: Invoice[], expectedCo
   };
 }
 
+/** Preview totals for batch billing. Uses each program's teamCount as-is
+ *  (the host's server count). Programs with 0 teams are skipped. */
+export function batchPreviewTotals(
+  customers: { teamCount: number }[],
+  feeCents: number,
+  depositPerTeamCents = 0
+): { invoiceCount: number; teamCount: number; totalCents: number; depositCents: number } {
+  const rows = customers.filter((c) => c.teamCount > 0);
+  const teams = rows.reduce((s, c) => s + Math.max(0, c.teamCount), 0);
+  const fee = Math.max(0, Math.round(feeCents));
+  const dep = Math.max(0, Math.round(depositPerTeamCents));
+  return {
+    invoiceCount: rows.length,
+    teamCount: teams,
+    totalCents: teams * fee,
+    depositCents: teams * dep,
+  };
+}
+
 export function addDays(iso: string, n: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));

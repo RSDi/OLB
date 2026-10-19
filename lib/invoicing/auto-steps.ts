@@ -6,3 +6,8 @@ export function autoStepDone(stepKey: string, summary: EventCollection): boolean
   if (stepKey === "team_fees_collected") return summary.allCollected;
   return null;
 }
+
+/** Team fees collected copy: drafts-only is still "Not billed yet". */
+export function teamFeesAreBilled(sentCount: number): boolean {
+  return sentCount > 0;
+}

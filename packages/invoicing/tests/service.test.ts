@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { InvoicingAdapter, OrgSettings } from "../src/adapter.ts";
 import { createInvoicingService } from "../src/service.ts";
+import { batchPreviewTotals, invoiceTotal } from "../src/logic.ts";
 import { MemoryDb } from "./fake-db.ts";
 import type { EventCustomer, InvoiceEmail, MailSendResult } from "../src/types.ts";
 
@@ -462,6 +463,30 @@ test("re-saving a batch without a CC override keeps a draft's copies", async () 
   if (!again.ok) return;
   assert.deepEqual(again.data.invoices[0].ccEmails, ["invcc@example.com"]);
   assert.deepEqual(again.data.invoices[0].bccEmails, []);
+});
+
+test("batch preview total equals created invoice totals", async () => {
+  const customers: EventCustomer[] = [
+    { id: "p1", name: "Prairie", emails: ["a@example.com"], teamCount: 2 },
+    { id: "p2", name: "Metro", emails: ["c@example.com"], teamCount: 1 },
+  ];
+  const feeCents = 31500;
+  const preview = batchPreviewTotals(customers, feeCents);
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db, customers, feeCents }));
+  const res = await svc.createBatch(
+    batchInput({
+      customers: customers.map((c) => ({ id: c.id, teamCount: 99 })),
+      feeCents: 1,
+    }),
+    false
+  );
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  const created = res.data.invoices.reduce((s, inv) => s + invoiceTotal(inv), 0);
+  assert.equal(created, preview.totalCents);
+  assert.equal(preview.totalCents, 3 * 31500);
+  assert.equal(res.data.invoices.length, preview.invoiceCount);
 });
 
 test("invalid per-invoice reminder values are normalized on save", async () => {

@@ -55,7 +55,9 @@ export function InvoiceDetail({
   const effective = effectiveReminders(invoice, clubSettings);
   const [payOpen, setPayOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [voidError, setVoidError] = useState<string | null>(null);
+  const [reminderError, setReminderError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [qty, setQty] = useState(invoice.lines.map((l) => String(l.qty)));
   const [dep, setDep] = useState(invoice.depositCents ? String(invoice.depositCents / 100) : "");
@@ -64,7 +66,7 @@ export function InvoiceDetail({
 
   async function send() {
     setBusy(true);
-    setError(null);
+    setSendError(null);
     if (draft && onSaveDraft) {
       const saved = await onSaveDraft({
         dueOn: due,
@@ -74,12 +76,12 @@ export function InvoiceDetail({
       });
       if (saved && saved.error) {
         setBusy(false);
-        return setError(saved.error);
+        return setSendError(saved.error);
       }
     }
     const res = await onSend();
     setBusy(false);
-    if (res && res.error) setError(res.error);
+    if (res && res.error) setSendError(res.error);
     else setNotice("Invoice sent.");
   }
 
@@ -141,27 +143,35 @@ export function InvoiceDetail({
           <Sum label="Paid" value={formatMoney(tot.paidCents)} em={`${invoice.payments.length} payment${invoice.payments.length === 1 ? "" : "s"}`} />
           <Sum label="Balance" value={formatMoney(tot.balanceCents)} em={tot.balanceCents ? `due ${formatDay(invoice.dueOn)}` : "Paid in full"} error={!!tot.balanceCents && tot.status === "Overdue"} />
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
           {tot.balanceCents > 0 && invoice.sentAt && !voided && <ActionBtn canInvoice={canInvoice} label="Mark as paid" kind="accent" onClick={() => setPayOpen(true)} />}
-          {!voided && <ActionBtn canInvoice={canInvoice} label={draft ? "Send invoice" : "Resend invoice"} kind="ink" onClick={send} />}
+          {!voided && (
+            <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+              <ActionBtn canInvoice={canInvoice} label={draft ? "Send invoice" : "Resend invoice"} kind="ink" onClick={send} />
+              {sendError && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{sendError}</div>}
+            </span>
+          )}
           {!voided && onVoid && (
-            <ActionBtn
-              canInvoice={canInvoice}
-              label="Void invoice"
-              kind="ghost"
-              onClick={async () => {
-                if (!confirm("Void this invoice? It drops out of billed and collected totals.")) return;
-                setBusy(true);
-                const res = await onVoid();
-                setBusy(false);
-                if (res && res.error) setError(res.error);
-                else setNotice("Invoice voided.");
-              }}
-            />
+            <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+              <ActionBtn
+                canInvoice={canInvoice}
+                label="Void invoice"
+                kind="ghost"
+                onClick={async () => {
+                  if (!confirm("Void this invoice? It drops out of billed and collected totals.")) return;
+                  setBusy(true);
+                  setVoidError(null);
+                  const res = await onVoid();
+                  setBusy(false);
+                  if (res && res.error) setVoidError(res.error);
+                  else setNotice("Invoice voided.");
+                }}
+              />
+              {voidError && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{voidError}</div>}
+            </span>
           )}
         </div>
         <LockNote show={!canInvoice} />
-        {error && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{error}</div>}
         {notice && <div style={{ fontWeight: 700, fontSize: 13 }}>{notice}</div>}
         {busy && <div style={{ fontSize: 13, color: t.muted }}>Working…</div>}
       </Card>
@@ -263,20 +273,18 @@ export function InvoiceDetail({
             invoice={invoice}
             fromEmail={fromEmail}
             overrideOn={overrideOn}
+            error={reminderError}
             onChange={async (next) => {
               const res = await onRemindersChange(next);
-              if (res?.error) setError(res.error);
-              else setError(null);
+              setReminderError(res?.error ?? null);
             }}
             onChangeClub={async (next) => {
               const res = await onClubRemindersChange?.(next);
-              if (res?.error) setError(res.error);
-              else setError(null);
+              setReminderError(res?.error ?? null);
             }}
             onToggleOverride={async (on) => {
               const res = await onInvoiceRemindersOverride?.(on ? effective : null);
-              if (res?.error) setError(res.error);
-              else setError(null);
+              setReminderError(res?.error ?? null);
             }}
           />
           <MailCopiesCard
@@ -285,19 +293,8 @@ export function InvoiceDetail({
             club={clubSettings}
             invoiceCc={invoice.ccEmails}
             invoiceBcc={invoice.bccEmails}
-            error={error}
-            onSaveClub={async (next) => {
-              const res = await onClubMailCopies?.(next);
-              if (res?.error) setError(res.error);
-              else setError(null);
-              return res;
-            }}
-            onSaveInvoice={async (next) => {
-              const res = await onInvoiceMailCopies?.(next);
-              if (res?.error) setError(res.error);
-              else setError(null);
-              return res;
-            }}
+            onSaveClub={onClubMailCopies}
+            onSaveInvoice={onInvoiceMailCopies}
           />
           <Card>
             <Cap>Status</Cap>

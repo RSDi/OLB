@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { groupHostedCustomers } from "../../lib/invoicing/group-customers.ts";
-import { autoStepDone } from "../../lib/invoicing/auto-steps.ts";
+import { autoStepDone, teamFeesAreBilled } from "../../lib/invoicing/auto-steps.ts";
 import { eventCollection } from "../../packages/invoicing/src/logic.ts";
 import type { Invoice } from "../../packages/invoicing/src/types.ts";
 
@@ -72,6 +72,33 @@ test("syncHostedInvoiceSteps ticks and unticks from collection", () => {
   assert.equal(autoStepDone("invoices_sent", eight), false);
   assert.equal(autoStepDone("team_fees_collected", eight), false);
   assert.equal(autoStepDone("bill_programs", eight), true);
+
+  const draftOnly: Invoice[] = [{ ...billed[0], sentAt: null, payments: [] }];
+  const drafts = eventCollection("evt", draftOnly, 8);
+  assert.equal(drafts.invoiceCount, 1);
+  assert.equal(drafts.sentCount, 0);
+  assert.equal(drafts.billedCents, 0);
+  assert.equal(teamFeesAreBilled(drafts.sentCount), false);
+  assert.equal(autoStepDone("bill_programs", drafts), true);
+  assert.equal(autoStepDone("team_fees_collected", drafts), false);
+});
+
+test("batch preview does not let you edit team counts", () => {
+  const batch = readFileSync(join(import.meta.dirname, "../../packages/invoicing/src/ui/BatchBilling.tsx"), "utf8");
+  assert.doesNotMatch(batch, /setCounts/);
+  assert.doesNotMatch(batch, /aria-label="Teams"/);
+  assert.match(batch, /batchPreviewTotals/);
+  assert.match(batch, /Teams tab/);
+});
+
+test("invoice page keeps a separate error next to each action", () => {
+  const detail = readFileSync(join(import.meta.dirname, "../../packages/invoicing/src/ui/InvoiceDetail.tsx"), "utf8");
+  assert.match(detail, /sendError/);
+  assert.match(detail, /voidError/);
+  assert.match(detail, /reminderError/);
+  assert.doesNotMatch(detail, /const \[error, setError\]/);
+  const plan = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/_components/PlanPanel.tsx"), "utf8");
+  assert.match(plan, /teamFeesAreBilled/);
 });
 
 test("invoicing without HS Schedule edit does not load the full hosted page via admin", () => {

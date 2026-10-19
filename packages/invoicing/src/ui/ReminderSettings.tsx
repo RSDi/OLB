@@ -23,6 +23,7 @@ export function ReminderSettingsCard({
   onChangeClub,
   overrideOn,
   onToggleOverride,
+  error,
 }: {
   settings: ReminderSettings;
   canInvoice: boolean;
@@ -33,6 +34,7 @@ export function ReminderSettingsCard({
   onChangeClub?: (next: ReminderSettings) => void | Promise<void>;
   overrideOn?: boolean;
   onToggleOverride?: (on: boolean) => void | Promise<void>;
+  error?: string | null;
 }) {
   const due = invoice ? reminderTargetDue(invoice) : undefined;
   const usingOverride = !!overrideOn && !!invoice;
@@ -111,6 +113,7 @@ export function ReminderSettingsCard({
       <div style={{ fontSize: 13, fontWeight: 700, color: t.fg }}>
         {usingOverride ? "This invoice only. Uncheck to use the club default." : "Club default — anyone with invoicing permission can change it. An invoice can override it."}
       </div>
+      {error && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{error}</div>}
       <LockNote show={!canInvoice} />
     </Card>
   );
@@ -121,7 +124,6 @@ export function MailCopiesCard({
   club,
   invoiceCc,
   invoiceBcc,
-  error,
   onSaveClub,
   onSaveInvoice,
 }: {
@@ -129,7 +131,6 @@ export function MailCopiesCard({
   club: Pick<InvoiceClubSettings, "ccEmails" | "bccEmails">;
   invoiceCc?: string[] | null;
   invoiceBcc?: string[] | null;
-  error?: string | null;
   onSaveClub?: (next: { ccEmails: string[]; bccEmails: string[] }) => void | Promise<{ error?: string } | void>;
   onSaveInvoice?: (next: { ccEmails: string[] | null; bccEmails: string[] | null }) => void | Promise<{ error?: string } | void>;
 }) {
@@ -193,14 +194,18 @@ export function MailCopiesCard({
             checked={override}
             disabled={!canInvoice}
             onChange={(e) => {
-              if (e.target.checked) void onSaveInvoice({ ccEmails: club.ccEmails, bccEmails: club.bccEmails });
-              else void onSaveInvoice({ ccEmails: null, bccEmails: null });
+              void (async () => {
+                const res = e.target.checked
+                  ? await onSaveInvoice({ ccEmails: club.ccEmails, bccEmails: club.bccEmails })
+                  : await onSaveInvoice({ ccEmails: null, bccEmails: null });
+                setLocalError(res?.error ?? null);
+              })();
             }}
           />
           Override for this invoice
         </label>
       )}
-      {(localError || error) && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{localError || error}</div>}
+      {localError && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{localError}</div>}
       <LockNote show={!canInvoice} />
     </Card>
   );

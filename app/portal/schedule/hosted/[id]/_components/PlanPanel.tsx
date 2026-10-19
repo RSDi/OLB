@@ -13,6 +13,7 @@ import { Input, Pill, Select, Textarea } from "../../../../../components/ui";
 import { addStep, deleteStep, savePlan, setHosted, updateStep } from "../../../../../../lib/hosted/actions";
 import { daysForWeekend, formatDay } from "../../../../../../lib/hosted/logic";
 import { STEP_SECTIONS, type HostedPageData, type HostedStep, type StepSection } from "../../../../../../lib/hosted/types";
+import { teamFeesAreBilled } from "../../../../../../lib/invoicing/auto-steps";
 import { ErrorNote, Said, Section, Sheet, cap, grid2, iconBtn, money, sub, useAct } from "./parts";
 
 export function PlanPanel({ data, today }: { data: HostedPageData; today: string }) {
@@ -130,7 +131,9 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                       <small style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, display: "flex", flexDirection: "column", gap: 4 }}>
                         {billing.allCollected ? <span style={{ color: "#065f46", fontWeight: 800 }}>✓ Auto-checked</span> : <span>Checks itself when everything is collected</span>}
                         <b style={{ color: "var(--gw-fg)" }}>
-                          {billing.billed ? `${money(billing.collectedCents)} of ${money(billing.billedCents || 0)} collected` : "Not billed yet"}
+                          {teamFeesAreBilled(billing.sentCount)
+                            ? `${money(billing.collectedCents)} of ${money(billing.billedCents || 0)} collected`
+                            : "Not billed yet"}
                         </b>
                         <span style={{ height: 8, borderRadius: 100, background: "#fff", border: "1px solid var(--gw-border)", overflow: "hidden", display: "block" }}>
                           <i style={{ display: "block", height: "100%", width: `${Math.min(100, billing.billedCents ? (billing.collectedCents / billing.billedCents) * 100 : 0)}%`, background: "var(--gw-ink)" }} />

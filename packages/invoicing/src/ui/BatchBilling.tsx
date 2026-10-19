@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { formatDay, formatMoney, reminderCopy } from "../logic";
+import { useState } from "react";
+import { batchPreviewTotals, formatDay, formatMoney, reminderCopy } from "../logic";
 import type { BatchInput, EventCustomer, ReminderSettings } from "../types";
 import { ActionBtn, Btn, Card, Field, inputStyle, LockNote } from "./parts";
 import { t } from "./theme";
@@ -39,8 +39,6 @@ export function BatchBilling({
   backHref: string;
   onSubmit: (input: BatchInput, send: boolean) => Promise<{ error?: string } | void>;
 }) {
-  const [counts, setCounts] = useState(customers.map((c) => c.teamCount));
-  const orig = useMemo(() => customers.map((c) => c.teamCount), [customers]);
   const [due, setDue] = useState(dueOn);
   const [depOn, setDepOn] = useState(depositOn);
   const [dep, setDep] = useState(String(depositPerTeamCents / 100));
@@ -54,10 +52,11 @@ export function BatchBilling({
   const [bcc, setBcc] = useState(clubBcc.join(", "));
 
   const depCents = Math.round((parseFloat(dep.replace(/[$,]/g, "")) || 0) * 100);
-  const teams = counts.reduce((s, n) => s + n, 0);
-  const G = teams * feeCents;
-  const DP = depOn ? teams * depCents : 0;
-  const billed = customers.filter((_, i) => counts[i] > 0).length;
+  const preview = batchPreviewTotals(customers, feeCents, depOn ? depCents : 0);
+  const teams = preview.teamCount;
+  const G = preview.totalCents;
+  const DP = preview.depositCents;
+  const billed = preview.invoiceCount;
 
   function payload(): BatchInput {
     return {
@@ -69,7 +68,7 @@ export function BatchBilling({
       depositPerTeamCents: depCents,
       depositDueOn: depOn ? depDue : null,
       lineDescription: `Team fee · ${eventLabel}`,
-      customers: customers.map((c, i) => ({ id: c.id, teamCount: counts[i] })),
+      customers: customers.map((c) => ({ id: c.id, teamCount: c.teamCount })),
       ccEmails: overrideCopy ? cc.split(/[,;]+/).map((s) => s.trim()).filter(Boolean) : null,
       bccEmails: overrideCopy ? bcc.split(/[,;]+/).map((s) => s.trim()).filter(Boolean) : null,
     };
@@ -144,50 +143,33 @@ export function BatchBilling({
               <input style={inputStyle} type="date" value={depDue} disabled={!depOn || !canInvoice} onChange={(e) => setDepDue(e.target.value)} />
             </Field>
           </div>
-          <small style={{ color: t.muted }}>Programs come from “Attending programs and divisions confirmed”. Reminders: {reminderCopy(reminders, due, fromEmail).toLowerCase()}</small>
+          <small style={{ color: t.muted }}>Programs and team counts come from the Teams tab (visiting teams). If a count is wrong, change it there and come back. Reminders: {reminderCopy(reminders, due, fromEmail).toLowerCase()}</small>
         </Card>
       )}
 
       <div style={{ background: "var(--inv-elev, #fff)", border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", borderRadius: 14, overflow: "hidden" }}>
-        {customers.map((p, i) => (
+        {customers.map((p) => (
           <div
             key={p.id}
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(0,1fr) 92px 96px",
+              gridTemplateColumns: "minmax(0,1fr) auto 96px",
               gap: 8,
               alignItems: "center",
               padding: "10px 14px",
               borderBottom: "1px solid var(--inv-border, var(--gw-border, #e4e4df))",
-              background: counts[i] !== orig[i] ? "var(--inv-accent-bg, #fff6cc)" : undefined,
             }}
           >
             <span style={{ minWidth: 0 }}>
               <b style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</b>
-              <small style={{ color: t.muted, fontSize: 12 }}>
-                {p.emails.length ? p.emails.join(", ") : "No email"}
-                {counts[i] !== orig[i] ? ` · was ${orig[i]}` : ""}
-              </small>
+              <small style={{ color: t.muted, fontSize: 12 }}>{p.emails.length ? p.emails.join(", ") : "No email"}</small>
             </span>
-            <span style={{ display: "flex", alignItems: "center", border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", borderRadius: 100, overflow: "hidden", background: "#fff" }}>
-              <button type="button" disabled={!canInvoice} onClick={() => setCounts(counts.map((n, j) => (j === i ? Math.max(0, n - 1) : n)))} style={stepBtn}>
-                −
-              </button>
-              <input
-                disabled={!canInvoice}
-                inputMode="numeric"
-                value={counts[i]}
-                aria-label="Teams"
-                onChange={(e) => setCounts(counts.map((n, j) => (j === i ? Math.max(0, parseInt(e.target.value, 10) || 0) : n)))}
-                style={{ width: 32, height: 36, border: 0, textAlign: "center", fontSize: 16, fontWeight: 700 }}
-              />
-              <button type="button" disabled={!canInvoice} onClick={() => setCounts(counts.map((n, j) => (j === i ? n + 1 : n)))} style={stepBtn}>
-                +
-              </button>
+            <span style={{ fontSize: 13, fontWeight: 700, color: t.muted, whiteSpace: "nowrap" }}>
+              {p.teamCount} {p.teamCount === 1 ? "team" : "teams"}
             </span>
             <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>
-              {formatMoney(counts[i] * feeCents)}
-              <small style={{ display: "block", color: t.muted, fontSize: 12 }}>{depOn ? `deposit ${formatMoney(counts[i] * depCents)}` : "no deposit"}</small>
+              {formatMoney(p.teamCount * feeCents)}
+              <small style={{ display: "block", color: t.muted, fontSize: 12 }}>{depOn ? `deposit ${formatMoney(p.teamCount * depCents)}` : "no deposit"}</small>
             </span>
           </div>
         ))}
@@ -196,6 +178,9 @@ export function BatchBilling({
             {billed} invoices · {teams} teams
           </span>
           <span>{formatMoney(G)}</span>
+        </div>
+        <div style={{ padding: "0 14px 6px", fontSize: 12, fontWeight: 600, color: t.muted }}>
+          Team counts come from the Teams tab (visiting teams). If a count is wrong, change it there and come back.
         </div>
         <div style={{ padding: "0 14px 14px", fontSize: 13, fontWeight: 700, color: t.muted, display: "flex", flexDirection: "column", gap: 2 }}>
           {depOn ? (
@@ -297,13 +282,3 @@ export function BatchBilling({
     </div>
   );
 }
-
-const stepBtn = {
-  width: 30,
-  height: 36,
-  border: 0,
-  background: "var(--inv-bg, #f3f3ef)",
-  fontWeight: 800,
-  fontSize: 16,
-  cursor: "pointer" as const,
-};
