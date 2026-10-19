@@ -2,7 +2,7 @@
 // Host-only. packages/invoicing never imports this.
 
 import { randomBytes } from "node:crypto";
-import { isGmailAuthFailure } from "./gmail-oauth.ts";
+import { isGmailAuthFailure, isGmailSetupFailure } from "./gmail-oauth.ts";
 
 export const GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
 
@@ -18,7 +18,13 @@ export type GmailSendInput = {
   html: string;
 };
 
-export type GmailSendResult = { ok: boolean; status?: number; error?: string; authFailed?: boolean };
+export type GmailSendResult = {
+  ok: boolean;
+  status?: number;
+  error?: string;
+  authFailed?: boolean;
+  setupFailed?: boolean;
+};
 
 function headerSafe(value: string): string {
   return value.replace(/[\r\n]+/g, " ").trim();
@@ -111,13 +117,15 @@ export async function sendInvoiceViaGmail(input: GmailSendInput): Promise<GmailS
     headers: { Authorization: `Bearer ${input.accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ raw }),
   }).catch(() => null);
-  if (!res) return { ok: false, error: "network error", authFailed: false };
+  if (!res) return { ok: false, error: "network error", authFailed: false, setupFailed: false };
   if (res.ok) return { ok: true, status: res.status };
   const errText = await res.text().catch(() => "");
+  const setupFailed = isGmailSetupFailure(res.status, errText);
   return {
     ok: false,
     status: res.status,
     error: errText.slice(0, 300),
-    authFailed: isGmailAuthFailure(res.status, errText),
+    setupFailed,
+    authFailed: !setupFailed && isGmailAuthFailure(res.status, errText),
   };
 }

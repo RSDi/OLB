@@ -1332,7 +1332,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "invoices-gmail",
         click: "payments-tab-invoices",
         title: "Connect Gmail",
-        body: "On the live site, whoever can invoice taps **Connect Gmail** so invoices send from that account — President, Athletic Director, or Treasurer in Settings → Planning Roles, a super-admin, or the **Invoicing** override. **Reconnect Gmail** is here if it isn't connected anymore. If the last send failed, **Send again**. Previews don't connect Gmail.",
+        body: "On the live site, a super admin taps **Connect Gmail** so invoices send from that account. Whoever can invoice still sends through it and sees the status. If you can invoice but aren't a super admin, you'll see **Only a super admin can connect or change the Gmail sender.** **Reconnect Gmail** is only for a super admin. On a **Draft**, **Send again** if the last send failed. Previews don't connect Gmail.",
       },
       {
         target: "invoices-list",

@@ -3,7 +3,7 @@
 // the token to the browser.
 
 import { NextResponse, type NextRequest } from "next/server";
-import { requireInvoicing } from "../../../../../lib/auth/guards";
+import { requireSuperAdmin } from "../../../../../lib/auth/guards";
 import { decryptSecret, encryptSecret, invoiceGmailTokenKey } from "../../../../../lib/invoicing/gmail-crypto";
 import {
   GMAIL_CONNECT_COOKIE,
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   if (!invoiceGmailLive()) return done("production-only");
 
-  const gate = await requireInvoicing();
+  const gate = await requireSuperAdmin();
   if ("error" in gate) return done("not-allowed");
 
   const state = req.nextUrl.searchParams.get("state");

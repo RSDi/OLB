@@ -3,7 +3,7 @@ import { getViewer } from "../../../../../lib/auth/viewer";
 import { createInvoicingService } from "invoicing";
 import { olbInvoicingAdapter, olbInvoicePaths } from "../../../../../lib/invoicing/adapter";
 import { churchToday } from "../../../../../lib/dates/today";
-import { gmailBannerKind, type GmailBannerKind } from "../../../../../lib/invoicing/gmail-meta";
+import { gmailBannerKind, invoiceCanShowGmailBanner, type GmailBannerKind } from "../../../../../lib/invoicing/gmail-meta";
 import { invoiceGmailLive } from "../../../../../lib/invoicing/gmail-oauth";
 import { getGmailConnection } from "../../../../../lib/invoicing/gmail-settings";
 import { InvoicePage } from "./InvoicePage";
@@ -21,7 +21,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const backLabel = from === "event" && got.data.eventLabel ? got.data.eventLabel : "Invoices";
   const clubSettings = club.ok ? club.data : { freq: "3d" as const, startDays: 7, untilPaid: true, ccEmails: [], bccEmails: [] };
   let gmailBanner: GmailBannerKind | null = null;
-  if (viewer.canManageInvoicing && invoiceGmailLive()) {
+  if (viewer.canManageInvoicing && invoiceGmailLive() && invoiceCanShowGmailBanner(got.data)) {
     try {
       gmailBanner = gmailBannerKind(await getGmailConnection());
     } catch {
@@ -33,6 +33,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       invoice={got.data}
       today={churchToday()}
       canInvoice={viewer.canManageInvoicing}
+      canConnectGmail={viewer.isSuperAdmin}
       org={org}
       clubSettings={clubSettings}
       fromEmail={org.fromEmail}

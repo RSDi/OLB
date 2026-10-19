@@ -4,9 +4,9 @@
 // mailbox, so users.getProfile (restricted) is not used.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { GMAIL_RECONNECT_ERROR } from "./gmail-meta.ts";
+import { GMAIL_RECONNECT_ERROR, GMAIL_SETUP_ERROR } from "./gmail-meta.ts";
 
-export { GMAIL_RECONNECT_ERROR };
+export { GMAIL_RECONNECT_ERROR, GMAIL_SETUP_ERROR };
 
 export const GMAIL_CONNECT_COOKIE = "olb_inv_gmail_oauth";
 export const GMAIL_CONNECT_PATH = "/api/invoicing/gmail/connect";
@@ -134,9 +134,17 @@ type TokenJson = {
   error_description?: string;
 };
 
-export function isGmailAuthFailure(status: number | undefined, body: string, tokenError?: string): boolean {
+export function isGmailSetupFailure(_status: number | undefined, body: string, tokenError?: string): boolean {
   const err = (tokenError ?? "").toLowerCase();
-  if (err === "invalid_grant" || err === "unauthorized_client" || err === "invalid_client") return true;
+  if (err === "invalid_client") return true;
+  const lower = body.toLowerCase();
+  return /\binvalid_client\b/.test(lower);
+}
+
+export function isGmailAuthFailure(status: number | undefined, body: string, tokenError?: string): boolean {
+  if (isGmailSetupFailure(status, body, tokenError)) return false;
+  const err = (tokenError ?? "").toLowerCase();
+  if (err === "invalid_grant" || err === "unauthorized_client") return true;
   if (status === 401) return true;
   const lower = body.toLowerCase();
   return (
@@ -193,9 +201,12 @@ export async function refreshGmailAccess(
   if (!res.ok || !json.access_token) {
     const err = new Error(json.error_description || json.error || "Couldn't refresh the Gmail token.") as Error & {
       authFailed?: boolean;
+      setupFailed?: boolean;
       tokenError?: string;
     };
-    err.authFailed = isGmailAuthFailure(res.status, json.error_description || json.error || "", json.error);
+    const detail = json.error_description || json.error || "";
+    err.setupFailed = isGmailSetupFailure(res.status, detail, json.error);
+    err.authFailed = !err.setupFailed && isGmailAuthFailure(res.status, detail, json.error);
     err.tokenError = json.error;
     throw err;
   }

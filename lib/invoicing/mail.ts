@@ -6,7 +6,7 @@
 
 import { mailFrom, mailReplyTo } from "../notifications/mail.ts";
 import type { InvoiceEmail, MailSendResult } from "invoicing";
-import { GMAIL_RECONNECT_ERROR, type GmailMailAccount, type GmailMailLoad } from "./gmail-meta.ts";
+import { GMAIL_RECONNECT_ERROR, GMAIL_SETUP_ERROR, type GmailMailAccount, type GmailMailLoad } from "./gmail-meta.ts";
 import { refreshGmailAccess } from "./gmail-oauth.ts";
 import { sendInvoiceViaGmail, type GmailSendResult } from "./gmail-send.ts";
 
@@ -171,8 +171,12 @@ export async function sendInvoiceEmail(
       const refresh = deps.refreshGmailAccess ?? refreshGmailAccess;
       access = await refresh(gmail.account.refreshToken, env);
     } catch (err) {
-      const authFailed = Boolean((err as { authFailed?: boolean } | null)?.authFailed);
-      const msg = authFailed ? GMAIL_RECONNECT_ERROR : "The email didn't go through. Try again in a minute.";
+      const flags = err as { authFailed?: boolean; setupFailed?: boolean } | null;
+      const msg = flags?.setupFailed
+        ? GMAIL_SETUP_ERROR
+        : flags?.authFailed
+          ? GMAIL_RECONNECT_ERROR
+          : "The email didn't go through. Try again in a minute.";
       console.error(`[invoicing] Gmail token refresh failed for ${mail.invoiceId}: ${err instanceof Error ? err.message : err}`);
       try {
         await deps.recordGmailResult?.({ ok: false, error: msg });
@@ -184,7 +188,11 @@ export async function sendInvoiceEmail(
     const send = deps.sendGmail ?? sendInvoiceViaGmail;
     const sent = await send({ accessToken: access, from, replyTo, to, cc, bcc, subject, text, html });
     if (!sent.ok) {
-      const msg = sent.authFailed ? GMAIL_RECONNECT_ERROR : "The email didn't go through. Try again in a minute.";
+      const msg = sent.setupFailed
+        ? GMAIL_SETUP_ERROR
+        : sent.authFailed
+          ? GMAIL_RECONNECT_ERROR
+          : "The email didn't go through. Try again in a minute.";
       console.error(`[invoicing] Gmail send failed (${sent.status ?? "-"}) from "${from}": ${sent.error ?? ""}`);
       try {
         await deps.recordGmailResult?.({ ok: false, error: msg });

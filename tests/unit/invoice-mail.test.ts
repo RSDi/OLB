@@ -10,7 +10,7 @@ import {
   sendInvoiceEmail,
   type GmailMailAccount,
 } from "../../lib/invoicing/mail.ts";
-import { GMAIL_RECONNECT_ERROR } from "../../lib/invoicing/gmail-oauth.ts";
+import { GMAIL_RECONNECT_ERROR, GMAIL_SETUP_ERROR } from "../../lib/invoicing/gmail-oauth.ts";
 import { invoicePublicBaseUrl } from "../../lib/invoicing/public-url.ts";
 
 const invoice = {
@@ -31,7 +31,7 @@ function gmailReady() {
 }
 
 function gmailDeps(overrides: {
-  send?: () => { ok: boolean; status?: number; error?: string; authFailed?: boolean };
+  send?: () => { ok: boolean; status?: number; error?: string; authFailed?: boolean; setupFailed?: boolean };
   refresh?: () => Promise<string>;
   records?: { ok: boolean; error?: string | null }[];
   load?: () => Promise<{ status: "none" } | { status: "ready"; account: GmailMailAccount } | { status: "unreadable" }>;
@@ -251,6 +251,32 @@ test("production Resend send is success only after the API confirms", async () =
     status = 200;
     const ok = await sendInvoiceEmail(invoice, { VERCEL_ENV: "production", RESEND_API_KEY: "re_test" });
     assert.equal(ok.ok, true);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+test("invalid_client Gmail refresh fails with a setup message, not Reconnect", async () => {
+  const records: { ok: boolean; error?: string | null }[] = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = (async (url: unknown) => {
+    throw new Error(`unexpected fetch ${String(url)}`);
+  }) as typeof fetch;
+  try {
+    const err = Object.assign(new Error("The OAuth client was not found."), { setupFailed: true, authFailed: false });
+    const res = await sendInvoiceEmail(
+      invoice,
+      { VERCEL_ENV: "production", RESEND_API_KEY: "re_should_not_be_used" },
+      gmailDeps({
+        records,
+        refresh: async () => {
+          throw err;
+        },
+      })
+    );
+    assert.equal(res.ok, false);
+    assert.equal(res.error, GMAIL_SETUP_ERROR);
+    assert.deepEqual(records, [{ ok: false, error: GMAIL_SETUP_ERROR }]);
   } finally {
     globalThis.fetch = orig;
   }

@@ -1,9 +1,10 @@
-// GET /api/invoicing/gmail/connect — send an invoicing holder to Google so
+// GET /api/invoicing/gmail/connect — send a super-admin to Google so
 // invoices can go out through that Gmail account. Callback stores the
-// refresh token encrypted.
+// refresh token encrypted. Invoicing holders send through it; they
+// cannot connect.
 
 import { NextResponse, type NextRequest } from "next/server";
-import { requireInvoicing } from "../../../../../lib/auth/guards";
+import { requireSuperAdmin } from "../../../../../lib/auth/guards";
 import { getPreview } from "../../../../../lib/activity/preview";
 import {
   GMAIL_CONNECT_COOKIE,
@@ -18,23 +19,22 @@ import {
 } from "../../../../../lib/invoicing/gmail-oauth";
 
 export async function GET(req: NextRequest) {
-  const canonical = gmailCanonicalConnectUrl(req.nextUrl.origin, `${req.nextUrl.pathname}${req.nextUrl.search}`);
-  if (canonical) return NextResponse.redirect(canonical);
-
   const next = safeInvoiceReturn(req.nextUrl.searchParams.get("next"));
-  const bounceOrigin = gmailRedirectOrigin() ?? req.nextUrl.origin;
   const fail = (code: string) => {
-    const url = new URL(next, bounceOrigin);
+    const url = new URL(next, req.nextUrl.origin);
     if (url.pathname === "/portal/payments" && !url.searchParams.get("tab")) url.searchParams.set("tab", "invoices");
     url.searchParams.set("gmail", code);
     return NextResponse.redirect(url);
   };
 
-  const gate = await requireInvoicing();
+  const gate = await requireSuperAdmin();
   if ("error" in gate) return fail("not-allowed");
   if (await getPreview()) return fail("preview");
   if (!invoiceGmailLive()) return fail("production-only");
   if (!gmailOAuthConfigured()) return fail("not-set-up");
+
+  const canonical = gmailCanonicalConnectUrl(req.nextUrl.origin, `${req.nextUrl.pathname}${req.nextUrl.search}`);
+  if (canonical) return NextResponse.redirect(canonical);
 
   const origin = gmailRedirectOrigin();
   if (!origin) return fail("not-set-up");

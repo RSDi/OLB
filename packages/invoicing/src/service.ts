@@ -287,11 +287,10 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
         const inv = await getInvoice(db, id);
         if (!inv) return fail("That invoice isn't here.");
         if (inv.voidedAt) return fail("A voided invoice can't be sent.");
+        if (inv.sentAt) return fail("This invoice was already sent.");
         const mailed = await sendFor(inv, "invoice");
         if (!mailed.ok) return mailed;
-        if (!inv.sentAt) {
-          await updateInvoiceRow(db, id, { sent_at: new Date().toISOString(), issued_on: adapter.today() });
-        }
+        await updateInvoiceRow(db, id, { sent_at: new Date().toISOString(), issued_on: adapter.today() });
         const fresh = (await getInvoice(db, id))!;
         await notifyEvent(fresh.hostEventId);
         return { ok: true, data: fresh };

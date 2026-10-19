@@ -4,7 +4,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { decryptSecret, encryptSecret, invoiceGmailTokenKey } from "../../lib/invoicing/gmail-crypto.ts";
-import { gmailBannerKind, GMAIL_RECONNECT_ERROR } from "../../lib/invoicing/gmail-meta.ts";
+import {
+  gmailBannerKind,
+  invoiceCanShowGmailBanner,
+  GMAIL_RECONNECT_ERROR,
+  GMAIL_SETUP_ERROR,
+  GMAIL_SUPER_ADMIN_NOTE,
+} from "../../lib/invoicing/gmail-meta.ts";
 import {
   GMAIL_CALLBACK_PATH,
   GMAIL_SCOPES,
@@ -15,6 +21,7 @@ import {
   gmailRedirectOrigin,
   invoiceGmailLive,
   isGmailAuthFailure,
+  isGmailSetupFailure,
   readOAuthStateCookie,
   oauthStateCookie,
   refreshGmailAccess,
@@ -22,7 +29,7 @@ import {
 } from "../../lib/invoicing/gmail-oauth.ts";
 import { isMissingGmailTable } from "../../lib/invoicing/gmail-settings.ts";
 import { buildGmailRawMessage, encodeRfc2047 } from "../../lib/invoicing/gmail-send.ts";
-import { canManageInvoicing, type MemberLike } from "../../lib/auth/permissions.ts";
+import { canManageInvoicing, isSuperAdmin, type MemberLike } from "../../lib/auth/permissions.ts";
 
 const root = join(import.meta.dirname, "../..");
 
@@ -107,10 +114,30 @@ test("OAuth state cookie is bound to the state, signed-in user, and return path 
   assert.equal(safeInvoiceReturn("/login"), "/portal/payments?tab=invoices");
 });
 
-test("revoked and unauthorized Google responses are auth failures", () => {
+test("revoked and unauthorized Google responses are auth failures; invalid_client is setup", () => {
   assert.equal(isGmailAuthFailure(400, "Token has been expired or revoked", "invalid_grant"), true);
   assert.equal(isGmailAuthFailure(401, "", undefined), true);
   assert.equal(isGmailAuthFailure(500, "backend error", undefined), false);
+  assert.equal(isGmailAuthFailure(401, "unauthorized_client", "invalid_client"), false);
+  assert.equal(isGmailSetupFailure(401, "The OAuth client was not found.", "invalid_client"), true);
+  assert.equal(isGmailSetupFailure(400, "Token has been expired or revoked", "invalid_grant"), false);
+});
+
+test("refreshGmailAccess treats invalid_client as a setup problem, not reconnect", async () => {
+  const orig = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ error: "invalid_client", error_description: "The OAuth client was not found." }), {
+      status: 401,
+    })) as typeof fetch;
+  try {
+    await refreshGmailAccess("rt", { INVOICE_GMAIL_CLIENT_ID: "id", INVOICE_GMAIL_CLIENT_SECRET: "sec" });
+    assert.fail("expected refresh to throw");
+  } catch (err) {
+    assert.equal((err as { setupFailed?: boolean }).setupFailed, true);
+    assert.equal((err as { authFailed?: boolean }).authFailed, false);
+  } finally {
+    globalThis.fetch = orig;
+  }
 });
 
 test("refreshGmailAccess treats invalid_grant as a revoked token", async () => {
@@ -187,8 +214,9 @@ test("Gmail raw message carries From, To, CC, BCC, Reply-To, and both bodies", (
   for (const word of encodedWords) assert.ok(word.length <= 75, word);
 });
 
-test("Reconnect banner is reconnect only for revoked/unreadable, retry for temporary errors", () => {
+test("Reconnect banner is reconnect only for revoked/unreadable, retry for temporary errors, setup for invalid_client", () => {
   assert.equal(gmailBannerKind({ connected: true, lastError: GMAIL_RECONNECT_ERROR }), "reconnect");
+  assert.equal(gmailBannerKind({ connected: true, lastError: GMAIL_SETUP_ERROR }), "setup");
   assert.equal(
     gmailBannerKind({ connected: true, lastError: "The email didn't go through. Try again in a minute." }),
     "retry"
@@ -197,18 +225,31 @@ test("Reconnect banner is reconnect only for revoked/unreadable, retry for tempo
   assert.equal(gmailBannerKind({ connected: false, lastError: GMAIL_RECONNECT_ERROR }), null);
 });
 
-test("Connect Gmail and Disconnect follow canManageInvoicing, including super_admin and live Planning Roles", () => {
+test("Gmail send-again banner is only for unsent, non-void invoices", () => {
+  assert.equal(invoiceCanShowGmailBanner({ sentAt: null, voidedAt: null }), true);
+  assert.equal(invoiceCanShowGmailBanner({ sentAt: "2026-10-19T00:00:00Z", voidedAt: null }), false);
+  assert.equal(invoiceCanShowGmailBanner({ sentAt: null, voidedAt: "2026-10-19T00:00:00Z" }), false);
+  assert.equal(invoiceCanShowGmailBanner({ sentAt: "2026-10-19T00:00:00Z", voidedAt: "2026-10-19T00:00:00Z" }), false);
+  const page = readFileSync(join(root, "app/portal/payments/invoices/[id]/page.tsx"), "utf8");
+  const invoicePage = readFileSync(join(root, "app/portal/payments/invoices/[id]/InvoicePage.tsx"), "utf8");
+  const service = readFileSync(join(root, "packages/invoicing/src/service.ts"), "utf8");
+  assert.match(page, /invoiceCanShowGmailBanner\(got\.data\)/);
+  assert.match(invoicePage, /invoiceCanShowGmailBanner\(invoice\)/);
+  const sendFn = service.slice(service.indexOf("async send(id: string)"), service.indexOf("async voidInvoice"));
+  assert.match(sendFn, /if \(inv\.sentAt\) return fail\("This invoice was already sent\."\)/);
+  assert.ok(sendFn.indexOf("inv.sentAt") < sendFn.indexOf("sendFor"));
+});
+
+test("super_admin can connect Gmail; a planning-role holder can send but cannot connect or disconnect", () => {
+  const holder = approved([], { holds_invoicing_planning_role: true });
+  const superAdmin = { role: "super_admin" as const, status: "approved" as const, permissions: [] as string[] };
+  assert.equal(canManageInvoicing(holder), true);
+  assert.equal(isSuperAdmin(holder), false);
+  assert.equal(canManageInvoicing(superAdmin), true);
+  assert.equal(isSuperAdmin(superAdmin), true);
+  assert.equal(isSuperAdmin({ role: "super_admin", status: "pending" }), false);
   assert.equal(canManageInvoicing(approved(["invoicing"])), true);
-  assert.equal(canManageInvoicing(approved(["payments"], { can_manage_finances: true })), false);
-  assert.equal(canManageInvoicing(approved(["finances_view"])), false);
-  assert.equal(canManageInvoicing({ role: "admin", status: "approved", permissions: [] }), false);
-  assert.equal(canManageInvoicing({ role: "super_admin", status: "approved" }), true);
-  assert.equal(canManageInvoicing({ role: "super_admin", status: "approved", permissions: [] }), true);
-  assert.equal(canManageInvoicing({ role: "super_admin", status: "approved", holds_invoicing_planning_role: false }), true);
-  assert.equal(canManageInvoicing(approved([], { holds_invoicing_planning_role: true })), true);
-  assert.equal(canManageInvoicing(approved([], { holds_invoicing_planning_role: false })), false);
-  assert.equal(canManageInvoicing({ role: "super_admin", status: "pending" }), false);
-  assert.equal(canManageInvoicing({ role: "member", status: "pending", holds_invoicing_planning_role: true }), false);
+  assert.equal(isSuperAdmin(approved(["invoicing"])), false);
 
   const connect = readFileSync(join(root, "app/api/invoicing/gmail/connect/route.ts"), "utf8");
   const callback = readFileSync(join(root, "app/api/invoicing/gmail/callback/route.ts"), "utf8");
@@ -217,28 +258,31 @@ test("Connect Gmail and Disconnect follow canManageInvoicing, including super_ad
   const invoicePage = readFileSync(join(root, "app/portal/payments/invoices/[id]/InvoicePage.tsx"), "utf8");
   const mail = readFileSync(join(root, "lib/invoicing/mail.ts"), "utf8");
   const isolation = readFileSync(join(root, "packages/invoicing/tests/isolation.test.ts"), "utf8");
-  assert.match(connect, /requireInvoicing\(\)/);
-  assert.match(callback, /requireInvoicing\(\)/);
+  assert.match(connect, /requireSuperAdmin\(\)/);
+  assert.match(callback, /requireSuperAdmin\(\)/);
+  assert.doesNotMatch(connect, /requireInvoicing\(\)/);
+  assert.doesNotMatch(callback, /requireInvoicing\(\)/);
   assert.match(actions, /loadGmailSettings[\s\S]*requireInvoicing\(\)/);
-  assert.match(actions, /disconnectGmailSender[\s\S]*requireInvoicing\(\)/);
+  assert.match(actions, /disconnectGmailSender[\s\S]*requireSuperAdmin\(\)/);
   assert.doesNotMatch(connect, /requireFilmManage/);
   assert.doesNotMatch(callback, /requireFilmManage/);
   assert.match(card, /Connect Gmail/);
-  assert.match(card, /Planning Roles/);
-  assert.match(card, /super-admin/);
-  assert.match(card, /Invoicing override/);
+  assert.match(card, /GMAIL_SUPER_ADMIN_NOTE|Only a super admin can connect or change the Gmail sender/);
   assert.match(card, /only available in production/);
   assert.match(card, /Disconnect/);
   assert.match(card, /Reconnect Gmail/);
   assert.match(card, /isn&apos;t connected anymore/);
   assert.match(card, /Last send failed, Send again/);
+  assert.match(card, /GMAIL_SETUP_ERROR/);
   assert.match(invoicePage, /isn&apos;t connected anymore/);
   assert.match(invoicePage, /Last send failed, Send again/);
   assert.match(invoicePage, /Send again/);
   assert.match(invoicePage, /sendInvoiceAction/);
+  assert.match(invoicePage, /canConnectGmail/);
   assert.match(card, /Connected as/);
   assert.match(card, /Last used/);
   assert.match(mail, /packages\/invoicing never/);
+  assert.doesNotMatch(mail, /requireSuperAdmin/);
   assert.match(isolation, /invoicing module core imports nothing from OLB/);
   const guide = readFileSync(join(root, "lib/help/guide.ts"), "utf8");
   const tours = readFileSync(join(root, "lib/help/tours.ts"), "utf8");
@@ -246,10 +290,12 @@ test("Connect Gmail and Disconnect follow canManageInvoicing, including super_ad
     guide,
     /Whoever holds President, Athletic Director, or Treasurer in Settings → Planning Roles \(plus super admins\) can invoice\. The \*\*Invoicing\*\* box on an access profile or a person's extras is a manual override\./
   );
-  assert.match(guide, /whoever can invoice can \*\*Connect Gmail\*\*/);
-  assert.match(tours, /whoever can invoice taps \*\*Connect Gmail\*\*/);
-  assert.match(tours, /Planning Roles/);
+  assert.match(guide, /a super admin can \*\*Connect Gmail\*\*/);
+  assert.match(guide, /Only a super admin can connect or change the Gmail sender/);
+  assert.match(tours, /a super admin taps \*\*Connect Gmail\*\*/);
+  assert.match(tours, /Only a super admin can connect or change the Gmail sender/);
   assert.match(actions, /canManageInvoicing/);
+  assert.equal(GMAIL_SUPER_ADMIN_NOTE, "Only a super admin can connect or change the Gmail sender.");
 });
 
 test("host adapter is the only Gmail seam and invoices stay Draft until mail ok", () => {
@@ -277,6 +323,9 @@ test("host adapter is the only Gmail seam and invoices stay Draft until mail ok"
   assert.match(callback, /readOAuthStateCookie\([\s\S]*gate\.userId/);
   assert.match(connect, /invoiceGmailLive\(\)/);
   assert.match(connect, /gmailCanonicalConnectUrl/);
+  const connectFn = connect.slice(connect.indexOf("export async function GET"));
+  assert.ok(connectFn.indexOf("requireSuperAdmin()") < connectFn.indexOf("invoiceGmailLive()"));
+  assert.ok(connectFn.indexOf("invoiceGmailLive()") < connectFn.indexOf("gmailCanonicalConnectUrl"));
   assert.match(callback, /invoiceGmailLive\(\)/);
   assert.match(settings, /invoiceGmailLive/);
   assert.match(mail, /isProductionMail\(env\) \? await resolveGmailLoad/);
@@ -304,6 +353,10 @@ test("Connect Gmail is production-only and previews never touch inv_gmail", () =
   const page = readFileSync(join(root, "app/portal/payments/invoices/[id]/page.tsx"), "utf8");
   assert.match(page, /invoiceGmailLive\(\)/);
   assert.match(settings, /isMissingGmailTable/);
+  const envExample = readFileSync(join(root, ".env.example"), "utf8");
+  assert.match(envExample, /never use Gmail/);
+  assert.match(envExample, /to Resend only/);
+  assert.doesNotMatch(envExample, /Applies to Gmail and Resend/);
 });
 
 test("missing inv_gmail table is no Gmail connected, not Reconnect", () => {
@@ -317,6 +370,25 @@ test("missing inv_gmail table is no Gmail connected, not Reconnect", () => {
   );
   assert.equal(isMissingGmailTable({ code: "42501", message: "permission denied for table inv_gmail" }), false);
   assert.equal(isMissingGmailTable(new Error("That stored token isn't readable.")), false);
+  assert.equal(
+    isMissingGmailTable({
+      code: "42703",
+      message: 'column "sender_email" of relation "inv_gmail" does not exist',
+    }),
+    false
+  );
+  assert.equal(
+    isMissingGmailTable({
+      code: "PGRST204",
+      message: "Could not find the 'sender_email' column of 'inv_gmail' in the schema cache",
+    }),
+    false
+  );
+  assert.equal(isMissingGmailTable("relation inv_gmail does not exist"), false);
+  assert.equal(
+    isMissingGmailTable({ message: "Could not find the table 'public.inv_gmail' in the schema cache" }),
+    false
+  );
   const settings = readFileSync(join(root, "lib/invoicing/gmail-settings.ts"), "utf8");
   assert.match(settings, /if \(isMissingGmailTable\(error\)\) return null/);
   assert.match(settings, /isMissingGmailTable\(err[\s\S]*status: "none"/);

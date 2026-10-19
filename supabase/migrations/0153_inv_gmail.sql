@@ -3,8 +3,9 @@
 -- Club Gmail sender for invoicing. One encrypted refresh token per org
 -- (OLB is a single club: singleton row id = true). The AES-GCM key is
 -- INVOICE_GMAIL_TOKEN_KEY in Vercel, never in this table. No grant to
--- authenticated: the app uses the service role after an invoicing
--- permission check (same pattern as game_film_youtube).
+-- authenticated: the app uses the service role after a super_admin
+-- check for connect/disconnect (same pattern as game_film_youtube).
+-- Whoever can invoice still sends through the connected account.
 --
 -- OLB does NOT auto-run migrations. Apply this in the Supabase SQL editor
 -- after 0152. Idempotent. Additive: create-if-not-exists, insert-on-conflict,

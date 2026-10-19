@@ -44,29 +44,17 @@ function assertGmailLive(env: Record<string, string | undefined> = process.env):
   }
 }
 
-/** Missing inv_gmail (migration 0153 not applied) is "no Gmail", not Reconnect. */
+/** Missing inv_gmail (migration 0153 not applied) is "no Gmail", not Reconnect.
+ * Codes only: a missing column (42703 / PGRST204) or a message match must
+ * fail loudly, not fall through to Resend. */
 export function isMissingGmailTable(error: {
   code?: string | null;
   message?: string | null;
   details?: string | null;
 } | Error | string | null | undefined): boolean {
-  if (!error) return false;
-  const code = (typeof error === "object" && error && "code" in error ? String(error.code ?? "") : "").toUpperCase();
-  if (code === "42P01" || code === "PGRST205") return true;
-  const msg = (
-    typeof error === "string"
-      ? error
-      : `${error instanceof Error ? error.message : ""} ${typeof error === "object" && error && "message" in error ? String(error.message ?? "") : ""} ${typeof error === "object" && error && "details" in error ? String(error.details ?? "") : ""}`
-  ).toLowerCase();
-  if (msg.includes("42p01") || msg.includes("pgrst205")) return true;
-  const namesTable = msg.includes("inv_gmail") || msg.includes("public.inv_gmail");
-  return (
-    namesTable &&
-    (msg.includes("does not exist") ||
-      msg.includes("undefined table") ||
-      msg.includes("schema cache") ||
-      msg.includes("could not find the table"))
-  );
+  if (!error || typeof error !== "object") return false;
+  const code = ("code" in error ? String(error.code ?? "") : "").toUpperCase();
+  return code === "42P01" || code === "PGRST205";
 }
 
 async function loadRow(): Promise<Row | null> {
@@ -100,7 +88,7 @@ export async function loadGmailForSend(
   try {
     row = await loadRow();
   } catch (err) {
-    if (isMissingGmailTable(err instanceof Error ? err : String(err))) return { status: "none" };
+    if (isMissingGmailTable(err)) return { status: "none" };
     return { status: "unreadable" };
   }
   if (!row?.refresh_token_enc) return { status: "none" };
