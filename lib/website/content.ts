@@ -196,6 +196,8 @@ export const RESERVED_SLUGS = [
   "t",
   // Public invoice page (0152): /invoice/<token>.
   "invoice",
+  // Public, no-login click-throughs for reviewing ideas. Not in the menu.
+  "mockups",
 ];
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

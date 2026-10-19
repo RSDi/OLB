@@ -135,5 +135,7 @@ async function deviceRevoked(id: string): Promise<boolean> {
 }
 
 export const config = {
+  // Public site pages (including /mockups) are not listed: they never require
+  // a session. Only the portal, sign-in, and phone pairing are gated.
   matcher: ["/portal/:path*", "/login", "/pair/:path*"],
 };
