@@ -26,14 +26,19 @@ const invoice = {
 
 const gmailAccount: GmailMailAccount = { refreshToken: "refresh-token", senderEmail: "club@gmail.com" };
 
+function gmailReady() {
+  return { status: "ready" as const, account: gmailAccount };
+}
+
 function gmailDeps(overrides: {
   send?: () => { ok: boolean; status?: number; error?: string; authFailed?: boolean };
   refresh?: () => Promise<string>;
   records?: { ok: boolean; error?: string | null }[];
+  load?: () => Promise<{ status: "none" } | { status: "ready"; account: GmailMailAccount } | { status: "unreadable" }>;
 } = {}) {
   const records = overrides.records ?? [];
   return {
-    loadGmail: async () => gmailAccount,
+    loadGmail: overrides.load ?? (async () => gmailReady()),
     refreshGmailAccess: overrides.refresh ?? (async () => "ya29.access"),
     sendGmail: async () => overrides.send?.() ?? { ok: true, status: 200 },
     recordGmailResult: async (result: { ok: boolean; error?: string | null }) => {
@@ -283,7 +288,7 @@ test("production Gmail send uses the connected From and club reply-to override",
     invoice,
     { VERCEL_ENV: "production", MAIL_REPLY_TO: "replies@example.com" },
     {
-      loadGmail: async () => gmailAccount,
+      loadGmail: async () => gmailReady(),
       refreshGmailAccess: async () => "ya29.access",
       sendGmail: async (input) => {
         captured.push(input);
@@ -299,7 +304,7 @@ test("production Gmail send uses the connected From and club reply-to override",
   assert.deepEqual(captured[0]?.bcc, ["bcc@example.com"]);
 
   const res2 = await sendInvoiceEmail(invoice, { VERCEL_ENV: "production" }, {
-    loadGmail: async () => gmailAccount,
+    loadGmail: async () => gmailReady(),
     refreshGmailAccess: async () => "ya29.access",
     sendGmail: async (input) => {
       captured.push(input);
@@ -337,7 +342,7 @@ test("mocked Google token refresh and users.messages.send", async () => {
         INVOICE_GMAIL_CLIENT_ID: "id",
         INVOICE_GMAIL_CLIENT_SECRET: "sec",
       },
-      { loadGmail: async () => gmailAccount }
+      { loadGmail: async () => gmailReady() }
     );
     assert.equal(res.ok, true);
     assert.ok(urls.some((u) => u.includes("oauth2.googleapis.com/token")));
@@ -358,7 +363,7 @@ test("non-production INVOICE_TEST_EMAIL redirects To/CC/BCC through Gmail, not R
       invoice,
       { VERCEL_ENV: "preview", INVOICE_TEST_EMAIL: "jeff@example.com, other@example.com", RESEND_API_KEY: "re_should_not_be_used" },
       {
-        loadGmail: async () => gmailAccount,
+        loadGmail: async () => gmailReady(),
         refreshGmailAccess: async () => "ya29.access",
         sendGmail: async (input) => {
           sent.push(input);
@@ -375,6 +380,77 @@ test("non-production INVOICE_TEST_EMAIL redirects To/CC/BCC through Gmail, not R
     assert.match(sent[0]?.text ?? "", /program@example.com/);
     assert.match(sent[0]?.text ?? "", /cc@example.com/);
     assert.match(sent[0]?.text ?? "", /bcc@example.com/);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+test("unreadable Gmail connection stays Draft, records last_error, and does not use Resend", async () => {
+  const records: { ok: boolean; error?: string | null }[] = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = (async (url: unknown) => {
+    throw new Error(`unexpected fetch ${String(url)}`);
+  }) as typeof fetch;
+  try {
+    const res = await sendInvoiceEmail(
+      invoice,
+      { VERCEL_ENV: "production", RESEND_API_KEY: "re_should_not_be_used" },
+      gmailDeps({
+        records,
+        load: async () => ({ status: "unreadable" }),
+      })
+    );
+    assert.equal(res.ok, false);
+    assert.equal(res.error, GMAIL_RECONNECT_ERROR);
+    assert.deepEqual(records, [{ ok: false, error: GMAIL_RECONNECT_ERROR }]);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+test("loadGmail throw is treated as unreadable and does not use Resend", async () => {
+  const records: { ok: boolean; error?: string | null }[] = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = (async (url: unknown) => {
+    throw new Error(`unexpected fetch ${String(url)}`);
+  }) as typeof fetch;
+  try {
+    const res = await sendInvoiceEmail(
+      invoice,
+      { VERCEL_ENV: "production", RESEND_API_KEY: "re_should_not_be_used" },
+      gmailDeps({
+        records,
+        load: async () => {
+          throw new Error("decrypt failed");
+        },
+      })
+    );
+    assert.equal(res.ok, false);
+    assert.equal(res.error, GMAIL_RECONNECT_ERROR);
+    assert.deepEqual(records, [{ ok: false, error: GMAIL_RECONNECT_ERROR }]);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+test("no Gmail connection still uses Resend", async () => {
+  const orig = globalThis.fetch;
+  let usedResend = false;
+  globalThis.fetch = (async (url: unknown) => {
+    if (String(url).includes("api.resend.com")) {
+      usedResend = true;
+      return new Response("{}", { status: 200 });
+    }
+    throw new Error(`unexpected fetch ${String(url)}`);
+  }) as typeof fetch;
+  try {
+    const res = await sendInvoiceEmail(
+      invoice,
+      { VERCEL_ENV: "production", RESEND_API_KEY: "re_test" },
+      gmailDeps({ load: async () => ({ status: "none" }) })
+    );
+    assert.equal(res.ok, true);
+    assert.equal(usedResend, true);
   } finally {
     globalThis.fetch = orig;
   }

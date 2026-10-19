@@ -6,20 +6,18 @@
 
 import { mailFrom, mailReplyTo } from "../notifications/mail.ts";
 import type { InvoiceEmail, MailSendResult } from "invoicing";
-import { GMAIL_RECONNECT_ERROR, refreshGmailAccess } from "./gmail-oauth.ts";
+import { GMAIL_RECONNECT_ERROR, type GmailMailAccount, type GmailMailLoad } from "./gmail-meta.ts";
+import { refreshGmailAccess } from "./gmail-oauth.ts";
 import { sendInvoiceViaGmail, type GmailSendResult } from "./gmail-send.ts";
+
+export type { GmailMailAccount, GmailMailLoad };
 
 const RESEND = "https://api.resend.com/emails";
 
 export type InvoiceMailProvider = "gmail" | "resend" | "none";
 
-export type GmailMailAccount = {
-  refreshToken: string;
-  senderEmail: string;
-};
-
 export type InvoiceMailDeps = {
-  loadGmail?: (env: Record<string, string | undefined>) => Promise<GmailMailAccount | null>;
+  loadGmail?: (env: Record<string, string | undefined>) => Promise<GmailMailLoad>;
   refreshGmailAccess?: (refreshToken: string, env: Record<string, string | undefined>) => Promise<string>;
   sendGmail?: (input: {
     accessToken: string;
@@ -148,19 +146,29 @@ export async function sendInvoiceEmail(
     }
   }
 
-  const gmail = deps.loadGmail ? await deps.loadGmail(env).catch(() => null) : null;
+  const gmail = await resolveGmailLoad(deps, env);
+  if (gmail.status === "unreadable") {
+    const msg = GMAIL_RECONNECT_ERROR;
+    console.error(`[invoicing] Gmail connection exists but isn't readable for ${mail.invoiceId}`);
+    try {
+      await deps.recordGmailResult?.({ ok: false, error: msg });
+    } catch {
+      // Status write is best-effort; the send still failed.
+    }
+    return { ok: false, error: msg };
+  }
   const provider = selectInvoiceMailProvider({
-    gmailConnected: Boolean(gmail?.refreshToken && gmail?.senderEmail),
+    gmailConnected: gmail.status === "ready",
     resendConfigured: Boolean(env.RESEND_API_KEY?.trim()),
   });
 
-  if (provider === "gmail" && gmail) {
-    const from = gmailFrom(gmail.senderEmail);
-    const replyTo = gmailReplyTo(gmail.senderEmail, env);
+  if (provider === "gmail" && gmail.status === "ready") {
+    const from = gmailFrom(gmail.account.senderEmail);
+    const replyTo = gmailReplyTo(gmail.account.senderEmail, env);
     let access: string;
     try {
       const refresh = deps.refreshGmailAccess ?? refreshGmailAccess;
-      access = await refresh(gmail.refreshToken, env);
+      access = await refresh(gmail.account.refreshToken, env);
     } catch (err) {
       const authFailed = Boolean((err as { authFailed?: boolean } | null)?.authFailed);
       const msg = authFailed ? GMAIL_RECONNECT_ERROR : "The email didn't go through. Try again in a minute.";
@@ -200,4 +208,13 @@ export async function sendInvoiceEmail(
 
   console.warn("[invoicing] no Gmail connection and RESEND_API_KEY not set — invoice email not sent");
   return { ok: false, error: "Email isn't set up for the site yet, so nothing was sent." };
+}
+
+async function resolveGmailLoad(deps: InvoiceMailDeps, env: Record<string, string | undefined>): Promise<GmailMailLoad> {
+  if (!deps.loadGmail) return { status: "none" };
+  try {
+    return await deps.loadGmail(env);
+  } catch {
+    return { status: "unreadable" };
+  }
 }

@@ -4,6 +4,9 @@
 // mailbox, so users.getProfile (restricted) is not used.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { GMAIL_RECONNECT_ERROR } from "./gmail-meta.ts";
+
+export { GMAIL_RECONNECT_ERROR };
 
 export const GMAIL_CONNECT_COOKIE = "olb_inv_gmail_oauth";
 export const GMAIL_CONNECT_PATH = "/api/invoicing/gmail/connect";
@@ -16,8 +19,6 @@ export const GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token";
 export const GMAIL_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 export const GMAIL_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
 
-export const GMAIL_RECONNECT_ERROR = "Gmail isn't connected anymore. Reconnect Gmail, then send again.";
-
 export function gmailClientId(env: Record<string, string | undefined> = process.env): string {
   return (env.INVOICE_GMAIL_CLIENT_ID ?? "").trim();
 }
@@ -27,7 +28,26 @@ export function gmailClientSecret(env: Record<string, string | undefined> = proc
 }
 
 export function gmailOAuthConfigured(env: Record<string, string | undefined> = process.env): boolean {
-  return Boolean(gmailClientId(env) && gmailClientSecret(env) && (env.INVOICE_GMAIL_TOKEN_KEY ?? "").trim());
+  return Boolean(
+    gmailClientId(env) && gmailClientSecret(env) && (env.INVOICE_GMAIL_TOKEN_KEY ?? "").trim() && gmailRedirectOrigin(env)
+  );
+}
+
+/** Fixed site origin for the Google redirect URI. Never the request Host. */
+export function gmailRedirectOrigin(env: Record<string, string | undefined> = process.env): string | null {
+  const site = (env.NEXT_PUBLIC_SITE_URL ?? "").trim();
+  if (!site) return null;
+  try {
+    return new URL(site).origin;
+  } catch {
+    return null;
+  }
+}
+
+export function gmailCallbackRedirectUri(env: Record<string, string | undefined> = process.env): string {
+  const origin = gmailRedirectOrigin(env);
+  if (!origin) throw new Error("NEXT_PUBLIC_SITE_URL is not set.");
+  return `${origin}${GMAIL_CALLBACK_PATH}`;
 }
 
 export function newOAuthState(): string {
@@ -36,22 +56,30 @@ export function newOAuthState(): string {
 
 const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 
-export function oauthStateCookie(state: string, next: string): string {
-  return JSON.stringify({ h: hash(state), next });
+export function oauthStateCookie(state: string, next: string, userId: string): string {
+  return JSON.stringify({ h: hash(state), u: hash(userId), next });
 }
 
-export function readOAuthStateCookie(raw: string | undefined, state: string | null): { next: string } | null {
-  if (!raw || !state) return null;
-  let parsed: { h?: unknown; next?: unknown };
+function sameHash(got: string, expected: string): boolean {
+  const a = Buffer.from(got);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+export function readOAuthStateCookie(
+  raw: string | undefined,
+  state: string | null,
+  userId: string
+): { next: string } | null {
+  if (!raw || !state || !userId) return null;
+  let parsed: { h?: unknown; u?: unknown; next?: unknown };
   try {
     parsed = JSON.parse(raw);
   } catch {
     return null;
   }
-  if (typeof parsed.h !== "string" || typeof parsed.next !== "string") return null;
-  const a = Buffer.from(parsed.h);
-  const b = Buffer.from(hash(state));
-  return a.length === b.length && timingSafeEqual(a, b) ? { next: parsed.next } : null;
+  if (typeof parsed.h !== "string" || typeof parsed.u !== "string" || typeof parsed.next !== "string") return null;
+  return sameHash(parsed.h, hash(state)) && sameHash(parsed.u, hash(userId)) ? { next: parsed.next } : null;
 }
 
 export function safeInvoiceReturn(raw: string | null): string {
@@ -59,15 +87,14 @@ export function safeInvoiceReturn(raw: string | null): string {
   return "/portal/payments?tab=invoices";
 }
 
-export function gmailAuthorizeUrl(origin: string, state: string, env: Record<string, string | undefined> = process.env): string {
+export function gmailAuthorizeUrl(state: string, env: Record<string, string | undefined> = process.env): string {
   const url = new URL(GMAIL_AUTH_URL);
   url.searchParams.set("client_id", gmailClientId(env));
-  url.searchParams.set("redirect_uri", `${origin}${GMAIL_CALLBACK_PATH}`);
+  url.searchParams.set("redirect_uri", gmailCallbackRedirectUri(env));
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", GMAIL_SCOPES.join(" "));
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
-  url.searchParams.set("include_granted_scopes", "true");
   url.searchParams.set("state", state);
   return url.toString();
 }
@@ -94,7 +121,6 @@ export function isGmailAuthFailure(status: number | undefined, body: string, tok
 }
 
 export async function exchangeGmailCode(
-  origin: string,
   code: string,
   env: Record<string, string | undefined> = process.env
 ): Promise<{ refreshToken: string; accessToken: string }> {
@@ -102,7 +128,7 @@ export async function exchangeGmailCode(
     code,
     client_id: gmailClientId(env),
     client_secret: gmailClientSecret(env),
-    redirect_uri: `${origin}${GMAIL_CALLBACK_PATH}`,
+    redirect_uri: gmailCallbackRedirectUri(env),
     grant_type: "authorization_code",
   });
   const res = await fetch(GMAIL_TOKEN_URL, {

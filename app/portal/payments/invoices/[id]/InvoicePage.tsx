@@ -11,6 +11,7 @@ import {
   updateInvoiceAction,
   voidInvoiceAction,
 } from "../../../../../lib/invoicing/actions";
+import type { GmailBannerKind } from "../../../../../lib/invoicing/gmail-meta";
 
 export function InvoicePage({
   invoice,
@@ -21,7 +22,7 @@ export function InvoicePage({
   fromEmail,
   backHref,
   backLabel,
-  gmailReconnect,
+  gmailBanner,
 }: {
   invoice: Invoice;
   today: string;
@@ -31,17 +32,25 @@ export function InvoicePage({
   fromEmail: string;
   backHref: string;
   backLabel?: string;
-  gmailReconnect?: boolean;
+  gmailBanner?: GmailBannerKind | null;
 }) {
   const router = useRouter();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {gmailReconnect && canInvoice && (
+      {gmailBanner && canInvoice && (
         <div className="rsd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontWeight: 800, fontSize: 15 }}>Reconnect Gmail</div>
           <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
-            The last invoice email didn&apos;t go out because Gmail isn&apos;t connected anymore. The invoice stayed{" "}
-            <strong>Draft</strong>. Connect Gmail again, then send.
+            {gmailBanner === "reconnect" ? (
+              <>
+                The last invoice email didn&apos;t go out because Gmail isn&apos;t connected anymore. The invoice stayed{" "}
+                <strong>Draft</strong>. Connect Gmail again, then send.
+              </>
+            ) : (
+              <>
+                The last send failed, try again. The invoice stayed <strong>Draft</strong>.
+              </>
+            )}
           </p>
           <a
             href={

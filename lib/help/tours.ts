@@ -1332,7 +1332,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "invoices-gmail",
         click: "payments-tab-invoices",
         title: "Connect Gmail",
-        body: "Treasurer, President, or Athletic Director tap **Connect Gmail** so invoices send from that account. **Disconnect** and **Reconnect Gmail** are here if the token expires.",
+        body: "Treasurer, President, or Athletic Director tap **Connect Gmail** so invoices send from that account. **Disconnect** and **Reconnect Gmail** are here if it isn't connected anymore, or if the last send failed.",
       },
       {
         target: "invoices-list",

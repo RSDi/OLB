@@ -8,6 +8,7 @@ import { decryptSecret, encryptSecret, invoiceGmailTokenKey } from "../../../../
 import {
   GMAIL_CONNECT_COOKIE,
   exchangeGmailCode,
+  gmailRedirectOrigin,
   gmailUserEmail,
   readOAuthStateCookie,
   safeInvoiceReturn,
@@ -15,12 +16,10 @@ import {
 import { saveGmailConnection } from "../../../../../lib/invoicing/gmail-settings";
 
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
-  const state = req.nextUrl.searchParams.get("state");
-  const stored = readOAuthStateCookie(req.cookies.get(GMAIL_CONNECT_COOKIE)?.value, state);
-  const next = safeInvoiceReturn(stored?.next ?? "/portal/payments?tab=invoices");
-  const done = (code: string) => {
-    const url = new URL(next, origin);
+  const bounceOrigin = gmailRedirectOrigin() ?? req.nextUrl.origin;
+  const done = (code: string, nextPath = "/portal/payments?tab=invoices") => {
+    const next = safeInvoiceReturn(nextPath);
+    const url = new URL(next, bounceOrigin);
     if (url.pathname === "/portal/payments" && !url.searchParams.get("tab")) url.searchParams.set("tab", "invoices");
     url.searchParams.set("gmail", code);
     const res = NextResponse.redirect(url);
@@ -28,30 +27,33 @@ export async function GET(req: NextRequest) {
     return res;
   };
 
-  if (!stored) return done("failed");
   const gate = await requireInvoicing();
   if ("error" in gate) return done("not-allowed");
 
+  const state = req.nextUrl.searchParams.get("state");
+  const stored = readOAuthStateCookie(req.cookies.get(GMAIL_CONNECT_COOKIE)?.value, state, gate.userId);
+  if (!stored) return done("failed");
+
   const err = req.nextUrl.searchParams.get("error");
-  if (err) return done(err === "access_denied" ? "denied" : "failed");
+  if (err) return done(err === "access_denied" ? "denied" : "failed", stored.next);
 
   const code = req.nextUrl.searchParams.get("code");
-  if (!code) return done("failed");
+  if (!code) return done("failed", stored.next);
 
   try {
-    const tokens = await exchangeGmailCode(origin, code);
+    const tokens = await exchangeGmailCode(code);
     // Round-trip encrypt so a bad INVOICE_GMAIL_TOKEN_KEY fails here, not later.
     const key = invoiceGmailTokenKey();
     decryptSecret(encryptSecret(tokens.refreshToken, key), key);
     const email = await gmailUserEmail(tokens.accessToken);
-    if (!email) return done("failed");
+    if (!email) return done("failed", stored.next);
     await saveGmailConnection({
       refreshToken: tokens.refreshToken,
       senderEmail: email,
       connectedBy: gate.userId,
     });
-    return done("connected");
+    return done("connected", stored.next);
   } catch {
-    return done("failed");
+    return done("failed", stored.next);
   }
 }

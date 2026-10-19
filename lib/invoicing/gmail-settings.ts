@@ -3,13 +3,9 @@
 
 import { createAdminClient } from "../supabase/admin.ts";
 import { decryptSecret, encryptSecret, invoiceGmailTokenKey } from "./gmail-crypto.ts";
-import type { InvoiceGmailConnection } from "./gmail-meta.ts";
+import type { GmailMailLoad, InvoiceGmailConnection } from "./gmail-meta.ts";
 
 export type { InvoiceGmailConnection };
-
-export type InvoiceGmailSecret = InvoiceGmailConnection & {
-  refreshToken: string | null;
-};
 
 const COLS = "id, refresh_token_enc, sender_email, connected_at, connected_by, last_used_at, last_error, updated_at";
 
@@ -42,14 +38,29 @@ export async function getGmailConnection(): Promise<InvoiceGmailConnection> {
   return publicView(await loadRow());
 }
 
-export async function getGmailConnectionSecret(
+/**
+ * Load the Gmail sender for invoice mail. `none` only when there is no
+ * ciphertext. A row that exists but can't be read or decrypted is
+ * `unreadable` so the host does not fall back to Resend.
+ */
+export async function loadGmailForSend(
   env: Record<string, string | undefined> = process.env
-): Promise<InvoiceGmailSecret> {
-  const row = await loadRow();
-  const pub = publicView(row);
-  if (!row?.refresh_token_enc) return { ...pub, refreshToken: null };
-  const token = decryptSecret(row.refresh_token_enc, invoiceGmailTokenKey(env));
-  return { ...pub, refreshToken: token };
+): Promise<GmailMailLoad> {
+  let row: Row | null;
+  try {
+    row = await loadRow();
+  } catch {
+    return { status: "unreadable" };
+  }
+  if (!row?.refresh_token_enc) return { status: "none" };
+  try {
+    const token = decryptSecret(row.refresh_token_enc, invoiceGmailTokenKey(env));
+    const senderEmail = row.sender_email?.trim() ?? "";
+    if (!token || !senderEmail) return { status: "unreadable" };
+    return { status: "ready", account: { refreshToken: token, senderEmail } };
+  } catch {
+    return { status: "unreadable" };
+  }
 }
 
 export async function saveGmailConnection(input: {

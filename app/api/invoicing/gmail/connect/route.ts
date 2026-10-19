@@ -9,16 +9,17 @@ import {
   GMAIL_CONNECT_COOKIE,
   gmailAuthorizeUrl,
   gmailOAuthConfigured,
+  gmailRedirectOrigin,
   newOAuthState,
   oauthStateCookie,
   safeInvoiceReturn,
 } from "../../../../../lib/invoicing/gmail-oauth";
 
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
   const next = safeInvoiceReturn(req.nextUrl.searchParams.get("next"));
+  const bounceOrigin = gmailRedirectOrigin() ?? req.nextUrl.origin;
   const fail = (code: string) => {
-    const url = new URL(next, origin);
+    const url = new URL(next, bounceOrigin);
     if (url.pathname === "/portal/payments" && !url.searchParams.get("tab")) url.searchParams.set("tab", "invoices");
     url.searchParams.set("gmail", code);
     return NextResponse.redirect(url);
@@ -29,11 +30,14 @@ export async function GET(req: NextRequest) {
   if (await getPreview()) return fail("preview");
   if (!gmailOAuthConfigured()) return fail("not-set-up");
 
+  const origin = gmailRedirectOrigin();
+  if (!origin) return fail("not-set-up");
+
   const state = newOAuthState();
-  const res = NextResponse.redirect(gmailAuthorizeUrl(origin, state));
-  res.cookies.set(GMAIL_CONNECT_COOKIE, oauthStateCookie(state, next), {
+  const res = NextResponse.redirect(gmailAuthorizeUrl(state));
+  res.cookies.set(GMAIL_CONNECT_COOKIE, oauthStateCookie(state, next, gate.userId), {
     httpOnly: true,
-    secure: req.nextUrl.protocol === "https:",
+    secure: origin.startsWith("https:"),
     sameSite: "lax",
     maxAge: 600,
     path: "/",

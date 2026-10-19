@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Pill } from "../../components/ui";
 import { disconnectGmailSender, loadGmailSettings } from "../../../lib/invoicing/gmail-actions";
-import type { InvoiceGmailConnection } from "../../../lib/invoicing/gmail-meta";
+import { gmailBannerKind, type InvoiceGmailConnection } from "../../../lib/invoicing/gmail-meta";
 
 const OUTCOMES: Record<string, string> = {
   connected: "Gmail is connected. Invoices and reminders will send from that account.",
@@ -66,7 +66,7 @@ export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
     setNotice("Gmail disconnected. Invoices will use Resend if it's set up, otherwise they stay Draft.");
   }
 
-  const needsReconnect = Boolean(connection?.connected && connection.lastError);
+  const banner = connection ? gmailBannerKind(connection) : null;
 
   return (
     <div data-tour="invoices-gmail" className="rsd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -84,9 +84,14 @@ export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
       {error && (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-error)" }}>{error}</p>
       )}
-      {needsReconnect && (
+      {banner === "reconnect" && (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-error)" }}>
-          Reconnect Gmail — the last send didn&apos;t go through. The invoice stayed Draft.
+          Reconnect Gmail — it isn&apos;t connected anymore. The invoice stayed Draft.
+        </p>
+      )}
+      {banner === "retry" && (
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-error)" }}>
+          Reconnect Gmail — the last send failed, try again. The invoice stayed Draft.
         </p>
       )}
       {loading ? (

@@ -3,6 +3,7 @@ import { getViewer } from "../../../../../lib/auth/viewer";
 import { createInvoicingService } from "invoicing";
 import { olbInvoicingAdapter, olbInvoicePaths } from "../../../../../lib/invoicing/adapter";
 import { churchToday } from "../../../../../lib/dates/today";
+import { gmailBannerKind, type GmailBannerKind } from "../../../../../lib/invoicing/gmail-meta";
 import { getGmailConnection } from "../../../../../lib/invoicing/gmail-settings";
 import { InvoicePage } from "./InvoicePage";
 
@@ -18,13 +19,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const backHref = from === "event" && got.data.hostEventId ? olbInvoicePaths.event(got.data.hostEventId) : olbInvoicePaths.list;
   const backLabel = from === "event" && got.data.eventLabel ? got.data.eventLabel : "Invoices";
   const clubSettings = club.ok ? club.data : { freq: "3d" as const, startDays: 7, untilPaid: true, ccEmails: [], bccEmails: [] };
-  let gmailReconnect = false;
+  let gmailBanner: GmailBannerKind | null = null;
   if (viewer.canManageInvoicing) {
     try {
-      const gmail = await getGmailConnection();
-      gmailReconnect = Boolean(gmail.connected && gmail.lastError);
+      gmailBanner = gmailBannerKind(await getGmailConnection());
     } catch {
-      gmailReconnect = false;
+      gmailBanner = null;
     }
   }
   return (
@@ -37,7 +37,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       fromEmail={org.fromEmail}
       backHref={backHref}
       backLabel={backLabel}
-      gmailReconnect={gmailReconnect}
+      gmailBanner={gmailBanner}
     />
   );
 }

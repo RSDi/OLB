@@ -16,7 +16,7 @@ import { invoicePublicBaseUrl } from "./public-url";
 import { loadInvoiceSettings, type InvoicingAdapter } from "invoicing";
 import { refreshGmailAccess } from "./gmail-oauth";
 import { sendInvoiceViaGmail } from "./gmail-send";
-import { getGmailConnection, getGmailConnectionSecret, recordGmailSendResult } from "./gmail-settings";
+import { getGmailConnection, loadGmailForSend, recordGmailSendResult } from "./gmail-settings";
 
 export { olbInvoicePaths } from "./paths";
 
@@ -92,15 +92,7 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
         // Cron and other non-page callers have no preview cookie.
       }
       return sendInvoiceEmail(mail, process.env, {
-        loadGmail: async (env) => {
-          try {
-            const secret = await getGmailConnectionSecret(env);
-            if (!secret.refreshToken || !secret.senderEmail) return null;
-            return { refreshToken: secret.refreshToken, senderEmail: secret.senderEmail };
-          } catch {
-            return null;
-          }
-        },
+        loadGmail: (env) => loadGmailForSend(env),
         refreshGmailAccess,
         sendGmail: sendInvoiceViaGmail,
         recordGmailResult: async (result) => {

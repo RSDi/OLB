@@ -24,22 +24,33 @@ function headerSafe(value: string): string {
   return value.replace(/[\r\n]+/g, " ").trim();
 }
 
-function encodeSubject(subject: string): string {
-  const clean = headerSafe(subject);
+/** RFC 2047 encoded-word for a header phrase (From display name, Subject). */
+export function encodeRfc2047(value: string): string {
+  const clean = headerSafe(value);
   if (/^[\x20-\x7e]*$/.test(clean)) return clean;
   return `=?UTF-8?B?${Buffer.from(clean, "utf8").toString("base64")}?=`;
+}
+
+function encodeFrom(from: string): string {
+  const clean = headerSafe(from);
+  const m = clean.match(/^(.*)<([^>]+)>\s*$/);
+  if (!m) return encodeRfc2047(clean);
+  const name = m[1]!.trim().replace(/^"(.*)"$/, "$1");
+  const email = m[2]!.trim();
+  if (!name) return email;
+  return `${encodeRfc2047(name)} <${email}>`;
 }
 
 /** RFC 2822 message, then Gmail's base64url raw field. */
 export function buildGmailRawMessage(input: Omit<GmailSendInput, "accessToken">): string {
   const boundary = `inv_${randomBytes(8).toString("hex")}`;
   const headers = [
-    `From: ${headerSafe(input.from)}`,
+    `From: ${encodeFrom(input.from)}`,
     `To: ${input.to.map(headerSafe).join(", ")}`,
     input.cc.length ? `Cc: ${input.cc.map(headerSafe).join(", ")}` : null,
     input.bcc.length ? `Bcc: ${input.bcc.map(headerSafe).join(", ")}` : null,
     `Reply-To: ${headerSafe(input.replyTo)}`,
-    `Subject: ${encodeSubject(input.subject)}`,
+    `Subject: ${encodeRfc2047(input.subject)}`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ].filter((h): h is string => Boolean(h));
