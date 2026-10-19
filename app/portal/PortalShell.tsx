@@ -230,6 +230,14 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
       ? { title: "Email", subtitle: "Archives" }
       : pathname.startsWith("/portal/archives/slack/")
       ? { title: "Channel", subtitle: "Archives" }
+      : pathname.startsWith("/portal/payments/invoices/new")
+      ? { title: "New invoice", subtitle: "Finances" }
+      : pathname.startsWith("/portal/payments/invoices/event/")
+      ? { title: "Event invoices", subtitle: "Finances" }
+      : pathname.startsWith("/portal/payments/invoices/")
+      ? { title: "Invoice", subtitle: "Finances" }
+      : /\/portal\/schedule\/hosted\/[^/]+\/bill$/.test(pathname)
+      ? { title: "Bill programs", subtitle: "Tournament" }
       : pathname.startsWith("/portal/links/")
       ? { title: sidebarLinks.find(l => pathname === `/portal/links/${l.id}`)?.label ?? "Link", subtitle: "" }
       : { title: "Portal", subtitle: "" });

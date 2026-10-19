@@ -14,6 +14,8 @@ const TABS: HostedTab[] = ["plan", "teams", "schedule", "brackets", "money", "me
 // planning page for a weekend on the HS Schedule ticked "We host this
 // tournament". The HS Schedule's planners (the board and the coaches) use
 // it; ?tab= picks Checklist, Teams, Schedule, Brackets, Money or Email.
+// Invoicing without HS Schedule edit does not open this page (N1): they
+// get a link to Bill programs instead of an admin-client dump of every tab.
 export default async function HostedTournamentPage({
   params,
   searchParams,
@@ -31,6 +33,16 @@ export default async function HostedTournamentPage({
     return (
       <Note title="Tournament planning is for coaches and the board">
         It&apos;s planned from the HS Schedule. If you help run the tournament and can&apos;t see it, ask the board.
+        {viewer.canManageInvoicing ? (
+          <>
+            {" "}
+            To bill programs, open{" "}
+            <Link href={`/portal/schedule/hosted/${id}/bill`} style={{ fontWeight: 700 }}>
+              Bill programs → Finance
+            </Link>
+            .
+          </>
+        ) : null}
       </Note>
     );
   }
@@ -38,6 +50,8 @@ export default async function HostedTournamentPage({
   const loaded = await loadHostedPage(supabase, id, {
     canViewFinances: viewer.canViewFinances,
     canManageFinances: viewer.canManageFinances,
+    canManageInvoicing: viewer.canManageInvoicing,
+    canViewInvoices: viewer.canViewInvoices,
   });
   if (loaded.kind === "missing") notFound();
   if (loaded.kind === "migration") {

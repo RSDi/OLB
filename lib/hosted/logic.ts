@@ -20,7 +20,7 @@ import type {
 
 // What every tournament we host needs, the way the board walks it. A new
 // plan starts with these; each can be renamed, dated, ticked or removed.
-export const DEFAULT_STEPS: { section: StepSection; label: string }[] = [
+export const DEFAULT_STEPS: { section: StepSection; label: string; key?: string }[] = [
   { section: "facility", label: "Facility secured for our dates" },
   { section: "facility", label: "Walk-through of the facility" },
   { section: "facility", label: "Point of contact at the facility for the weekend" },
@@ -29,7 +29,9 @@ export const DEFAULT_STEPS: { section: StepSection; label: string }[] = [
   { section: "facility", label: "Contract signed" },
   { section: "teams", label: "Invite programs" },
   { section: "teams", label: "Attending programs and divisions confirmed" },
-  { section: "teams", label: "Team fees collected" },
+  { section: "teams", label: "Set team fees and bill each program", key: "bill_programs" },
+  { section: "teams", label: "Invoices sent", key: "invoices_sent" },
+  { section: "teams", label: "Team fees collected", key: "team_fees_collected" },
   { section: "officials", label: "Referees booked" },
   { section: "officials", label: "Scorekeepers and clock for every court" },
   { section: "communication", label: "Program communication sent" },

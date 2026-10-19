@@ -10,7 +10,7 @@ import { EXPENSE_METHODS } from "../../../lib/finances/club-types";
 import { SegButton, SegGroup, capStyle } from "./parts";
 import { usePageHelp } from "../../components/PageHelp";
 
-export type PaymentsTab = "families" | "budget" | "income" | "programs" | "fundraising" | "snapshot" | "balance";
+export type PaymentsTab = "families" | "budget" | "income" | "programs" | "fundraising" | "snapshot" | "invoices" | "balance";
 
 const TABS: Record<PaymentsTab, { label: string; tour: string }> = {
   families: { label: "Families", tour: "payments-tab-families" },
@@ -19,6 +19,7 @@ const TABS: Record<PaymentsTab, { label: string; tour: string }> = {
   programs: { label: "Programs", tour: "payments-tab-programs" },
   fundraising: { label: "Fundraising", tour: "payments-tab-fundraising" },
   snapshot: { label: "Snapshot", tour: "payments-tab-snapshot" },
+  invoices: { label: "Invoices", tour: "payments-tab-invoices" },
   balance: { label: "Your balance", tour: "payments-tab-balance" },
 };
 
@@ -30,6 +31,7 @@ const TAB_HELP: Partial<Record<PaymentsTab, string>> = {
   programs: "payments-programs",
   fundraising: "payments-fundraising",
   snapshot: "payments-snapshot",
+  invoices: "payments-invoices",
 };
 
 // Payments' tabs, as links so each has its own address.

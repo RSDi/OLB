@@ -1,0 +1,17 @@
+{
+  "name": "invoicing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Inter-program invoicing: bill other programs (team fees, co-host splits, gym shares) by Venmo or check. Portable — a host implements InvoicingAdapter and mounts the UI.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ui": "./src/ui/index.ts",
+    "./logic": "./src/logic.ts"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2",
+    "next": ">=15",
+    "react": ">=19",
+    "react-dom": ">=19"
+  }
+}

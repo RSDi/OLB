@@ -33,6 +33,8 @@ import {
   canManageSiteLinks,
   canViewFilm,
   canManageFilm,
+  canManageInvoicing,
+  canViewInvoices,
   canApproveFilmSlack,
   type MemberLike,
   type MemberRole,
@@ -108,7 +110,25 @@ export async function requireSettingsUndelete(): Promise<GateResult> {
   return { userId: caller.userId };
 }
 
-// Payments (0101): the Treasurer and anyone else with the Payments grant.
+// Invoicing (0152): send, record, and remind. Same rule as canManageInvoicing.
+export async function requireInvoicing(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canManageInvoicing(caller.member)) {
+    return { error: "Requires invoicing permission" };
+  }
+  return { userId: caller.userId };
+}
+
+export async function requireInvoiceView(): Promise<GateResult> {
+  const caller = await loadCaller();
+  if (!caller) return { error: "You must be signed in." };
+  if (!canViewInvoices(caller.member)) {
+    return { error: "You don't have permission to view invoices." };
+  }
+  return { userId: caller.userId };
+}
+
 export async function requireFinances(): Promise<GateResult> {
   const caller = await loadCaller();
   if (!caller) return { error: "You must be signed in." };

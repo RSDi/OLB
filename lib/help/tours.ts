@@ -1123,7 +1123,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         route: "/portal/payments",
         part: "Finances",
         title: "Finances has new tabs",
-        body: "Next to **Families**: **Budget**, **Income**, **Programs**, **Fundraising** and **Snapshot**.",
+        body: "Next to **Families**: **Budget**, **Income**, **Programs**, **Fundraising**, **Snapshot** and **Invoices**.",
       },
       {
         target: "budget-import",
@@ -1313,6 +1313,26 @@ export const GUIDE_TOURS: GuideTour[] = [
         click: "payments-tab-snapshot",
         title: "For the accountant",
         body: "**Download spreadsheet** saves it all as a CSV.",
+      },
+    ],
+  },
+  {
+    id: "payments-invoices",
+    sectionId: "payments-invoices",
+    title: "Invoices walkthrough",
+    route: "/portal/payments",
+    steps: [
+      {
+        target: "payments-tab-invoices",
+        click: "payments-tab-invoices",
+        title: "Invoices",
+        body: "Bill other programs from **Finances → Invoices**: team fees, co-host splits, gym shares. Paid by Venmo or check. **Send invoice** and **Mark as paid** need the **Invoicing** permission.",
+      },
+      {
+        target: "invoices-list",
+        click: "payments-tab-invoices",
+        title: "The list",
+        body: "Open, overdue, collected and drafts. Tap an invoice to send it, record Venmo or check, or change reminders.",
       },
     ],
   },
@@ -2058,7 +2078,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "planning-roles-list",
         click: "settings-tab-planning-roles",
         title: "Settings → Planning Roles",
-        body: "**Held by** is who has each role this season. When the board keeps a task, it's assigned to that person.",
+        body: "**Held by** is who has each role this season. When the board keeps a task, it's assigned to that person. For President, Athletic Director and Treasurer, only a super-admin can change it.",
       },
       {
         route: "/portal/settings",

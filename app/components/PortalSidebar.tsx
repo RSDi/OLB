@@ -116,6 +116,7 @@ export interface SidebarViewer {
   canViewFilm?: boolean;
   // Every permission key they hold (0122), for the guide.
   permissions?: string[];
+  canManageInvoicing?: boolean;
   // PAIRING_ALLOWED_EMAILS: Signed-in devices.
   canPairDevices?: boolean;
 }

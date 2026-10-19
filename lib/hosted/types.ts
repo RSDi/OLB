@@ -42,6 +42,7 @@ export interface HostedStep {
   weekend_id: string;
   section: StepSection;
   label: string;
+  step_key: string | null;
   due_on: string | null;
   done_on: string | null;
   note: string | null;
@@ -169,13 +170,29 @@ export interface HostedPageData {
   messages: HostedMessage[];
   programs: HostedProgram[];
   finance: HostedFinance | null;
+  billing: HostedBilling | null;
+}
+
+export interface HostedBilling {
+  canInvoice: boolean;
+  canView: boolean;
+  billed: boolean;
+  sentCount: number;
+  invoiceCount: number;
+  programCount: number;
+  allSent: boolean;
+  collectedCents: number;
+  billedCents: number;
+  allCollected: boolean;
+  depositPerTeamCents: number;
+  feeCents: number | null;
 }
 
 export type HostedResult = { error?: string; notice?: string; id?: string };
 
 export const PLAN_COLUMNS =
   "weekend_id, hosted, short_name, finance_event_id, game_minutes, courts, days, team_fee_cents, facility, concessions, rules, admission";
-export const STEP_COLUMNS = "id, weekend_id, section, label, due_on, done_on, note, sort_order";
+export const STEP_COLUMNS = "id, weekend_id, section, label, step_key, due_on, done_on, note, sort_order";
 export const DIVISION_COLUMNS = "id, weekend_id, name, code, format, sort_order";
 export const TEAM_COLUMNS = "id, weekend_id, division_id, opponent_id, ours, name, code, seed, fee_cents, note, sort_order";
 export const GAME_COLUMNS =

@@ -23,7 +23,10 @@
       "@/*": ["./*"],
       "reelnotes": ["./packages/reelnotes/src/index.ts"],
       "reelnotes/server": ["./packages/reelnotes/src/server.ts"],
-      "reelnotes/ui": ["./packages/reelnotes/src/ui/index.ts"]
+      "reelnotes/ui": ["./packages/reelnotes/src/ui/index.ts"],
+      "invoicing": ["./packages/invoicing/src/index.ts"],
+      "invoicing/ui": ["./packages/invoicing/src/ui/index.ts"],
+      "invoicing/logic": ["./packages/invoicing/src/logic.ts"]
     }
   },
   "include": [

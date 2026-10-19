@@ -379,7 +379,9 @@ export default function SettingsPage() {
       {tab === "fees" && has("fees") && <FeesTab />}
       {tab === "website" && has("website") && <WebsiteTab />}
       {tab === "release_notes" && has("release_notes") && <ReleaseNotesTab me={me} />}
-      {tab === "planning_roles" && has("planning_roles") && <PlanningRolesTab />}
+      {tab === "planning_roles" && has("planning_roles") && (
+        <PlanningRolesTab canChangeInvoicingHolder={isSuperAdmin(me)} />
+      )}
       {tab === "event_categories" && has("event_categories") && <EventCategoriesTab me={me} />}
       {tab === "task_categories" && has("task_categories") && <TaskCategoriesTab me={me} />}
       {tab === "playbooks" && has("playbooks") && <PlaybooksTab me={me} />}

@@ -11,6 +11,7 @@ import {
 } from "../../../lib/planning/actions";
 import { ROLE_CHIP_OPTIONS } from "../../../lib/planning/logic";
 import { memberDisplayName } from "../../../lib/members/display";
+import { isInvoicingPlanningRoleSeed } from "../../../lib/auth/permissions";
 import type { PlanningRole } from "../../../lib/planning/types";
 
 interface MemberOption {
@@ -29,7 +30,7 @@ async function fetchRoles(): Promise<RolesData> {
   const [{ data, error }, { data: people }] = await Promise.all([
     supabase
       .from("planning_roles")
-      .select("id, name, chip_class, member_id, sort_order")
+      .select("id, name, chip_class, member_id, sort_order, seed_key")
       .is("deleted_at", null)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true }),
@@ -52,7 +53,7 @@ async function fetchRoles(): Promise<RolesData> {
 // The roles Planning's tasks belong to (President, Athletic Director,
 // Treasurer, Communications, Coaches…) and who holds each one. When the board
 // keeps a season's task in Review, it's assigned to the role's holder.
-export function PlanningRolesTab() {
+export function PlanningRolesTab({ canChangeInvoicingHolder = false }: { canChangeInvoicingHolder?: boolean }) {
   const [roles, setRoles] = useState<PlanningRole[]>([]);
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,6 +181,7 @@ export function PlanningRolesTab() {
                 members={members}
                 initial={{ name: r.name, chipClass: r.chip_class, memberId: r.member_id, sortOrder: r.sort_order }}
                 submitLabel="Save"
+                lockHolder={isInvoicingPlanningRoleSeed(r.seed_key) && !canChangeInvoicingHolder}
                 onCancel={() => {
                   setEditingId(null);
                   setError(null);
@@ -202,14 +204,19 @@ export function PlanningRolesTab() {
                   ) : (
                     "Nobody named yet"
                   )}
+                  {isInvoicingPlanningRoleSeed(r.seed_key) && !canChangeInvoicingHolder ? (
+                    <small style={{ display: "block", fontSize: 12, marginTop: 2 }}>Only a super-admin can change who holds this.</small>
+                  ) : null}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                   <IconBtn title="Edit" disabled={acting === r.id} onClick={() => setEditingId(r.id)}>
                     <Icons.Pencil width={14} height={14} />
                   </IconBtn>
-                  <IconBtn title="Remove" disabled={acting === r.id} onClick={() => handleDelete(r)} danger>
-                    <Icons.Trash width={14} height={14} />
-                  </IconBtn>
+                  {isInvoicingPlanningRoleSeed(r.seed_key) && !canChangeInvoicingHolder ? null : (
+                    <IconBtn title="Remove" disabled={acting === r.id} onClick={() => handleDelete(r)} danger>
+                      <Icons.Trash width={14} height={14} />
+                    </IconBtn>
+                  )}
                 </div>
               </div>
             ),
@@ -227,6 +234,7 @@ function RoleForm({
   onSubmit,
   onCancel,
   nextSort,
+  lockHolder = false,
 }: {
   members: MemberOption[];
   initial?: RoleInput;
@@ -234,6 +242,7 @@ function RoleForm({
   onSubmit: (v: RoleInput) => void | Promise<void>;
   onCancel: () => void;
   nextSort: number;
+  lockHolder?: boolean;
 }) {
   const start: RoleInput = initial ?? { name: "", chipClass: "rsd-chip-mute", memberId: null, sortOrder: nextSort };
   const [name, setName] = useState(start.name);
@@ -257,8 +266,13 @@ function RoleForm({
         <Select
           label="Held by"
           value={memberId}
+          disabled={lockHolder}
           onChange={(e) => setMemberId(e.target.value)}
-          help="Tasks the board keeps for this role are assigned to this person. Leave it empty for a role several people share, like Coaches."
+          help={
+            lockHolder
+              ? "Only a super-admin can change who holds this."
+              : "Tasks the board keeps for this role are assigned to this person. Leave it empty for a role several people share, like Coaches."
+          }
         >
           <option value="">Nobody named</option>
           {members.map((m) => (
