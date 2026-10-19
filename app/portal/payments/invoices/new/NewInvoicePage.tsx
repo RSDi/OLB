@@ -2,18 +2,26 @@
 
 import { useRouter } from "next/navigation";
 import { NewInvoiceForm } from "invoicing/ui";
-import type { InvoiceEventOption } from "invoicing";
+import type { EventCustomer, InvoiceEventOption } from "invoicing";
 import { olbInvoicePaths } from "../../../../../lib/invoicing/paths";
-import { createInvoiceAction, listInvoiceEventCustomersAction } from "../../../../../lib/invoicing/actions";
+import { createInvoiceAction } from "../../../../../lib/invoicing/actions";
 
-export function NewInvoicePage({ today, events }: { today: string; events: InvoiceEventOption[] }) {
+export function NewInvoicePage({
+  today,
+  events,
+  customersByEvent,
+}: {
+  today: string;
+  events: InvoiceEventOption[];
+  customersByEvent: Record<string, EventCustomer[]>;
+}) {
   const router = useRouter();
   return (
     <NewInvoiceForm
       today={today}
       events={events}
+      customersByEvent={customersByEvent}
       backHref={olbInvoicePaths.list}
-      loadCustomers={listInvoiceEventCustomersAction}
       onCreate={async (input) => {
         const res = await createInvoiceAction(input);
         if (res.error) return res;

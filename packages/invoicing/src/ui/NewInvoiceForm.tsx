@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   OTHER_EVENT_ID,
   OTHER_PROGRAM_ID,
@@ -17,18 +17,18 @@ import { t } from "./theme";
 export function NewInvoiceForm({
   today,
   events = [],
+  customersByEvent = {},
   defaultEvent,
   defaultFeeCents,
   backHref,
-  loadCustomers,
   onCreate,
 }: {
   today: string;
   events?: InvoiceEventOption[];
+  customersByEvent?: Record<string, EventCustomer[]>;
   defaultEvent?: string;
   defaultFeeCents?: number;
   backHref: string;
-  loadCustomers?: (eventId: string) => Promise<{ customers?: EventCustomer[]; error?: string }>;
   onCreate: (input: CreateInvoiceInput) => Promise<{ error?: string } | void>;
 }) {
   const initialEventId = matchEventId(events, defaultEvent);
@@ -43,42 +43,15 @@ export function NewInvoiceForm({
   const [due, setDue] = useState("");
   const [dep, setDep] = useState("");
   const [depDue, setDepDue] = useState("");
-  const [customers, setCustomers] = useState<EventCustomer[]>([]);
-  const [loadingPrograms, setLoadingPrograms] = useState(false);
-  const [programsError, setProgramsError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hosted = events.find((e) => e.id === eventId) ?? null;
   const otherEvent = eventId === OTHER_EVENT_ID;
   const otherProgram = programId === OTHER_PROGRAM_ID;
+  const customers = hosted ? (customersByEvent[hosted.id] ?? []) : [];
   const showProgramSelect = !!hosted;
   const showProgramName = otherEvent || otherProgram;
-
-  useEffect(() => {
-    if (!hosted || !loadCustomers) {
-      setCustomers([]);
-      setProgramsError(null);
-      setLoadingPrograms(false);
-      return;
-    }
-    let cancelled = false;
-    setLoadingPrograms(true);
-    setProgramsError(null);
-    loadCustomers(hosted.id).then((res) => {
-      if (cancelled) return;
-      setLoadingPrograms(false);
-      if (res.error) {
-        setCustomers([]);
-        setProgramsError(res.error);
-        return;
-      }
-      setCustomers(res.customers ?? []);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [hosted?.id, loadCustomers]);
 
   function applyEvent(nextId: string) {
     setEventId(nextId);
@@ -91,8 +64,6 @@ export function NewInvoiceForm({
     setQty(filled.qty);
     setRate(filled.rate || (defaultFeeCents ? String(defaultFeeCents / 100) : ""));
     setDesc(filled.desc);
-    setCustomers([]);
-    setProgramsError(null);
   }
 
   function applyProgram(nextId: string) {
@@ -167,13 +138,8 @@ export function NewInvoiceForm({
         )}
         {showProgramSelect && (
           <Field label="Program">
-            <select
-              style={inputStyle}
-              value={programId}
-              onChange={(e) => applyProgram(e.target.value)}
-              disabled={loadingPrograms}
-            >
-              <option value="">{loadingPrograms ? "Loading programs…" : "Select a program"}</option>
+            <select style={inputStyle} value={programId} onChange={(e) => applyProgram(e.target.value)}>
+              <option value="">Select a program</option>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {programOptionLabel(c)}
@@ -183,7 +149,6 @@ export function NewInvoiceForm({
             </select>
           </Field>
         )}
-        {programsError && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{programsError}</div>}
         {showProgramName && (
           <Field label="Program name">
             <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Program name" />

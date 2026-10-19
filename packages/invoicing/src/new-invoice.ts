@@ -25,6 +25,28 @@ export function invoiceEventLabel(row: {
   return base;
 }
 
+export function invoiceEventsFromRows(input: {
+  plans: { weekend_id: string; hosted: boolean; short_name: string | null; team_fee_cents: number | null }[];
+  weekends: { id: string; event: string | null; starts_on: string; status: string }[];
+}): InvoiceEventOption[] {
+  const weekById = new Map(input.weekends.map((w) => [w.id, w]));
+  return input.plans
+    .filter((p) => p.hosted)
+    .map((p) => {
+      const w = weekById.get(p.weekend_id);
+      if (!w || w.status === "canceled" || w.status === "off") return null;
+      return {
+        id: p.weekend_id,
+        label: invoiceEventLabel({ shortName: p.short_name, event: w.event, startsOn: w.starts_on }),
+        feeCents: p.team_fee_cents == null ? null : Number(p.team_fee_cents),
+        startsOn: w.starts_on,
+      };
+    })
+    .filter((row): row is InvoiceEventOption & { startsOn: string } => !!row)
+    .sort((a, b) => b.startsOn.localeCompare(a.startsOn) || a.label.localeCompare(b.label))
+    .map((row) => ({ id: row.id, label: row.label, feeCents: row.feeCents }));
+}
+
 export function programOptionLabel(customer: EventCustomer): string {
   const teams = customer.teamCount === 1 ? "1 team" : `${customer.teamCount} teams`;
   return customer.divisions ? `${customer.name} · ${teams} · ${customer.divisions}` : `${customer.name} · ${teams}`;

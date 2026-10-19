@@ -8,6 +8,7 @@ import {
   applyProgramSelection,
   autoLineDescription,
   invoiceEventLabel,
+  invoiceEventsFromRows,
   programOptionLabel,
   resolveCreateInvoiceInput,
 } from "../src/new-invoice.ts";
@@ -21,6 +22,30 @@ const prairie: EventCustomer = {
   teamCount: 2,
   divisions: "HSA",
 };
+
+test("invoiceEventsFromRows lists hosted weekends newest first and skips canceled", () => {
+  const events = invoiceEventsFromRows({
+    plans: [
+      { weekend_id: "old", hosted: true, short_name: "MRS", team_fee_cents: 30000 },
+      { weekend_id: "new", hosted: true, short_name: "MRS", team_fee_cents: 31500 },
+      { weekend_id: "off", hosted: true, short_name: "Scrimmage", team_fee_cents: 0 },
+      { weekend_id: "hidden", hosted: false, short_name: "Hidden", team_fee_cents: 1 },
+    ],
+    weekends: [
+      { id: "old", event: "Missouri River Shootout", starts_on: "2025-11-14", status: "secured" },
+      { id: "new", event: "Missouri River Shootout", starts_on: "2026-11-13", status: "planned" },
+      { id: "off", event: "Canceled", starts_on: "2026-12-01", status: "canceled" },
+      { id: "hidden", event: "Not hosted", starts_on: "2026-10-01", status: "planned" },
+    ],
+  });
+  assert.deepEqual(
+    events.map((e) => ({ id: e.id, label: e.label, feeCents: e.feeCents })),
+    [
+      { id: "new", label: "MRS 2026", feeCents: 31500 },
+      { id: "old", label: "MRS 2025", feeCents: 30000 },
+    ]
+  );
+});
 
 test("invoiceEventLabel prefers short name and adds the year once", () => {
   assert.equal(invoiceEventLabel({ shortName: "MRS", event: "Missouri River Shootout", startsOn: "2026-11-13" }), "MRS 2026");
@@ -191,7 +216,7 @@ test("New invoice form picks Event, then registered Program, with a free-text fa
   assert.match(form, /Other program \(not registered\)/);
   assert.match(form, /label="Program name"/);
   assert.match(form, /label="Program email"/);
-  assert.match(form, /loadCustomers/);
+  assert.match(form, /customersByEvent/);
   assert.match(form, /resolveCreateInvoiceInput/);
   const eventAt = form.indexOf('label="Event"');
   const programAt = form.indexOf('label="Program"');
