@@ -4,6 +4,7 @@
 import { createAdminClient } from "../supabase/admin.ts";
 import { decryptSecret, encryptSecret, invoiceGmailTokenKey } from "./gmail-crypto.ts";
 import type { GmailMailLoad, InvoiceGmailConnection } from "./gmail-meta.ts";
+import { invoiceGmailLive } from "./gmail-oauth.ts";
 
 export type { InvoiceGmailConnection };
 
@@ -17,6 +18,16 @@ type Row = {
   last_error: string | null;
 };
 
+export function emptyGmailConnection(): InvoiceGmailConnection {
+  return {
+    connected: false,
+    senderEmail: null,
+    connectedAt: null,
+    lastUsedAt: null,
+    lastError: null,
+  };
+}
+
 function publicView(row: Row | null): InvoiceGmailConnection {
   return {
     connected: Boolean(row?.refresh_token_enc),
@@ -27,14 +38,24 @@ function publicView(row: Row | null): InvoiceGmailConnection {
   };
 }
 
+function assertGmailLive(env: Record<string, string | undefined> = process.env): void {
+  if (!invoiceGmailLive(env)) {
+    throw new Error("Connect Gmail is only available in production.");
+  }
+}
+
 async function loadRow(): Promise<Row | null> {
+  assertGmailLive();
   const admin = createAdminClient();
   const { data, error } = await admin.from("inv_gmail").select(COLS).eq("id", true).maybeSingle();
   if (error) throw new Error(error.message);
   return (data as Row | null) ?? null;
 }
 
-export async function getGmailConnection(): Promise<InvoiceGmailConnection> {
+export async function getGmailConnection(
+  env: Record<string, string | undefined> = process.env
+): Promise<InvoiceGmailConnection> {
+  if (!invoiceGmailLive(env)) return emptyGmailConnection();
   return publicView(await loadRow());
 }
 
@@ -46,6 +67,7 @@ export async function getGmailConnection(): Promise<InvoiceGmailConnection> {
 export async function loadGmailForSend(
   env: Record<string, string | undefined> = process.env
 ): Promise<GmailMailLoad> {
+  if (!invoiceGmailLive(env)) return { status: "none" };
   let row: Row | null;
   try {
     row = await loadRow();
@@ -70,6 +92,7 @@ export async function saveGmailConnection(input: {
   env?: Record<string, string | undefined>;
 }): Promise<InvoiceGmailConnection> {
   const env = input.env ?? process.env;
+  assertGmailLive(env);
   const admin = createAdminClient();
   const now = new Date().toISOString();
   const { data, error } = await admin
@@ -90,6 +113,7 @@ export async function saveGmailConnection(input: {
 }
 
 export async function disconnectGmail(): Promise<InvoiceGmailConnection> {
+  assertGmailLive();
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("inv_gmail")
@@ -110,6 +134,7 @@ export async function disconnectGmail(): Promise<InvoiceGmailConnection> {
 }
 
 export async function recordGmailSendResult(input: { ok: boolean; error?: string | null }): Promise<void> {
+  if (!invoiceGmailLive()) return;
   const admin = createAdminClient();
   const now = new Date().toISOString();
   const patch = input.ok

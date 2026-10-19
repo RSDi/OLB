@@ -12,6 +12,7 @@ import {
   gmailCallbackRedirectUri,
   gmailOAuthConfigured,
   gmailRedirectOrigin,
+  invoiceGmailLive,
   isGmailAuthFailure,
   readOAuthStateCookie,
   oauthStateCookie,
@@ -170,12 +171,13 @@ test("Reconnect banner is reconnect only for revoked/unreadable, retry for tempo
   assert.equal(gmailBannerKind({ connected: false, lastError: GMAIL_RECONNECT_ERROR }), null);
 });
 
-test("Connect Gmail and Disconnect are invoicing permission only", () => {
+test("Connect Gmail and Disconnect are invoicing permission only, including super_admin", () => {
   assert.equal(canManageInvoicing(approved(["invoicing"])), true);
   assert.equal(canManageInvoicing(approved(["payments"], { can_manage_finances: true })), false);
   assert.equal(canManageInvoicing(approved(["finances_view"])), false);
   assert.equal(canManageInvoicing({ role: "admin", status: "approved", permissions: [] }), false);
   assert.equal(canManageInvoicing({ role: "super_admin", status: "approved" }), true);
+  assert.equal(canManageInvoicing({ role: "super_admin", status: "approved", permissions: [] }), true);
 
   const connect = readFileSync(join(root, "app/api/invoicing/gmail/connect/route.ts"), "utf8");
   const callback = readFileSync(join(root, "app/api/invoicing/gmail/callback/route.ts"), "utf8");
@@ -191,6 +193,8 @@ test("Connect Gmail and Disconnect are invoicing permission only", () => {
   assert.doesNotMatch(connect, /requireFilmManage/);
   assert.doesNotMatch(callback, /requireFilmManage/);
   assert.match(card, /Connect Gmail/);
+  assert.match(card, /super-admin/);
+  assert.match(card, /only available in production/);
   assert.match(card, /Disconnect/);
   assert.match(card, /Reconnect Gmail/);
   assert.match(card, /isn&apos;t connected anymore/);
@@ -226,6 +230,13 @@ test("host adapter is the only Gmail seam and invoices stay Draft until mail ok"
   const callback = readFileSync(join(root, "app/api/invoicing/gmail/callback/route.ts"), "utf8");
   assert.match(connect, /oauthStateCookie\(state, next, gate\.userId\)/);
   assert.match(callback, /readOAuthStateCookie\([\s\S]*gate\.userId/);
+  assert.match(connect, /invoiceGmailLive\(\)/);
+  assert.match(callback, /invoiceGmailLive\(\)/);
+  assert.match(settings, /invoiceGmailLive/);
+  assert.match(mail, /isProductionMail\(env\) \? await resolveGmailLoad/);
+  const actions = readFileSync(join(root, "lib/invoicing/gmail-actions.ts"), "utf8");
+  assert.match(actions, /invoiceGmailLive\(\)/);
+  assert.match(actions, /emptyGmailConnection\(\)/);
   assert.doesNotMatch(pkgAdapter, /gmail\.googleapis|INVOICE_GMAIL/);
   assert.doesNotMatch(pkgSrc, /gmail\.googleapis|INVOICE_GMAIL/);
   assert.match(service, /if \(!mailed\.ok\) return mailed/);
@@ -233,4 +244,17 @@ test("host adapter is the only Gmail seam and invoices stay Draft until mail ok"
   const sendStart = service.indexOf("async send(id: string)");
   const sendFn = service.slice(sendStart, service.indexOf("async voidInvoice"));
   assert.ok(sendFn.indexOf("sendFor") < sendFn.indexOf("sent_at"));
+});
+
+test("Connect Gmail is production-only and previews never touch inv_gmail", () => {
+  assert.equal(invoiceGmailLive({ VERCEL_ENV: "production" }), true);
+  assert.equal(invoiceGmailLive({ VERCEL_ENV: "preview" }), false);
+  assert.equal(invoiceGmailLive({ VERCEL_ENV: "development" }), false);
+  assert.equal(invoiceGmailLive({ NODE_ENV: "production" }), false);
+  const settings = readFileSync(join(root, "lib/invoicing/gmail-settings.ts"), "utf8");
+  assert.match(settings, /if \(!invoiceGmailLive\(env\)\) return \{ status: "none" \}/);
+  assert.match(settings, /if \(!invoiceGmailLive\(env\)\) return emptyGmailConnection\(\)/);
+  assert.match(settings, /assertGmailLive/);
+  const page = readFileSync(join(root, "app/portal/payments/invoices/[id]/page.tsx"), "utf8");
+  assert.match(page, /invoiceGmailLive\(\)/);
 });

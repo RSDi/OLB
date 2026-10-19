@@ -12,6 +12,7 @@ const OUTCOMES: Record<string, string> = {
   "not-allowed": "You need the Invoicing permission to connect Gmail.",
   "not-set-up": "Gmail isn't set up in Vercel yet (client id, secret, and token key).",
   preview: "Can't connect Gmail while previewing as someone else.",
+  "production-only": "Connect Gmail is only available in production.",
 };
 
 function formatWhen(iso: string | null): string {
@@ -28,6 +29,7 @@ function formatWhen(iso: string | null): string {
 }
 
 export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
+  const [live, setLive] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [connection, setConnection] = useState<InvoiceGmailConnection | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,7 @@ export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
         setLoading(false);
         return;
       }
+      setLive(res.live);
       setConfigured(res.configured);
       setConnection(res.connection);
       setLoading(false);
@@ -74,9 +77,9 @@ export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
       <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
         <strong>Connect Gmail</strong>
         {" "}
-        once as Treasurer, President, or Athletic Director. After that, invoices and reminders send from that Gmail
-        account and show up in its Sent folder. If Gmail isn&apos;t connected, the site uses Resend when that&apos;s set
-        up. Replies go to the connected Gmail unless a reply-to address is set for the site.
+        once as Treasurer, President, Athletic Director, or a super-admin. After that, invoices and reminders send from
+        that Gmail account and show up in its Sent folder. If Gmail isn&apos;t connected, the site uses Resend when
+        that&apos;s set up. Replies go to the connected Gmail unless a reply-to address is set for the site.
       </p>
       {notice && (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-success)" }}>{notice}</p>
@@ -96,6 +99,11 @@ export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
       )}
       {loading ? (
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)" }}>Loading…</div>
+      ) : !live ? (
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>
+          Connect Gmail is only available in production, so this preview can&apos;t change the club connection. Preview
+          sends use Resend and <strong>INVOICE_TEST_EMAIL</strong>.
+        </p>
       ) : !configured ? (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>
           Add <strong>INVOICE_GMAIL_CLIENT_ID</strong>, <strong>INVOICE_GMAIL_CLIENT_SECRET</strong>, and{" "}

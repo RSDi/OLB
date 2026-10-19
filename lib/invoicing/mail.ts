@@ -146,7 +146,8 @@ export async function sendInvoiceEmail(
     }
   }
 
-  const gmail = await resolveGmailLoad(deps, env);
+  // Preview/dev never reads a Gmail connection; Resend + INVOICE_TEST_EMAIL only.
+  const gmail = isProductionMail(env) ? await resolveGmailLoad(deps, env) : { status: "none" as const };
   if (gmail.status === "unreadable") {
     const msg = GMAIL_RECONNECT_ERROR;
     console.error(`[invoicing] Gmail connection exists but isn't readable for ${mail.invoiceId}`);

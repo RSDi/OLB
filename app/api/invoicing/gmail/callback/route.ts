@@ -9,6 +9,7 @@ import {
   GMAIL_CONNECT_COOKIE,
   exchangeGmailCode,
   gmailRedirectOrigin,
+  invoiceGmailLive,
   gmailUserEmail,
   readOAuthStateCookie,
   safeInvoiceReturn,
@@ -26,6 +27,8 @@ export async function GET(req: NextRequest) {
     res.cookies.set(GMAIL_CONNECT_COOKIE, "", { path: "/", maxAge: 0 });
     return res;
   };
+
+  if (!invoiceGmailLive()) return done("production-only");
 
   const gate = await requireInvoicing();
   if ("error" in gate) return done("not-allowed");

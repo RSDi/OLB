@@ -10,6 +10,7 @@ import {
   gmailAuthorizeUrl,
   gmailOAuthConfigured,
   gmailRedirectOrigin,
+  invoiceGmailLive,
   newOAuthState,
   oauthStateCookie,
   safeInvoiceReturn,
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
   const gate = await requireInvoicing();
   if ("error" in gate) return fail("not-allowed");
   if (await getPreview()) return fail("preview");
+  if (!invoiceGmailLive()) return fail("production-only");
   if (!gmailOAuthConfigured()) return fail("not-set-up");
 
   const origin = gmailRedirectOrigin();

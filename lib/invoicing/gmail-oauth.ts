@@ -33,6 +33,11 @@ export function gmailOAuthConfigured(env: Record<string, string | undefined> = p
   );
 }
 
+/** Connect Gmail reads and writes inv_gmail only on Vercel production. */
+export function invoiceGmailLive(env: Record<string, string | undefined> = process.env): boolean {
+  return env.VERCEL_ENV === "production";
+}
+
 /** Fixed site origin for the Google redirect URI. Never the request Host. */
 export function gmailRedirectOrigin(env: Record<string, string | undefined> = process.env): string | null {
   const site = (env.NEXT_PUBLIC_SITE_URL ?? "").trim();

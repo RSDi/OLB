@@ -7,7 +7,7 @@ import { createAdminClient } from "../supabase/admin";
 import { getAuthUser, getViewer } from "../auth/viewer";
 import { churchToday } from "../dates/today";
 import { VENMO_HANDLE, VENMO_URL, CHECK_PAYEE } from "../teams/registration-receipt";
-import { invoiceMailFrom, sendInvoiceEmail } from "./mail";
+import { invoiceMailFrom, isProductionMail, sendInvoiceEmail } from "./mail";
 import { hostedEventCustomers } from "./customers";
 import { syncHostedInvoiceSteps } from "./hosted-sync";
 import { getPreview } from "../activity/preview";
@@ -54,14 +54,16 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
       }
       let fromEmail = invoiceMailFrom();
       let replyTo = process.env.MAIL_REPLY_TO?.trim() || undefined;
-      try {
-        const gmail = await getGmailConnection();
-        if (gmail.connected && gmail.senderEmail) {
-          fromEmail = gmail.senderEmail;
-          replyTo = process.env.MAIL_REPLY_TO?.trim() || gmail.senderEmail;
+      if (isProductionMail()) {
+        try {
+          const gmail = await getGmailConnection();
+          if (gmail.connected && gmail.senderEmail) {
+            fromEmail = gmail.senderEmail;
+            replyTo = process.env.MAIL_REPLY_TO?.trim() || gmail.senderEmail;
+          }
+        } catch {
+          // Migration not applied yet; keep the Resend from-address.
         }
-      } catch {
-        // Migration not applied yet; keep the Resend from-address.
       }
       return {
         fromName: "Omaha Lightning Basketball · Finance",
@@ -92,10 +94,11 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
         // Cron and other non-page callers have no preview cookie.
       }
       return sendInvoiceEmail(mail, process.env, {
-        loadGmail: (env) => loadGmailForSend(env),
+        loadGmail: (env) => (isProductionMail(env) ? loadGmailForSend(env) : Promise.resolve({ status: "none" })),
         refreshGmailAccess,
         sendGmail: sendInvoiceViaGmail,
         recordGmailResult: async (result) => {
+          if (!isProductionMail()) return;
           try {
             await recordGmailSendResult(result);
           } catch {

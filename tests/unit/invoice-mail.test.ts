@@ -352,34 +352,48 @@ test("mocked Google token refresh and users.messages.send", async () => {
   }
 });
 
-test("non-production INVOICE_TEST_EMAIL redirects To/CC/BCC through Gmail, not Resend", async () => {
-  const sent: { to: string[]; cc: string[]; bcc: string[]; subject: string; text: string }[] = [];
+test("non-production INVOICE_TEST_EMAIL redirects To/CC/BCC through Resend, never Gmail", async () => {
   const orig = globalThis.fetch;
-  globalThis.fetch = (async (url: unknown) => {
-    throw new Error(`unexpected fetch ${String(url)}`);
+  let gmailCalled = false;
+  let loadCalled = false;
+  const calls: unknown[] = [];
+  globalThis.fetch = (async (url: unknown, init?: { body?: unknown }) => {
+    if (String(url).includes("gmail.googleapis") || String(url).includes("oauth2.googleapis")) {
+      throw new Error(`unexpected Gmail fetch ${String(url)}`);
+    }
+    calls.push(JSON.parse(String(init?.body)));
+    return new Response("{}", { status: 200 });
   }) as typeof fetch;
   try {
     const res = await sendInvoiceEmail(
       invoice,
-      { VERCEL_ENV: "preview", INVOICE_TEST_EMAIL: "jeff@example.com, other@example.com", RESEND_API_KEY: "re_should_not_be_used" },
+      { VERCEL_ENV: "preview", INVOICE_TEST_EMAIL: "jeff@example.com, other@example.com", RESEND_API_KEY: "re_test" },
       {
-        loadGmail: async () => gmailReady(),
-        refreshGmailAccess: async () => "ya29.access",
-        sendGmail: async (input) => {
-          sent.push(input);
+        loadGmail: async () => {
+          loadCalled = true;
+          return gmailReady();
+        },
+        refreshGmailAccess: async () => {
+          throw new Error("refresh must not run off production");
+        },
+        sendGmail: async () => {
+          gmailCalled = true;
           return { ok: true, status: 200 };
         },
       }
     );
     assert.equal(res.ok, true);
-    assert.equal(sent.length, 1);
-    assert.deepEqual(sent[0]?.to, ["jeff@example.com", "other@example.com"]);
-    assert.deepEqual(sent[0]?.cc, []);
-    assert.deepEqual(sent[0]?.bcc, []);
-    assert.match(sent[0]?.subject ?? "", /^\[TEST → /);
-    assert.match(sent[0]?.text ?? "", /program@example.com/);
-    assert.match(sent[0]?.text ?? "", /cc@example.com/);
-    assert.match(sent[0]?.text ?? "", /bcc@example.com/);
+    assert.equal(gmailCalled, false);
+    assert.equal(loadCalled, false);
+    assert.equal(calls.length, 1);
+    const body = calls[0] as { to: string[]; cc?: string[]; bcc?: string[]; subject: string; text: string };
+    assert.deepEqual(body.to, ["jeff@example.com", "other@example.com"]);
+    assert.equal(body.cc, undefined);
+    assert.equal(body.bcc, undefined);
+    assert.match(body.subject, /^\[TEST → /);
+    assert.match(body.text, /program@example.com/);
+    assert.match(body.text, /cc@example.com/);
+    assert.match(body.text, /bcc@example.com/);
   } finally {
     globalThis.fetch = orig;
   }
