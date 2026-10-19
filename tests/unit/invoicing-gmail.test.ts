@@ -197,13 +197,18 @@ test("Reconnect banner is reconnect only for revoked/unreadable, retry for tempo
   assert.equal(gmailBannerKind({ connected: false, lastError: GMAIL_RECONNECT_ERROR }), null);
 });
 
-test("Connect Gmail and Disconnect are invoicing permission only, including super_admin", () => {
+test("Connect Gmail and Disconnect follow canManageInvoicing, including super_admin and live Planning Roles", () => {
   assert.equal(canManageInvoicing(approved(["invoicing"])), true);
   assert.equal(canManageInvoicing(approved(["payments"], { can_manage_finances: true })), false);
   assert.equal(canManageInvoicing(approved(["finances_view"])), false);
   assert.equal(canManageInvoicing({ role: "admin", status: "approved", permissions: [] }), false);
   assert.equal(canManageInvoicing({ role: "super_admin", status: "approved" }), true);
   assert.equal(canManageInvoicing({ role: "super_admin", status: "approved", permissions: [] }), true);
+  assert.equal(canManageInvoicing({ role: "super_admin", status: "approved", holds_invoicing_planning_role: false }), true);
+  assert.equal(canManageInvoicing(approved([], { holds_invoicing_planning_role: true })), true);
+  assert.equal(canManageInvoicing(approved([], { holds_invoicing_planning_role: false })), false);
+  assert.equal(canManageInvoicing({ role: "super_admin", status: "pending" }), false);
+  assert.equal(canManageInvoicing({ role: "member", status: "pending", holds_invoicing_planning_role: true }), false);
 
   const connect = readFileSync(join(root, "app/api/invoicing/gmail/connect/route.ts"), "utf8");
   const callback = readFileSync(join(root, "app/api/invoicing/gmail/callback/route.ts"), "utf8");
@@ -219,7 +224,9 @@ test("Connect Gmail and Disconnect are invoicing permission only, including supe
   assert.doesNotMatch(connect, /requireFilmManage/);
   assert.doesNotMatch(callback, /requireFilmManage/);
   assert.match(card, /Connect Gmail/);
+  assert.match(card, /Planning Roles/);
   assert.match(card, /super-admin/);
+  assert.match(card, /Invoicing override/);
   assert.match(card, /only available in production/);
   assert.match(card, /Disconnect/);
   assert.match(card, /Reconnect Gmail/);
@@ -233,6 +240,16 @@ test("Connect Gmail and Disconnect are invoicing permission only, including supe
   assert.match(card, /Last used/);
   assert.match(mail, /packages\/invoicing never/);
   assert.match(isolation, /invoicing module core imports nothing from OLB/);
+  const guide = readFileSync(join(root, "lib/help/guide.ts"), "utf8");
+  const tours = readFileSync(join(root, "lib/help/tours.ts"), "utf8");
+  assert.match(
+    guide,
+    /Whoever holds President, Athletic Director, or Treasurer in Settings → Planning Roles \(plus super admins\) can invoice\. The \*\*Invoicing\*\* box on an access profile or a person's extras is a manual override\./
+  );
+  assert.match(guide, /whoever can invoice can \*\*Connect Gmail\*\*/);
+  assert.match(tours, /whoever can invoice taps \*\*Connect Gmail\*\*/);
+  assert.match(tours, /Planning Roles/);
+  assert.match(actions, /canManageInvoicing/);
 });
 
 test("host adapter is the only Gmail seam and invoices stay Draft until mail ok", () => {

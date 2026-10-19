@@ -1,8 +1,9 @@
 "use server";
-// Finances → Invoices Gmail sender. Connect/disconnect need invoicing
-// (Treasurer, President, AD, or super-admin). The refresh token never
-// goes to the browser. Production-only: previews never read or write
-// inv_gmail.
+// Finances → Invoices Gmail sender. Connect/disconnect use requireInvoicing
+// / canManageInvoicing: approved AND (super_admin OR currently holds
+// President/Athletic Director/Treasurer in Settings → Planning Roles OR
+// invoicing on profile/extras). The refresh token never goes to the
+// browser. Production-only: previews never read or write inv_gmail.
 
 import { revalidatePath } from "next/cache";
 import { requireInvoicing } from "../auth/guards";

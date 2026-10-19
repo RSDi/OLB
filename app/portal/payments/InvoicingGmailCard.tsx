@@ -77,9 +77,10 @@ export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
       <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
         <strong>Connect Gmail</strong>
         {" "}
-        once as Treasurer, President, Athletic Director, or a super-admin. After that, invoices and reminders send from
-        that Gmail account and show up in its Sent folder. If Gmail isn&apos;t connected, the site uses Resend when
-        that&apos;s set up. Replies go to the connected Gmail unless a reply-to address is set for the site.
+        once if you can invoice — President, Athletic Director, or Treasurer in Settings → Planning Roles, a super-admin,
+        or the Invoicing override. After that, invoices and reminders send from that Gmail account and show up in its
+        Sent folder. If Gmail isn&apos;t connected, the site uses Resend when that&apos;s set up. Replies go to the
+        connected Gmail unless a reply-to address is set for the site.
       </p>
       {notice && (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-success)" }}>{notice}</p>
