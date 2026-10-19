@@ -27,9 +27,9 @@ const MANAGER_TABS: PaymentsTab[] = ["families", "budget", "income", "programs",
 // Club finances (0131), while it's on (or for the preview accounts): the
 // Treasurer also gets Budget, Income, Programs, Fundraising and Snapshot, and
 // the board and "See club finances" get the Snapshot.
-export default async function PaymentsPage({ searchParams }: { searchParams: Promise<{ family?: string; tab?: string }> }) {
+export default async function PaymentsPage({ searchParams }: { searchParams: Promise<{ family?: string; tab?: string; gmail?: string }> }) {
   // ?family=<player id>: open that player's family (from a player page).
-  const { family, tab } = await searchParams;
+  const { family, tab, gmail } = await searchParams;
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
 
@@ -43,7 +43,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
           {tabs}
-          {await invoicesPanel(viewer.canManageInvoicing)}
+          {await invoicesPanel(viewer.canManageInvoicing, gmail)}
         </div>
       );
     }
@@ -103,7 +103,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
         <PaymentsTabs tabs={viewerTabs} active="invoices" />
-        {await invoicesPanel(viewer.canManageInvoicing)}
+        {await invoicesPanel(viewer.canManageInvoicing, gmail)}
       </div>
     );
   }
@@ -180,10 +180,10 @@ async function loadClub(): Promise<Awaited<ReturnType<typeof loadClubData>> | { 
   }
 }
 
-async function invoicesPanel(canInvoice: boolean) {
+async function invoicesPanel(canInvoice: boolean, gmailOutcome?: string) {
   const res = await createInvoicingService(olbInvoicingAdapter()).list();
   if (!res.ok) return <Notice title="Invoices aren't ready yet" body={res.error} />;
-  return <InvoicesView invoices={res.data} today={churchToday()} canInvoice={canInvoice} />;
+  return <InvoicesView invoices={res.data} today={churchToday()} canInvoice={canInvoice} gmailOutcome={gmailOutcome} />;
 }
 
 function Notice({ title, body }: { title: string; body: string }) {

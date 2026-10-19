@@ -27,18 +27,15 @@ function formatWhen(iso: string | null): string {
   );
 }
 
-export function InvoicingGmailCard() {
+export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
   const [configured, setConfigured] = useState(false);
   const [connection, setConnection] = useState<InvoiceGmailConnection | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(outcome && OUTCOMES[outcome] ? OUTCOMES[outcome] : null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const outcome = params.get("gmail");
-    if (outcome && OUTCOMES[outcome]) setNotice(OUTCOMES[outcome]);
     loadGmailSettings().then((res) => {
       if ("error" in res) {
         setError(res.error);
@@ -75,10 +72,11 @@ export function InvoicingGmailCard() {
     <div data-tour="invoices-gmail" className="rsd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ fontWeight: 800, fontSize: 15 }}>Invoice email</div>
       <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
-        <strong>Connect Gmail</strong> once as Treasurer, President, or Athletic Director. After that, invoices and
-        reminders send from that Gmail account and show up in its Sent folder. If Gmail isn&apos;t connected, the site
-        uses Resend when that&apos;s set up. Replies go to the connected Gmail unless a reply-to address is set for the
-        site.
+        <strong>Connect Gmail</strong>
+        {" "}
+        once as Treasurer, President, or Athletic Director. After that, invoices and reminders send from that Gmail
+        account and show up in its Sent folder. If Gmail isn&apos;t connected, the site uses Resend when that&apos;s set
+        up. Replies go to the connected Gmail unless a reply-to address is set for the site.
       </p>
       {notice && (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-success)" }}>{notice}</p>
