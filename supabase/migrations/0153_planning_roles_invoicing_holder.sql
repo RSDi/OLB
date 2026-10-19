@@ -6,6 +6,14 @@
 -- There is no separate admin role, so this is super-admin only.
 -- Name, chip and order on those rows stay Board-editable. Other planning
 -- roles stay fully Board-editable. Idempotent.
+--
+-- Server-side writes are allowed the same way 0123's
+-- members_enforce_self_update_columns does: service_role, plus
+-- auth.uid() IS NULL (postgres SQL editor, migrations). Re-running 0104's
+-- INSERT … ON CONFLICT DO NOTHING would otherwise fail because this
+-- trigger fires before the unique check. anon has no write grant, so
+-- unsigned-in API callers cannot write. Signed-in Board members still
+-- have auth.uid() set and are blocked.
 
 begin;
 
@@ -21,6 +29,15 @@ declare
   new_key text;
   sensitive boolean := false;
 begin
+  -- Trusted backend (service key), SQL editor, and migrations.
+  if coalesce(current_setting('role', true), '') = 'service_role'
+     or auth.uid() is null then
+    if tg_op = 'DELETE' then
+      return old;
+    end if;
+    return new;
+  end if;
+
   old_key := case when tg_op = 'INSERT' then null else old.seed_key end;
   new_key := case when tg_op = 'DELETE' then null else new.seed_key end;
 

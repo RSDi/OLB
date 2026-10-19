@@ -36,6 +36,14 @@ test("0153 trigger is super-admin only on the three invoicing seed keys", () => 
   assert.match(migration, /old\.deleted_at is distinct from new\.deleted_at/);
 });
 
+test("0153 lets service_role and no-session writes through (SQL editor, migrations)", () => {
+  assert.match(migration, /current_setting\('role', true\)/);
+  assert.match(migration, /'service_role'/);
+  assert.match(migration, /auth\.uid\(\) is null/);
+  assert.match(migration, /0123/);
+  assert.match(migration, /ON CONFLICT DO NOTHING/);
+});
+
 test("0153 down drops the trigger and function", () => {
   assert.match(down, /drop trigger if exists planning_roles_invoicing_holder_guard/);
   assert.match(down, /drop function if exists public\.planning_roles_invoicing_holder_guard\(\)/);
