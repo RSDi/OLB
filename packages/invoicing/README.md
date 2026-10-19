@@ -8,7 +8,7 @@ OLB is the first host. Another Next.js/Supabase app (Operations) can implement t
 
 ## What it does
 
-- Draft, send, and resend invoices with line items, an optional **deposit** (own due date) and a **balance** due date. A deposit cannot exceed the total.
+- Draft and send invoices with line items, an optional **deposit** (own due date) and a **balance** due date. A deposit cannot exceed the total. Once sent, void it and issue a new invoice to send again.
 - Record Venmo or check payments (partials are fine); deposit and balance are tracked separately
 - Statuses: Draft, Sent, Viewed, Partial, Paid, Overdue, **Void**. Voided invoices drop out of event totals. An invoice is **Sent** only after the email actually goes out.
 - Batch-bill an event: one invoice per program, every email on file

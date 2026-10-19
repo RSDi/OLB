@@ -103,6 +103,33 @@ test("invoice page keeps a separate error next to each action", () => {
   assert.match(plan, /teamFeesAreBilled/);
 });
 
+test("Send invoice is Draft only; Sent and Paid have no Resend invoice", () => {
+  const root = join(import.meta.dirname, "../..");
+  const detail = readFileSync(join(root, "packages/invoicing/src/ui/InvoiceDetail.tsx"), "utf8");
+  const invoicePage = readFileSync(join(root, "app/portal/payments/invoices/[id]/InvoicePage.tsx"), "utf8");
+  const service = readFileSync(join(root, "packages/invoicing/src/service.ts"), "utf8");
+  const guide = readFileSync(join(root, "lib/help/guide.ts"), "utf8");
+  const tours = readFileSync(join(root, "lib/help/tours.ts"), "utf8");
+  const list = readFileSync(join(root, "packages/invoicing/src/ui/InvoicesList.tsx"), "utf8");
+  assert.match(detail, /\{draft && \(/);
+  assert.match(detail, /label="Send invoice"/);
+  assert.doesNotMatch(detail, /Resend invoice/);
+  assert.doesNotMatch(detail, /draft \? "Send invoice"/);
+  assert.doesNotMatch(invoicePage, /Resend invoice/);
+  assert.doesNotMatch(list, /Resend invoice/);
+  assert.match(service, /A sent invoice can't be edited\. Record a payment or void it and issue a new invoice\./);
+  assert.doesNotMatch(service, /or resend it/);
+  const invoicesGuide = guide.slice(guide.indexOf('id: "payments-invoices"'), guide.indexOf('id: "payments-messages"'));
+  assert.doesNotMatch(invoicesGuide, /Resend invoice/);
+  assert.match(invoicesGuide, /\*\*Send invoice\*\* is only on a \*\*Draft\*\*/);
+  assert.match(invoicesGuide, /Once it's \*\*Sent\*\* or \*\*Paid\*\*, \*\*Send invoice\*\* is gone/);
+  assert.match(invoicesGuide, /\*\*Void invoice\*\* and write a new one/);
+  const invoicesTour = tours.slice(tours.indexOf('id: "payments-invoices"'), tours.indexOf('id: "settings-uniforms"'));
+  assert.doesNotMatch(invoicesTour, /Resend invoice/);
+  assert.match(invoicesTour, /Tap a \*\*Draft\*\* to \*\*Send invoice\*\*/);
+  assert.match(invoicesTour, /Once sent, \*\*Send invoice\*\* is gone/);
+});
+
 test("invoicing without HS Schedule edit does not load the full hosted page via admin", () => {
   const hostedPage = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/page.tsx"), "utf8");
   assert.doesNotMatch(hostedPage, /createAdminClient/);

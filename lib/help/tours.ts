@@ -1338,7 +1338,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "invoices-list",
         click: "payments-tab-invoices",
         title: "The list",
-        body: "Open, overdue, collected and drafts. Tap an invoice to send it, record Venmo or check, or change reminders.",
+        body: "Open, overdue, collected and drafts. Tap a **Draft** to **Send invoice**, record Venmo or check, or change reminders. Once sent, **Send invoice** is gone — **Void invoice** and write a new one.",
       },
     ],
   },

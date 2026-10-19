@@ -233,7 +233,7 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
               sentPatch.bcc_emails = bcc.data;
             }
           }
-          if (!Object.keys(sentPatch).length) return fail("A sent invoice can't be edited. Record a payment or resend it.");
+          if (!Object.keys(sentPatch).length) return fail("A sent invoice can't be edited. Record a payment or void it and issue a new invoice.");
           await updateInvoiceRow(db, id, sentPatch);
           return { ok: true, data: (await getInvoice(db, id))! };
         }
