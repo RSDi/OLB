@@ -15,6 +15,7 @@ import {
   commitmentsSteps,
   extraCommitments,
   NOTE_MAX,
+  NOTE_PREVIEW_MAX,
   commitmentsNotePreview,
   renderCommitmentsAdmin,
 } from "../../lib/teams/registration-commitments.ts";
@@ -180,7 +181,11 @@ test("the server action rejects a missing or non-boolean commitments answer", ()
 test("the server action rejects a non-string or too-long note on Yes", () => {
   assert.match(stored(true, 42).error ?? "", /text/);
   assert.match(stored(true, { text: "football" }).error ?? "", /text/);
-  assert.match(stored(true, "x".repeat(NOTE_MAX + 1)).error ?? "", /500/);
+  assert.equal(
+    stored(true, "x".repeat(NOTE_MAX + 1)).error,
+    `Please keep the commitments note to ${NOTE_MAX} characters or fewer.`
+  );
+  assert.equal("error" in stored(true, "x".repeat(NOTE_MAX)), false);
   assert.equal("error" in stored(false, 42), false);
 });
 
@@ -191,7 +196,18 @@ test("Yes with no note is saved with null; a valid Yes note is trimmed", () => {
   assert.deepEqual(stored(true, "   "), { extra: { commitments: { has: true, note: null } } });
   assert.deepEqual(stored(true, "  football Tue/Thu  "), { extra: { commitments: { has: true, note: "football Tue/Thu" } } });
   assert.deepEqual(stored(true, "x".repeat(NOTE_MAX)), { extra: { commitments: { has: true, note: "x".repeat(NOTE_MAX) } } });
-  assert.equal(commitmentsNotePreview("a".repeat(NOTE_MAX + 20)).length, NOTE_MAX);
+});
+
+test("the registration summary shortens a long note with an ellipsis; the stored note stays full", () => {
+  assert.equal(commitmentsNotePreview("  football Tue  "), "football Tue");
+  assert.equal(commitmentsNotePreview("x".repeat(NOTE_PREVIEW_MAX)), "x".repeat(NOTE_PREVIEW_MAX));
+  const long = "a".repeat(NOTE_PREVIEW_MAX + 40);
+  const preview = commitmentsNotePreview(long);
+  assert.ok(preview.endsWith("…"));
+  assert.ok(preview.length < long.length);
+  assert.deepEqual(stored(true, long), { extra: { commitments: { has: true, note: long } } });
+  const wizard = src("app/(site)/player-registration/RegistrationWizard.tsx");
+  assert.match(wizard, /commitmentsNotePreview\(f\.commitments_note\)/);
 });
 
 test("the form is not sent until commitments is answered", () => {
@@ -203,31 +219,61 @@ test("the form is not sent until commitments is answered", () => {
   assert.equal(commitmentsProblem(false), null);
 });
 
-test("admin flag renders on list and detail when has is true", () => {
+test("admin flag renders on list when has is true", () => {
   const yes = { commitments: { has: true, note: "football Tue <varsity>" } };
   const yesEmpty = { commitments: { has: true, note: null } };
   const no = { commitments: { has: false, note: null } };
   const missing = {};
 
-  assert.deepEqual(commitmentsAdmin(yes), { show: true, flag: "Commitments", note: "football Tue <varsity>" });
-  assert.deepEqual(commitmentsAdmin(yesEmpty), { show: true, flag: "Commitments", note: null });
-  assert.deepEqual(commitmentsAdmin(no), { show: false, flag: null, note: null });
-  assert.deepEqual(commitmentsAdmin(missing), { show: false, flag: null, note: null });
+  assert.deepEqual(commitmentsAdmin(yes), { show: true, flag: "Commitments", answer: "Yes", note: "football Tue <varsity>" });
+  assert.deepEqual(commitmentsAdmin(yesEmpty), { show: true, flag: "Commitments", answer: "Yes", note: null });
+  assert.deepEqual(commitmentsAdmin(no), { show: false, flag: null, answer: "No", note: null });
+  assert.deepEqual(commitmentsAdmin(missing), { show: false, flag: null, answer: null, note: null });
 
   assert.equal(renderCommitmentsAdmin(yes, "list"), `<span class="commitments-flag">Commitments</span>`);
-  assert.equal(
-    renderCommitmentsAdmin(yes, "detail"),
-    `<span class="commitments-flag">Commitments</span><p class="commitments-note">football Tue &lt;varsity&gt;</p>`
-  );
-  assert.equal(renderCommitmentsAdmin(yesEmpty, "detail"), `<span class="commitments-flag">Commitments</span>`);
+  assert.equal(renderCommitmentsAdmin(yesEmpty, "list"), `<span class="commitments-flag">Commitments</span>`);
   assert.equal(renderCommitmentsAdmin(no, "list"), "");
-  assert.equal(renderCommitmentsAdmin(no, "detail"), "");
+  assert.equal(renderCommitmentsAdmin(missing, "list"), "");
 
   const review = src("app/portal/directory/registrations/RegistrationsReview.tsx");
   assert.match(review, /commitmentsAdmin/);
   assert.match(review, /commitments\.flag/);
-  assert.match(review, /commitments\.note/);
   assert.equal((review.match(/commitments\.flag &&/g) ?? []).length >= 2, true);
+});
+
+test("the registration card shows Yes plus the note, or None on No", () => {
+  const yes = { commitments: { has: true, note: "football Tue <varsity>" } };
+  const yesEmpty = { commitments: { has: true, note: null } };
+  const no = { commitments: { has: false, note: null } };
+  const missing = {};
+
+  assert.equal(
+    renderCommitmentsAdmin(yes, "detail"),
+    `<span class="commitments-answer">Yes</span><p class="commitments-note">football Tue &lt;varsity&gt;</p>`
+  );
+  assert.equal(
+    renderCommitmentsAdmin(yesEmpty, "detail"),
+    `<span class="commitments-answer">Yes</span><p class="commitments-note">No details given.</p>`
+  );
+  assert.equal(renderCommitmentsAdmin(no, "detail"), `<span class="commitments-answer">None</span>`);
+  assert.equal(renderCommitmentsAdmin(missing, "detail"), "");
+
+  const review = src("app/portal/directory/registrations/RegistrationsReview.tsx");
+  assert.match(review, /commitments\.answer/);
+  assert.match(review, /commitments\.answer === "Yes" \? "Yes" : "None"/);
+  assert.match(review, /commitments\.note \|\| "No details given\."/);
+  assert.match(review, />Commitments</);
+
+  const playerPage = src("app/portal/directory/players/[id]/page.tsx");
+  assert.match(playerPage, /loadPlayerCommitments/);
+  assert.match(playerPage, /canManageRegistrations \? await loadPlayerCommitments/);
+  const playerDetail = src("app/portal/directory/players/[id]/PlayerDetail.tsx");
+  assert.match(playerDetail, /commitmentsAdmin/);
+  assert.match(playerDetail, /commitments\.answer === "Yes" \? "Yes" : "None"/);
+  assert.match(playerDetail, /commitments\.note \|\| "No details given\."/);
+  const data = src("lib/teams/registration-data.ts");
+  assert.match(data, /export async function loadPlayerCommitments/);
+  assert.match(data, /eq\("player_id", playerId\)/);
 });
 
 test("a returning family with a new sibling still asks after homeschool", () => {

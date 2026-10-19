@@ -26,8 +26,8 @@ export function commitmentsSteps(has: boolean | null): string[] {
 
 // Server-side clean of extra.commitments. Missing or non-boolean `has` is a
 // validation problem (never a 500). On Yes the note is optional; if it is
-// present it must be a string, trimmed, empty → null, longer than NOTE_MAX
-// rejected. On No the note is always null.
+// present it must be a string, trimmed, empty → null, more than NOTE_MAX
+// rejected (exactly NOTE_MAX is allowed). On No the note is always null.
 export function extraCommitments(has: unknown, note: unknown): CommitmentsResult {
   if (typeof has !== "boolean") {
     return { ok: false, error: "Please answer whether your player has other commitments this season." };
@@ -36,7 +36,9 @@ export function extraCommitments(has: unknown, note: unknown): CommitmentsResult
   if (note == null || note === "") return { ok: true, value: { has: true, note: null } };
   if (typeof note !== "string") return { ok: false, error: "The commitments note has to be text." };
   const trimmed = note.trim();
-  if (trimmed.length > NOTE_MAX) return { ok: false, error: `Please keep the commitments note under ${NOTE_MAX} characters.` };
+  if (trimmed.length > NOTE_MAX) {
+    return { ok: false, error: `Please keep the commitments note to ${NOTE_MAX} characters or fewer.` };
+  }
   return { ok: true, value: { has: true, note: trimmed || null } };
 }
 
@@ -45,36 +47,52 @@ export function commitmentsProblem(has: boolean | null, note: string = ""): stri
   return result.ok ? null : result.error;
 }
 
+// How much of a Yes note the registration summary shows. The stored note is
+// the full trimmed text (up to NOTE_MAX); this is display-only.
+export const NOTE_PREVIEW_MAX = 80;
+
 export function commitmentsNotePreview(note: string): string {
   const trimmed = note.trim();
-  return trimmed.length > NOTE_MAX ? trimmed.slice(0, NOTE_MAX) : trimmed;
+  if (trimmed.length <= NOTE_PREVIEW_MAX) return trimmed;
+  return `${trimmed.slice(0, NOTE_PREVIEW_MAX).trimEnd()}…`;
 }
 
 export function commitmentsAdmin(extra: { commitments?: CommitmentsStored | null } | null | undefined): {
   show: boolean;
   flag: string | null;
+  answer: "Yes" | "No" | null;
   note: string | null;
 } {
   const stored = extra?.commitments;
-  const show = stored?.has === true;
-  return {
-    show,
-    flag: show ? COMMITMENTS_FLAG : null,
-    note: show ? (stored?.note?.trim() || null) : null,
-  };
+  if (stored?.has === true) {
+    return {
+      show: true,
+      flag: COMMITMENTS_FLAG,
+      answer: "Yes",
+      note: stored.note?.trim() || null,
+    };
+  }
+  if (stored?.has === false) {
+    return { show: false, flag: null, answer: "No", note: null };
+  }
+  return { show: false, flag: null, answer: null, note: null };
 }
 
-// Fixture-friendly markup for the admin flag (list) and the flag plus note
-// (detail). The Registrations page renders the same values as chips/text.
+// Fixture-friendly markup for the admin flag (list) and the Yes/No answer
+// plus note, or None on No (detail). The Registrations page renders the
+// same values as chips/text. The whole page is Registrations-access only.
 export function renderCommitmentsAdmin(
   extra: { commitments?: CommitmentsStored | null } | null | undefined,
   view: "list" | "detail"
 ): string {
   const v = commitmentsAdmin(extra);
-  if (!v.flag) return "";
-  const flag = `<span class="commitments-flag">${v.flag}</span>`;
-  if (view === "list" || !v.note) return flag;
-  return `${flag}<p class="commitments-note">${escapeHtml(v.note)}</p>`;
+  if (view === "list") return v.flag ? `<span class="commitments-flag">${v.flag}</span>` : "";
+  if (v.answer === "Yes") {
+    const note = escapeHtml(v.note || "No details given.");
+    return `<span class="commitments-answer">Yes</span><p class="commitments-note">${note}</p>`;
+  }
+  if (v.answer === "No") return `<span class="commitments-answer">None</span>`;
+  return "";
 }
 
 function escapeHtml(s: string): string {

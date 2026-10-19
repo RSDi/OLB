@@ -377,7 +377,7 @@ function RegistrationCard({
         ))}
       </div>}
 
-      {commitments.show && (
+      {commitments.answer && (
         <div
           style={{
             display: "flex",
@@ -389,10 +389,15 @@ function RegistrationCard({
             border: "1px solid var(--gw-border)",
           }}
         >
-          <span style={{ ...capStyle, fontSize: 10 }}>Note</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)", whiteSpace: "pre-wrap" }}>
-            {commitments.note || "No details given."}
+          <span style={{ ...capStyle, fontSize: 10 }}>Commitments</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)" }}>
+            {commitments.answer === "Yes" ? "Yes" : "None"}
           </span>
+          {commitments.answer === "Yes" && (
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)", whiteSpace: "pre-wrap" }}>
+              {commitments.note || "No details given."}
+            </span>
+          )}
         </div>
       )}
 
