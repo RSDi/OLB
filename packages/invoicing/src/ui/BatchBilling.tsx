@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { batchPreviewTotals, formatDay, formatMoney, reminderCopy } from "../logic";
-import type { BatchInput, EventCustomer, ReminderSettings } from "../types";
+import { batchCustomerEligible, batchPreviewTotals, formatDay, formatMoney, invoiceAlreadyBilled, reminderCopy } from "../logic";
+import type { BatchInput, EventCustomer, Invoice, ReminderSettings } from "../types";
 import { ActionBtn, Btn, Card, Field, inputStyle, LockNote } from "./parts";
 import { t } from "./theme";
 
@@ -21,6 +21,7 @@ export function BatchBilling({
   clubBcc = [],
   fromEmail,
   backHref,
+  invoices = [],
   onSubmit,
 }: {
   eventId: string;
@@ -37,6 +38,7 @@ export function BatchBilling({
   clubBcc?: string[];
   fromEmail: string;
   backHref: string;
+  invoices?: Pick<Invoice, "hostCustomerId" | "sentAt" | "voidedAt">[];
   onSubmit: (input: BatchInput, send: boolean) => Promise<{ error?: string } | void>;
 }) {
   const [due, setDue] = useState(dueOn);
@@ -52,7 +54,7 @@ export function BatchBilling({
   const [bcc, setBcc] = useState(clubBcc.join(", "));
 
   const depCents = Math.round((parseFloat(dep.replace(/[$,]/g, "")) || 0) * 100);
-  const preview = batchPreviewTotals(customers, feeCents, depOn ? depCents : 0);
+  const preview = batchPreviewTotals(customers, feeCents, depOn ? depCents : 0, invoices);
   const teams = preview.teamCount;
   const G = preview.totalCents;
   const DP = preview.depositCents;
@@ -148,34 +150,50 @@ export function BatchBilling({
       )}
 
       <div style={{ background: "var(--inv-elev, #fff)", border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", borderRadius: 14, overflow: "hidden" }}>
-        {customers.map((p) => (
-          <div
-            key={p.id}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(0,1fr) auto 96px",
-              gap: 8,
-              alignItems: "center",
-              padding: "10px 14px",
-              borderBottom: "1px solid var(--inv-border, var(--gw-border, #e4e4df))",
-            }}
-          >
-            <span style={{ minWidth: 0 }}>
-              <b style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</b>
-              <small style={{ color: t.muted, fontSize: 12 }}>{p.emails.length ? p.emails.join(", ") : "No email"}</small>
-            </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: t.muted, whiteSpace: "nowrap" }}>
-              {p.teamCount} {p.teamCount === 1 ? "team" : "teams"}
-            </span>
-            <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>
-              {formatMoney(p.teamCount * feeCents)}
-              <small style={{ display: "block", color: t.muted, fontSize: 12 }}>{depOn ? `deposit ${formatMoney(p.teamCount * depCents)}` : "no deposit"}</small>
-            </span>
-          </div>
-        ))}
+        {customers.map((p) => {
+          const billedAlready = invoiceAlreadyBilled(invoices, p.id);
+          const eligible = batchCustomerEligible(p, invoices);
+          return (
+            <div
+              key={p.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0,1fr) auto 96px",
+                gap: 8,
+                alignItems: "center",
+                padding: "10px 14px",
+                borderBottom: "1px solid var(--inv-border, var(--gw-border, #e4e4df))",
+                opacity: eligible ? 1 : 0.55,
+              }}
+            >
+              <span style={{ minWidth: 0 }}>
+                <b style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</b>
+                <small style={{ color: t.muted, fontSize: 12 }}>{p.emails.length ? p.emails.join(", ") : "No email"}</small>
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: t.muted, whiteSpace: "nowrap" }}>
+                {p.teamCount} {p.teamCount === 1 ? "team" : "teams"}
+              </span>
+              <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>
+                {billedAlready ? (
+                  <small style={{ display: "block", color: t.muted, fontSize: 12 }}>already billed</small>
+                ) : (
+                  <>
+                    {formatMoney(p.teamCount * feeCents)}
+                    <small style={{ display: "block", color: t.muted, fontSize: 12 }}>{depOn ? `deposit ${formatMoney(p.teamCount * depCents)}` : "no deposit"}</small>
+                  </>
+                )}
+              </span>
+            </div>
+          );
+        })}
         <div style={{ display: "flex", justifyContent: "space-between", padding: "14px 14px 6px", fontWeight: 900, fontSize: 15 }}>
           <span>
             {billed} invoices · {teams} teams
+            {preview.alreadyBilledCount > 0 ? (
+              <small style={{ display: "block", fontWeight: 600, color: t.muted, fontSize: 12 }}>
+                {preview.alreadyBilledCount} already billed
+              </small>
+            ) : null}
           </span>
           <span>{formatMoney(G)}</span>
         </div>

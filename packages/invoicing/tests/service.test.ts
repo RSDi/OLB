@@ -465,6 +465,42 @@ test("re-saving a batch without a CC override keeps a draft's copies", async () 
   assert.deepEqual(again.data.invoices[0].bccEmails, []);
 });
 
+test("after a partial send, preview count and total equal what createBatch bills", async () => {
+  const customers: EventCustomer[] = [
+    { id: "p1", name: "Prairie", emails: ["a@example.com"], teamCount: 2 },
+    { id: "p2", name: "Metro", emails: ["c@example.com"], teamCount: 1 },
+  ];
+  const feeCents = 31500;
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db, customers, feeCents }));
+  const first = await svc.createBatch(
+    batchInput({ customers: customers.map((c) => ({ id: c.id, teamCount: c.teamCount })) }),
+    false
+  );
+  assert.equal(first.ok, true);
+  if (!first.ok) return;
+  const prairie = first.data.invoices.find((v) => v.hostCustomerId === "p1");
+  assert.ok(prairie);
+  const sent = await svc.send(prairie!.id);
+  assert.equal(sent.ok, true);
+  const listed = await svc.list("evt");
+  assert.equal(listed.ok, true);
+  if (!listed.ok) return;
+  const preview = batchPreviewTotals(customers, feeCents, 0, listed.data);
+  const again = await svc.createBatch(
+    batchInput({ customers: customers.map((c) => ({ id: c.id, teamCount: c.teamCount })) }),
+    false
+  );
+  assert.equal(again.ok, true);
+  if (!again.ok) return;
+  const created = again.data.invoices.reduce((s, inv) => s + invoiceTotal(inv), 0);
+  assert.equal(preview.invoiceCount, again.data.invoices.length);
+  assert.equal(preview.totalCents, created);
+  assert.equal(preview.invoiceCount, 1);
+  assert.equal(preview.alreadyBilledCount, 1);
+  assert.equal(created, 31500);
+});
+
 test("batch preview total equals created invoice totals", async () => {
   const customers: EventCustomer[] = [
     { id: "p1", name: "Prairie", emails: ["a@example.com"], teamCount: 2 },

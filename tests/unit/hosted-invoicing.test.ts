@@ -89,6 +89,7 @@ test("batch preview does not let you edit team counts", () => {
   assert.doesNotMatch(batch, /aria-label="Teams"/);
   assert.match(batch, /batchPreviewTotals/);
   assert.match(batch, /Teams tab/);
+  assert.match(batch, /already billed/);
 });
 
 test("invoice page keeps a separate error next to each action", () => {

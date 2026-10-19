@@ -213,9 +213,9 @@ test("formatMoney drops cents on whole dollars", () => {
 test("batch preview totals skip programs with no teams and use each count as-is", () => {
   const preview = batchPreviewTotals(
     [
-      { teamCount: 2 },
-      { teamCount: 0 },
-      { teamCount: 1 },
+      { id: "p1", teamCount: 2 },
+      { id: "p2", teamCount: 0 },
+      { id: "p3", teamCount: 1 },
     ],
     31500,
     5000
@@ -224,4 +224,20 @@ test("batch preview totals skip programs with no teams and use each count as-is"
   assert.equal(preview.teamCount, 3);
   assert.equal(preview.totalCents, 94500);
   assert.equal(preview.depositCents, 15000);
+  assert.equal(preview.alreadyBilledCount, 0);
+});
+
+test("batch preview totals leave already-billed programs out", () => {
+  const customers = [
+    { id: "p1", teamCount: 2 },
+    { id: "p2", teamCount: 1 },
+  ];
+  const preview = batchPreviewTotals(customers, 31500, 0, [
+    { hostCustomerId: "p1", sentAt: "2026-10-19T00:00:00Z", voidedAt: null },
+    { hostCustomerId: "p2", sentAt: null, voidedAt: null },
+  ]);
+  assert.equal(preview.invoiceCount, 1);
+  assert.equal(preview.teamCount, 1);
+  assert.equal(preview.totalCents, 31500);
+  assert.equal(preview.alreadyBilledCount, 1);
 });

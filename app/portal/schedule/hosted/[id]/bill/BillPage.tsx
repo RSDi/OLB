@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { BatchBilling } from "invoicing/ui";
-import type { BatchInput, EventCustomer, InvoiceClubSettings } from "invoicing";
+import type { BatchInput, EventCustomer, Invoice, InvoiceClubSettings } from "invoicing";
 import { createBatchInvoicesAction } from "../../../../../../lib/invoicing/actions";
 
 export function BillPage({
@@ -15,6 +15,7 @@ export function BillPage({
   canInvoice,
   clubSettings,
   fromEmail,
+  invoices = [],
 }: {
   weekendId: string;
   eventLabel: string;
@@ -25,6 +26,7 @@ export function BillPage({
   canInvoice: boolean;
   clubSettings: InvoiceClubSettings;
   fromEmail: string;
+  invoices?: Invoice[];
 }) {
   const router = useRouter();
   if (feeCents == null) {
@@ -55,6 +57,7 @@ export function BillPage({
       clubCc={clubSettings.ccEmails}
       clubBcc={clubSettings.bccEmails}
       fromEmail={fromEmail}
+      invoices={invoices}
       backHref={`/portal/schedule/hosted/${weekendId}`}
       onSubmit={async (input: BatchInput, send: boolean) => {
         const res = await createBatchInvoicesAction({ ...input, eventId: weekendId }, send);

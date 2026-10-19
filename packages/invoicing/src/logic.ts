@@ -119,14 +119,31 @@ export function eventCollection(eventId: string, invoices: Invoice[], expectedCo
   };
 }
 
-/** Preview totals for batch billing. Uses each program's teamCount as-is
- *  (the host's server count). Programs with 0 teams are skipped. */
+/** Sent, non-voided invoice for this program — createBatch skips these. */
+export function invoiceAlreadyBilled(
+  invoices: Pick<Invoice, "hostCustomerId" | "sentAt" | "voidedAt">[],
+  customerId: string
+): boolean {
+  return invoices.some((v) => v.hostCustomerId === customerId && !!v.sentAt && !v.voidedAt);
+}
+
+/** Same eligibility createBatch uses after looking up the host customer. */
+export function batchCustomerEligible(
+  customer: { id: string; teamCount: number },
+  invoices: Pick<Invoice, "hostCustomerId" | "sentAt" | "voidedAt">[] = []
+): boolean {
+  return customer.teamCount > 0 && !invoiceAlreadyBilled(invoices, customer.id);
+}
+
+/** Preview totals for batch billing. Same programs createBatch will bill. */
 export function batchPreviewTotals(
-  customers: { teamCount: number }[],
+  customers: { id: string; teamCount: number }[],
   feeCents: number,
-  depositPerTeamCents = 0
-): { invoiceCount: number; teamCount: number; totalCents: number; depositCents: number } {
-  const rows = customers.filter((c) => c.teamCount > 0);
+  depositPerTeamCents = 0,
+  invoices: Pick<Invoice, "hostCustomerId" | "sentAt" | "voidedAt">[] = []
+): { invoiceCount: number; teamCount: number; totalCents: number; depositCents: number; alreadyBilledCount: number } {
+  const rows = customers.filter((c) => batchCustomerEligible(c, invoices));
+  const alreadyBilledCount = customers.filter((c) => c.teamCount > 0 && invoiceAlreadyBilled(invoices, c.id)).length;
   const teams = rows.reduce((s, c) => s + Math.max(0, c.teamCount), 0);
   const fee = Math.max(0, Math.round(feeCents));
   const dep = Math.max(0, Math.round(depositPerTeamCents));
@@ -135,6 +152,7 @@ export function batchPreviewTotals(
     teamCount: teams,
     totalCents: teams * fee,
     depositCents: teams * dep,
+    alreadyBilledCount,
   };
 }
 

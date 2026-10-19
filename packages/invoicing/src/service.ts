@@ -3,10 +3,12 @@
 import type { InvoicingAdapter } from "./adapter.ts";
 import { invoiceEmailContent, reminderEmailContent } from "./emails.ts";
 import {
+  batchCustomerEligible,
   clampDeposit,
   computeInvoice,
   effectiveMailCopies,
   eventCollection,
+  invoiceAlreadyBilled,
   invoiceBalance,
   lineAmount,
   normalizeClubSettings,
@@ -383,12 +385,11 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
             skipped.push(`${row.id}: not on this event`);
             continue;
           }
-          if (existing.some((v) => v.hostCustomerId === c.id && v.sentAt && !v.voidedAt)) {
-            skipped.push(`${c.name}: already billed`);
+          if (!batchCustomerEligible(c, existing)) {
+            if (invoiceAlreadyBilled(existing, c.id)) skipped.push(`${c.name}: already billed`);
             continue;
           }
           const teamCount = c.teamCount;
-          if (teamCount <= 0) continue;
           const draft = existing.find((v) => v.hostCustomerId === c.id && !v.sentAt && !v.voidedAt);
           const total = teamCount * feeCents;
           const depositCents = input.depositOn ? clampDeposit(input.depositPerTeamCents * teamCount, total) : 0;

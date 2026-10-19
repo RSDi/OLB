@@ -20,7 +20,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   if (!ctx) notFound();
   const customers = await hostedEventCustomers(id);
   const svc = createInvoicingService(olbInvoicingAdapter());
-  const club = await svc.clubSettings();
+  const [club, listed] = await Promise.all([svc.clubSettings(), svc.list(id)]);
   const org = await olbInvoicingAdapter().orgSettings();
   const today = churchToday();
   return (
@@ -34,6 +34,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       canInvoice={viewer.canManageInvoicing}
       clubSettings={club.ok ? club.data : { freq: "3d", startDays: 7, untilPaid: true, ccEmails: [], bccEmails: [] }}
       fromEmail={org.fromEmail}
+      invoices={listed.ok ? listed.data : []}
     />
   );
 }
