@@ -59,6 +59,7 @@ export function autoLineDescription(eventLabel: string | null | undefined): stri
 
 export const PROGRAMS_LOAD_ERROR = "Couldn't load registered programs.";
 export const PROGRAMS_LOAD_RELOAD = "Reload";
+export const PROGRAMS_RELOAD_FIRST = "Reload first";
 
 export type AutoFillFields = {
   customerName: string;
@@ -101,6 +102,14 @@ export function pickInvoiceProgram(
   event: InvoiceEventOption | null
 ): { fields: AutoFillFields; lastAuto: AutoFillFields } {
   return keepAutoFill(state.fields, state.lastAuto, applyProgramSelection(program, event));
+}
+
+/** Changing Event clears the program pick and refills only unedited fields. */
+export function pickInvoiceEvent(
+  state: { fields: AutoFillFields; lastAuto: AutoFillFields },
+  event: InvoiceEventOption | null
+): { fields: AutoFillFields; lastAuto: AutoFillFields } {
+  return pickInvoiceProgram(state, null, event);
 }
 
 export function shouldShowProgramsLoadError(input: {
@@ -161,7 +170,9 @@ export function resolveCreateInvoiceInput(input: {
   due: string;
   dep: string;
   depDue: string;
+  programsLoadFailed?: boolean;
 }): { error: string } | { input: CreateInvoiceInput } {
+  if (input.programsLoadFailed) return { error: PROGRAMS_RELOAD_FIRST };
   const hosted = input.events.find((e) => e.id === input.eventId) ?? null;
   const otherEvent = input.eventId === OTHER_EVENT_ID;
   if (!hosted && !otherEvent) return { error: "Pick an event." };

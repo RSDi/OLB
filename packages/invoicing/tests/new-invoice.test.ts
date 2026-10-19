@@ -7,11 +7,13 @@ import {
   OTHER_PROGRAM_ID,
   PROGRAMS_LOAD_ERROR,
   PROGRAMS_LOAD_RELOAD,
+  PROGRAMS_RELOAD_FIRST,
   applyProgramSelection,
   autoLineDescription,
   emptyAutoFill,
   invoiceEventLabel,
   invoiceEventsFromRows,
+  pickInvoiceEvent,
   pickInvoiceProgram,
   programOptionLabel,
   resolveCreateInvoiceInput,
@@ -33,6 +35,7 @@ const metro: EventCustomer = {
   emails: ["metro@example.com"],
   teamCount: 1,
 };
+const shootout: InvoiceEventOption = { id: "wk-2", label: "Shootout 2026", feeCents: 40000 };
 
 test("invoiceEventsFromRows lists hosted weekends newest first and skips canceled", () => {
   const events = invoiceEventsFromRows({
@@ -90,6 +93,22 @@ test("editing the program email and picking again keeps the edit", () => {
   assert.equal(state.fields.customerName, "");
 });
 
+test("changing the Event keeps an edited email and refills unedited fields", () => {
+  let state = { fields: emptyAutoFill(), lastAuto: emptyAutoFill() };
+  state = pickInvoiceEvent(state, mrs);
+  state = pickInvoiceProgram(state, prairie, mrs);
+  assert.equal(state.fields.customerEmail, "a@example.com, b@example.com");
+  assert.equal(state.fields.desc, "Team fee · MRS 2026");
+  assert.equal(state.fields.rate, "315");
+  state = { ...state, fields: { ...state.fields, customerEmail: "jeff@example.com" } };
+  state = pickInvoiceEvent(state, shootout);
+  assert.equal(state.fields.customerEmail, "jeff@example.com");
+  assert.equal(state.fields.customerName, "");
+  assert.equal(state.fields.desc, "Team fee · Shootout 2026");
+  assert.equal(state.fields.rate, "400");
+  assert.equal(state.fields.qty, "1");
+});
+
 test("unedited auto-filled fields still update when the pick changes", () => {
   let state = { fields: emptyAutoFill(), lastAuto: emptyAutoFill() };
   state = pickInvoiceProgram(state, prairie, mrs);
@@ -144,6 +163,49 @@ test("resolveCreateInvoiceInput keeps host ids for a registered program", () => 
   assert.equal(res.input.customerEmail, "override@example.com");
   assert.equal(res.input.eventLabel, "MRS 2026");
   assert.deepEqual(res.input.lines, [{ description: "Team fee · MRS 2026", qty: 2, unitCents: 31500 }]);
+});
+
+test("a failed program load blocks Save so Other program cannot write a null host customer", () => {
+  const blocked = resolveCreateInvoiceInput({
+    eventId: mrs.id,
+    events: [mrs],
+    customEvent: "",
+    programId: OTHER_PROGRAM_ID,
+    customers: [],
+    customName: "Walk-on Academy",
+    email: "walk@example.com",
+    desc: "Team fee · MRS 2026",
+    qty: "1",
+    rate: "315",
+    due: "2026-11-01",
+    dep: "",
+    depDue: "",
+    programsLoadFailed: true,
+  });
+  assert.deepEqual(blocked, { error: PROGRAMS_RELOAD_FIRST });
+  assert.equal(PROGRAMS_RELOAD_FIRST, "Reload first");
+  const ok = resolveCreateInvoiceInput({
+    eventId: mrs.id,
+    events: [mrs],
+    customEvent: "",
+    programId: OTHER_PROGRAM_ID,
+    customers: [prairie],
+    customName: "Walk-on Academy",
+    email: "walk@example.com",
+    desc: "Team fee · MRS 2026",
+    qty: "1",
+    rate: "315",
+    due: "2026-11-01",
+    dep: "",
+    depDue: "",
+    programsLoadFailed: false,
+  });
+  assert.ok("input" in ok);
+  assert.equal(ok.input.hostCustomerId, null);
+  const form = readFileSync(join(import.meta.dirname, "../src/ui/NewInvoiceForm.tsx"), "utf8");
+  assert.match(form, /PROGRAMS_RELOAD_FIRST/);
+  assert.match(form, /disabled=\{busy \|\| programsError\}/);
+  assert.match(form, /programsLoadFailed: programsError/);
 });
 
 test("resolveCreateInvoiceInput allows Other program without a host customer id", () => {

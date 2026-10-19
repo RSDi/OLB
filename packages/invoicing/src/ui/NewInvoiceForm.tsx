@@ -6,6 +6,7 @@ import {
   OTHER_PROGRAM_ID,
   PROGRAMS_LOAD_ERROR,
   PROGRAMS_LOAD_RELOAD,
+  PROGRAMS_RELOAD_FIRST,
   applyProgramSelection,
   autoLineDescription,
   emptyAutoFill,
@@ -113,6 +114,7 @@ export function NewInvoiceForm({
       due,
       dep,
       depDue,
+      programsLoadFailed: programsError,
     });
     if ("error" in resolved) return setError(resolved.error);
     setBusy(true);
@@ -206,7 +208,10 @@ export function NewInvoiceForm({
           </Field>
         </div>
         {error && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{error}</div>}
-        <Btn kind="accent" onClick={save} disabled={busy}>
+        {programsError && !error && (
+          <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{PROGRAMS_RELOAD_FIRST}</div>
+        )}
+        <Btn kind="accent" onClick={save} disabled={busy || programsError}>
           {busy ? "Saving…" : "Save draft"}
         </Btn>
       </Card>
