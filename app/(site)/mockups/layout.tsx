@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function MockupsLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      {children}
+      <div className={styles.withBanner}>{children}</div>
       <div className={styles.banner} role="status">
         Mock-up, not live
       </div>

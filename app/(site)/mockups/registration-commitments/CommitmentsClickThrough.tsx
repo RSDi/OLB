@@ -25,8 +25,7 @@ export function CommitmentsClickThrough() {
       <Block m="1/2/3/10" d="1/5/3/21">
         {screen === "ask" && (
           <Text>
-            <h2>Registration commitments</h2>
-            <h4>{ASK}</h4>
+            <p>{ASK}</p>
             <div className={styles.actions}>
               <button type="button" className={site.button} onClick={() => setScreen("yes-note")}>
                 Yes
@@ -40,10 +39,10 @@ export function CommitmentsClickThrough() {
 
         {screen === "yes-note" && (
           <Text>
-            <h4>{YES_FOLLOW_UP}</h4>
+            <p>{YES_FOLLOW_UP}</p>
             <div className={site.field}>
               <label htmlFor="commitments-note" className={site.fieldTitle}>
-                Activity name and conflicting days/times <span className={site.required}>(optional)</span>
+                Activity name and conflicting days/times (optional)
               </label>
               <textarea
                 id="commitments-note"

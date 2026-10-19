@@ -1,9 +1,14 @@
 /* Public /mockups area: a no-login click-through for reviewing ideas.
    Hangs off these classes only, so it never reaches the portal. */
 
+.withBanner {
+  /* Room for the pinned banner, which sits just under the floating header. */
+  padding-top: 44px;
+}
+
 .banner {
   position: fixed;
-  top: 0;
+  top: var(--header-height);
   left: 0;
   right: 0;
   z-index: 2000;
@@ -107,12 +112,11 @@
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #fbcb44;
+  background: #fbcb43;
   color: #111;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .adminMeta {
