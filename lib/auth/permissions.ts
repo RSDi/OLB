@@ -198,6 +198,31 @@ export const INVOICING_PLANNING_ROLE_SEEDS = [
   "role:treasurer",
 ] as const;
 
+export function isInvoicingPlanningRoleSeed(seed: string | null | undefined): boolean {
+  return !!seed && (INVOICING_PLANNING_ROLE_SEEDS as readonly string[]).includes(seed);
+}
+
+// Held by / seed_key / remove on those three roles: super-admin only.
+// members.role has no separate admin — "admin" is Board (0096).
+export function canChangeInvoicingPlanningHolder(m: MemberLike | null | undefined): boolean {
+  return isSuperAdmin(m);
+}
+
+export const INVOICING_PLANNING_HOLDER_ERROR =
+  "Only a super-admin can change who holds President, Athletic Director, or Treasurer.";
+
+export function invoicingPlanningWriteRequiresSuperAdmin(args: {
+  oldSeed?: string | null;
+  newSeed?: string | null;
+  memberIdChanged?: boolean;
+  keyChanged?: boolean;
+  removed?: boolean;
+}): boolean {
+  const locked = isInvoicingPlanningRoleSeed(args.oldSeed) || isInvoicingPlanningRoleSeed(args.newSeed);
+  if (!locked) return false;
+  return !!(args.memberIdChanged || args.keyChanged || args.removed);
+}
+
 export function canManageInvoicing(m: MemberLike | null | undefined): boolean {
   if (!m || m.status !== "approved") return false;
   return m.role === "super_admin" || !!m.holds_invoicing_planning_role || !!m.permissions?.includes("invoicing");

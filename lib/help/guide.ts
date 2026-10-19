@@ -1073,7 +1073,7 @@ Activity is recorded from the day it went live.`,
 | Plan the HS Schedule | With **Plan HS Schedule** (coaches always) | ✓ | ✓ |
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
-| Bill other programs (team fees, invoices) | With **Invoicing** | With **Invoicing** | ✓ |
+| Bill other programs (team fees, invoices) | Planning Roles holder, or **Invoicing** | Planning Roles holder, or **Invoicing** | ✓ |
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
 | Add and edit the hotels and places to eat in External Contacts; hotel stays on the HS Schedule; track Booked in block; import a rooming list in Settings | With **Travel** | ✓ | ✓ |
 | Send families Slack DMs from the Directory, as yourself | With **Slack DMs** | With **Slack DMs** | ✓ |
@@ -1251,10 +1251,10 @@ Use the arrows to change the order (it's the order of the chips in the Directory
     body: `The roles Planning's tasks belong to: President, Athletic Director, Treasurer, Communications and Coaches to start. Open **Settings → Planning Roles**.
 
 - **Add role** gives it a name and a **Chip color** (the color its tasks wear on the calendar).
-- **Held by** is who has the role this season. When the board keeps a task in Planning → Review, it's assigned to that person. Leave it as **Nobody named** for a role several people share, like Coaches. Whoever holds President, Athletic Director, or Treasurer in Settings → Planning Roles (plus super admins) can invoice.
+- **Held by** is who has the role this season. When the board keeps a task in Planning → Review, it's assigned to that person. Leave it as **Nobody named** for a role several people share, like Coaches. Whoever holds President, Athletic Director, or Treasurer in Settings → Planning Roles (plus super admins) can invoice. On those three roles, **Held by** is read-only for the board — only a super-admin can change who holds them.
 - **Order** sets the order of the role buttons and of tasks within a month.
 
-Use the **pencil** to edit a role, for example when a new President takes over, and the **trash** can to remove one. A removed role's tasks stay; they just show without a role.`,
+Use the **pencil** to edit a role (name, color and order). The **trash** can removes a role that isn't President, Athletic Director or Treasurer; those three stay unless a super-admin removes them. A removed role's tasks stay; they just show without a role.`,
   },
   {
     id: "settings-playbooks",

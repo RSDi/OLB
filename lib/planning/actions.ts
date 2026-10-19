@@ -8,6 +8,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
+import { getViewer } from "../auth/viewer";
+import {
+  INVOICING_PLANNING_HOLDER_ERROR,
+  invoicingPlanningWriteRequiresSuperAdmin,
+} from "../auth/permissions";
 import { requirePlanner } from "./guard";
 import { loadMeetingState, type MeetingState } from "./data";
 import { seasonTasksFromTemplates } from "./logic";
@@ -275,6 +280,16 @@ function cleanRole(input: RoleInput): { error: string } | { row: Record<string, 
   };
 }
 
+async function loadPlanningRoleRow(id: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("planning_roles")
+    .select("seed_key, member_id, deleted_at")
+    .eq("id", id)
+    .maybeSingle();
+  return data as { seed_key: string | null; member_id: string | null; deleted_at: string | null } | null;
+}
+
 export async function createPlanningRole(input: RoleInput): Promise<PlanningActionResult> {
   const gate = await requirePlanner();
   if ("error" in gate) return { error: gate.error };
@@ -293,6 +308,19 @@ export async function updatePlanningRole(id: string, input: RoleInput): Promise<
   if (!UUID.test(id)) return { error: "Role not found." };
   const clean = cleanRole(input);
   if ("error" in clean) return { error: clean.error };
+  const existing = await loadPlanningRoleRow(id);
+  if (!existing || existing.deleted_at) return { error: "Role not found." };
+  const nextMember = (clean.row.member_id as string | null) ?? null;
+  const viewer = await getViewer();
+  if (
+    invoicingPlanningWriteRequiresSuperAdmin({
+      oldSeed: existing.seed_key,
+      memberIdChanged: nextMember !== existing.member_id,
+    }) &&
+    !viewer?.isSuperAdmin
+  ) {
+    return { error: INVOICING_PLANNING_HOLDER_ERROR };
+  }
   const supabase = await createClient();
   const { error } = await supabase.from("planning_roles").update(clean.row).eq("id", id);
   if (error) return { error: error.message };
@@ -305,6 +333,15 @@ export async function deletePlanningRole(id: string): Promise<PlanningActionResu
   const gate = await requirePlanner();
   if ("error" in gate) return { error: gate.error };
   if (!UUID.test(id)) return { error: "Role not found." };
+  const existing = await loadPlanningRoleRow(id);
+  if (!existing || existing.deleted_at) return { error: "Role not found." };
+  const viewer = await getViewer();
+  if (
+    invoicingPlanningWriteRequiresSuperAdmin({ oldSeed: existing.seed_key, removed: true }) &&
+    !viewer?.isSuperAdmin
+  ) {
+    return { error: INVOICING_PLANNING_HOLDER_ERROR };
+  }
   const supabase = await createClient();
   const { error } = await supabase
     .from("planning_roles")

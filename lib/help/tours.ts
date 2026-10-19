@@ -2078,7 +2078,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "planning-roles-list",
         click: "settings-tab-planning-roles",
         title: "Settings → Planning Roles",
-        body: "**Held by** is who has each role this season. When the board keeps a task, it's assigned to that person.",
+        body: "**Held by** is who has each role this season. When the board keeps a task, it's assigned to that person. For President, Athletic Director and Treasurer, only a super-admin can change it.",
       },
       {
         route: "/portal/settings",

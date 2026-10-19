@@ -15,6 +15,7 @@ export interface PlanningRole {
   chip_class: string;
   member_id: string | null;
   sort_order: number;
+  seed_key?: string | null;
 }
 
 export interface RoleChip {
