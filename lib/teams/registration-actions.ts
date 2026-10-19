@@ -22,6 +22,7 @@ import { registrationFullName } from "./roster-logic";
 import { cleanInputExtras, type InputExtras } from "../onboarding/form-extras";
 import { loadFormExtras, loadSettings } from "../onboarding/server";
 import { afterApprove, afterSubmit } from "../onboarding/hooks";
+import { extraCommitments } from "./registration-commitments";
 
 // ─── The public form ────────────────────────────────────────────────────────
 //
@@ -356,6 +357,7 @@ function toRow(boardId: string, input: RegistrationInput, confirmedEmail: string
   const fatherName = [input.father_first, input.father_last].map((s) => s?.trim()).filter(Boolean).join(" ");
   const motherName = [input.mother_first, input.mother_last].map((s) => s?.trim()).filter(Boolean).join(" ");
   const naless = (s: string) => (s && s.trim().toUpperCase() !== "N/A" ? s.trim() : "");
+  const commitments = extraCommitments(input.commitments_has, input.commitments_note);
   return {
     board_id: boardId,
     first_name: input.athlete_first.trim(),
@@ -386,6 +388,7 @@ function toRow(boardId: string, input: RegistrationInput, confirmedEmail: string
       donation_interest: input.donation_interest,
       payment_option: input.payment_option,
       email_confirmed: confirmedEmail,
+      ...(commitments ? { commitments } : {}),
       ...(submissionKey ? { submission_key: submissionKey } : {}),
     } as Record<string, unknown>,
   };
