@@ -14,6 +14,8 @@ import {
   commitmentsProblem,
   commitmentsSteps,
   extraCommitments,
+  NOTE_MAX,
+  commitmentsNotePreview,
   renderCommitmentsAdmin,
 } from "../../lib/teams/registration-commitments.ts";
 import { buildRegistrationSteps } from "../../lib/teams/registration-steps.ts";
@@ -140,25 +142,56 @@ test("Yes adds the note step; No does not", () => {
   assert.equal(yesSteps[k + 2], "commitments-note");
 });
 
+function stored(has: unknown, note: unknown) {
+  const result = extraCommitments(has, note);
+  if (!result.ok) return { error: result.error };
+  return { extra: { commitments: result.value } };
+}
+
 test("stored extra.commitments is { has, note }", () => {
-  assert.deepEqual(extraCommitments(true, "  football Tue/Thu  "), { has: true, note: "football Tue/Thu" });
-  assert.deepEqual(extraCommitments(true, "   "), { has: true, note: null });
-  assert.deepEqual(extraCommitments(false, "ignored"), { has: false, note: null });
-  assert.equal(extraCommitments(null, "x"), null);
+  assert.deepEqual(extraCommitments(true, "  football Tue/Thu  "), { ok: true, value: { has: true, note: "football Tue/Thu" } });
+  assert.deepEqual(extraCommitments(true, "   "), { ok: true, value: { has: true, note: null } });
+  assert.deepEqual(extraCommitments(false, "ignored"), { ok: true, value: { has: false, note: null } });
 
   const yes = filled({ commitments_has: true, commitments_note: "  debate Wed  " });
   const rows = toInputs(yes, "2026-09-30");
-  assert.deepEqual(extraCommitments(rows[0].commitments_has, rows[0].commitments_note), {
-    has: true,
-    note: "debate Wed",
+  assert.deepEqual(stored(rows[0].commitments_has, rows[0].commitments_note), {
+    extra: { commitments: { has: true, note: "debate Wed" } },
   });
 
   const no = filled({ commitments_has: false, commitments_note: "leftover" });
   const noRows = toInputs(no, "2026-09-30");
-  assert.deepEqual(extraCommitments(noRows[0].commitments_has, noRows[0].commitments_note), {
-    has: false,
-    note: null,
+  assert.deepEqual(stored(noRows[0].commitments_has, noRows[0].commitments_note), {
+    extra: { commitments: { has: false, note: null } },
   });
+});
+
+test("the server action rejects a missing or non-boolean commitments answer", () => {
+  assert.match(stored(null, "").error ?? "", /commitments/);
+  assert.match(stored(undefined, "").error ?? "", /commitments/);
+  assert.match(stored("yes", "football").error ?? "", /commitments/);
+  assert.match(stored(1, null).error ?? "", /commitments/);
+  const actions = src("lib/teams/registration-actions.ts");
+  assert.match(actions, /function inputProblem/);
+  assert.match(actions, /extraCommitments\(input\.commitments_has, input\.commitments_note\)/);
+  assert.match(actions, /if \(!commitments\.ok\) return commitments\.error/);
+});
+
+test("the server action rejects a non-string or too-long note on Yes", () => {
+  assert.match(stored(true, 42).error ?? "", /text/);
+  assert.match(stored(true, { text: "football" }).error ?? "", /text/);
+  assert.match(stored(true, "x".repeat(NOTE_MAX + 1)).error ?? "", /500/);
+  assert.equal("error" in stored(false, 42), false);
+});
+
+test("Yes with no note is saved with null; a valid Yes note is trimmed", () => {
+  assert.deepEqual(stored(true, undefined), { extra: { commitments: { has: true, note: null } } });
+  assert.deepEqual(stored(true, null), { extra: { commitments: { has: true, note: null } } });
+  assert.deepEqual(stored(true, ""), { extra: { commitments: { has: true, note: null } } });
+  assert.deepEqual(stored(true, "   "), { extra: { commitments: { has: true, note: null } } });
+  assert.deepEqual(stored(true, "  football Tue/Thu  "), { extra: { commitments: { has: true, note: "football Tue/Thu" } } });
+  assert.deepEqual(stored(true, "x".repeat(NOTE_MAX)), { extra: { commitments: { has: true, note: "x".repeat(NOTE_MAX) } } });
+  assert.equal(commitmentsNotePreview("a".repeat(NOTE_MAX + 20)).length, NOTE_MAX);
 });
 
 test("the form is not sent until commitments is answered", () => {

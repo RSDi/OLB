@@ -23,6 +23,7 @@ import {
   COMMITMENTS_ASK,
   COMMITMENTS_NOTE_LABEL,
   COMMITMENTS_YES_FOLLOW_UP,
+  NOTE_MAX,
 } from "../../../lib/teams/registration-commitments";
 
 const radioLbl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, cursor: "pointer" };
@@ -131,7 +132,7 @@ export default function RegistrationForm({
               <span style={qLabel}>{COMMITMENTS_YES_FOLLOW_UP}</span>
               <label style={{ display: "block", marginTop: 8 }}>
                 <span style={{ ...qLabel, fontWeight: 600 }}>{COMMITMENTS_NOTE_LABEL}</span>
-                <textarea className="olb-textarea" rows={4} value={f.commitments_note} onChange={(e) => up({ commitments_note: e.target.value })} style={{ marginTop: 6 }} />
+                <textarea className="olb-textarea" rows={4} maxLength={NOTE_MAX} value={f.commitments_note} onChange={(e) => up({ commitments_note: e.target.value })} style={{ marginTop: 6 }} />
               </label>
             </div>
           )}

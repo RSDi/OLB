@@ -32,6 +32,8 @@ import {
   COMMITMENTS_ASK,
   COMMITMENTS_NOTE_LABEL,
   COMMITMENTS_YES_FOLLOW_UP,
+  NOTE_MAX,
+  commitmentsNotePreview,
 } from "../../../lib/teams/registration-commitments";
 import { buildRegistrationSteps } from "../../../lib/teams/registration-steps";
 
@@ -949,6 +951,7 @@ function Step(p: StepProps) {
             <textarea
               className="olb-textarea"
               rows={4}
+              maxLength={NOTE_MAX}
               value={f.commitments_note}
               onChange={(e) => up({ commitments_note: e.target.value })}
             />
@@ -1199,7 +1202,7 @@ function Step(p: StepProps) {
           <Summary title="Commitments" onChange={() => p.change("commitments")}>
             <Line>
               {f.commitments_has === true
-                ? f.commitments_note.trim() || "Yes"
+                ? commitmentsNotePreview(f.commitments_note) || "Yes"
                 : f.commitments_has === false
                   ? "No"
                   : "Not answered"}

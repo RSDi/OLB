@@ -226,7 +226,7 @@ export function familyProblem(f: FamilyAnswers): string | null {
   const signed = f.signature_mode === "draw" ? !!f.signature_image : !!f.signature_name.trim();
   if (!signed) return "Please sign the Accident Waiver: draw your signature or type your full name.";
   if (!f.payment_option) return "Please choose how you'll pay.";
-  return commitmentsProblem(f.commitments_has);
+  return commitmentsProblem(f.commitments_has, f.commitments_note);
 }
 
 // The first thing still missing before the registration can be sent.

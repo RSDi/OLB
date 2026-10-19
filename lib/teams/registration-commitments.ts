@@ -8,8 +8,11 @@ export const COMMITMENTS_YES_FOLLOW_UP =
   "Thanks for letting us know! A coach or board member will review this and reach out to learn more. Is there anything you already know about your schedule that would help us work through it together?";
 export const COMMITMENTS_NOTE_LABEL = "Activity name and conflicting days/times (optional)";
 export const COMMITMENTS_FLAG = "Commitments";
+// Same cap as the waitlist note on a registration (registration-actions).
+export const NOTE_MAX = 500;
 
 export type CommitmentsStored = { has: boolean; note: string | null };
+export type CommitmentsResult = { ok: true; value: CommitmentsStored } | { ok: false; error: string };
 
 export function emptyCommitments(): { commitments_has: boolean | null; commitments_note: string } {
   return { commitments_has: null, commitments_note: "" };
@@ -21,14 +24,30 @@ export function commitmentsSteps(has: boolean | null): string[] {
   return has === true ? ["commitments", "commitments-note"] : ["commitments"];
 }
 
-export function extraCommitments(has: boolean | null, note: string): CommitmentsStored | null {
-  if (has !== true && has !== false) return null;
-  return { has, note: has ? (note.trim() || null) : null };
+// Server-side clean of extra.commitments. Missing or non-boolean `has` is a
+// validation problem (never a 500). On Yes the note is optional; if it is
+// present it must be a string, trimmed, empty → null, longer than NOTE_MAX
+// rejected. On No the note is always null.
+export function extraCommitments(has: unknown, note: unknown): CommitmentsResult {
+  if (typeof has !== "boolean") {
+    return { ok: false, error: "Please answer whether your player has other commitments this season." };
+  }
+  if (!has) return { ok: true, value: { has: false, note: null } };
+  if (note == null || note === "") return { ok: true, value: { has: true, note: null } };
+  if (typeof note !== "string") return { ok: false, error: "The commitments note has to be text." };
+  const trimmed = note.trim();
+  if (trimmed.length > NOTE_MAX) return { ok: false, error: `Please keep the commitments note under ${NOTE_MAX} characters.` };
+  return { ok: true, value: { has: true, note: trimmed || null } };
 }
 
-export function commitmentsProblem(has: boolean | null): string | null {
-  if (has === null) return "Please answer whether your player has other commitments this season.";
-  return null;
+export function commitmentsProblem(has: boolean | null, note: string = ""): string | null {
+  const result = extraCommitments(has, note);
+  return result.ok ? null : result.error;
+}
+
+export function commitmentsNotePreview(note: string): string {
+  const trimmed = note.trim();
+  return trimmed.length > NOTE_MAX ? trimmed.slice(0, NOTE_MAX) : trimmed;
 }
 
 export function commitmentsAdmin(extra: { commitments?: CommitmentsStored | null } | null | undefined): {
