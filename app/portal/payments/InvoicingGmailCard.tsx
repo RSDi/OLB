@@ -94,7 +94,7 @@ export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
       )}
       {banner === "retry" && (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-error)" }}>
-          Reconnect Gmail — the last send failed, try again. The invoice stayed Draft.
+          Last send failed, Send again. The invoice stayed Draft.
         </p>
       )}
       {loading ? (
@@ -124,9 +124,11 @@ export function InvoicingGmailCard({ outcome }: { outcome?: string }) {
             ) : null}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Pill size="sm" variant="accent" disabled={busy} onClick={() => connect()}>
-              Reconnect Gmail
-            </Pill>
+            {banner !== "retry" && (
+              <Pill size="sm" variant="accent" disabled={busy} onClick={() => connect()}>
+                Reconnect Gmail
+              </Pill>
+            )}
             <Pill size="sm" variant="ghost" disabled={busy} onClick={() => void disconnect()}>
               Disconnect
             </Pill>

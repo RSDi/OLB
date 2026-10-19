@@ -10,6 +10,7 @@ import {
   GMAIL_SCOPES,
   gmailAuthorizeUrl,
   gmailCallbackRedirectUri,
+  gmailCanonicalConnectUrl,
   gmailOAuthConfigured,
   gmailRedirectOrigin,
   invoiceGmailLive,
@@ -19,6 +20,7 @@ import {
   refreshGmailAccess,
   safeInvoiceReturn,
 } from "../../lib/invoicing/gmail-oauth.ts";
+import { isMissingGmailTable } from "../../lib/invoicing/gmail-settings.ts";
 import { buildGmailRawMessage, encodeRfc2047 } from "../../lib/invoicing/gmail-send.ts";
 import { canManageInvoicing, type MemberLike } from "../../lib/auth/permissions.ts";
 
@@ -78,8 +80,15 @@ test("OAuth authorize URL asks for gmail.send, userinfo.email, offline, and cons
   assert.match(url, /api%2Finvoicing%2Fgmail%2Fcallback/);
   assert.doesNotMatch(url, /include_granted_scopes/);
   assert.equal(gmailRedirectOrigin(env), "https://olb.example");
+  assert.equal(gmailRedirectOrigin({ NEXT_PUBLIC_SITE_URL: "http://olb.example" }), null);
+  assert.equal(gmailRedirectOrigin({ NEXT_PUBLIC_SITE_URL: "http://localhost:3000" }), "http://localhost:3000");
   assert.equal(gmailCallbackRedirectUri(env), "https://olb.example/api/invoicing/gmail/callback");
   assert.match(url, /redirect_uri=https%3A%2F%2Folb\.example%2Fapi%2Finvoicing%2Fgmail%2Fcallback/);
+  assert.equal(
+    gmailCanonicalConnectUrl("https://www.olb.example", "/api/invoicing/gmail/connect?next=%2Fportal%2Fpayments", env),
+    "https://olb.example/api/invoicing/gmail/connect?next=%2Fportal%2Fpayments"
+  );
+  assert.equal(gmailCanonicalConnectUrl("https://olb.example", "/api/invoicing/gmail/connect", env), null);
   assert.equal(GMAIL_CALLBACK_PATH, "/api/invoicing/gmail/callback");
   assert.deepEqual(GMAIL_SCOPES, [
     "https://www.googleapis.com/auth/gmail.send",
@@ -159,6 +168,23 @@ test("Gmail raw message carries From, To, CC, BCC, Reply-To, and both bodies", (
   const encodedSubject = encodeRfc2047("Invoice · INV-1");
   assert.ok(decodedSubject.includes(`Subject: ${encodedSubject}`));
   assert.equal(decodedSubject.includes("Subject: Invoice · INV-1"), false);
+
+  const longSubject = `Invoice · ${"ñ".repeat(80)}`;
+  const folded = buildGmailRawMessage({
+    from: "Omaha Lightning Basketball · Finance <club@gmail.com>",
+    replyTo: "club@gmail.com",
+    to: ["program@example.com"],
+    cc: [],
+    bcc: [],
+    subject: longSubject,
+    text: "pay now",
+    html: "<p>pay now</p>",
+  });
+  const decodedLong = Buffer.from(folded, "base64url").toString("utf8");
+  assert.match(decodedLong, /Subject:\r\n =\?UTF-8\?B\?/);
+  const encodedWords = decodedLong.match(/=\?UTF-8\?B\?[A-Za-z0-9+/=]+\?=/g) ?? [];
+  assert.ok(encodedWords.length >= 2);
+  for (const word of encodedWords) assert.ok(word.length <= 75, word);
 });
 
 test("Reconnect banner is reconnect only for revoked/unreadable, retry for temporary errors", () => {
@@ -198,9 +224,11 @@ test("Connect Gmail and Disconnect are invoicing permission only, including supe
   assert.match(card, /Disconnect/);
   assert.match(card, /Reconnect Gmail/);
   assert.match(card, /isn&apos;t connected anymore/);
-  assert.match(card, /last send failed, try again/);
+  assert.match(card, /Last send failed, Send again/);
   assert.match(invoicePage, /isn&apos;t connected anymore/);
-  assert.match(invoicePage, /last send failed, try again/);
+  assert.match(invoicePage, /Last send failed, Send again/);
+  assert.match(invoicePage, /Send again/);
+  assert.match(invoicePage, /sendInvoiceAction/);
   assert.match(card, /Connected as/);
   assert.match(card, /Last used/);
   assert.match(mail, /packages\/invoicing never/);
@@ -231,6 +259,7 @@ test("host adapter is the only Gmail seam and invoices stay Draft until mail ok"
   assert.match(connect, /oauthStateCookie\(state, next, gate\.userId\)/);
   assert.match(callback, /readOAuthStateCookie\([\s\S]*gate\.userId/);
   assert.match(connect, /invoiceGmailLive\(\)/);
+  assert.match(connect, /gmailCanonicalConnectUrl/);
   assert.match(callback, /invoiceGmailLive\(\)/);
   assert.match(settings, /invoiceGmailLive/);
   assert.match(mail, /isProductionMail\(env\) \? await resolveGmailLoad/);
@@ -257,4 +286,21 @@ test("Connect Gmail is production-only and previews never touch inv_gmail", () =
   assert.match(settings, /assertGmailLive/);
   const page = readFileSync(join(root, "app/portal/payments/invoices/[id]/page.tsx"), "utf8");
   assert.match(page, /invoiceGmailLive\(\)/);
+  assert.match(settings, /isMissingGmailTable/);
+});
+
+test("missing inv_gmail table is no Gmail connected, not Reconnect", () => {
+  assert.equal(isMissingGmailTable({ code: "42P01", message: 'relation "inv_gmail" does not exist' }), true);
+  assert.equal(
+    isMissingGmailTable({
+      code: "PGRST205",
+      message: "Could not find the table 'public.inv_gmail' in the schema cache",
+    }),
+    true
+  );
+  assert.equal(isMissingGmailTable({ code: "42501", message: "permission denied for table inv_gmail" }), false);
+  assert.equal(isMissingGmailTable(new Error("That stored token isn't readable.")), false);
+  const settings = readFileSync(join(root, "lib/invoicing/gmail-settings.ts"), "utf8");
+  assert.match(settings, /if \(isMissingGmailTable\(error\)\) return null/);
+  assert.match(settings, /isMissingGmailTable\(err[\s\S]*status: "none"/);
 });

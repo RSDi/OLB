@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { InvoiceDetail } from "invoicing/ui";
+import { Pill } from "../../../../components/ui";
 import type { Invoice, InvoiceClubSettings, OrgSettings, RecordPaymentInput, UpdateInvoiceInput } from "invoicing";
 import {
   recordInvoicePaymentAction,
@@ -35,11 +37,25 @@ export function InvoicePage({
   gmailBanner?: GmailBannerKind | null;
 }) {
   const router = useRouter();
+  const [retryBusy, setRetryBusy] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+
+  async function sendAgain() {
+    setRetryBusy(true);
+    setRetryError(null);
+    const res = await sendInvoiceAction(invoice.id);
+    setRetryBusy(false);
+    if (res.error) setRetryError(res.error);
+    else router.refresh();
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {gmailBanner && canInvoice && (
         <div className="rsd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontWeight: 800, fontSize: 15 }}>Reconnect Gmail</div>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>
+            {gmailBanner === "reconnect" ? "Reconnect Gmail" : "Last send failed"}
+          </div>
           <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
             {gmailBanner === "reconnect" ? (
               <>
@@ -48,19 +64,28 @@ export function InvoicePage({
               </>
             ) : (
               <>
-                The last send failed, try again. The invoice stayed <strong>Draft</strong>.
+                Last send failed, Send again. The invoice stayed <strong>Draft</strong>.
               </>
             )}
           </p>
-          <a
-            href={
-              "/api/invoicing/gmail/connect?next=" +
-              encodeURIComponent(`/portal/payments/invoices/${invoice.id}`)
-            }
-            style={{ fontWeight: 700, fontSize: 13 }}
-          >
-            Reconnect Gmail
-          </a>
+          {retryError && (
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-error)" }}>{retryError}</p>
+          )}
+          {gmailBanner === "reconnect" ? (
+            <a
+              href={
+                "/api/invoicing/gmail/connect?next=" +
+                encodeURIComponent(`/portal/payments/invoices/${invoice.id}`)
+              }
+              style={{ fontWeight: 700, fontSize: 13 }}
+            >
+              Reconnect Gmail
+            </a>
+          ) : (
+            <Pill size="sm" variant="accent" disabled={retryBusy} onClick={() => void sendAgain()}>
+              Send again
+            </Pill>
+          )}
         </div>
       )}
     <InvoiceDetail

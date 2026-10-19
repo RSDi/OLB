@@ -44,11 +44,39 @@ function assertGmailLive(env: Record<string, string | undefined> = process.env):
   }
 }
 
+/** Missing inv_gmail (migration 0153 not applied) is "no Gmail", not Reconnect. */
+export function isMissingGmailTable(error: {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+} | Error | string | null | undefined): boolean {
+  if (!error) return false;
+  const code = (typeof error === "object" && error && "code" in error ? String(error.code ?? "") : "").toUpperCase();
+  if (code === "42P01" || code === "PGRST205") return true;
+  const msg = (
+    typeof error === "string"
+      ? error
+      : `${error instanceof Error ? error.message : ""} ${typeof error === "object" && error && "message" in error ? String(error.message ?? "") : ""} ${typeof error === "object" && error && "details" in error ? String(error.details ?? "") : ""}`
+  ).toLowerCase();
+  if (msg.includes("42p01") || msg.includes("pgrst205")) return true;
+  const namesTable = msg.includes("inv_gmail") || msg.includes("public.inv_gmail");
+  return (
+    namesTable &&
+    (msg.includes("does not exist") ||
+      msg.includes("undefined table") ||
+      msg.includes("schema cache") ||
+      msg.includes("could not find the table"))
+  );
+}
+
 async function loadRow(): Promise<Row | null> {
   assertGmailLive();
   const admin = createAdminClient();
   const { data, error } = await admin.from("inv_gmail").select(COLS).eq("id", true).maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingGmailTable(error)) return null;
+    throw new Error(error.message);
+  }
   return (data as Row | null) ?? null;
 }
 
@@ -71,7 +99,8 @@ export async function loadGmailForSend(
   let row: Row | null;
   try {
     row = await loadRow();
-  } catch {
+  } catch (err) {
+    if (isMissingGmailTable(err instanceof Error ? err.message : err)) return { status: "none" };
     return { status: "unreadable" };
   }
   if (!row?.refresh_token_enc) return { status: "none" };

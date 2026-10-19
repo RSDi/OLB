@@ -38,15 +38,38 @@ export function invoiceGmailLive(env: Record<string, string | undefined> = proce
   return env.VERCEL_ENV === "production";
 }
 
-/** Fixed site origin for the Google redirect URI. Never the request Host. */
+function isLocalHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
+/** Fixed site origin for the Google redirect URI. Never the request Host. HTTPS except localhost. */
 export function gmailRedirectOrigin(env: Record<string, string | undefined> = process.env): string | null {
   const site = (env.NEXT_PUBLIC_SITE_URL ?? "").trim();
   if (!site) return null;
   try {
-    return new URL(site).origin;
+    const url = new URL(site);
+    if (!isLocalHostname(url.hostname) && url.protocol !== "https:") return null;
+    return url.origin;
   } catch {
     return null;
   }
+}
+
+/** If Connect started on apex vs www (or any other host), bounce to NEXT_PUBLIC_SITE_URL first. */
+export function gmailCanonicalConnectUrl(
+  requestOrigin: string,
+  pathWithSearch: string,
+  env: Record<string, string | undefined> = process.env
+): string | null {
+  const origin = gmailRedirectOrigin(env);
+  if (!origin) return null;
+  try {
+    if (new URL(requestOrigin).origin === origin) return null;
+  } catch {
+    return `${origin}${pathWithSearch.startsWith("/") ? pathWithSearch : `/${pathWithSearch}`}`;
+  }
+  const path = pathWithSearch.startsWith("/") ? pathWithSearch : `/${pathWithSearch}`;
+  return `${origin}${path}`;
 }
 
 export function gmailCallbackRedirectUri(env: Record<string, string | undefined> = process.env): string {

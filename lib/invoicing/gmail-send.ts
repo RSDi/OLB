@@ -24,11 +24,42 @@ function headerSafe(value: string): string {
   return value.replace(/[\r\n]+/g, " ").trim();
 }
 
-/** RFC 2047 encoded-word for a header phrase (From display name, Subject). */
+const RFC2047_WORD_MAX = 75;
+const RFC2047_PREFIX = "=?UTF-8?B?";
+const RFC2047_SUFFIX = "?=";
+// 75 - prefix - suffix, then down to a multiple of 4 base64 chars (45 raw bytes).
+const RFC2047_BYTES_PER_WORD = 45;
+
+/** RFC 2047 encoded-word(s) for a header phrase. Long values fold per RFC 2047/5322. */
 export function encodeRfc2047(value: string): string {
   const clean = headerSafe(value);
   if (/^[\x20-\x7e]*$/.test(clean)) return clean;
-  return `=?UTF-8?B?${Buffer.from(clean, "utf8").toString("base64")}?=`;
+  const bytes = Buffer.from(clean, "utf8");
+  const words: string[] = [];
+  for (let i = 0; i < bytes.length; ) {
+    let n = Math.min(RFC2047_BYTES_PER_WORD, bytes.length - i);
+    while (n > 0 && i + n < bytes.length && (bytes[i + n]! & 0xc0) === 0x80) n--;
+    if (n <= 0) n = Math.min(1, bytes.length - i);
+    const word = `${RFC2047_PREFIX}${bytes.subarray(i, i + n).toString("base64")}${RFC2047_SUFFIX}`;
+    if (word.length > RFC2047_WORD_MAX) {
+      n = Math.max(1, n - 3);
+      words.push(`${RFC2047_PREFIX}${bytes.subarray(i, i + n).toString("base64")}${RFC2047_SUFFIX}`);
+      i += n;
+      continue;
+    }
+    words.push(word);
+    i += n;
+  }
+  return words.join("\r\n ");
+}
+
+function subjectHeader(subject: string): string {
+  const encoded = encodeRfc2047(subject);
+  if (!encoded.includes("=?")) return `Subject: ${encoded}`;
+  const words = encoded.split("\r\n ");
+  const inline = `Subject: ${words[0]}`;
+  if (words.length === 1 && inline.length <= 78) return inline;
+  return `Subject:\r\n ${words.join("\r\n ")}`;
 }
 
 function encodeFrom(from: string): string {
@@ -50,7 +81,7 @@ export function buildGmailRawMessage(input: Omit<GmailSendInput, "accessToken">)
     input.cc.length ? `Cc: ${input.cc.map(headerSafe).join(", ")}` : null,
     input.bcc.length ? `Bcc: ${input.bcc.map(headerSafe).join(", ")}` : null,
     `Reply-To: ${headerSafe(input.replyTo)}`,
-    `Subject: ${encodeRfc2047(input.subject)}`,
+    subjectHeader(input.subject),
     "MIME-Version: 1.0",
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ].filter((h): h is string => Boolean(h));

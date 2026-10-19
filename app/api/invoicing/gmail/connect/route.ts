@@ -8,6 +8,7 @@ import { getPreview } from "../../../../../lib/activity/preview";
 import {
   GMAIL_CONNECT_COOKIE,
   gmailAuthorizeUrl,
+  gmailCanonicalConnectUrl,
   gmailOAuthConfigured,
   gmailRedirectOrigin,
   invoiceGmailLive,
@@ -17,6 +18,9 @@ import {
 } from "../../../../../lib/invoicing/gmail-oauth";
 
 export async function GET(req: NextRequest) {
+  const canonical = gmailCanonicalConnectUrl(req.nextUrl.origin, `${req.nextUrl.pathname}${req.nextUrl.search}`);
+  if (canonical) return NextResponse.redirect(canonical);
+
   const next = safeInvoiceReturn(req.nextUrl.searchParams.get("next"));
   const bounceOrigin = gmailRedirectOrigin() ?? req.nextUrl.origin;
   const fail = (code: string) => {
