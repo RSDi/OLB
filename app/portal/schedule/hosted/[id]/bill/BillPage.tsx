@@ -16,6 +16,7 @@ export function BillPage({
   clubSettings,
   fromEmail,
   invoices = [],
+  invoicesError = null,
 }: {
   weekendId: string;
   eventLabel: string;
@@ -27,6 +28,7 @@ export function BillPage({
   clubSettings: InvoiceClubSettings;
   fromEmail: string;
   invoices?: Invoice[];
+  invoicesError?: string | null;
 }) {
   const router = useRouter();
   if (feeCents == null) {
@@ -58,6 +60,7 @@ export function BillPage({
       clubBcc={clubSettings.bccEmails}
       fromEmail={fromEmail}
       invoices={invoices}
+      invoicesError={invoicesError}
       backHref={`/portal/schedule/hosted/${weekendId}`}
       onSubmit={async (input: BatchInput, send: boolean) => {
         const res = await createBatchInvoicesAction({ ...input, eventId: weekendId }, send);

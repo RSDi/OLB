@@ -22,6 +22,7 @@ export function BatchBilling({
   fromEmail,
   backHref,
   invoices = [],
+  invoicesError = null,
   onSubmit,
 }: {
   eventId: string;
@@ -39,6 +40,7 @@ export function BatchBilling({
   fromEmail: string;
   backHref: string;
   invoices?: Pick<Invoice, "hostCustomerId" | "sentAt" | "voidedAt">[];
+  invoicesError?: string | null;
   onSubmit: (input: BatchInput, send: boolean) => Promise<{ error?: string } | void>;
 }) {
   const [due, setDue] = useState(dueOn);
@@ -54,11 +56,14 @@ export function BatchBilling({
   const [bcc, setBcc] = useState(clubBcc.join(", "));
 
   const depCents = Math.round((parseFloat(dep.replace(/[$,]/g, "")) || 0) * 100);
-  const preview = batchPreviewTotals(customers, feeCents, depOn ? depCents : 0, invoices);
+  const preview = invoicesError
+    ? { invoiceCount: 0, teamCount: 0, totalCents: 0, depositCents: 0, alreadyBilledCount: 0 }
+    : batchPreviewTotals(customers, feeCents, depOn ? depCents : 0, invoices);
   const teams = preview.teamCount;
   const G = preview.totalCents;
   const DP = preview.depositCents;
   const billed = preview.invoiceCount;
+  const actionsOff = !!invoicesError || billed === 0;
 
   function payload(): BatchInput {
     return {
@@ -77,6 +82,7 @@ export function BatchBilling({
   }
 
   async function go(send: boolean) {
+    if (actionsOff) return;
     setBusy(true);
     setError(null);
     const res = await onSubmit(payload(), send);
@@ -233,9 +239,10 @@ export function BatchBilling({
         )}
       </Card>
       <LockNote show={!canInvoice} />
+      {invoicesError && <div style={{ color: t.error, fontWeight: 700 }}>{invoicesError}</div>}
       {error && <div style={{ color: t.error, fontWeight: 700 }}>{error}</div>}
       {canInvoice && (
-        <Btn kind="ghost" onClick={() => go(false)} disabled={busy}>
+        <Btn kind="ghost" onClick={() => go(false)} disabled={busy || actionsOff}>
           Save all {billed} as drafts instead
         </Btn>
       )}
@@ -261,7 +268,7 @@ export function BatchBilling({
           <b style={{ fontSize: 20, color: "var(--inv-accent, #f5d000)" }}>{formatMoney(G)}</b>
         </div>
         {canInvoice ? (
-          <Btn kind="accent" sm onClick={() => setConfirm(true)} disabled={busy || billed === 0}>
+          <Btn kind="accent" sm onClick={() => setConfirm(true)} disabled={busy || actionsOff}>
             Send all {billed}
           </Btn>
         ) : (

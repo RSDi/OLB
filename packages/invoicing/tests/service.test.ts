@@ -501,6 +501,51 @@ test("after a partial send, preview count and total equal what createBatch bills
   assert.equal(created, 31500);
 });
 
+test("preview equals createBatch after send, void, and rebill", async () => {
+  const customers: EventCustomer[] = [
+    { id: "p1", name: "Prairie", emails: ["a@example.com"], teamCount: 2 },
+    { id: "p2", name: "Metro", emails: ["c@example.com"], teamCount: 1 },
+  ];
+  const feeCents = 31500;
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db, customers, feeCents }));
+  const rows = () => customers.map((c) => ({ id: c.id, teamCount: c.teamCount }));
+
+  async function assertPreviewMatchesBatch() {
+    const listed = await svc.list("evt");
+    assert.equal(listed.ok, true);
+    if (!listed.ok) return { preview: batchPreviewTotals(customers, feeCents), billed: 0 };
+    const preview = batchPreviewTotals(customers, feeCents, 0, listed.data);
+    const res = await svc.createBatch(batchInput({ customers: rows() }), false);
+    assert.equal(res.ok, true);
+    if (!res.ok) return { preview, billed: 0 };
+    const billed = res.data.invoices.reduce((s, inv) => s + invoiceTotal(inv), 0);
+    assert.equal(preview.invoiceCount, res.data.invoices.length);
+    assert.equal(preview.totalCents, billed);
+    return { preview, billed, invoices: res.data.invoices, listed: listed.data };
+  }
+
+  const start = await assertPreviewMatchesBatch();
+  assert.equal(start.preview.invoiceCount, 2);
+  assert.equal(start.billed, 3 * 31500);
+
+  const prairie = start.invoices!.find((v) => v.hostCustomerId === "p1");
+  assert.ok(prairie);
+  const sent = await svc.send(prairie!.id);
+  assert.equal(sent.ok, true);
+  const afterSend = await assertPreviewMatchesBatch();
+  assert.equal(afterSend.preview.invoiceCount, 1);
+  assert.equal(afterSend.preview.alreadyBilledCount, 1);
+  assert.equal(afterSend.billed, 31500);
+
+  const voided = await svc.voidInvoice(prairie!.id);
+  assert.equal(voided.ok, true);
+  const afterVoid = await assertPreviewMatchesBatch();
+  assert.equal(afterVoid.preview.invoiceCount, 2);
+  assert.equal(afterVoid.preview.alreadyBilledCount, 0);
+  assert.equal(afterVoid.billed, 3 * 31500);
+});
+
 test("batch preview total equals created invoice totals", async () => {
   const customers: EventCustomer[] = [
     { id: "p1", name: "Prairie", emails: ["a@example.com"], teamCount: 2 },
