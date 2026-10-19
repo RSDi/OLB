@@ -3,6 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  DEFAULT_STEPS,
   advance,
   cleanDays,
   daysForWeekend,
@@ -60,6 +61,21 @@ function game(id: string, extra: Partial<HostedGame> = {}): HostedGame {
     ...extra,
   };
 }
+
+test("the hosted checklist bills programs and auto-checks collection by step_key", () => {
+  const keys = DEFAULT_STEPS.map((s) => s.key).filter(Boolean);
+  assert.deepEqual(keys, ["bill_programs", "invoices_sent", "team_fees_collected"]);
+  const teams = DEFAULT_STEPS.filter((s) => s.section === "teams").map((s) => s.label);
+  assert.ok(teams.includes("Set team fees and bill each program"));
+  assert.ok(teams.includes("Invoices sent"));
+  assert.ok(teams.includes("Team fees collected"));
+  const collected = DEFAULT_STEPS.find((s) => s.key === "team_fees_collected");
+  const sent = DEFAULT_STEPS.find((s) => s.key === "invoices_sent");
+  const bill = DEFAULT_STEPS.find((s) => s.key === "bill_programs");
+  assert.ok(bill && sent && collected);
+  assert.ok(DEFAULT_STEPS.indexOf(bill) < DEFAULT_STEPS.indexOf(sent));
+  assert.ok(DEFAULT_STEPS.indexOf(sent) < DEFAULT_STEPS.indexOf(collected));
+});
 
 test("seed order keeps the top seeds apart", () => {
   assert.deepEqual(seedOrder(4), [1, 4, 2, 3]);

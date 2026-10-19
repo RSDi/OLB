@@ -38,6 +38,7 @@ export default async function HostedTournamentPage({
   const loaded = await loadHostedPage(supabase, id, {
     canViewFinances: viewer.canViewFinances,
     canManageFinances: viewer.canManageFinances,
+    canManageInvoicing: viewer.canManageInvoicing,
   });
   if (loaded.kind === "missing") notFound();
   if (loaded.kind === "migration") {

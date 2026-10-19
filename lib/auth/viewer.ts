@@ -35,6 +35,8 @@ import {
   canManageSiteLinks,
   canViewFilm,
   canManageFilm,
+  canManageInvoicing,
+  canViewInvoices,
   canApproveFilmSlack,
   canOpenSettings,
   type MemberLike,
@@ -85,6 +87,8 @@ export interface Viewer {
   canViewFilm: boolean;
   canViewAllFilm: boolean;
   canManageFilm: boolean;
+  canManageInvoicing: boolean;
+  canViewInvoices: boolean;
   canApproveFilmSlack: boolean;
   // Teams this person is a video manager for (empty when they have global view).
   filmTeamIds: string[];
@@ -192,6 +196,8 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     canViewFilm: globalFilm || filmTeamIds.length > 0,
     canViewAllFilm: globalFilm,
     canManageFilm: canManageFilm(member),
+    canManageInvoicing: canManageInvoicing(member),
+    canViewInvoices: canViewInvoices(member),
     canApproveFilmSlack: canApproveFilmSlack(member),
     filmTeamIds,
     canOpenSettings: canOpenSettings(member),

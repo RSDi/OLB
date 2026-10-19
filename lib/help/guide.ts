@@ -80,7 +80,7 @@ export interface GuideViewer {
   permissions?: string[];
 }
 
-export const GUIDE_UPDATED = "October 18, 2026";
+export const GUIDE_UPDATED = "October 19, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -580,12 +580,12 @@ Hotels and places to eat themselves stay in **External Contacts** (see *Hotels a
     audience: "coaches",
     permission: "hs_schedule",
     routes: ["/portal/schedule/hosted"],
-    keywords: ["tournament", "we host", "host", "hosted", "mrs", "missouri river shootout", "shootout", "facility", "walk-through", "walkthrough", "certificate of insurance", "coi", "insurance", "contract", "pricing", "checklist", "divisions", "teams", "brackets", "bracket", "pool", "round robin", "court schedule", "courts", "master schedule", "fill the courts", "scores", "standings", "budget", "revenue", "expenses", "team fees", "sponsors", "admissions", "referees", "court fees", "net", "finances", "program communication", "email programs", "mass email"],
+    keywords: ["tournament", "we host", "host", "hosted", "mrs", "missouri river shootout", "shootout", "facility", "walk-through", "walkthrough", "certificate of insurance", "coi", "insurance", "contract", "pricing", "checklist", "divisions", "teams", "brackets", "bracket", "pool", "round robin", "court schedule", "courts", "master schedule", "fill the courts", "scores", "standings", "budget", "revenue", "expenses", "team fees", "sponsors", "admissions", "referees", "court fees", "net", "finances", "program communication", "email programs", "mass email", "invoices", "bill programs", "team fees collected", "invoices sent"],
     body: `When the club runs the tournament (the Missouri River Shootout), plan all of it on one page instead of the spreadsheet. On the HS Schedule, open the weekend and tick **We host this tournament**, then **Open the tournament plan** (or tap **We host · Plan it** beside the event in the schedule). The coaches and the board use it. Untick it if we're not hosting after all: the plan is kept, and ticking it again brings it back.
 
 **At the top.** How it stands: the **Checklist** (how many steps are done, and how many are past due), the **Teams** and divisions, the **Games** and how many have a court, and the **Net (estimate)**. Tap one to go to its tab.
 
-**Checklist.** What every tournament we host needs, by section. **Facility**: secured for our dates, the walk-through, a point of contact for the weekend, pricing, the certificate of insurance and the contract. Then **Teams**, **Referees and table**, **Communication** and **Game day**. Tick a step when it's done. The pencil gives a step a due date and a note (who has it, a link to the contract), renames it, or **Remove**s it; **+ Add a step** adds your own. **Details**, below, holds the **Short name** (**MRS**), the **Team fee**, the **Game slot** length, how many **Courts**, each day's **First game** and **Gym closes** times, and what the email says about the **Facility**, **Concessions**, **Admission** and **Game information and rules**. Press **Save details**. **We're not hosting this** takes the page off the schedule.
+**Checklist.** What every tournament we host needs, by section. **Facility**: secured for our dates, the walk-through, a point of contact for the weekend, pricing, the certificate of insurance and the contract. Then **Teams**, **Referees and table**, **Communication** and **Game day**. Tick a step when it's done. The pencil gives a step a due date and a note (who has it, a link to the contract), renames it, or **Remove**s it; **+ Add a step** adds your own. Under **Teams**, **Set team fees and bill each program** has **Bill programs → Finance** (the **Invoicing** permission: Treasurer, President, Athletic Director). It opens a preview, then one invoice per registered program, with an optional deposit. **Invoices sent** checks itself when every program has been billed. **Team fees collected** checks itself when those invoices are paid, shows how much is in of the total, and has **View in Finances →**. **Details**, below, holds the **Short name** (**MRS**), the **Team fee**, the **Game slot** length, how many **Courts**, each day's **First game** and **Gym closes** times, and what the email says about the **Facility**, **Concessions**, **Admission** and **Game information and rules**. Press **Save details**. **We're not hosting this** takes the page off the schedule.
 
 **Teams.** **Add a division** for each group that plays together (**HS Boys A**, **HS Girls**, **JH Boys**), with a short name for the schedule (**HSA**) and how they play: a **Pool** (everyone plays everyone) or a **Bracket** (winners play winners and losers play losers, so every place is decided: eight teams make 12 games, with Game 9 for first and second, like the JV bracket sheet). **Add the teams coming** brings in every program marked **Yes** on the HS Schedule and our own teams playing that weekend; **Add a team** adds one by hand. Tap a team to put it in its division, give it a short name (**KCM 1**), a seed (1 is the top) and its own fee, or **Remove** it. When a division has its teams, press **Make the games** (**Make the games again** replaces them).
 
@@ -870,6 +870,23 @@ This page does not replace **Film**. Play, download, edit, Slack, and playlists 
 The board sees it under **Finances → Snapshot**, and so does anyone given **See club finances** in Settings → Access Profiles, like a coach. The Treasurer sees it as a tab next to the rest. **Download spreadsheet** saves it for the accountant.`,
   },
   {
+    id: "payments-invoices",
+    title: "Finances: invoicing other programs",
+    group: "Finances",
+    audience: "staff",
+    permission: "invoicing",
+    alsoPermissions: ["payments", "finances_view"],
+    routes: ["/portal/payments/invoices"],
+    keywords: ["invoices", "invoice", "bill programs", "team fee", "deposit", "venmo", "check", "mark as paid", "reminders", "overdue", "partial", "co-host", "gym share"],
+    body: `Bills to **other programs** — team fees when we host a tournament, a co-host split, a gym share — under **Finances → Invoices**. Family balances stay on **Families**. You send and record if you have the **Invoicing** permission (Treasurer, President, Athletic Director). The board and **See club finances** can open the list; send and **Mark as paid** stay locked without **Invoicing**.
+
+**The list.** Open, overdue, collected and drafts across the top. Filter **All**, **Draft**, **Sent**, **Viewed**, **Partial**, **Paid** or **Overdue**. **+ New invoice** writes one by hand. An event card shows how much of that weekend is in, with a link to its invoices.
+
+**An invoice.** Line items, total, an optional **Deposit** with its own due date, and the **Balance due**. Status is **Draft**, **Sent**, **Viewed**, **Partial**, **Paid** or **Overdue**. **Send invoice** emails the program (Venmo and check instructions, not a card). **Mark as paid** records Venmo or check, the amount, the date and a reference; a deposit and the rest are two payments. **How often** sets reminders for unpaid invoices that are past due or coming due.
+
+**From a tournament we host.** On the plan, **Bill programs → Finance** previews one invoice per registered program, then **Save as drafts** or **Send invoices**. **Invoices sent** and **Team fees collected** on the checklist tick themselves. See *Tournaments we host*.`,
+  },
+  {
     id: "payments-messages",
     title: "Finances: emailing and Slacking families",
     group: "Finances",
@@ -1054,6 +1071,7 @@ Activity is recorded from the day it went live.`,
 | Plan the HS Schedule | With **Plan HS Schedule** (coaches always) | ✓ | ✓ |
 | Set up requirements in Settings | | With **Settings: Edit** | ✓ |
 | Every family's balance; record payments | With **Payments** | With **Payments** | ✓ |
+| Bill other programs (team fees, invoices) | With **Invoicing** | With **Invoicing** | ✓ |
 | Review new registrations; put players on teams; edit and remove players | With **Registrations** | With **Registrations** | ✓ |
 | Add and edit the hotels and places to eat in External Contacts; hotel stays on the HS Schedule; track Booked in block; import a rooming list in Settings | With **Travel** | ✓ | ✓ |
 | Send families Slack DMs from the Directory, as yourself | With **Slack DMs** | With **Slack DMs** | ✓ |
@@ -1101,7 +1119,7 @@ Activity is recorded from the day it went live.`,
 - Pick someone's **access profile** from the drop-down on the **Approved** tab: **Member**, **Board**, any profile the club has made (like Treasurer), or **Super-admin**. The profile sets whether they're Board and what they can manage (see *Settings: Access Profiles*). Picking a new one replaces what they had, extras included.
 - **Revoke login** to take away someone's access while keeping them in the directory, and **Restore login** to give it back.
 - Tap **Access** on someone's row on the **Approved** tab to see what they can do. The number on the button counts it, and the row lists it under their name. Greyed ticks come from their profile; change those in **Settings → Access Profiles**. Tick any other box to give that one person an **extra** on top of their profile, untick to take it away. Rows with extras show **+ extras**, and rows on a profile the club made show its name.
-  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, set up **hotel stays** on the HS Schedule (booking instructions and who must register), mark **Booked in block** in the Directory, import a hotel **rooming list** in Settings → Import, and email or Slack families about travel, **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too), **Game film** to open **Film** and download videos families uploaded, and **Game film (manage)** to mark those videos moved or delete them and to open **Settings → Film** (team upload codes). A person can also be a **video manager** for one team in Settings → Film, without the club-wide permission.
+  - **Can manage** (members and board alike): **Payments** to see every family's balance and record payments (the Treasurer, and anyone helping them), **Invoicing** to bill other programs (team fees, co-host splits, gym shares) by Venmo or check, **Registrations** to review new registrations, put players on teams and edit players, **Travel** for the travel coordinator to add and edit hotels and places to eat in External Contacts, set up **hotel stays** on the HS Schedule (booking instructions and who must register), mark **Booked in block** in the Directory, import a hotel **rooming list** in Settings → Import, and email or Slack families about travel, **Slack DMs** to send families Slack DMs from the Directory as themselves (see *Slack DMs to families*; Travel includes this too), **Game film** to open **Film** and download videos families uploaded, and **Game film (manage)** to mark those videos moved or delete them and to open **Settings → Film** (team upload codes). A person can also be a **video manager** for one team in Settings → Film, without the club-wide permission.
   - **Settings (Board)** (board members only): **Edit**, **Delete** and **Undelete** for Settings items like Requirements, and **Website** to change the club website's menu, page text and pictures (see *Settings: Website*).
   - **Board powers** (for people who aren't Board; Board has them all): **See all players** (every player, listed or not, with fees, waivers, shirts and parents' details), **Member notes**, **Check off requirements**, **Approve access requests**, **External Contacts** (see, add and edit every contact, and their history) and **Plan HS Schedule**.
   - **Club setup** (anyone): **Teams & volunteers** to set up teams and volunteer roles and fill team spots (putting someone in a leadership spot makes them a coach), and **Sidebar Links & Public Directory**.
@@ -1118,7 +1136,7 @@ Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Dire
     group: "Settings",
     audience: "super_admin",
     keywords: ["access profiles", "profile", "profiles", "permissions", "access", "treasurer", "registrar", "travel coordinator", "power user", "role", "board", "member", "extras", "bundle"],
-    body: `An access profile is a named set of permissions you hand someone in one step, like **Treasurer** (Payments) or **Registrar** (Registrations and Slack DMs). Open **Settings → Access Profiles**. Super-admins only.
+    body: `An access profile is a named set of permissions you hand someone in one step, like **Treasurer** (Payments and Invoicing) or **Registrar** (Registrations and Slack DMs). Open **Settings → Access Profiles**. Super-admins only.
 
 - **Member** and **Board** are built in. Everyone starts on one of them: Member for members, Board for the board. Tap **Edit permissions** to choose what everyone on it gets. They can't be renamed or deleted.
 - **+ New profile** makes your own. Give it a **Name** and choose what it's **Based on**: **Member**, or **Board** if the people on it should be Board too, with everything Board can do (see *Board roles*). Then tick its permissions.

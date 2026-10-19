@@ -6,6 +6,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "../supabase/admin";
+import { eventCollection, listInvoices } from "invoicing";
+import { hostedEventCustomers } from "../invoicing/customers";
 import {
   DIVISION_COLUMNS,
   GAME_COLUMNS,
@@ -53,7 +55,7 @@ export type HostedLoad =
 export async function loadHostedPage(
   supabase: SupabaseClient,
   weekendId: string,
-  viewer: { canViewFinances: boolean; canManageFinances: boolean }
+  viewer: { canViewFinances: boolean; canManageFinances: boolean; canManageInvoicing?: boolean }
 ): Promise<HostedLoad> {
   const { data: w } = await supabase
     .from("hs_weekends")
@@ -71,7 +73,17 @@ export async function loadHostedPage(
   const plan = normalizePlan(planRow as HostedPlan);
 
   const [steps, divisions, teams, games, money, messages, programs, facilityName] = await Promise.all([
-    supabase.from("hs_hosted_steps").select(STEP_COLUMNS).eq("weekend_id", weekendId).order("sort_order").then(({ data }) => (data as HostedStep[] | null) ?? []),
+    supabase.from("hs_hosted_steps").select(STEP_COLUMNS).eq("weekend_id", weekendId).order("sort_order").then(({ data, error }) => {
+      if (error) {
+        return supabase
+          .from("hs_hosted_steps")
+          .select("id, weekend_id, section, label, due_on, done_on, note, sort_order")
+          .eq("weekend_id", weekendId)
+          .order("sort_order")
+          .then(({ data: rows }) => ((rows as Omit<HostedStep, "step_key">[] | null) ?? []).map((s) => ({ ...s, step_key: null })));
+      }
+      return ((data as HostedStep[] | null) ?? []).map((s) => ({ ...s, step_key: s.step_key ?? null }));
+    }),
     supabase.from("hs_hosted_divisions").select(DIVISION_COLUMNS).eq("weekend_id", weekendId).order("sort_order").then(({ data }) => (data as HostedDivision[] | null) ?? []),
     supabase.from("hs_hosted_teams").select(TEAM_COLUMNS).eq("weekend_id", weekendId).order("sort_order").then(({ data }) => (data as HostedTeam[] | null) ?? []),
     supabase.from("hs_hosted_games").select(GAME_COLUMNS).eq("weekend_id", weekendId).order("game_no").then(({ data }) => ((data as HostedGame[] | null) ?? []).map(normalizeGame)),
@@ -100,11 +112,41 @@ export async function loadHostedPage(
   ]);
 
   const finance = viewer.canViewFinances || viewer.canManageFinances ? await loadFinance(plan, weekend, viewer.canManageFinances).catch(() => null) : null;
+  const billing = await loadBilling(weekendId, programs.length, !!viewer.canManageInvoicing);
 
   return {
     kind: "ok",
-    data: { weekend, facilityName, plan, steps, divisions, teams, games, money, messages, programs, finance },
+    data: { weekend, facilityName, plan, steps, divisions, teams, games, money, messages, programs, finance, billing },
   };
+}
+
+async function loadBilling(weekendId: string, programCount: number, canInvoice: boolean): Promise<HostedPageData["billing"]> {
+  try {
+    const invoices = await listInvoices(createAdminClient(), weekendId);
+    const expected = (await hostedEventCustomers(weekendId)).filter((c) => c.teamCount > 0).length || programCount;
+    const summary = eventCollection(weekendId, invoices, expected || undefined);
+    return {
+      canInvoice,
+      billed: invoices.length > 0,
+      sentCount: summary.sentCount,
+      programCount: expected || programCount,
+      allSent: summary.allSent,
+      collectedCents: summary.collectedCents,
+      billedCents: summary.billedCents,
+      allCollected: summary.allCollected,
+    };
+  } catch {
+    return {
+      canInvoice,
+      billed: false,
+      sentCount: 0,
+      programCount,
+      allSent: false,
+      collectedCents: 0,
+      billedCents: 0,
+      allCollected: false,
+    };
+  }
 }
 
 function normalizePlan(p: HostedPlan): HostedPlan {

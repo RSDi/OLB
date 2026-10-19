@@ -102,7 +102,7 @@ export async function setHosted(weekendId: string, hosted: boolean): Promise<Hos
       updated_by: g.userId,
     });
     if (error) return { error: error.message };
-    await g.db.from("hs_hosted_steps").insert(DEFAULT_STEPS.map((s, i) => ({ weekend_id: weekendId, section: s.section, label: s.label, sort_order: i })));
+    await g.db.from("hs_hosted_steps").insert(DEFAULT_STEPS.map((s, i) => ({ weekend_id: weekendId, section: s.section, label: s.label, step_key: s.key ?? null, sort_order: i })));
     await g.db.from("hs_hosted_money").insert(starterMoney(weekendId, weekend.starts_on, weekend.ends_on));
   }
   revalidatePath("/portal/schedule");
@@ -214,8 +214,12 @@ export async function updateStep(
     row.due_on = patch.due_on || null;
   }
   if (patch.done !== undefined) {
-    row.done_on = patch.done ? new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" }) : null;
-    row.done_by = patch.done ? g.userId : null;
+    const { data: existing } = await g.db.from("hs_hosted_steps").select("step_key").eq("id", id).eq("weekend_id", weekendId).maybeSingle();
+    const auto = (existing as { step_key: string | null } | null)?.step_key;
+    if (auto !== "invoices_sent" && auto !== "team_fees_collected") {
+      row.done_on = patch.done ? new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" }) : null;
+      row.done_by = patch.done ? g.userId : null;
+    }
   }
   if (patch.note !== undefined) row.note = longText(patch.note, 1000);
   const { error } = await g.db.from("hs_hosted_steps").update(row).eq("id", id).eq("weekend_id", weekendId);

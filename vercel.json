@@ -32,6 +32,10 @@
     {
       "path": "/api/cron/film-youtube",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/invoice-reminders",
+      "schedule": "29 14 * * *"
     }
   ]
 }

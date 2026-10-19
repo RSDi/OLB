@@ -147,7 +147,7 @@ const CONTRACT: Record<string, string> = {
   // Tournaments we host (0150).
   hs_hosted:
     "weekend_id,hosted,short_name,finance_event_id,game_minutes,courts,days,team_fee_cents,facility,concessions,rules,admission,created_by,updated_by,created_at,updated_at",
-  hs_hosted_steps: "id,weekend_id,section,label,due_on,done_on,done_by,note,sort_order,created_at,updated_at",
+  hs_hosted_steps: "id,weekend_id,section,label,step_key,due_on,done_on,done_by,note,sort_order,created_at,updated_at",
   hs_hosted_divisions: "id,weekend_id,name,code,format,sort_order,created_at,updated_at",
   hs_hosted_teams: "id,weekend_id,division_id,opponent_id,ours,name,code,seed,fee_cents,note,sort_order,created_at,updated_at",
   hs_hosted_games:
@@ -155,6 +155,14 @@ const CONTRACT: Record<string, string> = {
   hs_hosted_money: "id,weekend_id,kind,category,label,qty,unit_cents,division_id,note,sort_order,created_at,updated_at",
   hs_hosted_finance: "weekend_id,money_key,budget_line_id,income_id,synced_at",
   hs_hosted_messages: "id,weekend_id,subject,body,sent_to,sent_count,sent_by,sent_at",
+  // Inter-program invoicing (0152). Opaque host ids; no FKs to OLB tables.
+  inv_invoices:
+    "id,number,host_event_id,host_customer_id,customer_name,customer_email,event_label,issued_on,due_on,deposit_cents,deposit_due_on,sent_at,viewed_at,public_token,created_by,created_at,updated_at",
+  inv_line_items: "id,invoice_id,description,qty,unit_cents,sort_order",
+  inv_payments: "id,invoice_id,method,amount_cents,paid_on,reference,recorded_by,created_at",
+  inv_reminder_settings: "id,freq,start_days,until_paid,updated_by,updated_at",
+  inv_reminder_sends: "id,invoice_id,sent_on,status,error,created_at",
+  inv_sequences: "year,last_n",
   // Roadmap (0129, 0136, 0139).
   olb_roadmap_items:
     "id,title,description,area,status,released_on,preview_url,created_by,created_at,updated_at,deleted_at,approved_by,approved_at",

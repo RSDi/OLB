@@ -13,8 +13,12 @@ import { IncomeView } from "./IncomeView";
 import { ProgramsView } from "./ProgramsView";
 import { FundraisingView } from "./FundraisingView";
 import { SnapshotView } from "./SnapshotView";
+import { InvoicesView } from "./InvoicesView";
+import { createInvoicingService } from "invoicing";
+import { olbInvoicingAdapter } from "../../../lib/invoicing/adapter";
+import { churchToday } from "../../../lib/dates/today";
 
-const MANAGER_TABS: PaymentsTab[] = ["families", "budget", "income", "programs", "fundraising", "snapshot"];
+const MANAGER_TABS: PaymentsTab[] = ["families", "budget", "income", "programs", "fundraising", "snapshot", "invoices"];
 
 // Payments (migration 0101). Anyone with the Payments grant (the Treasurer;
 // super-admins always) sees every family and records what comes in. A parent
@@ -32,8 +36,17 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   const club = (viewer.canManageFinances || viewer.canViewFinances) && (viewer.seesFullUi || (await financesEnabled()));
 
   if (viewer.canManageFinances) {
-    const active = club && MANAGER_TABS.includes(tab as PaymentsTab) ? (tab as PaymentsTab) : "families";
-    const tabs = club ? <PaymentsTabs tabs={MANAGER_TABS} active={active} /> : null;
+    const tabsForManager: PaymentsTab[] = club ? MANAGER_TABS : viewer.canViewInvoices ? ["families", "invoices"] : ["families"];
+    const active = tabsForManager.includes(tab as PaymentsTab) ? (tab as PaymentsTab) : "families";
+    const tabs = tabsForManager.length > 1 ? <PaymentsTabs tabs={tabsForManager} active={active} /> : null;
+    if (active === "invoices") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
+          {tabs}
+          {await invoicesPanel(viewer.canManageInvoicing)}
+        </div>
+      );
+    }
     if (active === "families") {
       const data = await loadPaymentsData();
       if (!data) return <Notice title="No season yet" body="Payments start once this season's roster is set up." />;
@@ -72,18 +85,41 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
     );
   }
 
+  // Invoices for the board / See club finances / invoicing, without Payments.
+  const viewerTabs: PaymentsTab[] = [
+    ...(club ? (["snapshot"] as const) : []),
+    ...(viewer.canViewInvoices ? (["invoices"] as const) : []),
+    "balance",
+  ];
+  const requested = tab as PaymentsTab | undefined;
+  const viewerActive: PaymentsTab = viewerTabs.includes(requested as PaymentsTab)
+    ? (requested as PaymentsTab)
+    : viewer.canManageInvoicing && !club && viewerTabs.includes("invoices")
+      ? "invoices"
+      : club
+        ? "snapshot"
+        : "balance";
+  if (viewerActive === "invoices") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
+        <PaymentsTabs tabs={viewerTabs} active="invoices" />
+        {await invoicesPanel(viewer.canManageInvoicing)}
+      </div>
+    );
+  }
+
   // The board and "See club finances": the Snapshot (totals only), and their
   // own balance as a parent on its own tab.
-  if (club && tab !== "balance") {
+  if (club && viewerActive === "snapshot") {
     const loaded = await loadClub();
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxWidth: "100%" }}>
-        <PaymentsTabs tabs={["snapshot", "balance"]} active="snapshot" />
+        <PaymentsTabs tabs={viewerTabs} active="snapshot" />
         {"notice" in loaded ? loaded.notice : <SnapshotView snapshot={buildSnapshot(loaded.data, loaded.credits)} />}
       </div>
     );
   }
-  const own = club ? <PaymentsTabs tabs={["snapshot", "balance"]} active="balance" /> : null;
+  const own = viewerTabs.length > 1 ? <PaymentsTabs tabs={viewerTabs} active="balance" /> : null;
 
   if (viewer.status !== "approved") {
     return <Notice title="Not available yet" body="You'll see your balance here once your account is approved." />;
@@ -142,6 +178,12 @@ async function loadClub(): Promise<Awaited<ReturnType<typeof loadClubData>> | { 
       ),
     };
   }
+}
+
+async function invoicesPanel(canInvoice: boolean) {
+  const res = await createInvoicingService(olbInvoicingAdapter()).list();
+  if (!res.ok) return <Notice title="Invoices aren't ready yet" body={res.error} />;
+  return <InvoicesView invoices={res.data} today={churchToday()} canInvoice={canInvoice} />;
 }
 
 function Notice({ title, body }: { title: string; body: string }) {

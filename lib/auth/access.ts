@@ -35,7 +35,8 @@ export type PermissionKey =
   | "teams"
   | "site_links"
   | "film_view"
-  | "film_manage";
+  | "film_manage"
+  | "invoicing";
 
 // The member columns each permission lived in before 0122. Still used to read
 // grants on a database without 0122, and nothing else.
@@ -89,6 +90,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "site_links", label: "Sidebar Links & Public Directory", desc: "Change the links in everyone's sidebar and the public Directory link", group: "setup" },
   { key: "film_view", label: "Game film", desc: "Open Film in the sidebar: list game videos families uploaded and download them", group: "manage" },
   { key: "film_manage", label: "Game film (manage)", desc: "Settings → Film (team upload pages and codes), mark game film moved or delete it. Also lets you open Film", group: "manage" },
+  { key: "invoicing", label: "Invoicing", desc: "Bill other programs (team fees, co-host splits, gym shares): send invoices, record Venmo or check, reminders", group: "manage" },
 ];
 
 export const PERMISSION_GROUPS: { key: PermissionDef["group"]; label: string }[] = [
