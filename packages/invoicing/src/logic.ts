@@ -119,20 +119,6 @@ export function eventCollection(eventId: string, invoices: Invoice[], expectedCo
   };
 }
 
-/** "Team fees collected" for an event: every expected program billed and paid. */
-export function teamFeesCollected(
-  invoices: Invoice[],
-  expectedCount?: number
-): { collectedCents: number; billedCents: number; done: boolean; nOfX: string } {
-  const summary = eventCollection("", invoices, expectedCount);
-  return {
-    collectedCents: summary.collectedCents,
-    billedCents: summary.billedCents,
-    done: summary.allCollected,
-    nOfX: `${summary.collectedCents} of ${summary.billedCents}`,
-  };
-}
-
 export function addDays(iso: string, n: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -247,7 +233,10 @@ export function parseEmailList(raw: string | string[] | null | undefined): Resul
     seen.add(k);
     data.push(e);
   }
-  return { ok: true, data: data.slice(0, 20) };
+  if (data.length > 20) {
+    return { ok: false, error: "You can list up to 20 addresses." };
+  }
+  return { ok: true, data };
 }
 
 export function normalizeClubSettings(raw: Partial<InvoiceClubSettings> | null | undefined): InvoiceClubSettings {

@@ -25,7 +25,10 @@ export class MemoryDb {
   }
 
   client() {
-    const db = this;
+    return MemoryDb.clientFor(this);
+  }
+
+  static clientFor(db: MemoryDb) {
     return {
       from(name: string) {
         return new Query(db, name);

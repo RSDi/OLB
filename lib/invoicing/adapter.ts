@@ -11,16 +11,10 @@ import { hostedEventCustomers } from "./customers";
 import { syncHostedInvoiceSteps } from "./hosted-sync";
 import { getPreview } from "../activity/preview";
 import { olbInvoicePaths } from "./paths";
+import { invoicePublicBaseUrl } from "./public-url";
 import { loadInvoiceSettings, type InvoicingAdapter } from "invoicing";
 
 export { olbInvoicePaths } from "./paths";
-
-function siteUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
 
 export function olbInvoicingAdapter(): InvoicingAdapter {
   return {
@@ -85,6 +79,6 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
       return sendInvoiceEmail(mail);
     },
     today: () => churchToday(),
-    publicBaseUrl: siteUrl,
+    publicBaseUrl: () => invoicePublicBaseUrl(),
   };
 }

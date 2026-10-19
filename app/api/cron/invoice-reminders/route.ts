@@ -5,17 +5,19 @@
 import { NextResponse } from "next/server";
 import { createInvoicingService } from "invoicing";
 import { olbInvoicingAdapter } from "../../../../lib/invoicing/adapter";
-import { invoiceCronUnauthorized } from "../../../../lib/invoicing/cron-auth";
+import { runInvoiceReminderCron } from "../../../../lib/invoicing/cron-auth";
 
 export async function GET(request: Request) {
-  const expectedSecret = process.env.CRON_SECRET;
-  const auth = request.headers.get("authorization");
-  if (invoiceCronUnauthorized(auth, expectedSecret)) {
-    if (!expectedSecret) console.error("invoice-reminders: CRON_SECRET not configured");
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const result = await runInvoiceReminderCron(
+    request,
+    {
+      CRON_SECRET: process.env.CRON_SECRET,
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    },
+    () => createInvoicingService(olbInvoicingAdapter()).runReminders()
+  );
+  if (result.status === 401 && !process.env.CRON_SECRET) {
+    console.error("invoice-reminders: CRON_SECRET not configured");
   }
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY not set; the reminder run needs it." }, { status: 500 });
-  }
-  return NextResponse.json(await createInvoicingService(olbInvoicingAdapter()).runReminders());
+  return NextResponse.json(result.body, { status: result.status });
 }

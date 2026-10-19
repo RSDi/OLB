@@ -12,6 +12,8 @@ function makeAdapter(opts: {
   org?: Partial<OrgSettings>;
   canInvoice?: boolean;
   canView?: boolean;
+  feeCents?: number | null;
+  today?: () => string;
 }): InvoicingAdapter {
   const send =
     opts.send ??
@@ -62,10 +64,10 @@ function makeAdapter(opts: {
       );
     },
     async eventFeeCents() {
-      return 31500;
+      return opts.feeCents === undefined ? 31500 : opts.feeCents;
     },
     sendEmail: send,
-    today: () => "2026-10-19",
+    today: () => (opts.today ? opts.today() : "2026-10-19"),
     publicBaseUrl: () => "https://example.test",
   };
 }
@@ -297,7 +299,8 @@ test("createBatch skips already billed programs and updates an existing draft", 
   if (!again.ok) return;
   assert.equal(again.data.invoices.length, 1);
   assert.equal(again.data.invoices[0].id, id);
-  assert.equal(again.data.invoices[0].lines[0].qty, 3);
+  assert.equal(again.data.invoices[0].lines[0].qty, 2);
+  assert.equal(again.data.invoices[0].dueOn, "2026-11-06");
   await svc.send(id);
   const billed = await svc.createBatch(
     {
@@ -351,19 +354,20 @@ test("createBatch does not stamp Sent when a program has no email", async () => 
 
 test("runReminders: unique per day, 3-reminder cap, no email fails", async () => {
   const db = new MemoryDb();
-  let sends = 0;
+  let today = "2026-10-19";
   const captured: InvoiceEmail[] = [];
   const svc = createInvoicingService(
     makeAdapter({
       db,
+      today: () => today,
       org: { ccEmails: ["clubcc@example.com"], bccEmails: ["clubbcc@example.com"] },
       send: async (mail) => {
         captured.push(mail);
-        sends++;
         return { ok: true };
       },
     })
   );
+  await svc.saveReminders({ freq: "3d", startDays: 7, untilPaid: false });
   const created = await svc.create({
     customerName: "Prairie",
     customerEmail: "a@example.com",
@@ -383,6 +387,14 @@ test("runReminders: unique per day, 3-reminder cap, no email fails", async () =>
   assert.equal(again.sent, 0);
   assert.ok(again.skipped >= 1);
 
+  today = "2026-10-22";
+  assert.equal((await svc.runReminders()).sent, 1);
+  today = "2026-10-25";
+  assert.equal((await svc.runReminders()).sent, 1);
+  today = "2026-10-28";
+  const capped = await svc.runReminders();
+  assert.equal(capped.sent, 0);
+
   const noMail = await svc.create({
     customerName: "No Mail",
     customerEmail: null,
@@ -394,4 +406,83 @@ test("runReminders: unique per day, 3-reminder cap, no email fails", async () =>
   db.invoices.find((r) => r.id === noMail.data.id)!.sent_at = new Date().toISOString();
   const failed = await svc.runReminders();
   assert.ok(failed.failed >= 1);
+});
+
+function batchInput(extra: Partial<{ customers: { id: string; teamCount: number }[]; ccEmails: string[] | null; bccEmails: string[] | null; feeCents: number }> = {}) {
+  return {
+    eventId: "evt",
+    eventLabel: "MRS",
+    feeCents: extra.feeCents ?? 99999,
+    dueOn: "2026-11-01",
+    depositOn: false,
+    depositPerTeamCents: 0,
+    depositDueOn: null,
+    lineDescription: "Team fee",
+    customers: extra.customers ?? [{ id: "p1", teamCount: 1 }],
+    ccEmails: extra.ccEmails,
+    bccEmails: extra.bccEmails,
+  };
+}
+
+test("createBatch refuses when the host has no team fee", async () => {
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db, feeCents: null }));
+  const res = await svc.createBatch(batchInput(), false);
+  assert.equal(res.ok, false);
+  if (!res.ok) assert.match(res.error, /team fee/i);
+});
+
+test("createBatch uses the server team count, not the browser's", async () => {
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db }));
+  const res = await svc.createBatch(batchInput({ customers: [{ id: "p1", teamCount: 99 }] }), false);
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.equal(res.data.invoices[0].lines[0].qty, 2);
+  assert.equal(res.data.invoices[0].lines[0].unitCents, 31500);
+});
+
+test("re-saving a batch without a CC override keeps a draft's copies", async () => {
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db }));
+  const first = await svc.create({
+    hostEventId: "evt",
+    hostCustomerId: "p1",
+    customerName: "Prairie",
+    customerEmail: "a@example.com",
+    dueOn: "2026-11-01",
+    ccEmails: ["invcc@example.com"],
+    bccEmails: [],
+    lines: [{ description: "Team fee", qty: 2, unitCents: 31500 }],
+  });
+  assert.equal(first.ok, true);
+  if (!first.ok) return;
+  const again = await svc.createBatch(batchInput({ ccEmails: null, bccEmails: null, customers: [{ id: "p1", teamCount: 2 }] }), false);
+  assert.equal(again.ok, true);
+  if (!again.ok) return;
+  assert.deepEqual(again.data.invoices[0].ccEmails, ["invcc@example.com"]);
+  assert.deepEqual(again.data.invoices[0].bccEmails, []);
+});
+
+test("invalid per-invoice reminder values are normalized on save", async () => {
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db }));
+  const created = await svc.create({
+    customerName: "Prairie",
+    customerEmail: "a@example.com",
+    dueOn: "2026-11-01",
+    lines: [{ description: "Team fee", qty: 1, unitCents: 31500 }],
+  });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+  const saved = await svc.update(created.data.id, {
+    reminderFreq: "nope" as never,
+    reminderStartDays: 99,
+    reminderUntilPaid: true,
+  });
+  assert.equal(saved.ok, true);
+  if (!saved.ok) return;
+  assert.equal(saved.data.reminderFreq, "3d");
+  assert.equal(saved.data.reminderStartDays, 7);
+  assert.equal(saved.data.reminderUntilPaid, true);
 });

@@ -6,6 +6,8 @@ import { groupHostedCustomers } from "./group-customers";
 
 export { groupHostedCustomers } from "./group-customers";
 
+/** Programs to bill: name, contact emails, team count. Admin client is used
+ *  only for these columns — not the rest of the hosted page (N1). */
 export async function hostedEventCustomers(weekendId: string): Promise<EventCustomer[]> {
   const db = createAdminClient();
   const [{ data: opps }, { data: teams }, { data: divisions }] = await Promise.all([

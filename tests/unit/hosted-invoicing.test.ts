@@ -1,5 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { groupHostedCustomers } from "../../lib/invoicing/group-customers.ts";
 import { autoStepDone } from "../../lib/invoicing/auto-steps.ts";
 import { eventCollection } from "../../packages/invoicing/src/logic.ts";
@@ -70,4 +72,16 @@ test("syncHostedInvoiceSteps ticks and unticks from collection", () => {
   assert.equal(autoStepDone("invoices_sent", eight), false);
   assert.equal(autoStepDone("team_fees_collected", eight), false);
   assert.equal(autoStepDone("bill_programs", eight), true);
+});
+
+test("invoicing without HS Schedule edit does not load the full hosted page via admin", () => {
+  const hostedPage = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/page.tsx"), "utf8");
+  assert.doesNotMatch(hostedPage, /createAdminClient/);
+  assert.match(hostedPage, /Bill programs/);
+  const billPage = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/bill/page.tsx"), "utf8");
+  const billCtx = readFileSync(join(import.meta.dirname, "../../lib/invoicing/bill-context.ts"), "utf8");
+  assert.doesNotMatch(billPage, /loadHostedPage/);
+  assert.match(billPage, /loadHostedBillContext/);
+  assert.match(billCtx, /HOSTED_BILL_WEEKEND_COLUMNS = "id, event"/);
+  assert.match(billCtx, /HOSTED_BILL_PLAN_COLUMNS = "weekend_id, hosted, short_name, team_fee_cents"/);
 });

@@ -15,7 +15,6 @@ export function InvoiceDetail({
   today,
   canInvoice,
   org,
-  reminders,
   clubSettings,
   fromEmail,
   backHref,
@@ -35,7 +34,6 @@ export function InvoiceDetail({
   canInvoice: boolean;
   org: OrgSettings;
   paths?: InvoicingPaths;
-  reminders: ReminderSettings;
   clubSettings: InvoiceClubSettings;
   fromEmail: string;
   backHref: string;
@@ -43,11 +41,11 @@ export function InvoiceDetail({
   onSend: () => Promise<{ error?: string } | void>;
   onSaveDraft?: (patch: { dueOn?: string; depositCents?: number; depositDueOn?: string | null; lines?: { description: string; qty: number; unitCents: number }[] }) => Promise<{ error?: string } | void>;
   onRecordPayment: (input: RecordPaymentInput) => Promise<{ error?: string } | void>;
-  onRemindersChange: (next: ReminderSettings) => void | Promise<void>;
-  onClubRemindersChange?: (next: ReminderSettings) => void | Promise<void>;
-  onClubMailCopies?: (next: { ccEmails: string[]; bccEmails: string[] }) => void | Promise<void>;
-  onInvoiceMailCopies?: (next: { ccEmails: string[] | null; bccEmails: string[] | null }) => void | Promise<void>;
-  onInvoiceRemindersOverride?: (next: ReminderSettings | null) => void | Promise<void>;
+  onRemindersChange: (next: ReminderSettings) => Promise<{ error?: string } | void> | void;
+  onClubRemindersChange?: (next: ReminderSettings) => Promise<{ error?: string } | void> | void;
+  onClubMailCopies?: (next: { ccEmails: string[]; bccEmails: string[] }) => Promise<{ error?: string } | void> | void;
+  onInvoiceMailCopies?: (next: { ccEmails: string[] | null; bccEmails: string[] | null }) => Promise<{ error?: string } | void> | void;
+  onInvoiceRemindersOverride?: (next: ReminderSettings | null) => Promise<{ error?: string } | void> | void;
   onVoid?: () => Promise<{ error?: string } | void>;
 }) {
   const tot = computeInvoice(invoice, today);
@@ -265,17 +263,41 @@ export function InvoiceDetail({
             invoice={invoice}
             fromEmail={fromEmail}
             overrideOn={overrideOn}
-            onChange={onRemindersChange}
-            onChangeClub={onClubRemindersChange}
-            onToggleOverride={(on) => onInvoiceRemindersOverride?.(on ? effective : null)}
+            onChange={async (next) => {
+              const res = await onRemindersChange(next);
+              if (res?.error) setError(res.error);
+              else setError(null);
+            }}
+            onChangeClub={async (next) => {
+              const res = await onClubRemindersChange?.(next);
+              if (res?.error) setError(res.error);
+              else setError(null);
+            }}
+            onToggleOverride={async (on) => {
+              const res = await onInvoiceRemindersOverride?.(on ? effective : null);
+              if (res?.error) setError(res.error);
+              else setError(null);
+            }}
           />
           <MailCopiesCard
+            key={`${invoice.id}-${invoice.ccEmails == null ? "d" : invoice.ccEmails.join(",")}-${invoice.bccEmails == null ? "d" : invoice.bccEmails.join(",")}`}
             canInvoice={canInvoice && !voided}
             club={clubSettings}
             invoiceCc={invoice.ccEmails}
             invoiceBcc={invoice.bccEmails}
-            onSaveClub={async (next) => onClubMailCopies?.(next)}
-            onSaveInvoice={onInvoiceMailCopies}
+            error={error}
+            onSaveClub={async (next) => {
+              const res = await onClubMailCopies?.(next);
+              if (res?.error) setError(res.error);
+              else setError(null);
+              return res;
+            }}
+            onSaveInvoice={async (next) => {
+              const res = await onInvoiceMailCopies?.(next);
+              if (res?.error) setError(res.error);
+              else setError(null);
+              return res;
+            }}
           />
           <Card>
             <Cap>Status</Cap>

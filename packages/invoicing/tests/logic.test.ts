@@ -10,7 +10,6 @@ import {
   parseEmailList,
   payNowCents,
   shouldSendReminder,
-  teamFeesCollected,
   formatMoney,
 } from "../src/logic.ts";
 import type { Invoice, LineItem, Payment } from "../src/types.ts";
@@ -98,17 +97,18 @@ test("clampDeposit never exceeds the invoice total", () => {
   assert.equal(clampDeposit(50, 100), 50);
 });
 
-test("team fees collected uses eventCollection: expected programs, $0, void, overpay cap for tick", () => {
+test("allCollected needs every expected program billed and paid", () => {
   const a = inv({ id: "a", lines: [fee(2)], payments: [pay(63000)] });
   const b = inv({ id: "b", lines: [fee(3)], payments: [pay(30000)] });
   const c = inv({ id: "c", lines: [fee(1)], payments: [] });
-  const partial = teamFeesCollected([a, b, c], 3);
-  assert.equal(partial.done, false);
-  const all = teamFeesCollected(
+  const partial = eventCollection("evt", [a, b, c], 3);
+  assert.equal(partial.allCollected, false);
+  const all = eventCollection(
+    "evt",
     [a, inv({ id: "b", lines: [fee(3)], payments: [pay(94500)] }), inv({ id: "c", lines: [fee(1)], payments: [pay(31500)] })],
     3
   );
-  assert.equal(all.done, true);
+  assert.equal(all.allCollected, true);
   assert.equal(all.collectedCents, all.billedCents);
 });
 
@@ -180,6 +180,10 @@ test("parseEmailList validates and de-dupes; empty is ok", () => {
   const ok = parseEmailList("A@x.com, a@x.com; b@x.com");
   assert.equal(ok.ok, true);
   if (ok.ok) assert.deepEqual(ok.data, ["A@x.com", "b@x.com"]);
+  const many = Array.from({ length: 21 }, (_, i) => `u${i}@example.com`);
+  const capped = parseEmailList(many);
+  assert.equal(capped.ok, false);
+  if (!capped.ok) assert.match(capped.error, /20/);
 });
 
 test("reminders fire for unpaid invoices that are past due or coming due", () => {

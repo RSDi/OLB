@@ -31,27 +31,44 @@ function unique(addrs: string[]): string[] {
   return out;
 }
 
+/** Drop CC/BCC addresses already in To (and BCC already in CC), case-insensitive. */
+export function assignInvoiceRecipients(
+  toIn: string[],
+  ccIn: string[] = [],
+  bccIn: string[] = []
+): { to: string[]; cc: string[]; bcc: string[] } {
+  const to = unique(toIn);
+  const toSet = new Set(to.map((a) => a.toLowerCase()));
+  const cc = unique(ccIn).filter((a) => !toSet.has(a.toLowerCase()));
+  const ccSet = new Set(cc.map((a) => a.toLowerCase()));
+  const bcc = unique(bccIn).filter((a) => !toSet.has(a.toLowerCase()) && !ccSet.has(a.toLowerCase()));
+  return { to, cc, bcc };
+}
+
+/** Non-production test inboxes. Comma or semicolon separated. */
+export function invoiceTestRecipients(env: Record<string, string | undefined> = process.env): string[] {
+  return unique((env.INVOICE_TEST_EMAIL ?? "").split(/[,;]+/));
+}
+
 export async function sendInvoiceEmail(
   mail: InvoiceEmail,
   env: Record<string, string | undefined> = process.env
 ): Promise<MailSendResult> {
   const from = invoiceMailFrom(env);
   const replyTo = mailReplyTo(env);
-  let to = unique(mail.to);
-  let cc = unique(mail.cc ?? []);
-  let bcc = unique(mail.bcc ?? []);
+  let { to, cc, bcc } = assignInvoiceRecipients(mail.to, mail.cc ?? [], mail.bcc ?? []);
   let subject = mail.subject;
   let text = mail.text;
   let html = mail.html;
   if (!isProductionMail(env)) {
-    const test = env.INVOICE_TEST_EMAIL?.trim();
+    const test = invoiceTestRecipients(env);
     const intended = `To: ${to.join(", ") || "(none)"}${cc.length ? `\nCC: ${cc.join(", ")}` : ""}${bcc.length ? `\nBCC: ${bcc.join(", ")}` : ""}`;
-    if (test) {
-      console.warn(`[invoicing] non-production: redirecting ${mail.kind} for ${mail.invoiceId} to ${test} (was ${intended.replace(/\n/g, "; ")})`);
+    if (test.length) {
+      console.warn(`[invoicing] non-production: redirecting ${mail.kind} for ${mail.invoiceId} to ${test.join(", ")} (was ${intended.replace(/\n/g, "; ")})`);
       subject = `[TEST → ${to.join(", ") || "no to"}${cc.length ? `; cc ${cc.join(", ")}` : ""}${bcc.length ? `; bcc ${bcc.join(", ")}` : ""}] ${mail.subject}`;
       text = `This is a preview send. Original recipients:\n${intended}\n\n${mail.text}`;
       html = `<p style="font-family:system-ui,sans-serif;background:#fff6cc;padding:8px 10px;border-radius:8px"><strong>Preview send.</strong> Original recipients:<br>${intended.replace(/\n/g, "<br>")}</p>${mail.html}`;
-      to = [test];
+      to = test;
       cc = [];
       bcc = [];
     } else {

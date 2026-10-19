@@ -23,7 +23,6 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       today={churchToday()}
       canInvoice={viewer.canManageInvoicing}
       org={org}
-      reminders={{ freq: clubSettings.freq, startDays: clubSettings.startDays, untilPaid: clubSettings.untilPaid }}
       clubSettings={clubSettings}
       fromEmail={org.fromEmail}
       backHref={backHref}

@@ -54,6 +54,14 @@ test("0152 checklist sort_order shift is skipped when bill_programs already exis
   assert.match(migration, /continue;/);
 });
 
+test("0152 adds reminder override CHECKs on the alter-column path", () => {
+  assert.match(migration, /inv_invoices_reminder_freq_check/);
+  assert.match(migration, /inv_invoices_reminder_start_days_check/);
+  assert.match(migration, /if not exists \(select 1 from pg_constraint where conname = 'inv_invoices_reminder_freq_check'\)/);
+  assert.match(moduleSchema, /constraint inv_invoices_reminder_freq_check/);
+  assert.match(moduleSchema, /constraint inv_invoices_reminder_start_days_check/);
+});
+
 test("0152 never seeds CC\/BCC addresses", () => {
   assert.doesNotMatch(migration, /lightningbasketballomaha@gmail\.com/i);
   assert.match(migration, /cc_emails\s+text\[\] not null default '\{\}'/);

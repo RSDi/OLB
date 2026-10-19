@@ -64,9 +64,28 @@ function splitEmails(raw: string | null | undefined): string[] {
 
 function copiesPatch(cc?: string[] | null, bcc?: string[] | null): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
-  if (cc !== undefined) patch.cc_emails = cc;
-  if (bcc !== undefined) patch.bcc_emails = bcc;
+  if (cc !== undefined && cc !== null) patch.cc_emails = cc;
+  if (bcc !== undefined && bcc !== null) patch.bcc_emails = bcc;
   return patch;
+}
+
+function reminderOverridePatch(input: UpdateInvoiceInput): Record<string, unknown> {
+  if (input.reminderFreq === undefined && input.reminderStartDays === undefined && input.reminderUntilPaid === undefined) {
+    return {};
+  }
+  if (input.reminderFreq == null && input.reminderStartDays == null && input.reminderUntilPaid == null) {
+    return { reminder_freq: null, reminder_start_days: null, reminder_until_paid: null };
+  }
+  const next = normalizeReminders({
+    freq: input.reminderFreq ?? undefined,
+    startDays: input.reminderStartDays ?? undefined,
+    untilPaid: input.reminderUntilPaid ?? undefined,
+  });
+  return {
+    reminder_freq: next.freq,
+    reminder_start_days: next.startDays,
+    reminder_until_paid: next.untilPaid,
+  };
 }
 
 export function createInvoicingService(adapter: InvoicingAdapter) {
@@ -195,10 +214,7 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
         if (!inv) return fail("That invoice isn't here.");
         if (inv.voidedAt) return fail("A voided invoice can't be edited.");
         if (inv.sentAt) {
-          const sentPatch: Record<string, unknown> = {};
-          if (input.reminderFreq !== undefined) sentPatch.reminder_freq = input.reminderFreq;
-          if (input.reminderStartDays !== undefined) sentPatch.reminder_start_days = input.reminderStartDays;
-          if (input.reminderUntilPaid !== undefined) sentPatch.reminder_until_paid = input.reminderUntilPaid;
+          const sentPatch: Record<string, unknown> = { ...reminderOverridePatch(input) };
           if (input.ccEmails !== undefined) {
             if (input.ccEmails === null) sentPatch.cc_emails = null;
             else {
@@ -252,9 +268,7 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
             patch.bcc_emails = bcc.data;
           }
         }
-        if (input.reminderFreq !== undefined) patch.reminder_freq = input.reminderFreq;
-        if (input.reminderStartDays !== undefined) patch.reminder_start_days = input.reminderStartDays;
-        if (input.reminderUntilPaid !== undefined) patch.reminder_until_paid = input.reminderUntilPaid;
+        Object.assign(patch, reminderOverridePatch(input));
         if (Object.keys(patch).length) await updateInvoiceRow(db, id, patch);
         if (input.lines) await replaceLines(db, id, input.lines);
         return { ok: true, data: (await getInvoice(db, id))! };
@@ -354,7 +368,8 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
       let sent = 0;
       try {
         const hostCustomers = await adapter.listEventCustomers(input.eventId);
-        const feeCents = (await adapter.eventFeeCents(input.eventId)) ?? input.feeCents;
+        const feeCents = await adapter.eventFeeCents(input.eventId);
+        if (feeCents == null) return fail("Set the team fee on the tournament plan first.");
         const wanted = input.customers.filter((c) => c.teamCount > 0);
         if (!wanted.length) return fail("No programs with teams to bill.");
         const db = await adapter.getServerClient();
@@ -372,10 +387,12 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
             skipped.push(`${c.name}: already billed`);
             continue;
           }
+          const teamCount = c.teamCount;
+          if (teamCount <= 0) continue;
           const draft = existing.find((v) => v.hostCustomerId === c.id && !v.sentAt && !v.voidedAt);
-          const total = row.teamCount * feeCents;
-          const depositCents = input.depositOn ? clampDeposit(input.depositPerTeamCents * row.teamCount, total) : 0;
-          const lines = [{ description: input.lineDescription || `Team fee · ${input.eventLabel}`, qty: row.teamCount, unitCents: feeCents }];
+          const total = teamCount * feeCents;
+          const depositCents = input.depositOn ? clampDeposit(input.depositPerTeamCents * teamCount, total) : 0;
+          const lines = [{ description: input.lineDescription || `Team fee · ${input.eventLabel}`, qty: teamCount, unitCents: feeCents }];
           const email = c.emails.join(", ") || null;
           let inv: Invoice;
           if (draft) {
@@ -386,7 +403,7 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
               due_on: input.dueOn,
               deposit_cents: depositCents,
               deposit_due_on: depositCents ? input.depositDueOn : null,
-              ...copiesPatch(ccVal, bccVal),
+              ...copiesPatch(cc ? cc.data : undefined, bcc ? bcc.data : undefined),
             });
             await replaceLines(db, draft.id, lines);
             inv = (await getInvoice(db, draft.id))!;

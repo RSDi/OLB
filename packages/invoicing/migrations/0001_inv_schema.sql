@@ -27,8 +27,8 @@ create table if not exists public.inv_invoices (
   created_by       text,
   cc_emails        text[],
   bcc_emails       text[],
-  reminder_freq    text check (reminder_freq is null or reminder_freq in ('off', '3d', 'weekly', '2w')),
-  reminder_start_days int check (reminder_start_days is null or reminder_start_days in (3, 5, 7, 14)),
+  reminder_freq    text constraint inv_invoices_reminder_freq_check check (reminder_freq is null or reminder_freq in ('off', '3d', 'weekly', '2w')),
+  reminder_start_days int constraint inv_invoices_reminder_start_days_check check (reminder_start_days is null or reminder_start_days in (3, 5, 7, 14)),
   reminder_until_paid boolean,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { reminderCopy, reminderTargetDue } from "../logic";
 import type { Invoice, InvoiceClubSettings, ReminderFreq, ReminderSettings } from "../types";
 import { Card, Cap, Field, LockNote } from "./parts";
@@ -35,12 +36,21 @@ export function ReminderSettingsCard({
 }) {
   const due = invoice ? reminderTargetDue(invoice) : undefined;
   const usingOverride = !!overrideOn && !!invoice;
+
+  function apply(next: ReminderSettings) {
+    if (usingOverride) {
+      void onChange(next);
+      return;
+    }
+    void (onChangeClub ?? onChange)(next);
+  }
+
   return (
     <Card>
       <Cap>Reminders</Cap>
       {invoice && onToggleOverride && (
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
-          <input type="checkbox" checked={usingOverride} disabled={!canInvoice} onChange={(e) => onToggleOverride(e.target.checked)} />
+          <input type="checkbox" checked={usingOverride} disabled={!canInvoice} onChange={(e) => void onToggleOverride(e.target.checked)} />
           Custom for this invoice
         </label>
       )}
@@ -51,7 +61,7 @@ export function ReminderSettingsCard({
               key={f.key}
               type="button"
               disabled={!canInvoice}
-              onClick={() => (usingOverride ? onChange({ ...settings, freq: f.key }) : (onChangeClub ?? onChange)({ ...(clubSettings ?? settings), freq: f.key }))}
+              onClick={() => apply({ ...(usingOverride ? settings : (clubSettings ?? settings)), freq: f.key })}
               style={{
                 flex: 1,
                 minHeight: 40,
@@ -75,10 +85,7 @@ export function ReminderSettingsCard({
           <select
             disabled={!canInvoice}
             value={settings.startDays}
-            onChange={(e) => {
-              const next = { ...settings, startDays: Number(e.target.value) };
-              usingOverride ? onChange(next) : (onChangeClub ?? onChange)(next);
-            }}
+            onChange={(e) => apply({ ...settings, startDays: Number(e.target.value) })}
             style={{ minHeight: 44, borderRadius: 10, border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", padding: "0 12px", fontSize: 16, fontWeight: 600, width: "100%" }}
           >
             {[3, 5, 7, 14].map((n) => (
@@ -92,10 +99,7 @@ export function ReminderSettingsCard({
           <select
             disabled={!canInvoice}
             value={settings.untilPaid ? "1" : "0"}
-            onChange={(e) => {
-              const next = { ...settings, untilPaid: e.target.value === "1" };
-              usingOverride ? onChange(next) : (onChangeClub ?? onChange)(next);
-            }}
+            onChange={(e) => apply({ ...settings, untilPaid: e.target.value === "1" })}
             style={{ minHeight: 44, borderRadius: 10, border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", padding: "0 12px", fontSize: 16, fontWeight: 600, width: "100%" }}
           >
             <option value="1">Until paid</option>
@@ -117,6 +121,7 @@ export function MailCopiesCard({
   club,
   invoiceCc,
   invoiceBcc,
+  error,
   onSaveClub,
   onSaveInvoice,
 }: {
@@ -124,12 +129,39 @@ export function MailCopiesCard({
   club: Pick<InvoiceClubSettings, "ccEmails" | "bccEmails">;
   invoiceCc?: string[] | null;
   invoiceBcc?: string[] | null;
-  onSaveClub?: (next: { ccEmails: string[]; bccEmails: string[] }) => void | Promise<void>;
-  onSaveInvoice?: (next: { ccEmails: string[] | null; bccEmails: string[] | null }) => void | Promise<void>;
+  error?: string | null;
+  onSaveClub?: (next: { ccEmails: string[]; bccEmails: string[] }) => void | Promise<{ error?: string } | void>;
+  onSaveInvoice?: (next: { ccEmails: string[] | null; bccEmails: string[] | null }) => void | Promise<{ error?: string } | void>;
 }) {
-  const override = invoiceCc !== null && invoiceCc !== undefined || invoiceBcc !== null && invoiceBcc !== undefined;
-  const cc = (override ? invoiceCc : club.ccEmails) ?? [];
-  const bcc = (override ? invoiceBcc : club.bccEmails) ?? [];
+  const override = (invoiceCc !== null && invoiceCc !== undefined) || (invoiceBcc !== null && invoiceBcc !== undefined);
+  const savedCc = (override ? invoiceCc : club.ccEmails) ?? [];
+  const savedBcc = (override ? invoiceBcc : club.bccEmails) ?? [];
+  const [ccText, setCcText] = useState(savedCc.join(", "));
+  const [bccText, setBccText] = useState(savedBcc.join(", "));
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  function parse(raw: string) {
+    return raw.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+  }
+
+  async function saveCc(raw: string) {
+    const list = parse(raw);
+    setCcText(raw);
+    const res = override && onSaveInvoice
+      ? await onSaveInvoice({ ccEmails: list, bccEmails: parse(bccText) })
+      : await onSaveClub?.({ ccEmails: list, bccEmails: parse(bccText) });
+    setLocalError(res?.error ?? null);
+  }
+
+  async function saveBcc(raw: string) {
+    const list = parse(raw);
+    setBccText(raw);
+    const res = override && onSaveInvoice
+      ? await onSaveInvoice({ ccEmails: parse(ccText), bccEmails: list })
+      : await onSaveClub?.({ ccEmails: parse(ccText), bccEmails: list });
+    setLocalError(res?.error ?? null);
+  }
+
   return (
     <Card>
       <Cap>CC and BCC</Cap>
@@ -137,26 +169,20 @@ export function MailCopiesCard({
       <Field label={override && onSaveInvoice ? "CC (this invoice)" : "CC (club default)"}>
         <input
           disabled={!canInvoice}
-          defaultValue={cc.join(", ")}
+          value={ccText}
           placeholder="none"
-          onBlur={(e) => {
-            const list = e.target.value.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
-            if (override && onSaveInvoice) onSaveInvoice({ ccEmails: list, bccEmails: bcc });
-            else onSaveClub?.({ ccEmails: list, bccEmails: (override ? invoiceBcc : club.bccEmails) ?? [] });
-          }}
+          onChange={(e) => setCcText(e.target.value)}
+          onBlur={(e) => void saveCc(e.target.value)}
           style={{ minHeight: 44, borderRadius: 10, border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", padding: "0 12px", fontSize: 16, width: "100%" }}
         />
       </Field>
       <Field label={override && onSaveInvoice ? "BCC (this invoice)" : "BCC (club default)"}>
         <input
           disabled={!canInvoice}
-          defaultValue={bcc.join(", ")}
+          value={bccText}
           placeholder="none"
-          onBlur={(e) => {
-            const list = e.target.value.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
-            if (override && onSaveInvoice) onSaveInvoice({ ccEmails: cc, bccEmails: list });
-            else onSaveClub?.({ ccEmails: (override ? invoiceCc : club.ccEmails) ?? [], bccEmails: list });
-          }}
+          onChange={(e) => setBccText(e.target.value)}
+          onBlur={(e) => void saveBcc(e.target.value)}
           style={{ minHeight: 44, borderRadius: 10, border: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", padding: "0 12px", fontSize: 16, width: "100%" }}
         />
       </Field>
@@ -167,13 +193,14 @@ export function MailCopiesCard({
             checked={override}
             disabled={!canInvoice}
             onChange={(e) => {
-              if (e.target.checked) onSaveInvoice({ ccEmails: club.ccEmails, bccEmails: club.bccEmails });
-              else onSaveInvoice({ ccEmails: null, bccEmails: null });
+              if (e.target.checked) void onSaveInvoice({ ccEmails: club.ccEmails, bccEmails: club.bccEmails });
+              else void onSaveInvoice({ ccEmails: null, bccEmails: null });
             }}
           />
           Override for this invoice
         </label>
       )}
+      {(localError || error) && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{localError || error}</div>}
       <LockNote show={!canInvoice} />
     </Card>
   );

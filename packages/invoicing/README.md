@@ -33,6 +33,7 @@ Implement `InvoicingAdapter` (`src/adapter.ts`) and pass it to `createInvoicingS
 | `onEventCollectionChanged` | Host ticks its own checklist when an event is billed / sent / collected |
 | `sendEmail` | Host mailer |
 | `today` | Host timezone date (`YYYY-MM-DD`) |
+| `publicBaseUrl` | Origin for invoice links in email. Preview must not use the production URL. |
 
 The module core **must not** import OLB. `packages/invoicing/tests/isolation.test.ts` fails if it does.
 
@@ -79,7 +80,7 @@ The module does not read `process.env`. The host adapter should:
 | `MAIL_FROM` / `INVOICE_MAIL_FROM` | From address on the verified domain (Resend) |
 | `MAIL_REPLY_TO` | Replies; OLB defaults to LightningBasketballOmaha@gmail.com |
 | `RESEND_API_KEY` | OLB's existing sender |
-| `INVOICE_TEST_EMAIL` | Non-production: send here instead of program / CC / BCC addresses |
+| `INVOICE_TEST_EMAIL` | Non-production: one address or a comma-separated list. Replaces To, CC, and BCC. |
 | `CRON_SECRET` | Protect the reminder route |
 
 Live sending is `VERCEL_ENV === "production"` only. A local `next build && next start` is not live.

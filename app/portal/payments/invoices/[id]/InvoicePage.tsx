@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { InvoiceDetail } from "invoicing/ui";
-import type { Invoice, InvoiceClubSettings, OrgSettings, RecordPaymentInput, ReminderSettings, UpdateInvoiceInput } from "invoicing";
+import type { Invoice, InvoiceClubSettings, OrgSettings, RecordPaymentInput, UpdateInvoiceInput } from "invoicing";
 import {
   recordInvoicePaymentAction,
   saveInvoiceClubSettingsAction,
@@ -17,7 +17,6 @@ export function InvoicePage({
   today,
   canInvoice,
   org,
-  reminders,
   clubSettings,
   fromEmail,
   backHref,
@@ -27,7 +26,6 @@ export function InvoicePage({
   today: string;
   canInvoice: boolean;
   org: OrgSettings;
-  reminders: ReminderSettings;
   clubSettings: InvoiceClubSettings;
   fromEmail: string;
   backHref: string;
@@ -40,7 +38,6 @@ export function InvoicePage({
       today={today}
       canInvoice={canInvoice}
       org={org}
-      reminders={reminders}
       clubSettings={clubSettings}
       fromEmail={fromEmail}
       backHref={backHref}
@@ -66,32 +63,37 @@ export function InvoicePage({
         return res;
       }}
       onRemindersChange={async (next) => {
-        await updateInvoiceAction(invoice.id, {
+        const res = await updateInvoiceAction(invoice.id, {
           reminderFreq: next.freq,
           reminderStartDays: next.startDays,
           reminderUntilPaid: next.untilPaid,
         });
-        router.refresh();
+        if (!res.error) router.refresh();
+        return res;
       }}
       onClubRemindersChange={async (next) => {
-        await saveInvoiceRemindersAction(next);
-        router.refresh();
+        const res = await saveInvoiceRemindersAction(next);
+        if (!res.error) router.refresh();
+        return res;
       }}
       onClubMailCopies={async (next) => {
-        await saveInvoiceClubSettingsAction({ ...clubSettings, ...next });
-        router.refresh();
+        const res = await saveInvoiceClubSettingsAction({ ...clubSettings, ...next });
+        if (!res.error) router.refresh();
+        return res;
       }}
       onInvoiceMailCopies={async (next) => {
-        await updateInvoiceAction(invoice.id, { ccEmails: next.ccEmails, bccEmails: next.bccEmails });
-        router.refresh();
+        const res = await updateInvoiceAction(invoice.id, { ccEmails: next.ccEmails, bccEmails: next.bccEmails });
+        if (!res.error) router.refresh();
+        return res;
       }}
       onInvoiceRemindersOverride={async (next) => {
-        await updateInvoiceAction(invoice.id, {
+        const res = await updateInvoiceAction(invoice.id, {
           reminderFreq: next?.freq ?? null,
           reminderStartDays: next?.startDays ?? null,
           reminderUntilPaid: next?.untilPaid ?? null,
         });
-        router.refresh();
+        if (!res.error) router.refresh();
+        return res;
       }}
       onVoid={async () => {
         const res = await voidInvoiceAction(invoice.id);
