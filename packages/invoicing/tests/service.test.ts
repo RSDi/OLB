@@ -154,7 +154,7 @@ test("invoice CC/BCC override replaces club defaults on send and reminders", asy
   const svc = createInvoicingService(
     makeAdapter({
       db,
-      org: { ccEmails: ["clubcc@example.com"], bccEmails: [] },
+      org: { ccEmails: ["clubcc@example.com"], bccEmails: ["clubbcc@example.com"] },
       send: async (mail) => {
         mails.push(mail);
         return { ok: true };
@@ -164,7 +164,7 @@ test("invoice CC/BCC override replaces club defaults on send and reminders", asy
   const created = await svc.create({
     customerName: "Prairie",
     customerEmail: "a@example.com",
-    dueOn: "2026-11-01",
+    dueOn: "2026-10-01",
     ccEmails: ["invcc@example.com"],
     bccEmails: [],
     lines: [{ description: "Team fee", qty: 1, unitCents: 31500 }],
@@ -172,7 +172,53 @@ test("invoice CC/BCC override replaces club defaults on send and reminders", asy
   assert.equal(created.ok, true);
   if (!created.ok) return;
   await svc.send(created.data.id);
+  assert.equal(mails[0]?.kind, "invoice");
   assert.deepEqual(mails[0]?.cc, ["invcc@example.com"]);
+  assert.deepEqual(mails[0]?.bcc, []);
+
+  const rem = await svc.runReminders();
+  assert.equal(rem.sent, 1);
+  const reminder = mails.find((m) => m.kind === "reminder");
+  assert.ok(reminder);
+  assert.deepEqual(reminder?.cc, ["invcc@example.com"]);
+  assert.deepEqual(reminder?.bcc, []);
+});
+
+test("createBatch CC/BCC override is stored and used instead of club defaults", async () => {
+  const db = new MemoryDb();
+  const mails: InvoiceEmail[] = [];
+  const svc = createInvoicingService(
+    makeAdapter({
+      db,
+      org: { ccEmails: ["clubcc@example.com"], bccEmails: ["clubbcc@example.com"] },
+      send: async (mail) => {
+        mails.push(mail);
+        return { ok: true };
+      },
+    })
+  );
+  const res = await svc.createBatch(
+    {
+      eventId: "evt",
+      eventLabel: "MRS",
+      feeCents: 31500,
+      dueOn: "2026-11-01",
+      depositOn: false,
+      depositPerTeamCents: 0,
+      depositDueOn: null,
+      lineDescription: "Team fee",
+      customers: [{ id: "p1", teamCount: 1 }],
+      ccEmails: ["batchcc@example.com"],
+      bccEmails: [],
+    },
+    true
+  );
+  assert.equal(res.ok, true);
+  if (!res.ok) return;
+  assert.equal(res.data.sent, 1);
+  assert.deepEqual(res.data.invoices[0].ccEmails, ["batchcc@example.com"]);
+  assert.deepEqual(res.data.invoices[0].bccEmails, []);
+  assert.deepEqual(mails[0]?.cc, ["batchcc@example.com"]);
   assert.deepEqual(mails[0]?.bcc, []);
 });
 
@@ -306,10 +352,13 @@ test("createBatch does not stamp Sent when a program has no email", async () => 
 test("runReminders: unique per day, 3-reminder cap, no email fails", async () => {
   const db = new MemoryDb();
   let sends = 0;
+  const captured: InvoiceEmail[] = [];
   const svc = createInvoicingService(
     makeAdapter({
       db,
-      send: async () => {
+      org: { ccEmails: ["clubcc@example.com"], bccEmails: ["clubbcc@example.com"] },
+      send: async (mail) => {
+        captured.push(mail);
         sends++;
         return { ok: true };
       },
@@ -326,6 +375,10 @@ test("runReminders: unique per day, 3-reminder cap, no email fails", async () =>
   await svc.send(created.data.id);
   const first = await svc.runReminders();
   assert.equal(first.sent, 1);
+  const reminder = captured.find((m) => m.kind === "reminder");
+  assert.ok(reminder);
+  assert.deepEqual(reminder?.cc, ["clubcc@example.com"]);
+  assert.deepEqual(reminder?.bcc, ["clubbcc@example.com"]);
   const again = await svc.runReminders();
   assert.equal(again.sent, 0);
   assert.ok(again.skipped >= 1);

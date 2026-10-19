@@ -4,15 +4,11 @@
 import { churchToday } from "../dates/today";
 import { createAdminClient } from "../supabase/admin";
 import type { EventCollection } from "invoicing";
+import { autoStepDone } from "./auto-steps";
+
+export { autoStepDone } from "./auto-steps";
 
 const AUTO = ["bill_programs", "invoices_sent", "team_fees_collected"] as const;
-
-export function autoStepDone(stepKey: string, summary: EventCollection): boolean | null {
-  if (stepKey === "bill_programs") return summary.invoiceCount > 0;
-  if (stepKey === "invoices_sent") return summary.allSent;
-  if (stepKey === "team_fees_collected") return summary.allCollected;
-  return null;
-}
 
 export async function syncHostedInvoiceSteps(summary: EventCollection): Promise<void> {
   const weekendId = summary.eventId;

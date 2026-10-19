@@ -5,11 +5,12 @@
 import { NextResponse } from "next/server";
 import { createInvoicingService } from "invoicing";
 import { olbInvoicingAdapter } from "../../../../lib/invoicing/adapter";
+import { invoiceCronUnauthorized } from "../../../../lib/invoicing/cron-auth";
 
 export async function GET(request: Request) {
   const expectedSecret = process.env.CRON_SECRET;
   const auth = request.headers.get("authorization");
-  if (!expectedSecret || auth !== `Bearer ${expectedSecret}`) {
+  if (invoiceCronUnauthorized(auth, expectedSecret)) {
     if (!expectedSecret) console.error("invoice-reminders: CRON_SECRET not configured");
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

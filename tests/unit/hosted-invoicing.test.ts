@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { groupHostedCustomers } from "../../lib/invoicing/customers.ts";
-import { autoStepDone } from "../../lib/invoicing/hosted-sync.ts";
-import { eventCollection } from "invoicing";
-import type { Invoice } from "invoicing";
+import { groupHostedCustomers } from "../../lib/invoicing/group-customers.ts";
+import { autoStepDone } from "../../lib/invoicing/auto-steps.ts";
+import { eventCollection } from "../../packages/invoicing/src/logic.ts";
+import type { Invoice } from "../../packages/invoicing/src/types.ts";
 
 test("hostedEventCustomers groups opponents by contact and counts visiting teams", () => {
   const customers = groupHostedCustomers({

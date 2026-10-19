@@ -51,10 +51,13 @@ class Query {
   private wantMaybe = false;
   private cols = "*";
 
-  constructor(
-    private db: MemoryDb,
-    private name: string
-  ) {}
+  private db: MemoryDb;
+  private name: string;
+
+  constructor(db: MemoryDb, name: string) {
+    this.db = db;
+    this.name = name;
+  }
 
   select(cols = "*") {
     this.cols = cols;
