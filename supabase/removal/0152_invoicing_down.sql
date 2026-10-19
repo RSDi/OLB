@@ -27,6 +27,7 @@ drop function if exists public.inv_can_view_invoices();
 drop function if exists public.inv_can_invoice();
 drop function if exists public.can_view_invoices();
 drop function if exists public.can_manage_invoicing();
+drop function if exists public.holds_invoicing_planning_role();
 
 delete from public.hs_hosted_steps where step_key in ('bill_programs', 'invoices_sent');
 alter table public.hs_hosted_steps drop column if exists step_key;

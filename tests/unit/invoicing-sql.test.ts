@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { INVOICING_PLANNING_ROLE_SEEDS } from "../../lib/auth/permissions.ts";
 
 const root = join(import.meta.dirname, "../..");
 const migration = readFileSync(join(root, "supabase/migrations/0152_invoicing.sql"), "utf8");
@@ -48,12 +49,26 @@ test("0152 inv_next_number requires invoicing and access-profile grant is guarde
   assert.match(moduleSchema, /if not coalesce\(public\.inv_can_invoice\(\), false\)/);
 });
 
-test("0152 grants invoicing on Treasurer/President/AD profiles, not per person", () => {
+test("0152 grants invoicing on named profiles if they exist, never writes members", () => {
   assert.match(migration, /update public\.access_profiles/);
   assert.match(migration, /lower\(btrim\(name\)\) in \('treasurer', 'president', 'athletic director'\)/);
-  assert.match(migration, /as \$\$ select public\.has_permission\('invoicing'\) \$\$/);
+  assert.match(migration, /and not \('invoicing' = any \(coalesce\(permissions/);
   assert.doesNotMatch(migration, /extra_permissions/);
-  assert.doesNotMatch(migration, /planning_roles/);
+  assert.doesNotMatch(migration, /update public\.members/i);
+});
+
+test("0152 can_manage_invoicing matches the app: super_admin, live planning role, or invoicing key", () => {
+  assert.match(migration, /create or replace function public\.holds_invoicing_planning_role\(\)/);
+  assert.match(migration, /create or replace function public\.can_manage_invoicing\(\)/);
+  assert.match(migration, /m\.role = 'super_admin'/);
+  assert.match(migration, /public\.holds_invoicing_planning_role\(\)/);
+  assert.match(migration, /public\.has_permission\('invoicing'\)/);
+  assert.match(migration, /join public\.planning_roles r on r\.member_id = m\.id/);
+  for (const key of INVOICING_PLANNING_ROLE_SEEDS) {
+    assert.ok(migration.includes(`'${key}'`), key);
+  }
+  const grants = readFileSync(join(root, "lib/auth/load-grants.ts"), "utf8");
+  assert.match(grants, /holds_invoicing_planning_role/);
 });
 
 test("0152 checklist sort_order shift is skipped when bill_programs already exists", () => {
@@ -91,6 +106,7 @@ test("0152 RLS wraps helper calls in (select …)", () => {
 test("0152 down drops module tables and billing step keys", () => {
   assert.ok(down.includes("drop table if exists public.inv_invoices"));
   assert.ok(down.includes("drop function if exists public.can_manage_invoicing()"));
+  assert.ok(down.includes("drop function if exists public.holds_invoicing_planning_role()"));
   assert.ok(down.includes("bill_programs"));
   assert.ok(down.includes("drop column if exists step_key"));
 });

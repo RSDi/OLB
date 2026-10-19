@@ -2,10 +2,12 @@
 --
 -- Inter-program invoicing. Table schema is the invoicing module's
 -- packages/invoicing/migrations/0001_inv_schema.sql (copied below so this
--- file can be applied in the SQL editor). Host overlay: permission helpers,
--- grant invoicing to Treasurer / President / Athletic Director, and hosting
--- checklist steps. Apply after 0151. Idempotent. Safe on existing data: new
--- tables, additive columns, permission keys appended (not replaced).
+-- file can be applied in the SQL editor). Host overlay: permission helpers
+-- (live President/AD/Treasurer planning-role hold, plus super_admin, plus
+-- an invoicing profile/extra override), a guarded grant onto access profiles
+-- with those names if they exist, and hosting checklist steps. Apply after
+-- 0151. Idempotent. Safe on existing data: new tables, additive columns,
+-- permission keys appended (not replaced). No member-row writes.
 --
 -- Helper calls in policies are wrapped in (select …) per AGENTS.md.
 
@@ -232,16 +234,47 @@ end $$;
 
 -- ─── OLB permission helpers ─────────────────────────────────────────────────
 
--- Super-admins included: has_permission is true when role = super_admin.
+-- Live hold of President / Athletic Director / Treasurer. Same seed keys as
+-- lib/auth/permissions.ts INVOICING_PLANNING_ROLE_SEEDS. Security definer so
+-- a non-board holder can still be checked (planning_roles select is staff-only).
+create or replace function public.holds_invoicing_planning_role()
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1
+      from public.members m
+      join public.planning_roles r on r.member_id = m.id
+     where m.user_id = auth.uid()
+       and m.deleted_at is null
+       and m.status = 'approved'
+       and r.deleted_at is null
+       and r.seed_key in ('role:president', 'role:athletic_director', 'role:treasurer')
+  )
+$$;
+
+-- Same rule as lib/auth/permissions.ts canManageInvoicing: approved AND
+-- (super_admin OR live planning-role hold OR invoicing on profile/extras).
 create or replace function public.can_manage_invoicing()
 returns boolean language sql stable security definer set search_path = public
-as $$ select public.has_permission('invoicing') $$;
+as $$
+  select coalesce((
+    select m.status = 'approved'
+       and (
+         m.role = 'super_admin'
+         or public.holds_invoicing_planning_role()
+         or public.has_permission('invoicing')
+       )
+      from public.members m
+     where m.user_id = auth.uid()
+       and m.deleted_at is null
+  ), false)
+$$;
 
 create or replace function public.can_view_invoices()
 returns boolean language sql stable security definer set search_path = public
 as $$
-  select public.is_staff()
-      or public.has_permission('invoicing')
+  select public.can_manage_invoicing()
+      or public.is_staff()
       or public.has_permission('payments')
       or public.has_permission('finances_view')
 $$;
@@ -254,15 +287,16 @@ create or replace function public.inv_can_view_invoices()
 returns boolean language sql stable security definer set search_path = public
 as $$ select public.can_view_invoices() $$;
 
+revoke all on function public.holds_invoicing_planning_role() from public, anon;
+grant execute on function public.holds_invoicing_planning_role() to authenticated, service_role;
 revoke all on function public.can_manage_invoicing() from public, anon;
 grant execute on function public.can_manage_invoicing() to authenticated, service_role;
 revoke all on function public.can_view_invoices() from public, anon;
 grant execute on function public.can_view_invoices() to authenticated, service_role;
 
--- Treasurer, President, Athletic Director: invoicing lives on those access
--- profiles so whoever is put on the role next gets it. Super-admins hold
--- every permission via has_permission (role = super_admin). Do not stamp
--- extras on the people who happen to hold the planning roles today.
+-- If someone later makes access profiles named Treasurer / President /
+-- Athletic Director, give them the invoicing override. No-op while only
+-- Member and Board exist. Never writes members.
 update public.access_profiles
 set permissions = (
   select array(select distinct x from unnest(coalesce(permissions, '{}'::text[]) || array['invoicing']::text[]) as x)

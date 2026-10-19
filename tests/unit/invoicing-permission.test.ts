@@ -1,7 +1,13 @@
 // Invoicing permission (0152): send/record vs view-only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canManageInvoicing, canViewInvoices, hasPermission, type MemberLike } from "../../lib/auth/permissions.ts";
+import {
+  canManageInvoicing,
+  canViewInvoices,
+  hasPermission,
+  INVOICING_PLANNING_ROLE_SEEDS,
+  type MemberLike,
+} from "../../lib/auth/permissions.ts";
 
 const approved = (perms: string[], extra: Partial<MemberLike> = {}): MemberLike => ({
   role: "member",
@@ -31,14 +37,29 @@ test("invoicing sends; board/payments/finances_view may only view", () => {
   assert.equal(canManageInvoicing({ role: "super_admin", status: "approved" }), true);
 });
 
-test("invoicing follows Treasurer/President/Athletic Director and super_admin", () => {
-  // Access-profile holders get "invoicing" in their computed permissions.
-  // The key lives on the profile, not as a per-person extra.
-  for (const role of ["Treasurer", "President", "Athletic Director"]) {
-    assert.equal(canManageInvoicing(approved(["invoicing"])), true, role);
-  }
-  assert.equal(canManageInvoicing({ role: "super_admin", status: "approved", permissions: [] }), true);
+test("planning-role holder can invoice; former holder cannot; board with neither only reads; super_admin can", () => {
+  assert.deepEqual([...INVOICING_PLANNING_ROLE_SEEDS], [
+    "role:president",
+    "role:athletic_director",
+    "role:treasurer",
+  ]);
+
+  const holder = approved([], { holds_invoicing_planning_role: true });
+  assert.equal(canManageInvoicing(holder), true);
+  assert.equal(canViewInvoices(holder), true);
+
+  const former = approved([], { holds_invoicing_planning_role: false });
+  assert.equal(canManageInvoicing(former), false);
+  assert.equal(canViewInvoices(former), false);
+
+  const board = { role: "admin" as const, status: "approved" as const, permissions: [] as string[], holds_invoicing_planning_role: false };
+  assert.equal(canManageInvoicing(board), false);
+  assert.equal(canViewInvoices(board), true);
+
+  const superAdmin = { role: "super_admin" as const, status: "approved" as const, permissions: [] as string[], holds_invoicing_planning_role: false };
+  assert.equal(canManageInvoicing(superAdmin), true);
+  assert.equal(canViewInvoices(superAdmin), true);
+
   assert.equal(canManageInvoicing({ role: "super_admin", status: "pending" }), false);
-  assert.equal(canManageInvoicing({ role: "admin", status: "approved", permissions: [] }), false);
-  assert.equal(canManageInvoicing(approved([])), false);
+  assert.equal(canManageInvoicing({ role: "member", status: "pending", holds_invoicing_planning_role: true }), false);
 });

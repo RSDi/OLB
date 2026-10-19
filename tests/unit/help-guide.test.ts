@@ -188,12 +188,15 @@ test("invoicing help reaches Invoicing, Payments, the board, and See club financ
   const invoicer: GuideViewer = { ...MEMBER, permissions: ["invoicing"] };
   const treasurer: GuideViewer = { ...MEMBER, canManageFinances: true, permissions: ["payments"] };
   const viewOnly: GuideViewer = { ...MEMBER, permissions: ["finances_view"] };
+  const planningHolder: GuideViewer = { ...MEMBER, canManageInvoicing: true };
   assert.equal(guideSectionForPath("/portal/payments/invoices/abc", invoicer)?.id, "payments-invoices");
   assert.equal(guideSectionForPath("/portal/payments/invoices/new", treasurer)?.id, "payments-invoices");
   assert.equal(guideSectionForPath("/portal/payments/invoices/event/abc", ADMIN)?.id, "payments-invoices");
   assert.equal(guideSectionForPath("/portal/payments/invoices/abc", viewOnly)?.id, "payments-invoices");
+  assert.equal(guideSectionForPath("/portal/payments/invoices/abc", planningHolder)?.id, "payments-invoices");
   assert.notEqual(guideSectionForPath("/portal/payments/invoices/abc", MEMBER)?.id, "payments-invoices");
   assert.ok(guideSectionsFor(invoicer).some((s) => s.id === "payments-invoices"));
+  assert.ok(guideSectionsFor(planningHolder).some((s) => s.id === "payments-invoices"));
   assert.ok(!guideSectionsFor(MEMBER).some((s) => s.id === "payments-invoices"));
 });
 

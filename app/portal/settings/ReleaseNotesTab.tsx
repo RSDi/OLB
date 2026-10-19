@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { useTour } from "../../components/GuidedTour";
 import {
   canManageFinances,
+  canManageInvoicing,
   canManageRegistrations,
   canManageTravel,
   canManageWebsite,
@@ -30,6 +31,7 @@ function viewerFrom(me: MemberLike): GuideViewer {
     canManageTravel: canManageTravel(me),
     canSlackDm: canSlackDm(me),
     canManageWebsite: canManageWebsite(me),
+    canManageInvoicing: canManageInvoicing(me),
     permissions: me.permissions,
   };
 }

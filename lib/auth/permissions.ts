@@ -34,6 +34,10 @@ export interface MemberLike {
   // Every permission the person holds (0122): their access profile's plus
   // their extras. Absent before 0122. Super-admins hold all of them anyway.
   permissions?: string[];
+  // Live hold of President, Athletic Director, or Treasurer in
+  // Settings → Planning Roles (planning_roles.member_id). Loaded each
+  // request so it changes when the holder changes. Absent/false = not them.
+  holds_invoicing_planning_role?: boolean;
 }
 
 interface TicketLike {
@@ -183,15 +187,24 @@ export const canManageFilm = (m: MemberLike | null | undefined) => hasPermission
 export const canViewFilm = (m: MemberLike | null | undefined) =>
   hasPermission(m, "film_view") || canManageFilm(m);
 
-// Invoicing other programs (0152). Send/record/remind: the invoicing
-// permission on the Treasurer, President, and Athletic Director access
-// profiles (whoever holds the role next gets it), plus super_admin.
-// Viewing the list: that, plus the board, Payments, and See club finances.
-// Mirrors public.can_manage_invoicing() / public.can_view_invoices().
-export const canManageInvoicing = (m: MemberLike | null | undefined) =>
-  isSuperAdmin(m) || hasPermission(m, "invoicing");
+// Invoicing other programs (0152). Same rule as public.can_manage_invoicing():
+// approved AND (super_admin OR live President/AD/Treasurer planning role OR
+// the invoicing key on their profile/extras). Viewing the list: that, plus
+// the board, Payments, and See club finances. Mirrors
+// public.can_view_invoices().
+export const INVOICING_PLANNING_ROLE_SEEDS = [
+  "role:president",
+  "role:athletic_director",
+  "role:treasurer",
+] as const;
+
+export function canManageInvoicing(m: MemberLike | null | undefined): boolean {
+  if (!m || m.status !== "approved") return false;
+  return m.role === "super_admin" || !!m.holds_invoicing_planning_role || !!m.permissions?.includes("invoicing");
+}
+
 export const canViewInvoices = (m: MemberLike | null | undefined) =>
-  isStaff(m) || hasPermission(m, "invoicing") || canManageFinances(m) || hasPermission(m, "finances_view");
+  canManageInvoicing(m) || isStaff(m) || canManageFinances(m) || hasPermission(m, "finances_view");
 // Slack Approve on Film: Teams & volunteers, or Game film (manage). Super-admins
 // hold both. Not Jeff-only.
 export const canApproveFilmSlack = (m: MemberLike | null | undefined) =>

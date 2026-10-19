@@ -78,6 +78,8 @@ export interface GuideViewer {
   canManageWebsite?: boolean;
   // Every permission they hold (0122): sees the sections naming one.
   permissions?: string[];
+  // Live invoicing: Planning Roles President/AD/Treasurer, super_admin, or the invoicing key.
+  canManageInvoicing?: boolean;
 }
 
 export const GUIDE_UPDATED = "October 19, 2026";
@@ -585,7 +587,7 @@ Hotels and places to eat themselves stay in **External Contacts** (see *Hotels a
 
 **At the top.** How it stands: the **Checklist** (how many steps are done, and how many are past due), the **Teams** and divisions, the **Games** and how many have a court, and the **Net (estimate)**. Tap one to go to its tab.
 
-**Checklist.** What every tournament we host needs, by section. **Facility**: secured for our dates, the walk-through, a point of contact for the weekend, pricing, the certificate of insurance and the contract. Then **Teams**, **Referees and table**, **Communication** and **Game day**. Tick a step when it's done. The pencil gives a step a due date and a note (who has it, a link to the contract), renames it, or **Remove**s it; **+ Add a step** adds your own. Under **Teams**, **Set team fees and bill each program** has **Bill programs → Finance** (the **Invoicing** permission: Treasurer, President, Athletic Director). Coaches and the board who can edit the HS Schedule see it on the plan. Someone with only **Invoicing** is not shown the rest of the tournament page (teams, money, sent emails); they get a **Bill programs → Finance** link instead. It opens a preview (team counts from the **Teams** tab, visiting teams — change them there if a count is wrong), then one invoice per program, with an optional deposit, and the step checks itself after billing. **Invoices sent** checks itself when every program has been sent an invoice. **Team fees collected** shows **Not billed yet** until an invoice is sent, then how much is in of the total, checks itself when every expected program is paid, and has **View in Finances →**. **Details**, below, holds the **Short name** (**MRS**), the **Team fee**, the **Game slot** length, how many **Courts**, each day's **First game** and **Gym closes** times, and what the email says about the **Facility**, **Concessions**, **Admission** and **Game information and rules**. Press **Save details**. **We're not hosting this** takes the page off the schedule.
+**Checklist.** What every tournament we host needs, by section. **Facility**: secured for our dates, the walk-through, a point of contact for the weekend, pricing, the certificate of insurance and the contract. Then **Teams**, **Referees and table**, **Communication** and **Game day**. Tick a step when it's done. The pencil gives a step a due date and a note (who has it, a link to the contract), renames it, or **Remove**s it; **+ Add a step** adds your own. Under **Teams**, **Set team fees and bill each program** has **Bill programs → Finance**. Whoever holds President, Athletic Director, or Treasurer in Settings → Planning Roles (plus super admins) can invoice. Coaches and the board who can edit the HS Schedule see it on the plan. Someone who can invoice but cannot edit the HS Schedule is not shown the rest of the tournament page (teams, money, sent emails); they get a **Bill programs → Finance** link instead. It opens a preview (team counts from the **Teams** tab, visiting teams — change them there if a count is wrong), then one invoice per program, with an optional deposit, and the step checks itself after billing. **Invoices sent** checks itself when every program has been sent an invoice. **Team fees collected** shows **Not billed yet** until an invoice is sent, then how much is in of the total, checks itself when every expected program is paid, and has **View in Finances →**. **Details**, below, holds the **Short name** (**MRS**), the **Team fee**, the **Game slot** length, how many **Courts**, each day's **First game** and **Gym closes** times, and what the email says about the **Facility**, **Concessions**, **Admission** and **Game information and rules**. Press **Save details**. **We're not hosting this** takes the page off the schedule.
 
 **Teams.** **Add a division** for each group that plays together (**HS Boys A**, **HS Girls**, **JH Boys**), with a short name for the schedule (**HSA**) and how they play: a **Pool** (everyone plays everyone) or a **Bracket** (winners play winners and losers play losers, so every place is decided: eight teams make 12 games, with Game 9 for first and second, like the JV bracket sheet). **Add the teams coming** brings in every program marked **Yes** on the HS Schedule and our own teams playing that weekend; **Add a team** adds one by hand. Tap a team to put it in its division, give it a short name (**KCM 1**), a seed (1 is the top) and its own fee, or **Remove** it. When a division has its teams, press **Make the games** (**Make the games again** replaces them).
 
@@ -878,7 +880,7 @@ The board sees it under **Finances → Snapshot**, and so does anyone given **Se
     alsoPermissions: ["payments", "finances_view"],
     routes: ["/portal/payments/invoices"],
     keywords: ["invoices", "invoice", "bill programs", "team fee", "deposit", "venmo", "check", "mark as paid", "reminders", "overdue", "partial", "co-host", "gym share"],
-    body: `Bills to **other programs** — team fees when we host a tournament, a co-host split, a gym share — under **Finances → Invoices**. Family balances stay on **Families**. You send and record if you have the **Invoicing** permission (Treasurer, President, Athletic Director — it follows the role, so the next person on it gets it) or you're a super-admin. The board, **Payments**, and **See club finances** can open the list; send, **Mark as paid**, reminders and **Void invoice** stay locked without **Invoicing**. A coach without those grants is sent back to **Finances** / **Payments** — they don't see the list.
+    body: `Bills to **other programs** — team fees when we host a tournament, a co-host split, a gym share — under **Finances → Invoices**. Family balances stay on **Families**. Whoever holds President, Athletic Director, or Treasurer in Settings → Planning Roles (plus super admins) can invoice. The **Invoicing** box on an access profile or a person's extras is a manual override. The board, **Payments**, and **See club finances** can open the list; send, **Mark as paid**, reminders and **Void invoice** stay locked unless you can invoice. A coach without those grants is sent back to **Finances** / **Payments** — they don't see the list.
 
 **The list.** Open, overdue, collected and drafts across the top. Filter **All**, **Draft**, **Sent**, **Viewed**, **Partial**, **Paid**, **Overdue** or **Void**. **+ New invoice** writes one by hand. An event card shows how much of that weekend is in, with a link to its invoices.
 
@@ -1136,7 +1138,7 @@ Chips on a row: **You**, **Invited** (has an email but hasn't signed up), **Dire
     group: "Settings",
     audience: "super_admin",
     keywords: ["access profiles", "profile", "profiles", "permissions", "access", "treasurer", "registrar", "travel coordinator", "power user", "role", "board", "member", "extras", "bundle"],
-    body: `An access profile is a named set of permissions you hand someone in one step, like **Treasurer** (Payments and Invoicing) or **Registrar** (Registrations and Slack DMs). Open **Settings → Access Profiles**. Super-admins only.
+    body: `An access profile is a named set of permissions you hand someone in one step, like **Treasurer** (Payments) or **Registrar** (Registrations and Slack DMs). Open **Settings → Access Profiles**. Super-admins only. Whoever holds President, Athletic Director, or Treasurer in Settings → Planning Roles (plus super admins) can invoice; tick **Invoicing** on a profile only as a manual override.
 
 - **Member** and **Board** are built in. Everyone starts on one of them: Member for members, Board for the board. Tap **Edit permissions** to choose what everyone on it gets. They can't be renamed or deleted.
 - **+ New profile** makes your own. Give it a **Name** and choose what it's **Based on**: **Member**, or **Board** if the people on it should be Board too, with everything Board can do (see *Board roles*). Then tick its permissions.
@@ -1249,7 +1251,7 @@ Use the arrows to change the order (it's the order of the chips in the Directory
     body: `The roles Planning's tasks belong to: President, Athletic Director, Treasurer, Communications and Coaches to start. Open **Settings → Planning Roles**.
 
 - **Add role** gives it a name and a **Chip color** (the color its tasks wear on the calendar).
-- **Held by** is who has the role this season. When the board keeps a task in Planning → Review, it's assigned to that person. Leave it as **Nobody named** for a role several people share, like Coaches.
+- **Held by** is who has the role this season. When the board keeps a task in Planning → Review, it's assigned to that person. Leave it as **Nobody named** for a role several people share, like Coaches. Whoever holds President, Athletic Director, or Treasurer in Settings → Planning Roles (plus super admins) can invoice.
 - **Order** sets the order of the role buttons and of tasks within a month.
 
 Use the **pencil** to edit a role, for example when a new President takes over, and the **trash** can to remove one. A removed role's tasks stay; they just show without a role.`,
@@ -1533,6 +1535,7 @@ export function canSeeGuideSection(section: GuideSection, viewer: GuideViewer | 
     if (section.permission && viewer.permissions.includes(section.permission)) return true;
     if (section.alsoPermissions?.some((p) => viewer.permissions!.includes(p))) return true;
   }
+  if (section.permission === "invoicing" && viewer?.status === "approved" && viewer.canManageInvoicing) return true;
   return canSeeAudience(section.audience, viewer);
 }
 
