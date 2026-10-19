@@ -1,0 +1,145 @@
+/* Public /mockups area: a no-login click-through for reviewing ideas.
+   Hangs off these classes only, so it never reaches the portal. */
+
+.withBanner {
+  /* Room for the pinned banner, which sits just under the floating header. */
+  padding-top: 44px;
+}
+
+.banner {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  background: #111;
+  color: #fbcb43;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list a {
+  color: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.19em;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.actions button {
+  min-width: 140px;
+}
+
+.outline {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.note {
+  margin: 0 0 20px;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  margin-top: 28px;
+  font-size: var(--fs-small);
+}
+
+.links a,
+.links button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.19em;
+  cursor: pointer;
+}
+
+.admin {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 24px;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+}
+
+.adminHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.adminName {
+  margin: 0;
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fbcb43;
+  color: #111;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.adminMeta {
+  margin: 0;
+  font-size: var(--fs-small);
+  opacity: 0.7;
+}
+
+.adminNote {
+  margin: 0;
+  padding: 12px 14px;
+  background: #f7f7f7;
+  border: 1px solid #ddd;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.adminNoteLabel {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
