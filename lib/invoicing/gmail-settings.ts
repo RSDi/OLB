@@ -47,13 +47,9 @@ function assertGmailLive(env: Record<string, string | undefined> = process.env):
 /** Missing inv_gmail (migration 0153 not applied) is "no Gmail", not Reconnect.
  * Codes only: a missing column (42703 / PGRST204) or a message match must
  * fail loudly, not fall through to Resend. */
-export function isMissingGmailTable(error: {
-  code?: string | null;
-  message?: string | null;
-  details?: string | null;
-} | Error | string | null | undefined): boolean {
+export function isMissingGmailTable(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
-  const code = ("code" in error ? String(error.code ?? "") : "").toUpperCase();
+  const code = ("code" in error ? String((error as { code?: unknown }).code ?? "") : "").toUpperCase();
   return code === "42P01" || code === "PGRST205";
 }
 
