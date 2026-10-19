@@ -136,6 +136,12 @@
   letter-spacing: 0;
   font-weight: 500;
 }
+.field textarea {
+  font-size: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
 
 /* Big tappable answers. */
 .choices {
