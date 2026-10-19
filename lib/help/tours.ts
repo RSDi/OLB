@@ -1329,6 +1329,12 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Bill other programs from **Finances → Invoices**: team fees, co-host splits, gym shares. Paid by Venmo or check. **Send invoice** and **Mark as paid** need the **Invoicing** permission.",
       },
       {
+        target: "invoices-gmail",
+        click: "payments-tab-invoices",
+        title: "Connect Gmail",
+        body: "Treasurer, President, or Athletic Director tap **Connect Gmail** so invoices send from that account. **Disconnect** and **Reconnect Gmail** are here if the token expires.",
+      },
+      {
         target: "invoices-list",
         click: "payments-tab-invoices",
         title: "The list",

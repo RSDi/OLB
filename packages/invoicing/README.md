@@ -51,7 +51,7 @@ The module core **must not** import OLB. `packages/invoicing/tests/isolation.tes
 
 See `lib/invoicing/adapter.ts`. Treasurer, President, and Athletic Director get the `invoicing` permission (access profiles + planning-role holders). Finances → **Invoices**. Hosting checklist bills programs for a weekend.
 
-**Sending:** Resend from the club's verified domain (`INVOICE_MAIL_FROM` or `MAIL_FROM`). Reply-to is the club Gmail (`MAIL_REPLY_TO`, default LightningBasketballOmaha@gmail.com). There is no Gmail API sending.
+**Sending:** Host `adapter.sendEmail` (`lib/invoicing/mail.ts`). If the club has **Connect Gmail**, invoices go out through the Gmail API as that account (they appear in Sent). Otherwise Resend from the club's verified domain (`INVOICE_MAIL_FROM` or `MAIL_FROM`) when `RESEND_API_KEY` is set. Reply-to with Gmail is the connected account unless `MAIL_REPLY_TO` is set; with Resend it is `MAIL_REPLY_TO` (default LightningBasketballOmaha@gmail.com). This package never talks to Gmail.
 
 ### Operations later
 
@@ -77,9 +77,10 @@ The module does not read `process.env`. The host adapter should:
 | Var | Use |
 |-----|-----|
 | `MAIL_CHECK_ADDRESS` | Check mailing address, lines separated by `\|` |
-| `MAIL_FROM` / `INVOICE_MAIL_FROM` | From address on the verified domain (Resend) |
-| `MAIL_REPLY_TO` | Replies; OLB defaults to LightningBasketballOmaha@gmail.com |
-| `RESEND_API_KEY` | OLB's existing sender |
+| `MAIL_FROM` / `INVOICE_MAIL_FROM` | From address on the verified domain when Resend is the sender |
+| `MAIL_REPLY_TO` | Replies; with Gmail, defaults to the connected account if unset |
+| `RESEND_API_KEY` | Optional fallback sender when Gmail is not connected |
+| `INVOICE_GMAIL_CLIENT_ID` / `INVOICE_GMAIL_CLIENT_SECRET` / `INVOICE_GMAIL_TOKEN_KEY` | OLB Connect Gmail (host OAuth; not read by this package) |
 | `INVOICE_TEST_EMAIL` | Non-production: one address or a comma-separated list. Replaces To, CC, and BCC. |
 | `CRON_SECRET` | Protect the reminder route |
 

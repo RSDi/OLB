@@ -110,3 +110,24 @@ test("0152 down drops module tables and billing step keys", () => {
   assert.ok(down.includes("bill_programs"));
   assert.ok(down.includes("drop column if exists step_key"));
 });
+
+test("0153 is the next numbered migration after 0152 and is additive", () => {
+  const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
+  assert.ok(names.includes("0153_inv_gmail.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0153")).length, 1, "only one 0153 migration");
+  const gmail = readFileSync(join(root, "supabase/migrations/0153_inv_gmail.sql"), "utf8");
+  const gmailDown = readFileSync(join(root, "supabase/removal/0153_inv_gmail_down.sql"), "utf8");
+  assert.match(gmail, /create table if not exists public\.inv_gmail/);
+  assert.match(gmail, /refresh_token_enc/);
+  assert.match(gmail, /sender_email/);
+  assert.match(gmail, /last_used_at/);
+  assert.match(gmail, /last_error/);
+  assert.match(gmail, /add column if not exists/);
+  assert.match(gmail, /on conflict \(id\) do nothing/);
+  assert.match(gmail, /revoke all on table public\.inv_gmail from public, anon, authenticated/);
+  assert.match(gmail, /enable row level security/);
+  assert.doesNotMatch(gmail, /drop table/);
+  assert.doesNotMatch(gmail, /lightningbasketballomaha@gmail\.com/i);
+  assert.ok(!gmail.includes("using (public."));
+  assert.match(gmailDown, /drop table if exists public\.inv_gmail/);
+});

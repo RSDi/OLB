@@ -1,5 +1,6 @@
 // OLB's implementation of the invoicing host seam. The only place that ties
-// packages/invoicing to this app.
+// packages/invoicing to this app. Gmail OAuth and sending stay in this host
+// folder; the module only calls adapter.sendEmail.
 
 import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
@@ -13,6 +14,9 @@ import { getPreview } from "../activity/preview";
 import { olbInvoicePaths } from "./paths";
 import { invoicePublicBaseUrl } from "./public-url";
 import { loadInvoiceSettings, type InvoicingAdapter } from "invoicing";
+import { refreshGmailAccess } from "./gmail-oauth";
+import { sendInvoiceViaGmail } from "./gmail-send";
+import { getGmailConnection, getGmailConnectionSecret, recordGmailSendResult } from "./gmail-settings";
 
 export { olbInvoicePaths } from "./paths";
 
@@ -48,10 +52,21 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
       } catch {
         // Migration not applied yet; empty is the default (never seed addresses).
       }
+      let fromEmail = invoiceMailFrom();
+      let replyTo = process.env.MAIL_REPLY_TO?.trim() || undefined;
+      try {
+        const gmail = await getGmailConnection();
+        if (gmail.connected && gmail.senderEmail) {
+          fromEmail = gmail.senderEmail;
+          replyTo = process.env.MAIL_REPLY_TO?.trim() || gmail.senderEmail;
+        }
+      } catch {
+        // Migration not applied yet; keep the Resend from-address.
+      }
       return {
         fromName: "Omaha Lightning Basketball · Finance",
-        fromEmail: invoiceMailFrom(),
-        replyTo: process.env.MAIL_REPLY_TO?.trim() || undefined,
+        fromEmail,
+        replyTo,
         venmoHandle: VENMO_HANDLE,
         venmoUrl: VENMO_URL,
         checkPayee: CHECK_PAYEE,
@@ -76,7 +91,26 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
       } catch {
         // Cron and other non-page callers have no preview cookie.
       }
-      return sendInvoiceEmail(mail);
+      return sendInvoiceEmail(mail, process.env, {
+        loadGmail: async (env) => {
+          try {
+            const secret = await getGmailConnectionSecret(env);
+            if (!secret.refreshToken || !secret.senderEmail) return null;
+            return { refreshToken: secret.refreshToken, senderEmail: secret.senderEmail };
+          } catch {
+            return null;
+          }
+        },
+        refreshGmailAccess,
+        sendGmail: sendInvoiceViaGmail,
+        recordGmailResult: async (result) => {
+          try {
+            await recordGmailSendResult(result);
+          } catch {
+            // Status is best-effort; don't fail a send that already went out.
+          }
+        },
+      });
     },
     today: () => churchToday(),
     publicBaseUrl: () => invoicePublicBaseUrl(),

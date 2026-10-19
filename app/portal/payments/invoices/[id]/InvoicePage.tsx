@@ -21,6 +21,7 @@ export function InvoicePage({
   fromEmail,
   backHref,
   backLabel,
+  gmailReconnect,
 }: {
   invoice: Invoice;
   today: string;
@@ -30,9 +31,29 @@ export function InvoicePage({
   fromEmail: string;
   backHref: string;
   backLabel?: string;
+  gmailReconnect?: boolean;
 }) {
   const router = useRouter();
   return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {gmailReconnect && canInvoice && (
+        <div className="rsd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>Reconnect Gmail</div>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
+            The last invoice email didn&apos;t go out because Gmail isn&apos;t connected anymore. The invoice stayed{" "}
+            <strong>Draft</strong>. Connect Gmail again, then send.
+          </p>
+          <a
+            href={
+              "/api/invoicing/gmail/connect?next=" +
+              encodeURIComponent(`/portal/payments/invoices/${invoice.id}`)
+            }
+            style={{ fontWeight: 700, fontSize: 13 }}
+          >
+            Reconnect Gmail
+          </a>
+        </div>
+      )}
     <InvoiceDetail
       invoice={invoice}
       today={today}
@@ -101,5 +122,6 @@ export function InvoicePage({
         return res;
       }}
     />
+    </div>
   );
 }
