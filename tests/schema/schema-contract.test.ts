@@ -163,7 +163,7 @@ const CONTRACT: Record<string, string> = {
   inv_reminder_settings: "id,freq,start_days,until_paid,cc_emails,bcc_emails,updated_by,updated_at",
   inv_reminder_sends: "id,invoice_id,sent_on,status,error,created_at",
   inv_sequences: "year,last_n",
-  // Club Gmail sender for invoicing (0153). Service-role only; token encrypted.
+  // Club Gmail sender for invoicing (0154). Service-role only; token encrypted.
   inv_gmail:
     "id,refresh_token_enc,sender_email,connected_at,connected_by,last_used_at,last_error,updated_at",
   // Roadmap (0129, 0136, 0139, 0154 Parked + bot history).
