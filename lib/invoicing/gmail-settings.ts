@@ -100,7 +100,7 @@ export async function loadGmailForSend(
   try {
     row = await loadRow();
   } catch (err) {
-    if (isMissingGmailTable(err instanceof Error ? err.message : err)) return { status: "none" };
+    if (isMissingGmailTable(err instanceof Error ? err : String(err))) return { status: "none" };
     return { status: "unreadable" };
   }
   if (!row?.refresh_token_enc) return { status: "none" };
