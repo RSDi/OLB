@@ -180,9 +180,13 @@ a { text-decoration: none; color: inherit; }
 .rsd-app.sidebar-collapsed { grid-template-columns: 72px 1fr; }
 .rsd-app.sidebar-expanded { grid-template-columns: var(--rsd-side-w) 1fr; }
 /* Icon-rail labels stay in the DOM so CSS can hide the full text before JS
-   knows the window width (no expanded flash on iPad). Phones keep the drawer. */
+   knows the window (no expanded flash on iPad). Phones keep the drawer.
+   Keep in step with SIDEBAR_COLLAPSE_QUERY: below 1440, pointer: coarse,
+   or any-pointer: coarse (touch / iPad, including iPadOS desktop UA). */
 .rsd-side-narrow { display: none !important; }
-@media (min-width: 769px) and (max-width: 1279px) {
+@media (min-width: 769px) and (max-width: 1439px),
+       (min-width: 769px) and (pointer: coarse),
+       (min-width: 769px) and (any-pointer: coarse) {
   .rsd-app:not(.sidebar-expanded) { grid-template-columns: 72px 1fr; }
   .rsd-app:not(.sidebar-expanded) .rsd-sidebar { padding: 20px 8px !important; }
   .rsd-app:not(.sidebar-expanded) .rsd-sidebar-brand {

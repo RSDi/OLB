@@ -33,6 +33,8 @@ import type { SidebarLink } from "../../lib/sidebar-links/url";
 import { portalFontVariables } from "./fonts";
 import {
   SIDEBAR_COLLAPSE_QUERY,
+  readSidebarDefaultCollapsed,
+  sidebarViewportFromWindow,
   toggleSidebarMode,
   type SidebarCollapseMode,
 } from "../../lib/portal/sidebar-collapse";
@@ -85,10 +87,10 @@ interface Props {
 }
 
 export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview, children }: Props) {
-  // "auto" follows the 1280px CSS default (collapsed below, expanded at or
-  // above) so the first paint matches the window — no expanded flash on iPad.
-  // Collapse / the arrow writes a session override until the breakpoint is
-  // crossed again.
+  // "auto" follows the CSS default (collapsed below 1440, on pointer: coarse,
+  // or when the device has a touch screen) so the first paint matches — no
+  // expanded flash on iPad, including iPadOS desktop UA. Never restore a
+  // stored expanded preference; Collapse / the arrow is this visit only.
   const [collapseMode, setCollapseMode] = useState<SidebarCollapseMode>("auto");
   const [narrowViewport, setNarrowViewport] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -159,9 +161,9 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
     const mq = window.matchMedia(SIDEBAR_COLLAPSE_QUERY);
     // After mount only — the CSS media query already painted the default.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setNarrowViewport(mq.matches);
+    setNarrowViewport(readSidebarDefaultCollapsed(window));
     const h = () => {
-      setNarrowViewport(window.matchMedia(SIDEBAR_COLLAPSE_QUERY).matches);
+      setNarrowViewport(readSidebarDefaultCollapsed(window));
       setCollapseMode("auto");
     };
     mq.addEventListener("change", h);
@@ -277,8 +279,8 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
             previewing={previewing}
             collapsed={collapsed}
             onToggleCollapse={() => {
-              const width = window.innerWidth;
-              setCollapseMode((mode) => toggleSidebarMode(mode, width));
+              const vp = sidebarViewportFromWindow(window);
+              setCollapseMode((mode) => toggleSidebarMode(mode, vp));
             }}
             mobileOpen={mobileOpen}
             onNavigate={() => setMobileOpen(false)}
