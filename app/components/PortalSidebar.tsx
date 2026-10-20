@@ -255,24 +255,21 @@ export function PortalSidebar({
             </span>
           )}
         </span>
-        {c ? (
-          <span style={collapsedLabelStyle}>
-            {item.label}
-          </span>
-        ) : (
-          <span style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            {item.label}
-            {isSettings && pendingCount > 0 && !c && (
-              <span style={{
-                background: "var(--rsd-error-fill)", color: "#fff",
-                fontSize: 10, fontWeight: 800, borderRadius: 100,
-                padding: "2px 6px", lineHeight: 1.4,
-              }}>
-                {pendingCount}
-              </span>
-            )}
-          </span>
-        )}
+        <span className="rsd-side-narrow" style={collapsedLabelStyle}>
+          {item.label}
+        </span>
+        <span className="rsd-side-full" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          {item.label}
+          {isSettings && pendingCount > 0 && (
+            <span style={{
+              background: "var(--rsd-error-fill)", color: "#fff",
+              fontSize: 10, fontWeight: 800, borderRadius: 100,
+              padding: "2px 6px", lineHeight: 1.4,
+            }}>
+              {pendingCount}
+            </span>
+          )}
+        </span>
       </Link>
     );
   };
@@ -303,7 +300,7 @@ export function PortalSidebar({
       transition: "padding 200ms var(--gw-ease)",
     }}>
       {/* Brand */}
-      <Link href="/" aria-label={`${BRAND.name} home`} style={{
+      <Link href="/" aria-label={`${BRAND.name} home`} className="rsd-sidebar-brand" style={{
         display: "flex", gap: 10, alignItems: "center",
         justifyContent: c ? "center" : "flex-start",
         padding: c ? "8px 0" : "10px 12px",
@@ -320,18 +317,16 @@ export function PortalSidebar({
           height={34}
           style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 9, display: "block" }}
         />
-        {!c && (
-          <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{
-              fontFamily: "var(--rsd-display)", fontWeight: 800,
-              fontSize: "calc(15px * var(--rsd-display-scale))", lineHeight: 1,
-              letterSpacing: ".02em", textTransform: "uppercase", color: "var(--rsd-frame-fg)",
-            }}>
-              {BRAND.name}
-            </div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: "var(--rsd-frame-fg-3)", lineHeight: 1, letterSpacing: ".08em" }}>{BRAND.tagline}</div>
+        <div className="rsd-side-full" style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{
+            fontFamily: "var(--rsd-display)", fontWeight: 800,
+            fontSize: "calc(15px * var(--rsd-display-scale))", lineHeight: 1,
+            letterSpacing: ".02em", textTransform: "uppercase", color: "var(--rsd-frame-fg)",
+          }}>
+            {BRAND.name}
           </div>
-        )}
+          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--rsd-frame-fg-3)", lineHeight: 1, letterSpacing: ".08em" }}>{BRAND.tagline}</div>
+        </div>
       </Link>
 
       {/* Nav */}
@@ -358,13 +353,10 @@ export function PortalSidebar({
                         ? <Icons.ExternalLink width={16} height={16}/>
                         : <Icons.Link width={16} height={16}/>}
                     </span>
-                    {c ? (
-                      <span style={collapsedLabelStyle}>{link.label}</span>
-                    ) : (
-                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
-                        {link.label}
-                      </span>
-                    )}
+                    <span className="rsd-side-narrow" style={collapsedLabelStyle}>{link.label}</span>
+                    <span className="rsd-side-full" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+                      {link.label}
+                    </span>
                   </>
                 );
                 const onClick = () => { if (isMobile) onNavigate?.(); };
@@ -413,7 +405,8 @@ export function PortalSidebar({
           <button
             onClick={onToggleCollapse}
             data-tour="sidebar-collapse"
-            className="gw-press"
+            className="gw-press rsd-sidebar-collapse"
+            aria-expanded={!c}
             title={c ? "Expand sidebar" : "Collapse sidebar"}
             style={{
               display: "flex", alignItems: "center", justifyContent: c ? "center" : "flex-start",
@@ -422,10 +415,15 @@ export function PortalSidebar({
               color: "var(--rsd-frame-fg-2)", fontWeight: 700, fontSize: 13,
             }}
           >
-            <span style={{ display: "flex", flexShrink: 0 }}>
-              {c ? <Icons.ChevronsRight width={16} height={16}/> : <Icons.ChevronsLeft width={16} height={16}/>}
+            <span className="rsd-side-narrow" style={{ display: "flex", flexShrink: 0 }}>
+              <Icons.ChevronsRight width={16} height={16}/>
             </span>
-            {!c && "Collapse"}
+            <span className="rsd-side-full" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ display: "flex", flexShrink: 0 }}>
+                <Icons.ChevronsLeft width={16} height={16}/>
+              </span>
+              Collapse
+            </span>
           </button>
         )}
         {isApproved && !previewing && (
@@ -449,7 +447,7 @@ export function PortalSidebar({
             <span style={{ display: "flex", transform: isMobile ? "scale(1.15)" : undefined }}>
               <Icons.Bell width={16} height={16}/>
             </span>
-            {!c && "Notifications"}
+            <span className="rsd-side-full">Notifications</span>
           </button>
         )}
         {notificationsOpen && createPortal(
@@ -474,7 +472,7 @@ export function PortalSidebar({
           <span style={{ display: "flex", transform: isMobile ? "scale(1.15)" : undefined }}>
             <Icons.LogOut width={16} height={16}/>
           </span>
-          {!c && "Sign out"}
+          <span className="rsd-side-full">Sign out</span>
         </button>
       </div>
     </aside>

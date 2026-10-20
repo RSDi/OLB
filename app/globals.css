@@ -178,6 +178,53 @@ a { text-decoration: none; color: inherit; }
   transition: grid-template-columns 200ms var(--gw-ease);
 }
 .rsd-app.sidebar-collapsed { grid-template-columns: 72px 1fr; }
+.rsd-app.sidebar-expanded { grid-template-columns: var(--rsd-side-w) 1fr; }
+/* Icon-rail labels stay in the DOM so CSS can hide the full text before JS
+   knows the window width (no expanded flash on iPad). Phones keep the drawer. */
+.rsd-side-narrow { display: none !important; }
+@media (min-width: 769px) and (max-width: 1279px) {
+  .rsd-app:not(.sidebar-expanded) { grid-template-columns: 72px 1fr; }
+  .rsd-app:not(.sidebar-expanded) .rsd-sidebar { padding: 20px 8px !important; }
+  .rsd-app:not(.sidebar-expanded) .rsd-sidebar-brand {
+    justify-content: center !important;
+    padding: 8px 0 !important;
+  }
+  .rsd-app:not(.sidebar-expanded) .rsd-nav-item {
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 7px 2px !important;
+  }
+  .rsd-app:not(.sidebar-expanded) .rsd-sidebar-collapse,
+  .rsd-app:not(.sidebar-expanded) .rsd-sidebar button {
+    justify-content: center !important;
+  }
+  .rsd-app:not(.sidebar-expanded) .rsd-side-full { display: none !important; }
+  .rsd-app:not(.sidebar-expanded) .rsd-side-narrow { display: flex !important; }
+  .rsd-app:not(.sidebar-expanded) .rsd-nav-item > .rsd-side-narrow { display: block !important; }
+}
+@media (min-width: 769px) {
+  .rsd-app.sidebar-collapsed .rsd-sidebar { padding: 20px 8px !important; }
+  .rsd-app.sidebar-collapsed .rsd-sidebar-brand {
+    justify-content: center !important;
+    padding: 8px 0 !important;
+  }
+  .rsd-app.sidebar-collapsed .rsd-nav-item {
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 7px 2px !important;
+  }
+  .rsd-app.sidebar-collapsed .rsd-sidebar-collapse,
+  .rsd-app.sidebar-collapsed .rsd-sidebar button {
+    justify-content: center !important;
+  }
+  .rsd-app.sidebar-collapsed .rsd-side-full { display: none !important; }
+  .rsd-app.sidebar-collapsed .rsd-side-narrow { display: flex !important; }
+  .rsd-app.sidebar-collapsed .rsd-nav-item > .rsd-side-narrow { display: block !important; }
+}
 /* The sidebar scrolls when it's taller than the window (a car or laptop
    screen), so Collapse and Sign out at the bottom stay reachable. */
 .rsd-app .rsd-sidebar { grid-area: sidebar; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--rsd-frame-line) transparent; }
@@ -440,6 +487,10 @@ main::-webkit-scrollbar-track { background: transparent; }
 /* Mobile */
 .rsd-mob-menu { display: none; }
 
+@media (max-width: 767px) {
+  .rsd-sidebar-collapse { display: none !important; }
+}
+
 @media (max-width: 768px) {
   .rsd-preview-until { display: none; }
   /* minmax(0, 1fr), not 1fr: a 1fr track grows to its widest item's
@@ -450,7 +501,8 @@ main::-webkit-scrollbar-track { background: transparent; }
     grid-template-rows: 56px 1fr !important;
     grid-template-areas: "topbar" "main" !important;
   }
-  .rsd-app.sidebar-collapsed { grid-template-columns: minmax(0, 1fr) !important; }
+  .rsd-app.sidebar-collapsed,
+  .rsd-app.sidebar-expanded { grid-template-columns: minmax(0, 1fr) !important; }
   .rsd-app .rsd-sidebar {
     position: fixed !important;
     top: 0 !important; bottom: 0 !important; left: 0 !important;
