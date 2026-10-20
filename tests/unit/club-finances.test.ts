@@ -17,6 +17,7 @@ import {
   shiftAmountCents,
   signupState,
   coveredByNelsons,
+  hostedEventDeleteError,
   NELSONS_REF,
   snapshotCsv,
   spendBy,
@@ -466,5 +467,38 @@ test("uniform charges: a plain Uniform covers both pieces, and the import's extr
     c("s3", "jett", "Shorts (YM)"),
   ]);
   assert.deepEqual(out.map((x) => x.id), ["j1", "s1", "j3"]);
+});
+
+const deleteOk = { found: true, archived: false, liveCosts: 0, liveIncome: 0, liveInvoices: 0, planWeekendId: null };
+
+test("deleteHostedEvent archives a bare tournament and refuses live ties", () => {
+  assert.equal(hostedEventDeleteError(deleteOk), null);
+  assert.equal(hostedEventDeleteError({ ...deleteOk, found: false }), "That tournament isn't there any more. Refresh the page.");
+  assert.equal(hostedEventDeleteError({ ...deleteOk, archived: true }), "That tournament was already removed.");
+  assert.equal(
+    hostedEventDeleteError({ ...deleteOk, liveCosts: 1 }),
+    "Can't remove this tournament: it still has costs on the budget. Void those first."
+  );
+  assert.equal(
+    hostedEventDeleteError({ ...deleteOk, liveIncome: 2 }),
+    "Can't remove this tournament: it still has income. Void those first."
+  );
+  assert.equal(
+    hostedEventDeleteError({ ...deleteOk, liveInvoices: 1 }),
+    "Can't remove this tournament: it still has invoices. Void those first."
+  );
+  assert.equal(
+    hostedEventDeleteError({ ...deleteOk, planWeekendId: "w1" }),
+    "Can't remove this tournament: it's linked to a plan on the HS Schedule. Open its plan and unlink it from Finances first."
+  );
+  assert.equal(
+    hostedEventDeleteError({ ...deleteOk, liveCosts: 1, liveIncome: 1 }),
+    "Can't remove this tournament: it still has costs on the budget and it still has income. Void those first."
+  );
+  assert.equal(
+    hostedEventDeleteError({ ...deleteOk, liveCosts: 1, liveIncome: 1, planWeekendId: "w1" }),
+    "Can't remove this tournament: it's linked to a plan on the HS Schedule, it still has costs on the budget, and it still has income. Void those first, and unlink it from the HS Schedule."
+  );
+  assert.equal(hostedEventDeleteError({ ...deleteOk, liveCosts: 0, liveIncome: 0, liveInvoices: 0 }), null);
 });
 

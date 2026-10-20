@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Icons } from "../../components/icons";
 import { Input, KpiCard, Pill, Select, Textarea } from "../../components/ui";
 import {
+  deleteHostedEvent,
   recordExpensePayment,
   saveBudgetGroup,
   saveBudgetLine,
@@ -516,10 +517,22 @@ function GroupsSheet({ data, onClose }: { data: ClubData; onClose: () => void })
   );
 }
 
+const emptyEvent = { name: "", starts_on: "", ends_on: "", note: "" };
+
 function EventsSheet({ data, onClose }: { data: ClubData; onClose: () => void }) {
   const { busy, error, act } = useAct();
-  const [f, setF] = useState({ name: "", starts_on: "", ends_on: "", note: "" });
+  const [f, setF] = useState(emptyEvent);
+  const [editing, setEditing] = useState<string | null>(null);
   const spend = spendBy("event_id", data.lines, data.expensePayments);
+  const events = data.events.filter((e) => !e.archived_at);
+  const startEdit = (e: (typeof events)[number]) => {
+    setEditing(e.id);
+    setF({ name: e.name, starts_on: e.starts_on ?? "", ends_on: e.ends_on ?? "", note: e.note ?? "" });
+  };
+  const clearForm = () => {
+    setEditing(null);
+    setF(emptyEvent);
+  };
   return (
     <Sheet eyebrow="Budget" title="Tournaments we host" busy={busy} onClose={onClose}>
       <div style={sub}>
@@ -527,21 +540,41 @@ function EventsSheet({ data, onClose }: { data: ClubData; onClose: () => void })
         Pick it on each cost here and on each income on the Income tab, and the Snapshot shows what it made. A tournament planned
         on the HS Schedule (We host this tournament) puts its estimate here from its plan&apos;s Money tab.
       </div>
-      {data.events.map((e) => (
-        <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-          <div>
+      {events.map((e) => (
+        <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>{e.name}</div>
             <div style={sub}>{[e.starts_on && formatDay(e.starts_on), e.note].filter(Boolean).join(" · ") || "No date yet"}</div>
-            {e.plan_weekend_id && (
-              <Link href={`/portal/schedule/hosted/${e.plan_weekend_id}?tab=money`} style={{ fontSize: 12.5, fontWeight: 700 }}>
-                Open its plan
-              </Link>
-            )}
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 4 }}>
+              {e.plan_weekend_id && (
+                <Link href={`/portal/schedule/hosted/${e.plan_weekend_id}?tab=money`} style={{ fontSize: 12.5, fontWeight: 700 }}>
+                  Open its plan
+                </Link>
+              )}
+              <button type="button" style={linkBtn} onClick={() => startEdit(e)} disabled={busy}>
+                Edit
+              </button>
+              <button
+                type="button"
+                style={{ ...linkBtn, color: "var(--gw-fg-muted)" }}
+                disabled={busy}
+                onClick={() => {
+                  if (!confirm(`Delete "${e.name}"?`)) return;
+                  void act(async () => {
+                    const res = await deleteHostedEvent(e.id);
+                    if (!res.error && editing === e.id) clearForm();
+                    return res;
+                  }, "Removed.");
+                }}
+              >
+                Delete
+              </button>
+            </div>
           </div>
           <SpendBar spend={spend.get(e.id) ?? { budget: 0, paid: 0 }} compact />
         </div>
       ))}
-      <span style={{ ...capStyle, marginTop: 8 }}>Add one</span>
+      <span style={{ ...capStyle, marginTop: 8 }}>{editing ? "Edit" : "Add one"}</span>
       <Input label="Name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="MRS" />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Input label="First day" type="date" value={f.starts_on} onChange={(e) => setF({ ...f, starts_on: e.target.value })} />
@@ -550,9 +583,18 @@ function EventsSheet({ data, onClose }: { data: ClubData; onClose: () => void })
       <Input label="Note" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Optional" />
       {error && <ErrorNote text={error} />}
       <div style={{ display: "flex", gap: 8 }}>
-        <Pill variant="accent" onClick={async () => (await act(() => saveHostedEvent(f), "Added.")) && setF({ name: "", starts_on: "", ends_on: "", note: "" })} disabled={busy || !f.name.trim()}>
-          Add tournament
+        <Pill
+          variant="accent"
+          onClick={async () => (await act(() => saveHostedEvent(editing ? { ...f, id: editing } : f), editing ? "Saved." : "Added.")) && clearForm()}
+          disabled={busy || !f.name.trim()}
+        >
+          {editing ? (busy ? "Saving…" : "Save") : busy ? "Saving…" : "Add tournament"}
         </Pill>
+        {editing && (
+          <Pill variant="ghost" onClick={clearForm} disabled={busy}>
+            Cancel
+          </Pill>
+        )}
       </div>
     </Sheet>
   );
