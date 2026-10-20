@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Icons } from "../../../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../../../components/ui";
 import { addStep, deleteStep, savePlan, setHosted, updateStep } from "../../../../../../lib/hosted/actions";
-import { daysForWeekend, feeLockNote, formatDay, orderHostedSteps } from "../../../../../../lib/hosted/logic";
+import { daysForWeekend, feeLockNote, formatDay, isBillingStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
 import { STEP_SECTIONS, type HostedPageData, type HostedStep, type StepSection } from "../../../../../../lib/hosted/types";
 import { teamFeesAreBilled } from "../../../../../../lib/invoicing/auto-steps";
 import { ErrorNote, Said, Section, Sheet, cap, grid2, iconBtn, money, sub, useAct } from "./parts";
@@ -219,17 +219,21 @@ function StepSheet({ wid, step, onClose }: { wid: string; step: HostedStep; onCl
         <Pill variant="ghost" onClick={onClose} disabled={busy}>
           Cancel
         </Pill>
-        <Pill
-          variant="ghost"
-          onClick={async () => {
-            if (!confirm(`Take "${step.label}" off the checklist?`)) return;
-            if (await act(() => deleteStep(wid, step.id))) onClose();
-          }}
-          disabled={busy}
-          style={{ marginLeft: "auto", color: "var(--gw-error)" }}
-        >
-          <Icons.Trash width={12} height={12} /> Remove
-        </Pill>
+        {isBillingStep(step.step_key) ? (
+          <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)" }}>Stays on the checklist</span>
+        ) : (
+          <Pill
+            variant="ghost"
+            onClick={async () => {
+              if (!confirm(`Take "${step.label}" off the checklist?`)) return;
+              if (await act(() => deleteStep(wid, step.id))) onClose();
+            }}
+            disabled={busy}
+            style={{ marginLeft: "auto", color: "var(--gw-error)" }}
+          >
+            <Icons.Trash width={12} height={12} /> Remove
+          </Pill>
+        )}
       </div>
     </Sheet>
   );

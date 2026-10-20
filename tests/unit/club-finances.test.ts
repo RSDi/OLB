@@ -21,6 +21,8 @@ import {
   coveredByNelsons,
   hostedEventDeleteError,
   hostedEventPlanLinkError,
+  hostedPlanInBoardSeason,
+  hsSeasonFromBoardSeason,
   NELSONS_REF,
   snapshotCsv,
   spendBy,
@@ -507,6 +509,11 @@ test("deleteHostedEvent archives a bare tournament and refuses live ties", () =>
 });
 
 test("saveHostedEvent can link a Budget row to a hosted weekend plan", () => {
+  assert.equal(hsSeasonFromBoardSeason("2026-2027"), 2026);
+  assert.equal(hsSeasonFromBoardSeason("2026"), null);
+  assert.equal(hostedPlanInBoardSeason("2026-2027", 2026), true);
+  assert.equal(hostedPlanInBoardSeason("2026-2027", 2025), false);
+  assert.equal(hostedPlanInBoardSeason("2026-2027", null), false);
   assert.equal(hostedEventPlanLinkError({ planWeekendId: null, planFound: false, hosted: false }), null);
   assert.equal(hostedEventPlanLinkError({ planWeekendId: "", planFound: false, hosted: false }), null);
   assert.equal(hostedEventPlanLinkError({ planWeekendId: "w1", planFound: false, hosted: false }), "That tournament plan isn't there any more.");
@@ -515,15 +522,31 @@ test("saveHostedEvent can link a Budget row to a hosted weekend plan", () => {
     "That weekend isn't a tournament we host. Tick We host this tournament on the HS Schedule first."
   );
   assert.equal(hostedEventPlanLinkError({ planWeekendId: "w1", planFound: true, hosted: true }), null);
+  assert.equal(
+    hostedEventPlanLinkError({ planWeekendId: "w1", planFound: true, hosted: true, inSeason: false }),
+    "That weekend isn't in this season."
+  );
+  assert.equal(
+    hostedEventPlanLinkError({ planWeekendId: "w1", planFound: true, hosted: true, linkedToOtherLive: true }),
+    "That plan is already linked to another tournament. Unlink it first."
+  );
   const actions = readFileSync(join(import.meta.dirname, "../../lib/finances/club-actions.ts"), "utf8");
   assert.match(actions, /plan_weekend_id/);
   assert.match(actions, /hostedEventPlanLinkError/);
+  assert.match(actions, /hostedPlanInBoardSeason/);
+  assert.match(actions, /linkedToOtherLive/);
+  assert.match(actions, /Set the new link first/);
   assert.match(actions, /finance_event_id/);
   assert.match(actions, /hostedEventDeleteError/);
+  const data = readFileSync(join(import.meta.dirname, "../../lib/finances/club-data.ts"), "utf8");
+  assert.match(data, /hostedPlanInBoardSeason/);
   const view = readFileSync(join(import.meta.dirname, "../../app/portal/payments/BudgetView.tsx"), "utf8");
   assert.match(view, /Tournament plan/);
   assert.match(view, /plan_weekend_id/);
   assert.match(view, /hostedPlans/);
   assert.match(view, /Open its plan/);
+  const finance = readFileSync(join(import.meta.dirname, "../../lib/hosted/finance-actions.ts"), "utf8");
+  assert.match(finance, /error: evErr/);
+  assert.match(finance, /error: planErr/);
 });
 

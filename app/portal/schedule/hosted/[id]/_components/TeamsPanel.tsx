@@ -252,8 +252,8 @@ function TeamSheet({
         help={feesLocked ? lockNote : "Leave blank for the tournament's team fee; 0 for none."}
         style={feesLocked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
       />
-      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600 }}>
-        <input type="checkbox" checked={f.ours} onChange={(e) => setF({ ...f, ours: e.target.checked })} style={{ width: 16, height: 16, accentColor: "var(--rsd-accent-fill)" }} />
+      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600, color: feesLocked ? "var(--gw-fg-muted)" : undefined }}>
+        <input type="checkbox" checked={f.ours} disabled={feesLocked} onChange={(e) => setF({ ...f, ours: e.target.checked })} style={{ width: 16, height: 16, accentColor: "var(--rsd-accent-fill)" }} />
         One of our teams (no fee)
       </label>
       <Textarea label="Note" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} rows={2} placeholder="Don't schedule at the same time as their varsity" />

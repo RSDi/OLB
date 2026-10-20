@@ -12,6 +12,8 @@ import {
   feeLockNote,
   feeLockSaveError,
   feesAreLocked,
+  hostedTeamInvoiceKeys,
+  isBillingStep,
   fillCourts,
   formatTime,
   initials,
@@ -108,16 +110,39 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.equal(uncheckBillProgramsError(1), "Void invoices first.");
   assert.equal(planFeeChanged({ team_fee_cents: 24000 }, { team_fee_cents: 24000 }), false);
   assert.equal(planFeeChanged({ team_fee_cents: 24000 }, { team_fee_cents: 25000 }), true);
+  assert.equal(isBillingStep("bill_programs"), true);
+  assert.equal(isBillingStep("invoices_sent"), true);
+  assert.equal(isBillingStep("team_fees_collected"), true);
+  assert.equal(isBillingStep("invite"), false);
+  assert.deepEqual(hostedTeamInvoiceKeys({ id: "t1", name: "Prairie 1", opponent_id: "o1" }, { contact_id: "c1", name: "Prairie Hoops" }).sort(), [
+    "c1",
+    "name:prairie 1",
+    "name:prairie hoops",
+    "t1",
+  ]);
   const actions = readFileSync(join(import.meta.dirname, "../../lib/hosted/actions.ts"), "utf8");
   assert.match(actions, /loadFeeLockState/);
   assert.match(actions, /feeLockSaveError/);
   assert.match(actions, /uncheckBillProgramsError/);
   assert.match(actions, /planFeeChanged/);
+  assert.match(actions, /isBillingStep/);
+  assert.match(actions, /That step stays on the checklist/);
+  assert.match(actions, /Void its invoice first/);
+  assert.match(actions, /input\.ours/);
+  const data = readFileSync(join(import.meta.dirname, "../../lib/hosted/data.ts"), "utf8");
+  assert.match(data, /lookupFailed: true/);
+  assert.match(data, /eq\("step_key", "bill_programs"\)/);
+  assert.match(data, /stepsRes\.error \|\| invRes\.error/);
   const plan = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/_components/PlanPanel.tsx"), "utf8");
   assert.match(plan, /orderHostedSteps/);
   assert.match(plan, /\/portal\/schedule\/hosted\/\$\{wid\}\/bill/);
   assert.match(plan, /feeLockNote/);
   assert.match(plan, /readOnly=\{data\.feeLock\.locked\}/);
+  assert.match(plan, /isBillingStep/);
+  assert.match(plan, /Stays on the checklist/);
+  const teams = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/_components/TeamsPanel.tsx"), "utf8");
+  assert.match(teams, /disabled=\{feesLocked\}/);
+  assert.match(teams, /One of our teams \(no fee\)/);
 });
 
 test("seed order keeps the top seeds apart", () => {

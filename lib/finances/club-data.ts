@@ -9,7 +9,7 @@ import { seasonBoardId } from "../onboarding/server";
 import { centralToday } from "./data";
 import { feeTiersFrom } from "./fees";
 import { groupFamilies, totalsFor } from "./logic";
-import { levelsFrom, type FamilyBalances } from "./club-logic";
+import { hostedPlanInBoardSeason, levelsFrom, type FamilyBalances } from "./club-logic";
 import { DEFAULT_REMINDER, type ReminderSettings } from "./reminders";
 import {
   DEFAULT_BUDGET_GROUPS,
@@ -266,18 +266,29 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
   const eventRows = (events.data as HostedEvent[] | null) ?? [];
   const hostedRows = await db
     .from("hs_hosted")
-    .select("weekend_id, short_name, finance_event_id, hosted, weekend:hs_weekends(event, starts_on, ends_on)")
+    .select("weekend_id, short_name, finance_event_id, hosted, weekend:hs_weekends(event, starts_on, ends_on, season:hs_seasons(season))")
     .eq("hosted", true);
   type HostedJoin = {
     weekend_id: string;
     short_name: string | null;
     finance_event_id: string | null;
     hosted: boolean;
-    weekend: { event: string; starts_on: string; ends_on: string } | { event: string; starts_on: string; ends_on: string }[] | null;
+    weekend:
+      | { event: string; starts_on: string; ends_on: string; season: { season: number } | { season: number }[] | null }
+      | { event: string; starts_on: string; ends_on: string; season: { season: number } | { season: number }[] | null }[]
+      | null;
   };
   const hosted = hostedRows.error ? [] : ((hostedRows.data as HostedJoin[] | null) ?? []);
   const planOf = new Map(hosted.filter((r) => r.finance_event_id).map((r) => [r.finance_event_id!, r.weekend_id]));
+  const boardEventIds = new Set(eventRows.map((e) => e.id));
+  const linkedOnBoard = new Set(hosted.filter((r) => r.finance_event_id && boardEventIds.has(r.finance_event_id)).map((r) => r.weekend_id));
   const hostedPlans: HostedPlanOption[] = hosted
+    .filter((r) => {
+      if (linkedOnBoard.has(r.weekend_id)) return true;
+      const w = Array.isArray(r.weekend) ? r.weekend[0] : r.weekend;
+      const s = w ? (Array.isArray(w.season) ? w.season[0] : w.season) : null;
+      return hostedPlanInBoardSeason(board.season, s?.season ?? null);
+    })
     .map((r) => {
       const w = Array.isArray(r.weekend) ? r.weekend[0] : r.weekend;
       return {

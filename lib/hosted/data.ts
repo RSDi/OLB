@@ -126,19 +126,23 @@ export async function loadHostedPage(
 // Whether Team fee is locked: the checklist item is done, or any live invoice
 // exists. Invoices are read with the service role so a planner who can't open
 // Finances still sees the lock (and savePlan enforces the same check).
+// Fail closed: a lookup error or exception locks fees and refuses a fee save.
+// Duplicate bill_programs rows: done if any is done (do not use maybeSingle).
 export async function loadFeeLockState(weekendId: string): Promise<HostedFeeLock> {
-  const empty: HostedFeeLock = { locked: false, invoiceCount: 0, billProgramsDone: false };
+  const lockedUnknown: HostedFeeLock = { locked: true, invoiceCount: 1, billProgramsDone: false, lookupFailed: true };
   try {
     const db = createAdminClient();
-    const [{ data: step }, { data: invoices, error: invErr }] = await Promise.all([
-      db.from("hs_hosted_steps").select("done_on").eq("weekend_id", weekendId).eq("step_key", "bill_programs").maybeSingle(),
+    const [stepsRes, invRes] = await Promise.all([
+      db.from("hs_hosted_steps").select("done_on").eq("weekend_id", weekendId).eq("step_key", "bill_programs"),
       db.from("inv_invoices").select("id").eq("host_event_id", weekendId).is("voided_at", null).limit(1),
     ]);
-    const billProgramsDone = !!(step as { done_on: string | null } | null)?.done_on;
-    const invoiceCount = invErr ? 0 : ((invoices as { id: string }[] | null) ?? []).length;
-    return { locked: feesAreLocked({ billProgramsDone, invoiceCount }), invoiceCount, billProgramsDone };
+    const steps = ((stepsRes.data as { done_on: string | null }[] | null) ?? []).filter((s) => !!s.done_on);
+    const billProgramsDone = !stepsRes.error && steps.length > 0;
+    if (stepsRes.error || invRes.error) return { ...lockedUnknown, billProgramsDone };
+    const invoiceCount = ((invRes.data as { id: string }[] | null) ?? []).length;
+    return { locked: feesAreLocked({ billProgramsDone, invoiceCount }), invoiceCount, billProgramsDone, lookupFailed: false };
   } catch {
-    return empty;
+    return lockedUnknown;
   }
 }
 

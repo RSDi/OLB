@@ -52,6 +52,10 @@ export function billingStepRank(key: string | null | undefined): number | null {
   return i >= 0 ? i : null;
 }
 
+export function isBillingStep(key: string | null | undefined): boolean {
+  return billingStepRank(key) != null;
+}
+
 // Keeps a section's own steps, with the three billing keys clustered in
 // BILLING_STEP_ORDER at the earliest of their sort_orders.
 export function orderHostedSteps<T extends { step_key?: string | null; sort_order: number }>(steps: T[]): T[] {
@@ -422,6 +426,21 @@ export function uncheckBillProgramsError(invoiceCount: number): string | null {
 
 export function planFeeChanged(current: { team_fee_cents: number | null }, next: { team_fee_cents: number | null }): boolean {
   return (current.team_fee_cents ?? null) !== (next.team_fee_cents ?? null);
+}
+
+export function hostedTeamInvoiceKeys(
+  team: { id: string; name: string; opponent_id: string | null },
+  opponent: { contact_id: string | null; name: string } | null
+): string[] {
+  const keys = new Set<string>([team.id]);
+  const named = team.name.trim().toLowerCase();
+  if (named) keys.add(`name:${named}`);
+  if (opponent) {
+    if (opponent.contact_id) keys.add(opponent.contact_id);
+    const oname = opponent.name.trim().toLowerCase();
+    if (oname) keys.add(`name:${oname}`);
+  }
+  return [...keys];
 }
 
 // What a team pays: its own fee, else nothing for one of ours, else the

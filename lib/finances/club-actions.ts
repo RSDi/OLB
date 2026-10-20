@@ -21,6 +21,7 @@ import {
   familySpill,
   hostedEventDeleteError,
   hostedEventPlanLinkError,
+  hostedPlanInBoardSeason,
   NELSONS_LABEL,
   NELSONS_REF,
   splitEvenly,
@@ -45,13 +46,13 @@ function refresh() {
   revalidatePath("/portal/settings");
 }
 
-async function gate(): Promise<{ db: Admin; boardId: string; userId: string } | { error: string }> {
+async function gate(): Promise<{ db: Admin; boardId: string; boardSeason: string; userId: string } | { error: string }> {
   const g = await requireFinances();
   if ("error" in g) return { error: g.error };
   const db = createAdminClient();
   const board = await latestBoard(db);
   if (!board) return { error: "There's no season set up yet." };
-  return { db, boardId: board.id, userId: g.userId };
+  return { db, boardId: board.id, boardSeason: board.season, userId: g.userId };
 }
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -316,7 +317,7 @@ export async function saveHostedEvent(input: {
   }
   const weekendIds: string[] = [];
   if (planWeekendId !== undefined) {
-    const linked = await linkHostedEventPlan(g.db, g.userId, eventId!, planWeekendId);
+    const linked = await linkHostedEventPlan(g.db, g.userId, eventId!, planWeekendId, g.boardSeason);
     if (linked.error) return linked;
     weekendIds.push(...linked.weekendIds);
   }
@@ -329,7 +330,8 @@ async function linkHostedEventPlan(
   db: Admin,
   userId: string,
   eventId: string,
-  planWeekendId: string | null
+  planWeekendId: string | null,
+  boardSeason: string
 ): Promise<{ error?: string; weekendIds: string[] }> {
   const { data: current, error: curErr } = await db.from("hs_hosted").select("weekend_id").eq("finance_event_id", eventId);
   if (curErr) {
@@ -339,18 +341,45 @@ async function linkHostedEventPlan(
   const previous = ((current as { weekend_id: string }[] | null) ?? []).map((r) => r.weekend_id);
   const touched = new Set(previous);
   if (planWeekendId) {
-    const { data } = await db.from("hs_hosted").select("weekend_id, hosted").eq("weekend_id", planWeekendId).maybeSingle();
-    const plan = data as { weekend_id: string; hosted: boolean } | null;
-    const blocked = hostedEventPlanLinkError({ planWeekendId, planFound: !!plan, hosted: !!plan?.hosted });
+    const { data, error: planErr } = await db
+      .from("hs_hosted")
+      .select("weekend_id, hosted, finance_event_id")
+      .eq("weekend_id", planWeekendId)
+      .maybeSingle();
+    if (planErr) return { error: planErr.message, weekendIds: [...touched] };
+    const plan = data as { weekend_id: string; hosted: boolean; finance_event_id: string | null } | null;
+    const { data: w, error: wErr } = await db
+      .from("hs_weekends")
+      .select("id, season:hs_seasons(season)")
+      .eq("id", planWeekendId)
+      .maybeSingle();
+    if (wErr) return { error: wErr.message, weekendIds: [...touched] };
+    const raw = w as { id: string; season: { season: number } | { season: number }[] | null } | null;
+    const s = raw ? (Array.isArray(raw.season) ? raw.season[0] : raw.season) : null;
+    let linkedToOtherLive = false;
+    if (plan?.finance_event_id && plan.finance_event_id !== eventId) {
+      const { data: other, error: oErr } = await db.from("olb_hosted_events").select("id, archived_at").eq("id", plan.finance_event_id).maybeSingle();
+      if (oErr) return { error: oErr.message, weekendIds: [...touched] };
+      const ev = other as { id: string; archived_at: string | null } | null;
+      linkedToOtherLive = !!ev && !ev.archived_at;
+    }
+    const blocked = hostedEventPlanLinkError({
+      planWeekendId,
+      planFound: !!plan && !!raw,
+      hosted: !!plan?.hosted,
+      inSeason: hostedPlanInBoardSeason(boardSeason, s?.season ?? null),
+      linkedToOtherLive,
+    });
     if (blocked) return { error: blocked, weekendIds: [...touched] };
     touched.add(planWeekendId);
+    // Set the new link first so a failed clear never leaves the event unlinked.
+    // A true single-transaction RPC would need a migration; this order is the no-migration path.
+    const { error: setErr } = await db.from("hs_hosted").update({ finance_event_id: eventId, updated_by: userId }).eq("weekend_id", planWeekendId);
+    if (setErr) return { error: setErr.message, weekendIds: [...touched] };
   }
-  if (previous.length) {
-    const { error } = await db.from("hs_hosted").update({ finance_event_id: null, updated_by: userId }).eq("finance_event_id", eventId);
-    if (error) return { error: error.message, weekendIds: [...touched] };
-  }
-  if (planWeekendId) {
-    const { error } = await db.from("hs_hosted").update({ finance_event_id: eventId, updated_by: userId }).eq("weekend_id", planWeekendId);
+  const stale = previous.filter((id) => id !== planWeekendId);
+  if (stale.length) {
+    const { error } = await db.from("hs_hosted").update({ finance_event_id: null, updated_by: userId }).in("weekend_id", stale);
     if (error) return { error: error.message, weekendIds: [...touched] };
   }
   return { weekendIds: [...touched] };

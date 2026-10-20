@@ -88,13 +88,14 @@ export async function linkFinanceEvent(weekendId: string, eventId: string): Prom
   } else if (eventId) {
     const boardId = await boardFor(g.db, w.season);
     if (!boardId) return { error: "There's no season set up in Finances yet." };
-    const { data } = await g.db
+    const { data, error: evErr } = await g.db
       .from("olb_hosted_events")
       .select("id")
       .eq("id", eventId)
       .eq("board_id", boardId)
       .is("archived_at", null)
       .maybeSingle();
+    if (evErr) return { error: evErr.message };
     if (!data) return { error: "That tournament isn't in Finances any more." };
   }
   const { error } = await g.db
@@ -112,7 +113,8 @@ export async function sendToBudget(weekendId: string): Promise<HostedResult> {
   const g = await gate();
   if ("error" in g) return g;
   const db = g.db;
-  const { data: p } = await db.from("hs_hosted").select(PLAN_COLUMNS).eq("weekend_id", weekendId).maybeSingle();
+  const { data: p, error: planErr } = await db.from("hs_hosted").select(PLAN_COLUMNS).eq("weekend_id", weekendId).maybeSingle();
+  if (planErr) return { error: planErr.message };
   const plan = p as HostedPlan | null;
   if (!plan) return { error: "Tournament planning isn't set up in the database yet (migration 0150)." };
   if (!plan.finance_event_id) return { error: "Link the tournament to Finances first." };
@@ -120,13 +122,14 @@ export async function sendToBudget(weekendId: string): Promise<HostedResult> {
   if (!w) return { error: "That weekend isn't on the schedule any more." };
   const boardId = await boardFor(db, w.season);
   if (!boardId) return { error: "There's no season set up in Finances yet." };
-  const { data: ev } = await db
+  const { data: ev, error: evErr } = await db
     .from("olb_hosted_events")
     .select("id, board_id, name")
     .eq("id", plan.finance_event_id)
     .eq("board_id", boardId)
     .is("archived_at", null)
     .maybeSingle();
+  if (evErr) return { error: evErr.message };
   const event = ev as { id: string; board_id: string; name: string } | null;
   if (!event) return { error: "That tournament isn't in Finances any more. Link it again." };
 

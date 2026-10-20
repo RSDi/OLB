@@ -20,7 +20,9 @@ import {
   daysForWeekend,
   feeLockSaveError,
   fillCourts,
+  hostedTeamInvoiceKeys,
   initials,
+  isBillingStep,
   parseCount,
   placementBracket,
   placesLabel,
@@ -246,6 +248,11 @@ export async function updateStep(
 export async function deleteStep(weekendId: string, id: string): Promise<HostedResult> {
   const g = await gate();
   if ("error" in g) return g;
+  const { data: existing, error: readErr } = await g.db.from("hs_hosted_steps").select("step_key").eq("id", id).eq("weekend_id", weekendId).maybeSingle();
+  if (readErr) return { error: readErr.message };
+  if (isBillingStep((existing as { step_key: string | null } | null)?.step_key)) {
+    return { error: "That step stays on the checklist. It tracks billing." };
+  }
   const { error } = await g.db.from("hs_hosted_steps").delete().eq("id", id).eq("weekend_id", weekendId);
   if (error) return { error: error.message };
   refresh(weekendId);
@@ -311,11 +318,13 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
   const lock = await loadFeeLockState(weekendId);
   if (lock.locked) {
     if (!input.id) {
-      if (fee != null) return { error: feeLockSaveError(lock.invoiceCount) };
+      if (fee != null || input.ours) return { error: feeLockSaveError(lock.invoiceCount) };
     } else {
-      const { data: cur } = await g.db.from("hs_hosted_teams").select("fee_cents").eq("id", input.id).eq("weekend_id", weekendId).maybeSingle();
-      const current = (cur as { fee_cents: number | null } | null)?.fee_cents ?? null;
-      if (current !== fee) return { error: feeLockSaveError(lock.invoiceCount) };
+      const { data: cur, error: curErr } = await g.db.from("hs_hosted_teams").select("fee_cents, ours").eq("id", input.id).eq("weekend_id", weekendId).maybeSingle();
+      if (curErr) return { error: curErr.message };
+      const current = cur as { fee_cents: number | null; ours: boolean } | null;
+      if (!current) return { error: "That team isn't there any more." };
+      if (current.fee_cents !== fee || !!current.ours !== !!input.ours) return { error: feeLockSaveError(lock.invoiceCount) };
     }
   }
   const row = {
@@ -338,10 +347,41 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
 export async function deleteTeam(weekendId: string, id: string): Promise<HostedResult> {
   const g = await gate();
   if ("error" in g) return g;
+  const blocked = await teamHasLiveInvoice(weekendId, id);
+  if (blocked) return blocked;
   const { error } = await g.db.from("hs_hosted_teams").delete().eq("id", id).eq("weekend_id", weekendId);
   if (error) return { error: error.message };
   refresh(weekendId);
   return {};
+}
+
+async function teamHasLiveInvoice(weekendId: string, teamId: string): Promise<HostedResult | null> {
+  try {
+    const { createAdminClient } = await import("../supabase/admin");
+    const db = createAdminClient();
+    const { data: team, error: teamErr } = await db
+      .from("hs_hosted_teams")
+      .select("id, name, opponent_id")
+      .eq("id", teamId)
+      .eq("weekend_id", weekendId)
+      .maybeSingle();
+    if (teamErr) return { error: teamErr.message };
+    const t = team as { id: string; name: string; opponent_id: string | null } | null;
+    if (!t) return { error: "That team isn't there any more." };
+    let opponent: { contact_id: string | null; name: string } | null = null;
+    if (t.opponent_id) {
+      const { data: opp, error: oppErr } = await db.from("hs_opponents").select("contact_id, name").eq("id", t.opponent_id).maybeSingle();
+      if (oppErr) return { error: oppErr.message };
+      opponent = (opp as { contact_id: string | null; name: string } | null) ?? null;
+    }
+    const keys = hostedTeamInvoiceKeys(t, opponent);
+    const inv = await db.from("inv_invoices").select("id").eq("host_event_id", weekendId).in("host_customer_id", keys).is("voided_at", null).limit(1);
+    if (inv.error) return { error: inv.error.message };
+    if ((inv.data ?? []).length) return { error: "Void its invoice first." };
+    return null;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Void its invoice first." };
+  }
 }
 
 // Adds a team for each program coming (Yes on the HS Schedule) and each of

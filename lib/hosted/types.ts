@@ -152,6 +152,8 @@ export interface HostedFeeLock {
   locked: boolean;
   invoiceCount: number;
   billProgramsDone: boolean;
+  // Invoice lookup failed: treat as locked and refuse fee saves.
+  lookupFailed: boolean;
 }
 
 export interface HostedPageData {

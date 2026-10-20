@@ -687,10 +687,32 @@ export function hostedEventDeleteError(input: {
   return `Can't remove this tournament: ${list}. ${how}`;
 }
 
+// Board season "2026-2027" is HS season 2026 (hs_seasons.season).
+export function hsSeasonFromBoardSeason(boardSeason: string): number | null {
+  const m = /^(\d{4})-(\d{4})$/.exec(boardSeason.trim());
+  if (!m) return null;
+  const start = Number(m[1]);
+  const end = Number(m[2]);
+  return end === start + 1 ? start : null;
+}
+
+export function hostedPlanInBoardSeason(boardSeason: string, hsSeason: number | null | undefined): boolean {
+  const want = hsSeasonFromBoardSeason(boardSeason);
+  return want != null && hsSeason === want;
+}
+
 // Linking a Budget tournament to an HS Schedule plan (hs_hosted.finance_event_id).
-export function hostedEventPlanLinkError(input: { planWeekendId: string | null | undefined; planFound: boolean; hosted: boolean }): string | null {
+export function hostedEventPlanLinkError(input: {
+  planWeekendId: string | null | undefined;
+  planFound: boolean;
+  hosted: boolean;
+  inSeason?: boolean;
+  linkedToOtherLive?: boolean;
+}): string | null {
   if (!input.planWeekendId) return null;
   if (!input.planFound) return "That tournament plan isn't there any more.";
   if (!input.hosted) return "That weekend isn't a tournament we host. Tick We host this tournament on the HS Schedule first.";
+  if (input.inSeason === false) return "That weekend isn't in this season.";
+  if (input.linkedToOtherLive) return "That plan is already linked to another tournament. Unlink it first.";
   return null;
 }
