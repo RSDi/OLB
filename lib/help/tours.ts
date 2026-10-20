@@ -1329,10 +1329,16 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Bill other programs from **Finances → Invoices**: team fees, co-host splits, gym shares. Paid by Venmo or check. **Send invoice** and **Mark as paid** need the **Invoicing** permission.",
       },
       {
+        target: "invoices-gmail",
+        click: "payments-tab-invoices",
+        title: "Connect Gmail",
+        body: "On the live site, a super admin taps **Connect Gmail** so invoices send from that account. Whoever can invoice still sends through it and sees the status. If you can invoice but aren't a super admin, you'll see **Only a super admin can connect or change the Gmail sender.** **Reconnect Gmail** is only for a super admin. On a **Draft**, **Send again** if the last send failed. Previews don't connect Gmail.",
+      },
+      {
         target: "invoices-list",
         click: "payments-tab-invoices",
         title: "The list",
-        body: "Open, overdue, collected and drafts. Tap an invoice to send it, record Venmo or check, or change reminders.",
+        body: "Open, overdue, collected and drafts. Tap a **Draft** to **Send invoice**, record Venmo or check, or change reminders. Once sent, **Send invoice** is gone — **Void invoice** and write a new one.",
       },
     ],
   },

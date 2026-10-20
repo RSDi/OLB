@@ -122,6 +122,47 @@ test("logged-only send is not Sent", async () => {
   if (got.ok) assert.equal(got.data.sentAt, null);
 });
 
+test("send refuses an already-sent or paid invoice and does not email again", async () => {
+  const db = new MemoryDb();
+  const captured: InvoiceEmail[] = [];
+  const svc = createInvoicingService(
+    makeAdapter({
+      db,
+      send: async (mail) => {
+        captured.push(mail);
+        return { ok: true };
+      },
+    })
+  );
+  const created = await svc.create({
+    customerName: "Prairie",
+    customerEmail: "a@example.com",
+    dueOn: "2026-11-01",
+    lines: [{ description: "Team fee", qty: 1, unitCents: 31500 }],
+  });
+  assert.equal(created.ok, true);
+  if (!created.ok) return;
+  const sent = await svc.send(created.data.id);
+  assert.equal(sent.ok, true);
+  captured.length = 0;
+  const again = await svc.send(created.data.id);
+  assert.equal(again.ok, false);
+  if (!again.ok) assert.match(again.error, /already sent/i);
+  assert.equal(captured.length, 0);
+
+  const paid = await svc.recordPayment(created.data.id, {
+    method: "venmo",
+    amountCents: 31500,
+    paidOn: "2026-10-19",
+    reference: "paid",
+  });
+  assert.equal(paid.ok, true);
+  const afterPaid = await svc.send(created.data.id);
+  assert.equal(afterPaid.ok, false);
+  if (!afterPaid.ok) assert.match(afterPaid.error, /already sent/i);
+  assert.equal(captured.length, 0);
+});
+
 test("successful send stamps sent_at and uses every program email", async () => {
   const db = new MemoryDb();
   const captured: InvoiceEmail[] = [];

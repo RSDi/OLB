@@ -145,9 +145,9 @@ export function InvoiceDetail({
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
           {tot.balanceCents > 0 && invoice.sentAt && !voided && <ActionBtn canInvoice={canInvoice} label="Mark as paid" kind="accent" onClick={() => setPayOpen(true)} />}
-          {!voided && (
+          {draft && (
             <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-              <ActionBtn canInvoice={canInvoice} label={draft ? "Send invoice" : "Resend invoice"} kind="ink" onClick={send} />
+              <ActionBtn canInvoice={canInvoice} label="Send invoice" kind="ink" onClick={send} />
               {sendError && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{sendError}</div>}
             </span>
           )}
