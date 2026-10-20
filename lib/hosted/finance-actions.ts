@@ -86,7 +86,15 @@ export async function linkFinanceEvent(weekendId: string, eventId: string): Prom
     if (error) return { error: error.message.includes("duplicate") ? "Finances already has a tournament by that name. Pick it from the list." : error.message };
     id = (data as { id: string }).id;
   } else if (eventId) {
-    const { data } = await g.db.from("olb_hosted_events").select("id").eq("id", eventId).maybeSingle();
+    const boardId = await boardFor(g.db, w.season);
+    if (!boardId) return { error: "There's no season set up in Finances yet." };
+    const { data } = await g.db
+      .from("olb_hosted_events")
+      .select("id")
+      .eq("id", eventId)
+      .eq("board_id", boardId)
+      .is("archived_at", null)
+      .maybeSingle();
     if (!data) return { error: "That tournament isn't in Finances any more." };
   }
   const { error } = await g.db
@@ -108,11 +116,19 @@ export async function sendToBudget(weekendId: string): Promise<HostedResult> {
   const plan = p as HostedPlan | null;
   if (!plan) return { error: "Tournament planning isn't set up in the database yet (migration 0150)." };
   if (!plan.finance_event_id) return { error: "Link the tournament to Finances first." };
-  const { data: ev } = await db.from("olb_hosted_events").select("id, board_id, name").eq("id", plan.finance_event_id).maybeSingle();
-  const event = ev as { id: string; board_id: string; name: string } | null;
-  if (!event) return { error: "That tournament isn't in Finances any more. Link it again." };
   const w = await weekendOf(db, weekendId);
   if (!w) return { error: "That weekend isn't on the schedule any more." };
+  const boardId = await boardFor(db, w.season);
+  if (!boardId) return { error: "There's no season set up in Finances yet." };
+  const { data: ev } = await db
+    .from("olb_hosted_events")
+    .select("id, board_id, name")
+    .eq("id", plan.finance_event_id)
+    .eq("board_id", boardId)
+    .is("archived_at", null)
+    .maybeSingle();
+  const event = ev as { id: string; board_id: string; name: string } | null;
+  if (!event) return { error: "That tournament isn't in Finances any more. Link it again." };
 
   const [{ data: m }, { data: t }, { data: gm }, { data: l }] = await Promise.all([
     db.from("hs_hosted_money").select(MONEY_COLUMNS).eq("weekend_id", weekendId).order("sort_order"),

@@ -655,3 +655,34 @@ export function lastChoiceFor(
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
   return mine[0] ? { destination: mine[0].destination, player_id: mine[0].player_id, fund_id: mine[0].fund_id } : null;
 }
+
+// Whether a tournament we host can be removed. Soft-archive (archived_at),
+// like programs. Voided costs, income and invoices don't block; a live HS
+// Schedule plan does — unlinking would hide the tournament from Finances
+// while the plan still points at it.
+export function hostedEventDeleteError(input: {
+  found: boolean;
+  archived: boolean;
+  liveCosts: number;
+  liveIncome: number;
+  liveInvoices: number;
+  planWeekendId: string | null;
+}): string | null {
+  if (!input.found) return "That tournament isn't there any more. Refresh the page.";
+  if (input.archived) return "That tournament was already removed.";
+  const reasons: string[] = [];
+  if (input.planWeekendId) reasons.push("it's linked to a plan on the HS Schedule");
+  if (input.liveCosts > 0) reasons.push("it still has costs on the budget");
+  if (input.liveIncome > 0) reasons.push("it still has income");
+  if (input.liveInvoices > 0) reasons.push("it still has invoices");
+  if (!reasons.length) return null;
+  const list =
+    reasons.length === 1 ? reasons[0] : reasons.length === 2 ? `${reasons[0]} and ${reasons[1]}` : `${reasons.slice(0, -1).join(", ")}, and ${reasons[reasons.length - 1]}`;
+  const how =
+    input.planWeekendId && input.liveCosts + input.liveIncome + input.liveInvoices === 0
+      ? "Open its plan and unlink it from Finances first."
+      : input.planWeekendId
+        ? "Void those first, and unlink it from the HS Schedule."
+        : "Void those first.";
+  return `Can't remove this tournament: ${list}. ${how}`;
+}

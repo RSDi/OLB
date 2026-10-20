@@ -232,7 +232,7 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
       db.from("olb_budget_lines").select(LINE_COLUMNS).eq("board_id", b).is("voided_at", null).order("month", { nullsFirst: true }).order("created_at"),
       db.from("olb_expense_payments").select(EXPENSE_PAYMENT_COLUMNS).eq("board_id", b).order("paid_on"),
       db.from("olb_income").select(INCOME_COLUMNS).eq("board_id", b).order("received_on", { nullsFirst: false }).order("created_at"),
-      db.from("olb_hosted_events").select("id, name, starts_on, ends_on, note, archived_at").eq("board_id", b).order("starts_on"),
+      db.from("olb_hosted_events").select("id, name, starts_on, ends_on, note, archived_at").eq("board_id", b).is("archived_at", null).order("starts_on"),
       db.from("olb_programs").select(PROGRAM_COLUMNS).eq("board_id", b).order("starts_on", { nullsFirst: false }),
       db.from("olb_program_signups").select(`${SIGNUP_COLUMNS}, charge:olb_charges(id, player_id, amount_cents, voided_at)`).eq("board_id", b).order("created_at"),
       db.from("olb_program_funds").select("id, name, description, archived_at").eq("board_id", b).order("sort_order"),

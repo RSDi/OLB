@@ -3,7 +3,8 @@
 // Club finances (0131): Settings → Fees and the Budget, Income, Programs and
 // Fundraising tabs on Payments. The Payments permission (the Treasurer;
 // super-admins always). Writes run with the service role after the check,
-// like the uniform actions. Nothing is deleted: entries are voided.
+// like the uniform actions. Nothing is deleted: entries are voided
+// (hosted tournaments are archived).
 
 import { revalidatePath } from "next/cache";
 import { requireFinances } from "../auth/guards";
@@ -18,6 +19,7 @@ import {
   cleanProgramInput,
   cleanShiftInput,
   familySpill,
+  hostedEventDeleteError,
   NELSONS_LABEL,
   NELSONS_REF,
   splitEvenly,
@@ -277,16 +279,68 @@ export async function splitAcrossTeam(input: {
 
 // ─── Tournaments we host ────────────────────────────────────────────────────
 
+// Name, dates and note only. An id updates that row on this season's board;
+// archived_at, board_id and the HS Schedule link stay as they are.
 export async function saveHostedEvent(input: { id?: string; name: string; starts_on: string; ends_on: string; note: string }): Promise<ClubResult> {
   const g = await gate();
   if ("error" in g) return g;
   const name = input.name.trim().slice(0, 80);
   if (!name) return { error: "Give the tournament a name, like MRS." };
   for (const d of [input.starts_on, input.ends_on]) if (d && !ISO_DAY.test(d)) return { error: "Check the dates." };
+  if (input.id) {
+    const { data } = await g.db.from("olb_hosted_events").select("id, archived_at").eq("id", input.id).eq("board_id", g.boardId).maybeSingle();
+    const ev = data as { id: string; archived_at: string | null } | null;
+    if (!ev) return { error: "That tournament isn't there any more. Refresh the page." };
+    if (ev.archived_at) return { error: "That tournament was removed." };
+  }
   const row = { name, starts_on: input.starts_on || null, ends_on: input.ends_on || null, note: input.note.trim().slice(0, 500) || null };
   const { error } = input.id
-    ? await g.db.from("olb_hosted_events").update(row).eq("id", input.id).eq("board_id", g.boardId)
+    ? await g.db.from("olb_hosted_events").update(row).eq("id", input.id).eq("board_id", g.boardId).is("archived_at", null)
     : await g.db.from("olb_hosted_events").insert({ ...row, board_id: g.boardId });
+  if (error) return { error: error.message };
+  refresh();
+  return {};
+}
+
+// Soft-archive (archived_at, 0131). Refuses when the tournament still has
+// live costs, income or invoices, or is linked to an HS Schedule plan.
+export async function deleteHostedEvent(id: string): Promise<ClubResult> {
+  const g = await gate();
+  if ("error" in g) return g;
+  const { data } = await g.db.from("olb_hosted_events").select("id, archived_at").eq("id", id).eq("board_id", g.boardId).maybeSingle();
+  const ev = data as { id: string; archived_at: string | null } | null;
+
+  const [costs, income, plan] = await Promise.all([
+    g.db.from("olb_budget_lines").select("id").eq("event_id", id).eq("board_id", g.boardId).is("voided_at", null).limit(1),
+    g.db.from("olb_income").select("id").eq("event_id", id).eq("board_id", g.boardId).is("voided_at", null).limit(1),
+    g.db.from("hs_hosted").select("weekend_id").eq("finance_event_id", id).limit(1),
+  ]);
+  if (costs.error) return { error: costs.error.message };
+  if (income.error) return { error: income.error.message };
+  if (plan.error) return { error: plan.error.message };
+  const planWeekendId = ((plan.data as { weekend_id: string }[] | null) ?? [])[0]?.weekend_id ?? null;
+
+  // Invoices are keyed by the HS weekend (0152). Also check the finance
+  // event id in case one was stored that way. A lookup error refuses delete.
+  let liveInvoices = 0;
+  const invoiceKeys = [id, planWeekendId].filter((x): x is string => !!x);
+  if (invoiceKeys.length) {
+    const inv = await g.db.from("inv_invoices").select("id").in("host_event_id", invoiceKeys).is("voided_at", null).limit(1);
+    if (inv.error) return { error: inv.error.message };
+    liveInvoices = (inv.data ?? []).length;
+  }
+
+  const blocked = hostedEventDeleteError({
+    found: !!ev,
+    archived: !!ev?.archived_at,
+    liveCosts: (costs.data ?? []).length,
+    liveIncome: (income.data ?? []).length,
+    liveInvoices,
+    planWeekendId,
+  });
+  if (blocked) return { error: blocked };
+
+  const { error } = await g.db.from("olb_hosted_events").update({ archived_at: now() }).eq("id", id).eq("board_id", g.boardId).is("archived_at", null);
   if (error) return { error: error.message };
   refresh();
   return {};

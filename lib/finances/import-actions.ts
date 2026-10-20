@@ -180,7 +180,10 @@ export async function previewFinanceImport(form: FormData): Promise<ImportPrevie
 }
 
 async function idFor(db: Admin, table: string, boardId: string, name: string, extra: Record<string, unknown> = {}): Promise<string> {
-  const { data } = await db.from(table).select("id").eq("board_id", boardId).eq("name", name).limit(1);
+  let q = db.from(table).select("id").eq("board_id", boardId).eq("name", name);
+  // Archived tournaments stay out of the match so import makes a live row.
+  if (table === "olb_hosted_events") q = q.is("archived_at", null);
+  const { data } = await q.limit(1);
   const found = (data as { id: string }[] | null)?.[0];
   if (found) return found.id;
   const { data: made, error } = await db.from(table).insert({ board_id: boardId, name, ...extra }).select("id").single();

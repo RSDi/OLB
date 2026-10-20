@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 19, 2026";
+export const GUIDE_UPDATED = "October 20, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -811,7 +811,7 @@ This page does not replace **Film**. Play, download, edit, Slack, and playlists 
 - Tap a line, then **Record a payment**: the **Amount**, the date, how it was paid and the **Check number**. A deposit now and the rest later are two payments on one line.
 - **Split across team** passes a cost on to a team's families: pick the team and the players, then **Split the total** or charge the **Same amount each**. Each player gets a **Team cost** charge on their family's account.
 - **Edit** changes a line; **Void** crosses it out (void its payments first). Nothing is deleted.
-- **Groups** renames groups and adds new ones. **Tournaments we host** adds a tournament the club runs, like MRS, so its costs and income add up on their own. One planned on the HS Schedule says **Open its plan**: its plan's **Money** tab puts its estimate here with **Put it in the budget** (search **MRS** to see those lines).
+- **Groups** renames groups and adds new ones. **Tournaments we host** adds a tournament the club runs, like MRS, so its costs and income add up on their own. **Edit** changes its name, first day, last day or note; **Delete** removes one that has no costs, income, invoices or HS Schedule plan (void those or unlink the plan first). One planned on the HS Schedule says **Open its plan**: its plan's **Money** tab puts its estimate here with **Put it in the budget** (search **MRS** to see those lines).
 - **Import spreadsheet** brings in this season's spreadsheet: Payables, Receivables, the workouts and clinics sheets and Nelson's Produce. It shows what it will add, asks about any team or Nelson's worker it can't match (each worker's money goes to the player you pick first, then on to their brothers once that player's paid), and checks the Regular Season sheet against Payments before you tap **Import**. Afterwards it can also **Add uniform charges** for the jerseys and shorts on Regular Season (a Uniform charge each, like "Jersey (AM)", at the prices you enter), and **Match payments to the sheet**: what Regular Season says was paid (less Nelson's, which comes in as credits) that Payments doesn't have yet, recorded as a payment "From the spreadsheet". Both skip what's already there (a plain "Uniform" charge counts as the jersey and shorts). If an earlier run charged a jersey and shorts on top of someone's own uniform charge, **Remove duplicate uniform charges** takes the import's off. For the sheet's "CK" players still charged registration, **Take their fee off** adds a Coach's kid credit for the whole fee. **Balances that differ from the sheet** lists each family that owes a different amount here than the sheet's Amount Due, with what each side counts for every player, so you can find the difference. **Undo the import** takes back only what it added.`,
   },
   {
