@@ -2,6 +2,8 @@
 // splits, fundraiser shifts, programs, the Snapshot, and the forms' clean-up.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { DEFAULT_FEE_TIERS, cleanTiers, feeTiersFrom, tierForAge, tierText } from "../../lib/finances/fees.ts";
 import { FEE_TIERS, isHighSchoolTier, suggestedTier } from "../../lib/teams/registration-form.ts";
 import { registrationFeeCents } from "../../lib/finances/logic.ts";
@@ -18,6 +20,7 @@ import {
   signupState,
   coveredByNelsons,
   hostedEventDeleteError,
+  hostedEventPlanLinkError,
   NELSONS_REF,
   snapshotCsv,
   spendBy,
@@ -203,6 +206,7 @@ function club(over: Partial<ClubData> = {}): ClubData {
     lineCharges: [],
     income: [],
     events: [],
+    hostedPlans: [],
     programs: [],
     signups: [],
     signupCharges: [],
@@ -500,5 +504,26 @@ test("deleteHostedEvent archives a bare tournament and refuses live ties", () =>
     "Can't remove this tournament: it's linked to a plan on the HS Schedule, it still has costs on the budget, and it still has income. Void those first, and unlink it from the HS Schedule."
   );
   assert.equal(hostedEventDeleteError({ ...deleteOk, liveCosts: 0, liveIncome: 0, liveInvoices: 0 }), null);
+});
+
+test("saveHostedEvent can link a Budget row to a hosted weekend plan", () => {
+  assert.equal(hostedEventPlanLinkError({ planWeekendId: null, planFound: false, hosted: false }), null);
+  assert.equal(hostedEventPlanLinkError({ planWeekendId: "", planFound: false, hosted: false }), null);
+  assert.equal(hostedEventPlanLinkError({ planWeekendId: "w1", planFound: false, hosted: false }), "That tournament plan isn't there any more.");
+  assert.equal(
+    hostedEventPlanLinkError({ planWeekendId: "w1", planFound: true, hosted: false }),
+    "That weekend isn't a tournament we host. Tick We host this tournament on the HS Schedule first."
+  );
+  assert.equal(hostedEventPlanLinkError({ planWeekendId: "w1", planFound: true, hosted: true }), null);
+  const actions = readFileSync(join(import.meta.dirname, "../../lib/finances/club-actions.ts"), "utf8");
+  assert.match(actions, /plan_weekend_id/);
+  assert.match(actions, /hostedEventPlanLinkError/);
+  assert.match(actions, /finance_event_id/);
+  assert.match(actions, /hostedEventDeleteError/);
+  const view = readFileSync(join(import.meta.dirname, "../../app/portal/payments/BudgetView.tsx"), "utf8");
+  assert.match(view, /Tournament plan/);
+  assert.match(view, /plan_weekend_id/);
+  assert.match(view, /hostedPlans/);
+  assert.match(view, /Open its plan/);
 });
 

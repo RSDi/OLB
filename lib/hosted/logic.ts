@@ -42,6 +42,27 @@ export const DEFAULT_STEPS: { section: StepSection; label: string; key?: string 
   { section: "game_day", label: "Set-up and tear-down crew" },
 ];
 
+// Billing steps under Teams, in the order the board walks them: set and bill,
+// then invoices sent, then collected. Display uses this even when an older
+// plan stored them in another sort_order.
+export const BILLING_STEP_ORDER = ["bill_programs", "invoices_sent", "team_fees_collected"] as const;
+
+export function billingStepRank(key: string | null | undefined): number | null {
+  const i = BILLING_STEP_ORDER.indexOf((key ?? "") as (typeof BILLING_STEP_ORDER)[number]);
+  return i >= 0 ? i : null;
+}
+
+// Keeps a section's own steps, with the three billing keys clustered in
+// BILLING_STEP_ORDER at the earliest of their sort_orders.
+export function orderHostedSteps<T extends { step_key?: string | null; sort_order: number }>(steps: T[]): T[] {
+  const billing = steps.filter((s) => billingStepRank(s.step_key) != null).sort((a, b) => (billingStepRank(a.step_key) ?? 0) - (billingStepRank(b.step_key) ?? 0));
+  const rest = steps.filter((s) => billingStepRank(s.step_key) == null).sort((a, b) => a.sort_order - b.sort_order);
+  if (billing.length === 0) return rest;
+  const first = Math.min(...billing.map((s) => s.sort_order));
+  const insertAt = rest.filter((s) => s.sort_order < first).length;
+  return [...rest.slice(0, insertAt), ...billing, ...rest.slice(insertAt)];
+}
+
 export function stepProgress(steps: Pick<HostedStep, "done_on">[]): { done: number; total: number } {
   return { done: steps.filter((s) => s.done_on).length, total: steps.length };
 }
@@ -376,6 +397,32 @@ export function advance(games: HostedGame[]): { id: string; home_team_id: string
 }
 
 // ─── Money ──────────────────────────────────────────────────────────────────
+
+// Team fee ($/team) is what invoices bill. Courts and the rest of Details
+// stay a what-if planner; they don't change a program's invoice.
+export function feesAreLocked(input: { billProgramsDone: boolean; invoiceCount: number }): boolean {
+  return input.billProgramsDone || input.invoiceCount > 0;
+}
+
+export function feeLockNote(invoiceCount: number): string {
+  return invoiceCount > 0
+    ? "Locked because invoices exist. Void invoices first to change."
+    : "Locked because fees are set. Uncheck Set team fees to change.";
+}
+
+export function feeLockSaveError(invoiceCount: number): string {
+  return invoiceCount > 0
+    ? "Team fees are locked because invoices exist. Void invoices first to change them."
+    : "Team fees are locked because Set team fees is checked. Uncheck it to change them.";
+}
+
+export function uncheckBillProgramsError(invoiceCount: number): string | null {
+  return invoiceCount > 0 ? "Void invoices first." : null;
+}
+
+export function planFeeChanged(current: { team_fee_cents: number | null }, next: { team_fee_cents: number | null }): boolean {
+  return (current.team_fee_cents ?? null) !== (next.team_fee_cents ?? null);
+}
 
 // What a team pays: its own fee, else nothing for one of ours, else the
 // tournament's team fee.

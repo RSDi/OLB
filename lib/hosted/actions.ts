@@ -18,15 +18,18 @@ import {
   advance,
   cleanDays,
   daysForWeekend,
+  feeLockSaveError,
   fillCourts,
   initials,
   parseCount,
   placementBracket,
   placesLabel,
+  planFeeChanged,
   roundRobin,
   seeded,
   slotsFor,
   toMinutes,
+  uncheckBillProgramsError,
   type Side,
 } from "./logic";
 import {
@@ -44,7 +47,7 @@ import {
   type MoneyKind,
   type StepSection,
 } from "./types";
-import { loadHostedPage } from "./data";
+import { loadFeeLockState, loadHostedPage } from "./data";
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 
@@ -158,6 +161,12 @@ export async function savePlan(weekendId: string, input: PlanInput): Promise<Hos
     fee = parseAmount(input.team_fee);
     if (fee == null || fee < 0) return { error: "Enter the team fee in dollars, like 240, or leave it blank." };
   }
+  const lock = await loadFeeLockState(weekendId);
+  if (lock.locked) {
+    const { data: cur } = await g.db.from("hs_hosted").select("team_fee_cents").eq("weekend_id", weekendId).maybeSingle();
+    const current = cur as { team_fee_cents: number | null } | null;
+    if (current && planFeeChanged(current, { team_fee_cents: fee })) return { error: feeLockSaveError(lock.invoiceCount) };
+  }
   const { error } = await g.db
     .from("hs_hosted")
     .update({
@@ -216,12 +225,16 @@ export async function updateStep(
   if (patch.done !== undefined) {
     const { data: existing } = await g.db.from("hs_hosted_steps").select("step_key").eq("id", id).eq("weekend_id", weekendId).maybeSingle();
     const auto = (existing as { step_key: string | null } | null)?.step_key;
-    if (auto !== "invoices_sent" && auto !== "team_fees_collected" && auto !== "bill_programs") {
-      row.done_on = patch.done ? new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" }) : null;
-      row.done_by = patch.done ? g.userId : null;
-    } else {
+    if (auto === "invoices_sent" || auto === "team_fees_collected") {
       return { notice: "This step checks itself from invoices." };
     }
+    if (auto === "bill_programs" && !patch.done) {
+      const lock = await loadFeeLockState(weekendId);
+      const blocked = uncheckBillProgramsError(lock.invoiceCount);
+      if (blocked) return { error: blocked };
+    }
+    row.done_on = patch.done ? new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" }) : null;
+    row.done_by = patch.done ? g.userId : null;
   }
   if (patch.note !== undefined) row.note = longText(patch.note, 1000);
   const { error } = await g.db.from("hs_hosted_steps").update(row).eq("id", id).eq("weekend_id", weekendId);
@@ -294,6 +307,16 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
   if (input.fee.trim()) {
     fee = parseAmount(input.fee);
     if (fee == null || fee < 0) return { error: "Enter the fee in dollars, like 240, 0 for none, or leave it blank for the team fee." };
+  }
+  const lock = await loadFeeLockState(weekendId);
+  if (lock.locked) {
+    if (!input.id) {
+      if (fee != null) return { error: feeLockSaveError(lock.invoiceCount) };
+    } else {
+      const { data: cur } = await g.db.from("hs_hosted_teams").select("fee_cents").eq("id", input.id).eq("weekend_id", weekendId).maybeSingle();
+      const current = (cur as { fee_cents: number | null } | null)?.fee_cents ?? null;
+      if (current !== fee) return { error: feeLockSaveError(lock.invoiceCount) };
+    }
   }
   const row = {
     division_id: input.division_id || null,

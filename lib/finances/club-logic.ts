@@ -686,3 +686,11 @@ export function hostedEventDeleteError(input: {
         : "Void those first.";
   return `Can't remove this tournament: ${list}. ${how}`;
 }
+
+// Linking a Budget tournament to an HS Schedule plan (hs_hosted.finance_event_id).
+export function hostedEventPlanLinkError(input: { planWeekendId: string | null | undefined; planFound: boolean; hosted: boolean }): string | null {
+  if (!input.planWeekendId) return null;
+  if (!input.planFound) return "That tournament plan isn't there any more.";
+  if (!input.hosted) return "That weekend isn't a tournament we host. Tick We host this tournament on the HS Schedule first.";
+  return null;
+}

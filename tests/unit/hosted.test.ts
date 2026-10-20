@@ -2,23 +2,31 @@
 // the courts, moving winners on, the money and the program email.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   DEFAULT_STEPS,
   advance,
   cleanDays,
   daysForWeekend,
+  feeLockNote,
+  feeLockSaveError,
+  feesAreLocked,
   fillCourts,
   formatTime,
   initials,
   lineCount,
   moneySummary,
+  orderHostedSteps,
   placementBracket,
   placesLabel,
+  planFeeChanged,
   programMessage,
   roundRobin,
   seedOrder,
   slotsFor,
   teamFee,
+  uncheckBillProgramsError,
 } from "../../lib/hosted/logic.ts";
 import type { HostedGame, HostedMoney, HostedPlan, HostedTeam } from "../../lib/hosted/types.ts";
 
@@ -75,6 +83,41 @@ test("the hosted checklist bills programs and auto-checks collection by step_key
   assert.ok(bill && sent && collected);
   assert.ok(DEFAULT_STEPS.indexOf(bill) < DEFAULT_STEPS.indexOf(sent));
   assert.ok(DEFAULT_STEPS.indexOf(sent) < DEFAULT_STEPS.indexOf(collected));
+  const scrambled = [
+    { step_key: "team_fees_collected", sort_order: 2, label: "Team fees collected" },
+    { step_key: null, sort_order: 0, label: "Invite programs" },
+    { step_key: "bill_programs", sort_order: 4, label: "Set team fees and bill each program" },
+    { step_key: null, sort_order: 1, label: "Attending programs and divisions confirmed" },
+    { step_key: "invoices_sent", sort_order: 3, label: "Invoices sent" },
+  ];
+  assert.deepEqual(
+    orderHostedSteps(scrambled).map((s) => s.label),
+    ["Invite programs", "Attending programs and divisions confirmed", "Set team fees and bill each program", "Invoices sent", "Team fees collected"]
+  );
+});
+
+test("team fees lock once Set team fees is done or an invoice exists", () => {
+  assert.equal(feesAreLocked({ billProgramsDone: false, invoiceCount: 0 }), false);
+  assert.equal(feesAreLocked({ billProgramsDone: true, invoiceCount: 0 }), true);
+  assert.equal(feesAreLocked({ billProgramsDone: false, invoiceCount: 1 }), true);
+  assert.equal(feeLockNote(0), "Locked because fees are set. Uncheck Set team fees to change.");
+  assert.equal(feeLockNote(2), "Locked because invoices exist. Void invoices first to change.");
+  assert.match(feeLockSaveError(0), /Set team fees is checked/);
+  assert.match(feeLockSaveError(1), /Void invoices first/);
+  assert.equal(uncheckBillProgramsError(0), null);
+  assert.equal(uncheckBillProgramsError(1), "Void invoices first.");
+  assert.equal(planFeeChanged({ team_fee_cents: 24000 }, { team_fee_cents: 24000 }), false);
+  assert.equal(planFeeChanged({ team_fee_cents: 24000 }, { team_fee_cents: 25000 }), true);
+  const actions = readFileSync(join(import.meta.dirname, "../../lib/hosted/actions.ts"), "utf8");
+  assert.match(actions, /loadFeeLockState/);
+  assert.match(actions, /feeLockSaveError/);
+  assert.match(actions, /uncheckBillProgramsError/);
+  assert.match(actions, /planFeeChanged/);
+  const plan = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/_components/PlanPanel.tsx"), "utf8");
+  assert.match(plan, /orderHostedSteps/);
+  assert.match(plan, /\/portal\/schedule\/hosted\/\$\{wid\}\/bill/);
+  assert.match(plan, /feeLockNote/);
+  assert.match(plan, /readOnly=\{data\.feeLock\.locked\}/);
 });
 
 test("seed order keeps the top seeds apart", () => {

@@ -20,6 +20,7 @@ import {
   cleanShiftInput,
   familySpill,
   hostedEventDeleteError,
+  hostedEventPlanLinkError,
   NELSONS_LABEL,
   NELSONS_REF,
   splitEvenly,
@@ -279,14 +280,24 @@ export async function splitAcrossTeam(input: {
 
 // ─── Tournaments we host ────────────────────────────────────────────────────
 
-// Name, dates and note only. An id updates that row on this season's board;
-// archived_at, board_id and the HS Schedule link stay as they are.
-export async function saveHostedEvent(input: { id?: string; name: string; starts_on: string; ends_on: string; note: string }): Promise<ClubResult> {
+// Name, dates, note, and optional HS Schedule plan (hs_hosted.finance_event_id).
+// An id updates that row on this season's board; archived_at and board_id stay
+// as they are. Delete still refuses a linked plan (hostedEventDeleteError).
+export async function saveHostedEvent(input: {
+  id?: string;
+  name: string;
+  starts_on: string;
+  ends_on: string;
+  note: string;
+  plan_weekend_id?: string | null;
+}): Promise<ClubResult> {
   const g = await gate();
   if ("error" in g) return g;
   const name = input.name.trim().slice(0, 80);
   if (!name) return { error: "Give the tournament a name, like MRS." };
   for (const d of [input.starts_on, input.ends_on]) if (d && !ISO_DAY.test(d)) return { error: "Check the dates." };
+  const planWeekendId = input.plan_weekend_id === undefined ? undefined : (input.plan_weekend_id ?? "").trim() || null;
+  if (planWeekendId && !/^[0-9a-f-]{36}$/i.test(planWeekendId)) return { error: "That tournament plan isn't there any more." };
   if (input.id) {
     const { data } = await g.db.from("olb_hosted_events").select("id, archived_at").eq("id", input.id).eq("board_id", g.boardId).maybeSingle();
     const ev = data as { id: string; archived_at: string | null } | null;
@@ -294,12 +305,55 @@ export async function saveHostedEvent(input: { id?: string; name: string; starts
     if (ev.archived_at) return { error: "That tournament was removed." };
   }
   const row = { name, starts_on: input.starts_on || null, ends_on: input.ends_on || null, note: input.note.trim().slice(0, 500) || null };
-  const { error } = input.id
-    ? await g.db.from("olb_hosted_events").update(row).eq("id", input.id).eq("board_id", g.boardId).is("archived_at", null)
-    : await g.db.from("olb_hosted_events").insert({ ...row, board_id: g.boardId });
-  if (error) return { error: error.message };
+  let eventId = input.id ?? null;
+  if (input.id) {
+    const { error } = await g.db.from("olb_hosted_events").update(row).eq("id", input.id).eq("board_id", g.boardId).is("archived_at", null);
+    if (error) return { error: error.message };
+  } else {
+    const { data, error } = await g.db.from("olb_hosted_events").insert({ ...row, board_id: g.boardId }).select("id").single();
+    if (error) return { error: error.message };
+    eventId = (data as { id: string }).id;
+  }
+  const weekendIds: string[] = [];
+  if (planWeekendId !== undefined) {
+    const linked = await linkHostedEventPlan(g.db, g.userId, eventId!, planWeekendId);
+    if (linked.error) return linked;
+    weekendIds.push(...linked.weekendIds);
+  }
   refresh();
+  for (const wid of weekendIds) revalidatePath(`/portal/schedule/hosted/${wid}`);
   return {};
+}
+
+async function linkHostedEventPlan(
+  db: Admin,
+  userId: string,
+  eventId: string,
+  planWeekendId: string | null
+): Promise<{ error?: string; weekendIds: string[] }> {
+  const { data: current, error: curErr } = await db.from("hs_hosted").select("weekend_id").eq("finance_event_id", eventId);
+  if (curErr) {
+    if (!planWeekendId) return { weekendIds: [] };
+    return { error: "Tournament planning isn't set up in the database yet.", weekendIds: [] };
+  }
+  const previous = ((current as { weekend_id: string }[] | null) ?? []).map((r) => r.weekend_id);
+  const touched = new Set(previous);
+  if (planWeekendId) {
+    const { data } = await db.from("hs_hosted").select("weekend_id, hosted").eq("weekend_id", planWeekendId).maybeSingle();
+    const plan = data as { weekend_id: string; hosted: boolean } | null;
+    const blocked = hostedEventPlanLinkError({ planWeekendId, planFound: !!plan, hosted: !!plan?.hosted });
+    if (blocked) return { error: blocked, weekendIds: [...touched] };
+    touched.add(planWeekendId);
+  }
+  if (previous.length) {
+    const { error } = await db.from("hs_hosted").update({ finance_event_id: null, updated_by: userId }).eq("finance_event_id", eventId);
+    if (error) return { error: error.message, weekendIds: [...touched] };
+  }
+  if (planWeekendId) {
+    const { error } = await db.from("hs_hosted").update({ finance_event_id: eventId, updated_by: userId }).eq("weekend_id", planWeekendId);
+    if (error) return { error: error.message, weekendIds: [...touched] };
+  }
+  return { weekendIds: [...touched] };
 }
 
 // Soft-archive (archived_at, 0131). Refuses when the tournament still has

@@ -81,6 +81,8 @@ test("syncHostedInvoiceSteps ticks and unticks from collection", () => {
   assert.equal(teamFeesAreBilled(drafts.sentCount), false);
   assert.equal(autoStepDone("bill_programs", drafts), true);
   assert.equal(autoStepDone("team_fees_collected", drafts), false);
+  const sync = readFileSync(join(import.meta.dirname, "../../lib/invoicing/hosted-sync.ts"), "utf8");
+  assert.match(sync, /row\.step_key !== "bill_programs"/);
 });
 
 test("batch preview does not let you edit team counts", () => {
@@ -101,6 +103,9 @@ test("invoice page keeps a separate error next to each action", () => {
   assert.doesNotMatch(detail, /const \[error, setError\]/);
   const plan = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/_components/PlanPanel.tsx"), "utf8");
   assert.match(plan, /teamFeesAreBilled/);
+  assert.match(plan, /orderHostedSteps/);
+  assert.match(plan, /feeLockNote/);
+  assert.match(plan, /\/portal\/schedule\/hosted\/\$\{wid\}\/bill/);
 });
 
 test("invoicing without HS Schedule edit does not load the full hosted page via admin", () => {

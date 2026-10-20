@@ -517,7 +517,11 @@ function GroupsSheet({ data, onClose }: { data: ClubData; onClose: () => void })
   );
 }
 
-const emptyEvent = { name: "", starts_on: "", ends_on: "", note: "" };
+const emptyEvent = { name: "", starts_on: "", ends_on: "", note: "", plan_weekend_id: "" };
+
+function planLabel(p: { title: string; short_name: string | null; starts_on: string | null }) {
+  return [p.short_name && p.short_name !== p.title ? p.short_name : null, p.title, p.starts_on ? formatDay(p.starts_on) : null].filter(Boolean).join(" · ");
+}
 
 function EventsSheet({ data, onClose }: { data: ClubData; onClose: () => void }) {
   const { busy, error, act } = useAct();
@@ -527,7 +531,7 @@ function EventsSheet({ data, onClose }: { data: ClubData; onClose: () => void })
   const events = data.events.filter((e) => !e.archived_at);
   const startEdit = (e: (typeof events)[number]) => {
     setEditing(e.id);
-    setF({ name: e.name, starts_on: e.starts_on ?? "", ends_on: e.ends_on ?? "", note: e.note ?? "" });
+    setF({ name: e.name, starts_on: e.starts_on ?? "", ends_on: e.ends_on ?? "", note: e.note ?? "", plan_weekend_id: e.plan_weekend_id ?? "" });
   };
   const clearForm = () => {
     setEditing(null);
@@ -580,6 +584,23 @@ function EventsSheet({ data, onClose }: { data: ClubData; onClose: () => void })
         <Input label="First day" type="date" value={f.starts_on} onChange={(e) => setF({ ...f, starts_on: e.target.value })} />
         <Input label="Last day" type="date" value={f.ends_on} onChange={(e) => setF({ ...f, ends_on: e.target.value })} />
       </div>
+      <Select
+        label="Tournament plan"
+        value={f.plan_weekend_id}
+        onChange={(e) => setF({ ...f, plan_weekend_id: e.target.value })}
+        help={
+          data.hostedPlans.length
+            ? "Link this row to its plan on the HS Schedule. A plan can only belong to one tournament here."
+            : "Tick We host this tournament on a weekend first, then it shows up here."
+        }
+      >
+        <option value="">None</option>
+        {data.hostedPlans.map((p) => (
+          <option key={p.weekend_id} value={p.weekend_id}>
+            {planLabel(p)}
+          </option>
+        ))}
+      </Select>
       <Input label="Note" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Optional" />
       {error && <ErrorNote text={error} />}
       <div style={{ display: "flex", gap: 8 }}>

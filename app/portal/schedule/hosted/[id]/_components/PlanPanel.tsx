@@ -8,10 +8,11 @@
 // facility, concessions, admission and rules.
 
 import { useState } from "react";
+import Link from "next/link";
 import { Icons } from "../../../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../../../components/ui";
 import { addStep, deleteStep, savePlan, setHosted, updateStep } from "../../../../../../lib/hosted/actions";
-import { daysForWeekend, formatDay } from "../../../../../../lib/hosted/logic";
+import { daysForWeekend, feeLockNote, formatDay, orderHostedSteps } from "../../../../../../lib/hosted/logic";
 import { STEP_SECTIONS, type HostedPageData, type HostedStep, type StepSection } from "../../../../../../lib/hosted/types";
 import { teamFeesAreBilled } from "../../../../../../lib/invoicing/auto-steps";
 import { ErrorNote, Said, Section, Sheet, cap, grid2, iconBtn, money, sub, useAct } from "./parts";
@@ -39,7 +40,7 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
     >
       <Said error={error} notice={null} />
       {STEP_SECTIONS.map((sec) => {
-        const rows = data.steps.filter((s) => s.section === sec.key);
+        const rows = orderHostedSteps(data.steps.filter((s) => s.section === sec.key));
         if (rows.length === 0 && sec.key === "other" && adding !== "other") return null;
         const done = rows.filter((r) => r.done_on).length;
         return (
@@ -61,14 +62,14 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
             </div>
             {rows.map((s) => {
               const late = !s.done_on && s.due_on && s.due_on < today;
-              const auto = s.step_key === "bill_programs" || s.step_key === "invoices_sent" || s.step_key === "team_fees_collected";
+              const auto = s.step_key === "invoices_sent" || s.step_key === "team_fees_collected";
               const billing = data.billing;
               const hl = s.step_key === "bill_programs" || s.step_key === "invoices_sent" || s.step_key === "team_fees_collected";
               const checked =
-                !billing?.canView
-                  ? !!s.done_on
-                  : s.step_key === "bill_programs"
-                    ? !!billing.billed
+                s.step_key === "bill_programs"
+                  ? data.feeLock.locked
+                  : !billing?.canView
+                    ? !!s.done_on
                     : s.step_key === "invoices_sent"
                       ? !!billing.allSent
                       : s.step_key === "team_fees_collected"
@@ -98,9 +99,18 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                     style={{ width: 18, height: 18, marginTop: 1, accentColor: "var(--rsd-accent-fill)", flexShrink: 0 }}
                   />
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600, textDecoration: checked ? "line-through" : "none", color: checked ? "var(--gw-fg-muted)" : "var(--gw-fg)" }}>
-                      {s.label}
-                    </span>
+                    {s.step_key === "bill_programs" ? (
+                      <Link
+                        href={`/portal/schedule/hosted/${wid}/bill`}
+                        style={{ fontSize: 13.5, fontWeight: 600, textDecoration: checked ? "line-through" : "underline", textUnderlineOffset: 3, color: checked ? "var(--gw-fg-muted)" : "var(--gw-fg)" }}
+                      >
+                        {s.label}
+                      </Link>
+                    ) : (
+                      <span style={{ fontSize: 13.5, fontWeight: 600, textDecoration: checked ? "line-through" : "none", color: checked ? "var(--gw-fg-muted)" : "var(--gw-fg)" }}>
+                        {s.label}
+                      </span>
+                    )}
                     {s.step_key === "bill_programs" && billing && (
                       <>
                         <small style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
@@ -108,7 +118,7 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                           {billing.canView && billing.depositPerTeamCents > 0 ? ` · ${money(billing.depositPerTeamCents)}/team deposit` : ""}
                           {billing.canView ? (billing.billed ? ` · ${billing.invoiceCount} invoices in Finances` : " · not billed yet") : ""}
                         </small>
-                        {billing.billed && billing.canView && <span style={{ color: "#065f46", fontWeight: 800, fontSize: 12 }}>✓ Auto-checked</span>}
+                        {billing.billed && billing.canView && <span style={{ color: "#065f46", fontWeight: 800, fontSize: 12 }}>✓ Invoices exist — fees locked</span>}
                         {billing.canInvoice && (
                           <a href={`/portal/schedule/hosted/${wid}/bill`} className="rsd-btn" style={{ alignSelf: "flex-start", minHeight: 36, padding: "0 12px", borderRadius: 100, background: "var(--rsd-accent-fill)", color: "var(--rsd-accent-fill-on)", fontWeight: 700, fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
                             Bill programs → Finance
@@ -250,7 +260,16 @@ function Details({ data }: { data: HostedPageData }) {
     >
       <div style={grid2}>
         <Input label="Short name" value={f.short_name} onChange={(e) => up({ short_name: e.target.value })} placeholder="MRS" help="How Finances and the email name it." />
-        <Input label="Team fee ($)" inputMode="decimal" value={f.team_fee} onChange={(e) => up({ team_fee: e.target.value })} placeholder="240" help="What a team pays to come, unless its own fee says otherwise. Our teams pay nothing." />
+        <Input
+          label="Team fee ($)"
+          inputMode="decimal"
+          value={f.team_fee}
+          onChange={(e) => up({ team_fee: e.target.value })}
+          placeholder="240"
+          readOnly={data.feeLock.locked}
+          help={data.feeLock.locked ? feeLockNote(data.feeLock.invoiceCount) : "What a team pays to come, unless its own fee says otherwise. Our teams pay nothing."}
+          style={data.feeLock.locked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
+        />
         <Select label="Game slot" value={String(f.game_minutes)} onChange={(e) => up({ game_minutes: Number(e.target.value) })} help="How long each game has on a court, warm-up included.">
           {[45, 50, 60, 65, 70, 75, 80, 90, 105, 120].map((m) => (
             <option key={m} value={m}>
@@ -306,7 +325,11 @@ function Details({ data }: { data: HostedPageData }) {
         >
           {busy ? "Saving…" : "Save details"}
         </Pill>
-        {plan.team_fee_cents != null && <span style={sub}>Team fee now {money(plan.team_fee_cents)}.</span>}
+        {data.feeLock.locked ? (
+          <span style={sub}>{feeLockNote(data.feeLock.invoiceCount)}</span>
+        ) : plan.team_fee_cents != null ? (
+          <span style={sub}>Team fee now {money(plan.team_fee_cents)}.</span>
+        ) : null}
         <Pill
           variant="ghost"
           size="sm"
