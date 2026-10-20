@@ -40,6 +40,7 @@ test("the receipt lists each player, the total and how to pay", () => {
   assert.match(html, /\$900\.00/);
   assert.match(html, /venmo\.com\/u\/OmahaLightning-Basketball/);
   assert.match(html, /reply to this email for the mailing address/);
+  assert.match(receiptHtml(r, who, { logoUrl: "x", checkAddress: ["Treasurer", "1 Main St"], checkPayee: "OLB Treasurer" }), /OLB Treasurer/);
   assert.match(receiptHtml(r, who, { logoUrl: "x", checkAddress: ["Treasurer", "1 Main St"] }), /Treasurer<br>1 Main St/);
   assert.match(receiptText(r, who, { checkAddress: [] }), /Total: \$900\.00/);
   // What happens next: placement, then Slack. No portal sign-in yet.

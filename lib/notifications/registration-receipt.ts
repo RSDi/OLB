@@ -3,9 +3,10 @@
 // missing RESEND_API_KEY or a refused send is logged, and the registration
 // still counts.
 //
-//   MAIL_CHECK_ADDRESS  where checks are mailed, lines separated by "|"
-//                       (e.g. "Jason Wesner|123 Main St|Omaha, NE 68000").
-//                       Unset, the receipt says to reply for the address.
+//   Check remit-to comes from Settings → Invoices (inv_reminder_settings).
+//   MAIL_CHECK_ADDRESS is the fallback when that is empty, lines separated
+//   by "|" (e.g. "Jason Wesner|123 Main St|Omaha, NE 68000"). Unset, the
+//   receipt says to reply for the address.
 //   NEXT_PUBLIC_SITE_URL the site's address, for the logo and the portal link.
 
 import { CLUB_EMAIL } from "../contact/message";
@@ -21,6 +22,19 @@ import {
 } from "../teams/registration-receipt";
 import type { RegistrationInput } from "../teams/registration-form";
 import { loadEmailText } from "./registration-email-text";
+import { fetchStoredCheckMailing, resolveCheckMailing } from "../mail/check-address";
+import { createAdminClient } from "../supabase/admin";
+
+async function checkMailingForReceipt(): Promise<{ checkAddress: string[]; checkPayee: string }> {
+  let stored = { payee: null as string | null, address: null as string | null };
+  try {
+    stored = await fetchStoredCheckMailing(createAdminClient());
+  } catch {
+    stored = { payee: null, address: null };
+  }
+  const mailing = resolveCheckMailing(stored);
+  return { checkAddress: mailing.addressLines, checkPayee: mailing.payee };
+}
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -62,12 +76,12 @@ export async function sendRegistrationEmails(inputs: RegistrationInput[], confir
   const r = receipt(inputs);
   const who = registrant(inputs[0], confirmedEmail);
   const site = siteUrl();
-  const checkAddress = (process.env.MAIL_CHECK_ADDRESS ?? "").split("|").map((s) => s.trim()).filter(Boolean);
+  const mailing = await checkMailingForReceipt();
   const from = mailFrom();
 
   const t = await loadEmailText();
   const subject = receiptSubject(r, t);
-  const text = who ? receiptText(r, who, { checkAddress }, t) : "";
+  const text = who ? receiptText(r, who, mailing, t) : "";
   const [receiptSent] = await Promise.all([
     who
       ? send(
@@ -77,7 +91,7 @@ export async function sendRegistrationEmails(inputs: RegistrationInput[], confir
             to: [who.email],
             reply_to: mailReplyTo(),
             subject,
-            html: receiptHtml(r, who, { logoUrl: `${site}/email/olb-logo.png`, checkAddress }, t),
+            html: receiptHtml(r, who, { logoUrl: `${site}/email/olb-logo.png`, ...mailing }, t),
             text,
           },
           "registration receipt"
@@ -106,13 +120,13 @@ export async function sendReceipt(input: RegistrationInput, to: string, first: s
   if (!apiKey) return { error: "Email isn't set up for the site yet, so nothing was sent." };
   const r = receipt([input]);
   const who = { email: to, first };
-  const checkAddress = (process.env.MAIL_CHECK_ADDRESS ?? "").split("|").map((s) => s.trim()).filter(Boolean);
+  const mailing = await checkMailingForReceipt();
   const t = await loadEmailText();
   const subject = receiptSubject(r, t);
-  const text = receiptText(r, who, { checkAddress }, t);
+  const text = receiptText(r, who, mailing, t);
   const ok = await send(
     apiKey,
-    { from: mailFrom(), to: [to], reply_to: mailReplyTo(), subject, html: receiptHtml(r, who, { logoUrl: `${siteUrl()}/email/olb-logo.png`, checkAddress }, t), text },
+    { from: mailFrom(), to: [to], reply_to: mailReplyTo(), subject, html: receiptHtml(r, who, { logoUrl: `${siteUrl()}/email/olb-logo.png`, ...mailing }, t), text },
     "registration receipt"
   );
   return ok ? { to, subject, text } : { error: "The email didn't go through. Try again in a minute." };
