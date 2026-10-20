@@ -1,14 +1,45 @@
 "use client";
+import { useId, useMemo, useState } from "react";
 import { Icons } from "../../components/icons";
 import { KpiCard, Pill } from "../../components/ui";
 import { formatAmount, formatDollars } from "../../../lib/finances/logic";
-import { snapshotCsv, type Snapshot } from "../../../lib/finances/club-logic";
+import { snapshotCsv, type Snapshot, type Spend } from "../../../lib/finances/club-logic";
 import { SpendBar, sub } from "./club-parts";
+
+type SectionId = "in" | "groups" | "teams" | "programs" | "events" | "fundraising" | "families";
 
 // Payments → Snapshot (0131): the club's money at a glance, for the board,
 // coaches given "See club finances", and the Treasurer. Totals only: no
 // family names or balances.
+//
+// Each section starts collapsed. The header shows the name and its total:
+//   Money in — snapshot.moneyIn.total
+//   Spending vs budget — snapshot.budget.spend (paid of budget + bar)
+//   Teams — derived: sum of each team's spend (bar when any team is budgeted)
+//   Clinics and workouts — derived: sum of (billed − costs.paid); bar when
+//     any program has a cost budget (aggregated program costs)
+//   Tournaments we host — derived: sum of (income − spend.paid); bar when
+//     any event has a cost budget (aggregated event costs)
+//   Fundraising and funds — snapshot.moneyIn.fundraising when there are
+//     fundraisers (same figure as Money in); otherwise the sum of fund totals.
+//     Not the sum of every listed row: fund totals already include money that
+//     fundraiser rows send to funds.
+//   Families — snapshot.families.owed
 export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
+  const uid = useId();
+  const visible = useMemo(() => visibleSectionIds(s), [s]);
+  const [open, setOpen] = useState<ReadonlySet<SectionId>>(() => new Set());
+  const allOpen = visible.length > 0 && visible.every((id) => open.has(id));
+
+  function toggle(id: SectionId) {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   function download() {
     const blob = new Blob([snapshotCsv(s)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -19,8 +50,26 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
     URL.revokeObjectURL(url);
   }
 
+  const teamsSpend = sumSpend(s.teams.map((t) => t.spend));
+  const programsNet = s.programs.reduce((n, p) => n + (p.totals.billed - p.totals.costs.paid), 0);
+  const programsCosts = sumSpend(s.programs.map((p) => p.totals.costs));
+  const eventsNet = s.events.reduce((n, e) => n + (e.income - e.spend.paid), 0);
+  const eventsSpend = sumSpend(s.events.map((e) => e.spend));
+  const fundsTotal = s.funds.reduce((n, f) => n + f.total, 0);
+  const fundraisingHeader = s.fundraisers.length > 0 ? s.moneyIn.fundraising : fundsTotal;
+  const printedOn = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="fin-snapshot" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="fin-snapshot-print-only" aria-hidden>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#555" }}>Omaha Lightning Basketball</div>
+        <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>Finance Snapshot</div>
+        <div style={{ fontSize: 13, marginTop: 4 }} suppressHydrationWarning>
+          {printedOn}
+          {s.season ? ` · ${s.season} season` : ""}
+        </div>
+      </div>
+
       <div className="rsd-kpi-grid" data-tour="snapshot-totals" style={{ "--rsd-kpi-num": "clamp(20px, 2.6vw, 36px)" } as React.CSSProperties}>
         <KpiCard label="Money in" value={formatDollars(s.moneyIn.total)} sub={`${s.season} season`} />
         <KpiCard label="Money out" value={formatDollars(s.moneyOut)} sub={s.budget.spend.budget ? `Budget ${formatDollars(s.budget.spend.budget)}` : "No budget yet"} />
@@ -29,15 +78,36 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <p style={{ ...sub, maxWidth: 560 }}>Live from Payments: families&apos; payments, the budget, income and fundraising, as of right now.</p>
-        <span data-tour="snapshot-download">
-          <Pill size="sm" variant="ghost" onClick={download}>
-            <Icons.Download width={13} height={13} /> Download spreadsheet
-          </Pill>
+        <p className="fin-snapshot-no-print" style={{ ...sub, maxWidth: 560 }}>
+          Live from Payments: families&apos; payments, the budget, income and fundraising, as of right now.
+        </p>
+        <span className="fin-snapshot-no-print" style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span data-tour="snapshot-expand-all">
+            <Pill size="sm" variant="ghost" onClick={() => setOpen(allOpen ? new Set() : new Set(visible))}>
+              {allOpen ? "Collapse all" : "Expand all"}
+            </Pill>
+          </span>
+          <span data-tour="snapshot-print">
+            <Pill size="sm" variant="ghost" onClick={() => window.print()}>
+              <Icons.Printer width={13} height={13} /> Print / PDF
+            </Pill>
+          </span>
+          <span data-tour="snapshot-download">
+            <Pill size="sm" variant="ghost" onClick={download}>
+              <Icons.Download width={13} height={13} /> Download spreadsheet
+            </Pill>
+          </span>
         </span>
       </div>
 
-      <Section title="Money in" data-tour="snapshot-in">
+      <Section
+        id={`${uid}-in`}
+        title="Money in"
+        dataTour="snapshot-in"
+        expanded={open.has("in")}
+        onToggle={() => toggle("in")}
+        summary={<MoneyTotal cents={s.moneyIn.total} />}
+      >
         <Row label="Families' payments" value={s.moneyIn.families} />
         <Row label="Clinic and workout sign-ups" value={s.moneyIn.programs} />
         <Row label="Donations, sponsors and events" value={s.moneyIn.income} note={s.budget.incomeExpected ? `${formatAmount(s.budget.incomeExpected)} expected` : undefined} />
@@ -46,7 +116,14 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
       </Section>
 
       {s.groups.length > 0 && (
-        <Section title="Spending vs budget" data-tour="snapshot-groups">
+        <Section
+          id={`${uid}-groups`}
+          title="Spending vs budget"
+          dataTour="snapshot-groups"
+          expanded={open.has("groups")}
+          onToggle={() => toggle("groups")}
+          summary={<BudgetSummary spend={s.budget.spend} />}
+        >
           {s.groups.map((g) => (
             <div key={g.name} style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
               <span style={{ fontSize: 13.5, fontWeight: 700 }}>{g.name}</span>
@@ -57,7 +134,13 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
       )}
 
       {s.teams.length > 0 && (
-        <Section title="Teams">
+        <Section
+          id={`${uid}-teams`}
+          title="Teams"
+          expanded={open.has("teams")}
+          onToggle={() => toggle("teams")}
+          summary={<BudgetSummary spend={teamsSpend} fallback={teamsSpend.paid} />}
+        >
           {s.teams.map((t) => (
             <div key={t.name} style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
               <span style={{ display: "flex", flexDirection: "column" }}>
@@ -71,7 +154,13 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
       )}
 
       {s.programs.length > 0 && (
-        <Section title="Clinics and workouts">
+        <Section
+          id={`${uid}-programs`}
+          title="Clinics and workouts"
+          expanded={open.has("programs")}
+          onToggle={() => toggle("programs")}
+          summary={<BudgetSummary spend={programsCosts} fallback={programsNet} />}
+        >
           {s.programs.map((p) => (
             <Row
               key={p.name}
@@ -84,7 +173,13 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
       )}
 
       {s.events.length > 0 && (
-        <Section title="Tournaments we host">
+        <Section
+          id={`${uid}-events`}
+          title="Tournaments we host"
+          expanded={open.has("events")}
+          onToggle={() => toggle("events")}
+          summary={<BudgetSummary spend={eventsSpend} fallback={eventsNet} />}
+        >
           {s.events.map((e) => (
             <Row key={e.name} label={e.name} value={e.income - e.spend.paid} note={`${formatAmount(e.income)} in · ${formatAmount(e.spend.paid)} out${e.expected ? ` · ${formatAmount(e.expected)} expected in` : ""}`} />
           ))}
@@ -92,7 +187,13 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
       )}
 
       {(s.fundraisers.length > 0 || s.funds.length > 0) && (
-        <Section title="Fundraising and funds">
+        <Section
+          id={`${uid}-fundraising`}
+          title="Fundraising and funds"
+          expanded={open.has("fundraising")}
+          onToggle={() => toggle("fundraising")}
+          summary={<MoneyTotal cents={fundraisingHeader} />}
+        >
           {s.fundraisers.map((f) => (
             <Row key={f.name} label={f.name} value={f.toFamilies + f.toFunds} note={`${formatAmount(f.toFamilies)} toward families' fees · ${formatAmount(f.toFunds)} to funds`} />
           ))}
@@ -102,7 +203,13 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
         </Section>
       )}
 
-      <Section title="Families">
+      <Section
+        id={`${uid}-families`}
+        title="Families"
+        expanded={open.has("families")}
+        onToggle={() => toggle("families")}
+        summary={<MoneyTotal cents={s.families.owed} />}
+      >
         <Row label="Charged" value={s.families.charged} />
         <Row
           label="Taken off"
@@ -116,11 +223,102 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
   );
 }
 
-function Section({ title, children, ...rest }: { title: string; children: React.ReactNode; "data-tour"?: string }) {
+function visibleSectionIds(s: Snapshot): SectionId[] {
+  const ids: SectionId[] = ["in"];
+  if (s.groups.length > 0) ids.push("groups");
+  if (s.teams.length > 0) ids.push("teams");
+  if (s.programs.length > 0) ids.push("programs");
+  if (s.events.length > 0) ids.push("events");
+  if (s.fundraisers.length > 0 || s.funds.length > 0) ids.push("fundraising");
+  ids.push("families");
+  return ids;
+}
+
+function sumSpend(items: Spend[]): Spend {
+  return items.reduce((t, s) => ({ budget: t.budget + s.budget, paid: t.paid + s.paid }), { budget: 0, paid: 0 });
+}
+
+function MoneyTotal({ cents }: { cents: number }) {
   return (
-    <div className="rsd-card" style={{ gap: 10, padding: "16px 18px" }} data-tour={rest["data-tour"]}>
-      <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0 }}>{title}</h3>
-      {children}
+    <span style={{ fontSize: 13.5, fontWeight: 800, whiteSpace: "nowrap", color: cents < 0 ? "var(--gw-error)" : undefined }}>
+      {cents < 0 ? `−${formatAmount(-cents)}` : formatAmount(cents)}
+    </span>
+  );
+}
+
+// Budgeted sections: "$X of $Y" plus the existing bar. When nothing is
+// budgeted, show the fallback total (or paid) so the header still has a figure.
+function BudgetSummary({ spend, fallback }: { spend: Spend; fallback?: number }) {
+  if (spend.budget > 0) return <SpendBar spend={spend} compact />;
+  return <MoneyTotal cents={fallback ?? spend.paid} />;
+}
+
+function Section({
+  id,
+  title,
+  expanded,
+  onToggle,
+  summary,
+  children,
+  dataTour,
+}: {
+  id: string;
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  summary: React.ReactNode;
+  children: React.ReactNode;
+  dataTour?: string;
+}) {
+  const panelId = `${id}-panel`;
+  return (
+    <div className="rsd-card fin-snapshot-section" style={{ gap: 10, padding: "16px 18px" }} data-tour={dataTour}>
+      <button
+        type="button"
+        id={`${id}-toggle`}
+        className="fin-snapshot-section-toggle"
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        onClick={onToggle}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+          width: "100%",
+          minHeight: 44,
+          margin: 0,
+          border: "none",
+          background: "none",
+          padding: 0,
+          textAlign: "left",
+          color: "inherit",
+          cursor: "pointer",
+        }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <span
+            className="fin-snapshot-chevron"
+            aria-hidden
+            style={{ fontSize: 11, color: "var(--gw-fg-muted)", transition: "transform 0.15s", transform: expanded ? "rotate(90deg)" : "none", flexShrink: 0 }}
+          >
+            ▶
+          </span>
+          <h3 style={{ fontSize: 14, fontWeight: 800, margin: 0 }}>{title}</h3>
+        </span>
+        <span className="fin-snapshot-section-summary">{summary}</span>
+      </button>
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={`${id}-toggle`}
+        hidden={!expanded}
+        className="fin-snapshot-section-body"
+        style={{ display: expanded ? "flex" : undefined, flexDirection: "column", gap: 10 }}
+      >
+        {children}
+      </div>
     </div>
   );
 }

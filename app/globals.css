@@ -2033,3 +2033,34 @@ main::-webkit-scrollbar-track { background: transparent; }
   .rsd-email-split,
   .rsd-meeting-grid { grid-template-columns: 1fr; }
 }
+
+/* Finances → Snapshot on paper (Print / PDF): every section open, no chrome,
+   club name + title + date, one column. Scoped so other pages are unchanged. */
+.fin-snapshot-print-only { display: none; }
+@page fin-snapshot { size: portrait; margin: 12mm; }
+@media print {
+  body:has(.fin-snapshot) .rsd-sidebar,
+  body:has(.fin-snapshot) .rsd-topbar,
+  body:has(.fin-snapshot) .rsd-preview-banner,
+  body:has(.fin-snapshot) nav[aria-label="Payments"],
+  body:has(.fin-snapshot) .fin-snapshot-no-print { display: none !important; }
+  body:has(.fin-snapshot) .rsd-app { display: block !important; height: auto !important; }
+  body:has(.fin-snapshot) .rsd-app main { display: block !important; overflow: visible !important; padding: 0 !important; }
+  html:has(.fin-snapshot), html:has(.fin-snapshot) body { page: fin-snapshot; }
+  body:has(.fin-snapshot) .fin-snapshot-print-only { display: block !important; margin-bottom: 16px; color: #111; }
+  body:has(.fin-snapshot) .rsd-kpi-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  body:has(.fin-snapshot) .fin-snapshot-section { break-inside: avoid; page-break-inside: avoid; }
+  body:has(.fin-snapshot) .fin-snapshot-section-body,
+  body:has(.fin-snapshot) .fin-snapshot-section-body[hidden] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  body:has(.fin-snapshot) .fin-snapshot-chevron { display: none !important; }
+  body:has(.fin-snapshot) .fin-snapshot-section-toggle { cursor: default !important; }
+  .fin-snapshot, .fin-snapshot * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

@@ -1297,16 +1297,28 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Money in, money out, whether the club is **Ahead** or **Behind**, and what families still owe.",
       },
       {
+        target: "snapshot-expand-all",
+        click: "payments-tab-snapshot",
+        title: "Folded blocks",
+        body: "Each block starts closed, with its name and total on the heading. Tap a heading to open it. **Expand all** opens every block; **Collapse all** folds them again.",
+      },
+      {
         target: "snapshot-in",
         click: "payments-tab-snapshot",
         title: "Where the money comes from",
-        body: "Families' payments, clinic sign-ups, donations and events, and fundraising.",
+        body: "Tap **Money in** for families' payments, clinic sign-ups, donations and events, and fundraising.",
       },
       {
         target: "snapshot-groups",
         click: "payments-tab-snapshot",
         title: "Spending vs budget",
-        body: "Each group's paid against its budget, then each team, clinic, tournament and fund below.",
+        body: "The heading shows paid against the budget. Open it for each group's bar, then each team, clinic, tournament and fund below.",
+      },
+      {
+        target: "snapshot-print",
+        click: "payments-tab-snapshot",
+        title: "For a board meeting",
+        body: "**Print / PDF** opens the print dialog with every block open, so you can print it or save a PDF.",
       },
       {
         target: "snapshot-download",

@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 19, 2026";
+export const GUIDE_UPDATED = "October 20, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -868,10 +868,12 @@ This page does not replace **Film**. Play, download, edit, Slack, and playlists 
     audience: "staff",
     permission: "finances_view",
     preview: true,
-    keywords: ["snapshot", "financial snapshot", "club finances", "money in", "money out", "budget vs actual", "net", "board", "coaches", "see club finances", "report", "accountant"],
+    keywords: ["snapshot", "financial snapshot", "club finances", "money in", "money out", "budget vs actual", "net", "board", "coaches", "see club finances", "report", "accountant", "expand all", "collapse all", "print", "pdf", "board meeting"],
     body: `The whole season in one page: **Money in**, **Money out**, whether the club is **Ahead** or **Behind**, and what families **still owe**. Then spending against the budget by group, each team's costs (and what was passed on to families), each clinic, the tournament we host, fundraising and the funds. Totals only: no family names or balances.
 
-The board sees it under **Finances → Snapshot**, and so does anyone given **See club finances** in Settings → Access Profiles, like a coach. The Treasurer sees it as a tab next to the rest. **Download spreadsheet** saves it for the accountant.`,
+Each block starts folded. The heading shows the name and the total — spent against the budget (for example **$1,250.00 of $2,300.00** and the small bar) when that block has a budget. Tap the heading to open the detail, or tap it again to fold it. **Expand all** opens every block; it turns into **Collapse all** when they're all open.
+
+The board sees it under **Finances → Snapshot**, and so does anyone given **See club finances** in Settings → Access Profiles, like a coach. The Treasurer sees it as a tab next to the rest. **Print / PDF** opens the print dialog with every block open, the club name, **Finance Snapshot**, and the date at the top — print it or save it as a PDF for a board meeting. **Download spreadsheet** saves it for the accountant.`,
   },
   {
     id: "payments-invoices",
