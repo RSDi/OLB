@@ -408,13 +408,15 @@ export function feesAreLocked(input: { billProgramsDone: boolean; invoiceCount: 
   return input.billProgramsDone || input.invoiceCount > 0;
 }
 
-export function feeLockNote(invoiceCount: number): string {
+export function feeLockNote(invoiceCount: number, lookupFailed = false): string {
+  if (lookupFailed) return "Couldn't check invoices. Try again.";
   return invoiceCount > 0
     ? "Locked because invoices exist. Void invoices first to change."
     : "Locked because fees are set. Uncheck Set team fees to change.";
 }
 
-export function feeLockSaveError(invoiceCount: number): string {
+export function feeLockSaveError(invoiceCount: number, lookupFailed = false): string {
+  if (lookupFailed) return "Couldn't check invoices. Try again.";
   return invoiceCount > 0
     ? "Team fees are locked because invoices exist. Void invoices first to change them."
     : "Team fees are locked because Set team fees is checked. Uncheck it to change them.";
@@ -428,19 +430,19 @@ export function planFeeChanged(current: { team_fee_cents: number | null }, next:
   return (current.team_fee_cents ?? null) !== (next.team_fee_cents ?? null);
 }
 
-export function hostedTeamInvoiceKeys(
-  team: { id: string; name: string; opponent_id: string | null },
-  opponent: { contact_id: string | null; name: string } | null
-): string[] {
-  const keys = new Set<string>([team.id]);
-  const named = team.name.trim().toLowerCase();
-  if (named) keys.add(`name:${named}`);
-  if (opponent) {
-    if (opponent.contact_id) keys.add(opponent.contact_id);
-    const oname = opponent.name.trim().toLowerCase();
-    if (oname) keys.add(`name:${oname}`);
-  }
-  return [...keys];
+// Same host_customer_id batch billing stores (groupHostedCustomers): the
+// program's contact_id, or name:{opponent name} when there is no contact.
+// Team id / team name are not stored — a rename must still match.
+export function hostedTeamInvoiceCustomerId(opponent: { contact_id: string | null; name: string } | null): string | null {
+  if (!opponent) return null;
+  if (opponent.contact_id) return opponent.contact_id;
+  const named = opponent.name.trim().toLowerCase();
+  return named ? `name:${named}` : null;
+}
+
+export function hostedTeamInvoiceKeys(opponent: { contact_id: string | null; name: string } | null): string[] {
+  const id = hostedTeamInvoiceCustomerId(opponent);
+  return id ? [id] : [];
 }
 
 // What a team pays: its own fee, else nothing for one of ours, else the

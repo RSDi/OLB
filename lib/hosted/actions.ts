@@ -165,9 +165,10 @@ export async function savePlan(weekendId: string, input: PlanInput): Promise<Hos
   }
   const lock = await loadFeeLockState(weekendId);
   if (lock.locked) {
-    const { data: cur } = await g.db.from("hs_hosted").select("team_fee_cents").eq("weekend_id", weekendId).maybeSingle();
-    const current = cur as { team_fee_cents: number | null } | null;
-    if (current && planFeeChanged(current, { team_fee_cents: fee })) return { error: feeLockSaveError(lock.invoiceCount) };
+    const { data: cur, error: curErr } = await g.db.from("hs_hosted").select("team_fee_cents").eq("weekend_id", weekendId).maybeSingle();
+    if (curErr || !cur) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
+    const current = cur as { team_fee_cents: number | null };
+    if (planFeeChanged(current, { team_fee_cents: fee })) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
   }
   const { error } = await g.db
     .from("hs_hosted")
@@ -318,13 +319,13 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
   const lock = await loadFeeLockState(weekendId);
   if (lock.locked) {
     if (!input.id) {
-      if (fee != null || input.ours) return { error: feeLockSaveError(lock.invoiceCount) };
+      if (fee != null || input.ours) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
     } else {
       const { data: cur, error: curErr } = await g.db.from("hs_hosted_teams").select("fee_cents, ours").eq("id", input.id).eq("weekend_id", weekendId).maybeSingle();
       if (curErr) return { error: curErr.message };
       const current = cur as { fee_cents: number | null; ours: boolean } | null;
       if (!current) return { error: "That team isn't there any more." };
-      if (current.fee_cents !== fee || !!current.ours !== !!input.ours) return { error: feeLockSaveError(lock.invoiceCount) };
+      if (current.fee_cents !== fee || !!current.ours !== !!input.ours) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
     }
   }
   const row = {
@@ -374,7 +375,8 @@ async function teamHasLiveInvoice(weekendId: string, teamId: string): Promise<Ho
       if (oppErr) return { error: oppErr.message };
       opponent = (opp as { contact_id: string | null; name: string } | null) ?? null;
     }
-    const keys = hostedTeamInvoiceKeys(t, opponent);
+    const keys = hostedTeamInvoiceKeys(opponent);
+    if (!keys.length) return null;
     const inv = await db.from("inv_invoices").select("id").eq("host_event_id", weekendId).in("host_customer_id", keys).is("voided_at", null).limit(1);
     if (inv.error) return { error: inv.error.message };
     if ((inv.data ?? []).length) return { error: "Void its invoice first." };

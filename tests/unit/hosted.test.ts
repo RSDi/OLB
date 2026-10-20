@@ -104,8 +104,10 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.equal(feesAreLocked({ billProgramsDone: false, invoiceCount: 1 }), true);
   assert.equal(feeLockNote(0), "Locked because fees are set. Uncheck Set team fees to change.");
   assert.equal(feeLockNote(2), "Locked because invoices exist. Void invoices first to change.");
+  assert.equal(feeLockNote(1, true), "Couldn't check invoices. Try again.");
   assert.match(feeLockSaveError(0), /Set team fees is checked/);
   assert.match(feeLockSaveError(1), /Void invoices first/);
+  assert.equal(feeLockSaveError(1, true), "Couldn't check invoices. Try again.");
   assert.equal(uncheckBillProgramsError(0), null);
   assert.equal(uncheckBillProgramsError(1), "Void invoices first.");
   assert.equal(planFeeChanged({ team_fee_cents: 24000 }, { team_fee_cents: 24000 }), false);
@@ -114,12 +116,9 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.equal(isBillingStep("invoices_sent"), true);
   assert.equal(isBillingStep("team_fees_collected"), true);
   assert.equal(isBillingStep("invite"), false);
-  assert.deepEqual(hostedTeamInvoiceKeys({ id: "t1", name: "Prairie 1", opponent_id: "o1" }, { contact_id: "c1", name: "Prairie Hoops" }).sort(), [
-    "c1",
-    "name:prairie 1",
-    "name:prairie hoops",
-    "t1",
-  ]);
+  assert.deepEqual(hostedTeamInvoiceKeys({ contact_id: "c1", name: "Prairie Hoops" }), ["c1"]);
+  assert.deepEqual(hostedTeamInvoiceKeys({ contact_id: null, name: "Prairie Hoops" }), ["name:prairie hoops"]);
+  assert.deepEqual(hostedTeamInvoiceKeys(null), []);
   const actions = readFileSync(join(import.meta.dirname, "../../lib/hosted/actions.ts"), "utf8");
   assert.match(actions, /loadFeeLockState/);
   assert.match(actions, /feeLockSaveError/);
@@ -129,6 +128,9 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(actions, /That step stays on the checklist/);
   assert.match(actions, /Void its invoice first/);
   assert.match(actions, /input\.ours/);
+  assert.match(actions, /curErr \|\| !cur/);
+  assert.match(actions, /hostedTeamInvoiceKeys\(opponent\)/);
+  assert.match(actions, /lock\.lookupFailed/);
   const data = readFileSync(join(import.meta.dirname, "../../lib/hosted/data.ts"), "utf8");
   assert.match(data, /lookupFailed: true/);
   assert.match(data, /eq\("step_key", "bill_programs"\)/);
@@ -137,6 +139,7 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(plan, /orderHostedSteps/);
   assert.match(plan, /\/portal\/schedule\/hosted\/\$\{wid\}\/bill/);
   assert.match(plan, /feeLockNote/);
+  assert.match(plan, /lookupFailed/);
   assert.match(plan, /readOnly=\{data\.feeLock\.locked\}/);
   assert.match(plan, /isBillingStep/);
   assert.match(plan, /Stays on the checklist/);

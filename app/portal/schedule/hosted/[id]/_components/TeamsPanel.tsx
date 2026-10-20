@@ -113,7 +113,7 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
           division={open.division}
           divisions={data.divisions}
           feesLocked={data.feeLock.locked}
-          lockNote={feeLockNote(data.feeLock.invoiceCount)}
+          lockNote={feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)}
           onClose={() => setOpen(null)}
         />
       )}
