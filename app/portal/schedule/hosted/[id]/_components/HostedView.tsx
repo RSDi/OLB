@@ -31,7 +31,17 @@ const TABS: { key: HostedTab; label: string }[] = [
   { key: "messages", label: "Email" },
 ];
 
-export function HostedView({ data, tab, today }: { data: HostedPageData; tab: HostedTab; today: string }) {
+export function HostedView({
+  data,
+  tab,
+  today,
+  canReorderSteps = false,
+}: {
+  data: HostedPageData;
+  tab: HostedTab;
+  today: string;
+  canReorderSteps?: boolean;
+}) {
   const { weekend, plan, steps, teams, games } = data;
   const base = `/portal/schedule/hosted/${weekend.id}`;
   const progress = stepProgress(steps);
@@ -75,7 +85,7 @@ export function HostedView({ data, tab, today }: { data: HostedPageData; tab: Ho
 
       <HostedTabs base={base} active={tab} />
 
-      {tab === "plan" && <PlanPanel data={data} today={today} />}
+      {tab === "plan" && <PlanPanel data={data} today={today} canReorderSteps={canReorderSteps} />}
       {tab === "teams" && <TeamsPanel data={data} />}
       {tab === "schedule" && <SchedulePanel data={data} />}
       {tab === "brackets" && <BracketsPanel data={data} />}

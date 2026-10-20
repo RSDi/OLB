@@ -148,6 +148,9 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(actions, /curErr \|\| !cur/);
   assert.match(actions, /hostedTeamInvoiceKeys\(opponent\)/);
   assert.match(actions, /lock\.lookupFailed/);
+  assert.match(actions, /export async function moveStep/);
+  assert.match(actions, /Only a super admin can reorder the checklist for now/);
+  assert.match(actions, /isSuperAdmin/);
   const data = readFileSync(join(import.meta.dirname, "../../lib/hosted/data.ts"), "utf8");
   assert.match(data, /lookupFailed: true/);
   assert.match(data, /hostedStepBillingKey/);
@@ -159,6 +162,8 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(plan, /feeLockNote/);
   assert.match(plan, /FEE_LOCK_UNLOCK_NOTE/);
   assert.match(plan, /hostedStepBillingKey/);
+  assert.match(plan, /canReorderSteps/);
+  assert.match(plan, /Move \$\{s\.label\} up/);
   assert.match(plan, /lookupFailed/);
   assert.match(plan, /readOnly=\{data\.feeLock\.locked\}/);
   assert.match(plan, /isBillingStep/);
@@ -166,6 +171,8 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   const teams = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/_components/TeamsPanel.tsx"), "utf8");
   assert.match(teams, /disabled=\{feesLocked\}/);
   assert.match(teams, /One of our teams \(no fee\)/);
+  const page = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/page.tsx"), "utf8");
+  assert.match(page, /canReorderSteps=\{viewer\.isSuperAdmin\}/);
 });
 
 test("seed order keeps the top seeds apart", () => {
