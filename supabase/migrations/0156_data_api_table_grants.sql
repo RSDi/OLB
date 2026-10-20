@@ -23,18 +23,19 @@
 -- No anon grants: the only anonymous Data API reads are site_menu_items
 -- and site_content (0120), which already grant select to anon.
 --
--- Numbered 0156 so it sits after open PRs that already took 0154/0155
--- (#215 inv_gmail, #219 olb_roadmap_events). Those PRs now grant in
--- their own files; this file still IF EXISTS-grants them as a safety net.
+-- Numbered 0156 so it sits after live 0154/0155 from #219 (Parked notes
+-- and bot PATCH). Those files grant in their own migrations. #215's
+-- inv_gmail is 0157, after this file. This file still IF EXISTS-grants
+-- olb_roadmap_events (already live) and inv_gmail (if 0157 ran first).
 --
 -- GRANT is idempotent. Does not change RLS, policies, or the baseline's
 -- ALTER DEFAULT PRIVILEGES (those still grant ALL to anon on tables
 -- created by postgres — broader than needed; follow-up).
 --
--- Apply with supabase db push. Merge and push #215 and #219 first, then
--- this PR (#220), so 0154/0155 run before 0156. If this lands first, apply
--- the skipped 0154/0155 files with `supabase db push --include-all`.
--- Idempotent.
+-- Apply with supabase db push. #219 (0154/0155) is live. Merge and push
+-- this PR (#220) first, then #215 (0157), so 0156 runs before 0157. If
+-- 0157 is already applied, use `supabase db push --include-all` so this
+-- file still runs. Idempotent.
 
 begin;
 
@@ -134,9 +135,10 @@ grant select, insert, update, delete on
   public.public_directory_link
   to service_role;
 
--- Tables from open PRs that may or may not exist when this runs.
--- inv_gmail (#215): service role only, same as game_film_youtube.
--- olb_roadmap_events (#219): super-admins select as authenticated;
+-- Safety-net grants. olb_roadmap_events is live from #219 0154.
+-- inv_gmail is #215 0157 (after this file); IF EXISTS covers out-of-order apply.
+-- inv_gmail: service role only, same as game_film_youtube.
+-- olb_roadmap_events: super-admins select as authenticated;
 -- the bot writes with the service role (no member insert/update/delete).
 do $$
 begin

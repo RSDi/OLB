@@ -5,7 +5,8 @@
 // The *_data_api_table_grants.sql migration backfills tables that never
 // got a grant in their creating file. Migrations numbered 0154 and later
 // that create a public table, sequence, or function without a matching
-// grant fail here (and in CI), so #215/#219 must carry their own grants.
+// grant fail here (and in CI), covering live 0154/0155 (#219), this
+// backfill (0156), and #215's 0157_inv_gmail when that file is present.
 // Sequence and function grants must name anon, authenticated, or
 // service_role. Trigger functions are exempt. serial / identity columns
 // flag their implicit <table>_<column>_seq. The backfill filename is
@@ -325,8 +326,22 @@ test("cutoff is the *_data_api_table_grants.sql file; its number comes from the 
   assert.ok(migrationNumber(cutoff) > 153, "sits after 0153 already on main");
   assert.ok(
     migrationNumber(cutoff) >= 156,
-    "0154/0155 are taken by open PRs #215 and #219",
+    "0154/0155 are live from #219; this backfill sits after them",
   );
+});
+
+test("per-file grant check starts at 0154 and covers live 0154/0155 and 0157 when present", () => {
+  assert.equal(CHECK_FROM, 154);
+  const names = migrationFiles();
+  assert.ok(names.includes("0154_roadmap_parked_notes.sql"));
+  assert.ok(names.includes("0155_roadmap_bot_patch.sql"));
+  assert.ok(migrationNumber("0154_roadmap_parked_notes.sql") >= CHECK_FROM);
+  assert.ok(migrationNumber("0155_roadmap_bot_patch.sql") >= CHECK_FROM);
+  const gmail = names.find((n) => n.endsWith("_inv_gmail.sql"));
+  if (gmail) {
+    assert.ok(migrationNumber(gmail) >= CHECK_FROM, `${gmail} must be in the per-file grant window`);
+    assert.ok(migrationNumber(gmail) > 156, "inv_gmail sits after 0156");
+  }
 });
 
 test("grant backfill covers every post-baseline public table that lacked a table GRANT", () => {
@@ -382,7 +397,7 @@ test("grant backfill does not change RLS, default privileges, or grant anon", ()
   assert.match(sql, /Apply with supabase db push/);
 });
 
-test("grant backfill IF EXISTS-grants inv_gmail and olb_roadmap_events from open PRs", () => {
+test("grant backfill IF EXISTS-grants live olb_roadmap_events and #215 inv_gmail", () => {
   const sql = readFileSync(join(migrationsDir, cutoffFile()), "utf8");
   assert.match(sql, /if exists \(/);
   assert.match(sql, /c\.relname = 'inv_gmail'/);
