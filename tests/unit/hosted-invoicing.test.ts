@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { hostedTeamInvoiceCustomerId, hostedTeamInvoiceKeys } from "../../lib/hosted/logic.ts";
 import { groupHostedCustomers } from "../../lib/invoicing/group-customers.ts";
 import { autoStepDone, teamFeesAreBilled } from "../../lib/invoicing/auto-steps.ts";
 import { eventCollection } from "../../packages/invoicing/src/logic.ts";
@@ -27,6 +28,35 @@ test("hostedEventCustomers groups opponents by contact and counts visiting teams
   assert.equal(customers[0].name, "Prairie Hoops");
   assert.equal(customers[0].teamCount, 2);
   assert.deepEqual(customers[0].emails, ["a@example.com", "b@example.com", "c@example.com"]);
+  // Invoice host_customer_id is the program contact, not the team name — a
+  // rename of Prairie 1 still matches the same billed customer.
+  assert.equal(customers[0].id, "c1");
+  assert.equal(hostedTeamInvoiceCustomerId({ contact_id: "c1", name: "Prairie Hoops" }), customers[0].id);
+  assert.deepEqual(hostedTeamInvoiceKeys({ contact_id: "c1", name: "Prairie Hoops" }), [customers[0].id]);
+  assert.deepEqual(hostedTeamInvoiceKeys({ contact_id: "c1", name: "Renamed program" }), [customers[0].id]);
+});
+
+test("deleteTeam invoice match uses the billed customer id after a team rename", () => {
+  const billed = groupHostedCustomers({
+    opponents: [{ id: "o1", contact_id: "c1", name: "Prairie A", status: "yes" }],
+    teams: [{ id: "t1", opponent_id: "o1", ours: false, name: "Prairie 1 — now Gold", division_id: null }],
+    divisions: [],
+    contacts: [{ id: "c1", name: "Prairie Hoops", email: null, alt_email: null }],
+    people: [],
+  });
+  assert.equal(billed[0].id, "c1");
+  assert.deepEqual(hostedTeamInvoiceKeys({ contact_id: "c1", name: "Prairie A" }), [billed[0].id]);
+  const noContact = groupHostedCustomers({
+    opponents: [{ id: "o1", contact_id: null, name: "Metro Mavericks", status: "yes" }],
+    teams: [{ id: "t1", opponent_id: "o1", ours: false, name: "Metro 1 — now Gold", division_id: null }],
+    divisions: [],
+    contacts: [],
+    people: [],
+  });
+  assert.equal(noContact[0].id, "name:metro mavericks");
+  assert.deepEqual(hostedTeamInvoiceKeys({ contact_id: null, name: "Metro Mavericks" }), [noContact[0].id]);
+  const actions = readFileSync(join(import.meta.dirname, "../../lib/hosted/actions.ts"), "utf8");
+  assert.match(actions, /hostedTeamInvoiceKeys\(opponent\)/);
 });
 
 test("syncHostedInvoiceSteps ticks and unticks from collection", () => {

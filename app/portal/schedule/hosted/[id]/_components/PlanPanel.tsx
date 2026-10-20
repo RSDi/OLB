@@ -271,7 +271,7 @@ function Details({ data }: { data: HostedPageData }) {
           onChange={(e) => up({ team_fee: e.target.value })}
           placeholder="240"
           readOnly={data.feeLock.locked}
-          help={data.feeLock.locked ? feeLockNote(data.feeLock.invoiceCount) : "What a team pays to come, unless its own fee says otherwise. Our teams pay nothing."}
+          help={data.feeLock.locked ? feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed) : "What a team pays to come, unless its own fee says otherwise. Our teams pay nothing."}
           style={data.feeLock.locked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
         />
         <Select label="Game slot" value={String(f.game_minutes)} onChange={(e) => up({ game_minutes: Number(e.target.value) })} help="How long each game has on a court, warm-up included.">
@@ -330,7 +330,7 @@ function Details({ data }: { data: HostedPageData }) {
           {busy ? "Saving…" : "Save details"}
         </Pill>
         {data.feeLock.locked ? (
-          <span style={sub}>{feeLockNote(data.feeLock.invoiceCount)}</span>
+          <span style={sub}>{feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)}</span>
         ) : plan.team_fee_cents != null ? (
           <span style={sub}>Team fee now {money(plan.team_fee_cents)}.</span>
         ) : null}
