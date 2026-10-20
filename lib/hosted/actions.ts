@@ -25,7 +25,7 @@ import {
   initials,
   hostedStepBillingKey,
   isBillingStep,
-  orderHostedSteps,
+  moveHostedSectionSteps,
   parseCount,
   placementBracket,
   placesLabel,
@@ -263,26 +263,54 @@ export async function deleteStep(weekendId: string, id: string): Promise<HostedR
   return {};
 }
 
-// Super-admin only for now (no new permission). Persists to sort_order.
+// Super-admin only for now (no new permission). Renumbers the section's
+// sort_order in one upsert, moving the billing steps as a single block.
 export async function moveStep(weekendId: string, id: string, direction: "up" | "down"): Promise<HostedResult> {
   const g = await gate();
   if ("error" in g) return g;
   const viewer = await getViewer();
   if (!viewer?.isSuperAdmin) return { error: "Only a super admin can reorder the checklist for now." };
   if (direction !== "up" && direction !== "down") return { error: "Pick Move up or Move down." };
-  const { data, error: readErr } = await g.db.from("hs_hosted_steps").select("id, section, label, step_key, sort_order").eq("weekend_id", weekendId);
+  const { data, error: readErr } = await g.db
+    .from("hs_hosted_steps")
+    .select("id, weekend_id, section, label, step_key, due_on, done_on, note, sort_order")
+    .eq("weekend_id", weekendId);
   if (readErr) return { error: readErr.message };
-  const all = (data as { id: string; section: string; label: string; step_key: string | null; sort_order: number }[] | null) ?? [];
+  type StepRow = {
+    id: string;
+    weekend_id: string;
+    section: string;
+    label: string;
+    step_key: string | null;
+    due_on: string | null;
+    done_on: string | null;
+    note: string | null;
+    sort_order: number;
+  };
+  const all = (data as StepRow[] | null) ?? [];
   const mine = all.find((s) => s.id === id);
   if (!mine) return { error: "That step isn't there any more." };
-  const rows = orderHostedSteps(all.filter((s) => s.section === mine.section));
-  const i = rows.findIndex((s) => s.id === id);
-  const j = direction === "up" ? i - 1 : i + 1;
-  if (i < 0 || j < 0 || j >= rows.length) return { error: "That step is already at the end." };
-  const { error: e1 } = await g.db.from("hs_hosted_steps").update({ sort_order: rows[j].sort_order }).eq("id", rows[i].id).eq("weekend_id", weekendId);
-  if (e1) return { error: e1.message };
-  const { error: e2 } = await g.db.from("hs_hosted_steps").update({ sort_order: rows[i].sort_order }).eq("id", rows[j].id).eq("weekend_id", weekendId);
-  if (e2) return { error: e2.message };
+  const { steps: next, moved } = moveHostedSectionSteps(
+    all.filter((s) => s.section === mine.section),
+    id,
+    direction
+  );
+  if (!moved) return {};
+  const { error } = await g.db.from("hs_hosted_steps").upsert(
+    next.map((s) => ({
+      id: s.id,
+      weekend_id: weekendId,
+      section: s.section,
+      label: s.label,
+      step_key: s.step_key,
+      due_on: s.due_on,
+      done_on: s.done_on,
+      note: s.note,
+      sort_order: s.sort_order,
+    })),
+    { onConflict: "id" }
+  );
+  if (error) return { error: error.message };
   refresh(weekendId);
   return {};
 }

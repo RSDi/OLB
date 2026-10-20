@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Icons } from "../../../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../../../components/ui";
 import { addStep, deleteStep, moveStep, savePlan, setHosted, updateStep } from "../../../../../../lib/hosted/actions";
-import { daysForWeekend, FEE_LOCK_UNLOCK_NOTE, feeLockNote, formatDay, hostedStepBillingKey, isBillingStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
+import { daysForWeekend, FEE_LOCK_UNLOCK_NOTE, feeLockNote, formatDay, hostedStepBillingKey, hostedStepMoveControls, isBillingStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
 import { STEP_SECTIONS, type HostedPageData, type HostedStep, type StepSection } from "../../../../../../lib/hosted/types";
 import { teamFeesAreBilled } from "../../../../../../lib/invoicing/auto-steps";
 import { ErrorNote, Said, Section, Sheet, cap, grid2, iconBtn, money, sub, useAct } from "./parts";
@@ -63,6 +63,7 @@ function Checklist({ data, today, canReorderSteps }: { data: HostedPageData; tod
             {rows.map((s) => {
               const late = !s.done_on && s.due_on && s.due_on < today;
               const billingKey = hostedStepBillingKey(s);
+              const move = hostedStepMoveControls(rows, s.id);
               const auto = billingKey === "invoices_sent" || billingKey === "team_fees_collected";
               const billing = data.billing;
               const hl = billingKey != null;
@@ -164,12 +165,12 @@ function Checklist({ data, today, canReorderSteps }: { data: HostedPageData; tod
                       </span>
                     )}
                   </div>
-                  {canReorderSteps && (
+                  {canReorderSteps && move.show && (
                     <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <button type="button" style={iconBtn} aria-label={`Move ${s.label} up`} disabled={busy} onClick={() => act(() => moveStep(wid, s.id, "up"))}>
+                      <button type="button" style={iconBtn} aria-label={`Move ${s.label} up`} disabled={busy || !move.canUp} onClick={() => act(() => moveStep(wid, s.id, "up"))}>
                         <Icons.ChevronUp width={13} height={13} />
                       </button>
-                      <button type="button" style={iconBtn} aria-label={`Move ${s.label} down`} disabled={busy} onClick={() => act(() => moveStep(wid, s.id, "down"))}>
+                      <button type="button" style={iconBtn} aria-label={`Move ${s.label} down`} disabled={busy || !move.canDown} onClick={() => act(() => moveStep(wid, s.id, "down"))}>
                         <Icons.ChevronDown width={13} height={13} />
                       </button>
                     </span>
