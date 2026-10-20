@@ -44,23 +44,51 @@ export const DEFAULT_STEPS: { section: StepSection; label: string; key?: string 
 
 // Billing steps under Teams, in the order the board walks them: set and bill,
 // then invoices sent, then collected. Display uses this even when an older
-// plan stored them in another sort_order.
+// plan stored them in another sort_order or never got step_key (0150 rows).
 export const BILLING_STEP_ORDER = ["bill_programs", "invoices_sent", "team_fees_collected"] as const;
+export type BillingStepKey = (typeof BILLING_STEP_ORDER)[number];
+
+export const BILLING_STEP_LABELS: Record<BillingStepKey, string> = {
+  bill_programs: "Set team fees and bill each program",
+  invoices_sent: "Invoices sent",
+  team_fees_collected: "Team fees collected",
+};
+
+const BILLING_LABEL_TO_KEY = new Map<string, BillingStepKey>(
+  (Object.entries(BILLING_STEP_LABELS) as [BillingStepKey, string][]).map(([key, label]) => [label.toLowerCase(), key])
+);
 
 export function billingStepRank(key: string | null | undefined): number | null {
-  const i = BILLING_STEP_ORDER.indexOf((key ?? "") as (typeof BILLING_STEP_ORDER)[number]);
+  const i = BILLING_STEP_ORDER.indexOf((key ?? "") as BillingStepKey);
   return i >= 0 ? i : null;
 }
 
-export function isBillingStep(key: string | null | undefined): boolean {
-  return billingStepRank(key) != null;
+// Existing plans may have the default labels with a null step_key.
+export function hostedStepBillingKey(step: { step_key?: string | null; label?: string | null }): BillingStepKey | null {
+  if (billingStepRank(step.step_key) != null) return step.step_key as BillingStepKey;
+  return BILLING_LABEL_TO_KEY.get((step.label ?? "").trim().toLowerCase()) ?? null;
+}
+
+export function isBillingStep(step: { step_key?: string | null; label?: string | null } | string | null | undefined): boolean {
+  if (step == null) return false;
+  if (typeof step === "string") return billingStepRank(step) != null;
+  return hostedStepBillingKey(step) != null;
+}
+
+export function withHostedStepKeys<T extends { step_key?: string | null; label?: string | null }>(steps: T[]): T[] {
+  return steps.map((s) => {
+    const key = hostedStepBillingKey(s);
+    return key && s.step_key !== key ? { ...s, step_key: key } : s;
+  });
 }
 
 // Keeps a section's own steps, with the three billing keys clustered in
-// BILLING_STEP_ORDER at the earliest of their sort_orders.
-export function orderHostedSteps<T extends { step_key?: string | null; sort_order: number }>(steps: T[]): T[] {
-  const billing = steps.filter((s) => billingStepRank(s.step_key) != null).sort((a, b) => (billingStepRank(a.step_key) ?? 0) - (billingStepRank(b.step_key) ?? 0));
-  const rest = steps.filter((s) => billingStepRank(s.step_key) == null).sort((a, b) => a.sort_order - b.sort_order);
+// BILLING_STEP_ORDER at the earliest of their sort_orders. Matches by
+// step_key or the default label so older MRS rows still reorder on screen.
+export function orderHostedSteps<T extends { step_key?: string | null; label?: string | null; sort_order: number }>(steps: T[]): T[] {
+  const keyed = withHostedStepKeys(steps);
+  const billing = keyed.filter((s) => hostedStepBillingKey(s) != null).sort((a, b) => (billingStepRank(hostedStepBillingKey(a)) ?? 0) - (billingStepRank(hostedStepBillingKey(b)) ?? 0));
+  const rest = keyed.filter((s) => hostedStepBillingKey(s) == null).sort((a, b) => a.sort_order - b.sort_order);
   if (billing.length === 0) return rest;
   const first = Math.min(...billing.map((s) => s.sort_order));
   const insertAt = rest.filter((s) => s.sort_order < first).length;
@@ -414,6 +442,8 @@ export function feeLockNote(invoiceCount: number, lookupFailed = false): string 
     ? "Locked because invoices exist. Void invoices first to change."
     : "Locked because fees are set. Uncheck Set team fees to change.";
 }
+
+export const FEE_LOCK_UNLOCK_NOTE = "Tick Set team fees and bill each program to lock Team fee ($).";
 
 export function feeLockSaveError(invoiceCount: number, lookupFailed = false): string {
   if (lookupFailed) return "Couldn't check invoices. Try again.";

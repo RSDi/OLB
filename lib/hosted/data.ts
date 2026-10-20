@@ -27,7 +27,7 @@ import {
   type HostedStep,
   type HostedTeam,
 } from "./types";
-import { feesAreLocked } from "./logic";
+import { feesAreLocked, hostedStepBillingKey, orderHostedSteps, withHostedStepKeys } from "./logic";
 
 type Weekend = HostedPageData["weekend"];
 
@@ -82,9 +82,11 @@ export async function loadHostedPage(
           .select("id, weekend_id, section, label, due_on, done_on, note, sort_order")
           .eq("weekend_id", weekendId)
           .order("sort_order")
-          .then(({ data: rows }) => ((rows as Omit<HostedStep, "step_key">[] | null) ?? []).map((s) => ({ ...s, step_key: null })));
+          .then(({ data: rows }) =>
+            orderHostedSteps(withHostedStepKeys(((rows as Omit<HostedStep, "step_key">[] | null) ?? []).map((s) => ({ ...s, step_key: null }))))
+          );
       }
-      return ((data as HostedStep[] | null) ?? []).map((s) => ({ ...s, step_key: s.step_key ?? null }));
+      return orderHostedSteps(withHostedStepKeys(((data as HostedStep[] | null) ?? []).map((s) => ({ ...s, step_key: s.step_key ?? null }))));
     }),
     supabase.from("hs_hosted_divisions").select(DIVISION_COLUMNS).eq("weekend_id", weekendId).order("sort_order").then(({ data }) => (data as HostedDivision[] | null) ?? []),
     supabase.from("hs_hosted_teams").select(TEAM_COLUMNS).eq("weekend_id", weekendId).order("sort_order").then(({ data }) => (data as HostedTeam[] | null) ?? []),
@@ -133,10 +135,12 @@ export async function loadFeeLockState(weekendId: string): Promise<HostedFeeLock
   try {
     const db = createAdminClient();
     const [stepsRes, invRes] = await Promise.all([
-      db.from("hs_hosted_steps").select("done_on").eq("weekend_id", weekendId).eq("step_key", "bill_programs"),
+      db.from("hs_hosted_steps").select("done_on, step_key, label").eq("weekend_id", weekendId),
       db.from("inv_invoices").select("id").eq("host_event_id", weekendId).is("voided_at", null).limit(1),
     ]);
-    const steps = ((stepsRes.data as { done_on: string | null }[] | null) ?? []).filter((s) => !!s.done_on);
+    const steps = ((stepsRes.data as { done_on: string | null; step_key: string | null; label: string }[] | null) ?? []).filter(
+      (s) => !!s.done_on && hostedStepBillingKey(s) === "bill_programs"
+    );
     const billProgramsDone = !stepsRes.error && steps.length > 0;
     if (stepsRes.error || invRes.error) return { ...lockedUnknown, billProgramsDone };
     const invoiceCount = ((invRes.data as { id: string }[] | null) ?? []).length;

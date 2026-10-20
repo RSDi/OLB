@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Icons } from "../../../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../../../components/ui";
 import { addStep, deleteStep, savePlan, setHosted, updateStep } from "../../../../../../lib/hosted/actions";
-import { daysForWeekend, feeLockNote, formatDay, isBillingStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
+import { daysForWeekend, FEE_LOCK_UNLOCK_NOTE, feeLockNote, formatDay, hostedStepBillingKey, isBillingStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
 import { STEP_SECTIONS, type HostedPageData, type HostedStep, type StepSection } from "../../../../../../lib/hosted/types";
 import { teamFeesAreBilled } from "../../../../../../lib/invoicing/auto-steps";
 import { ErrorNote, Said, Section, Sheet, cap, grid2, iconBtn, money, sub, useAct } from "./parts";
@@ -62,17 +62,18 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
             </div>
             {rows.map((s) => {
               const late = !s.done_on && s.due_on && s.due_on < today;
-              const auto = s.step_key === "invoices_sent" || s.step_key === "team_fees_collected";
+              const billingKey = hostedStepBillingKey(s);
+              const auto = billingKey === "invoices_sent" || billingKey === "team_fees_collected";
               const billing = data.billing;
-              const hl = s.step_key === "bill_programs" || s.step_key === "invoices_sent" || s.step_key === "team_fees_collected";
+              const hl = billingKey != null;
               const checked =
-                s.step_key === "bill_programs"
+                billingKey === "bill_programs"
                   ? data.feeLock.locked
                   : !billing?.canView
                     ? !!s.done_on
-                    : s.step_key === "invoices_sent"
+                    : billingKey === "invoices_sent"
                       ? !!billing.allSent
-                      : s.step_key === "team_fees_collected"
+                      : billingKey === "team_fees_collected"
                         ? !!billing.allCollected
                         : !!s.done_on;
               return (
@@ -99,7 +100,7 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                     style={{ width: 18, height: 18, marginTop: 1, accentColor: "var(--rsd-accent-fill)", flexShrink: 0 }}
                   />
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-                    {s.step_key === "bill_programs" ? (
+                    {billingKey === "bill_programs" ? (
                       <Link
                         href={`/portal/schedule/hosted/${wid}/bill`}
                         style={{ fontSize: 13.5, fontWeight: 600, textDecoration: checked ? "line-through" : "underline", textUnderlineOffset: 3, color: checked ? "var(--gw-fg-muted)" : "var(--gw-fg)" }}
@@ -111,7 +112,7 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                         {s.label}
                       </span>
                     )}
-                    {s.step_key === "bill_programs" && billing && (
+                    {billingKey === "bill_programs" && billing && (
                       <>
                         <small style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
                           {data.plan.team_fee_cents ? `${money(data.plan.team_fee_cents)}/team` : "Set the team fee in Details"}
@@ -126,7 +127,7 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                         )}
                       </>
                     )}
-                    {s.step_key === "invoices_sent" && billing && billing.canView && (
+                    {billingKey === "invoices_sent" && billing && billing.canView && (
                       <small style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, display: "flex", flexDirection: "column", gap: 4 }}>
                         {billing.allSent ? <span style={{ color: "#065f46", fontWeight: 800 }}>✓ Auto-checked</span> : <span>Checks itself when all {billing.programCount} are sent</span>}
                         <b style={{ color: "var(--gw-fg)" }}>
@@ -137,7 +138,7 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                         </span>
                       </small>
                     )}
-                    {s.step_key === "team_fees_collected" && billing && billing.canView && (
+                    {billingKey === "team_fees_collected" && billing && billing.canView && (
                       <small style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, display: "flex", flexDirection: "column", gap: 4 }}>
                         {billing.allCollected ? <span style={{ color: "#065f46", fontWeight: 800 }}>✓ Auto-checked</span> : <span>Checks itself when everything is collected</span>}
                         <b style={{ color: "var(--gw-fg)" }}>
@@ -219,7 +220,7 @@ function StepSheet({ wid, step, onClose }: { wid: string; step: HostedStep; onCl
         <Pill variant="ghost" onClick={onClose} disabled={busy}>
           Cancel
         </Pill>
-        {isBillingStep(step.step_key) ? (
+        {isBillingStep(step) ? (
           <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: "var(--gw-fg-muted)" }}>Stays on the checklist</span>
         ) : (
           <Pill
@@ -271,7 +272,11 @@ function Details({ data }: { data: HostedPageData }) {
           onChange={(e) => up({ team_fee: e.target.value })}
           placeholder="240"
           readOnly={data.feeLock.locked}
-          help={data.feeLock.locked ? feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed) : "What a team pays to come, unless its own fee says otherwise. Our teams pay nothing."}
+          help={
+            data.feeLock.locked
+              ? feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)
+              : `${FEE_LOCK_UNLOCK_NOTE} What a team pays to come, unless its own fee says otherwise. Our teams pay nothing.`
+          }
           style={data.feeLock.locked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
         />
         <Select label="Game slot" value={String(f.game_minutes)} onChange={(e) => up({ game_minutes: Number(e.target.value) })} help="How long each game has on a court, warm-up included.">
@@ -329,11 +334,13 @@ function Details({ data }: { data: HostedPageData }) {
         >
           {busy ? "Saving…" : "Save details"}
         </Pill>
-        {data.feeLock.locked ? (
-          <span style={sub}>{feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)}</span>
-        ) : plan.team_fee_cents != null ? (
-          <span style={sub}>Team fee now {money(plan.team_fee_cents)}.</span>
-        ) : null}
+        <span style={sub}>
+          {data.feeLock.locked
+            ? feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)
+            : plan.team_fee_cents != null
+              ? `${FEE_LOCK_UNLOCK_NOTE} Team fee now ${money(plan.team_fee_cents)}.`
+              : FEE_LOCK_UNLOCK_NOTE}
+        </span>
         <Pill
           variant="ghost"
           size="sm"
