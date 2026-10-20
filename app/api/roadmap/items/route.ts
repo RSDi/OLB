@@ -5,7 +5,7 @@
 // RLS on olb_roadmap_items is super-admin only, so reads and the insert use
 // the service role. POST is insert-only: status is always `proposed`, there
 // is never a released_on, and this file has no update or delete. Status
-// moves go through PATCH /api/roadmap/items/[id].
+// moves and notes go through PATCH /api/roadmap/items/[id].
 
 import { NextResponse } from "next/server";
 import { roadmapBotDeny, roadmapBotNeedServiceRole } from "../../../../lib/roadmap/bot-http";

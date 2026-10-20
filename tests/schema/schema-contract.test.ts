@@ -163,10 +163,11 @@ const CONTRACT: Record<string, string> = {
   inv_reminder_settings: "id,freq,start_days,until_paid,cc_emails,bcc_emails,updated_by,updated_at",
   inv_reminder_sends: "id,invoice_id,sent_on,status,error,created_at",
   inv_sequences: "year,last_n",
-  // Roadmap (0129, 0136, 0139).
+  // Roadmap (0129, 0136, 0139, 0154 Parked + bot history).
   olb_roadmap_items:
     "id,title,description,area,status,released_on,preview_url,created_by,created_at,updated_at,deleted_at,approved_by,approved_at",
   olb_roadmap_link: "id,key,updated_at",
+  olb_roadmap_events: "id,item_id,actor,from_status,to_status,note,created_at",
   // Agent keys (0146) plus write scopes (0149).
   olb_agent_keys: "id,name,key_prefix,key_hash,created_by,created_at,revoked_at,scopes",
   // Email archive (0149).

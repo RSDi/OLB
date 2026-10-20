@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 19, 2026";
+export const GUIDE_UPDATED = "October 20, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -664,12 +664,14 @@ You, the coaches and the board see these places under each weekend away on the *
     audience: "super_admin",
     preview: true,
     routes: ["/portal/roadmap"],
-    keywords: ["roadmap", "proposed", "planned", "in progress", "preview", "released", "approve", "share link", "product"],
-    body: `What's live, what's in preview, what's being built, what's planned, and ideas. Super-admins only, for now.
+    keywords: ["roadmap", "proposed", "planned", "in progress", "preview", "released", "parked", "approve", "share link", "product", "note", "history"],
+    body: `What's live, what's in preview, what's being built, what's planned, ideas, and what's parked. Super-admins only, for now.
 
-The board is five columns: **Released**, **Preview**, **In progress**, **Planned** and **Proposed**. Filter by area at the top. **Add item** opens a sheet for the title, a short description families can read, the area, the column, the day it went live (Released), and a preview link (required in Preview).
+The board is six columns: **Released**, **Preview**, **In progress**, **Planned**, **Proposed** and **Parked**. Filter by area at the top. **Add item** opens a sheet for the title, a short description families can read, the area, the column, the day it went live (Released), and a preview link (required in Preview). **Parked** is for something set aside, not in the pipeline — it can go there from any other column, and back again.
 
 **Approve** on a Proposed card, or in that item's sheet, moves it to Planned and records who approved it and when. Planned cards then say **Approved by X on date**. Only a super-admin can approve — the page hides the button from everyone else, and the server and the database both refuse anyone who isn't.
+
+The Product Manager bot can move a card to any column and add a **note**. The latest note shows on the card. Open the item to see **History**: who (Bot), which column it came from, which it landed in, the note, and when. Families on the share link don't see notes or history.
 
 **Share link** turns on a read-only copy families can open without signing in. **New link** and **Turn off** stop the old link working.`,
   },

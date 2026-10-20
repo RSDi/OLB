@@ -7,8 +7,8 @@ import { RoadmapView } from "./RoadmapView";
 // because it was cacheable and the write path didn't expire every copy.
 export const dynamic = "force-dynamic";
 
-// What's live, being built, planned, and ideas (migrations 0129, 0136, 0139).
-// Super-admins on the preview list only, for now.
+// What's live, being built, planned, ideas, and parked (migrations 0129,
+// 0136, 0139, 0154). Super-admins on the preview list only, for now.
 export default async function RoadmapPage() {
   const viewer = await getViewer();
   if (!viewer?.isSuperAdmin || !viewer.seesFullUi) redirect("/portal/directory");

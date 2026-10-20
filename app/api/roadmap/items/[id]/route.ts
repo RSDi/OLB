@@ -1,17 +1,20 @@
-// Product Manager bot: move one roadmap item one column forward.
+// Product Manager bot: move one roadmap item to any board column, and/or
+// add a note.
 //
 // Auth is the same Bearer token as GET/POST /api/roadmap/items. PATCH accepts
-// only `{ status }` and optional `preview_url`. Allowed steps: proposed →
-// planned → progress → preview → released. preview_url is required on
-// progress → preview. Same column, a skip, backwards, or any other field is
-// 400. Unknown or deleted id is 404. A write that matches 0 rows is 409, not
-// 200. POST remains insert-only as proposed. After a successful write the
-// portal board and the public share page are revalidated so they don't stay
-// on the old column.
+// only `{ status }`, optional `preview_url`, and optional `note`. Any board
+// column is allowed, including Parked, the same column, a skip, and
+// backwards. preview_url is required when landing on Preview without a link
+// already on the card. Same extra-field, unknown-column, and missing-body
+// rules as before: 400. Unknown or deleted id is 404. A write that matches
+// 0 rows is 409, not 200. There is no DELETE. POST remains insert-only as
+// proposed. After a successful write the portal board and the public share
+// page are revalidated so they don't stay on the old column, and a history
+// row is stored (bot, from, to, note, when).
 
 import { NextResponse } from "next/server";
 import { roadmapBotDeny, roadmapBotNeedServiceRole } from "../../../../../lib/roadmap/bot-http";
-import { botPatchFields, botPatchUpdated, cleanBotStatusPatch } from "../../../../../lib/roadmap/bot";
+import { botPatchEvent, botPatchFields, botPatchUpdated, cleanBotStatusPatch } from "../../../../../lib/roadmap/bot";
 import { refreshRoadmap } from "../../../../../lib/roadmap/cache";
 import { isStatus, type Status } from "../../../../../lib/roadmap/model";
 import { createAdminClient } from "../../../../../lib/supabase/admin";
@@ -61,6 +64,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const status = isStatus(current.status) ? (current.status as Status) : null;
   if (!status) return NextResponse.json({ error: "That item isn't on the roadmap." }, { status: 404 });
 
+  const now = new Date();
   const row = botPatchFields(
     {
       status,
@@ -68,6 +72,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       released_on: typeof current.released_on === "string" ? current.released_on : null,
     },
     patch,
+    now,
   );
   if ("error" in row) return NextResponse.json({ error: row.error }, { status: 400 });
 
@@ -83,6 +88,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
   const applied = botPatchUpdated(data);
   if (!applied.ok) return NextResponse.json({ error: applied.error }, { status: applied.status });
+
+  const event = botPatchEvent(status, row.status, patch.note ?? null, now);
+  const { error: eventError } = await admin.from("olb_roadmap_events").insert({ item_id: id, ...event });
   refreshRoadmap();
+  if (eventError) {
+    console.error("[roadmap-items PATCH event]", eventError.message);
+    return NextResponse.json({ error: eventError.message }, { status: 500 });
+  }
   return NextResponse.json({ item: applied.item });
 }
