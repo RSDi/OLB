@@ -317,15 +317,17 @@ export async function deleteHostedEvent(id: string): Promise<ClubResult> {
   ]);
   if (costs.error) return { error: costs.error.message };
   if (income.error) return { error: income.error.message };
-  const planWeekendId = plan.error ? null : ((plan.data as { weekend_id: string }[] | null) ?? [])[0]?.weekend_id ?? null;
+  if (plan.error) return { error: plan.error.message };
+  const planWeekendId = ((plan.data as { weekend_id: string }[] | null) ?? [])[0]?.weekend_id ?? null;
 
   // Invoices are keyed by the HS weekend (0152). Also check the finance
-  // event id in case one was stored that way. A missing table is "none".
+  // event id in case one was stored that way. A lookup error refuses delete.
   let liveInvoices = 0;
   const invoiceKeys = [id, planWeekendId].filter((x): x is string => !!x);
   if (invoiceKeys.length) {
     const inv = await g.db.from("inv_invoices").select("id").in("host_event_id", invoiceKeys).is("voided_at", null).limit(1);
-    if (!inv.error) liveInvoices = (inv.data ?? []).length;
+    if (inv.error) return { error: inv.error.message };
+    liveInvoices = (inv.data ?? []).length;
   }
 
   const blocked = hostedEventDeleteError({
