@@ -1078,6 +1078,32 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-invoices",
+    sectionId: "settings-invoices",
+    title: "Check mailing address",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-invoices",
+        title: "Settings → Invoices",
+        body: "This is where programs and families mail checks. Super-admins, Treasurer-type roles, Invoicing, and Payments can edit it.",
+      },
+      {
+        target: "invoices-check-address",
+        click: "settings-tab-invoices",
+        title: "Payable to and mailing address",
+        body: "**Payable to** is who the check is made out to. **Mailing address** is attention, street and city. Leave the address blank and invoices say to reply for it.",
+        interactive: true,
+      },
+      {
+        target: "invoices-check-save",
+        click: "settings-tab-invoices",
+        title: "Save",
+        body: "Tap **Save**. The next invoice or receipt you send uses it.",
+      },
+    ],
+  },
+  {
     id: "settings-fees",
     sectionId: "settings-fees",
     title: "Set up club finances",

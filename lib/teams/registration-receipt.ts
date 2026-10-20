@@ -134,6 +134,8 @@ export interface ReceiptOptions {
   logoUrl: string;
   // Where checks are mailed, one line per entry; empty → "reply for it".
   checkAddress: string[];
+  // Who the check is payable to; unset uses CHECK_PAYEE.
+  checkPayee?: string;
 }
 
 // The tokens the receipt's editable words can use (Settings → Registration
@@ -198,7 +200,8 @@ export function receiptHtml(r: Receipt, who: Registrant, o: ReceiptOptions, t: E
   const address = o.checkAddress.length
     ? `and mail it to:<br><span style="color:#111;">${o.checkAddress.map(esc).join("<br>")}</span>`
     : "and reply to this email for the mailing address.";
-  const checkLine = `Make your check out to <strong>${esc(CHECK_PAYEE)}</strong> ${address}`;
+  const payee = o.checkPayee?.trim() || CHECK_PAYEE;
+  const checkLine = `Make your check out to <strong>${esc(payee)}</strong> ${address}`;
   const venmoButton =
     `<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#000;border-radius:100px;">` +
     `<a href="${VENMO_URL}" style="display:inline-block;padding:13px 24px;color:#fbcb44;font-size:15px;font-weight:800;text-decoration:none;">Pay @${VENMO_HANDLE} on Venmo</a></td></tr></table>`;
@@ -235,10 +238,11 @@ ${w.steps.map((line, i) => step(i + 1, esc(line))).join("\n")}
 </table></td></tr></table></body></html>`;
 }
 
-export function receiptText(r: Receipt, who: Registrant, o: Pick<ReceiptOptions, "checkAddress">, t: EmailText = emailText()): string {
+export function receiptText(r: Receipt, who: Registrant, o: Pick<ReceiptOptions, "checkAddress" | "checkPayee">, t: EmailText = emailText()): string {
   const w = receiptWords(r, who, t);
   const kids = joinNames(r.players.map((p) => p.first));
-  const check = `make your check out to ${CHECK_PAYEE} and ${o.checkAddress.length ? `mail it to:\n${o.checkAddress.join("\n")}` : "reply to this email for the mailing address."}`;
+  const payee = o.checkPayee?.trim() || CHECK_PAYEE;
+  const check = `make your check out to ${payee} and ${o.checkAddress.length ? `mail it to:\n${o.checkAddress.join("\n")}` : "reply to this email for the mailing address."}`;
   return [
     w.intro,
     "",

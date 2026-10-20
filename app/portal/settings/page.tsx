@@ -10,6 +10,7 @@ import {
   canManageRegistrations,
   canManageUniforms,
   canManageFinances,
+  canManageInvoicing,
   canManageWebsite,
   canManageTravel,
   canManageFilm,
@@ -46,6 +47,7 @@ import { RegistrationEmailsTab } from "./RegistrationEmailsTab";
 import { RegistrationAutomationsTab } from "./RegistrationAutomationsTab";
 import { UniformsTab } from "./UniformsTab";
 import { FeesTab } from "./FeesTab";
+import { InvoicesTab } from "./InvoicesTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
 import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { WebsiteTab } from "./WebsiteTab";
@@ -58,7 +60,7 @@ import { Icons } from "../../components/icons";
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
 // Website is released to whoever holds its grant (and super-admins).
-const RELEASED_TABS = new Set<string>(["members", "teams", "film", "season", "volunteer_roles", "requirements", "planning_roles", "email_templates", "registration_emails", "website", "release_notes", "import"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "film", "season", "volunteer_roles", "requirements", "planning_roles", "email_templates", "registration_emails", "website", "release_notes", "import", "invoices"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "access_profiles",
   "playbooks",
@@ -85,6 +87,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   registration_automations: "settings-registration-automations",
   uniforms: "settings-uniforms",
   fees: "settings-fees",
+  invoices: "settings-invoices",
   website: "settings-website",
   release_notes: "settings-release-notes",
   playbooks: "settings-playbooks",
@@ -114,6 +117,7 @@ type Tab =
   | "registration_automations"
   | "uniforms"
   | "fees"
+  | "invoices"
   | "website"
   | "release_notes"
   | "planning_roles"
@@ -175,6 +179,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     registration_automations: workflowOn && canManageRegistrations(me),
     uniforms: workflowOn && canManageUniforms(me),
     fees: financesOn && canManageFinances(me),
+    invoices: canManageInvoicing(me) || canManageFinances(me),
     // Hotel rooming-list import for the travel coordinator.
     import: canManageTravel(me),
     // Every approved member: what's shipped.
@@ -213,6 +218,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     { key: "registration_automations", label: "Registration Automations", group: "Communication", visible: (fullUi || workflowOn) && canManageRegistrations(me), tour: "settings-tab-registration-automations", keywords: "registration workflow automatic emails waitlist offer slack handbook checklist switch" },
     { key: "uniforms", label: "Uniforms", group: "People & Access", visible: (fullUi || workflowOn) && canManageUniforms(me), tour: "settings-tab-uniforms", keywords: "jersey shorts grays warm-ups sizes try-on order" },
     { key: "fees", label: "Fees", group: "People & Access", visible: (fullUi || financesOn) && canManageFinances(me), tour: "settings-tab-fees", keywords: "registration fee tiers coach kid comp fundraising nelson's due date budget club finances" },
+    { key: "invoices", label: "Invoices", group: "People & Access", visible: canManageInvoicing(me) || canManageFinances(me), tour: "settings-tab-invoices", keywords: "check mailing address remit-to payee attention invoices receipts mail checks" },
     { key: "contact_categories", label: "Contact Types", group: "Communication", visible: true, tour: "settings-tab-contact-categories", keywords: "contacts categories" },
     // The public club website's menu, page text and pictures (0120).
     { key: "website", label: "Website", group: "Website & Portal", visible: canManageWebsite(me), tour: "settings-tab-website", keywords: "public site pages pictures publish" },
@@ -377,6 +383,7 @@ export default function SettingsPage() {
       {tab === "registration_automations" && has("registration_automations") && <RegistrationAutomationsTab />}
       {tab === "uniforms" && has("uniforms") && <UniformsTab />}
       {tab === "fees" && has("fees") && <FeesTab />}
+      {tab === "invoices" && has("invoices") && <InvoicesTab />}
       {tab === "website" && has("website") && <WebsiteTab />}
       {tab === "release_notes" && has("release_notes") && <ReleaseNotesTab me={me} />}
       {tab === "planning_roles" && has("planning_roles") && (

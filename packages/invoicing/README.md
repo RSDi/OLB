@@ -76,7 +76,7 @@ The module does not read `process.env`. The host adapter should:
 
 | Var | Use |
 |-----|-----|
-| `MAIL_CHECK_ADDRESS` | Check mailing address, lines separated by `\|` |
+| `MAIL_CHECK_ADDRESS` | Fallback check mailing address when the host has not stored one, lines separated by `\|` |
 | `MAIL_FROM` / `INVOICE_MAIL_FROM` | From address on the verified domain (Resend) |
 | `MAIL_REPLY_TO` | Replies; OLB defaults to LightningBasketballOmaha@gmail.com |
 | `RESEND_API_KEY` | OLB's existing sender |

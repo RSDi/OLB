@@ -888,7 +888,7 @@ The board sees it under **Finances → Snapshot**, and so does anyone given **Se
 
 **The list.** Open, overdue, collected and drafts across the top. Filter **All**, **Draft**, **Sent**, **Viewed**, **Partial**, **Paid**, **Overdue** or **Void**. **+ New invoice** writes one by hand. An event card shows how much of that weekend is in, with a link to its invoices.
 
-**An invoice.** Line items, total, an optional **Deposit** with its own due date (it can't be more than the total), and the **Balance due**. Status is **Draft**, **Sent**, **Viewed**, **Partial**, **Paid**, **Overdue** or **Void**. **Send invoice** emails every address on file for the program (Venmo and check instructions, not a card) from the club's domain, with the club Gmail as reply-to. It stays **Draft** if the email doesn't go out. **Mark as paid** records Venmo or check, the amount, the date and a reference; a deposit and the rest are two payments. **Void invoice** takes it off billed and collected totals. **Reminders** have a club default (anyone with invoicing can change it) and an optional **Custom for this invoice**. **CC and BCC** are the same: club default, optional override, either list can be empty.
+**An invoice.** Line items, total, an optional **Deposit** with its own due date (it can't be more than the total), and the **Balance due**. Status is **Draft**, **Sent**, **Viewed**, **Partial**, **Paid**, **Overdue** or **Void**. **Send invoice** emails every address on file for the program (Venmo and check instructions, not a card) from the club's domain, with the club Gmail as reply-to. It stays **Draft** if the email doesn't go out. **Mark as paid** records Venmo or check, the amount, the date and a reference; a deposit and the rest are two payments. **Void invoice** takes it off billed and collected totals. **Reminders** have a club default (anyone with invoicing can change it) and an optional **Custom for this invoice**. **CC and BCC** are the same: club default, optional override, either list can be empty. **Check mailing address** (who the check is payable to, and where to mail it) is **Settings → Invoices**. Leave the address blank and invoices say to reply for it.
 
 **From a tournament we host.** On the plan, **Bill programs → Finance** is for anyone with **Invoicing**. Coaches and the board who plan the tournament still open the full plan; someone with only **Invoicing** (no HS Schedule edit) does not see teams, money, or sent emails — they get a **Bill programs → Finance** link instead. It previews one invoice per program (team counts from the **Teams** tab; they aren't editable on this page). A program that already has a sent invoice is marked **already billed** and isn't in **Send all N**. **Save all 0 as drafts instead** stays off when there's nobody left to bill. If invoices don't load, the page says so and **Send** / **Save** stay off. Optional deposit, then **Save all N as drafts instead** or **Send all N**. **Set team fees and bill each program** can be ticked by hand to lock the team fee; invoices tick it too. **Invoices sent** ticks itself. **Team fees collected** shows **Not billed yet** until an invoice is sent (drafts alone don't count), then how much is in of the total, and has **View in Finances →**. See *Tournaments we host*.`,
   },
@@ -1353,6 +1353,21 @@ While the registration workflow is on, families pick a size for each item on the
 - **Weekly balance reminder**: an email every week to each family that still owes, until they've paid. Pick **Day it goes**, **When it starts** (**As soon as a family owes**, or some days before, on or after their due date), **Who gets it** (Dads, Moms, Guardians, Players), and its **Subject** and **Message**, or **Start from a template**. **{balance}** becomes what the family owes, **{due_date}** their due date, **{family}** their last name and **{player}** their players' names. **Email me a test** sends it to you as one family that owes would get it. Turn on **Send the weekly reminder** and tap **Save reminder**. **Recent weeks** shows how many families it went to. A family with a credit or nothing owed never gets it, and you can take one family off it on Finances.
 
 Tap **Save**. **Show me around** here walks the whole setup, from this tab through importing the spreadsheet, Nelson's shifts, clinics and the Snapshot to who can see it. Each Finances tab has its own walkthrough under the **i** too.`,
+  },
+  {
+    id: "settings-invoices",
+    title: "Settings: Invoices",
+    group: "Settings",
+    audience: "staff",
+    permission: "invoicing",
+    alsoPermissions: ["payments"],
+    keywords: ["check mailing address", "mail checks", "remit", "payable to", "attention", "invoices", "receipts"],
+    body: `Where programs and families mail checks. Open **Settings → Invoices**. Super-admins, whoever holds President, Athletic Director, or Treasurer in Settings → Planning Roles, anyone given **Invoicing**, and anyone with **Payments** can change it.
+
+- **Payable to** is who the check is made out to. Leave it blank for **Omaha Lightning Basketball**.
+- **Mailing address** is attention, street and city, one line each. This is what invoice emails, the invoice page, and registration receipts show after **Mail to**.
+- Tap **Save**. The next invoice or receipt you send uses it. Older emails keep what they already said.
+- Leave the address blank and the site falls back to a leftover server setting, then **reply for the mailing address** / **Reply for the mailing address**.`,
   },
   {
     id: "settings-contact-types",

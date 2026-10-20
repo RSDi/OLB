@@ -5,7 +5,8 @@ import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { getAuthUser, getViewer } from "../auth/viewer";
 import { churchToday } from "../dates/today";
-import { VENMO_HANDLE, VENMO_URL, CHECK_PAYEE } from "../teams/registration-receipt";
+import { VENMO_HANDLE, VENMO_URL } from "../teams/registration-receipt";
+import { fetchStoredCheckMailing, resolveCheckMailing } from "../mail/check-address";
 import { invoiceMailFrom, sendInvoiceEmail } from "./mail";
 import { hostedEventCustomers } from "./customers";
 import { syncHostedInvoiceSteps } from "./hosted-sync";
@@ -38,24 +39,27 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
       return !!viewer?.canViewInvoices;
     },
     async orgSettings() {
-      const checkAddress = (process.env.MAIL_CHECK_ADDRESS ?? "").split("|").map((s) => s.trim()).filter(Boolean);
       let ccEmails: string[] = [];
       let bccEmails: string[] = [];
+      let stored = { payee: null as string | null, address: null as string | null };
       try {
-        const settings = await loadInvoiceSettings(createAdminClient());
+        const db = createAdminClient();
+        const settings = await loadInvoiceSettings(db);
         ccEmails = settings.ccEmails;
         bccEmails = settings.bccEmails;
+        stored = await fetchStoredCheckMailing(db);
       } catch {
         // Migration not applied yet; empty is the default (never seed addresses).
       }
+      const mailing = resolveCheckMailing(stored);
       return {
         fromName: "Omaha Lightning Basketball · Finance",
         fromEmail: invoiceMailFrom(),
         replyTo: process.env.MAIL_REPLY_TO?.trim() || undefined,
         venmoHandle: VENMO_HANDLE,
         venmoUrl: VENMO_URL,
-        checkPayee: CHECK_PAYEE,
-        checkAddress,
+        checkPayee: mailing.payee,
+        checkAddress: mailing.addressLines,
         ccEmails,
         bccEmails,
       };
