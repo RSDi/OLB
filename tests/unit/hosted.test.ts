@@ -180,6 +180,7 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(actions, /isSuperAdmin/);
   assert.match(actions, /moveHostedSectionSteps/);
   assert.match(actions, /update\(\{ sort_order: s\.sort_order \}\)/);
+  assert.match(actions, /\.eq\("id", s\.id\)\.eq\("weekend_id", weekendId\)/);
   assert.match(actions, /Never write step_key/);
   assert.doesNotMatch(actions.slice(actions.indexOf("export async function moveStep"), actions.indexOf("export async function saveDivision")), /upsert/);
   const data = readFileSync(join(import.meta.dirname, "../../lib/hosted/data.ts"), "utf8");

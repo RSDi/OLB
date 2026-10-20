@@ -264,9 +264,9 @@ export async function deleteStep(weekendId: string, id: string): Promise<HostedR
 }
 
 // Super-admin only for now (no new permission). Renumbers the section by
-// writing only sort_order, one row at a time (id + weekend_id). Never write
-// step_key, label, done, or note — a stale read must not revert a tick or
-// stamp a label-guessed billing key.
+// writing only sort_order, one row at a time (id + weekend_id). Never write step_key,
+// label, done, or note — a stale read must not revert a tick or stamp a
+// label-guessed billing key.
 export async function moveStep(weekendId: string, id: string, direction: "up" | "down"): Promise<HostedResult> {
   const g = await gate();
   if ("error" in g) return g;
