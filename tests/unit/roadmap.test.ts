@@ -2,7 +2,16 @@
 // order each column shows.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanRoadmapItem, columnItems, formatApprovedBy, formatDay, type RoadmapItem } from "../../lib/roadmap/model.ts";
+import {
+  cleanRoadmapItem,
+  columnItems,
+  formatApprovedBy,
+  formatDay,
+  formatRoadmapEvent,
+  formatRoadmapMove,
+  latestNote,
+  type RoadmapItem,
+} from "../../lib/roadmap/model.ts";
 
 const form = { title: "  Push notifications ", description: " On your phone. ", area: "Portal", status: "planned", releasedOn: "" };
 
@@ -52,6 +61,11 @@ test("title, area and column are checked", () => {
   assert.ok("error" in cleanRoadmapItem({ ...form, status: "done" }));
 });
 
+test("a parked item saves with no date", () => {
+  const row = cleanRoadmapItem({ ...form, status: "parked" });
+  assert.ok(!("error" in row) && row.status === "parked" && row.released_on === null);
+});
+
 test("Released shows newest first; other columns oldest first", () => {
   const it = (
     id: string,
@@ -73,6 +87,7 @@ test("Released shows newest first; other columns oldest first", () => {
   assert.deepEqual(columnItems(items, "planned").map((i) => i.id), ["d", "c"]);
   assert.deepEqual(columnItems(items, "preview").map((i) => i.id), ["f", "e"]);
   assert.deepEqual(columnItems(items, "proposed"), []);
+  assert.deepEqual(columnItems(items, "parked"), []);
   // Area chips filter first; each column still sorts the same way.
   const portal = items.filter((i) => i.area === "Portal");
   assert.deepEqual(columnItems(portal, "preview").map((i) => i.id), ["e"]);
@@ -83,6 +98,24 @@ test("dates leave off the year only for this year", () => {
   const now = new Date(2026, 9, 9);
   assert.equal(formatDay("2026-10-09", now), "Oct 9");
   assert.equal(formatDay("2025-12-31", now), "Dec 31, 2025");
+});
+
+test("the latest note is the newest non-empty one; history names Bot and the move", () => {
+  const now = new Date(2026, 9, 19);
+  const events = [
+    { id: "1", actor: "bot", from_status: "proposed" as const, to_status: "parked" as const, note: "Waiting.", created_at: "2026-10-18T12:00:00.000Z" },
+    { id: "2", actor: "bot", from_status: "parked" as const, to_status: "planned" as const, note: null, created_at: "2026-10-19T12:00:00.000Z" },
+    { id: "3", actor: "bot", from_status: "planned" as const, to_status: "planned" as const, note: "  Let's go.  ", created_at: "2026-10-19T18:00:00.000Z" },
+  ];
+  assert.equal(latestNote(events), "Let's go.");
+  assert.equal(latestNote(events.slice(0, 2)), "Waiting.");
+  assert.equal(latestNote([]), null);
+  assert.equal(formatRoadmapMove("proposed", "parked"), "Proposed → Parked");
+  assert.equal(formatRoadmapMove("planned", "planned"), "Planned");
+  assert.equal(
+    formatRoadmapEvent(events[0], now),
+    "Bot · Proposed → Parked · Oct 18",
+  );
 });
 
 test("Planned cards say who approved and when", () => {

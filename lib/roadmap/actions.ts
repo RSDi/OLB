@@ -1,9 +1,10 @@
 "use server";
 
-// Roadmap edits (/portal/roadmap, migrations 0129, 0136 and 0139). Super-admins
+// Roadmap edits (/portal/roadmap, migrations 0129, 0136, 0139 and 0154). Super-admins
 // on the preview list only, here and (for super-admins) in RLS. Approve is the
 // same gate: only a super-admin can move Proposed → Planned and stamp
-// approved_by / approved_at.
+// approved_by / approved_at. Parked is a regular column on the form. Bot
+// notes live in olb_roadmap_events and are read-only here.
 
 import { requireSuperAdmin } from "../auth/guards";
 import { getViewer } from "../auth/viewer";

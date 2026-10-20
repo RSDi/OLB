@@ -54,7 +54,7 @@ const NAV: NavItem[] = [
   // coaches read the types shared with them (Settings → Contact Types), and
   // the travel coordinator keeps the hotels and places to eat.
   { href: "/portal/contacts", label: "External Contacts", icon: <Icons.Briefcase width={16} height={16}/>, contactsOnly: true, tour: "nav-contacts" },
-  // What's live, in preview, being built, planned, and ideas (lib/roadmap). Preview.
+  // What's live, in preview, being built, planned, ideas, and parked (lib/roadmap). Preview.
   { href: "/portal/roadmap", label: "Roadmap", icon: <Icons.Sparkles width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/>, tour: "nav-playbooks" },
   { href: "/portal/film", label: "Film", icon: <Icons.Video width={16} height={16}/>, filmOnly: true, tour: "nav-film" },

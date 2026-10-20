@@ -1,5 +1,5 @@
-// The roadmap's rules (/portal/roadmap, migrations 0129 and 0136), pure and
-// with no server imports: the actions check input with these and the board
+// The roadmap's rules (/portal/roadmap, migrations 0129, 0136 and 0154), pure
+// and with no server imports: the actions check input with these and the board
 // renders with them, so both agree. The tests use them too.
 
 // Parts of the app an item belongs to. Adding one is a code change here, not
@@ -7,7 +7,7 @@
 export const AREAS = ["Portal", "Website", "Registration", "Payments", "HS Schedule", "Slack & email"] as const;
 export type Area = (typeof AREAS)[number];
 
-export type Status = "released" | "preview" | "progress" | "planned" | "proposed";
+export type Status = "released" | "preview" | "progress" | "planned" | "proposed" | "parked";
 
 // The board's columns, left to right. `hint` is for the board, `publicHint`
 // for families reading the shared link.
@@ -17,11 +17,28 @@ export const STATUSES: { key: Status; label: string; hint: string; publicHint: s
   { key: "progress", label: "In progress", hint: "Being built now.", publicHint: "Being built now." },
   { key: "planned", label: "Planned", hint: "Decided on, not started.", publicHint: "On the way, not started yet." },
   { key: "proposed", label: "Proposed", hint: "Ideas, not decided yet.", publicHint: "Ideas we're thinking about." },
+  { key: "parked", label: "Parked", hint: "Set aside, not in the pipeline.", publicHint: "Set aside for now." },
 ];
 
 export const TITLE_MAX = 120;
 export const DESCRIPTION_MAX = 2000;
 export const PREVIEW_URL_MAX = 500;
+export const NOTE_MAX = 2000;
+
+export function statusLabel(status: Status): string {
+  return STATUSES.find((s) => s.key === status)?.label ?? status;
+}
+
+// A bot (or later, a person) move or note on a card. Oldest first. The
+// board's edit sheet lists these; the public share page never gets them.
+export interface RoadmapEvent {
+  id: string;
+  actor: string;
+  from_status: Status;
+  to_status: Status;
+  note: string | null;
+  created_at: string;
+}
 
 export interface RoadmapItem {
   id: string;
@@ -37,6 +54,9 @@ export interface RoadmapItem {
   approved_by: string | null;
   approved_at: string | null;
   approved_by_name: string | null;
+  // Bot notes on the card. The public share page leaves these empty.
+  latest_note?: string | null;
+  events?: RoadmapEvent[];
 }
 
 export interface RoadmapItemInput {
@@ -158,4 +178,31 @@ export function formatApprovedBy(
   const day = (at ?? "").slice(0, 10);
   if (!who || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
   return `Approved by ${who} on ${formatDay(day, now)}`;
+}
+
+// Newest non-empty note on a card. Events are oldest-first.
+export function latestNote(events: Pick<RoadmapEvent, "note">[] | null | undefined): string | null {
+  if (!events?.length) return null;
+  for (let i = events.length - 1; i >= 0; i--) {
+    const n = events[i].note?.trim() ?? "";
+    if (n) return n;
+  }
+  return null;
+}
+
+// "Proposed → Parked", or just the column when the bot only left a note.
+export function formatRoadmapMove(from: Status, to: Status): string {
+  if (from === to) return statusLabel(to);
+  return `${statusLabel(from)} → ${statusLabel(to)}`;
+}
+
+// "Bot · Proposed → Parked · Oct 19" for the card history.
+export function formatRoadmapEvent(
+  ev: Pick<RoadmapEvent, "actor" | "from_status" | "to_status" | "created_at">,
+  now: Date = new Date(),
+): string {
+  const who = ev.actor === "bot" ? "Bot" : ev.actor;
+  const day = ev.created_at.slice(0, 10);
+  const when = /^\d{4}-\d{2}-\d{2}$/.test(day) ? formatDay(day, now) : ev.created_at;
+  return `${who} · ${formatRoadmapMove(ev.from_status, ev.to_status)} · ${when}`;
 }

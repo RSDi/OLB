@@ -13,6 +13,7 @@ import {
   columnItems,
   formatApprovedBy,
   formatDay,
+  formatRoadmapEvent,
   todayIso,
   type RoadmapItem,
   type Status,
@@ -31,6 +32,7 @@ const DOT: Record<Status, string> = {
   progress: "var(--rsd-accent-fill)",
   planned: "var(--gw-fg-muted)",
   proposed: "var(--gw-fg-faint)",
+  parked: "var(--rsd-warn)",
 };
 
 export function RoadmapView({
@@ -135,6 +137,7 @@ export function RoadmapView({
                     onOpen={editable ? () => setSheet({ kind: "item", item: it, status: it.status }) : undefined}
                     onApprove={editable && it.status === "proposed" ? () => approve(it.id) : undefined}
                     approving={approvingId === it.id}
+                    showNotes={editable}
                   />
                 ))
               ) : (
@@ -199,14 +202,23 @@ function Card({
   onOpen,
   onApprove,
   approving = false,
+  showNotes = false,
 }: {
   it: RoadmapItem;
   onOpen?: () => void;
   onApprove?: () => void;
   approving?: boolean;
+  showNotes?: boolean;
 }) {
   const approved = it.status === "planned" ? formatApprovedBy(it.approved_by_name, it.approved_at) : null;
-  const accent = it.status === "preview" ? "var(--rsd-accent)" : it.status === "progress" ? "var(--rsd-accent-fill)" : "var(--gw-border)";
+  const accent =
+    it.status === "preview"
+      ? "var(--rsd-accent)"
+      : it.status === "progress"
+        ? "var(--rsd-accent-fill)"
+        : it.status === "parked"
+          ? "var(--rsd-warn)"
+          : "var(--gw-border)";
   const style: CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -237,6 +249,11 @@ function Card({
       )}
       {approved && (
         <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>{approved}</span>
+      )}
+      {showNotes && it.latest_note && (
+        <span style={{ fontSize: 12, lineHeight: 1.45, color: "var(--gw-fg-muted)", whiteSpace: "pre-wrap" }}>
+          {it.latest_note}
+        </span>
       )}
       {it.preview_url && (
         <a
@@ -367,6 +384,23 @@ function ItemSheet({
         />
         {err && <div role="alert" style={{ fontSize: 13, color: "var(--gw-error)" }}>{err}</div>}
       </form>
+      {(item?.events?.length ?? 0) > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, borderTop: "1px solid var(--gw-border)", paddingTop: 16 }}>
+          <h3 style={{ margin: 0, fontSize: 12, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--gw-fg-muted)" }}>
+            History
+          </h3>
+          <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
+            {[...(item!.events ?? [])].reverse().map((ev) => (
+              <li key={ev.id} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, lineHeight: 1.45 }}>
+                <span style={{ color: "var(--gw-fg)" }}>{formatRoadmapEvent(ev)}</span>
+                {ev.note && (
+                  <span style={{ color: "var(--gw-fg-muted)", whiteSpace: "pre-wrap" }}>{ev.note}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </SideSheet>
   );
 }
@@ -399,7 +433,7 @@ function LinkSheet({ linkKey, onClose, onDone }: { linkKey: string | null; onClo
     <SideSheet eyebrow="Roadmap" title="Share link" busy={busy} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 14, lineHeight: 1.6 }}>
         <p style={{ margin: 0, color: "var(--gw-fg-muted)" }}>
-          Anyone with the link can read the roadmap without signing in. They see the titles, descriptions, areas, dates and preview links, and can&apos;t change anything.
+          Anyone with the link can read the roadmap without signing in. They see the titles, descriptions, areas, dates and preview links, and can&apos;t change anything. Notes and history stay on this board.
         </p>
         {url ? (
           <>

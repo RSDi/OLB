@@ -3,12 +3,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  BOT_ACTOR,
+  BOT_PATCH_RPC,
   botInsertFields,
   botListItem,
   botListStatusFilter,
+  botPatchApplyTx,
+  botPatchEvent,
   botPatchFields,
+  botPatchIsNoop,
+  botPatchNeedsLog,
+  botPatchRpcArgs,
+  botPatchRpcError,
   botPatchUpdated,
   botStatusStep,
+  cleanBotNote,
   cleanBotRoadmapItem,
   cleanBotStatusPatch,
   roadmapBotAuthorized,
@@ -82,40 +91,66 @@ test("title, description and area use the form's checks; a missing object is a 4
   assert.deepEqual(cleanBotRoadmapItem("item"), { error: "Send a JSON object with title, description, and area." });
 });
 
-test("PATCH only accepts status and preview_url", () => {
+test("PATCH accepts status, preview_url, and note; nothing else", () => {
   assert.deepEqual(cleanBotStatusPatch({ status: "planned" }), { status: "planned" });
+  assert.deepEqual(cleanBotStatusPatch({ status: "parked" }), { status: "parked" });
   assert.deepEqual(cleanBotStatusPatch({ status: "preview", preview_url: "https://olb-git-preview.vercel.app" }), {
     status: "preview",
     preview_url: "https://olb-git-preview.vercel.app",
   });
+  assert.deepEqual(cleanBotStatusPatch({ status: "parked", note: "  Waiting on the vendor.  " }), {
+    status: "parked",
+    note: "Waiting on the vendor.",
+  });
+  assert.deepEqual(cleanBotStatusPatch({ note: "Just a note" }), { note: "Just a note" });
   assert.deepEqual(cleanBotStatusPatch({ status: "planned", title: "Nope" }), {
-    error: "The bot can only set status and preview_url.",
+    error: "The bot can only set status, preview_url, and note.",
   });
   assert.deepEqual(cleanBotStatusPatch({ status: "planned", released_on: "2026-10-16" }), {
-    error: "The bot can only set status and preview_url.",
+    error: "The bot can only set status, preview_url, and note.",
   });
-  assert.deepEqual(cleanBotStatusPatch({}), { error: "Send a status." });
+  assert.deepEqual(cleanBotStatusPatch({ status: "parked", deleted_at: "2026-10-19" }), {
+    error: "The bot can only set status, preview_url, and note.",
+  });
+  assert.deepEqual(cleanBotStatusPatch({}), { error: "Send a status or a note." });
+  assert.deepEqual(cleanBotStatusPatch({ note: "   " }), { error: "Send a status or a note." });
   assert.deepEqual(cleanBotStatusPatch({ status: "done" }), { error: "Pick a column." });
-  assert.deepEqual(cleanBotStatusPatch(null), { error: "Send a JSON object with status." });
+  assert.deepEqual(cleanBotStatusPatch({ status: "Parked" }), { error: "Pick a column." });
+  assert.deepEqual(cleanBotStatusPatch({ status: 1 }), { error: "Pick a column." });
+  assert.deepEqual(cleanBotStatusPatch(null), { error: "Send a JSON object with status or a note." });
 });
 
-test("the bot may only move one column forward", () => {
+test("a note is trimmed, capped, and must be text", () => {
+  assert.deepEqual(cleanBotNote("  Hello  "), { note: "Hello" });
+  assert.deepEqual(cleanBotNote("   "), {});
+  assert.deepEqual(cleanBotNote(undefined), {});
+  assert.deepEqual(cleanBotNote(12), { error: "The note has to be text." });
+  assert.deepEqual(cleanBotNote("x".repeat(2001)), { error: "Keep the note to 2000 characters or fewer." });
+  assert.ok(!("error" in cleanBotNote("x".repeat(2000))));
+});
+
+test("the bot may move to any column, including Parked, a skip, backwards, and the same column", () => {
   assert.deepEqual(botStatusStep("proposed", "planned"), { status: "planned" });
   assert.deepEqual(botStatusStep("planned", "progress"), { status: "progress" });
   assert.deepEqual(botStatusStep("progress", "preview"), { status: "preview" });
   assert.deepEqual(botStatusStep("preview", "released"), { status: "released" });
-  assert.deepEqual(botStatusStep("proposed", "proposed"), { error: "That item is already in that column." });
-  const skip = "The bot can only move an item one column forward: proposed → planned → progress → preview → released.";
-  assert.deepEqual(botStatusStep("proposed", "progress"), { error: skip });
-  assert.deepEqual(botStatusStep("progress", "planned"), { error: skip });
-  assert.deepEqual(botStatusStep("released", "preview"), { error: skip });
-  assert.deepEqual(botStatusStep("proposed", "released"), { error: skip });
+  assert.deepEqual(botStatusStep("proposed", "parked"), { status: "parked" });
+  assert.deepEqual(botStatusStep("released", "parked"), { status: "parked" });
+  assert.deepEqual(botStatusStep("parked", "planned"), { status: "planned" });
+  assert.deepEqual(botStatusStep("proposed", "proposed"), { status: "proposed" });
+  assert.deepEqual(botStatusStep("proposed", "progress"), { status: "progress" });
+  assert.deepEqual(botStatusStep("progress", "planned"), { status: "planned" });
+  assert.deepEqual(botStatusStep("released", "preview"), { status: "preview" });
+  assert.deepEqual(botStatusStep("proposed", "released"), { status: "released" });
 });
 
-test("progress → preview needs a preview_url; preview → released sets the live day", () => {
+test("landing on preview needs a preview_url unless the card already has one; released sets the live day", () => {
   const now = new Date(2026, 9, 16);
   const current = { status: "progress" as const, preview_url: null, released_on: null };
   assert.deepEqual(botPatchFields(current, { status: "preview" }), { error: "Add the preview link." });
+  assert.deepEqual(botPatchFields({ ...current, status: "parked" }, { status: "preview" }), {
+    error: "Add the preview link.",
+  });
   const preview = botPatchFields(current, { status: "preview", preview_url: "https://olb-git-preview.vercel.app" }, now);
   assert.deepEqual(preview, {
     status: "preview",
@@ -123,6 +158,14 @@ test("progress → preview needs a preview_url; preview → released sets the li
     released_on: null,
     updated_at: now.toISOString(),
   });
+  const kept = botPatchFields(
+    { status: "preview", preview_url: "https://olb-git-preview.vercel.app", released_on: null },
+    { note: "Still in preview" },
+    now,
+  );
+  assert.ok(!("error" in kept));
+  assert.equal(kept.status, "preview");
+  assert.equal(kept.preview_url, "https://olb-git-preview.vercel.app");
   const released = botPatchFields(
     { status: "preview", preview_url: "https://olb-git-preview.vercel.app", released_on: null },
     { status: "released" },
@@ -133,8 +176,73 @@ test("progress → preview needs a preview_url; preview → released sets the li
   assert.equal(released.released_on, "2026-10-16");
   assert.equal(released.preview_url, "https://olb-git-preview.vercel.app");
   assert.equal(released.updated_at, now.toISOString());
-  assert.deepEqual(botPatchFields(current, { status: "released" }), {
-    error: "The bot can only move an item one column forward: proposed → planned → progress → preview → released.",
+  const parked = botPatchFields(
+    { status: "released", preview_url: "https://olb-git-preview.vercel.app", released_on: "2026-10-09" },
+    { status: "parked", note: "Not shipping this." },
+    now,
+  );
+  assert.ok(!("error" in parked));
+  assert.equal(parked.status, "parked");
+  assert.equal(parked.released_on, null);
+  const skip = botPatchFields(current, { status: "released" }, now);
+  assert.ok(!("error" in skip));
+  assert.equal(skip.status, "released");
+  assert.equal(skip.released_on, "2026-10-16");
+});
+
+test("every bot PATCH logs who, from, to, note, and when — except same-column with no note", () => {
+  const now = new Date(Date.UTC(2026, 9, 19, 18, 5, 0));
+  assert.equal(botPatchNeedsLog("proposed", "parked", null), true);
+  assert.equal(botPatchNeedsLog("planned", "planned", "Waiting."), true);
+  assert.equal(botPatchNeedsLog("planned", "planned", undefined), false);
+  assert.equal(botPatchNeedsLog("parked", "parked", null), false);
+  assert.deepEqual(botPatchEvent("proposed", "parked", "Waiting on the vendor.", now), {
+    actor: BOT_ACTOR,
+    from_status: "proposed",
+    to_status: "parked",
+    note: "Waiting on the vendor.",
+    created_at: now.toISOString(),
+  });
+  assert.equal(BOT_ACTOR, "bot");
+  const current = { status: "planned" as const, preview_url: null, released_on: null };
+  const same = botPatchFields(current, { status: "planned" }, now);
+  assert.ok(!("error" in same));
+  assert.equal(botPatchIsNoop(current, same), true);
+  const url = botPatchFields(current, { status: "planned", preview_url: "https://olb-git-preview.vercel.app" }, now);
+  assert.ok(!("error" in url));
+  assert.equal(botPatchIsNoop(current, url), false);
+  assert.equal(botPatchNeedsLog(current.status, url.status), false);
+});
+
+test("a failed log write leaves the card unmoved", () => {
+  const card = { id: "a", status: "proposed" as const, preview_url: null, released_on: null };
+  const next = { ...card, status: "parked" as const };
+  const res = botPatchApplyTx(card, "proposed", next, () => {
+    throw new Error("log failed");
+  });
+  assert.equal(res.ok, false);
+  assert.equal(res.status, 500);
+  assert.equal(res.card, card);
+  assert.equal(res.card?.status, "proposed");
+});
+
+test("a concurrent status change is a 409 and does not write", () => {
+  const card = { id: "a", status: "planned" as const, preview_url: null, released_on: null };
+  let logged = 0;
+  const res = botPatchApplyTx(card, "proposed", { ...card, status: "parked" }, () => {
+    logged += 1;
+  });
+  assert.deepEqual(res, {
+    ok: false,
+    status: 409,
+    error: "That item could not be updated.",
+    card,
+  });
+  assert.equal(logged, 0);
+  assert.equal(card.status, "planned");
+  assert.deepEqual(botPatchRpcError({ code: "P0001", message: "conflict" }), {
+    status: 409,
+    error: "That item could not be updated.",
   });
 });
 
@@ -144,6 +252,7 @@ test("GET ?status= accepts a column and rejects anything else", () => {
   assert.deepEqual(botListStatusFilter("planned"), { status: "planned" });
   assert.deepEqual(botListStatusFilter("preview"), { status: "preview" });
   assert.deepEqual(botListStatusFilter("released"), { status: "released" });
+  assert.deepEqual(botListStatusFilter("parked"), { status: "parked" });
   assert.deepEqual(botListStatusFilter("done"), { error: "Pick a column." });
 });
 
@@ -184,6 +293,31 @@ test("GET items include approved_by_name and approved_at", () => {
       approved_at: null,
     },
   );
+});
+
+test("PATCH row writes only status, preview_url, released_on, and updated_at", () => {
+  const now = new Date(2026, 9, 19);
+  const row = botPatchFields(
+    { status: "proposed", preview_url: null, released_on: null },
+    { status: "parked", note: "Waiting on the vendor." },
+    now,
+  );
+  assert.ok(!("error" in row));
+  assert.deepEqual(Object.keys(row).sort(), ["preview_url", "released_on", "status", "updated_at"]);
+  assert.equal(row.status, "parked");
+  const args = botPatchRpcArgs("b6a607ae-2798-4a33-aa41-6934c96623f0", "proposed", row, "Waiting on the vendor.", true);
+  assert.deepEqual(Object.keys(args).sort(), [
+    "p_from_status",
+    "p_id",
+    "p_log",
+    "p_note",
+    "p_preview_url",
+    "p_released_on",
+    "p_status",
+    "p_updated_at",
+  ]);
+  assert.equal(args.p_log, true);
+  assert.equal(BOT_PATCH_RPC, "bot_patch_roadmap_item");
 });
 
 test("PATCH with 0 rows updated is a 409, not a 200", () => {
