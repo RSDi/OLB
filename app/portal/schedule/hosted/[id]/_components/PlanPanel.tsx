@@ -11,22 +11,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { Icons } from "../../../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../../../components/ui";
-import { addStep, deleteStep, savePlan, setHosted, updateStep } from "../../../../../../lib/hosted/actions";
-import { daysForWeekend, FEE_LOCK_UNLOCK_NOTE, feeLockNote, formatDay, hostedStepBillingKey, isBillingStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
+import { addStep, deleteStep, moveStep, savePlan, setHosted, updateStep } from "../../../../../../lib/hosted/actions";
+import { daysForWeekend, FEE_LOCK_UNLOCK_NOTE, feeLockNote, formatDay, hostedStepBillingKey, hostedStepMoveControls, isBillingStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
 import { STEP_SECTIONS, type HostedPageData, type HostedStep, type StepSection } from "../../../../../../lib/hosted/types";
 import { teamFeesAreBilled } from "../../../../../../lib/invoicing/auto-steps";
 import { ErrorNote, Said, Section, Sheet, cap, grid2, iconBtn, money, sub, useAct } from "./parts";
 
-export function PlanPanel({ data, today }: { data: HostedPageData; today: string }) {
+export function PlanPanel({ data, today, canReorderSteps = false }: { data: HostedPageData; today: string; canReorderSteps?: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Checklist data={data} today={today} />
+      <Checklist data={data} today={today} canReorderSteps={canReorderSteps} />
       <Details data={data} />
     </div>
   );
 }
 
-function Checklist({ data, today }: { data: HostedPageData; today: string }) {
+function Checklist({ data, today, canReorderSteps }: { data: HostedPageData; today: string; canReorderSteps: boolean }) {
   const { busy, error, act } = useAct();
   const [editing, setEditing] = useState<HostedStep | null>(null);
   const [adding, setAdding] = useState<StepSection | null>(null);
@@ -63,6 +63,7 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
             {rows.map((s) => {
               const late = !s.done_on && s.due_on && s.due_on < today;
               const billingKey = hostedStepBillingKey(s);
+              const move = hostedStepMoveControls(rows, s.id);
               const auto = billingKey === "invoices_sent" || billingKey === "team_fees_collected";
               const billing = data.billing;
               const hl = billingKey != null;
@@ -164,6 +165,16 @@ function Checklist({ data, today }: { data: HostedPageData; today: string }) {
                       </span>
                     )}
                   </div>
+                  {canReorderSteps && move.show && (
+                    <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <button type="button" style={iconBtn} aria-label={`Move ${s.label} up`} disabled={busy || !move.canUp} onClick={() => act(() => moveStep(wid, s.id, "up"))}>
+                        <Icons.ChevronUp width={13} height={13} />
+                      </button>
+                      <button type="button" style={iconBtn} aria-label={`Move ${s.label} down`} disabled={busy || !move.canDown} onClick={() => act(() => moveStep(wid, s.id, "down"))}>
+                        <Icons.ChevronDown width={13} height={13} />
+                      </button>
+                    </span>
+                  )}
                   <button type="button" style={iconBtn} aria-label={`Edit ${s.label}`} onClick={() => setEditing(s)}>
                     <Icons.Pencil width={13} height={13} />
                   </button>

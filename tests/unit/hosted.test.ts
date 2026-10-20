@@ -13,6 +13,8 @@ import {
   feeLockNote,
   feeLockSaveError,
   hostedStepBillingKey,
+  hostedStepMoveControls,
+  moveHostedSectionSteps,
   feesAreLocked,
   hostedTeamInvoiceKeys,
   isBillingStep,
@@ -111,6 +113,31 @@ test("the hosted checklist bills programs and auto-checks collection by step_key
     ["Invite programs", "Attending programs and divisions confirmed", "Set team fees and bill each program", "Invoices sent", "Team fees collected"]
   );
   assert.equal(hostedStepBillingKey({ step_key: null, label: "Set team fees and bill each program" }), "bill_programs");
+  const section = [
+    { id: "inv", step_key: null, sort_order: 0, label: "Invite programs" },
+    { id: "att", step_key: null, sort_order: 1, label: "Attending programs and divisions confirmed" },
+    { id: "bill", step_key: "bill_programs", sort_order: 2, label: "Set team fees and bill each program" },
+    { id: "sent", step_key: "invoices_sent", sort_order: 3, label: "Invoices sent" },
+    { id: "col", step_key: "team_fees_collected", sort_order: 4, label: "Team fees collected" },
+  ];
+  assert.equal(hostedStepMoveControls(section, "inv").canUp, false);
+  assert.equal(hostedStepMoveControls(section, "inv").canDown, true);
+  assert.equal(hostedStepMoveControls(section, "bill").show, true);
+  assert.equal(hostedStepMoveControls(section, "sent").show, false);
+  assert.equal(hostedStepMoveControls(section, "col").show, false);
+  assert.deepEqual(
+    moveHostedSectionSteps(section, "att", "down").steps.map((s) => s.id),
+    ["inv", "bill", "sent", "col", "att"]
+  );
+  assert.deepEqual(
+    moveHostedSectionSteps(section, "bill", "up").steps.map((s) => s.id),
+    ["inv", "bill", "sent", "col", "att"]
+  );
+  assert.equal(moveHostedSectionSteps(section, "inv", "up").moved, false);
+  assert.deepEqual(
+    moveHostedSectionSteps(section, "inv", "up").steps.map((s) => s.sort_order),
+    [0, 1, 2, 3, 4]
+  );
 });
 
 test("team fees lock once Set team fees is done or an invoice exists", () => {
@@ -148,6 +175,14 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(actions, /curErr \|\| !cur/);
   assert.match(actions, /hostedTeamInvoiceKeys\(opponent\)/);
   assert.match(actions, /lock\.lookupFailed/);
+  assert.match(actions, /export async function moveStep/);
+  assert.match(actions, /Only a super admin can reorder the checklist for now/);
+  assert.match(actions, /isSuperAdmin/);
+  assert.match(actions, /moveHostedSectionSteps/);
+  assert.match(actions, /update\(\{ sort_order: s\.sort_order \}\)/);
+  assert.match(actions, /\.eq\("id", s\.id\)\.eq\("weekend_id", weekendId\)/);
+  assert.match(actions, /Never write step_key/);
+  assert.doesNotMatch(actions.slice(actions.indexOf("export async function moveStep"), actions.indexOf("export async function saveDivision")), /upsert/);
   const data = readFileSync(join(import.meta.dirname, "../../lib/hosted/data.ts"), "utf8");
   assert.match(data, /lookupFailed: true/);
   assert.match(data, /hostedStepBillingKey/);
@@ -159,6 +194,11 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(plan, /feeLockNote/);
   assert.match(plan, /FEE_LOCK_UNLOCK_NOTE/);
   assert.match(plan, /hostedStepBillingKey/);
+  assert.match(plan, /canReorderSteps/);
+  assert.match(plan, /hostedStepMoveControls/);
+  assert.match(plan, /Move \$\{s\.label\} up/);
+  assert.match(plan, /!move\.canUp/);
+  assert.match(plan, /!move\.canDown/);
   assert.match(plan, /lookupFailed/);
   assert.match(plan, /readOnly=\{data\.feeLock\.locked\}/);
   assert.match(plan, /isBillingStep/);
@@ -166,6 +206,8 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   const teams = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/_components/TeamsPanel.tsx"), "utf8");
   assert.match(teams, /disabled=\{feesLocked\}/);
   assert.match(teams, /One of our teams \(no fee\)/);
+  const page = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/page.tsx"), "utf8");
+  assert.match(page, /canReorderSteps=\{viewer\.isSuperAdmin\}/);
 });
 
 test("seed order keeps the top seeds apart", () => {

@@ -88,11 +88,64 @@ export function withHostedStepKeys<T extends { step_key?: string | null; label?:
 export function orderHostedSteps<T extends { step_key?: string | null; label?: string | null; sort_order: number }>(steps: T[]): T[] {
   const keyed = withHostedStepKeys(steps);
   const billing = keyed.filter((s) => hostedStepBillingKey(s) != null).sort((a, b) => (billingStepRank(hostedStepBillingKey(a)) ?? 0) - (billingStepRank(hostedStepBillingKey(b)) ?? 0));
-  const rest = keyed.filter((s) => hostedStepBillingKey(s) == null).sort((a, b) => a.sort_order - b.sort_order);
+  const rest = keyed.filter((s) => hostedStepBillingKey(s) == null).sort((a, b) => a.sort_order - b.sort_order || (a.label ?? "").localeCompare(b.label ?? ""));
   if (billing.length === 0) return rest;
   const first = Math.min(...billing.map((s) => s.sort_order));
   const insertAt = rest.filter((s) => s.sort_order < first).length;
   return [...rest.slice(0, insertAt), ...billing, ...rest.slice(insertAt)];
+}
+
+export type HostedStepMoveUnit<T> = { kind: "step"; step: T } | { kind: "billing"; steps: T[] };
+
+// Billing steps are one unit so a move can pass the whole block, never split it.
+export function hostedStepMoveUnits<T extends { step_key?: string | null; label?: string | null; sort_order: number }>(steps: T[]): HostedStepMoveUnit<T>[] {
+  const units: HostedStepMoveUnit<T>[] = [];
+  let billing: T[] = [];
+  for (const s of orderHostedSteps(steps)) {
+    if (hostedStepBillingKey(s)) {
+      billing.push(s);
+      continue;
+    }
+    if (billing.length) {
+      units.push({ kind: "billing", steps: billing });
+      billing = [];
+    }
+    units.push({ kind: "step", step: s });
+  }
+  if (billing.length) units.push({ kind: "billing", steps: billing });
+  return units;
+}
+
+function unitHasId<T extends { id: string }>(unit: HostedStepMoveUnit<T>, id: string): boolean {
+  return unit.kind === "step" ? unit.step.id === id : unit.steps.some((s) => s.id === id);
+}
+
+export function hostedStepMoveControls<T extends { id: string; step_key?: string | null; label?: string | null; sort_order: number }>(
+  steps: T[],
+  id: string
+): { show: boolean; canUp: boolean; canDown: boolean } {
+  const units = hostedStepMoveUnits(steps);
+  const index = units.findIndex((u) => (u.kind === "step" ? u.step.id === id : u.steps[0]?.id === id));
+  if (index < 0) return { show: false, canUp: false, canDown: false };
+  return { show: true, canUp: index > 0, canDown: index < units.length - 1 };
+}
+
+function flattenMoveUnits<T extends { sort_order: number }>(units: HostedStepMoveUnit<T>[]): T[] {
+  return units.flatMap((u) => (u.kind === "billing" ? u.steps : [u.step])).map((s, i) => ({ ...s, sort_order: i }));
+}
+
+export function moveHostedSectionSteps<T extends { id: string; step_key?: string | null; label?: string | null; sort_order: number }>(
+  steps: T[],
+  id: string,
+  direction: "up" | "down"
+): { steps: T[]; moved: boolean } {
+  const units = hostedStepMoveUnits(steps);
+  const i = units.findIndex((u) => unitHasId(u, id));
+  const j = direction === "up" ? i - 1 : i + 1;
+  if (i < 0 || j < 0 || j >= units.length) return { steps: flattenMoveUnits(units), moved: false };
+  const next = [...units];
+  [next[i], next[j]] = [next[j], next[i]];
+  return { steps: flattenMoveUnits(next), moved: true };
 }
 
 export function stepProgress(steps: Pick<HostedStep, "done_on">[]): { done: number; total: number } {

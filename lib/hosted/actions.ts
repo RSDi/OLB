@@ -8,6 +8,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
+import { getViewer } from "../auth/viewer";
 import { requireHsPlanner } from "../hs-schedule/guard";
 import { getPreview } from "../activity/preview";
 import { sendFamilyEmails } from "../notifications/registration-message";
@@ -24,6 +25,7 @@ import {
   initials,
   hostedStepBillingKey,
   isBillingStep,
+  moveHostedSectionSteps,
   parseCount,
   placementBracket,
   placesLabel,
@@ -257,6 +259,36 @@ export async function deleteStep(weekendId: string, id: string): Promise<HostedR
   }
   const { error } = await g.db.from("hs_hosted_steps").delete().eq("id", id).eq("weekend_id", weekendId);
   if (error) return { error: error.message };
+  refresh(weekendId);
+  return {};
+}
+
+// Super-admin only for now (no new permission). Renumbers the section by
+// writing only sort_order, one row at a time (id + weekend_id). Never write step_key,
+// label, done, or note — a stale read must not revert a tick or stamp a
+// label-guessed billing key.
+export async function moveStep(weekendId: string, id: string, direction: "up" | "down"): Promise<HostedResult> {
+  const g = await gate();
+  if ("error" in g) return g;
+  const viewer = await getViewer();
+  if (!viewer?.isSuperAdmin) return { error: "Only a super admin can reorder the checklist for now." };
+  if (direction !== "up" && direction !== "down") return { error: "Pick Move up or Move down." };
+  const { data, error: readErr } = await g.db.from("hs_hosted_steps").select("id, section, label, step_key, sort_order").eq("weekend_id", weekendId);
+  if (readErr) return { error: readErr.message };
+  type StepRow = { id: string; section: string; label: string; step_key: string | null; sort_order: number };
+  const all = (data as StepRow[] | null) ?? [];
+  const mine = all.find((s) => s.id === id);
+  if (!mine) return { error: "That step isn't there any more." };
+  const { steps: next, moved } = moveHostedSectionSteps(
+    all.filter((s) => s.section === mine.section),
+    id,
+    direction
+  );
+  if (!moved) return {};
+  for (const s of next) {
+    const { error } = await g.db.from("hs_hosted_steps").update({ sort_order: s.sort_order }).eq("id", s.id).eq("weekend_id", weekendId);
+    if (error) return { error: error.message };
+  }
   refresh(weekendId);
   return {};
 }

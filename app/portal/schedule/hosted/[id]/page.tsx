@@ -64,7 +64,7 @@ export default async function HostedTournamentPage({
   }
   if (loaded.kind === "not_hosted") return <StartHosting weekend={loaded.weekend} />;
   const active = TABS.includes(tab as HostedTab) ? (tab as HostedTab) : "plan";
-  return <HostedView data={loaded.data} tab={active} today={churchToday()} />;
+  return <HostedView data={loaded.data} tab={active} today={churchToday()} canReorderSteps={viewer.isSuperAdmin} />;
 }
 
 function Note({ title, children }: { title: string; children: React.ReactNode }) {
