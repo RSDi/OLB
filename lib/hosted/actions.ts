@@ -22,6 +22,7 @@ import {
   fillCourts,
   hostedTeamInvoiceKeys,
   initials,
+  hostedStepBillingKey,
   isBillingStep,
   parseCount,
   placementBracket,
@@ -226,8 +227,8 @@ export async function updateStep(
     row.due_on = patch.due_on || null;
   }
   if (patch.done !== undefined) {
-    const { data: existing } = await g.db.from("hs_hosted_steps").select("step_key").eq("id", id).eq("weekend_id", weekendId).maybeSingle();
-    const auto = (existing as { step_key: string | null } | null)?.step_key;
+    const { data: existing } = await g.db.from("hs_hosted_steps").select("step_key, label").eq("id", id).eq("weekend_id", weekendId).maybeSingle();
+    const auto = hostedStepBillingKey((existing as { step_key: string | null; label: string } | null) ?? {});
     if (auto === "invoices_sent" || auto === "team_fees_collected") {
       return { notice: "This step checks itself from invoices." };
     }
@@ -249,9 +250,9 @@ export async function updateStep(
 export async function deleteStep(weekendId: string, id: string): Promise<HostedResult> {
   const g = await gate();
   if ("error" in g) return g;
-  const { data: existing, error: readErr } = await g.db.from("hs_hosted_steps").select("step_key").eq("id", id).eq("weekend_id", weekendId).maybeSingle();
+  const { data: existing, error: readErr } = await g.db.from("hs_hosted_steps").select("step_key, label").eq("id", id).eq("weekend_id", weekendId).maybeSingle();
   if (readErr) return { error: readErr.message };
-  if (isBillingStep((existing as { step_key: string | null } | null)?.step_key)) {
+  if (isBillingStep((existing as { step_key: string | null; label: string } | null) ?? {})) {
     return { error: "That step stays on the checklist. It tracks billing." };
   }
   const { error } = await g.db.from("hs_hosted_steps").delete().eq("id", id).eq("weekend_id", weekendId);
