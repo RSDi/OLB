@@ -1,4 +1,4 @@
--- 0154_data_api_table_grants.sql
+-- 0156_data_api_table_grants.sql
 --
 -- Supabase change effective 2026-10-30: new tables in schema public no
 -- longer get automatic Data API grants. Without an explicit GRANT,
@@ -23,11 +23,15 @@
 -- No anon grants: the only anonymous Data API reads are site_menu_items
 -- and site_content (0120), which already grant select to anon.
 --
+-- Numbered 0156 so it sits after open PRs that already took 0154/0155
+-- (#215 inv_gmail, #219 olb_roadmap_events). Those tables are granted
+-- with IF EXISTS so this is safe regardless of merge order.
+--
 -- GRANT is idempotent. Does not change RLS, policies, or the baseline's
 -- ALTER DEFAULT PRIVILEGES (those still grant ALL to anon on tables
 -- created by postgres — broader than needed; follow-up).
 --
--- Apply via the Supabase SQL editor, after 0153. Idempotent.
+-- Apply with supabase db push. Idempotent.
 
 begin;
 
@@ -126,5 +130,28 @@ grant select, insert, update, delete on
   public.olb_registration_codes,
   public.public_directory_link
   to service_role;
+
+-- Tables from open PRs that may or may not exist when this runs.
+-- inv_gmail (#215): service role only, same as game_film_youtube.
+-- olb_roadmap_events (#219): super-admins select as authenticated;
+-- the bot writes with the service role (no member insert/update/delete).
+do $$
+begin
+  if exists (
+    select 1 from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public' and c.relname = 'inv_gmail' and c.relkind = 'r'
+  ) then
+    execute 'grant select, insert, update, delete on public.inv_gmail to service_role';
+  end if;
+  if exists (
+    select 1 from pg_catalog.pg_class c
+      join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public' and c.relname = 'olb_roadmap_events' and c.relkind = 'r'
+  ) then
+    execute 'grant select on public.olb_roadmap_events to authenticated, service_role';
+    execute 'grant insert, update, delete on public.olb_roadmap_events to service_role';
+  end if;
+end $$;
 
 commit;
