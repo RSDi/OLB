@@ -57,6 +57,8 @@ create policy "olb_roadmap_events_select" on public.olb_roadmap_events
 
 -- No insert / update / delete policies: the bot uses the service role, and
 -- history is not editable from the portal.
+grant select on public.olb_roadmap_events to authenticated, service_role;
+grant insert, update, delete on public.olb_roadmap_events to service_role;
 
 commit;
 
