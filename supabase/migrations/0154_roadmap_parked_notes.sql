@@ -57,14 +57,11 @@ create policy "olb_roadmap_events_select" on public.olb_roadmap_events
 
 -- No insert / update / delete policies: the bot uses the service role, and
 -- history is not editable from the portal.
-<<<<<<< HEAD
-=======
 --
 -- Table privileges (Supabase stops auto-granting new public tables on
 -- 2026-10-30). Authenticated super-admins read through RLS; the bot writes
 -- with the service role. id is uuid (gen_random_uuid()), so there is no
 -- backing sequence to grant.
->>>>>>> 6482cfc (Grant olb_roadmap_events to authenticated and service_role)
 grant select on public.olb_roadmap_events to authenticated, service_role;
 grant insert, update, delete on public.olb_roadmap_events to service_role;
 
