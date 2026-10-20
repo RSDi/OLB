@@ -103,7 +103,7 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
       <Section
         id={`${uid}-in`}
         title="Money in"
-        dataTour="snapshot-in"
+        data-tour="snapshot-in"
         expanded={open.has("in")}
         onToggle={() => toggle("in")}
         summary={<MoneyTotal cents={s.moneyIn.total} />}
@@ -119,7 +119,7 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
         <Section
           id={`${uid}-groups`}
           title="Spending vs budget"
-          dataTour="snapshot-groups"
+          data-tour="snapshot-groups"
           expanded={open.has("groups")}
           onToggle={() => toggle("groups")}
           summary={<BudgetSummary spend={s.budget.spend} />}
@@ -260,7 +260,7 @@ function Section({
   onToggle,
   summary,
   children,
-  dataTour,
+  ...rest
 }: {
   id: string;
   title: string;
@@ -268,11 +268,11 @@ function Section({
   onToggle: () => void;
   summary: React.ReactNode;
   children: React.ReactNode;
-  dataTour?: string;
+  "data-tour"?: string;
 }) {
   const panelId = `${id}-panel`;
   return (
-    <div className="rsd-card fin-snapshot-section" style={{ gap: 10, padding: "16px 18px" }} data-tour={dataTour}>
+    <div className="rsd-card fin-snapshot-section" style={{ gap: 10, padding: "16px 18px" }} data-tour={rest["data-tour"]}>
       <button
         type="button"
         id={`${id}-toggle`}
@@ -313,9 +313,9 @@ function Section({
         id={panelId}
         role="region"
         aria-labelledby={`${id}-toggle`}
-        hidden={!expanded}
+        aria-hidden={!expanded}
         className="fin-snapshot-section-body"
-        style={{ display: expanded ? "flex" : undefined, flexDirection: "column", gap: 10 }}
+        style={{ display: expanded ? "flex" : "none", flexDirection: "column", gap: 10 }}
       >
         {children}
       </div>

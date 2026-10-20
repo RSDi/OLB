@@ -2043,6 +2043,8 @@ main::-webkit-scrollbar-track { background: transparent; }
   body:has(.fin-snapshot) .rsd-topbar,
   body:has(.fin-snapshot) .rsd-preview-banner,
   body:has(.fin-snapshot) nav[aria-label="Payments"],
+  body:has(.fin-snapshot) header,
+  body:has(.fin-snapshot) footer,
   body:has(.fin-snapshot) .fin-snapshot-no-print { display: none !important; }
   body:has(.fin-snapshot) .rsd-app { display: block !important; height: auto !important; }
   body:has(.fin-snapshot) .rsd-app main { display: block !important; overflow: visible !important; padding: 0 !important; }
@@ -2054,8 +2056,7 @@ main::-webkit-scrollbar-track { background: transparent; }
     gap: 8px !important;
   }
   body:has(.fin-snapshot) .fin-snapshot-section { break-inside: avoid; page-break-inside: avoid; }
-  body:has(.fin-snapshot) .fin-snapshot-section-body,
-  body:has(.fin-snapshot) .fin-snapshot-section-body[hidden] {
+  body:has(.fin-snapshot) .fin-snapshot-section-body {
     display: flex !important;
     flex-direction: column !important;
     gap: 10px !important;
