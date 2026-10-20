@@ -19,6 +19,12 @@ import { useFeeTiers } from "./fee-tiers";
 import { ComboSelect } from "../../components/ComboSelect";
 import { HandbookFields, SizeFields } from "./WorkflowFields";
 import { extrasProblem, needsSizesStep, type ExtrasState, type FormExtras } from "../../../lib/onboarding/form-extras";
+import {
+  COMMITMENTS_ASK,
+  COMMITMENTS_NOTE_LABEL,
+  COMMITMENTS_YES_FOLLOW_UP,
+  NOTE_MAX,
+} from "../../../lib/teams/registration-commitments";
 
 const radioLbl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, cursor: "pointer" };
 const cbLbl: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, cursor: "pointer" };
@@ -117,6 +123,20 @@ export default function RegistrationForm({
           <summary className="olb-sub" style={{ cursor: "pointer", fontWeight: 600 }}>See the NCHC eligibility guidelines</summary>
           <div style={{ whiteSpace: "pre-wrap", fontSize: 12.5, color: "var(--olb-muted)", marginTop: 8, lineHeight: 1.5 }}>{NCHC_TEXT}</div>
         </details>
+
+        <div>
+          <span style={qLabel}>{COMMITMENTS_ASK} *</span>
+          <YesNo name="commitments" value={f.commitments_has} onChange={(v) => up({ commitments_has: v, ...(v ? {} : { commitments_note: "" }) })} />
+          {f.commitments_has === true && (
+            <div style={{ marginTop: 12 }}>
+              <span style={qLabel}>{COMMITMENTS_YES_FOLLOW_UP}</span>
+              <label style={{ display: "block", marginTop: 8 }}>
+                <span style={{ ...qLabel, fontWeight: 600 }}>{COMMITMENTS_NOTE_LABEL}</span>
+                <textarea className="olb-textarea" rows={4} maxLength={NOTE_MAX} value={f.commitments_note} onChange={(e) => up({ commitments_note: e.target.value })} style={{ marginTop: 6 }} />
+              </label>
+            </div>
+          )}
+        </div>
 
         {/* Address */}
         <div style={{ borderTop: "1px solid var(--olb-stroke)", paddingTop: 18 }}>

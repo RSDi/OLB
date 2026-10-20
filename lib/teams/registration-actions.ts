@@ -22,6 +22,7 @@ import { registrationFullName } from "./roster-logic";
 import { cleanInputExtras, type InputExtras } from "../onboarding/form-extras";
 import { loadFormExtras, loadSettings } from "../onboarding/server";
 import { afterApprove, afterSubmit } from "../onboarding/hooks";
+import { extraCommitments, NOTE_MAX } from "./registration-commitments";
 
 // ─── The public form ────────────────────────────────────────────────────────
 //
@@ -349,6 +350,8 @@ function inputProblem(input: RegistrationInput): string | null {
   if (!signed) return "Please sign the Accident Waiver — draw your signature or type your full name.";
   if (!input.fee_tier) return "Please select a registration fee.";
   if (!input.payment_option) return "Please choose a payment option.";
+  const commitments = extraCommitments(input.commitments_has, input.commitments_note);
+  if (!commitments.ok) return commitments.error;
   return null;
 }
 
@@ -356,6 +359,8 @@ function toRow(boardId: string, input: RegistrationInput, confirmedEmail: string
   const fatherName = [input.father_first, input.father_last].map((s) => s?.trim()).filter(Boolean).join(" ");
   const motherName = [input.mother_first, input.mother_last].map((s) => s?.trim()).filter(Boolean).join(" ");
   const naless = (s: string) => (s && s.trim().toUpperCase() !== "N/A" ? s.trim() : "");
+  const cleaned = extraCommitments(input.commitments_has, input.commitments_note);
+  const commitments = cleaned.ok ? cleaned.value : null;
   return {
     board_id: boardId,
     first_name: input.athlete_first.trim(),
@@ -386,6 +391,7 @@ function toRow(boardId: string, input: RegistrationInput, confirmedEmail: string
       donation_interest: input.donation_interest,
       payment_option: input.payment_option,
       email_confirmed: confirmedEmail,
+      ...(commitments ? { commitments } : {}),
       ...(submissionKey ? { submission_key: submissionKey } : {}),
     } as Record<string, unknown>,
   };
@@ -571,7 +577,6 @@ export async function setRegistrationContacted(id: string, contacted: boolean): 
   );
 }
 
-const NOTE_MAX = 500;
 function cleanNote(note: string): string | null {
   return note?.trim().slice(0, NOTE_MAX) || null;
 }

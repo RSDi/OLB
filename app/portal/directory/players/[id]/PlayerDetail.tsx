@@ -27,6 +27,7 @@ import { FAMILY_MESSAGE, playerOwnEmail, playerTarget, type SentMessage } from "
 import { sendPlayerMessage } from "../../../../../lib/teams/player-message-actions";
 import type { PlayerNote } from "../../../../../lib/teams/player-notes";
 import { PlayerNotes } from "../../_shared/PlayerNotes";
+import { commitmentsAdmin, type CommitmentsStored } from "../../../../../lib/teams/registration-commitments";
 
 const cap: React.CSSProperties = {
   fontSize: 11,
@@ -56,6 +57,7 @@ export function PlayerDetail({
   canSlack,
   messages,
   notes,
+  commitments: storedCommitments,
 }: {
   player: DirectoryPlayer;
   siblings: DirectoryPlayer[];
@@ -77,6 +79,9 @@ export function PlayerDetail({
   // Notes on the player (0124), for the board and the Registrations grant;
   // null for everyone else.
   notes: PlayerNote[] | null;
+  // Commitments from the form. Passed only for the Registrations grant
+  // (same rule as the list); null for everyone else.
+  commitments: CommitmentsStored | null;
 }) {
   const [openReq, setOpenReq] = useState<Requirement | null>(null);
   const [editing, setEditing] = useState(false);
@@ -114,6 +119,7 @@ export function PlayerDetail({
     p.shirt_size && `Shirt: ${p.shirt_size}`,
     p.waiver_signed && p.waiver_signed_on && `Waiver signed ${formatDate(p.waiver_signed_on)}`,
   ].filter(Boolean);
+  const commitments = commitmentsAdmin(storedCommitments ? { commitments: storedCommitments } : null);
 
   return (
     <>
@@ -138,6 +144,7 @@ export function PlayerDetail({
             <span className="rsd-chip rsd-chip-mute">No team yet</span>
           )}
           {p.new_to_program && <span className="rsd-chip rsd-chip-accent">New</span>}
+          {commitments.flag && <span className="rsd-chip rsd-chip-accent">{commitments.flag}</span>}
           {canSeeBirthdates && info?.agesOut && (
             <span className="rsd-chip rsd-chip-error" data-tour="player-ages-out" title={`Ages out of ${info.agesOut.level}`}>
               {agesOutLabel(info.agesOut.on)}
@@ -181,6 +188,19 @@ export function PlayerDetail({
         )}
         {(p.phone || ownEmail) && <ContactLine phone={p.phone} email={ownEmail} label="Player" />}
         {isStaff && staffFacts.length > 0 && <div style={muted}>{staffFacts.join(" · ")}</div>}
+        {commitments.answer && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+            <span style={cap}>Commitments</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)" }}>
+              {commitments.answer === "Yes" ? "Yes" : "None"}
+            </span>
+            {commitments.answer === "Yes" && (
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)", whiteSpace: "pre-wrap" }}>
+                {commitments.note || "No details given."}
+              </span>
+            )}
+          </div>
+        )}
         {requirements.length > 0 && (
           <RequirementChips player={p} requirements={requirements} rows={rows} onOpen={setOpenReq} />
         )}

@@ -39,7 +39,7 @@ export const REGISTRATION_EMAIL_FIELDS: EmailField[] = [
     label: "Opening",
     help: "{parent} becomes the first name of whoever registered, {player} the players' first names.",
     original:
-      "Hi {parent}, thanks for registering {player} with Omaha Lightning Basketball. We've got everything we need, and a coach will be in touch about team placement.",
+      "Hi {parent}, thanks for registering {player} with Omaha Lightning Basketball. We've got everything we need, and a board member will be in touch about team placement.",
     multiline: true,
     max: 1000,
   },

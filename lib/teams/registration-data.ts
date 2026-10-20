@@ -7,6 +7,7 @@
 import { createClient } from "../supabase/server";
 import { matchRoster, type RegistrationExtra, type RosterMatch } from "./roster-logic";
 import type { SentMessage } from "./family-mail";
+import type { CommitmentsStored } from "./registration-commitments";
 
 // "waiting" is the New tab; the key stays for old links.
 export type RegistrationTab = "waiting" | "waitlist" | "approved" | "removed";
@@ -139,6 +140,21 @@ async function loadMessages(ids: string[]) {
     .in("registration_id", ids)
     .order("sent_at", { ascending: false });
   return (data as (RegistrationMessage & { registration_id: string; sent_by: string | null })[] | null) ?? [];
+}
+
+// The latest registration for a player, for the commitments answer on their
+// page. RLS only returns a row to the Registrations grant (same as the list).
+export async function loadPlayerCommitments(playerId: string): Promise<CommitmentsStored | null> {
+  const db = await createClient();
+  const { data } = await db
+    .from("olb_registrations")
+    .select("extra")
+    .eq("player_id", playerId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const stored = (data?.extra as RegistrationExtra | null)?.commitments;
+  return stored && typeof stored.has === "boolean" ? { has: stored.has, note: stored.note ?? null } : null;
 }
 
 // Who reviewed, contacted or sent: logins to the names people know them by.

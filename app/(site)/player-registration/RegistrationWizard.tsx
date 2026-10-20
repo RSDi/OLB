@@ -28,6 +28,14 @@ import { ComboSelect } from "../../components/ComboSelect";
 import { HandbookFields, SizeFields } from "./WorkflowFields";
 import { useFeeTiers } from "./fee-tiers";
 import { extrasProblem, itemsFor, kidExtras, needsSizesStep, type ExtrasState, type FormExtras } from "../../../lib/onboarding/form-extras";
+import {
+  COMMITMENTS_ASK,
+  COMMITMENTS_NOTE_LABEL,
+  COMMITMENTS_YES_FOLLOW_UP,
+  NOTE_MAX,
+  commitmentsNotePreview,
+} from "../../../lib/teams/registration-commitments";
+import { buildRegistrationSteps } from "../../../lib/teams/registration-steps";
 
 export interface WizardApi {
   sendCode: (email: string, honeypot: string) => Promise<{ sent: boolean; error?: string }>;
@@ -99,7 +107,7 @@ export function RegistrationWizard({
   const f = state.family;
   const kids = state.kids;
   const fromFile = new Set(family?.players.map((p) => p.key) ?? []);
-  const steps = buildSteps(mode, state, fromFile, config);
+  const steps = buildRegistrationSteps(mode, state, fromFile, config);
   const at = Math.max(0, steps.indexOf(stepId));
 
   // A new step: back to the top of the card, with the first box ready to type
@@ -125,7 +133,7 @@ export function RegistrationWizard({
     setStepId(id);
   }
   function next(after?: RegistrationState) {
-    const list = after ? buildSteps(mode, after, fromFile, config) : steps;
+    const list = after ? buildRegistrationSteps(mode, after, fromFile, config) : steps;
     if (backToSummary) {
       setBackToSummary(false);
       return go("summary");
@@ -210,7 +218,7 @@ export function RegistrationWizard({
     onChange(filled);
     setMode("returning");
     setStage("steps");
-    const list = buildSteps("returning", filled, new Set(family.players.map((p) => p.key)), config);
+    const list = buildRegistrationSteps("returning", filled, new Set(family.players.map((p) => p.key)), config);
     setStepId(list[0]);
   }
 
@@ -422,30 +430,7 @@ export function RegistrationWizard({
   );
 }
 
-// ─── Which steps, in what order ─────────────────────────────────────────────
-
-function buildSteps(mode: Mode, st: RegistrationState, fromFile: Set<string>, config: FormExtras | null): string[] {
-  const out: string[] = [];
-  const kidSteps = (k: KidAnswers) => [`name:${k.key}`, `dob:${k.key}`, `first:${k.key}`];
-  if (mode === "new") {
-    for (const k of st.kids) out.push(...kidSteps(k));
-    out.push("more", "home", "contact", "you", "you-details", "other-parent");
-  } else {
-    if (st.kids.some((k) => fromFile.has(k.key))) out.push("review-kids");
-    for (const k of st.kids) if (!fromFile.has(k.key)) out.push(...kidSteps(k));
-    out.push("review-home", "review-parents");
-  }
-  out.push("fees", "uniform");
-  if (st.kids.some((k) => isHighSchoolTier(k.fee_tier))) out.push("grays");
-  if (config && needsSizesStep(st.kids, config.items)) out.push("sizes");
-  out.push("homeschool");
-  if (st.family.father_first.trim()) out.push("help-father");
-  if (st.family.mother_first.trim()) out.push("help-mother");
-  out.push("directory", "waiver");
-  if (config?.handbookUrl) out.push("handbook");
-  out.push("donation", "payment", "summary");
-  return out;
-}
+// Step order lives in lib/teams/registration-steps.ts so tests can check it.
 
 // ─── One step ───────────────────────────────────────────────────────────────
 
@@ -938,6 +923,45 @@ function Step(p: StepProps) {
     );
   }
 
+  if (kind === "commitments") {
+    const set = (v: boolean) =>
+      p.answer(() => ({
+        ...state,
+        family: { ...f, commitments_has: v, ...(v ? {} : { commitments_note: "" }) },
+      }));
+    return (
+      <form onSubmit={continueWith(f.commitments_has !== null, "Please pick one.")}>
+        <Question title={COMMITMENTS_ASK} />
+        <div className={`${s.body} ${s.choices}`}>
+          <Choice on={f.commitments_has === true} onClick={() => set(true)} label="Yes" />
+          <Choice on={f.commitments_has === false} onClick={() => set(false)} label="No" />
+        </div>
+        {actions(<ContinueButton />)}
+      </form>
+    );
+  }
+
+  if (kind === "commitments-note") {
+    return (
+      <form onSubmit={(e) => { e.preventDefault(); next(); }}>
+        <Question title={COMMITMENTS_YES_FOLLOW_UP} />
+        <div className={s.body}>
+          <label className={s.field}>
+            {COMMITMENTS_NOTE_LABEL}
+            <textarea
+              className="olb-textarea"
+              rows={4}
+              maxLength={NOTE_MAX}
+              value={f.commitments_note}
+              onChange={(e) => up({ commitments_note: e.target.value })}
+            />
+          </label>
+        </div>
+        {actions(<ContinueButton />)}
+      </form>
+    );
+  }
+
   // ── The registration workflow's questions (0130) ──
   if (kind === "sizes" && p.config) {
     const config = p.config;
@@ -1174,6 +1198,15 @@ function Step(p: StepProps) {
           <Summary title="Parents" onChange={() => p.change(where("you-details", "review-parents"))}>
             {parentLine("father")}
             {parentLine("mother")}
+          </Summary>
+          <Summary title="Commitments" onChange={() => p.change("commitments")}>
+            <Line>
+              {f.commitments_has === true
+                ? commitmentsNotePreview(f.commitments_note) || "Yes"
+                : f.commitments_has === false
+                  ? "No"
+                  : "Not answered"}
+            </Line>
           </Summary>
           <Summary title="Directory" onChange={() => p.change("directory")}>
             <Line>{f.directory_optin ? "Yes, add your family" : "Not listed"}</Line>

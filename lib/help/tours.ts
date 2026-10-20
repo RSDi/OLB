@@ -291,7 +291,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "registration-card",
         title: "Each registration",
-        body: "The player, the fee for their age group, how they'll pay, the waiver and uniform answers, and each parent's phone and email. A note means the name is already on the roster.",
+        body: "The player, the fee for their age group, how they'll pay, the waiver and uniform answers, and each parent's phone and email. **Commitments** on the card is **Yes** plus the note they wrote, or **None** if they said no. A **Commitments** chip on the list means they said Yes. A different note means the name is already on the roster.",
       },
       {
         target: "registration-approve",

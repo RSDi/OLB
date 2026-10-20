@@ -6,6 +6,7 @@
 
 import { ageFromDob } from "./age.ts"; // explicit extension so node --test can load this file
 import { DEFAULT_FEE_TIERS, tierForAge, tierText, type FeeTier } from "../finances/fees.ts";
+import { commitmentsProblem, emptyCommitments } from "./registration-commitments.ts";
 
 // The season the form registers for, and the board it lands on.
 export const REGISTRATION_SEASON = "2026-2027";
@@ -64,6 +65,8 @@ export interface FamilyAnswers {
   signature_image: string;
   donation_interest: boolean | null;
   payment_option: string;
+  commitments_has: boolean | null;
+  commitments_note: string;
 }
 
 export interface RegistrationState {
@@ -123,6 +126,7 @@ export const EMPTY_FAMILY: FamilyAnswers = {
   signature_image: "",
   donation_interest: null,
   payment_option: "",
+  ...emptyCommitments(),
 };
 
 export function emptyRegistration(): RegistrationState {
@@ -222,7 +226,7 @@ export function familyProblem(f: FamilyAnswers): string | null {
   const signed = f.signature_mode === "draw" ? !!f.signature_image : !!f.signature_name.trim();
   if (!signed) return "Please sign the Accident Waiver: draw your signature or type your full name.";
   if (!f.payment_option) return "Please choose how you'll pay.";
-  return null;
+  return commitmentsProblem(f.commitments_has, f.commitments_note);
 }
 
 // The first thing still missing before the registration can be sent.

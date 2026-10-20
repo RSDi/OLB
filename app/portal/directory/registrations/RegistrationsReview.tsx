@@ -40,6 +40,7 @@ import type { PlayerNote } from "../../../../lib/teams/player-notes";
 import type { OnboardingBoard as Board, WaitlistInfo } from "../../../../lib/onboarding/board-data";
 import { OnboardingBoard } from "./OnboardingBoard";
 import { WorkflowPanel } from "./WorkflowPanel";
+import { commitmentsAdmin } from "../../../../lib/teams/registration-commitments";
 
 const TABS: { key: RegistrationTab; label: string }[] = [
   { key: "waiting", label: "New" },
@@ -249,6 +250,7 @@ function RegistrationCard({
   const [note, setNote] = useState(reg.notes ?? "");
 
   const x = reg.extra;
+  const commitments = commitmentsAdmin(x);
   const name = `${reg.first_name} ${reg.last_name}`.trim();
   const age = ageFromDob(reg.dob);
   const born = formatDate(reg.dob);
@@ -317,6 +319,7 @@ function RegistrationCard({
                 Email confirmed
               </span>
             )}
+            {commitments.flag && <span className="rsd-chip rsd-chip-accent">{commitments.flag}</span>}
           </div>
           <span style={muted}>
             {[age != null && `Age ${age}`, born && `Born ${born}`, `Registered ${formatDate(reg.created_at.slice(0, 10))}`]
@@ -373,6 +376,30 @@ function RegistrationCard({
           </div>
         ))}
       </div>}
+
+      {commitments.answer && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            padding: "10px 12px",
+            borderRadius: 10,
+            background: "var(--gw-bg)",
+            border: "1px solid var(--gw-border)",
+          }}
+        >
+          <span style={{ ...capStyle, fontSize: 10 }}>Commitments</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)" }}>
+            {commitments.answer === "Yes" ? "Yes" : "None"}
+          </span>
+          {commitments.answer === "Yes" && (
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)", whiteSpace: "pre-wrap" }}>
+              {commitments.note || "No details given."}
+            </span>
+          )}
+        </div>
+      )}
 
       {parents.length > 0 && (
         <div
@@ -653,6 +680,7 @@ function ApprovedRow({ reg, border }: { reg: PendingRegistration; border: boolea
   const name = `${reg.first_name} ${reg.last_name}`.trim();
   const tier = registrationTier(reg.extra.fee_tier);
   const team = reg.player?.team ? teamLabel(reg.player.team) : reg.player ? "No team yet" : null;
+  const commitments = commitmentsAdmin(reg.extra);
   return (
     <div
       style={{
@@ -674,6 +702,7 @@ function ApprovedRow({ reg, border }: { reg: PendingRegistration; border: boolea
           <span style={{ fontSize: 14, fontWeight: 700 }}>{name}</span>
         )}
         {team && <span className="rsd-chip rsd-chip-mute">{team}</span>}
+        {commitments.flag && <span className="rsd-chip rsd-chip-accent">{commitments.flag}</span>}
         {tier && <span style={muted}>{tier}</span>}
         <ReceiptSender reg={reg} compact />
       </div>

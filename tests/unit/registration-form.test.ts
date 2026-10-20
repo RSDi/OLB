@@ -90,7 +90,7 @@ test("a returning family is filled in from what's on file", () => {
 function complete(): RegistrationState {
   const s = fromPrefill(family, ["p1"], []);
   s.kids[0] = { ...s.kids[0], homeschool_affirm: true, needs_uniform: false };
-  s.family = { ...s.family, waiver_agreed: true, printed_name: "Jamie Carter", signature_mode: "type", signature_name: "Jamie Carter", payment_option: "Venmo" };
+  s.family = { ...s.family, waiver_agreed: true, printed_name: "Jamie Carter", signature_mode: "type", signature_name: "Jamie Carter", payment_option: "Venmo", commitments_has: false };
   return s;
 }
 

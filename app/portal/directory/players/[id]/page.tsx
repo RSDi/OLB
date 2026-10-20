@@ -9,6 +9,7 @@ import { PlayerDetail } from "./PlayerDetail";
 import { loadSeasonTeams } from "../../../../../lib/teams/volunteer-data";
 import { loadPlayerNotes } from "../../../../../lib/teams/player-note-data";
 import { loadEligibilityContext } from "../../../../../lib/teams/eligibility-data";
+import { loadPlayerCommitments } from "../../../../../lib/teams/registration-data";
 
 // One player: everything on their Directory card, their parents and brothers
 // and sisters, and their family's payments. Payments show to anyone with the
@@ -66,6 +67,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const canNote = viewer.isStaff || viewer.canManageRegistrations;
   const notes = canNote ? await loadPlayerNotes(id, { userId: viewer.userId, isSuperAdmin: viewer.isSuperAdmin }, familyFirst) : null;
   const eligibility = viewer.isStaff ? await loadEligibilityContext() : null;
+  // Commitments from the form: Registrations grant only, same as the list.
+  const commitments = viewer.canManageRegistrations ? await loadPlayerCommitments(id) : null;
 
   return (
     <PlayerDetail
@@ -83,6 +86,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       canSlack={canSlack}
       messages={messages}
       notes={notes}
+      commitments={commitments}
     />
   );
 }
