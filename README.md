@@ -43,6 +43,10 @@ playbooks/docs, volunteer teams, and global search.
    baseline replaced are kept for reference in `supabase/migrations-archive/`
    and are never applied.
 
+   From 2026-10-30, new `public` tables need an explicit GRANT in the same
+   migration or supabase-js/PostgREST returns `permission denied` (see
+   `AGENTS.md`). 0154 granted existing post-baseline tables that had none.
+
 4. **Bootstrap the first admin**
 
    Set `ADMIN_EMAILS` to your address before signing up; the first matching

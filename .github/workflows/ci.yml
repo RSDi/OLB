@@ -26,6 +26,12 @@ jobs:
       - name: Type-check
         run: npm run type-check
 
+      # Supabase 2026-10-30: new public tables need an explicit GRANT or
+      # supabase-js/PostgREST returns permission denied. Fails migrations
+      # numbered after 0154 that CREATE TABLE without a matching grant.
+      - name: Public table Data API grants
+        run: node --test tests/unit/migration-table-grants.test.ts
+
       # Unit tests always run here. The schema-contract probes self-skip in
       # CI (no Supabase secrets) — run `npm test` locally before deploying
       # after a migration to get the full code-vs-database check.
