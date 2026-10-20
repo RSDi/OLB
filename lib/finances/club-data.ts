@@ -9,7 +9,7 @@ import { seasonBoardId } from "../onboarding/server";
 import { centralToday } from "./data";
 import { feeTiersFrom } from "./fees";
 import { groupFamilies, totalsFor } from "./logic";
-import { levelsFrom, type FamilyBalances } from "./club-logic";
+import { hostedPlanInBoardSeason, levelsFrom, type FamilyBalances } from "./club-logic";
 import { DEFAULT_REMINDER, type ReminderSettings } from "./reminders";
 import {
   DEFAULT_BUDGET_GROUPS,
@@ -29,6 +29,7 @@ import {
   type Fund,
   type Fundraiser,
   type HostedEvent,
+  type HostedPlanOption,
   type IncomeRow,
   type Program,
   type ProgramSignup,
@@ -261,14 +262,44 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
   if (lineCharges.error) throw new Error(`Loading team costs: ${lineCharges.error.message}`);
 
   // The tournaments planned on the HS Schedule (0150), for a link to each
-  // one's planning page. None before that migration.
+  // one's planning page and the Tournament plan picker. None before that migration.
   const eventRows = (events.data as HostedEvent[] | null) ?? [];
-  const plans = eventRows.length
-    ? await db.from("hs_hosted").select("weekend_id, finance_event_id").in("finance_event_id", eventRows.map((e) => e.id))
-    : null;
-  const planOf = new Map(
-    plans && !plans.error ? ((plans.data as { weekend_id: string; finance_event_id: string }[] | null) ?? []).map((r) => [r.finance_event_id, r.weekend_id]) : []
-  );
+  const hostedRows = await db
+    .from("hs_hosted")
+    .select("weekend_id, short_name, finance_event_id, hosted, weekend:hs_weekends(event, starts_on, ends_on, season:hs_seasons(season))")
+    .eq("hosted", true);
+  type HostedJoin = {
+    weekend_id: string;
+    short_name: string | null;
+    finance_event_id: string | null;
+    hosted: boolean;
+    weekend:
+      | { event: string; starts_on: string; ends_on: string; season: { season: number } | { season: number }[] | null }
+      | { event: string; starts_on: string; ends_on: string; season: { season: number } | { season: number }[] | null }[]
+      | null;
+  };
+  const hosted = hostedRows.error ? [] : ((hostedRows.data as HostedJoin[] | null) ?? []);
+  const planOf = new Map(hosted.filter((r) => r.finance_event_id).map((r) => [r.finance_event_id!, r.weekend_id]));
+  const boardEventIds = new Set(eventRows.map((e) => e.id));
+  const linkedOnBoard = new Set(hosted.filter((r) => r.finance_event_id && boardEventIds.has(r.finance_event_id)).map((r) => r.weekend_id));
+  const hostedPlans: HostedPlanOption[] = hosted
+    .filter((r) => {
+      if (linkedOnBoard.has(r.weekend_id)) return true;
+      const w = Array.isArray(r.weekend) ? r.weekend[0] : r.weekend;
+      const s = w ? (Array.isArray(w.season) ? w.season[0] : w.season) : null;
+      return hostedPlanInBoardSeason(board.season, s?.season ?? null);
+    })
+    .map((r) => {
+      const w = Array.isArray(r.weekend) ? r.weekend[0] : r.weekend;
+      return {
+        weekend_id: r.weekend_id,
+        title: w?.event?.trim() || r.short_name || "Tournament",
+        starts_on: w?.starts_on ?? null,
+        ends_on: w?.ends_on ?? null,
+        short_name: r.short_name,
+      };
+    })
+    .sort((a, b) => (a.starts_on || "9999").localeCompare(b.starts_on || "9999") || a.title.localeCompare(b.title));
 
   const data: ClubData = {
     board,
@@ -281,6 +312,7 @@ export async function loadClubData(db: Db, board: { id: string; season: string }
       .map((r) => ({ line_id: r.line_id, charge_id: r.charge!.id, amount_cents: r.charge!.amount_cents, voided: !!r.charge!.voided_at })),
     income: (income.data as IncomeRow[] | null) ?? [],
     events: eventRows.map((e) => ({ ...e, plan_weekend_id: planOf.get(e.id) ?? null })),
+    hostedPlans,
     programs: ((programs.data as (Program & { levels: unknown })[] | null) ?? []).map((p) => ({ ...p, levels: levelsFrom(p.levels) })),
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the charge goes in signupCharges
     signups: signupRows.map(({ _charge, ...s }) => s),

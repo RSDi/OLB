@@ -26,7 +26,9 @@ export async function syncHostedInvoiceSteps(summary: EventCollection): Promise<
     if (done == null) continue;
     if (done && !row.done_on) {
       await db.from("hs_hosted_steps").update({ done_on: today, done_by: null }).eq("id", row.id);
-    } else if (!done && row.done_on) {
+    } else if (!done && row.done_on && row.step_key !== "bill_programs") {
+      // bill_programs is a lock the board can tick by hand; invoices check it,
+      // but voiding them does not uncheck it (uncheck unlocks the team fee).
       await db.from("hs_hosted_steps").update({ done_on: null, done_by: null }).eq("id", row.id);
     }
   }

@@ -125,6 +125,15 @@ export interface HostedEvent {
   plan_weekend_id?: string | null;
 }
 
+// A weekend ticked "We host this tournament", for Budget's Tournament plan picker.
+export interface HostedPlanOption {
+  weekend_id: string;
+  title: string;
+  starts_on: string | null;
+  ends_on: string | null;
+  short_name: string | null;
+}
+
 export interface ProgramLevel {
   label: string;
   cents: number;
@@ -224,6 +233,8 @@ export interface ClubData {
   lineCharges: { line_id: string; charge_id: string; amount_cents: number; voided: boolean }[];
   income: IncomeRow[];
   events: HostedEvent[];
+  // Weekends we host, for linking a Budget row to its HS Schedule plan.
+  hostedPlans: HostedPlanOption[];
   programs: Program[];
   signups: ProgramSignup[];
   // The program charges on families' accounts, so a sign-up shows paid or not.

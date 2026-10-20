@@ -148,6 +148,14 @@ export interface HostedFinance {
   links: { money_key: string; budget_line_id: string | null; income_id: string | null; synced_at: string }[];
 }
 
+export interface HostedFeeLock {
+  locked: boolean;
+  invoiceCount: number;
+  billProgramsDone: boolean;
+  // Invoice lookup failed: treat as locked and refuse fee saves.
+  lookupFailed: boolean;
+}
+
 export interface HostedPageData {
   weekend: {
     id: string;
@@ -171,6 +179,7 @@ export interface HostedPageData {
   programs: HostedProgram[];
   finance: HostedFinance | null;
   billing: HostedBilling | null;
+  feeLock: HostedFeeLock;
 }
 
 export interface HostedBilling {

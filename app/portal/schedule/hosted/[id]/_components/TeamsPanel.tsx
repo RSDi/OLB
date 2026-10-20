@@ -17,7 +17,7 @@ import {
   saveDivision,
   saveTeam,
 } from "../../../../../../lib/hosted/actions";
-import { placementBracket, roundRobin, seeded, teamFee } from "../../../../../../lib/hosted/logic";
+import { feeLockNote, placementBracket, roundRobin, seeded, teamFee } from "../../../../../../lib/hosted/logic";
 import type { DivisionFormat, HostedDivision, HostedPageData, HostedTeam } from "../../../../../../lib/hosted/types";
 import { Empty, ErrorNote, Said, Section, Sheet, grid2, iconBtn, money, sub, useAct } from "./parts";
 
@@ -106,7 +106,17 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
       )}
 
       {open?.kind === "division" && <DivisionSheet wid={wid} division={open.division} games={data.games.filter((g) => g.division_id === open.division?.id).length} onClose={() => setOpen(null)} />}
-      {open?.kind === "team" && <TeamSheet wid={wid} team={open.team} division={open.division} divisions={data.divisions} onClose={() => setOpen(null)} />}
+      {open?.kind === "team" && (
+        <TeamSheet
+          wid={wid}
+          team={open.team}
+          division={open.division}
+          divisions={data.divisions}
+          feesLocked={data.feeLock.locked}
+          lockNote={feeLockNote(data.feeLock.invoiceCount)}
+          onClose={() => setOpen(null)}
+        />
+      )}
     </div>
   );
 }
@@ -190,7 +200,23 @@ function DivisionSheet({ wid, division, games, onClose }: { wid: string; divisio
   );
 }
 
-function TeamSheet({ wid, team, division, divisions, onClose }: { wid: string; team: HostedTeam | null; division: string | null; divisions: HostedDivision[]; onClose: () => void }) {
+function TeamSheet({
+  wid,
+  team,
+  division,
+  divisions,
+  feesLocked,
+  lockNote,
+  onClose,
+}: {
+  wid: string;
+  team: HostedTeam | null;
+  division: string | null;
+  divisions: HostedDivision[];
+  feesLocked: boolean;
+  lockNote: string;
+  onClose: () => void;
+}) {
   const { busy, error, act } = useAct();
   const [f, setF] = useState({
     name: team?.name ?? "",
@@ -216,9 +242,18 @@ function TeamSheet({ wid, team, division, divisions, onClose }: { wid: string; t
           </option>
         ))}
       </Select>
-      <Input label="Fee ($)" inputMode="decimal" value={f.fee} onChange={(e) => setF({ ...f, fee: e.target.value })} placeholder="The team fee" help="Leave blank for the tournament's team fee; 0 for none." />
-      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600 }}>
-        <input type="checkbox" checked={f.ours} onChange={(e) => setF({ ...f, ours: e.target.checked })} style={{ width: 16, height: 16, accentColor: "var(--rsd-accent-fill)" }} />
+      <Input
+        label="Fee ($)"
+        inputMode="decimal"
+        value={f.fee}
+        onChange={(e) => setF({ ...f, fee: e.target.value })}
+        placeholder="The team fee"
+        readOnly={feesLocked}
+        help={feesLocked ? lockNote : "Leave blank for the tournament's team fee; 0 for none."}
+        style={feesLocked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
+      />
+      <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600, color: feesLocked ? "var(--gw-fg-muted)" : undefined }}>
+        <input type="checkbox" checked={f.ours} disabled={feesLocked} onChange={(e) => setF({ ...f, ours: e.target.checked })} style={{ width: 16, height: 16, accentColor: "var(--rsd-accent-fill)" }} />
         One of our teams (no fee)
       </label>
       <Textarea label="Note" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} rows={2} placeholder="Don't schedule at the same time as their varsity" />

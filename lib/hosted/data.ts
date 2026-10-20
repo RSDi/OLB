@@ -16,6 +16,7 @@ import {
   STEP_COLUMNS,
   TEAM_COLUMNS,
   type HostedDivision,
+  type HostedFeeLock,
   type HostedFinance,
   type HostedGame,
   type HostedMessage,
@@ -26,6 +27,7 @@ import {
   type HostedStep,
   type HostedTeam,
 } from "./types";
+import { feesAreLocked } from "./logic";
 
 type Weekend = HostedPageData["weekend"];
 
@@ -113,11 +115,35 @@ export async function loadHostedPage(
 
   const finance = viewer.canViewFinances || viewer.canManageFinances ? await loadFinance(plan, weekend, viewer.canManageFinances).catch(() => null) : null;
   const billing = await loadBilling(supabase, weekendId, programs.length, plan.team_fee_cents, !!viewer.canManageInvoicing, !!viewer.canViewInvoices);
+  const feeLock = await loadFeeLockState(weekendId);
 
   return {
     kind: "ok",
-    data: { weekend, facilityName, plan, steps, divisions, teams, games, money, messages, programs, finance, billing },
+    data: { weekend, facilityName, plan, steps, divisions, teams, games, money, messages, programs, finance, billing, feeLock },
   };
+}
+
+// Whether Team fee is locked: the checklist item is done, or any live invoice
+// exists. Invoices are read with the service role so a planner who can't open
+// Finances still sees the lock (and savePlan enforces the same check).
+// Fail closed: a lookup error or exception locks fees and refuses a fee save.
+// Duplicate bill_programs rows: done if any is done (do not use maybeSingle).
+export async function loadFeeLockState(weekendId: string): Promise<HostedFeeLock> {
+  const lockedUnknown: HostedFeeLock = { locked: true, invoiceCount: 1, billProgramsDone: false, lookupFailed: true };
+  try {
+    const db = createAdminClient();
+    const [stepsRes, invRes] = await Promise.all([
+      db.from("hs_hosted_steps").select("done_on").eq("weekend_id", weekendId).eq("step_key", "bill_programs"),
+      db.from("inv_invoices").select("id").eq("host_event_id", weekendId).is("voided_at", null).limit(1),
+    ]);
+    const steps = ((stepsRes.data as { done_on: string | null }[] | null) ?? []).filter((s) => !!s.done_on);
+    const billProgramsDone = !stepsRes.error && steps.length > 0;
+    if (stepsRes.error || invRes.error) return { ...lockedUnknown, billProgramsDone };
+    const invoiceCount = ((invRes.data as { id: string }[] | null) ?? []).length;
+    return { locked: feesAreLocked({ billProgramsDone, invoiceCount }), invoiceCount, billProgramsDone, lookupFailed: false };
+  } catch {
+    return lockedUnknown;
+  }
 }
 
 async function loadBilling(
