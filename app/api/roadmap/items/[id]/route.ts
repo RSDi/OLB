@@ -7,14 +7,24 @@
 // backwards. preview_url is required when landing on Preview without a link
 // already on the card. Same extra-field, unknown-column, and missing-body
 // rules as before: 400. Unknown or deleted id is 404. A write that matches
-// 0 rows is 409, not 200. There is no DELETE. POST remains insert-only as
-// proposed. After a successful write the portal board and the public share
-// page are revalidated so they don't stay on the old column, and a history
-// row is stored (bot, from, to, note, when).
+// 0 rows, or a card whose column changed since we read it, is 409, not 200.
+// The column change and the history row are one Postgres transaction
+// (bot_patch_roadmap_item). Same-column with no note is a no-op (no log).
+// There is no DELETE. POST remains insert-only as proposed. After a
+// successful write the portal board and the public share page are revalidated.
 
 import { NextResponse } from "next/server";
 import { roadmapBotDeny, roadmapBotNeedServiceRole } from "../../../../../lib/roadmap/bot-http";
-import { botPatchEvent, botPatchFields, botPatchUpdated, cleanBotStatusPatch } from "../../../../../lib/roadmap/bot";
+import {
+  BOT_PATCH_RPC,
+  botPatchFields,
+  botPatchIsNoop,
+  botPatchNeedsLog,
+  botPatchRpcArgs,
+  botPatchRpcError,
+  botPatchUpdated,
+  cleanBotStatusPatch,
+} from "../../../../../lib/roadmap/bot";
 import { refreshRoadmap } from "../../../../../lib/roadmap/cache";
 import { isStatus, type Status } from "../../../../../lib/roadmap/model";
 import { createAdminClient } from "../../../../../lib/supabase/admin";
@@ -51,7 +61,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const admin = createAdminClient();
   const { data: current, error: loadError } = await admin
     .from("olb_roadmap_items")
-    .select("status, preview_url, released_on")
+    .select(ITEM_COLS)
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -65,36 +75,29 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!status) return NextResponse.json({ error: "That item isn't on the roadmap." }, { status: 404 });
 
   const now = new Date();
-  const row = botPatchFields(
-    {
-      status,
-      preview_url: typeof current.preview_url === "string" ? current.preview_url : null,
-      released_on: typeof current.released_on === "string" ? current.released_on : null,
-    },
-    patch,
-    now,
-  );
+  const currentItem = {
+    status,
+    preview_url: typeof current.preview_url === "string" ? current.preview_url : null,
+    released_on: typeof current.released_on === "string" ? current.released_on : null,
+  };
+  const row = botPatchFields(currentItem, patch, now);
   if ("error" in row) return NextResponse.json({ error: row.error }, { status: 400 });
 
-  const { data, error } = await admin
-    .from("olb_roadmap_items")
-    .update(row)
-    .eq("id", id)
-    .is("deleted_at", null)
-    .select(ITEM_COLS);
+  if (botPatchIsNoop(currentItem, row, patch.note)) {
+    return NextResponse.json({ item: current });
+  }
+
+  const { data, error } = await admin.rpc(
+    BOT_PATCH_RPC,
+    botPatchRpcArgs(id, status, row, patch.note, botPatchNeedsLog(status, row.status, patch.note)),
+  );
   if (error) {
-    console.error("[roadmap-items PATCH]", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const mapped = botPatchRpcError(error);
+    if (mapped.status === 500) console.error("[roadmap-items PATCH]", error.message);
+    return NextResponse.json({ error: mapped.error }, { status: mapped.status });
   }
   const applied = botPatchUpdated(data);
   if (!applied.ok) return NextResponse.json({ error: applied.error }, { status: applied.status });
-
-  const event = botPatchEvent(status, row.status, patch.note ?? null, now);
-  const { error: eventError } = await admin.from("olb_roadmap_events").insert({ item_id: id, ...event });
   refreshRoadmap();
-  if (eventError) {
-    console.error("[roadmap-items PATCH event]", eventError.message);
-    return NextResponse.json({ error: eventError.message }, { status: 500 });
-  }
   return NextResponse.json({ item: applied.item });
 }

@@ -4,11 +4,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   BOT_ACTOR,
+  BOT_PATCH_RPC,
   botInsertFields,
   botListItem,
   botListStatusFilter,
+  botPatchApplyTx,
   botPatchEvent,
   botPatchFields,
+  botPatchIsNoop,
+  botPatchNeedsLog,
+  botPatchRpcArgs,
+  botPatchRpcError,
   botPatchUpdated,
   botStatusStep,
   cleanBotNote,
@@ -184,8 +190,12 @@ test("landing on preview needs a preview_url unless the card already has one; re
   assert.equal(skip.released_on, "2026-10-16");
 });
 
-test("every bot PATCH logs who, from, to, note, and when", () => {
+test("every bot PATCH logs who, from, to, note, and when — except same-column with no note", () => {
   const now = new Date(Date.UTC(2026, 9, 19, 18, 5, 0));
+  assert.equal(botPatchNeedsLog("proposed", "parked", null), true);
+  assert.equal(botPatchNeedsLog("planned", "planned", "Waiting."), true);
+  assert.equal(botPatchNeedsLog("planned", "planned", undefined), false);
+  assert.equal(botPatchNeedsLog("parked", "parked", null), false);
   assert.deepEqual(botPatchEvent("proposed", "parked", "Waiting on the vendor.", now), {
     actor: BOT_ACTOR,
     from_status: "proposed",
@@ -193,14 +203,47 @@ test("every bot PATCH logs who, from, to, note, and when", () => {
     note: "Waiting on the vendor.",
     created_at: now.toISOString(),
   });
-  assert.deepEqual(botPatchEvent("planned", "planned", undefined, now), {
-    actor: BOT_ACTOR,
-    from_status: "planned",
-    to_status: "planned",
-    note: null,
-    created_at: now.toISOString(),
-  });
   assert.equal(BOT_ACTOR, "bot");
+  const current = { status: "planned" as const, preview_url: null, released_on: null };
+  const same = botPatchFields(current, { status: "planned" }, now);
+  assert.ok(!("error" in same));
+  assert.equal(botPatchIsNoop(current, same), true);
+  const url = botPatchFields(current, { status: "planned", preview_url: "https://olb-git-preview.vercel.app" }, now);
+  assert.ok(!("error" in url));
+  assert.equal(botPatchIsNoop(current, url), false);
+  assert.equal(botPatchNeedsLog(current.status, url.status), false);
+});
+
+test("a failed log write leaves the card unmoved", () => {
+  const card = { id: "a", status: "proposed" as const, preview_url: null, released_on: null };
+  const next = { ...card, status: "parked" as const };
+  const res = botPatchApplyTx(card, "proposed", next, () => {
+    throw new Error("log failed");
+  });
+  assert.equal(res.ok, false);
+  assert.equal(res.status, 500);
+  assert.equal(res.card, card);
+  assert.equal(res.card?.status, "proposed");
+});
+
+test("a concurrent status change is a 409 and does not write", () => {
+  const card = { id: "a", status: "planned" as const, preview_url: null, released_on: null };
+  let logged = 0;
+  const res = botPatchApplyTx(card, "proposed", { ...card, status: "parked" }, () => {
+    logged += 1;
+  });
+  assert.deepEqual(res, {
+    ok: false,
+    status: 409,
+    error: "That item could not be updated.",
+    card,
+  });
+  assert.equal(logged, 0);
+  assert.equal(card.status, "planned");
+  assert.deepEqual(botPatchRpcError({ code: "P0001", message: "conflict" }), {
+    status: 409,
+    error: "That item could not be updated.",
+  });
 });
 
 test("GET ?status= accepts a column and rejects anything else", () => {
@@ -262,6 +305,19 @@ test("PATCH row writes only status, preview_url, released_on, and updated_at", (
   assert.ok(!("error" in row));
   assert.deepEqual(Object.keys(row).sort(), ["preview_url", "released_on", "status", "updated_at"]);
   assert.equal(row.status, "parked");
+  const args = botPatchRpcArgs("b6a607ae-2798-4a33-aa41-6934c96623f0", "proposed", row, "Waiting on the vendor.", true);
+  assert.deepEqual(Object.keys(args).sort(), [
+    "p_from_status",
+    "p_id",
+    "p_log",
+    "p_note",
+    "p_preview_url",
+    "p_released_on",
+    "p_status",
+    "p_updated_at",
+  ]);
+  assert.equal(args.p_log, true);
+  assert.equal(BOT_PATCH_RPC, "bot_patch_roadmap_item");
 });
 
 test("PATCH with 0 rows updated is a 409, not a 200", () => {

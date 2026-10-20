@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 20, 2026";
+export const GUIDE_UPDATED = "October 19, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {

@@ -120,8 +120,7 @@ export function cleanBotStatusPatch(body: unknown): { error: string } | BotStatu
 
 // Any board column is allowed, including Parked, the same column, a skip,
 // and backwards. Invalid names are rejected before this (Pick a column).
-export function botStatusStep(_from: Status, to: Status): { error: string } | { status: Status } {
-  if (!isStatus(to)) return { error: "Pick a column." };
+export function botStatusStep(_from: Status, to: Status): { status: Status } {
   return { status: to };
 }
 
@@ -156,9 +155,7 @@ export function botPatchFields(
   patch: BotStatusPatch,
   now: Date = new Date(),
 ): { error: string } | BotPatchFields {
-  const dest = patch.status ?? current.status;
-  const step = botStatusStep(current.status, dest);
-  if ("error" in step) return step;
+  const dest = botStatusStep(current.status, patch.status ?? current.status).status;
   let preview_url = current.preview_url;
   if (patch.preview_url !== undefined) {
     const url = cleanPreviewUrl(patch.preview_url, dest === "preview");
@@ -189,6 +186,103 @@ export function botPatchEvent(
     note: note ?? null,
     created_at: now.toISOString(),
   };
+}
+
+export const BOT_PATCH_RPC = "bot_patch_roadmap_item";
+
+// Same-column PATCH with no note is not a history row. A note, or a real
+// column change, is.
+export function botPatchNeedsLog(from: Status, to: Status, note?: string | null): boolean {
+  return from !== to || Boolean(note);
+}
+
+// No write at all when the card would not change and there is no note.
+export function botPatchIsNoop(
+  current: BotCurrentItem,
+  row: BotPatchFields,
+  note?: string | null,
+): boolean {
+  return (
+    !note &&
+    current.status === row.status &&
+    (current.preview_url ?? null) === (row.preview_url ?? null) &&
+    (current.released_on ?? null) === (row.released_on ?? null)
+  );
+}
+
+export function botPatchRpcArgs(
+  id: string,
+  from: Status,
+  row: BotPatchFields,
+  note: string | null | undefined,
+  log: boolean,
+): {
+  p_id: string;
+  p_from_status: Status;
+  p_status: Status;
+  p_preview_url: string | null;
+  p_released_on: string | null;
+  p_updated_at: string;
+  p_note: string | null;
+  p_log: boolean;
+} {
+  return {
+    p_id: id,
+    p_from_status: from,
+    p_status: row.status,
+    p_preview_url: row.preview_url,
+    p_released_on: row.released_on,
+    p_updated_at: row.updated_at,
+    p_note: note ?? null,
+    p_log: log,
+  };
+}
+
+export function botPatchRpcError(error: { code?: string | null; message?: string | null }): {
+  status: 404 | 409 | 500;
+  error: string;
+} {
+  const code = error.code ?? "";
+  const message = error.message ?? "";
+  if (code === "P0002" || /\bnot_found\b/i.test(message)) {
+    return { status: 404, error: "That item isn't on the roadmap." };
+  }
+  if (code === "P0001" || /\bconflict\b/i.test(message)) {
+    return { status: 409, error: "That item could not be updated." };
+  }
+  return { status: 500, error: message || "That item could not be updated." };
+}
+
+export interface BotPatchCard {
+  id: string;
+  status: Status;
+  preview_url: string | null;
+  released_on: string | null;
+}
+
+// In-process model of bot_patch_roadmap_item: the status update and the log
+// are one attempt. If the log throws, the card is left as it was. If the
+// row is no longer at expectedStatus, 409 and no log.
+export function botPatchApplyTx(
+  card: BotPatchCard | null,
+  expectedStatus: Status,
+  next: BotPatchCard,
+  log: (() => void) | null,
+):
+  | { ok: true; status: 200; card: BotPatchCard }
+  | { ok: false; status: 404 | 409 | 500; error: string; card: BotPatchCard | null } {
+  if (!card) {
+    return { ok: false, status: 404, error: "That item isn't on the roadmap.", card: null };
+  }
+  if (card.status !== expectedStatus) {
+    return { ok: false, status: 409, error: "That item could not be updated.", card };
+  }
+  try {
+    if (log) log();
+    return { ok: true, status: 200, card: next };
+  } catch {
+    return { ok: false, status: 500, error: "That item could not be updated.", card };
+  }
 }
 
 // GET /api/roadmap/items?status=planned — a miss or blank is "every column".

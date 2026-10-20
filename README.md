@@ -177,8 +177,10 @@ board supports (`proposed`, `planned`, `progress`, `preview`, `released`,
 `preview_url` and `note`. `preview_url` is required when landing on Preview
 without a link already on the card. `note` is trimmed, at most 2000
 characters, and stored on the card's history (Bot, from column, to column,
-note, when). An unknown column is 400 `{ "error": "Pick a column." }`. Any
-other field is 400. Unknown id is 404. There is no DELETE.
+note, when) in the same database transaction as the move. A same-column
+PATCH with no note is a no-op (no history row). An unknown column is 400
+`{ "error": "Pick a column." }`. Any other field is 400. Unknown id is 404.
+If the card's column changed since it was read, 409. There is no DELETE.
 
 ```bash
 curl -sS -X PATCH https://<site>/api/roadmap/items/<id> \
