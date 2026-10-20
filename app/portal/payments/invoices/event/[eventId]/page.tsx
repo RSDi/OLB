@@ -4,7 +4,7 @@ import { getViewer } from "../../../../../../lib/auth/viewer";
 import { createInvoicingService } from "invoicing";
 import { olbInvoicingAdapter, olbInvoicePaths } from "../../../../../../lib/invoicing/adapter";
 import { churchToday } from "../../../../../../lib/dates/today";
-import { EventInvoices } from "invoicing/ui";
+import { EventInvoicesView } from "./EventInvoicesView";
 import { createClient } from "../../../../../../lib/supabase/server";
 
 export default async function Page({ params }: { params: Promise<{ eventId: string }> }) {
@@ -26,7 +26,7 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
   const eventLabel = invoices[0]?.eventLabel || (await weekendName(eventId)) || "Event";
   const fee = invoices[0]?.lines[0]?.unitCents;
   return (
-    <EventInvoices
+    <EventInvoicesView
       eventLabel={eventLabel}
       invoices={invoices}
       summary={summary}
@@ -35,7 +35,6 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
       depositDueOn={invoices[0]?.depositDueOn}
       balanceDueOn={invoices[0]?.dueOn}
       checklistHref={/^[0-9a-f-]{36}$/i.test(eventId) ? `/portal/schedule/hosted/${eventId}` : undefined}
-      paths={olbInvoicePaths}
     />
   );
 }
