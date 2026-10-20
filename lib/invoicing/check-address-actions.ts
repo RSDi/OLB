@@ -18,6 +18,9 @@ export type CheckMailingDraft = {
   envFallbackLines: string[];
 };
 
+// Same rule as inv_reminder_settings_write (0158): invoicing OR Payments.
+// Admin client is still used so a missing migration fails closed here,
+// not as a PostgREST permission error.
 async function gate(): Promise<{ userId: string } | { error: string }> {
   const inv = await requireInvoicing();
   if (!("error" in inv)) return inv;
