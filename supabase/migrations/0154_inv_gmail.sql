@@ -38,5 +38,6 @@ alter table public.inv_gmail add column if not exists updated_at timestamptz;
 alter table public.inv_gmail enable row level security;
 
 revoke all on table public.inv_gmail from public, anon, authenticated;
+grant select, insert, update, delete on public.inv_gmail to service_role;
 
 commit;
