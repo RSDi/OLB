@@ -1,4 +1,4 @@
--- 0154_inv_gmail.sql
+-- 0157_inv_gmail.sql
 --
 -- Club Gmail sender for invoicing. One encrypted refresh token per org
 -- (OLB is a single club: singleton row id = true). The AES-GCM key is
@@ -8,8 +8,8 @@
 -- Whoever can invoice still sends through the connected account.
 --
 -- OLB does NOT auto-run migrations. Apply this in the Supabase SQL editor
--- after 0153. Idempotent. Additive: create-if-not-exists, insert-on-conflict,
--- add-column-if-not-exists. Safe on existing data.
+-- after 0156 (Data API grants). Idempotent. Additive: create-if-not-exists,
+-- insert-on-conflict, add-column-if-not-exists. Safe on existing data.
 
 begin;
 

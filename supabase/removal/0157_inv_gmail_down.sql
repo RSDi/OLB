@@ -1,4 +1,4 @@
--- Undo 0154 club Gmail sender for invoicing.
+-- Undo 0157 club Gmail sender for invoicing.
 
 begin;
 
