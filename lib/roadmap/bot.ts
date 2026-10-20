@@ -235,7 +235,7 @@ export function botPatchUpdated<T>(rows: T[] | T | null):
   | { ok: true; status: 200; item: T } {
   const list = rows == null ? [] : Array.isArray(rows) ? rows : [rows];
   if (!list.length) {
-    return { ok: false; status: 409; error: "That item could not be updated." };
+    return { ok: false, status: 409, error: "That item could not be updated." };
   }
   return { ok: true, status: 200, item: list[0] };
 }
