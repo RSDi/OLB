@@ -50,6 +50,8 @@ test("0154 adds parked and an append-only events table with wrapped RLS", () => 
   assert.ok(!migration.includes("olb_roadmap_events_insert"));
   assert.ok(!migration.includes("olb_roadmap_events_update"));
   assert.ok(!migration.includes("olb_roadmap_events_delete"));
+  assert.ok(migration.includes("grant select on public.olb_roadmap_events to authenticated, service_role;"));
+  assert.ok(migration.includes("grant insert, update, delete on public.olb_roadmap_events to service_role;"));
 });
 
 test("0154 down moves Parked cards to Proposed and says it drops history", () => {
