@@ -46,7 +46,10 @@ playbooks/docs, volunteer teams, and global search.
    From 2026-10-30, new `public` tables, sequences, and functions need an
    explicit GRANT in the same migration or supabase-js/PostgREST returns
    `permission denied` (see `AGENTS.md`). `0156_data_api_table_grants.sql`
-   granted existing post-baseline tables that had none.
+   granted existing post-baseline tables that had none. Merge and push
+   #215 and #219 first, then #220, so `supabase db push` applies 0154/0155
+   before 0156. If 0156 is already applied, use
+   `supabase db push --include-all` so the older files still run.
 
 4. **Bootstrap the first admin**
 

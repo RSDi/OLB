@@ -3,10 +3,11 @@
 // public objects on 2026-10-30.
 //
 // The *_data_api_table_grants.sql migration backfills tables that never
-// got a grant in their creating file. Migrations after that file that
-// create a public table, sequence, or function without a matching grant
-// fail here (and in CI). The cutoff number is read from the filename so
-// it can be renumbered without editing this test.
+// got a grant in their creating file. Migrations numbered 0154 and later
+// that create a public table, sequence, or function without a matching
+// grant fail here (and in CI), so #215/#219 must carry their own grants.
+// The backfill filename is discovered by suffix so it can be renumbered
+// without editing this test.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
@@ -15,6 +16,8 @@ import { join } from "node:path";
 const root = join(import.meta.dirname, "../..");
 const migrationsDir = join(root, "supabase/migrations");
 const DATA_API_ROLES = ["anon", "authenticated", "service_role"] as const;
+/** Per-file CREATE TABLE/SEQUENCE/FUNCTION must include a matching GRANT. */
+const CHECK_FROM = 154;
 
 const SERVICE_ROLE_ONLY = [
   "device_pairings",
@@ -244,12 +247,11 @@ test("grant backfill IF EXISTS-grants inv_gmail and olb_roadmap_events from open
   assert.match(sql, /grant insert, update, delete on public\.olb_roadmap_events to service_role/);
 });
 
-test("migrations after the grant backfill that create a public table, sequence, or function include a matching grant", () => {
+test("migrations numbered 0154 and later that create a public table, sequence, or function include a matching grant", () => {
   const names = migrationFiles();
-  const cutoffNum = migrationNumber(cutoffFile());
   const failures: string[] = [];
   for (const name of names) {
-    if (migrationNumber(name) <= cutoffNum) continue;
+    if (migrationNumber(name) < CHECK_FROM) continue;
     const sql = stripSqlComments(readFileSync(join(migrationsDir, name), "utf8"));
     for (const table of ungrantedPublicTables(sql)) {
       failures.push(

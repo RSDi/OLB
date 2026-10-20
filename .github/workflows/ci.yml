@@ -28,8 +28,8 @@ jobs:
 
       # Supabase 2026-10-30: new public tables/sequences/functions need an
       # explicit GRANT or supabase-js/PostgREST returns permission denied.
-      # Fails migrations numbered after *_data_api_table_grants.sql that
-      # CREATE TABLE/SEQUENCE/FUNCTION without a matching grant.
+      # Fails migrations numbered 0154 and later that CREATE
+      # TABLE/SEQUENCE/FUNCTION without a matching grant.
       - name: Public table Data API grants
         run: node --test tests/unit/migration-table-grants.test.ts
 

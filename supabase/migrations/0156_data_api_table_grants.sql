@@ -24,14 +24,17 @@
 -- and site_content (0120), which already grant select to anon.
 --
 -- Numbered 0156 so it sits after open PRs that already took 0154/0155
--- (#215 inv_gmail, #219 olb_roadmap_events). Those tables are granted
--- with IF EXISTS so this is safe regardless of merge order.
+-- (#215 inv_gmail, #219 olb_roadmap_events). Those PRs now grant in
+-- their own files; this file still IF EXISTS-grants them as a safety net.
 --
 -- GRANT is idempotent. Does not change RLS, policies, or the baseline's
 -- ALTER DEFAULT PRIVILEGES (those still grant ALL to anon on tables
 -- created by postgres — broader than needed; follow-up).
 --
--- Apply with supabase db push. Idempotent.
+-- Apply with supabase db push. Merge and push #215 and #219 first, then
+-- this PR (#220), so 0154/0155 run before 0156. If this lands first, apply
+-- the skipped 0154/0155 files with `supabase db push --include-all`.
+-- Idempotent.
 
 begin;
 
