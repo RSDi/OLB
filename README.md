@@ -43,6 +43,14 @@ playbooks/docs, volunteer teams, and global search.
    baseline replaced are kept for reference in `supabase/migrations-archive/`
    and are never applied.
 
+   From 2026-10-30, new `public` tables, sequences, and functions need an
+   explicit GRANT in the same migration or supabase-js/PostgREST returns
+   `permission denied` (see `AGENTS.md`). `0156_data_api_table_grants.sql`
+   granted existing post-baseline tables that had none. #219 (0154/0155)
+   is live. Merge and push #220 first, then #215 (0157), so `supabase db
+   push` applies 0156 before 0157. If 0157 is already applied, use
+   `supabase db push --include-all` so 0156 still runs.
+
 4. **Bootstrap the first admin**
 
    Set `ADMIN_EMAILS` to your address before signing up; the first matching
