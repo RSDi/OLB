@@ -1,11 +1,10 @@
-// Other-commitments answers on the public registration form. Copy is kept
-// here so the live form does not import the click-through. Stored on
+// Other-commitments answers on the public registration form. Stored on
 // olb_registrations.extra.commitments. Plain module, pure, so tests can run it.
 
 export const COMMITMENTS_ASK =
   "Does your player have any other commitments this season, like football, debate, another sport or activity, that might pull them away from practices or games? We ask because consistent attendance matters to the whole team.";
 export const COMMITMENTS_YES_FOLLOW_UP =
-  "Thanks for letting us know! A coach or board member will review this and reach out to learn more. Is there anything you already know about your schedule that would help us work through it together?";
+  "Thanks for letting us know! A board member will review this and reach out to learn more. Is there anything you already know about your schedule that would help us work through it together?";
 export const COMMITMENTS_NOTE_LABEL = "Activity name and conflicting days/times (optional)";
 export const COMMITMENTS_FLAG = "Commitments";
 // Same cap as the waitlist note on a registration (registration-actions).

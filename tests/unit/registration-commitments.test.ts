@@ -39,7 +39,7 @@ function src(rel: string): string {
 const ASK =
   "Does your player have any other commitments this season, like football, debate, another sport or activity, that might pull them away from practices or games? We ask because consistent attendance matters to the whole team.";
 const YES_FOLLOW_UP =
-  "Thanks for letting us know! A coach or board member will review this and reach out to learn more. Is there anything you already know about your schedule that would help us work through it together?";
+  "Thanks for letting us know! A board member will review this and reach out to learn more. Is there anything you already know about your schedule that would help us work through it together?";
 const NOTE_LABEL = "Activity name and conflicting days/times (optional)";
 
 const family: FamilyPrefill = {

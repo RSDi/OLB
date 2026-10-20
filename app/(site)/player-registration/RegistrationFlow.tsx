@@ -107,7 +107,7 @@ export default function RegistrationFlow({
           </div>
           <h2 className={s.question}>You&apos;re registered!</h2>
           <p className={s.lead}>
-            {done.names} {done.count > 1 ? "are" : "is"} on the list for {SEASON_LABEL}. A coach will look over the
+            {done.names} {done.count > 1 ? "are" : "is"} on the list for {SEASON_LABEL}. A board member will look over the
             registration and follow up about team placement and payment. Questions? Email{" "}
             <strong>lightningbasketballomaha@gmail.com</strong>.
           </p>
