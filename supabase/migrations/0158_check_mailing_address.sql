@@ -5,7 +5,8 @@
 -- Read fallback: MAIL_CHECK_ADDRESS env, then "reply for the mailing address".
 -- Columns live on the existing inv_reminder_settings singleton (id = 1).
 --
--- Numbered 0158 so it does not clash with open PR #215's 0157_inv_gmail.sql.
+-- 0157 on this branch is the column add (already applied on #231 preview).
+-- This file widens write RLS. After merge, #215's inv_gmail should be 0159.
 --
 -- Write RLS matches the app gate (invoicing OR Payments). Payments is the
 -- treasurer grant; this row is club-wide settings (reminders, CC/BCC, remit-to),
