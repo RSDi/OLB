@@ -20,7 +20,7 @@ grant usage, select on sequence public.<s> to authenticated, service_role;
 grant execute on function public.<f>(...) to authenticated, service_role;
 ```
 
-Identity columns create a backing sequence (`<table>_<column>_seq`); grant `usage, select` on that too. Add `grant select on public.<t> to anon` only when anonymous reads are needed (the public website: `site_menu_items` and `site_content`). RLS still decides which rows a role can see; grants only let PostgREST reach the object.
+`serial` / `bigserial` / identity columns create a backing sequence (`<table>_<column>_seq`); grant `usage, select` on that too, to `anon`, `authenticated`, or `service_role`. Trigger functions (`returns trigger`) do not need a Data API execute grant. Add `grant select on public.<t> to anon` only when anonymous reads are needed (the public website: `site_menu_items` and `site_content`). RLS still decides which rows a role can see; grants only let PostgREST reach the object. Sequence and function grants must name at least one of `anon`, `authenticated`, or `service_role` — a grant to `postgres` alone does not count.
 
 Service-role-only objects (hashed secrets, OAuth tokens, pairing codes) grant `service_role` and do not grant `authenticated` or `anon`. The app reaches those through `createAdminClient()` after its own permission check.
 

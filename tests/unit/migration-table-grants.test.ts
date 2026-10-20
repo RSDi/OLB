@@ -6,8 +6,10 @@
 // got a grant in their creating file. Migrations numbered 0154 and later
 // that create a public table, sequence, or function without a matching
 // grant fail here (and in CI), so #215/#219 must carry their own grants.
-// The backfill filename is discovered by suffix so it can be renumbered
-// without editing this test.
+// Sequence and function grants must name anon, authenticated, or
+// service_role. Trigger functions are exempt. serial / identity columns
+// flag their implicit <table>_<column>_seq. The backfill filename is
+// discovered by suffix so it can be renumbered without editing this test.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
@@ -50,11 +52,63 @@ function createdPublicSequences(sql: string): string[] {
   return seqs;
 }
 
-function createdPublicFunctions(sql: string): string[] {
-  const fns: string[] = [];
+function extractParenBlock(sql: string, openIndex: number): string | null {
+  if (sql[openIndex] !== "(") return null;
+  let depth = 0;
+  for (let i = openIndex; i < sql.length; i++) {
+    if (sql[i] === "(") depth++;
+    else if (sql[i] === ")") {
+      depth--;
+      if (depth === 0) return sql.slice(openIndex + 1, i);
+    }
+  }
+  return null;
+}
+
+function serialColumnNames(body: string): string[] {
+  const cols: string[] = [];
+  const serialRe =
+    /\b([a-zA-Z_][a-zA-Z0-9_]*)\s+(smallserial|serial8|serial4|bigserial|serial)\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = serialRe.exec(body))) cols.push(m[1]);
+  const identRe =
+    /\b([a-zA-Z_][a-zA-Z0-9_]*)\s+(?:smallint|int2|integer|int4|int|bigint|int8)\s+generated\s+(?:always|by\s+default)\s+as\s+identity\b/gi;
+  while ((m = identRe.exec(body))) cols.push(m[1]);
+  return cols;
+}
+
+/** Implicit <table>_<column>_seq from serial / identity columns. */
+function implicitSerialSequences(sql: string): string[] {
+  const seqs: string[] = [];
+  const createRe = /\bcreate\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z_][a-zA-Z0-9_]*)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = createRe.exec(sql))) {
+    const table = m[1];
+    const after = sql.slice(m.index + m[0].length).replace(/^\s+/, "");
+    if (!after.startsWith("(")) continue;
+    const body = extractParenBlock(after, 0);
+    if (!body) continue;
+    for (const col of serialColumnNames(body)) seqs.push(`${table}_${col}_seq`);
+  }
+  const alterSerialRe =
+    /\balter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?public\.([a-zA-Z_][a-zA-Z0-9_]*)\s+add\s+(?:column\s+)?(?:if\s+not\s+exists\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s+(smallserial|serial8|serial4|bigserial|serial)\b/gi;
+  while ((m = alterSerialRe.exec(sql))) seqs.push(`${m[1]}_${m[2]}_seq`);
+  const alterIdentRe =
+    /\balter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?public\.([a-zA-Z_][a-zA-Z0-9_]*)\s+add\s+(?:column\s+)?(?:if\s+not\s+exists\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s+(?:smallint|int2|integer|int4|int|bigint|int8)\s+generated\s+(?:always|by\s+default)\s+as\s+identity\b/gi;
+  while ((m = alterIdentRe.exec(sql))) seqs.push(`${m[1]}_${m[2]}_seq`);
+  return seqs;
+}
+
+function createdPublicFunctions(sql: string): { name: string; returnsTrigger: boolean }[] {
+  const fns: { name: string; returnsTrigger: boolean }[] = [];
   const re = /\bcreate\s+(?:or\s+replace\s+)?function\s+public\.([a-zA-Z_][a-zA-Z0-9_]*)/gi;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(sql))) fns.push(m[1]);
+  while ((m = re.exec(sql))) {
+    const rest = sql.slice(m.index);
+    const headerEnd = rest.search(/\bas\s+\$[a-zA-Z0-9_]*\$/i);
+    const header = headerEnd >= 0 ? rest.slice(0, headerEnd) : rest.slice(0, 800);
+    fns.push({ name: m[1], returnsTrigger: /\breturns\s+trigger\b/i.test(header) });
+  }
   return fns;
 }
 
@@ -79,21 +133,59 @@ function tableGrants(sql: string): Map<string, Set<string>> {
   return granted;
 }
 
-function grantedNames(
+function dataApiRoles(toClause: string): string[] {
+  return [...toClause.matchAll(/\b(anon|authenticated|service_role)\b/gi)].map((r) => r[1].toLowerCase());
+}
+
+function addRoles(map: Map<string, Set<string>>, name: string, roles: string[]) {
+  if (!map.has(name)) map.set(name, new Set());
+  for (const role of roles) map.get(name)!.add(role);
+}
+
+/** GRANT … ON SEQUENCE/FUNCTION … TO anon|authenticated|service_role. */
+function objectGrants(
   sql: string,
   kind: "sequence" | "function",
-): Set<string> {
-  const names = new Set<string>();
-  const re =
-    kind === "sequence"
-      ? /\bgrant\s+[^;]*?\bon\s+(?:all\s+sequences\s+in\s+schema\s+public|sequence\s+public\.([a-zA-Z_][a-zA-Z0-9_]*))/gi
-      : /\bgrant\s+execute\s+on\s+(?:all\s+functions\s+in\s+schema\s+public|function\s+public\.([a-zA-Z_][a-zA-Z0-9_]*))/gi;
+): { all: Set<string>; named: Map<string, Set<string>> } {
+  const all = new Set<string>();
+  const named = new Map<string, Set<string>>();
+  const re = /\bgrant\s+([^;]+);/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(sql))) {
-    if (m[1]) names.add(m[1]);
-    else names.add("*");
+    const stmt = m[1];
+    const parts = stmt.match(/^([\s\S]+?)\s+to\s+([\s\S]+)$/i);
+    if (!parts) continue;
+    const roles = dataApiRoles(parts[2]);
+    if (roles.length === 0) continue;
+    const target = parts[1];
+    if (kind === "sequence") {
+      if (/\bon\s+all\s+sequences\s+in\s+schema\s+public\b/i.test(target)) {
+        for (const role of roles) all.add(role);
+        continue;
+      }
+      for (const t of target.matchAll(/\bsequence\s+public\.([a-zA-Z_][a-zA-Z0-9_]*)/gi)) {
+        addRoles(named, t[1], roles);
+      }
+    } else {
+      if (/\bon\s+all\s+functions\s+in\s+schema\s+public\b/i.test(target)) {
+        for (const role of roles) all.add(role);
+        continue;
+      }
+      for (const t of target.matchAll(/\bfunction\s+public\.([a-zA-Z_][a-zA-Z0-9_]*)/gi)) {
+        addRoles(named, t[1], roles);
+      }
+    }
   }
-  return names;
+  return { all, named };
+}
+
+function hasDataApiGrant(
+  grants: { all: Set<string>; named: Map<string, Set<string>> },
+  name: string,
+): boolean {
+  if ([...grants.all].some((r) => (DATA_API_ROLES as readonly string[]).includes(r))) return true;
+  const roles = grants.named.get(name);
+  return !!roles && [...roles].some((r) => (DATA_API_ROLES as readonly string[]).includes(r));
 }
 
 function ungrantedPublicTables(sql: string): string[] {
@@ -106,15 +198,17 @@ function ungrantedPublicTables(sql: string): string[] {
 }
 
 function ungrantedPublicSequences(sql: string): string[] {
-  const granted = grantedNames(sql, "sequence");
-  if (granted.has("*")) return [];
-  return createdPublicSequences(sql).filter((s) => !granted.has(s));
+  const grants = objectGrants(sql, "sequence");
+  const names = [...new Set([...createdPublicSequences(sql), ...implicitSerialSequences(sql)])];
+  return names.filter((s) => !hasDataApiGrant(grants, s));
 }
 
 function ungrantedPublicFunctions(sql: string): string[] {
-  const granted = grantedNames(sql, "function");
-  if (granted.has("*")) return [];
-  return createdPublicFunctions(sql).filter((f) => !granted.has(f));
+  const grants = objectGrants(sql, "function");
+  return createdPublicFunctions(sql)
+    .filter((f) => !f.returnsTrigger)
+    .map((f) => f.name)
+    .filter((name) => !hasDataApiGrant(grants, name));
 }
 
 function migrationFiles(): string[] {
@@ -155,13 +249,22 @@ test("parser accepts a multi-table GRANT and service_role-only", () => {
   assert.ok(tableGrants(stripSqlComments(sql)).get("b")?.has("service_role"));
 });
 
-test("parser requires usage on new sequences and execute on new functions", () => {
+test("parser requires usage on new sequences and execute on new functions to a Data API role", () => {
   const missing = stripSqlComments(`
     create sequence if not exists public.foo_seq;
     create or replace function public.bar() returns void language sql as $$ select 1 $$;
   `);
   assert.deepEqual(ungrantedPublicSequences(missing), ["foo_seq"]);
   assert.deepEqual(ungrantedPublicFunctions(missing), ["bar"]);
+
+  const toPostgres = stripSqlComments(`
+    create sequence if not exists public.foo_seq;
+    create or replace function public.bar() returns void language sql as $$ select 1 $$;
+    grant usage, select on sequence public.foo_seq to postgres;
+    grant execute on function public.bar() to postgres;
+  `);
+  assert.deepEqual(ungrantedPublicSequences(toPostgres), ["foo_seq"]);
+  assert.deepEqual(ungrantedPublicFunctions(toPostgres), ["bar"]);
 
   const granted = stripSqlComments(`
     create sequence if not exists public.foo_seq;
@@ -171,6 +274,49 @@ test("parser requires usage on new sequences and execute on new functions", () =
   `);
   assert.deepEqual(ungrantedPublicSequences(granted), []);
   assert.deepEqual(ungrantedPublicFunctions(granted), []);
+});
+
+test("parser exempts RETURNS trigger functions from execute grants", () => {
+  const sql = stripSqlComments(`
+    create function public.keep_updated_at() returns trigger
+      language plpgsql as $$ begin return new; end $$;
+    create or replace function public.bar() returns void language sql as $$ select 1 $$;
+    create function public.tagged_trg() returns trigger language plpgsql as $function$
+      begin return new; end
+    $function$;
+  `);
+  assert.deepEqual(ungrantedPublicFunctions(sql), ["bar"]);
+  assert.ok(createdPublicFunctions(sql).some((f) => f.name === "keep_updated_at" && f.returnsTrigger));
+  assert.ok(createdPublicFunctions(sql).some((f) => f.name === "tagged_trg" && f.returnsTrigger));
+});
+
+test("parser flags serial and identity columns' implicit sequences", () => {
+  const serial = stripSqlComments(`
+    create table if not exists public.foo (
+      id serial primary key,
+      name text
+    );
+  `);
+  assert.deepEqual(ungrantedPublicSequences(serial), ["foo_id_seq"]);
+
+  const identity = stripSqlComments(`
+    create table if not exists public.bar (
+      id bigint generated always as identity primary key
+    );
+    grant usage, select on sequence public.bar_id_seq to service_role;
+  `);
+  assert.deepEqual(ungrantedPublicSequences(identity), []);
+
+  const alter = stripSqlComments(`
+    alter table public.baz add column n bigserial;
+  `);
+  assert.deepEqual(ungrantedPublicSequences(alter), ["baz_n_seq"]);
+
+  const alterNoColumnKw = stripSqlComments(`
+    alter table public.baz add n serial;
+    grant usage, select on all sequences in schema public to authenticated;
+  `);
+  assert.deepEqual(ungrantedPublicSequences(alterNoColumnKw), []);
 });
 
 test("cutoff is the *_data_api_table_grants.sql file; its number comes from the name", () => {
@@ -260,12 +406,12 @@ test("migrations numbered 0154 and later that create a public table, sequence, o
     }
     for (const seq of ungrantedPublicSequences(sql)) {
       failures.push(
-        `${name} creates sequence public.${seq} without grant usage, select on sequence public.${seq} to authenticated, service_role`,
+        `${name} creates sequence public.${seq} without grant usage, select on sequence public.${seq} to anon, authenticated, or service_role`,
       );
     }
     for (const fn of ungrantedPublicFunctions(sql)) {
       failures.push(
-        `${name} creates function public.${fn} without grant execute on function public.${fn}(…) to authenticated, service_role`,
+        `${name} creates function public.${fn} without grant execute on function public.${fn}(…) to anon, authenticated, or service_role`,
       );
     }
   }
