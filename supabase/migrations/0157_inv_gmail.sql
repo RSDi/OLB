@@ -7,9 +7,9 @@
 -- check for connect/disconnect (same pattern as game_film_youtube).
 -- Whoever can invoice still sends through the connected account.
 --
--- OLB does NOT auto-run migrations. Apply this in the Supabase SQL editor
--- after 0156 (Data API grants). Idempotent. Additive: create-if-not-exists,
--- insert-on-conflict, add-column-if-not-exists. Safe on existing data.
+-- Apply with supabase db push, after 0156 (Data API grants). Idempotent.
+-- Additive: create-if-not-exists, insert-on-conflict, add-column-if-not-exists.
+-- Safe on existing data.
 
 begin;
 

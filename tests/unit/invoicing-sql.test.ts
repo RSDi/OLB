@@ -111,15 +111,18 @@ test("0152 down drops module tables and billing step keys", () => {
   assert.ok(down.includes("drop column if exists step_key"));
 });
 
-test("0157 is the Gmail migration after live 0154/0155 and is additive", () => {
+test("0157 is the Gmail migration after live 0154/0155/0156 and is additive", () => {
   const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
   assert.ok(names.includes("0154_roadmap_parked_notes.sql"));
   assert.ok(names.includes("0155_roadmap_bot_patch.sql"));
+  assert.ok(names.includes("0156_data_api_table_grants.sql"));
   assert.ok(names.includes("0157_inv_gmail.sql"));
   assert.ok(!names.includes("0154_inv_gmail.sql"));
   assert.equal(names.filter((n) => n.startsWith("0157")).length, 1, "only one 0157 migration");
   const gmail = readFileSync(join(root, "supabase/migrations/0157_inv_gmail.sql"), "utf8");
   const gmailDown = readFileSync(join(root, "supabase/removal/0157_inv_gmail_down.sql"), "utf8");
+  assert.match(gmail, /Apply with supabase db push/);
+  assert.doesNotMatch(gmail, /SQL editor/);
   assert.match(gmail, /create table if not exists public\.inv_gmail/);
   assert.match(gmail, /refresh_token_enc/);
   assert.match(gmail, /sender_email/);
