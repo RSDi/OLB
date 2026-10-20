@@ -89,8 +89,8 @@ interface Props {
 export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview, children }: Props) {
   // "auto" follows the CSS default (collapsed below 1440, on pointer: coarse,
   // or when the device has a touch screen) so the first paint matches — no
-  // expanded flash on iPad, including iPadOS desktop UA. Never restore a
-  // stored expanded preference; Collapse / the arrow is this visit only.
+  // expanded flash on iPad, including iPadOS desktop UA. Never restore a stored expanded preference;
+  // Collapse / the arrow is this visit only.
   const [collapseMode, setCollapseMode] = useState<SidebarCollapseMode>("auto");
   const [narrowViewport, setNarrowViewport] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
