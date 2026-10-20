@@ -31,6 +31,11 @@ import { createClient } from "../../lib/supabase/client";
 import type { TopbarSearchHandle } from "../components/TopbarSearch";
 import type { SidebarLink } from "../../lib/sidebar-links/url";
 import { portalFontVariables } from "./fonts";
+import {
+  SIDEBAR_COLLAPSE_QUERY,
+  toggleSidebarMode,
+  type SidebarCollapseMode,
+} from "../../lib/portal/sidebar-collapse";
 
 const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal":             { title: "Dashboard",    subtitle: "Overview" },
@@ -70,10 +75,6 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/roadmap":     { title: "Roadmap",      subtitle: "" },
 };
 
-// Below this the full-width sidebar crowds the page (or doesn't fit
-// top to bottom), so it starts collapsed.
-const SMALL_SCREEN_QUERY = "(max-width: 1279px), (max-height: 760px)";
-
 interface Props {
   viewer: SidebarViewer | null;
   pendingMembersCount: number;
@@ -84,7 +85,12 @@ interface Props {
 }
 
 export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview, children }: Props) {
-  const [collapsed, setCollapsed] = useState(false);
+  // "auto" follows the 1280px CSS default (collapsed below, expanded at or
+  // above) so the first paint matches the window — no expanded flash on iPad.
+  // Collapse / the arrow writes a session override until the breakpoint is
+  // crossed again.
+  const [collapseMode, setCollapseMode] = useState<SidebarCollapseMode>("auto");
+  const [narrowViewport, setNarrowViewport] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -149,18 +155,21 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
     };
   }, [viewer?.status, pathname, startTour, previewing]);
 
-  // Small screens (a car's browser, a small laptop) start with the sidebar
-  // collapsed to icons, and it collapses or expands again when the window
-  // crosses that size. Collapse / expand by hand still works in between.
   useEffect(() => {
-    const mq = window.matchMedia(SMALL_SCREEN_QUERY);
-    // Read after mount: the server render can't know the window size.
+    const mq = window.matchMedia(SIDEBAR_COLLAPSE_QUERY);
+    // After mount only — the CSS media query already painted the default.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCollapsed(mq.matches);
-    const h = (e: MediaQueryListEvent) => setCollapsed(e.matches);
+    setNarrowViewport(mq.matches);
+    const h = () => {
+      setNarrowViewport(window.matchMedia(SIDEBAR_COLLAPSE_QUERY).matches);
+      setCollapseMode("auto");
+    };
     mq.addEventListener("change", h);
     return () => mq.removeEventListener("change", h);
   }, []);
+
+  const collapsed =
+    collapseMode === "collapsed" || (collapseMode === "auto" && narrowViewport);
 
   // Cmd+K / Ctrl+K behavior depends on viewport: focus the inline topbar
   // input if it's mounted (large viewports), otherwise toggle the modal
@@ -258,7 +267,8 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
         <ActivityBeacon />
         <div
           data-theme="lightning"
-          className={`rsd-app ${portalFontVariables}${collapsed ? " sidebar-collapsed" : ""}${previewing ? " rsd-previewing" : ""}`}
+          data-sidebar={collapseMode}
+          className={`rsd-app ${portalFontVariables}${collapseMode === "collapsed" ? " sidebar-collapsed" : ""}${collapseMode === "expanded" ? " sidebar-expanded" : ""}${previewing ? " rsd-previewing" : ""}`}
         >
           <PortalSidebar
             viewer={viewer}
@@ -266,7 +276,10 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
             links={sidebarLinks}
             previewing={previewing}
             collapsed={collapsed}
-            onToggleCollapse={() => setCollapsed(v => !v)}
+            onToggleCollapse={() => {
+              const width = window.innerWidth;
+              setCollapseMode((mode) => toggleSidebarMode(mode, width));
+            }}
             mobileOpen={mobileOpen}
             onNavigate={() => setMobileOpen(false)}
           />
