@@ -49,6 +49,15 @@ export const iconBtn: CSSProperties = {
   cursor: "pointer",
 };
 
+// Super-admin checklist reorder: smaller than the pencil so the row
+// barely grows when Edit order is on.
+export const moveIconBtn: CSSProperties = {
+  ...iconBtn,
+  width: 22,
+  height: 22,
+  borderRadius: 6,
+};
+
 // A card with a heading, a line under it and buttons at the right.
 export function Section({
   title,

@@ -18,6 +18,7 @@ import {
   feesAreLocked,
   hostedTeamInvoiceKeys,
   isBillingStep,
+  isInviteProgramsStep,
   fillCourts,
   formatTime,
   initials,
@@ -113,6 +114,9 @@ test("the hosted checklist bills programs and auto-checks collection by step_key
     ["Invite programs", "Attending programs and divisions confirmed", "Set team fees and bill each program", "Invoices sent", "Team fees collected"]
   );
   assert.equal(hostedStepBillingKey({ step_key: null, label: "Set team fees and bill each program" }), "bill_programs");
+  assert.equal(isInviteProgramsStep({ label: "Invite programs" }), true);
+  assert.equal(isInviteProgramsStep({ label: "  invite programs " }), true);
+  assert.equal(isInviteProgramsStep({ label: "Attending programs and divisions confirmed" }), false);
   const section = [
     { id: "inv", step_key: null, sort_order: 0, label: "Invite programs" },
     { id: "att", step_key: null, sort_order: 1, label: "Attending programs and divisions confirmed" },
@@ -199,6 +203,16 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(plan, /Move \$\{s\.label\} up/);
   assert.match(plan, /!move\.canUp/);
   assert.match(plan, /!move\.canDown/);
+  assert.match(plan, /isInviteProgramsStep/);
+  assert.match(plan, /Did you review the teams\?/);
+  assert.match(plan, /Yes, mark done/);
+  assert.match(plan, /No, review now/);
+  assert.match(plan, /\?tab=teams/);
+  assert.match(plan, /Escape/);
+  assert.match(plan, /\{editingOrder \? "Done" : "Edit order"\}/);
+  assert.match(plan, /canReorderSteps && editingOrder && move\.show/);
+  assert.doesNotMatch(plan, /localStorage/);
+  assert.doesNotMatch(plan, /sessionStorage/);
   assert.match(plan, /lookupFailed/);
   assert.match(plan, /readOnly=\{data\.feeLock\.locked\}/);
   assert.match(plan, /isBillingStep/);
