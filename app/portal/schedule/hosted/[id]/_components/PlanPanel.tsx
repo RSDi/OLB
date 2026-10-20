@@ -7,15 +7,16 @@
 // length the Schedule fills, and what the program email says about the
 // facility, concessions, admission and rules.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icons } from "../../../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../../../components/ui";
 import { addStep, deleteStep, moveStep, savePlan, setHosted, updateStep } from "../../../../../../lib/hosted/actions";
-import { daysForWeekend, FEE_LOCK_UNLOCK_NOTE, feeLockNote, formatDay, hostedStepBillingKey, hostedStepMoveControls, isBillingStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
+import { daysForWeekend, FEE_LOCK_UNLOCK_NOTE, feeLockNote, formatDay, hostedStepBillingKey, hostedStepMoveControls, isBillingStep, isInviteProgramsStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
 import { STEP_SECTIONS, type HostedPageData, type HostedStep, type StepSection } from "../../../../../../lib/hosted/types";
 import { teamFeesAreBilled } from "../../../../../../lib/invoicing/auto-steps";
-import { ErrorNote, Said, Section, Sheet, cap, grid2, iconBtn, money, sub, useAct } from "./parts";
+import { ErrorNote, Said, Section, Sheet, cap, grid2, iconBtn, money, moveIconBtn, sub, useAct } from "./parts";
 
 export function PlanPanel({ data, today, canReorderSteps = false }: { data: HostedPageData; today: string; canReorderSteps?: boolean }) {
   return (
@@ -28,15 +29,30 @@ export function PlanPanel({ data, today, canReorderSteps = false }: { data: Host
 
 function Checklist({ data, today, canReorderSteps }: { data: HostedPageData; today: string; canReorderSteps: boolean }) {
   const { busy, error, act } = useAct();
+  const router = useRouter();
   const [editing, setEditing] = useState<HostedStep | null>(null);
   const [adding, setAdding] = useState<StepSection | null>(null);
   const [label, setLabel] = useState("");
+  const [editingOrder, setEditingOrder] = useState(false);
+  const [inviteConfirmId, setInviteConfirmId] = useState<string | null>(null);
   const wid = data.weekend.id;
   return (
     <Section
       title="Checklist"
       tour="hosted-checklist"
       subtitle="Everything a tournament we host needs, from securing the facility to game day. Tick a step when it's done."
+      action={
+        canReorderSteps ? (
+          <button
+            type="button"
+            aria-pressed={editingOrder}
+            onClick={() => setEditingOrder((on) => !on)}
+            style={{ background: "none", border: "none", fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", cursor: "pointer", padding: 0 }}
+          >
+            {editingOrder ? "Done" : "Edit order"}
+          </button>
+        ) : undefined
+      }
     >
       <Said error={error} notice={null} />
       {STEP_SECTIONS.map((sec) => {
@@ -97,7 +113,14 @@ function Checklist({ data, today, canReorderSteps }: { data: HostedPageData; tod
                     disabled={busy || auto}
                     title={auto ? "Checks itself" : undefined}
                     aria-label={`${s.label}: done`}
-                    onChange={(e) => act(() => updateStep(wid, s.id, { done: e.target.checked }))}
+                    onChange={(e) => {
+                      const next = e.target.checked;
+                      if (next && isInviteProgramsStep(s)) {
+                        setInviteConfirmId(s.id);
+                        return;
+                      }
+                      act(() => updateStep(wid, s.id, { done: next }));
+                    }}
                     style={{ width: 18, height: 18, marginTop: 1, accentColor: "var(--rsd-accent-fill)", flexShrink: 0 }}
                   />
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -165,13 +188,13 @@ function Checklist({ data, today, canReorderSteps }: { data: HostedPageData; tod
                       </span>
                     )}
                   </div>
-                  {canReorderSteps && move.show && (
-                    <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <button type="button" style={iconBtn} aria-label={`Move ${s.label} up`} disabled={busy || !move.canUp} onClick={() => act(() => moveStep(wid, s.id, "up"))}>
-                        <Icons.ChevronUp width={13} height={13} />
+                  {canReorderSteps && editingOrder && move.show && (
+                    <span style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                      <button type="button" style={moveIconBtn} aria-label={`Move ${s.label} up`} disabled={busy || !move.canUp} onClick={() => act(() => moveStep(wid, s.id, "up"))}>
+                        <Icons.ChevronUp width={11} height={11} />
                       </button>
-                      <button type="button" style={iconBtn} aria-label={`Move ${s.label} down`} disabled={busy || !move.canDown} onClick={() => act(() => moveStep(wid, s.id, "down"))}>
-                        <Icons.ChevronDown width={13} height={13} />
+                      <button type="button" style={moveIconBtn} aria-label={`Move ${s.label} down`} disabled={busy || !move.canDown} onClick={() => act(() => moveStep(wid, s.id, "down"))}>
+                        <Icons.ChevronDown width={11} height={11} />
                       </button>
                     </span>
                   )}
@@ -209,7 +232,84 @@ function Checklist({ data, today, canReorderSteps }: { data: HostedPageData; tod
         </button>
       )}
       {editing && <StepSheet wid={wid} step={editing} onClose={() => setEditing(null)} />}
+      {inviteConfirmId && (
+        <InviteProgramsConfirm
+          busy={busy}
+          error={error}
+          onYes={async () => {
+            if ((await act(() => updateStep(wid, inviteConfirmId, { done: true }))) !== false) {
+              setInviteConfirmId(null);
+            }
+          }}
+          onReview={() => {
+            setInviteConfirmId(null);
+            router.push(`/portal/schedule/hosted/${wid}?tab=teams`);
+          }}
+          onClose={() => setInviteConfirmId(null)}
+        />
+      )}
     </Section>
+  );
+}
+
+function InviteProgramsConfirm({
+  busy,
+  error,
+  onYes,
+  onReview,
+  onClose,
+}: {
+  busy: boolean;
+  error: string | null;
+  onYes: () => void;
+  onReview: () => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !busy) onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [busy, onClose]);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="invite-programs-confirm-title"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !busy) onClose();
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 70,
+        background: "rgba(11,11,12,.38)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        className="rsd-card"
+        style={{ width: "min(400px, 100%)", padding: "20px 22px", gap: 14, boxShadow: "var(--gw-shadow-3)" }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <h2 id="invite-programs-confirm-title" style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>
+          Did you review the teams?
+        </h2>
+        {error && <ErrorNote text={error} />}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <Pill variant="ghost" onClick={onReview} disabled={busy}>
+            No, review now
+          </Pill>
+          <Pill variant="accent" onClick={onYes} disabled={busy}>
+            {busy ? "Saving…" : "Yes, mark done"}
+          </Pill>
+        </div>
+      </div>
+    </div>
   );
 }
 

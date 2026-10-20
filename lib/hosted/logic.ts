@@ -69,6 +69,12 @@ export function hostedStepBillingKey(step: { step_key?: string | null; label?: s
   return BILLING_LABEL_TO_KEY.get((step.label ?? "").trim().toLowerCase()) ?? null;
 }
 
+export const INVITE_PROGRAMS_LABEL = "Invite programs";
+
+export function isInviteProgramsStep(step: { label?: string | null }): boolean {
+  return (step.label ?? "").trim().toLowerCase() === INVITE_PROGRAMS_LABEL.toLowerCase();
+}
+
 export function isBillingStep(step: { step_key?: string | null; label?: string | null } | string | null | undefined): boolean {
   if (step == null) return false;
   if (typeof step === "string") return billingStepRank(step) != null;
