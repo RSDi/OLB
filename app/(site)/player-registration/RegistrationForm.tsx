@@ -53,6 +53,7 @@ export default function RegistrationForm({
   config = null,
   extras,
   onExtras,
+  homeschooledContext = null,
 }: {
   state: RegistrationState;
   onChange: (next: RegistrationState) => void;
@@ -65,6 +66,7 @@ export default function RegistrationForm({
   config?: FormExtras | null;
   extras: ExtrasState;
   onExtras: (next: ExtrasState) => void;
+  homeschooledContext?: boolean | null;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -112,6 +114,7 @@ export default function RegistrationForm({
             many={many}
             onChange={(patch) => upKid(k.key, patch)}
             onRemove={many ? () => removeKid(k.key) : undefined}
+            homeschooledContext={homeschooledContext}
           />
         ))}
         {state.kids.length < MAX_PLAYERS && (
@@ -249,12 +252,14 @@ function KidFields({
   many,
   onChange,
   onRemove,
+  homeschooledContext = null,
 }: {
   kid: KidAnswers;
   index: number;
   many: boolean;
   onChange: (patch: Partial<KidAnswers>) => void;
   onRemove?: () => void;
+  homeschooledContext?: boolean | null;
 }) {
   const fees = useFeeTiers();
   const suggestion = fees.suggest(k.athlete_dob);
@@ -309,6 +314,16 @@ function KidFields({
 
       <div>
         <span style={qLabel}>Do you affirm that your athlete meets the homeschool eligibility requirements outlined by the NCHC? *</span>
+        {homeschooledContext === true && (
+          <span className="olb-sub" style={{ fontSize: 12, display: "block", marginTop: 4 }}>
+            On the waitlist you said he is homeschooled. Please still affirm NCHC eligibility — we don&apos;t check this for you.
+          </span>
+        )}
+        {homeschooledContext === false && (
+          <span className="olb-sub" style={{ fontSize: 12, display: "block", marginTop: 4 }}>
+            On the waitlist you said he isn&apos;t homeschooled. Please still answer this eligibility question.
+          </span>
+        )}
         <YesNo name={n("homeschool")} value={k.homeschool_affirm} onChange={(v) => onChange({ homeschool_affirm: v })} />
       </div>
 

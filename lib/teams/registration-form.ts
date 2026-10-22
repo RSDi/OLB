@@ -292,6 +292,95 @@ export interface FamilyPrefill {
   players: PrefillPlayer[];
 }
 
+// What an offer link knows about the parent (waitlist / assessment). Used
+// after they pick Mom or Dad, and as the father fallback on the full form.
+export interface OfferParent {
+  parentFirst: string;
+  parentLast: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
+function parentSlot(family: FamilyAnswers, who: "father" | "mother") {
+  return {
+    first: family[`${who}_first`],
+    last: family[`${who}_last`],
+    email: family[`${who}_email`],
+    phone: family[`${who}_phone`],
+  };
+}
+
+function withParentSlot(
+  family: FamilyAnswers,
+  who: "father" | "mother",
+  slot: { first: string; last: string; email: string; phone: string }
+): FamilyAnswers {
+  return who === "father"
+    ? { ...family, father_first: slot.first, father_last: slot.last, father_email: slot.email, father_phone: slot.phone }
+    : { ...family, mother_first: slot.first, mother_last: slot.last, mother_email: slot.email, mother_phone: slot.phone };
+}
+
+export function applyOfferParent(family: FamilyAnswers, who: "father" | "mother", offer: OfferParent): FamilyAnswers {
+  const first = offer.parentFirst.trim();
+  const last = offer.parentLast.trim();
+  const email = (offer.email ?? "").trim();
+  const phone = (offer.phone ?? "").trim();
+  const other: "father" | "mother" = who === "father" ? "mother" : "father";
+  const chosen = parentSlot(family, who);
+  const otherSlot = parentSlot(family, other);
+  const thisEmpty = !chosen.first.trim() && !chosen.email.trim();
+  const otherHasOffer = !!email && otherSlot.email.trim().toLowerCase() === email.toLowerCase();
+  let next = family;
+  let slot = chosen;
+  if (thisEmpty && otherHasOffer) {
+    slot = otherSlot;
+    next = withParentSlot(next, other, { first: "", last: "", email: "", phone: "" });
+  }
+  return withParentSlot(next, who, {
+    first: slot.first.trim() || first,
+    last: slot.last.trim() || last,
+    email: slot.email.trim() || email,
+    phone: slot.phone.trim() || phone,
+  });
+}
+
+// A new-family registration from an offer link. Fills the player and the
+// parent_name fallback (father until they pick Mom). Does not set
+// homeschool_affirm or commitments_note — those stay for the family to answer.
+export function fromOfferSeed(
+  offer: {
+    first: string;
+    last: string;
+    dob: string | null;
+    email: string | null;
+    parentFirst: string;
+    parentLast: string;
+    phone: string | null;
+  },
+  tiers: FeeTier[] = DEFAULT_FEE_TIERS
+): RegistrationState {
+  const parentFirst = offer.parentFirst.trim();
+  const parentLast = offer.parentLast.trim();
+  return {
+    kids: [
+      newKid({
+        athlete_first: offer.first,
+        athlete_last: offer.last,
+        athlete_dob: offer.dob ?? "",
+        first_season: true,
+        fee_tier: suggestedTier(offer.dob, tiers) ?? "",
+      }),
+    ],
+    family: {
+      ...EMPTY_FAMILY,
+      father_first: parentFirst,
+      father_last: parentLast,
+      father_email: (offer.email ?? "").trim(),
+      father_phone: (offer.phone ?? "").trim(),
+    },
+  };
+}
+
 // A registration filled in from the players picked, plus any brothers and
 // sisters being added. The family's details come from the first player picked.
 export function fromPrefill(prefill: FamilyPrefill, picked: string[], added: KidAnswers[]): RegistrationState {

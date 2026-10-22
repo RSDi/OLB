@@ -11,6 +11,7 @@ import {
   PAYMENT_OPTIONS,
   SEASON_LABEL,
   emptyRegistration,
+  applyOfferParent,
   fromPrefill,
   isHighSchoolTier,
   kidFirst,
@@ -22,6 +23,7 @@ import {
   type FamilyAnswers,
   type FamilyPrefill,
   type KidAnswers,
+  type OfferParent,
   type RegistrationState,
 } from "../../../lib/teams/registration-form";
 import { ComboSelect } from "../../components/ComboSelect";
@@ -69,6 +71,8 @@ export function RegistrationWizard({
   onExtras,
   seed,
   startEmail,
+  offerParent = null,
+  homeschooledContext = null,
   banner,
 }: {
   state: RegistrationState;
@@ -83,9 +87,11 @@ export function RegistrationWizard({
   config?: FormExtras | null;
   extras: ExtrasState;
   onExtras: (next: ExtrasState) => void;
-  // Where a new family starts: a spot offer fills in the player (0130).
+  // Where a new family starts: a spot offer fills in the player and parent (0130).
   seed?: () => RegistrationState;
   startEmail?: string;
+  offerParent?: OfferParent | null;
+  homeschooledContext?: boolean | null;
   banner?: string | null;
 }) {
   const [stage, setStage] = useState<Stage>("email");
@@ -108,7 +114,8 @@ export function RegistrationWizard({
   const f = state.family;
   const kids = state.kids;
   const fromFile = new Set(family?.players.map((p) => p.key) ?? []);
-  const steps = buildRegistrationSteps(mode, state, fromFile, config);
+  const offerSeeded = !!seed && mode === "new";
+  const steps = buildRegistrationSteps(mode, state, fromFile, config, { offerSeeded });
   const at = Math.max(0, steps.indexOf(stepId));
 
   // A new step: back to the top of the card, with the first box ready to type
@@ -134,7 +141,7 @@ export function RegistrationWizard({
     setStepId(id);
   }
   function next(after?: RegistrationState) {
-    const list = after ? buildRegistrationSteps(mode, after, fromFile, config) : steps;
+    const list = after ? buildRegistrationSteps(mode, after, fromFile, config, { offerSeeded: !!seed && mode === "new" }) : steps;
     if (backToSummary) {
       setBackToSummary(false);
       return go("summary");
@@ -206,7 +213,8 @@ export function RegistrationWizard({
     const fresh = seed ? seed() : emptyRegistration();
     onChange(fresh);
     setStage("steps");
-    setStepId(`name:${fresh.kids[0].key}`);
+    const list = buildRegistrationSteps("new", fresh, new Set(), config, { offerSeeded: !!seed });
+    setStepId(list[0] ?? "summary");
   }
 
   function startReturning() {
@@ -416,6 +424,8 @@ export function RegistrationWizard({
             config={config}
             extras={extras}
             onExtras={onExtras}
+            offerParent={offerParent}
+            homeschooledContext={homeschooledContext}
           />
         )}
       </div>
@@ -462,6 +472,8 @@ interface StepProps {
   config: FormExtras | null;
   extras: ExtrasState;
   onExtras: (next: ExtrasState) => void;
+  offerParent?: OfferParent | null;
+  homeschooledContext?: boolean | null;
 }
 
 function Step(p: StepProps) {
@@ -645,10 +657,11 @@ function Step(p: StepProps) {
   if (kind === "you") {
     const pick = (who: Parent) => {
       p.setYou(who);
-      p.answer(() => ({
-        ...state,
-        family: { ...f, [`${who}_email`]: f[`${who}_email`] || p.email },
-      }));
+      p.answer(() => {
+        let family: FamilyAnswers = { ...f, [`${who}_email`]: f[`${who}_email`] || p.email };
+        if (p.offerParent) family = applyOfferParent(family, who, p.offerParent);
+        return { ...state, family };
+      });
     };
     return (
       <form onSubmit={continueWith(!!p.you, "Please pick one.")}>
@@ -908,6 +921,18 @@ function Step(p: StepProps) {
         no="No"
         extra={
           <>
+            {p.homeschooledContext === true && (
+              <p className={s.note}>
+                When you joined the waitlist you said he is homeschooled. Please still affirm the NCHC eligibility — we
+                don&apos;t check that box for you.
+              </p>
+            )}
+            {p.homeschooledContext === false && (
+              <p className={s.note}>
+                When you joined the waitlist you said he isn&apos;t homeschooled. Please still answer the NCHC eligibility
+                question.
+              </p>
+            )}
             <details>
               <summary className={s.linkBtn} style={{ display: "inline" }}>Read the NCHC rules</summary>
               <div className={s.note} style={{ whiteSpace: "pre-wrap", marginTop: 10 }}>{NCHC_TEXT}</div>
