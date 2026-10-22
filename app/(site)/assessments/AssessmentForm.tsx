@@ -8,7 +8,7 @@ import {
   assessmentWhen,
   gradeLabel,
   hasGradeRule,
-  type Assessment,
+  type PublicAssessment,
 } from "../../../lib/onboarding/assessments";
 import { EXPERIENCE, HEARD_FROM, type WaitlistInput } from "../../../lib/onboarding/waitlist-form";
 
@@ -25,7 +25,7 @@ export default function AssessmentForm({
   honeypot,
   onHoneypot,
 }: {
-  assessment: Assessment;
+  assessment: PublicAssessment;
   state: WaitlistInput;
   onChange: (next: WaitlistInput) => void;
   onSubmit: () => Promise<string | null>;

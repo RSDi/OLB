@@ -5,7 +5,7 @@
 // assessment has a grade rule.
 
 import { looksLikeEmail } from "../teams/registration-form.ts";
-import { BUILTIN_14U, GRADES, eligibilityProblem, hasGradeRule, parseGrade, playerFitsAssessment, type Assessment } from "./assessments.ts";
+import { BUILTIN_14U, GRADES, eligibilityProblem, hasGradeRule, parseGrade, playerFitsAssessment, type PublicAssessment } from "./assessments.ts";
 import type { WaitlistInput } from "./waitlist-form.ts";
 
 export const ASSESSMENT_STEPS = [
@@ -24,7 +24,7 @@ export const ASSESSMENT_STEPS = [
 
 export type AssessmentStep = (typeof ASSESSMENT_STEPS)[number] | "grade";
 
-export function assessmentStepsFor(assessment: Assessment = BUILTIN_14U): AssessmentStep[] {
+export function assessmentStepsFor(assessment: PublicAssessment = BUILTIN_14U): AssessmentStep[] {
   const steps: AssessmentStep[] = [...ASSESSMENT_STEPS];
   if (hasGradeRule(assessment)) {
     const i = steps.indexOf("dob");
@@ -36,7 +36,7 @@ export function assessmentStepsFor(assessment: Assessment = BUILTIN_14U): Assess
 export function assessmentStepProblem(
   step: AssessmentStep,
   w: WaitlistInput,
-  assessment: Assessment = BUILTIN_14U,
+  assessment: PublicAssessment = BUILTIN_14U,
 ): string | null {
   if (step === "name") {
     if (!w.athlete_first.trim() || !w.athlete_last.trim()) return "Please add your son's first and last name.";

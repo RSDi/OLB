@@ -19,7 +19,9 @@ import {
   openAssessmentsFor,
   playerFitsAssessment,
   tableMissing,
+  toPublicAssessment,
 } from "../../lib/onboarding/assessments.ts";
+import { REGISTRATION_SEASON } from "../../lib/teams/registration-form.ts";
 import { assessmentExtra, assessmentProblem, is14uEligible } from "../../lib/onboarding/assessment-form.ts";
 import { emptyWaitlist } from "../../lib/onboarding/waitlist-form.ts";
 
@@ -166,14 +168,18 @@ test("high school uses the grade rule, 14U keeps the birthday message", () => {
   assert.equal(assessmentProblem(hs, BUILTIN_HS), null);
 });
 
-test("the migration creates olb_assessments with grants and staff RLS", () => {
+test("the migration creates olb_assessments with staff select and service-role writes", () => {
   const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0159_olb_assessments.sql"), "utf8");
   assert.match(sql, /create table if not exists public\.olb_assessments/);
-  assert.match(sql, /grant select, insert, update, delete on public\.olb_assessments to authenticated, service_role;/);
+  assert.match(sql, /revoke all on public\.olb_assessments from anon;/);
+  assert.match(sql, /grant select on public\.olb_assessments to authenticated, service_role;/);
+  assert.match(sql, /grant insert, update, delete on public\.olb_assessments to service_role;/);
+  assert.doesNotMatch(sql, /grant select, insert, update, delete on public\.olb_assessments to authenticated/);
   assert.match(sql, /using \(\(select public\.is_staff\(\)\) or \(select public\.can_manage_registrations\(\)\)\)/);
-  assert.match(sql, /with check \(\(select public\.can_manage_registrations\(\)\)\)/);
+  assert.doesNotMatch(sql, /create policy "olb_assessments_insert"/);
   assert.match(sql, /slug, name, level, dob_from, dob_to/);
   assert.match(sql, /'14u'/);
+  assert.match(sql, new RegExp(`where b\\.season = '${REGISTRATION_SEASON}'`));
   assert.doesNotMatch(sql, /high-school/);
   assert.match(sql, /Do not apply on production/);
 });
@@ -187,20 +193,44 @@ test("Assessment thanks and reminder match Off / Ask me first / On plus Words", 
   const waitlist = readFileSync(join(import.meta.dirname, "../../app/portal/directory/registrations/RegistrationsReview.tsx"), "utf8");
   assert.match(automations, /assessment_thanks/);
   assert.match(automations, /assessment_reminder/);
-  assert.match(automations, /assessment_thanks: "on"/);
+  assert.match(automations, /assessment_thanks: "ask"/);
   assert.match(automations, /assessment_reminder: "ask"/);
   assert.match(emails, /Thanks for signing \{player\} up for \{assessment\}/);
   assert.match(emails, /\{assessment\} is in two days/);
   assert.doesNotMatch(emails, /not offered/i);
   assert.match(tab, /defaultMode/);
-  assert.match(tab, /Assessment thanks starts On/);
+  assert.match(tab, /Assessment thanks and Assessment reminder start Ask me first/);
   assert.match(save, /assessment_thanks/);
   assert.match(save, /composeAssessmentEmail/);
   assert.doesNotMatch(save, /waitlist_reply/);
   assert.match(cron, /assessment_reminder/);
   assert.match(cron, /daysBetween\(today, centralDay/);
+  assert.match(cron, /a\.open &&/);
+  assert.match(cron, /builtin-/);
+  assert.match(cron, /centralHour\(now\) === 9/);
   assert.match(waitlist, /waitlist-assessment-filter/);
   assert.match(waitlist, /waitlistAssessmentLabel/);
+  const vercel = readFileSync(join(import.meta.dirname, "../../vercel.json"), "utf8");
+  assert.match(vercel, /"17 14 \* \* \*"/);
+  assert.match(vercel, /"17 15 \* \* \*"/);
+});
+
+test("public pages strip thanks and reminder wording", () => {
+  const pub = toPublicAssessment({ ...BUILTIN_14U, thanks_subject: "Hi", thanks_body: "Thanks", reminder_subject: "See you", reminder_body: "Tomorrow" });
+  assert.equal(pub.slug, "14u");
+  assert.equal(pub.name, "14U assessment");
+  assert.equal("thanks_subject" in pub, false);
+  assert.equal("reminder_body" in pub, false);
+  const list = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/page.tsx"), "utf8");
+  const slug = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/[slug]/page.tsx"), "utf8");
+  const data = readFileSync(join(import.meta.dirname, "../../lib/onboarding/assessment-data.ts"), "utf8");
+  const open = readFileSync(join(import.meta.dirname, "../../lib/onboarding/assessment-actions.ts"), "utf8");
+  assert.match(list, /toPublicAssessment/);
+  assert.match(slug, /toPublicAssessment/);
+  assert.match(data, /return \{ assessments: rows, fromTable: true \}/);
+  assert.doesNotMatch(data, /if \(!rows\.length\) return \{ assessments: BUILTIN_ASSESSMENTS, fromTable: true \}/);
+  assert.match(data, /if \(fromTable\) return null/);
+  assert.match(open, /\.eq\("board_id", boardId\)/);
 });
 
 test("admin lives at Settings → Assessments and the 14U URL redirects", () => {

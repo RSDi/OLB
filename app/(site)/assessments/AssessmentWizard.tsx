@@ -12,7 +12,7 @@ import {
   gradeLabel,
   hasDobRule,
   hasGradeRule,
-  type Assessment,
+  type PublicAssessment,
 } from "../../../lib/onboarding/assessments";
 import { EXPERIENCE, HEARD_FROM, type WaitlistInput } from "../../../lib/onboarding/waitlist-form";
 
@@ -29,7 +29,7 @@ export function AssessmentWizard({
   honeypot,
   onHoneypot,
 }: {
-  assessment: Assessment;
+  assessment: PublicAssessment;
   state: WaitlistInput;
   onChange: (next: WaitlistInput) => void;
   onSubmit: () => Promise<string | null>;

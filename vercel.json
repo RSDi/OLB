@@ -22,6 +22,10 @@
       "schedule": "17 14 * * *"
     },
     {
+      "path": "/api/cron/onboarding",
+      "schedule": "17 15 * * *"
+    },
+    {
       "path": "/api/cron/balance-reminders",
       "schedule": "23 14 * * *"
     },

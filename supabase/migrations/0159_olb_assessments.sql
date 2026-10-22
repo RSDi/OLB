@@ -9,9 +9,10 @@
 -- keep working after this file is applied. Do not apply on production
 -- until Jeff says so.
 --
--- Access: the Registrations permission (and the board, read-only) — same
--- as registration settings. The public form reads through the service
--- role. Helper calls are wrapped in (select …) per AGENTS.md.
+-- Access: staff (and Registrations) can read. Writes go through the
+-- service role after the app checks the Registrations permission — same
+-- as other registration settings. The public form also reads through the
+-- service role. Helper calls are wrapped in (select …) per AGENTS.md.
 --
 -- Apply via the Supabase SQL editor, after 0158. Idempotent.
 
@@ -48,33 +49,25 @@ create index if not exists olb_assessments_board_open_idx
 
 alter table public.olb_assessments enable row level security;
 
+revoke all on public.olb_assessments from anon;
+
 drop policy if exists "olb_assessments_select" on public.olb_assessments;
 create policy "olb_assessments_select" on public.olb_assessments
   for select to authenticated
   using ((select public.is_staff()) or (select public.can_manage_registrations()));
 
 drop policy if exists "olb_assessments_insert" on public.olb_assessments;
-create policy "olb_assessments_insert" on public.olb_assessments
-  for insert to authenticated
-  with check ((select public.can_manage_registrations()));
-
 drop policy if exists "olb_assessments_update" on public.olb_assessments;
-create policy "olb_assessments_update" on public.olb_assessments
-  for update to authenticated
-  using ((select public.can_manage_registrations()))
-  with check ((select public.can_manage_registrations()));
-
 drop policy if exists "olb_assessments_delete" on public.olb_assessments;
-create policy "olb_assessments_delete" on public.olb_assessments
-  for delete to authenticated
-  using ((select public.can_manage_registrations()));
 
-grant select, insert, update, delete on public.olb_assessments to authenticated, service_role;
+grant select on public.olb_assessments to authenticated, service_role;
+grant insert, update, delete on public.olb_assessments to service_role;
 
 -- 14U is the first assessment. Birthday window matches the existing 14U
 -- lock (lowestEligibleLevel === 14U on season end 2026-12-31): 2012-01-01
 -- through 2013-12-31. That is not the August 1 fee window (14u fees are
 -- ages 13–14 on 2026-08-01, about 2011-08-02 through 2013-08-01).
+-- Board is the same season seasonBoardId() uses (REGISTRATION_SEASON).
 insert into public.olb_assessments (
   board_id, slug, name, level, dob_from, dob_to, details, open
 )
@@ -88,8 +81,7 @@ select
   'We are accepting two more players at the 14U level. Please sign up for an assessment if you are interested in being considered. Playing for Omaha Lightning is a commitment to a competitive team, October through February. Practices have already begun, so assessments will be immediate.',
   true
 from public.olb_boards b
-order by b.season desc nulls last
-limit 1
+where b.season = '2026-2027'
 on conflict (board_id, slug) do nothing;
 
 notify pgrst, 'reload schema';

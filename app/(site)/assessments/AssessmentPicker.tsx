@@ -12,12 +12,12 @@ import {
   hasGradeRule,
   openAssessmentsFor,
   parseGrade,
-  type Assessment,
+  type PublicAssessment,
 } from "../../../lib/onboarding/assessments";
 
 type Step = "who" | "pick";
 
-export function AssessmentPicker({ assessments }: { assessments: Assessment[] }) {
+export function AssessmentPicker({ assessments }: { assessments: PublicAssessment[] }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("who");
   const [dob, setDob] = useState("");
@@ -46,7 +46,7 @@ export function AssessmentPicker({ assessments }: { assessments: Assessment[] })
     setStep("pick");
   }
 
-  function pick(a: Assessment) {
+  function pick(a: PublicAssessment) {
     const next = new URL(assessmentPublicPath(a), window.location.origin);
     next.searchParams.set("dob", dob);
     if (grade) next.searchParams.set("grade", grade);

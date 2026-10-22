@@ -31,7 +31,8 @@ const BLOCKED_SLUGS = new Set([
 
 export const GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
-export type Assessment = {
+// What the public pages may see. No thanks_* / reminder_* wording.
+export type PublicAssessment = {
   id: string;
   slug: string;
   name: string;
@@ -44,12 +45,32 @@ export type Assessment = {
   place: string | null;
   details: string;
   open: boolean;
+};
+
+export type Assessment = PublicAssessment & {
   thanks_subject: string | null;
   thanks_body: string | null;
   reminder_subject: string | null;
   reminder_body: string | null;
   builtin?: boolean;
 };
+
+export function toPublicAssessment(a: PublicAssessment): PublicAssessment {
+  return {
+    id: a.id,
+    slug: a.slug,
+    name: a.name,
+    level: a.level,
+    dob_from: a.dob_from,
+    dob_to: a.dob_to,
+    grade_from: a.grade_from,
+    grade_to: a.grade_to,
+    starts_at: a.starts_at,
+    place: a.place,
+    details: a.details,
+    open: a.open,
+  };
+}
 
 export type AssessmentInput = {
   id?: string;
@@ -203,18 +224,18 @@ export function inGradeRange(grade: number, from: number | null, to: number | nu
 
 // A player fits when they match the birthday rule or the grade rule (or
 // both, when both are set). No rule means anyone can sign up.
-export function playerFitsAssessment(a: Assessment, dob: string, grade: number | null): boolean {
+export function playerFitsAssessment(a: PublicAssessment, dob: string, grade: number | null): boolean {
   const dobOk = hasDobRule(a) ? Boolean(dob) && inDobRange(dob, a.dob_from, a.dob_to) : null;
   const gradeOk = hasGradeRule(a) ? grade != null && inGradeRange(grade, a.grade_from, a.grade_to) : null;
   if (dobOk === null && gradeOk === null) return true;
   return dobOk === true || gradeOk === true;
 }
 
-export function openAssessmentsFor(assessments: Assessment[], dob: string, grade: number | null): Assessment[] {
+export function openAssessmentsFor(assessments: PublicAssessment[], dob: string, grade: number | null): PublicAssessment[] {
   return assessments.filter((a) => a.open && playerFitsAssessment(a, dob, grade));
 }
 
-export function assessmentRuleLabel(a: Assessment): string {
+export function assessmentRuleLabel(a: PublicAssessment): string {
   const parts: string[] = [];
   if (hasDobRule(a)) {
     if (a.dob_from && a.dob_to) parts.push(`birthdays ${formatDay(a.dob_from)}–${formatDay(a.dob_to)}`);
@@ -229,14 +250,14 @@ export function assessmentRuleLabel(a: Assessment): string {
   return parts.join(" or ") || "any player";
 }
 
-export function eligibilityProblem(a: Assessment): string {
+export function eligibilityProblem(a: PublicAssessment): string {
   if (a.slug === BUILTIN_14U_SLUG || a.level === ASSESSMENT_LEVEL) {
     return "This assessment is for 14U players only. Please check his birthday, or email lightningbasketballomaha@gmail.com.";
   }
   return `This assessment is for ${assessmentRuleLabel(a)}. Please check his birthday or grade, or email lightningbasketballomaha@gmail.com.`;
 }
 
-export function assessmentTag(a: Assessment): string {
+export function assessmentTag(a: PublicAssessment): string {
   return a.slug === BUILTIN_14U_SLUG ? ASSESSMENT_TAG : a.name;
 }
 

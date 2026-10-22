@@ -10,8 +10,8 @@
 //   open items      Mondays, to approved families with something to do
 //   countdown       10 days and 1 day before the first practice
 //   Slack           who has joined, by parent email (bot token)
-//   assessment      a reminder two days before an assessment (9 AM Chicago,
-//                   same cron as the rest)
+//   assessment      a reminder two days before an open assessment, only
+//                   when the America/Chicago hour is 9 (14:17 and 15:17 UTC)
 //   reminders       a push to the Registrations permission: the Slack link
 //                   running out, families nobody has answered, and on
 //                   Mondays a summary of what's open
@@ -20,7 +20,7 @@ import { createAdminClient } from "../supabase/admin";
 import { sendPushToPermission } from "../notifications/push";
 import { modeOf, type OnboardingSettings } from "./automations";
 import { compose, composeAssessmentEmail, composeForRegistration } from "./compose";
-import { addDays, centralDay, daysBetween, longDay, weekOf, weekday } from "./dates";
+import { addDays, centralDay, centralHour, daysBetween, longDay, weekOf, weekday } from "./dates";
 import { deliver } from "./deliver";
 import { loadFamilies } from "./family-data";
 import { openItems } from "./checklist";
@@ -75,7 +75,9 @@ export async function runDaily(now: Date = new Date()): Promise<DailySummary> {
       }
     }
 
-    await assessmentReminders(db, settings, words, today, summary);
+    if (centralHour(now) === 9) {
+      await assessmentReminders(db, settings, words, today, summary);
+    }
     await reminders(db, settings, families, today);
   }
   return summary;
@@ -126,8 +128,8 @@ async function offers(db: Db, settings: OnboardingSettings, words: Record<string
   }
 }
 
-// Assessment reminder: waitlisted sign-ups, two calendar days before the
-// assessment (the cron already runs at 9 AM America/Chicago).
+// Assessment reminder: waitlisted sign-ups, two calendar days before an
+// open assessment. Caller already checked the Chicago hour is 9.
 async function assessmentReminders(
   db: Db,
   settings: OnboardingSettings,
@@ -138,7 +140,7 @@ async function assessmentReminders(
   if (modeOf(settings, "assessment_reminder") === "off") return;
   const loaded = await loadAssessments();
   if (!loaded.fromTable) return;
-  const due = loaded.assessments.filter((a) => a.starts_at && daysBetween(today, centralDay(new Date(a.starts_at))) === 2);
+  const due = loaded.assessments.filter((a) => !a.id.startsWith("builtin-") && a.open && a.starts_at && daysBetween(today, centralDay(new Date(a.starts_at))) === 2);
   if (!due.length) return;
   const { data } = await db
     .from("olb_registrations")

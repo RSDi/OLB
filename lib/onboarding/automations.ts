@@ -44,9 +44,9 @@ export const AUTOMATIONS: AutomationDef[] = [
   { key: "assessment_reminder", label: "Assessment reminder", when: "Two days before the assessment, at 9 AM America/Chicago" },
 ];
 
-// Missing keys are Off, except these two Jeff approved (2026-10-22).
+// Missing keys are Off, except these two (Jeff, 2026-10-22: both Ask me first).
 export const DEFAULT_MODES: Partial<Record<AutomationKey, Mode>> = {
-  assessment_thanks: "on",
+  assessment_thanks: "ask",
   assessment_reminder: "ask",
 };
 
@@ -92,7 +92,7 @@ export function defaultSettings(boardId: string): OnboardingSettings {
 
 // What an email does right now: off (nothing), ask (held for Send) or on.
 // A missing key uses that email's default (Off, except Assessment thanks
-// and Assessment reminder).
+// and Assessment reminder, which start Ask me first).
 export function modeOf(settings: OnboardingSettings | null, key: AutomationKey): Mode {
   if (!settings?.enabled || settings.paused) return "off";
   const m = settings.modes?.[key];

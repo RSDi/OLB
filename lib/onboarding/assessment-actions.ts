@@ -83,10 +83,13 @@ export async function setAssessmentOpen(id: string, open: boolean): Promise<Save
     return { error: "Assessments aren't in this database yet. Paste the SQL from the pull request, then try again." };
   }
   const db = createAdminClient();
+  const boardId = await seasonBoardId(db);
+  if (!boardId) return { error: "This season's board isn't set up yet." };
   const { error } = await db
     .from("olb_assessments")
     .update({ open, updated_by: gate.userId, updated_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("board_id", boardId);
   if (error) {
     if (tableMissing(error)) {
       return { error: "Assessments aren't in this database yet. Paste the SQL from the pull request, then try again." };

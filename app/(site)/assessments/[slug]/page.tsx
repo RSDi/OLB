@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import "../../../components/olb.css";
 import { loadAssessmentBySlug } from "../../../../lib/onboarding/assessment-data";
+import { toPublicAssessment } from "../../../../lib/onboarding/assessments";
 import { isPreviewDeployment } from "../../../../lib/onboarding/preview-only";
 import AssessmentFlow from "../AssessmentFlow";
 
@@ -32,7 +33,7 @@ export default async function AssessmentSlugPage({
   const grade = typeof q.grade === "string" ? q.grade : "";
   return (
     <div className="olb-root">
-      <AssessmentFlow assessment={assessment} initial={{ athlete_dob: dob, grade }} />
+      <AssessmentFlow assessment={toPublicAssessment(assessment)} initial={{ athlete_dob: dob, grade }} />
     </div>
   );
 }

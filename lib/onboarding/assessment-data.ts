@@ -75,7 +75,8 @@ export async function loadAssessments(): Promise<AssessmentLoad> {
       return { assessments: BUILTIN_ASSESSMENTS, fromTable: false };
     }
     const rows = ((data as Row[] | null) ?? []).map(asAssessment);
-    if (!rows.length) return { assessments: BUILTIN_ASSESSMENTS, fromTable: true };
+    // After the table exists, never fall back to the builtin samples —
+    // even when this season has no rows yet.
     return { assessments: rows, fromTable: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
@@ -93,6 +94,9 @@ export async function loadOpenAssessments(): Promise<Assessment[]> {
 export async function loadAssessmentBySlug(slug: string): Promise<Assessment | null> {
   const key = slug.trim().toLowerCase();
   if (!key) return null;
-  const { assessments } = await loadAssessments();
-  return assessments.find((a) => a.slug === key) ?? (key === BUILTIN_14U.slug ? BUILTIN_14U : null);
+  const { assessments, fromTable } = await loadAssessments();
+  const found = assessments.find((a) => a.slug === key) ?? null;
+  if (found) return found;
+  if (fromTable) return null;
+  return key === BUILTIN_14U.slug ? BUILTIN_14U : null;
 }

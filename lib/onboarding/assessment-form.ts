@@ -14,7 +14,7 @@ import {
   eligibilityProblem,
   parseGrade,
   playerFitsAssessment,
-  type Assessment,
+  type PublicAssessment,
 } from "./assessments.ts";
 import { previewWriteBlocked } from "./preview-only.ts";
 import { intakeOf, waitlistProblem, type WaitlistInput } from "./waitlist-form.ts";
@@ -32,7 +32,7 @@ export function is14uEligible(dob: string): boolean {
   return lowestEligibleLevel(dob, DEFAULT_SEASON_ENDS_ON, DEFAULT_AGE_CAPS) === ASSESSMENT_LEVEL;
 }
 
-export function assessmentProblem(w: WaitlistInput, assessment: Assessment = BUILTIN_14U): string | null {
+export function assessmentProblem(w: WaitlistInput, assessment: PublicAssessment = BUILTIN_14U): string | null {
   const base = waitlistProblem(w);
   if (base) return base;
   if (!playerFitsAssessment(assessment, w.athlete_dob, parseGrade(w.grade))) {
@@ -44,7 +44,7 @@ export function assessmentProblem(w: WaitlistInput, assessment: Assessment = BUI
 // Same extra shape as the waitlist form, plus the tag staff see on the card
 // and assessment_id (uuid or builtin id). Offer-seed keeps reading
 // extra.source = waitlist_form and extra.intake.
-export function assessmentExtra(w: WaitlistInput, assessment: Assessment = BUILTIN_14U) {
+export function assessmentExtra(w: WaitlistInput, assessment: PublicAssessment = BUILTIN_14U) {
   const grade = (w.grade ?? "").trim();
   return {
     source: "waitlist_form" as const,
@@ -60,7 +60,7 @@ export function assessmentExtra(w: WaitlistInput, assessment: Assessment = BUILT
   };
 }
 
-export function assessmentNotes(w: WaitlistInput, assessment: Assessment = BUILTIN_14U): string | null {
+export function assessmentNotes(w: WaitlistInput, assessment: PublicAssessment = BUILTIN_14U): string | null {
   return w.homeschooled === false ? `Not homeschooled, from the ${assessment.name} form.` : null;
 }
 
@@ -100,7 +100,7 @@ export function assessmentSaveGate(
   w: WaitlistInput,
   honeypot: string,
   env: Record<string, string | undefined> = process.env,
-  assessment: Assessment = BUILTIN_14U,
+  assessment: PublicAssessment = BUILTIN_14U,
 ): AssessmentSaveGate | null {
   const blocked = previewWriteBlocked(env);
   if (blocked) return { error: blocked, status: 403 };

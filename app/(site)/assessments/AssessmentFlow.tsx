@@ -4,7 +4,7 @@ import { AssessmentWizard } from "./AssessmentWizard";
 import AssessmentForm from "./AssessmentForm";
 import s from "../player-registration/wizard.module.css";
 import { assessmentProblem, friendlyAssessmentClientError } from "../../../lib/onboarding/assessment-form";
-import { type Assessment } from "../../../lib/onboarding/assessments";
+import { type PublicAssessment } from "../../../lib/onboarding/assessments";
 import { PRODUCTION_WRITE_BLOCKED } from "../../../lib/onboarding/preview-only";
 import { emptyWaitlist, type WaitlistInput } from "../../../lib/onboarding/waitlist-form";
 
@@ -23,7 +23,7 @@ export default function AssessmentFlow({
   initial,
   save,
 }: {
-  assessment: Assessment;
+  assessment: PublicAssessment;
   initial?: Partial<WaitlistInput>;
   save?: (input: WaitlistInput, honeypot: string) => Promise<{ error?: string }>;
 }) {

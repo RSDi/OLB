@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cleanModes, cleanSettings, defaultMode, defaultSettings, modeOf } from "../../lib/onboarding/automations.ts";
 import { WORKFLOW_EMAILS, cleanWords, fill, wordsFor } from "../../lib/onboarding/email-text.ts";
-import { addDays, daysBetween, longDay, weekOf, weekday } from "../../lib/onboarding/dates.ts";
+import { addDays, centralHour, daysBetween, longDay, weekOf, weekday } from "../../lib/onboarding/dates.ts";
 import { buildChecklist, itemsText, openItems, statusDots, type ChecklistInput } from "../../lib/onboarding/checklist.ts";
 import { cleanInputExtras, emptyExtras, extrasProblem, inputExtras, itemsFor, needsSizesStep, type FormExtras } from "../../lib/onboarding/form-extras.ts";
 import { chargePlan, countSizes, orderCsv, parseSizes } from "../../lib/onboarding/uniforms.ts";
@@ -20,7 +20,7 @@ test("nothing sends unless the workflow is on, not paused, and the email's switc
   assert.equal(modeOf(s, "welcome"), "on");
   assert.equal(modeOf(s, "open_items"), "ask");
   assert.equal(modeOf(s, "countdown"), "off"); // no switch set
-  assert.equal(modeOf(s, "assessment_thanks"), "on");
+  assert.equal(modeOf(s, "assessment_thanks"), "ask");
   assert.equal(modeOf(s, "assessment_reminder"), "ask");
   s.paused = true;
   assert.equal(modeOf(s, "welcome"), "off");
@@ -29,7 +29,7 @@ test("nothing sends unless the workflow is on, not paused, and the email's switc
 
 test("settings are checked before saving", () => {
   assert.deepEqual(cleanModes({ welcome: "on", bogus: "on", countdown: "loud", open_items: "off" }), { welcome: "on" });
-  assert.equal(defaultMode("assessment_thanks"), "on");
+  assert.equal(defaultMode("assessment_thanks"), "ask");
   assert.equal(defaultMode("assessment_reminder"), "ask");
   assert.deepEqual(cleanModes({ assessment_thanks: "off", assessment_reminder: "on" }), { assessment_thanks: "off", assessment_reminder: "on" });
   const ok = cleanSettings({ enabled: true, offer_days: 5, handbook_url: " https://drive.google.com/x ", first_practice_on: "2026-09-28", parent_meeting: "" });
@@ -70,6 +70,9 @@ test("dates count in whole days, and a week starts on Monday", () => {
   assert.equal(weekOf("2026-10-11"), "2026-10-05"); // Sunday belongs to the week before
   assert.equal(weekOf("2026-10-14"), "2026-10-12");
   assert.equal(longDay("2026-09-28"), "Monday, Sep 28");
+  assert.equal(centralHour(new Date("2026-01-15T15:17:00.000Z")), 9); // CST
+  assert.equal(centralHour(new Date("2026-07-15T14:17:00.000Z")), 9); // CDT
+  assert.equal(centralHour(new Date("2026-01-15T14:17:00.000Z")), 8);
 });
 
 const base: ChecklistInput = {
