@@ -53,27 +53,26 @@ test("14U and high school samples are the builtin assessments", () => {
   assert.deepEqual(BUILTIN_ASSESSMENTS.map((a) => a.slug), ["14u", "high-school"]);
 });
 
-// The seed and builtin 14U window is the existing lock (lowestEligibleLevel
-// === 14U on season end 2026-12-31): 2012-01-01 through 2013-12-31. The
-// August 1 fee cutoff is a different window (2011-08-02 through 2013-08-01)
-// and is not the assessment lock — a boy born 2011-10-25 is 14U for fees
-// and 16U for the team; a boy born 2013-12-31 is 12U for fees and 14U here.
-test("the 14U seed matches the existing 14U lock, not the August 1 fee window", () => {
-  assert.equal(BUILTIN_14U.dob_from, "2012-01-01");
+// Builtin 14U (code fallback) now uses Rachel's oldest-eligible birthday
+// 2011-08-02. The season-end lock (lowestEligibleLevel === 14U on
+// 2026-12-31) and the August 1 fee window stay as they were. Migration
+// 0159 still seeds the original 2012-01-01 row; the live row is updated
+// in Settings, not here.
+test("builtin 14U starts 2011-08-02; the 0159 seed and season-end lock stay put", () => {
+  assert.equal(BUILTIN_14U.dob_from, "2011-08-02");
   assert.equal(BUILTIN_14U.dob_to, "2013-12-31");
-  const edges = [
-    ["2011-08-02", false],
-    ["2011-10-25", false],
-    ["2011-12-31", false],
-    ["2012-01-01", true],
-    ["2013-08-02", true],
-    ["2013-12-31", true],
-    ["2014-01-01", false],
-  ] as const;
-  for (const [dob, ok] of edges) {
-    assert.equal(is14uEligible(dob), ok, dob);
-    assert.equal(playerFitsAssessment(BUILTIN_14U, dob, null), ok, dob);
-  }
+  assert.equal(playerFitsAssessment(BUILTIN_14U, "2011-08-01", null), false);
+  assert.equal(playerFitsAssessment(BUILTIN_14U, "2011-08-02", null), true);
+  assert.equal(playerFitsAssessment(BUILTIN_14U, "2012-06-15", null), true);
+  assert.equal(playerFitsAssessment(BUILTIN_14U, "2013-12-31", null), true);
+  assert.equal(playerFitsAssessment(BUILTIN_14U, "2014-01-01", null), false);
+
+  assert.equal(is14uEligible("2011-08-01"), false);
+  assert.equal(is14uEligible("2011-08-02"), false);
+  assert.equal(is14uEligible("2011-10-25"), false);
+  assert.equal(is14uEligible("2012-01-01"), true);
+  assert.equal(is14uEligible("2013-12-31"), true);
+
   const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0159_olb_assessments.sql"), "utf8");
   assert.match(sql, /'2012-01-01'/);
   assert.match(sql, /'2013-12-31'/);

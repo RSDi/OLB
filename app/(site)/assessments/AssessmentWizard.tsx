@@ -5,13 +5,16 @@ import { ContinueButton, Question, Choice, Summary, Line, ErrorNote } from "../p
 import { PROGRAMS_INFO_URL, assessmentProblem } from "../../../lib/onboarding/assessment-form";
 import { assessmentStepProblem, assessmentStepsFor, type AssessmentStep } from "../../../lib/onboarding/assessment-steps";
 import {
+  ASSESSMENT_TOO_OLD_14U,
   GRADES,
   assessmentRuleLabel,
   assessmentWhen,
+  birthdayTooOld,
   formatDay,
   gradeLabel,
   hasDobRule,
   hasGradeRule,
+  is14uAssessment,
   type PublicAssessment,
 } from "../../../lib/onboarding/assessments";
 import { EXPERIENCE, HEARD_FROM, type WaitlistInput } from "../../../lib/onboarding/waitlist-form";
@@ -124,7 +127,7 @@ export function AssessmentWizard({
   const backLabel = backToSummary ? "Back to review" : "Back";
   const actions = (primary: React.ReactNode, extra?: React.ReactNode) => (
     <>
-      <ErrorNote text={error} />
+      <ErrorNote text={error || (stepId === "dob" ? tooOldNote : null)} />
       <div className={s.actions}>
         {(at > 0 || backToSummary) && (
           <button type="button" className={s.back} onClick={back}>
@@ -138,6 +141,8 @@ export function AssessmentWizard({
   );
 
   const dobHint = hasDobRule(assessment) ? `This assessment is for ${assessmentRuleLabel(assessment)}.` : "His birthday.";
+  const tooOldNote =
+    is14uAssessment(assessment) && birthdayTooOld(assessment, state.athlete_dob) ? ASSESSMENT_TOO_OLD_14U : null;
 
   return (
     <div className={s.wrap} ref={wrapRef}>
@@ -192,10 +197,20 @@ export function AssessmentWizard({
             <div className={s.body}>
               <label className={s.field}>
                 Birthday
-                <input className="olb-input" type="date" value={state.athlete_dob} onChange={(e) => up({ athlete_dob: e.target.value })} />
+                <input
+                  className="olb-input"
+                  type="date"
+                  min={assessment.dob_from || undefined}
+                  value={state.athlete_dob}
+                  onChange={(e) => up({ athlete_dob: e.target.value })}
+                />
               </label>
             </div>
-            {actions(<ContinueButton />)}
+            {actions(
+              <button type="submit" className={s.primary} disabled={!!tooOldNote}>
+                Continue
+              </button>,
+            )}
           </form>
         )}
 

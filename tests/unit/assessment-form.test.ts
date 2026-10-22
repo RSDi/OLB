@@ -23,7 +23,7 @@ import {
   is14uEligible,
 } from "../../lib/onboarding/assessment-form.ts";
 import { ASSESSMENT_STEPS, assessmentStepProblem, assessmentStepsFor } from "../../lib/onboarding/assessment-steps.ts";
-import { BUILTIN_14U, BUILTIN_HS } from "../../lib/onboarding/assessments.ts";
+import { ASSESSMENT_TOO_OLD_14U, BUILTIN_14U, BUILTIN_HS } from "../../lib/onboarding/assessments.ts";
 import { PRODUCTION_ALLOWED, PRODUCTION_WRITE_BLOCKED, isPreviewDeployment, previewRouteOpen, previewWriteBlocked } from "../../lib/onboarding/preview-only.ts";
 import { emptyWaitlist } from "../../lib/onboarding/waitlist-form.ts";
 import { DEFAULT_MENU, SITE_PAGES } from "../../lib/website/menu.ts";
@@ -167,6 +167,31 @@ test("only 14U-aged players can send the assessment", () => {
   assert.match(assessmentProblem(w) ?? "", /14U players only/);
   w.athlete_dob = "";
   assert.match(assessmentProblem(w) ?? "", /birthday/);
+});
+
+test("14U too-old birthdays are blocked when dob_from is 2011-08-02", () => {
+  assert.equal(BUILTIN_14U.dob_from, "2011-08-02");
+  const tooOld = filled();
+  tooOld.athlete_dob = "2011-08-01";
+  assert.equal(assessmentProblem(tooOld), ASSESSMENT_TOO_OLD_14U);
+  assert.equal(assessmentStepProblem("dob", tooOld), ASSESSMENT_TOO_OLD_14U);
+  assert.equal(assessmentSaveGate(tooOld, "", { VERCEL_ENV: "preview" })?.status, 400);
+  assert.equal(assessmentSaveGate(tooOld, "", { VERCEL_ENV: "preview" })?.error, ASSESSMENT_TOO_OLD_14U);
+
+  assert.equal(assessmentProblem({ ...filled(), athlete_dob: "2011-08-02" }), null);
+  assert.equal(assessmentStepProblem("dob", { ...filled(), athlete_dob: "2011-08-02" }), null);
+  assert.equal(assessmentProblem({ ...filled(), athlete_dob: "2012-06-15" }), null);
+  assert.equal(assessmentStepProblem("dob", { ...filled(), athlete_dob: "2012-06-15" }), null);
+});
+
+test("both assessment views take min from the assessment and show the too-old words", () => {
+  const wizard = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/AssessmentWizard.tsx"), "utf8");
+  const form = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/AssessmentForm.tsx"), "utf8");
+  for (const text of [wizard, form]) {
+    assert.match(text, /min=\{assessment\.dob_from/);
+    assert.match(text, /ASSESSMENT_TOO_OLD_14U/);
+    assert.match(text, /birthdayTooOld/);
+  }
 });
 
 test("submissions keep the waitlist source and are tagged 14U assessment", () => {
