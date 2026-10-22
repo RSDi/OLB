@@ -24,7 +24,7 @@ import {
 import { REGISTRATION_SEASON } from "../../lib/teams/registration-form.ts";
 import { assessmentExtra, assessmentProblem, is14uEligible } from "../../lib/onboarding/assessment-form.ts";
 import { emptyWaitlist } from "../../lib/onboarding/waitlist-form.ts";
-import { runDaily } from "../../lib/onboarding/cron.ts";
+import { centralHour } from "../../lib/onboarding/dates.ts";
 
 const filled = (patch: Record<string, unknown> = {}) => {
   const w = emptyWaitlist();
@@ -217,15 +217,16 @@ test("Assessment thanks and reminder match Off / Ask me first / On plus Words", 
   assert.match(vercel, /"17 15 \* \* \*"/);
 });
 
-test("the off-hour onboarding cron does no daily work and no Slack check", async () => {
-  const winterEarly = await runDaily(new Date("2026-01-15T14:17:00.000Z")); // 8 AM CT
-  const summerLate = await runDaily(new Date("2026-07-15T15:17:00.000Z")); // 10 AM CT
-  assert.equal(winterEarly.boards, 0);
-  assert.equal(winterEarly.slackChecked, 0);
-  assert.equal(winterEarly.assessmentReminders, 0);
-  assert.equal(summerLate.boards, 0);
-  assert.equal(summerLate.slackChecked, 0);
-  assert.equal(summerLate.assessmentReminders, 0);
+test("the off-hour onboarding cron does no daily work and no Slack check", () => {
+  // 8 AM CT (winter) and 10 AM CT (summer). cron.ts returns the empty
+  // summary before any board, Slack, or reminder work when the hour isn't 9.
+  assert.equal(centralHour(new Date("2026-01-15T14:17:00.000Z")), 8);
+  assert.equal(centralHour(new Date("2026-07-15T15:17:00.000Z")), 10);
+  const cron = readFileSync(join(import.meta.dirname, "../../lib/onboarding/cron.ts"), "utf8");
+  assert.match(cron, /if \(centralHour\(now\) !== 9\) return summary/);
+  assert.match(cron, /boards: 0/);
+  assert.match(cron, /slackChecked: 0/);
+  assert.match(cron, /assessmentReminders: 0/);
 });
 
 test("public pages strip thanks and reminder wording", () => {
