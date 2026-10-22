@@ -7,6 +7,14 @@
   padding: 28px 18px 72px;
 }
 
+/* Single-page "See the whole form" view: a little more air between blocks. */
+.full .body {
+  gap: 18px;
+}
+.full > .card .sectionLabel {
+  margin-top: 0;
+}
+
 .top {
   display: flex;
   align-items: center;
@@ -55,6 +63,7 @@
 }
 
 .card {
+  min-width: 0;
   background: var(--olb-surface);
   border: 1px solid var(--olb-stroke);
   border-radius: 20px;
@@ -105,23 +114,27 @@
   flex-direction: column;
   gap: 14px;
   margin-top: 22px;
+  min-width: 0;
 }
 
 .row2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  min-width: 0;
 }
 .row3 {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr;
   gap: 10px;
+  min-width: 0;
 }
 
 .field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -141,6 +154,29 @@
   text-transform: none;
   letter-spacing: 0;
   font-weight: 500;
+}
+
+/* Native date fields have a large intrinsic min-width, so they run past
+   the card on a phone unless width is forced. */
+.field input[type="date"] {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.stack .sectionLabel {
+  margin-top: 0;
+}
+.stack .lead {
+  margin-top: 0;
 }
 
 /* Big tappable answers. */
