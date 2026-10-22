@@ -55,7 +55,7 @@ export type Assessment = PublicAssessment & {
   builtin?: boolean;
 };
 
-export function toPublicAssessment(a: PublicAssessment): PublicAssessment {
+export function toPublicAssessment(a: Assessment): PublicAssessment {
   return {
     id: a.id,
     slug: a.slug,
