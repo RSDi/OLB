@@ -17,7 +17,9 @@ import {
 import { loadAssessmentBySlug } from "./assessment-data";
 import { BUILTIN_14U, type Assessment } from "./assessments";
 import { previewWriteBlocked } from "./preview-only";
-import { seasonBoardId } from "./server";
+import { composeAssessmentEmail } from "./compose";
+import { deliver } from "./deliver";
+import { loadSettings, loadWords, seasonBoardId } from "./server";
 import { type WaitlistInput } from "./waitlist-form";
 
 export type AssessmentSaveResult = {
@@ -126,6 +128,25 @@ export async function saveAssessment(
       url: "/portal/directory/registrations?tab=waitlist",
       tag: `waitlist-${saved.id}`,
     });
+
+    const settings = await loadSettings(db, boardId);
+    if (settings.enabled) {
+      await deliver(
+        db,
+        settings,
+        "assessment_thanks",
+        `assessment_thanks:${saved.id}`,
+        composeAssessmentEmail(
+          "assessment_thanks",
+          { id: saved.id as string, first_name: first, parent_name: parentName, parent_email: email, extra: null },
+          assessment,
+          await loadWords(db),
+        ),
+      ).catch((e) => {
+        console.error("[assessment] thanks email failed", e);
+        return "failed" as const;
+      });
+    }
     return { id: saved.id as string, status: 200 };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown";

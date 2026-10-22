@@ -152,6 +152,31 @@ test("the migration creates olb_assessments with grants and staff RLS", () => {
   assert.match(sql, /Do not apply on production/);
 });
 
+test("Assessment thanks and reminder match Off / Ask me first / On plus Words", () => {
+  const automations = readFileSync(join(import.meta.dirname, "../../lib/onboarding/automations.ts"), "utf8");
+  const emails = readFileSync(join(import.meta.dirname, "../../lib/onboarding/email-text.ts"), "utf8");
+  const tab = readFileSync(join(import.meta.dirname, "../../app/portal/settings/RegistrationAutomationsTab.tsx"), "utf8");
+  const save = readFileSync(join(import.meta.dirname, "../../lib/onboarding/assessment-save.ts"), "utf8");
+  const cron = readFileSync(join(import.meta.dirname, "../../lib/onboarding/cron.ts"), "utf8");
+  const waitlist = readFileSync(join(import.meta.dirname, "../../app/portal/directory/registrations/RegistrationsReview.tsx"), "utf8");
+  assert.match(automations, /assessment_thanks/);
+  assert.match(automations, /assessment_reminder/);
+  assert.match(automations, /assessment_thanks: "on"/);
+  assert.match(automations, /assessment_reminder: "ask"/);
+  assert.match(emails, /Thanks for signing \{player\} up for \{assessment\}/);
+  assert.match(emails, /\{assessment\} is in two days/);
+  assert.doesNotMatch(emails, /not offered/i);
+  assert.match(tab, /defaultMode/);
+  assert.match(tab, /Assessment thanks starts On/);
+  assert.match(save, /assessment_thanks/);
+  assert.match(save, /composeAssessmentEmail/);
+  assert.doesNotMatch(save, /waitlist_reply/);
+  assert.match(cron, /assessment_reminder/);
+  assert.match(cron, /daysBetween\(today, centralDay/);
+  assert.match(waitlist, /waitlist-assessment-filter/);
+  assert.match(waitlist, /waitlistAssessmentLabel/);
+});
+
 test("admin lives at Settings → Assessments and the 14U URL redirects", () => {
   const settings = readFileSync(join(import.meta.dirname, "../../app/portal/settings/page.tsx"), "utf8");
   assert.match(settings, /key: "assessments"/);

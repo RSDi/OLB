@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
@@ -38,6 +38,7 @@ import { ErrorNote, capStyle } from "../../payments/parts";
 import { PlayerNotes } from "../_shared/PlayerNotes";
 import type { PlayerNote } from "../../../../lib/teams/player-notes";
 import type { OnboardingBoard as Board, WaitlistInfo } from "../../../../lib/onboarding/board-data";
+import { waitlistAssessmentLabel } from "../../../../lib/onboarding/assessments";
 import { OnboardingBoard } from "./OnboardingBoard";
 import { WorkflowPanel } from "./WorkflowPanel";
 import { commitmentsAdmin } from "../../../../lib/teams/registration-commitments";
@@ -74,7 +75,19 @@ export function RegistrationsReview({
   waitlistInfo?: Record<string, WaitlistInfo> | null;
 }) {
   const [compose, setCompose] = useState<PendingRegistration[] | null>(null);
+  const [assessmentFilter, setAssessmentFilter] = useState("all");
   const tabs = showOnboarding ? [...TABS, { key: "onboarding" as const, label: "Onboarding" }] : TABS;
+  const assessmentTags = useMemo(() => {
+    const tags = new Set<string>();
+    for (const r of registrations) {
+      const label = waitlistAssessmentLabel(r.extra);
+      if (label) tags.add(label);
+    }
+    return [...tags].sort((a, b) => a.localeCompare(b));
+  }, [registrations]);
+  const shown = tab === "waitlist" && assessmentFilter !== "all"
+    ? registrations.filter((r) => waitlistAssessmentLabel(r.extra) === assessmentFilter)
+    : registrations;
 
   return (
     <>
@@ -136,23 +149,43 @@ export function RegistrationsReview({
 
       {tab === "onboarding" && <OnboardingBoard board={board} />}
 
-      {tab === "waitlist" && registrations.length > 0 && <WaitlistTools registrations={registrations} onMessageAll={() => setCompose(registrations)} />}
+      {tab === "waitlist" && registrations.length > 0 && (
+        <WaitlistTools registrations={shown} onMessageAll={() => setCompose(shown)} />
+      )}
+      {tab === "waitlist" && assessmentTags.length > 0 && (
+        <div data-tour="waitlist-assessment-filter" role="group" aria-label="Assessment" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <Pill size="sm" variant={assessmentFilter === "all" ? "accent" : "ghost"} onClick={() => setAssessmentFilter("all")}>
+            All
+          </Pill>
+          {assessmentTags.map((tag) => (
+            <Pill key={tag} size="sm" variant={assessmentFilter === tag ? "accent" : "ghost"} onClick={() => setAssessmentFilter(tag)}>
+              {tag}
+            </Pill>
+          ))}
+        </div>
+      )}
 
       {tab !== "onboarding" && <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
         {tab === "waiting" && (registrations.length === 0 ? "Nothing new" : `${registrations.length} new, oldest first`)}
         {tab === "waitlist" &&
-          (registrations.length === 0 ? "Nobody on the waitlist" : `${registrations.length} on the waitlist, in the order they registered`)}
+          (shown.length === 0
+            ? assessmentFilter === "all"
+              ? "Nobody on the waitlist"
+              : `Nobody on the waitlist for ${assessmentFilter}`
+            : `${shown.length} on the waitlist${assessmentFilter === "all" ? "" : ` · ${assessmentFilter}`}, in the order they registered`)}
         {tab === "approved" && (registrations.length === 0 ? "None approved yet" : `${registrations.length} approved, newest first`)}
         {tab === "removed" && (registrations.length === 0 ? "Nobody removed" : `${registrations.length} removed, newest first`)}
       </span>}
 
-      {tab === "onboarding" ? null : registrations.length === 0 ? (
+      {tab === "onboarding" ? null : shown.length === 0 ? (
         <div className="rsd-card" style={{ padding: "40px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
             {tab === "waiting"
               ? "No new registrations. When a family fills in the registration form, it shows up here."
               : tab === "waitlist"
-                ? "When you put a registration on the waitlist, it shows up here so you can reach the family and approve them later."
+                ? assessmentFilter === "all"
+                  ? "When you put a registration on the waitlist, it shows up here so you can reach the family and approve them later."
+                  : `No waitlist families tagged ${assessmentFilter}.`
                 : tab === "removed"
                   ? "Families who withdrew or were taken off the roster show up here, so there's always a record."
                   : "Registrations you approve are listed here."}
@@ -160,12 +193,12 @@ export function RegistrationsReview({
         </div>
       ) : tab === "approved" ? (
         <div className="rsd-card" style={{ padding: 0, gap: 0, overflow: "hidden" }}>
-          {registrations.map((r, i) => (
-            <ApprovedRow key={r.id} reg={r} border={i < registrations.length - 1} />
+          {shown.map((r, i) => (
+            <ApprovedRow key={r.id} reg={r} border={i < shown.length - 1} />
           ))}
         </div>
       ) : (
-        registrations.map((r) => (
+        shown.map((r) => (
           <RegistrationCard key={r.id} reg={r} tab={tab} notes={notes[r.id] ?? []} onMessage={() => setCompose([r])} workflow={waitlistInfo?.[r.id] ?? null} />
         ))
       )}

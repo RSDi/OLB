@@ -1009,7 +1009,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "automations-emails",
         title: "Each email has its own switch",
-        body: "**Off** sends nothing. **Ask me first** holds each email on the Registrations page's **Onboarding** tab until someone taps **Send**. **On** sends it. Everything starts **Off**; **Ask me first** is a good way to begin.",
+        body: "**Off** sends nothing. **Ask me first** holds each email on the Registrations page's **Onboarding** tab until someone taps **Send**. **On** sends it. Most start **Off**. **Assessment thanks** starts **On**; **Assessment reminder** starts **Ask me first**.",
       },
       {
         target: "automations-words",

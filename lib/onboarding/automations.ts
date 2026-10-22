@@ -12,7 +12,9 @@ export type AutomationKey =
   | "welcome"
   | "open_items"
   | "countdown"
-  | "team_announce";
+  | "team_announce"
+  | "assessment_thanks"
+  | "assessment_reminder";
 
 export type Mode = "off" | "ask" | "on";
 
@@ -38,7 +40,19 @@ export const AUTOMATIONS: AutomationDef[] = [
   { key: "open_items", label: "Weekly open items", when: "Mondays, only to approved families with something still to do" },
   { key: "countdown", label: "Practice countdown", when: "10 days and 1 day before the first practice" },
   { key: "team_announce", label: "Your team", when: "Someone presses Announce teams" },
+  { key: "assessment_thanks", label: "Assessment thanks", when: "Someone signs up for an assessment" },
+  { key: "assessment_reminder", label: "Assessment reminder", when: "Two days before the assessment, at 9 AM America/Chicago" },
 ];
+
+// Missing keys are Off, except these two Jeff approved (2026-10-22).
+export const DEFAULT_MODES: Partial<Record<AutomationKey, Mode>> = {
+  assessment_thanks: "on",
+  assessment_reminder: "ask",
+};
+
+export function defaultMode(key: AutomationKey): Mode {
+  return DEFAULT_MODES[key] ?? "off";
+}
 
 export interface OnboardingSettings {
   board_id: string;
@@ -77,10 +91,13 @@ export function defaultSettings(boardId: string): OnboardingSettings {
 }
 
 // What an email does right now: off (nothing), ask (held for Send) or on.
+// A missing key uses that email's default (Off, except Assessment thanks
+// and Assessment reminder).
 export function modeOf(settings: OnboardingSettings | null, key: AutomationKey): Mode {
   if (!settings?.enabled || settings.paused) return "off";
   const m = settings.modes?.[key];
-  return m === "ask" || m === "on" ? m : "off";
+  if (isMode(m)) return m;
+  return defaultMode(key);
 }
 
 export function isMode(v: unknown): v is Mode {
@@ -93,7 +110,11 @@ export function cleanModes(raw: unknown): Partial<Record<AutomationKey, Mode>> {
   if (!raw || typeof raw !== "object") return out;
   for (const a of AUTOMATIONS) {
     const v = (raw as Record<string, unknown>)[a.key];
-    if (isMode(v) && v !== "off") out[a.key] = v;
+    if (!isMode(v)) continue;
+    // Persist Off when the default isn't Off, so Assessment thanks can be
+    // turned off. Other emails still omit Off (missing means Off).
+    if (v === "off" && defaultMode(a.key) === "off") continue;
+    out[a.key] = v;
   }
   return out;
 }

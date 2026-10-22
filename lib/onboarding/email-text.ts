@@ -173,6 +173,42 @@ Go Lightning!
 
 ${SIGN}`,
   },
+  {
+    key: "assessment_thanks",
+    label: "Assessment thanks",
+    tokens: ["parent", "player", "assessment", "date", "place", "details"],
+    subject: "Thanks for signing {player} up for {assessment}",
+    body: `Hi {parent},
+
+Thanks for signing {player} up for {assessment}.
+
+{date}
+{place}
+
+{details}
+
+We'll be in touch with next steps. Questions? Just reply to this email.
+
+${SIGN}`,
+  },
+  {
+    key: "assessment_reminder",
+    label: "Assessment reminder",
+    tokens: ["parent", "player", "assessment", "date", "place", "details"],
+    subject: "Reminder: {assessment} is in two days",
+    body: `Hi {parent},
+
+Just a reminder that {player}'s {assessment} is in two days.
+
+{date}
+{place}
+
+{details}
+
+Questions? Just reply to this email.
+
+${SIGN}`,
+  },
 ];
 
 export function emailDef(key: WorkflowEmail): WorkflowEmailDef {

@@ -10,7 +10,7 @@ import {
   saveWorkflowWords,
   type AutomationsTab,
 } from "../../../lib/onboarding/actions";
-import { AUTOMATIONS, MODES, type AutomationKey, type Mode, type OnboardingSettings } from "../../../lib/onboarding/automations";
+import { AUTOMATIONS, MODES, defaultMode, type AutomationKey, type Mode, type OnboardingSettings } from "../../../lib/onboarding/automations";
 import { WORKFLOW_EMAILS, fill, wordsFor, type WorkflowEmail } from "../../../lib/onboarding/email-text";
 
 // Made-up values for the email preview.
@@ -30,6 +30,10 @@ const SAMPLE: Record<string, string> = {
   practice_times: "Mon & Thu 6–7:30pm",
   clinic: "Mondays in July, 6–7:30pm at the church gym",
   when: "Monday, Sep 28",
+  assessment: "14U assessment",
+  date: "Saturday, November 8 at 9:00 AM",
+  place: "the church gym",
+  details: "Bring basketball shoes and a water bottle.",
 };
 
 const card: React.CSSProperties = { gap: 14, padding: "16px 18px" };
@@ -94,7 +98,7 @@ export function RegistrationAutomationsTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 900 }}>
       <p style={{ ...sub, fontSize: 13, maxWidth: 640 }}>
         The registration workflow for the {tab.season} season: the family checklist, the waitlist form, spot offers, uniform sizes,
-        the handbook at registration and the automatic emails. Every email starts Off.
+        the handbook at registration and the automatic emails. Most emails start Off. Assessment thanks starts On; Assessment reminder starts Ask me first.
       </p>
       {error && <ErrorBox text={error} />}
       {notice && (
@@ -120,7 +124,7 @@ export function RegistrationAutomationsTab() {
           <p style={sub}>Ask me first holds each email on Directory → Registrations → Onboarding, where you read it and press Send or Skip.</p>
         </div>
         {AUTOMATIONS.map((a, i) => {
-          const mode: Mode = draft.modes[a.key] ?? "off";
+          const mode: Mode = draft.modes[a.key] ?? defaultMode(a.key);
           const c = tab.counts[a.key];
           return (
             <div key={a.key} style={{ borderTop: "1px solid var(--gw-border)", padding: "12px 18px", display: "flex", flexDirection: "column", gap: 8 }}>

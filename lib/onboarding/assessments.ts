@@ -331,6 +331,38 @@ export function cleanAssessmentInput(raw: AssessmentInput): { error: string } | 
   };
 }
 
+export function assessmentEmailValues(a: Assessment): Record<string, string> {
+  return {
+    assessment: a.name,
+    date: assessmentWhen(a.starts_at),
+    place: a.place ?? "",
+    details: a.details ?? "",
+  };
+}
+
+export function assessmentEmailWords(
+  key: "assessment_thanks" | "assessment_reminder",
+  assessment: Assessment,
+  saved: Record<string, string>,
+): { subject: string; body: string } {
+  const fromRow =
+    key === "assessment_thanks"
+      ? { subject: assessment.thanks_subject, body: assessment.thanks_body }
+      : { subject: assessment.reminder_subject, body: assessment.reminder_body };
+  const fallback = { subject: saved[`${key}.subject`] ?? "", body: saved[`${key}.body`] ?? "" };
+  return {
+    subject: fromRow.subject?.trim() || fallback.subject,
+    body: fromRow.body?.trim() || fallback.body,
+  };
+}
+
+export function waitlistAssessmentLabel(extra: { tag?: string | null; assessment_slug?: string | null } | null | undefined): string | null {
+  const tag = extra?.tag?.trim();
+  if (tag) return tag;
+  const slug = extra?.assessment_slug?.trim();
+  return slug || null;
+}
+
 export function tableMissing(error: { code?: string; message?: string; details?: string } | null | undefined): boolean {
   const msg = `${error?.code ?? ""} ${error?.message ?? ""} ${error?.details ?? ""}`.toLowerCase();
   return /42p01|pgrst205|does not exist|schema cache|could not find the table/.test(msg);
