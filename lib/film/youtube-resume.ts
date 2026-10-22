@@ -580,6 +580,43 @@ export async function updateYoutubeJobIfLeaseFree(
   return { ok: Boolean(data) };
 }
 
+export async function patchYoutubeJobAndReleaseWithClient(
+  admin: YoutubeLeaseClient,
+  id: string,
+  owner: string,
+  row: Record<string, unknown>,
+  now: Date
+): Promise<{ ok: boolean; error?: { message: string; code?: string } }> {
+  const stamp = now.toISOString();
+  const { data, error } = await admin
+    .from("game_film_youtube_jobs")
+    .update({ ...row, claimed_until: null, claimed_by: null, updated_at: stamp })
+    .eq("upload_id", id)
+    .eq("claimed_by", owner)
+    .select("upload_id, claimed_by")
+    .maybeSingle();
+  if (error) return { ok: false, error };
+  return { ok: Boolean(data) };
+}
+
+export async function insertYoutubeJobIfAbsentWithClient(
+  admin: YoutubeLeaseClient,
+  row: Record<string, unknown>
+): Promise<{ ok: boolean; conflict: boolean; error?: { message: string; code?: string } }> {
+  const inserted = await admin
+    .from("game_film_youtube_jobs")
+    .insert(row)
+    .select("upload_id, claimed_by")
+    .maybeSingle();
+  if (inserted.error) {
+    if (inserted.error.code === "23505" || /duplicate key/i.test(inserted.error.message)) {
+      return { ok: false, conflict: true, error: inserted.error };
+    }
+    return { ok: false, conflict: false, error: inserted.error };
+  }
+  return { ok: Boolean(inserted.data), conflict: false };
+}
+
 function abortSignalForDeadline(now: number, deadline: number): AbortSignal {
   const remaining = deadline - now;
   if (remaining <= 0) {

@@ -10,7 +10,9 @@ import {
   YOUTUBE_STALE_MS,
   YOUTUBE_RETRY_LEASE_HELD,
   acquireYoutubeLeaseWithClient,
+  insertYoutubeJobIfAbsentWithClient,
   isMissingYoutubeJobExtraColumn,
+  patchYoutubeJobAndReleaseWithClient,
   updateYoutubeJobIfLeaseFree,
   type YoutubeLeaseClient,
 } from "./youtube-resume.ts";
@@ -624,11 +626,102 @@ export async function applyYoutubeManualRetry(
         await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
         return job;
       }
+    } else {
+      const stamp = now.toISOString();
+      const inserted = await insertYoutubeJobIfAbsentWithClient(
+        createAdminClient() as unknown as YoutubeLeaseClient,
+        {
+          upload_id: uploadId,
+          upload_uri: patch.upload_uri ?? null,
+          bytes_sent: patch.bytes_sent ?? 0,
+          bytes_total: patch.bytes_total ?? null,
+          attempts: patch.attempts ?? 0,
+          started_at: patch.started_at ?? null,
+          last_progress_at: patch.last_progress_at ?? null,
+          next_attempt_at: null,
+          claimed_until: null,
+          claimed_by: null,
+          transient_attempts: 0,
+          updated_at: stamp,
+        }
+      );
+      if (inserted.error && isMissingYoutubeJobExtraColumn(inserted.error.message)) {
+        disableYoutubeJobExtras();
+      } else if (inserted.conflict) {
+        const retry = await updateYoutubeJobIfLeaseFree(
+          createAdminClient() as unknown as YoutubeLeaseClient,
+          uploadId,
+          {
+            upload_uri: patch.upload_uri,
+            bytes_sent: patch.bytes_sent,
+            bytes_total: patch.bytes_total,
+            attempts: patch.attempts,
+            started_at: patch.started_at,
+            last_progress_at: patch.last_progress_at,
+            next_attempt_at: null,
+            transient_attempts: 0,
+          },
+          now
+        );
+        if (retry.error && isMissingYoutubeJobExtraColumn(retry.error.message)) {
+          disableYoutubeJobExtras();
+        } else {
+          if (retry.error) throw new Error(retry.error.message);
+          if (!retry.ok) throw new Error(YOUTUBE_RETRY_LEASE_HELD);
+        }
+      } else if (inserted.error) {
+        throw new Error(inserted.error.message);
+      }
+      if (youtubeJobExtrasOn()) {
+        const job = await getYoutubeJob(uploadId);
+        if (!job) throw new Error("Couldn't save the YouTube job.");
+        await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
+        return job;
+      }
     }
   }
   const job = await upsertYoutubeJob(uploadId, patch);
   await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
   return job;
+}
+
+export async function patchYoutubeJobAndReleaseLease(
+  id: string,
+  owner: string,
+  patch: YoutubeJobPatch,
+  now = new Date()
+): Promise<boolean> {
+  const extras = await probeYoutubeResumeColumns();
+  if (!extras) {
+    await upsertYoutubeJob(id, patch);
+    return true;
+  }
+  const existing = await getYoutubeJob(id);
+  const result = await patchYoutubeJobAndReleaseWithClient(
+    createAdminClient() as unknown as YoutubeLeaseClient,
+    id,
+    owner,
+    {
+      upload_uri: patch.upload_uri !== undefined ? patch.upload_uri : (existing?.upload_uri ?? null),
+      bytes_sent: patch.bytes_sent !== undefined ? patch.bytes_sent : (existing?.bytes_sent ?? 0),
+      bytes_total: patch.bytes_total !== undefined ? patch.bytes_total : (existing?.bytes_total ?? null),
+      attempts: patch.attempts !== undefined ? patch.attempts : (existing?.attempts ?? 0),
+      started_at: patch.started_at !== undefined ? patch.started_at : (existing?.started_at ?? null),
+      last_progress_at:
+        patch.last_progress_at !== undefined ? patch.last_progress_at : (existing?.last_progress_at ?? null),
+      next_attempt_at: patch.next_attempt_at !== undefined ? patch.next_attempt_at : (existing?.next_attempt_at ?? null),
+      transient_attempts:
+        patch.transient_attempts !== undefined ? patch.transient_attempts : (existing?.transient_attempts ?? 0),
+    },
+    now
+  );
+  if (result.error && isMissingYoutubeJobExtraColumn(result.error.message)) {
+    disableYoutubeJobExtras();
+    await upsertYoutubeJob(id, patch);
+    return true;
+  }
+  if (result.error) throw new Error(result.error.message);
+  return result.ok;
 }
 
 export async function releaseYoutubeClaim(id: string, owner: string): Promise<void> {

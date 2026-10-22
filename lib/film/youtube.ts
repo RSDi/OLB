@@ -27,6 +27,7 @@ import {
   getFilmUpload,
   getYoutubeJob,
   latestYoutubeEventKind,
+  patchYoutubeJobAndReleaseLease,
   listPlaylistWork,
   listYoutubeJobs,
   listYoutubeWork,
@@ -325,10 +326,14 @@ async function markStalledUploads(rows: FilmUpload[], now: number): Promise<void
 }
 
 async function failOrRequeue(id: string, err: unknown, owner?: string): Promise<void> {
-  if (owner) await releaseYoutubeClaim(id, owner);
   const job = await getYoutubeJob(id);
   const plan = planYoutubeFailOrRequeue(err, job);
-  await upsertYoutubeJob(id, plan.jobPatch);
+  if (owner) {
+    const wrote = await patchYoutubeJobAndReleaseLease(id, owner, plan.jobPatch);
+    if (!wrote) return;
+  } else {
+    await upsertYoutubeJob(id, plan.jobPatch);
+  }
   if (plan.event) {
     await noteYoutubeEvent(
       id,

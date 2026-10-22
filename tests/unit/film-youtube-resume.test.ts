@@ -18,6 +18,8 @@ import {
   planYoutubeContinuedHandoff,
   planYoutubeFailOrRequeue,
   queryResumeOffset,
+  insertYoutubeJobIfAbsentWithClient,
+  patchYoutubeJobAndReleaseWithClient,
   runResumableUpload,
   updateYoutubeJobIfLeaseFree,
   youtubeLeaseAcquireOrFilter,
@@ -819,3 +821,82 @@ test("retry/cron race cannot steal a live lease", async () => {
     true
   );
 });
+
+test("failOrRequeue writes and releases the lease in one owner-guarded update", async () => {
+  const now = new Date("2026-10-22T12:00:00Z");
+  const until = "2026-10-22T12:05:00Z";
+  const rows: JobRow[] = [];
+  const client = fakeLeaseClient(rows);
+
+  assert.equal((await acquireYoutubeLeaseWithClient(client, "u1", now, until, "owner-a")).ok, true);
+  rows[0]!.bytes_sent = 50;
+  (rows[0] as JobRow & { upload_uri?: string | null }).upload_uri = SESSION;
+
+  const lost = await patchYoutubeJobAndReleaseWithClient(
+    client,
+    "u1",
+    "owner-b",
+    { upload_uri: null, bytes_sent: 0, next_attempt_at: null },
+    now
+  );
+  assert.equal(lost.ok, false);
+  assert.equal(rows[0]?.claimed_by, "owner-a");
+  assert.equal(rows[0]?.bytes_sent, 50);
+  assert.equal((rows[0] as JobRow & { upload_uri?: string | null }).upload_uri, SESSION);
+
+  const wrote = await patchYoutubeJobAndReleaseWithClient(
+    client,
+    "u1",
+    "owner-a",
+    { upload_uri: SESSION, bytes_sent: 50, next_attempt_at: "2026-10-22T12:00:01Z", transient_attempts: 1 },
+    now
+  );
+  assert.equal(wrote.ok, true);
+  assert.equal(rows[0]?.claimed_by, null);
+  assert.equal(rows[0]?.claimed_until, null);
+  assert.equal(rows[0]?.bytes_sent, 50);
+  assert.equal((rows[0] as JobRow & { upload_uri?: string | null }).upload_uri, SESSION);
+});
+
+test("retry no-row insert does nothing on conflict when a lease is live", async () => {
+  const now = new Date("2026-10-22T12:00:00Z");
+  const until = "2026-10-22T12:05:00Z";
+  const rows: JobRow[] = [];
+  const client = fakeLeaseClient(rows);
+
+  const first = await insertYoutubeJobIfAbsentWithClient(client, {
+    upload_id: "u1",
+    upload_uri: null,
+    bytes_sent: 0,
+    claimed_until: null,
+    claimed_by: null,
+    updated_at: now.toISOString(),
+  });
+  assert.equal(first.ok, true);
+  assert.equal(first.conflict, false);
+
+  assert.equal((await acquireYoutubeLeaseWithClient(client, "u1", now, until, "cron")).ok, true);
+
+  const conflict = await insertYoutubeJobIfAbsentWithClient(client, {
+    upload_id: "u1",
+    upload_uri: SESSION,
+    bytes_sent: 0,
+    claimed_until: null,
+    claimed_by: null,
+    updated_at: now.toISOString(),
+  });
+  assert.equal(conflict.ok, false);
+  assert.equal(conflict.conflict, true);
+  assert.equal(rows[0]?.claimed_by, "cron");
+  assert.equal(rows[0]?.bytes_sent, 0);
+
+  const retry = await updateYoutubeJobIfLeaseFree(
+    client,
+    "u1",
+    { upload_uri: SESSION, bytes_sent: 0, next_attempt_at: null, transient_attempts: 0 },
+    now
+  );
+  assert.equal(retry.ok, false);
+  assert.equal(rows[0]?.claimed_by, "cron");
+});
+

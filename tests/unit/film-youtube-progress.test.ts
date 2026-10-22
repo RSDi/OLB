@@ -120,10 +120,13 @@ test("worker verifies storage, restarts a dead session, and records events", () 
   assert.match(uploads, /updateYoutubeJobIfLeaseFree/);
   assert.match(uploads, /revertYoutubeQueuedClaim/);
   assert.match(uploads, /applyYoutubeManualRetry/);
+  assert.match(uploads, /insertYoutubeJobIfAbsentWithClient/);
+  assert.match(uploads, /patchYoutubeJobAndReleaseLease/);
   assert.doesNotMatch(uploads, /"force"/);
   assert.match(worker, /applyYoutubeManualRetry/);
   assert.match(worker, /failOrRequeue\(pick\.id, err, owner\)/);
-  assert.match(worker, /if \(owner\) await releaseYoutubeClaim/);
+  assert.match(worker, /patchYoutubeJobAndReleaseLease/);
+  assert.doesNotMatch(worker, /if \(owner\) await releaseYoutubeClaim/);
   assert.match(worker, /noteYoutubeEvent/);
   assert.match(worker, /markStalledUploads/);
   assert.match(worker, /storage_not_ready/);
