@@ -8,6 +8,7 @@ import { itemsText, openItems } from "./checklist";
 import { longDay } from "./dates";
 import type { DraftEmail } from "./deliver";
 import { fill, wordsFor, type WorkflowEmail } from "./email-text";
+import { assessmentEmailValues, assessmentEmailWords, type Assessment } from "./assessments";
 import type { FamilyView } from "./family-data";
 import { checklistUrl } from "./server";
 
@@ -64,4 +65,20 @@ export function composeForRegistration(
     body: fill(words.body, values),
     registrationIds: [reg.id],
   };
+}
+
+export function composeAssessmentEmail(
+  key: "assessment_thanks" | "assessment_reminder",
+  reg: { id: string; first_name: string; parent_name: string | null; parent_email: string | null; extra: { father?: { email?: string }; mother?: { email?: string } } | null },
+  assessment: Assessment,
+  saved: Record<string, string>,
+): DraftEmail {
+  const base = wordsFor(key, saved);
+  const over = assessmentEmailWords(key, assessment, {});
+  return composeForRegistration(
+    key,
+    reg,
+    { [`${key}.subject`]: over.subject || base.subject, [`${key}.body`]: over.body || base.body },
+    assessmentEmailValues(assessment),
+  );
 }

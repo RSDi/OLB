@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 20, 2026";
+export const GUIDE_UPDATED = "October 22, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -1316,11 +1316,27 @@ The layout, each family's players and fees, and the Venmo and check instructions
 
 - **Use the new registration workflow** turns everything on or off. Off, registration works exactly the way it always has. What families already sent is kept either way.
 - **Pause all automatic emails** holds every email without changing their switches.
-- Each automatic email has **Off**, **Ask me first** or **On**. Everything starts **Off**. **Ask me first** holds each one on the Onboarding tab until someone taps **Send**. Tap **Words** to change an email's subject and words, with a preview for a made-up family. **Reset to original** puts the original words back.
+- Each automatic email has **Off**, **Ask me first** or **On**. Most start **Off**. **Assessment thanks** and **Assessment reminder** start **Ask me first** (thanks when someone signs up; reminder two days before, at 9 AM America/Chicago). **Ask me first** holds each one on the Onboarding tab until someone taps **Send**. Tap **Words** to change an email's subject and words, with a preview for a made-up family. **Reset to original** puts the original words back. Optional thanks and reminder words on **Settings → Assessments** override these for that assessment only.
 - **Approve families who register from an offer link** and **Approve returning families** approve those registrations without waiting in **New**.
 - **Links and dates**: the handbook link (with one, families sign the handbook on the form), the Slack invite link and the day it runs out (you'll get a reminder a week before), how long offer links last, the parent meeting, the first practice and the clinic details. The emails and family checklists use them.
 
 Tap **Save** when you're done.`,
+  },
+  {
+    id: "settings-assessments",
+    title: "Settings: Assessments",
+    group: "Settings",
+    audience: "registrations",
+    preview: true,
+    keywords: ["assessments", "14u", "high school", "tryout", "open", "close", "which assessment", "waitlist", "birthday", "grade"],
+    body: `Assessments families can sign up for. Open **Settings → Assessments**. Only people with the **Registrations** permission can open it.
+
+- **New assessment** starts one. Give it a **Name**, an **Address** (the public page is /assessments/ plus that, like 14u), optional **Level**, a **Date and time**, a **Place**, and the **Details** families read on the first step.
+- Set a **Birthday from** / **Birthday to** and/or a **Grade from** / **Grade to**. If you set both, a player fits when his birthday or his grade matches. Leave both blank to let anyone sign up.
+- **Open** lets families sign up. Several assessments can be open at once (for example High school and 14U). **Close** hides it from /assessments without deleting it.
+- Optional **Thanks** and **Reminder** words override the automatic emails for that assessment only.
+
+The public page **/assessments** asks **Which assessment?** and lists only the open ones that fit the player's birthday or grade. **/assessments/14u** is the 14U form; **/14u-assessment** still goes there. Sign-ups land on the **Waitlist** tab, tagged with the assessment.`,
   },
   {
     id: "settings-uniforms",

@@ -17,6 +17,19 @@ const nextConfig: NextConfig = {
   // transpile it like first-party app code.
   transpilePackages: ["reelnotes", "@uppy/core", "@uppy/tus", "tus-js-client"],
   images: { remotePatterns: siteImagesPattern() },
+  // Preview hosts (*.vercel.app) can differ from the forwarded Host when
+  // Vercel Authentication sits in front. Without this, Server Actions abort
+  // as "Invalid Server Actions request" and the form shows a generic error.
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "omahalightningbasketball.com",
+        "www.omahalightningbasketball.com",
+        "*.vercel.app",
+        "**.vercel.app",
+      ],
+    },
+  },
   async redirects() {
     // The maintenance area was renamed to Tasks & Projects; keep old links working.
     return [

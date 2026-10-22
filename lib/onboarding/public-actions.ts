@@ -6,6 +6,7 @@
 
 import { createAdminClient } from "../supabase/admin";
 import { sendPushToPermission } from "../notifications/push";
+import { save14uAssessment } from "./assessment-save";
 import { composeForRegistration } from "./compose";
 import { deliver } from "./deliver";
 import { loadWords, workflowOn } from "./server";
@@ -69,4 +70,12 @@ export async function joinWaitlist(input: WaitlistInput, honeypot: string): Prom
     return "failed" as const;
   });
   return {};
+}
+
+// PUBLIC — no auth. The 14U assessment form. Same table and Waitlist tab as
+// joinWaitlist, tagged "14U assessment". Assessments is on the production
+// write allowlist; other guarded public writes stay blocked.
+export async function join14uAssessment(input: WaitlistInput, honeypot: string): Promise<{ error?: string }> {
+  const { error } = await save14uAssessment(input, honeypot);
+  return error ? { error } : {};
 }

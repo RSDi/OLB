@@ -10,6 +10,8 @@
 //   open items      Mondays, to approved families with something to do
 //   countdown       10 days and 1 day before the first practice
 //   Slack           who has joined, by parent email (bot token)
+//   assessment      a reminder two days before an open assessment, only
+//                   at 9 AM America/Chicago (same hour as the rest)
 //   reminders       a push to the Registrations permission: the Slack link
 //                   running out, families nobody has answered, and on
 //                   Mondays a summary of what's open
@@ -17,12 +19,13 @@
 import { createAdminClient } from "../supabase/admin";
 import { sendPushToPermission } from "../notifications/push";
 import { modeOf, type OnboardingSettings } from "./automations";
-import { compose, composeForRegistration } from "./compose";
-import { addDays, centralDay, daysBetween, longDay, weekOf, weekday } from "./dates";
+import { compose, composeAssessmentEmail, composeForRegistration } from "./compose";
+import { addDays, centralDay, centralHour, daysBetween, longDay, weekOf, weekday } from "./dates";
 import { deliver } from "./deliver";
 import { loadFamilies } from "./family-data";
 import { openItems } from "./checklist";
 import { expiryWords } from "./offers";
+import { loadAssessments } from "./assessment-data";
 import { loadSettings, loadWords, offerUrl, type Db } from "./server";
 
 export interface DailySummary {
@@ -33,11 +36,15 @@ export interface DailySummary {
   openItems: number;
   countdown: number;
   slackChecked: number;
+  assessmentReminders: number;
 }
 
 export async function runDaily(now: Date = new Date()): Promise<DailySummary> {
+  const summary: DailySummary = { boards: 0, offersReminded: 0, offersClosed: 0, clinicInvites: 0, openItems: 0, countdown: 0, slackChecked: 0, assessmentReminders: 0 };
+  // Two UTC crons (14:17 and 15:17) so 9 AM CT lands year-round. The other
+  // fire would otherwise run checkSlack and the daily pushes twice.
+  if (centralHour(now) !== 9) return summary;
   const db = createAdminClient();
-  const summary: DailySummary = { boards: 0, offersReminded: 0, offersClosed: 0, clinicInvites: 0, openItems: 0, countdown: 0, slackChecked: 0 };
   const { data: rows } = await db.from("olb_onboarding_settings").select("board_id").eq("enabled", true);
   for (const { board_id } of (rows as { board_id: string }[] | null) ?? []) {
     const settings = await loadSettings(db, board_id);
@@ -71,6 +78,7 @@ export async function runDaily(now: Date = new Date()): Promise<DailySummary> {
       }
     }
 
+    await assessmentReminders(db, settings, words, today, summary);
     await reminders(db, settings, families, today);
   }
   return summary;
@@ -117,6 +125,36 @@ async function offers(db: Db, settings: OnboardingSettings, words: Record<string
       );
       if (r !== "off") await db.from("olb_onboarding_offers").update({ reminded_at: now.toISOString() }).eq("id", o.id);
       if (r === "sent" || r === "held") summary.offersReminded++;
+    }
+  }
+}
+
+// Assessment reminder: waitlisted sign-ups, two calendar days before an
+// open assessment. Only reached when runDaily already saw 9 AM Chicago.
+async function assessmentReminders(
+  db: Db,
+  settings: OnboardingSettings,
+  words: Record<string, string>,
+  today: string,
+  summary: DailySummary,
+) {
+  if (modeOf(settings, "assessment_reminder") === "off") return;
+  const loaded = await loadAssessments();
+  if (!loaded.fromTable) return;
+  const due = loaded.assessments.filter((a) => !a.id.startsWith("builtin-") && a.open && a.starts_at && daysBetween(today, centralDay(new Date(a.starts_at))) === 2);
+  if (!due.length) return;
+  const { data } = await db
+    .from("olb_registrations")
+    .select("id, first_name, parent_name, parent_email, extra")
+    .eq("board_id", settings.board_id)
+    .eq("status", "waitlisted");
+  type Row = { id: string; first_name: string; parent_name: string | null; parent_email: string | null; extra: { assessment_id?: string; assessment_slug?: string; father?: { email?: string }; mother?: { email?: string } } | null };
+  for (const a of due) {
+    for (const reg of (data as Row[] | null) ?? []) {
+      const extra = reg.extra;
+      if (extra?.assessment_id !== a.id && extra?.assessment_slug !== a.slug) continue;
+      const r = await deliver(db, settings, "assessment_reminder", `assessment_reminder:${a.id}:${reg.id}`, composeAssessmentEmail("assessment_reminder", reg, a, words));
+      if (r === "sent" || r === "held") summary.assessmentReminders++;
     }
   }
 }

@@ -3,6 +3,12 @@
 
 const ZONE = "America/Chicago";
 
+// The hour it is in Omaha at `now` (0–23).
+export function centralHour(now: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: ZONE, hour: "numeric", hourCycle: "h23" }).formatToParts(now);
+  return Number(parts.find((p) => p.type === "hour")?.value);
+}
+
 // "2026-10-11": the day it is in Omaha at `now`.
 export function centralDay(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);

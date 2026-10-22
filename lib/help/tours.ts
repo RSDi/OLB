@@ -1009,7 +1009,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "automations-emails",
         title: "Each email has its own switch",
-        body: "**Off** sends nothing. **Ask me first** holds each email on the Registrations page's **Onboarding** tab until someone taps **Send**. **On** sends it. Everything starts **Off**; **Ask me first** is a good way to begin.",
+        body: "**Off** sends nothing. **Ask me first** holds each email on the Registrations page's **Onboarding** tab until someone taps **Send**. **On** sends it. Most start **Off**. **Assessment thanks** and **Assessment reminder** start **Ask me first**.",
       },
       {
         target: "automations-words",
@@ -1371,6 +1371,30 @@ export const GUIDE_TOURS: GuideTour[] = [
         click: "payments-tab-invoices",
         title: "The list",
         body: "Open, overdue, collected and drafts. Tap an invoice to send it, record Venmo or check, or change reminders.",
+      },
+    ],
+  },
+  {
+    id: "settings-assessments",
+    sectionId: "settings-assessments",
+    title: "Assessments walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-assessments",
+        title: "Settings → Assessments",
+        body: "Create, edit and open or close assessments. Several can be open at once, like High school and 14U. Sign-ups land on the Waitlist tab.",
+      },
+      {
+        target: "assessments-list",
+        click: "settings-tab-assessments",
+        title: "The list",
+        body: "Each assessment has a public address, a birthday or grade rule, and **Open** or **Closed**. **View** opens the family form.",
+      },
+      {
+        target: "assessments-new",
+        title: "New assessment",
+        body: "**New assessment** starts one. Give it a name, address, date, place, details, and who it is for. **Open** lets families sign up.",
       },
     ],
   },
