@@ -36,6 +36,7 @@ import {
   commitmentsNotePreview,
 } from "../../../lib/teams/registration-commitments";
 import { buildRegistrationSteps } from "../../../lib/teams/registration-steps";
+import { ContinueButton, Question, Choice, Tick, Summary, Line, ErrorNote } from "./wizard-parts";
 
 export interface WizardApi {
   sendCode: (email: string, honeypot: string) => Promise<{ sent: boolean; error?: string }>;
@@ -1334,74 +1335,6 @@ function PerKid({
 }
 
 // ─── Small pieces ───────────────────────────────────────────────────────────
-
-function ContinueButton({ label = "Continue" }: { label?: string }) {
-  return (
-    <button type="submit" className={s.primary}>
-      {label}
-    </button>
-  );
-}
-
-function Question({ title, children }: { title: string; children?: React.ReactNode }) {
-  return (
-    <>
-      <h2 className={s.question} tabIndex={-1}>
-        {title}
-      </h2>
-      {children && <p className={s.lead}>{children}</p>}
-    </>
-  );
-}
-
-function Choice({ on, onClick, label, sub }: { on: boolean; onClick: () => void; label: string; sub?: string }) {
-  return (
-    <button type="button" className={s.choice} aria-pressed={on} onClick={onClick}>
-      <span>
-        {label}
-        {sub && <span className={s.choiceSub}>{sub}</span>}
-      </span>
-      <Tick />
-    </button>
-  );
-}
-
-function Tick() {
-  return (
-    <span className={s.tick} aria-hidden="true">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-    </span>
-  );
-}
-
-function Summary({ title, onChange, children }: { title: string; onChange: () => void; children: React.ReactNode }) {
-  return (
-    <div className={s.summary}>
-      <div className={s.summaryHead}>
-        <span className={s.summaryTitle}>{title}</span>
-        <button type="button" className={s.linkBtn} onClick={onChange}>
-          Change
-        </button>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Line({ children }: { children: React.ReactNode }) {
-  return <span className={s.summaryLine}>{children}</span>;
-}
-
-function ErrorNote({ text }: { text: string | null }) {
-  if (!text) return null;
-  return (
-    <div className={`olb-alert olb-alert--error ${s.error}`} role="alert">
-      {text}
-    </div>
-  );
-}
 
 function AddressFields({ f, up }: { f: FamilyAnswers; up: (patch: Partial<FamilyAnswers>) => void }) {
   return (

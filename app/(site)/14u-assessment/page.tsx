@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import "../../components/olb.css";
 import { isPreviewDeployment } from "../../../lib/onboarding/preview-only";
-import AssessmentForm from "./AssessmentForm";
+import AssessmentFlow from "./AssessmentFlow";
 
 export const metadata: Metadata = {
   title: "14U Assessment",
@@ -18,7 +18,7 @@ export default function AssessmentPage() {
   if (!isPreviewDeployment()) notFound();
   return (
     <div className="olb-root">
-      <AssessmentForm />
+      <AssessmentFlow />
     </div>
   );
 }

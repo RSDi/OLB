@@ -15,6 +15,7 @@ import {
   assessmentProblem,
   is14uEligible,
 } from "../../lib/onboarding/assessment-form.ts";
+import { ASSESSMENT_STEPS, assessmentStepProblem } from "../../lib/onboarding/assessment-steps.ts";
 import { isPreviewDeployment } from "../../lib/onboarding/preview-only.ts";
 import { emptyWaitlist } from "../../lib/onboarding/waitlist-form.ts";
 import { DEFAULT_MENU, SITE_PAGES } from "../../lib/website/menu.ts";
@@ -40,10 +41,74 @@ test("Rachel's assessment copy is used exactly", () => {
     ASSESSMENT_COPY,
     "We are accepting two more players at the 14U level. Please sign up for an assessment if you are interested in being considered. Playing for Omaha Lightning is a commitment to a competitive team, October through February. Practices have already begun, so assessments will be immediate."
   );
+  for (const file of [
+    "app/(site)/14u-assessment/AssessmentForm.tsx",
+    "app/(site)/14u-assessment/AssessmentWizard.tsx",
+  ]) {
+    const text = readFileSync(join(import.meta.dirname, "../..", file), "utf8");
+    assert.match(text, /ASSESSMENT_COPY/);
+    assert.match(text, /PROGRAMS_INFO_URL/);
+    assert.match(text, /Practice times and payment info/);
+  }
+});
+
+test("the assessment uses the registration wizard and See the whole form toggle", () => {
+  const flow = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/AssessmentFlow.tsx"), "utf8");
+  const wizard = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/AssessmentWizard.tsx"), "utf8");
   const form = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/AssessmentForm.tsx"), "utf8");
-  assert.match(form, /ASSESSMENT_COPY/);
-  assert.match(form, /PROGRAMS_INFO_URL/);
-  assert.match(form, /Practice times and payment info/);
+  const page = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/page.tsx"), "utf8");
+  const chrome = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/wizard-parts.tsx"), "utf8");
+  const registration = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/RegistrationWizard.tsx"), "utf8");
+  const registrationForm = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/RegistrationForm.tsx"), "utf8");
+  const registrationFlow = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/RegistrationFlow.tsx"), "utf8");
+
+  assert.match(page, /AssessmentFlow/);
+  assert.match(wizard, /See the whole form/);
+  assert.match(form, /← Back to step by step/);
+  assert.equal(wizard.includes("See the whole form"), registration.includes("See the whole form"));
+  assert.equal(form.includes("← Back to step by step"), registrationForm.includes("← Back to step by step"));
+  assert.match(flow, /hidden=\{view !== "wizard"\}/);
+  assert.match(registrationFlow, /hidden=\{view !== "wizard"\}/);
+  assert.match(wizard, /from "\.\.\/player-registration\/wizard-parts"/);
+  assert.match(registration, /from "\.\/wizard-parts"/);
+  assert.match(chrome, /export function Question/);
+  assert.match(chrome, /export function Choice/);
+  assert.match(chrome, /export function ContinueButton/);
+  assert.deepEqual([...ASSESSMENT_STEPS], [
+    "intro",
+    "name",
+    "dob",
+    "homeschooled",
+    "experience",
+    "friends",
+    "heard",
+    "you",
+    "contact",
+    "notes",
+    "summary",
+  ]);
+});
+
+test("each wizard step only asks for that step's answers", () => {
+  const blank = emptyWaitlist();
+  assert.equal(assessmentStepProblem("intro", blank), null);
+  assert.match(assessmentStepProblem("name", blank) ?? "", /first and last name/);
+  assert.match(assessmentStepProblem("dob", blank) ?? "", /birthday/);
+  assert.match(assessmentStepProblem("homeschooled", blank) ?? "", /homeschooled/);
+  assert.match(assessmentStepProblem("experience", blank) ?? "", /played before/);
+  assert.equal(assessmentStepProblem("friends", blank), null);
+  assert.equal(assessmentStepProblem("heard", blank), null);
+  assert.match(assessmentStepProblem("you", blank) ?? "", /your name/);
+  assert.match(assessmentStepProblem("contact", blank) ?? "", /email/);
+  assert.equal(assessmentStepProblem("notes", blank), null);
+  assert.equal(assessmentStepProblem("summary", blank), null);
+
+  const w = filled();
+  w.athlete_dob = "2015-06-01";
+  assert.match(assessmentStepProblem("dob", w) ?? "", /14U players only/);
+  assert.equal(assessmentStepProblem("name", filled()), null);
+  assert.equal(assessmentStepProblem("dob", filled()), null);
+  assert.equal(assessmentStepProblem("contact", filled()), null);
 });
 
 test("the Programs page is the real practice-times and payment page", () => {
