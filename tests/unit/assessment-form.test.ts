@@ -70,6 +70,8 @@ test("the assessment uses the registration wizard and See the whole form toggle"
   assert.match(flow, /hidden=\{view !== "wizard"\}/);
   assert.match(registrationFlow, /hidden=\{view !== "wizard"\}/);
   assert.match(wizard, /from "\.\.\/player-registration\/wizard-parts"/);
+  assert.match(wizard, /onChange=\{\(\) => change\("you"\)\}/);
+  assert.match(wizard, /onChange=\{\(\) => change\("contact"\)\}/);
   assert.match(registration, /from "\.\/wizard-parts"/);
   assert.match(chrome, /export function Question/);
   assert.match(chrome, /export function Choice/);

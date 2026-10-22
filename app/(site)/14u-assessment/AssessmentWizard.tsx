@@ -304,11 +304,10 @@ export function AssessmentWizard({
                 </Summary>
               ) : null}
               <Summary title="You" onChange={() => change("you")}>
-                <Line>
-                  <strong>{`${state.parent_first} ${state.parent_last}`.trim() || "Name not added"}</strong>
-                  {" · "}
-                  {[state.email.trim(), state.phone.trim()].filter(Boolean).join(" · ") || "no email yet"}
-                </Line>
+                <Line>{`${state.parent_first} ${state.parent_last}`.trim() || "Name not added"}</Line>
+              </Summary>
+              <Summary title="Contact" onChange={() => change("contact")}>
+                <Line>{[state.email.trim(), state.phone.trim()].filter(Boolean).join(" · ") || "no email yet"}</Line>
               </Summary>
               {state.notes.trim() ? (
                 <Summary title="Notes" onChange={() => change("notes")}>
