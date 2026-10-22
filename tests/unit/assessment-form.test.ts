@@ -7,16 +7,21 @@ import { join } from "node:path";
 import {
   ASSESSMENT_COPY,
   ASSESSMENT_LEVEL,
+  ASSESSMENT_MISSING_DB,
   ASSESSMENT_PATH,
+  ASSESSMENT_SEND_FAILED,
   ASSESSMENT_TAG,
   PROGRAMS_INFO_URL,
   assessmentExtra,
   assessmentNotes,
   assessmentProblem,
+  assessmentSaveGate,
+  friendlyAssessmentClientError,
+  friendlyAssessmentDbError,
   is14uEligible,
 } from "../../lib/onboarding/assessment-form.ts";
 import { ASSESSMENT_STEPS, assessmentStepProblem } from "../../lib/onboarding/assessment-steps.ts";
-import { isPreviewDeployment } from "../../lib/onboarding/preview-only.ts";
+import { PRODUCTION_WRITE_BLOCKED, isPreviewDeployment, previewWriteBlocked } from "../../lib/onboarding/preview-only.ts";
 import { emptyWaitlist } from "../../lib/onboarding/waitlist-form.ts";
 import { DEFAULT_MENU, SITE_PAGES } from "../../lib/website/menu.ts";
 import { RESERVED_SLUGS } from "../../lib/website/content.ts";
@@ -63,6 +68,8 @@ test("the assessment uses the registration wizard and See the whole form toggle"
   const registrationFlow = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/RegistrationFlow.tsx"), "utf8");
 
   assert.match(page, /AssessmentFlow/);
+  assert.match(flow, /\/api\/14u-assessment/);
+  assert.match(flow, /friendlyAssessmentClientError/);
   assert.match(wizard, /See the whole form/);
   assert.match(form, /← Back to step by step/);
   assert.equal(wizard.includes("See the whole form"), registration.includes("See the whole form"));
@@ -148,6 +155,8 @@ test("the page is preview-only, noindexed, and not on the public site", () => {
   assert.equal(isPreviewDeployment({ VERCEL_ENV: "preview" }), true);
   assert.equal(isPreviewDeployment({ VERCEL_ENV: "development" }), true);
   assert.equal(isPreviewDeployment({ VERCEL_ENV: "production" }), false);
+  assert.equal(previewWriteBlocked({ VERCEL_ENV: "production" }), PRODUCTION_WRITE_BLOCKED);
+  assert.equal(previewWriteBlocked({ VERCEL_ENV: "preview" }), null);
 
   const page = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/page.tsx"), "utf8");
   assert.match(page, /robots:\s*\{\s*index:\s*false,\s*follow:\s*false\s*\}/);
@@ -155,15 +164,55 @@ test("the page is preview-only, noindexed, and not on the public site", () => {
   assert.match(page, /notFound/);
 
   const action = readFileSync(join(import.meta.dirname, "../../lib/onboarding/public-actions.ts"), "utf8");
+  const save = readFileSync(join(import.meta.dirname, "../../lib/onboarding/assessment-save.ts"), "utf8");
+  const api = readFileSync(join(import.meta.dirname, "../../app/api/14u-assessment/route.ts"), "utf8");
   assert.match(action, /join14uAssessment/);
-  assert.match(action, /isPreviewDeployment/);
-  assert.match(action, /assessmentExtra/);
-  assert.match(action, /status:\s*"waitlisted"/);
-  assert.doesNotMatch(action.slice(action.indexOf("join14uAssessment")), /waitlist_reply/);
+  assert.match(action, /save14uAssessment/);
+  assert.match(save, /assessmentSaveGate/);
+  assert.match(save, /assessmentExtra/);
+  assert.match(save, /status:\s*"waitlisted"/);
+  assert.match(api, /save14uAssessment/);
+  assert.doesNotMatch(save, /waitlist_reply/);
 
   assert.equal(ASSESSMENT_PATH, "/14u-assessment");
   assert.ok(RESERVED_SLUGS.includes("14u-assessment"));
   assert.equal(SITE_PAGES.some((p) => p.href === ASSESSMENT_PATH), false);
   assert.equal(JSON.stringify(DEFAULT_MENU).includes("14u-assessment"), false);
   assert.equal(JSON.stringify(DEFAULT_MENU).includes("assessment"), false);
+});
+
+test("a production save is blocked with a specific message and never looks up the database", () => {
+  const res = assessmentSaveGate(filled(), "", { VERCEL_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "not-used" });
+  assert.deepEqual(res, { error: PRODUCTION_WRITE_BLOCKED, status: 403 });
+});
+
+test("preview validation errors are returned clearly without a generic catch", () => {
+  const res = assessmentSaveGate(emptyWaitlist(), "", { VERCEL_ENV: "preview" });
+  assert.equal(res?.status, 400);
+  assert.match(res?.error ?? "", /first and last name/);
+});
+
+test("preview without database env explains the missing setup", () => {
+  const res = assessmentSaveGate(filled(), "", { VERCEL_ENV: "preview" });
+  assert.deepEqual(res, { error: ASSESSMENT_MISSING_DB, status: 503 });
+});
+
+test("a configured preview is allowed past the write guard", () => {
+  assert.equal(
+    assessmentSaveGate(filled(), "", {
+      VERCEL_ENV: "preview",
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "not-a-real-key",
+    }),
+    null,
+  );
+});
+
+test("database and client failures have specific messages", () => {
+  assert.match(friendlyAssessmentDbError({ code: "42501", message: "permission denied for table olb_registrations" }), /database permission/);
+  assert.match(friendlyAssessmentDbError({ code: "PGRST204", message: "Could not find the 'tag' column" }), /don't match/);
+  assert.match(friendlyAssessmentDbError({ code: "23503", message: "foreign key" }), /isn't open/);
+  assert.match(friendlyAssessmentClientError(new Error("Invalid Server Actions request.")), /request was blocked/);
+  assert.match(friendlyAssessmentClientError(new Error("Failed to find Server Action")), /out of date/);
+  assert.equal(friendlyAssessmentClientError(new Error("boom")), ASSESSMENT_SEND_FAILED);
 });

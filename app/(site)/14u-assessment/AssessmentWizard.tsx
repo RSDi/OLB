@@ -46,6 +46,11 @@ export function AssessmentWizard({
     (input ?? card.querySelector<HTMLElement>("h2"))?.focus({ preventScroll: true });
   }, [stepId]);
 
+  useEffect(() => {
+    if (!error) return;
+    cardRef.current?.querySelector("[role=alert]")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [error]);
+
   const up = (patch: Partial<WaitlistInput>) => onChange({ ...state, ...patch });
 
   function go(id: AssessmentStep) {

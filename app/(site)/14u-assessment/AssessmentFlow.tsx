@@ -3,19 +3,24 @@ import { useState } from "react";
 import { AssessmentWizard } from "./AssessmentWizard";
 import AssessmentForm from "./AssessmentForm";
 import s from "../player-registration/wizard.module.css";
-import { join14uAssessment } from "../../../lib/onboarding/public-actions";
-import { assessmentProblem } from "../../../lib/onboarding/assessment-form";
+import { assessmentProblem, friendlyAssessmentClientError } from "../../../lib/onboarding/assessment-form";
+import { PRODUCTION_WRITE_BLOCKED } from "../../../lib/onboarding/preview-only";
 import { emptyWaitlist, type WaitlistInput } from "../../../lib/onboarding/waitlist-form";
 
 // The assessment page: the step-by-step wizard to start, or the whole form
 // on one page. Both edit the same answers, so switching keeps them. The
 // wizard stays mounted behind the full form, so switching back returns to
 // the same step — same pattern as player registration.
+//
+// Submit goes through POST /api/14u-assessment (JSON), not a Server Action.
+// Next.js rejects some preview Server Action POSTs (Origin vs forwarded
+// host) as "Invalid Server Actions request", which used to show only
+// "Something went wrong. Please try again."
 
 export default function AssessmentFlow({
-  save = join14uAssessment,
+  save,
 }: {
-  save?: typeof join14uAssessment;
+  save?: (input: WaitlistInput, honeypot: string) => Promise<{ error?: string }>;
 } = {}) {
   const [state, setState] = useState<WaitlistInput>(emptyWaitlist);
   const [honeypot, setHoneypot] = useState("");
@@ -25,11 +30,35 @@ export default function AssessmentFlow({
   async function submit(): Promise<string | null> {
     const problem = assessmentProblem(state);
     if (problem) return problem;
-    const res = await save(state, honeypot).catch(() => ({ error: "Something went wrong. Please try again." }));
-    if (res.error) return res.error;
-    setDone(true);
-    window.scrollTo({ top: 0 });
-    return null;
+    try {
+      if (save) {
+        const res = await save(state, honeypot);
+        if (res.error) return res.error;
+      } else {
+        const res = await fetch("/api/14u-assessment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input: state, honeypot }),
+        });
+        let data: { error?: string } = {};
+        try {
+          data = (await res.json()) as { error?: string };
+        } catch {
+          data = {};
+        }
+        if (res.status === 401 || res.status === 403) {
+          return data.error || PRODUCTION_WRITE_BLOCKED;
+        }
+        if (!res.ok || data.error) {
+          return data.error || friendlyAssessmentClientError(new Error(`HTTP ${res.status}`));
+        }
+      }
+      setDone(true);
+      window.scrollTo({ top: 0 });
+      return null;
+    } catch (err) {
+      return friendlyAssessmentClientError(err);
+    }
   }
 
   if (done) {
