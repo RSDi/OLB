@@ -1,11 +1,22 @@
-// Server-only. Writes a 14U assessment to the waitlist table. Preview and
-// local only: production (VERCEL_ENV=production) is refused and never writes.
-// Callers still must not point a preview at production data if they want to
-// keep live rows untouched.
+// Server-only. Writes an assessment signup to the waitlist table. Preview
+// and local only: production (VERCEL_ENV=production) is refused and never
+// writes. extra.source stays waitlist_form so offer-seed and the Waitlist
+// tab keep working; assessment_id and tag are additive.
 
 import { createAdminClient } from "../supabase/admin";
 import { sendPushToPermission } from "../notifications/push";
-import { assessmentExtra, assessmentNotes, assessmentSaveGate, ASSESSMENT_MISSING_DB, ASSESSMENT_NOT_OPEN, ASSESSMENT_RATE_LIMITED, friendlyAssessmentDbError } from "./assessment-form";
+import {
+  assessmentExtra,
+  assessmentNotes,
+  assessmentSaveGate,
+  ASSESSMENT_MISSING_DB,
+  ASSESSMENT_NOT_OPEN,
+  ASSESSMENT_RATE_LIMITED,
+  friendlyAssessmentDbError,
+} from "./assessment-form";
+import { loadAssessmentBySlug } from "./assessment-data";
+import { BUILTIN_14U, type Assessment } from "./assessments";
+import { previewWriteBlocked } from "./preview-only";
 import { seasonBoardId } from "./server";
 import { type WaitlistInput } from "./waitlist-form";
 
@@ -16,20 +27,35 @@ export type AssessmentSaveResult = {
 };
 
 function logSaveFailure(reason: string, extra?: Record<string, unknown>) {
-  console.error("[14u-assessment] save failed", {
+  console.error("[assessment] save failed", {
     reason,
     vercelEnv: process.env.VERCEL_ENV ?? "(unset)",
     ...extra,
   });
 }
 
-export async function save14uAssessment(
+export async function saveAssessment(
   input: WaitlistInput,
   honeypot: string,
+  slug: string,
   env: Record<string, string | undefined> = process.env,
 ): Promise<AssessmentSaveResult> {
+  let assessment: Assessment | null = null;
   try {
-    const gated = assessmentSaveGate(input, honeypot, env);
+    const blocked = previewWriteBlocked(env);
+    if (blocked) {
+      logSaveFailure("production_write_guard");
+      return { error: blocked, status: 403 };
+    }
+    if (honeypot && honeypot.trim()) return { status: 200 };
+
+    assessment = await loadAssessmentBySlug(slug);
+    if (!assessment) {
+      logSaveFailure("unknown_slug", { slug });
+      return { error: ASSESSMENT_NOT_OPEN, status: 404 };
+    }
+
+    const gated = assessmentSaveGate(input, honeypot, env, assessment);
     if (gated) {
       if (gated.error) {
         logSaveFailure(
@@ -79,8 +105,8 @@ export async function save14uAssessment(
         parent_email: email,
         parent_phone: input.phone.trim().slice(0, 40) || null,
         status: "waitlisted",
-        notes: assessmentNotes(input),
-        extra: assessmentExtra(input),
+        notes: assessmentNotes(input, assessment),
+        extra: assessmentExtra(input, assessment),
       })
       .select("id")
       .single();
@@ -95,7 +121,7 @@ export async function save14uAssessment(
     }
 
     await sendPushToPermission("registrations", {
-      title: `New 14U assessment: ${first} ${last}`,
+      title: `New ${assessment.name}: ${first} ${last}`,
       body: `From ${parentName}. Tap to see their answers.`,
       url: "/portal/directory/registrations?tab=waitlist",
       tag: `waitlist-${saved.id}`,
@@ -104,7 +130,15 @@ export async function save14uAssessment(
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown";
     const missingEnv = /NEXT_PUBLIC_SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY/.test(message);
-    logSaveFailure(missingEnv ? "missing_database_env" : "exception", { message });
+    logSaveFailure(missingEnv ? "missing_database_env" : "exception", { message, slug });
     return { error: missingEnv ? ASSESSMENT_MISSING_DB : friendlyAssessmentDbError({ message }), status: missingEnv ? 503 : 500 };
   }
+}
+
+export async function save14uAssessment(
+  input: WaitlistInput,
+  honeypot: string,
+  env: Record<string, string | undefined> = process.env,
+): Promise<AssessmentSaveResult> {
+  return saveAssessment(input, honeypot, BUILTIN_14U.slug, env);
 }

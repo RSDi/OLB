@@ -11,6 +11,7 @@ import {
   ASSESSMENT_PATH,
   ASSESSMENT_SEND_FAILED,
   ASSESSMENT_TAG,
+  ASSESSMENTS_PATH,
   PROGRAMS_INFO_URL,
   assessmentExtra,
   assessmentNotes,
@@ -20,7 +21,8 @@ import {
   friendlyAssessmentDbError,
   is14uEligible,
 } from "../../lib/onboarding/assessment-form.ts";
-import { ASSESSMENT_STEPS, assessmentStepProblem } from "../../lib/onboarding/assessment-steps.ts";
+import { ASSESSMENT_STEPS, assessmentStepProblem, assessmentStepsFor } from "../../lib/onboarding/assessment-steps.ts";
+import { BUILTIN_14U, BUILTIN_HS } from "../../lib/onboarding/assessments.ts";
 import { PRODUCTION_WRITE_BLOCKED, isPreviewDeployment, previewWriteBlocked } from "../../lib/onboarding/preview-only.ts";
 import { emptyWaitlist } from "../../lib/onboarding/waitlist-form.ts";
 import { DEFAULT_MENU, SITE_PAGES } from "../../lib/website/menu.ts";
@@ -46,29 +48,30 @@ test("Rachel's assessment copy is used exactly", () => {
     ASSESSMENT_COPY,
     "We are accepting two more players at the 14U level. Please sign up for an assessment if you are interested in being considered. Playing for Omaha Lightning is a commitment to a competitive team, October through February. Practices have already begun, so assessments will be immediate."
   );
+  assert.equal(BUILTIN_14U.details, ASSESSMENT_COPY);
   for (const file of [
-    "app/(site)/14u-assessment/AssessmentForm.tsx",
-    "app/(site)/14u-assessment/AssessmentWizard.tsx",
+    "app/(site)/assessments/AssessmentForm.tsx",
+    "app/(site)/assessments/AssessmentWizard.tsx",
   ]) {
     const text = readFileSync(join(import.meta.dirname, "../..", file), "utf8");
-    assert.match(text, /ASSESSMENT_COPY/);
+    assert.match(text, /assessment\.details/);
     assert.match(text, /PROGRAMS_INFO_URL/);
     assert.match(text, /Practice times and payment info/);
   }
 });
 
 test("the assessment uses the registration wizard and See the whole form toggle", () => {
-  const flow = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/AssessmentFlow.tsx"), "utf8");
-  const wizard = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/AssessmentWizard.tsx"), "utf8");
-  const form = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/AssessmentForm.tsx"), "utf8");
-  const page = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/page.tsx"), "utf8");
+  const flow = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/AssessmentFlow.tsx"), "utf8");
+  const wizard = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/AssessmentWizard.tsx"), "utf8");
+  const form = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/AssessmentForm.tsx"), "utf8");
+  const page = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/[slug]/page.tsx"), "utf8");
   const chrome = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/wizard-parts.tsx"), "utf8");
   const registration = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/RegistrationWizard.tsx"), "utf8");
   const registrationForm = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/RegistrationForm.tsx"), "utf8");
   const registrationFlow = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/RegistrationFlow.tsx"), "utf8");
 
   assert.match(page, /AssessmentFlow/);
-  assert.match(flow, /\/api\/14u-assessment/);
+  assert.match(flow, /\/api\/assessments/);
   assert.match(flow, /friendlyAssessmentClientError/);
   assert.match(wizard, /See the whole form/);
   assert.match(form, /← Back to step by step/);
@@ -96,6 +99,8 @@ test("the assessment uses the registration wizard and See the whole form toggle"
     "notes",
     "summary",
   ]);
+  assert.ok(!assessmentStepsFor(BUILTIN_14U).includes("grade"));
+  assert.ok(assessmentStepsFor(BUILTIN_HS).includes("grade"));
 });
 
 test("each wizard step only asks for that step's answers", () => {
@@ -144,6 +149,8 @@ test("submissions keep the waitlist source and are tagged 14U assessment", () =>
   assert.equal(extra.source, "waitlist_form");
   assert.equal(extra.tag, ASSESSMENT_TAG);
   assert.equal(ASSESSMENT_TAG, "14U assessment");
+  assert.equal(extra.assessment_id, BUILTIN_14U.id);
+  assert.equal(extra.assessment_slug, "14u");
   assert.equal(extra.intake.level, ASSESSMENT_LEVEL);
   assert.equal(extra.first_season, true);
   assert.equal(assessmentNotes(filled()), null);
@@ -162,21 +169,33 @@ test("the page is preview-only, noindexed, and not on the public site", () => {
   assert.match(page, /robots:\s*\{\s*index:\s*false,\s*follow:\s*false\s*\}/);
   assert.match(page, /isPreviewDeployment/);
   assert.match(page, /notFound/);
+  assert.match(page, /redirect/);
+  assert.match(page, /assessments\/14u|assessmentPublicPath/);
+
+  const list = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/page.tsx"), "utf8");
+  assert.match(list, /Which assessment\?|AssessmentPicker/);
+  assert.match(list, /isPreviewDeployment/);
 
   const action = readFileSync(join(import.meta.dirname, "../../lib/onboarding/public-actions.ts"), "utf8");
   const save = readFileSync(join(import.meta.dirname, "../../lib/onboarding/assessment-save.ts"), "utf8");
   const api = readFileSync(join(import.meta.dirname, "../../app/api/14u-assessment/route.ts"), "utf8");
+  const apiAll = readFileSync(join(import.meta.dirname, "../../app/api/assessments/route.ts"), "utf8");
   assert.match(action, /join14uAssessment/);
   assert.match(action, /save14uAssessment/);
   assert.match(save, /assessmentSaveGate/);
   assert.match(save, /assessmentExtra/);
   assert.match(save, /status:\s*"waitlisted"/);
+  assert.match(save, /previewWriteBlocked/);
   assert.match(api, /save14uAssessment/);
+  assert.match(apiAll, /saveAssessment/);
   assert.doesNotMatch(save, /waitlist_reply/);
 
   assert.equal(ASSESSMENT_PATH, "/14u-assessment");
+  assert.equal(ASSESSMENTS_PATH, "/assessments");
   assert.ok(RESERVED_SLUGS.includes("14u-assessment"));
+  assert.ok(RESERVED_SLUGS.includes("assessments"));
   assert.equal(SITE_PAGES.some((p) => p.href === ASSESSMENT_PATH), false);
+  assert.equal(SITE_PAGES.some((p) => p.href === ASSESSMENTS_PATH), false);
   assert.equal(JSON.stringify(DEFAULT_MENU).includes("14u-assessment"), false);
   assert.equal(JSON.stringify(DEFAULT_MENU).includes("assessment"), false);
 });

@@ -2,15 +2,26 @@
 import { useEffect, useRef, useState } from "react";
 import s from "../player-registration/wizard.module.css";
 import { ContinueButton, Question, Choice, Summary, Line, ErrorNote } from "../player-registration/wizard-parts";
-import { ASSESSMENT_COPY, PROGRAMS_INFO_URL, assessmentProblem } from "../../../lib/onboarding/assessment-form";
-import { ASSESSMENT_STEPS, assessmentStepProblem, type AssessmentStep } from "../../../lib/onboarding/assessment-steps";
+import { PROGRAMS_INFO_URL, assessmentProblem } from "../../../lib/onboarding/assessment-form";
+import { assessmentStepProblem, assessmentStepsFor, type AssessmentStep } from "../../../lib/onboarding/assessment-steps";
+import {
+  GRADES,
+  assessmentRuleLabel,
+  assessmentWhen,
+  formatDay,
+  gradeLabel,
+  hasDobRule,
+  hasGradeRule,
+  type Assessment,
+} from "../../../lib/onboarding/assessments";
 import { EXPERIENCE, HEARD_FROM, type WaitlistInput } from "../../../lib/onboarding/waitlist-form";
 
-// The 14U assessment as a conversation: one question at a time, same chrome
+// One assessment as a conversation: one question at a time, same chrome
 // and "See the whole form" toggle as player registration. Answers are shared
 // with the one-page form, so switching either way keeps them.
 
 export function AssessmentWizard({
+  assessment,
   state,
   onChange,
   onSubmit,
@@ -18,6 +29,7 @@ export function AssessmentWizard({
   honeypot,
   onHoneypot,
 }: {
+  assessment: Assessment;
   state: WaitlistInput;
   onChange: (next: WaitlistInput) => void;
   onSubmit: () => Promise<string | null>;
@@ -32,9 +44,11 @@ export function AssessmentWizard({
   const cardRef = useRef<HTMLDivElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  const steps = ASSESSMENT_STEPS;
+  const steps = assessmentStepsFor(assessment);
   const at = Math.max(0, steps.indexOf(stepId));
   const first = state.athlete_first.trim() || "your son";
+  const when = assessmentWhen(assessment.starts_at);
+  const details = assessment.details.trim();
 
   useEffect(() => {
     const card = cardRef.current;
@@ -90,7 +104,7 @@ export function AssessmentWizard({
 
   function continueWith(e: React.FormEvent) {
     e.preventDefault();
-    const problem = assessmentStepProblem(stepId, state);
+    const problem = assessmentStepProblem(stepId, state, assessment);
     if (problem) return setError(problem);
     next();
   }
@@ -98,7 +112,7 @@ export function AssessmentWizard({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const problem = assessmentProblem(state);
+    const problem = assessmentProblem(state, assessment);
     if (problem) return setError(problem);
     setBusy(true);
     const res = await onSubmit();
@@ -123,10 +137,12 @@ export function AssessmentWizard({
     </>
   );
 
+  const dobHint = hasDobRule(assessment) ? `This assessment is for ${assessmentRuleLabel(assessment)}.` : "His birthday.";
+
   return (
     <div className={s.wrap} ref={wrapRef}>
       <div className={s.top}>
-        <span className={s.eyebrow}>14U assessment</span>
+        <span className={s.eyebrow}>{assessment.name}</span>
         <button type="button" className={s.linkBtn} onClick={onFullForm}>
           See the whole form
         </button>
@@ -139,7 +155,9 @@ export function AssessmentWizard({
         {stepId === "intro" && (
           <form onSubmit={continueWith}>
             <Question title="Tell us about your son">
-              {ASSESSMENT_COPY}{" "}
+              {details || assessment.name}
+              {when ? ` ${when}${assessment.place ? ` at ${assessment.place}` : ""}.` : assessment.place ? ` ${assessment.place}.` : " "}
+              {" "}
               <a href={PROGRAMS_INFO_URL} target="_blank" rel="noreferrer" className={s.linkBtn}>
                 Practice times and payment info
               </a>
@@ -170,12 +188,26 @@ export function AssessmentWizard({
 
         {stepId === "dob" && (
           <form onSubmit={continueWith}>
-            <Question title={`When is ${first === "your son" ? "his" : `${first}'s`} birthday?`}>This assessment is for 14U players only.</Question>
+            <Question title={`When is ${first === "your son" ? "his" : `${first}'s`} birthday?`}>{dobHint}</Question>
             <div className={s.body}>
               <label className={s.field}>
                 Birthday
                 <input className="olb-input" type="date" value={state.athlete_dob} onChange={(e) => up({ athlete_dob: e.target.value })} />
               </label>
+            </div>
+            {actions(<ContinueButton />)}
+          </form>
+        )}
+
+        {stepId === "grade" && (
+          <form onSubmit={continueWith}>
+            <Question title={`What grade is ${first === "your son" ? "he" : first} in?`}>
+              {hasGradeRule(assessment) ? `This assessment is for ${assessmentRuleLabel(assessment)}.` : "His current grade."}
+            </Question>
+            <div className={`${s.body} ${s.choices}`}>
+              {GRADES.map((g) => (
+                <Choice key={g} on={state.grade === String(g)} onClick={() => answer({ grade: String(g) })} label={`${gradeLabel(g)} grade`} />
+              ))}
             </div>
             {actions(<ContinueButton />)}
           </form>
@@ -292,6 +324,11 @@ export function AssessmentWizard({
               <Summary title={`${state.athlete_first} ${state.athlete_last}`.trim() || "Player"} onChange={() => change("name")}>
                 <Line>{state.athlete_dob ? `Born ${formatDay(state.athlete_dob)}` : "Birthday not added"}</Line>
               </Summary>
+              {hasGradeRule(assessment) || state.grade ? (
+                <Summary title="Grade" onChange={() => change("grade")}>
+                  <Line>{parseGradeLabel(state.grade)}</Line>
+                </Summary>
+              ) : null}
               <Summary title="Homeschooled" onChange={() => change("homeschooled")}>
                 <Line>{state.homeschooled === true ? "Yes" : state.homeschooled === false ? "No" : "Not answered"}</Line>
               </Summary>
@@ -332,8 +369,8 @@ export function AssessmentWizard({
   );
 }
 
-function formatDay(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+function parseGradeLabel(grade: string | undefined): string {
+  const n = Number(grade);
+  if (!Number.isInteger(n) || n < 1 || n > 12) return "Grade not added";
+  return `${gradeLabel(n)} grade`;
 }

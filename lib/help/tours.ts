@@ -1375,6 +1375,30 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-assessments",
+    sectionId: "settings-assessments",
+    title: "Assessments walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-assessments",
+        title: "Settings → Assessments",
+        body: "Create, edit and open or close assessments. Several can be open at once, like High school and 14U. Sign-ups land on the Waitlist tab.",
+      },
+      {
+        target: "assessments-list",
+        click: "settings-tab-assessments",
+        title: "The list",
+        body: "Each assessment has a public address, a birthday or grade rule, and **Open** or **Closed**. **View** opens the family form.",
+      },
+      {
+        target: "assessments-new",
+        title: "New assessment",
+        body: "**New assessment** starts one. Give it a name, address, date, place, details, and who it is for. **Open** lets families sign up.",
+      },
+    ],
+  },
+  {
     id: "settings-uniforms",
     sectionId: "settings-uniforms",
     alsoSections: ["uniforms-page"],

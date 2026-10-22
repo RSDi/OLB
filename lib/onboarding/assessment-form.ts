@@ -1,45 +1,67 @@
-// The 14U assessment form: the waitlist form, locked to 14U, with Rachel's
-// copy. Submissions land on the same waitlist as /waitlist, tagged
-// "14U assessment". Plain module, pure, safe for client and server.
+// Assessment signup: the waitlist form, locked to one assessment's copy
+// and age/grade rule. Submissions land on the same waitlist as /waitlist,
+// tagged with the assessment and extra.assessment_id. Plain module, pure,
+// safe for client and server.
 
 import { DEFAULT_AGE_CAPS, DEFAULT_SEASON_ENDS_ON, lowestEligibleLevel } from "../teams/eligibility.ts";
+import {
+  ASSESSMENT_LEVEL,
+  ASSESSMENT_PATH,
+  ASSESSMENT_TAG,
+  BUILTIN_14U,
+  PROGRAMS_INFO_URL,
+  assessmentTag,
+  eligibilityProblem,
+  parseGrade,
+  playerFitsAssessment,
+  type Assessment,
+} from "./assessments.ts";
 import { previewWriteBlocked } from "./preview-only.ts";
 import { intakeOf, waitlistProblem, type WaitlistInput } from "./waitlist-form.ts";
 
-export const ASSESSMENT_TAG = "14U assessment";
-export const ASSESSMENT_LEVEL = "14U";
-export const ASSESSMENT_PATH = "/14u-assessment";
-export const PROGRAMS_INFO_URL = "https://omahalightningbasketball.com/programs";
-
-// Exact words Rachel asked for (Jeff Malone via Jefe, 2026-10-22).
-export const ASSESSMENT_COPY =
-  "We are accepting two more players at the 14U level. Please sign up for an assessment if you are interested in being considered. Playing for Omaha Lightning is a commitment to a competitive team, October through February. Practices have already begun, so assessments will be immediate.";
+export {
+  ASSESSMENT_COPY,
+  ASSESSMENT_LEVEL,
+  ASSESSMENT_PATH,
+  ASSESSMENT_TAG,
+  ASSESSMENTS_PATH,
+  PROGRAMS_INFO_URL,
+} from "./assessments.ts";
 
 export function is14uEligible(dob: string): boolean {
   return lowestEligibleLevel(dob, DEFAULT_SEASON_ENDS_ON, DEFAULT_AGE_CAPS) === ASSESSMENT_LEVEL;
 }
 
-export function assessmentProblem(w: WaitlistInput): string | null {
+export function assessmentProblem(w: WaitlistInput, assessment: Assessment = BUILTIN_14U): string | null {
   const base = waitlistProblem(w);
   if (base) return base;
-  if (!is14uEligible(w.athlete_dob)) {
-    return "This assessment is for 14U players only. Please check his birthday, or email lightningbasketballomaha@gmail.com.";
+  if (!playerFitsAssessment(assessment, w.athlete_dob, parseGrade(w.grade))) {
+    return eligibilityProblem(assessment);
   }
   return null;
 }
 
-// Same extra shape as the waitlist form, plus the tag staff see on the card.
-export function assessmentExtra(w: WaitlistInput) {
+// Same extra shape as the waitlist form, plus the tag staff see on the card
+// and assessment_id (uuid or builtin id). Offer-seed keeps reading
+// extra.source = waitlist_form and extra.intake.
+export function assessmentExtra(w: WaitlistInput, assessment: Assessment = BUILTIN_14U) {
+  const grade = (w.grade ?? "").trim();
   return {
     source: "waitlist_form" as const,
-    tag: ASSESSMENT_TAG,
+    tag: assessmentTag(assessment),
+    assessment_id: assessment.id,
+    assessment_slug: assessment.slug,
     first_season: true,
-    intake: { ...intakeOf(w), level: ASSESSMENT_LEVEL },
+    intake: {
+      ...intakeOf(w),
+      level: assessment.level || ASSESSMENT_LEVEL,
+      ...(grade ? { grade } : {}),
+    },
   };
 }
 
-export function assessmentNotes(w: WaitlistInput): string | null {
-  return w.homeschooled === false ? "Not homeschooled, from the 14U assessment form." : null;
+export function assessmentNotes(w: WaitlistInput, assessment: Assessment = BUILTIN_14U): string | null {
+  return w.homeschooled === false ? `Not homeschooled, from the ${assessment.name} form.` : null;
 }
 
 // Messages for a failed save. Keep these specific: the wizard used to swallow
@@ -72,17 +94,19 @@ export type AssessmentSaveGate = {
   status: number;
 };
 
-// Shared checks for the page action and POST /api/14u-assessment. Returns a
+// Shared checks for the page action and POST /api/assessments. Returns a
 // result when the save must not write; null means continue to the database.
 export function assessmentSaveGate(
   w: WaitlistInput,
   honeypot: string,
   env: Record<string, string | undefined> = process.env,
+  assessment: Assessment = BUILTIN_14U,
 ): AssessmentSaveGate | null {
   const blocked = previewWriteBlocked(env);
   if (blocked) return { error: blocked, status: 403 };
   if (honeypot && honeypot.trim()) return { status: 200 };
-  const problem = assessmentProblem(w);
+  if (!assessment.open) return { error: ASSESSMENT_NOT_OPEN, status: 404 };
+  const problem = assessmentProblem(w, assessment);
   if (problem) return { error: problem, status: 400 };
   if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     return { error: ASSESSMENT_MISSING_DB, status: 503 };

@@ -1,7 +1,15 @@
 "use client";
 import { useState } from "react";
 import s from "../player-registration/wizard.module.css";
-import { ASSESSMENT_COPY, PROGRAMS_INFO_URL } from "../../../lib/onboarding/assessment-form";
+import { PROGRAMS_INFO_URL } from "../../../lib/onboarding/assessment-form";
+import {
+  GRADES,
+  assessmentRuleLabel,
+  assessmentWhen,
+  gradeLabel,
+  hasGradeRule,
+  type Assessment,
+} from "../../../lib/onboarding/assessments";
 import { EXPERIENCE, HEARD_FROM, type WaitlistInput } from "../../../lib/onboarding/waitlist-form";
 
 // Everything on one page, for families who'd rather see it all at once. It
@@ -9,6 +17,7 @@ import { EXPERIENCE, HEARD_FROM, type WaitlistInput } from "../../../lib/onboard
 // keeps what's been filled in. Same toggle wording as player registration.
 
 export default function AssessmentForm({
+  assessment,
   state,
   onChange,
   onSubmit,
@@ -16,6 +25,7 @@ export default function AssessmentForm({
   honeypot,
   onHoneypot,
 }: {
+  assessment: Assessment;
   state: WaitlistInput;
   onChange: (next: WaitlistInput) => void;
   onSubmit: () => Promise<string | null>;
@@ -26,6 +36,8 @@ export default function AssessmentForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const up = (patch: Partial<WaitlistInput>) => onChange({ ...state, ...patch });
+  const when = assessmentWhen(assessment.starts_at);
+  const details = assessment.details.trim();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +68,9 @@ export default function AssessmentForm({
       <form className={s.card} onSubmit={submit}>
         <h2 className={s.question}>Tell us about your son</h2>
         <p className={s.lead}>
-          {ASSESSMENT_COPY}{" "}
+          {details || assessment.name}
+          {when ? ` ${when}${assessment.place ? ` at ${assessment.place}` : ""}.` : assessment.place ? ` ${assessment.place}.` : " "}
+          {" "}
           <a href={PROGRAMS_INFO_URL} target="_blank" rel="noreferrer" className={s.linkBtn}>
             Practice times and payment info
           </a>
@@ -77,6 +91,15 @@ export default function AssessmentForm({
             Birthday
             <input className="olb-input" type="date" value={state.athlete_dob} onChange={(e) => up({ athlete_dob: e.target.value })} />
           </label>
+          {hasGradeRule(assessment) && (
+            <div>
+              <span className={s.sectionLabel}>Grade ({assessmentRuleLabel(assessment)})</span>
+              {chips(GRADES.map(String), state.grade ?? "", (v) => up({ grade: v }), "Grade")}
+              <p className={s.lead} style={{ marginTop: 8 }}>
+                {GRADES.map((g) => gradeLabel(g)).join(" · ")}
+              </p>
+            </div>
+          )}
           <div>
             <span className={s.sectionLabel}>Is he homeschooled?</span>
             <div className={s.chips} role="group" aria-label="Is he homeschooled?">

@@ -21,6 +21,8 @@ export interface WaitlistInput {
   friends: string;
   heard_from: string;
   notes: string;
+  // Assessment forms only. The waitlist form leaves this unset.
+  grade?: string;
 }
 
 export function emptyWaitlist(): WaitlistInput {
@@ -63,4 +65,4 @@ export function intakeOf(w: WaitlistInput) {
   };
 }
 
-export type Intake = ReturnType<typeof intakeOf> & { level?: string };
+export type Intake = ReturnType<typeof intakeOf> & { level?: string; grade?: string };

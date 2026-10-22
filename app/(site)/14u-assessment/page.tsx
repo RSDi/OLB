@@ -1,24 +1,17 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import "../../components/olb.css";
+import { notFound, redirect } from "next/navigation";
+import { BUILTIN_14U, assessmentPublicPath } from "../../../lib/onboarding/assessments";
 import { isPreviewDeployment } from "../../../lib/onboarding/preview-only";
-import AssessmentFlow from "./AssessmentFlow";
 
 export const metadata: Metadata = {
   title: "14U Assessment",
   robots: { index: false, follow: false },
 };
-// VERCEL_ENV is inlined per deploy; force-dynamic so a local visit still
-// reads the current process env.
 export const dynamic = "force-dynamic";
 
-// Preview-only clone of /waitlist, locked to 14U. Production 404s this path
-// and the action refuses the write. Not in the site menu.
+// The 14U form now lives at /assessments/14u. Keep this address so the
+// preview link Jeff already sent still works.
 export default function AssessmentPage() {
   if (!isPreviewDeployment()) notFound();
-  return (
-    <div className="olb-root">
-      <AssessmentFlow />
-    </div>
-  );
+  redirect(assessmentPublicPath(BUILTIN_14U));
 }

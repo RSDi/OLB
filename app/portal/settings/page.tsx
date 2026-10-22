@@ -45,6 +45,8 @@ import { RequirementsTab } from "./RequirementsTab";
 import { EmailTemplatesTab } from "./EmailTemplatesTab";
 import { RegistrationEmailsTab } from "./RegistrationEmailsTab";
 import { RegistrationAutomationsTab } from "./RegistrationAutomationsTab";
+import { AssessmentsTab } from "./AssessmentsTab";
+import { isPreviewDeployment } from "../../../lib/onboarding/preview-only";
 import { UniformsTab } from "./UniformsTab";
 import { FeesTab } from "./FeesTab";
 import { InvoicesTab } from "./InvoicesTab";
@@ -85,6 +87,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   email_templates: "settings-email-templates",
   registration_emails: "settings-registration-emails",
   registration_automations: "settings-registration-automations",
+  assessments: "settings-assessments",
   uniforms: "settings-uniforms",
   fees: "settings-fees",
   invoices: "settings-invoices",
@@ -115,6 +118,7 @@ type Tab =
   | "email_templates"
   | "registration_emails"
   | "registration_automations"
+  | "assessments"
   | "uniforms"
   | "fees"
   | "invoices"
@@ -177,6 +181,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     public_directory: siteLinks,
     registration_emails: canManageRegistrations(me),
     registration_automations: workflowOn && canManageRegistrations(me),
+    assessments: canManageRegistrations(me),
     uniforms: workflowOn && canManageUniforms(me),
     fees: financesOn && canManageFinances(me),
     invoices: canManageInvoicing(me) || canManageFinances(me),
@@ -216,6 +221,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     // The registration workflow (0130): the preview accounts, and while the
     // workflow is switched on, whoever holds the permission.
     { key: "registration_automations", label: "Registration Automations", group: "Communication", visible: (fullUi || workflowOn) && canManageRegistrations(me), tour: "settings-tab-registration-automations", keywords: "registration workflow automatic emails waitlist offer slack handbook checklist switch" },
+    { key: "assessments", label: "Assessments", group: "Communication", visible: canManageRegistrations(me) && (fullUi || isPreviewDeployment()), tour: "settings-tab-assessments", keywords: "assessment 14u high school tryout waitlist signup open close" },
     { key: "uniforms", label: "Uniforms", group: "People & Access", visible: (fullUi || workflowOn) && canManageUniforms(me), tour: "settings-tab-uniforms", keywords: "jersey shorts grays warm-ups sizes try-on order" },
     { key: "fees", label: "Fees", group: "People & Access", visible: (fullUi || financesOn) && canManageFinances(me), tour: "settings-tab-fees", keywords: "registration fee tiers coach kid comp fundraising nelson's due date budget club finances" },
     { key: "invoices", label: "Invoices", group: "People & Access", visible: canManageInvoicing(me) || canManageFinances(me), tour: "settings-tab-invoices", keywords: "check mailing address remit-to payee attention invoices receipts mail checks" },
@@ -381,6 +387,7 @@ export default function SettingsPage() {
       {tab === "email_templates" && has("email_templates") && <EmailTemplatesTab />}
       {tab === "registration_emails" && has("registration_emails") && <RegistrationEmailsTab canEdit={canManageRegistrations(me)} />}
       {tab === "registration_automations" && has("registration_automations") && <RegistrationAutomationsTab />}
+      {tab === "assessments" && has("assessments") && <AssessmentsTab />}
       {tab === "uniforms" && has("uniforms") && <UniformsTab />}
       {tab === "fees" && has("fees") && <FeesTab />}
       {tab === "invoices" && has("invoices") && <InvoicesTab />}

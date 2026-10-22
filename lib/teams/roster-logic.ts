@@ -32,6 +32,8 @@ export type RegistrationExtra = {
   // Waitlist and assessment forms: how they joined (0130).
   source?: string | null;
   tag?: string | null;
+  assessment_id?: string | null;
+  assessment_slug?: string | null;
   // Moved off the roster back to the waitlist: where they were
   // (lib/teams/waitlist-player.ts).
   from_roster?: {

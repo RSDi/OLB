@@ -1,10 +1,11 @@
-// Step-by-step order for the 14U assessment wizard. Same pattern as
+// Step-by-step order for the assessment wizard. Same pattern as
 // lib/teams/registration-steps.ts: a plain list so tests can check it.
 // Optional steps (friends, heard, notes) still appear; the wizard lets
-// families skip them.
+// families skip them. A grade step is inserted after birthday when the
+// assessment has a grade rule.
 
-import { is14uEligible } from "./assessment-form.ts";
 import { looksLikeEmail } from "../teams/registration-form.ts";
+import { BUILTIN_14U, GRADES, eligibilityProblem, hasGradeRule, parseGrade, playerFitsAssessment, type Assessment } from "./assessments.ts";
 import type { WaitlistInput } from "./waitlist-form.ts";
 
 export const ASSESSMENT_STEPS = [
@@ -21,17 +22,37 @@ export const ASSESSMENT_STEPS = [
   "summary",
 ] as const;
 
-export type AssessmentStep = (typeof ASSESSMENT_STEPS)[number];
+export type AssessmentStep = (typeof ASSESSMENT_STEPS)[number] | "grade";
 
-export function assessmentStepProblem(step: AssessmentStep, w: WaitlistInput): string | null {
+export function assessmentStepsFor(assessment: Assessment = BUILTIN_14U): AssessmentStep[] {
+  const steps: AssessmentStep[] = [...ASSESSMENT_STEPS];
+  if (hasGradeRule(assessment)) {
+    const i = steps.indexOf("dob");
+    steps.splice(i + 1, 0, "grade");
+  }
+  return steps;
+}
+
+export function assessmentStepProblem(
+  step: AssessmentStep,
+  w: WaitlistInput,
+  assessment: Assessment = BUILTIN_14U,
+): string | null {
   if (step === "name") {
     if (!w.athlete_first.trim() || !w.athlete_last.trim()) return "Please add your son's first and last name.";
     return null;
   }
   if (step === "dob") {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(w.athlete_dob)) return "Please add his birthday.";
-    if (!is14uEligible(w.athlete_dob)) {
-      return "This assessment is for 14U players only. Please check his birthday, or email lightningbasketballomaha@gmail.com.";
+    if (!hasGradeRule(assessment) && !playerFitsAssessment(assessment, w.athlete_dob, parseGrade(w.grade))) {
+      return eligibilityProblem(assessment);
+    }
+    return null;
+  }
+  if (step === "grade") {
+    if (parseGrade(w.grade) == null) return "Please add his grade.";
+    if (!playerFitsAssessment(assessment, w.athlete_dob, parseGrade(w.grade))) {
+      return eligibilityProblem(assessment);
     }
     return null;
   }
@@ -53,3 +74,5 @@ export function assessmentStepProblem(step: AssessmentStep, w: WaitlistInput): s
   }
   return null;
 }
+
+export { GRADES };
