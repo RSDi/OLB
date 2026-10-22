@@ -1,6 +1,6 @@
-// PUBLIC — no auth. Preview-only 14U assessment signup. Production
-// (VERCEL_ENV=production) refuses the write. Same destination as the
-// waitlist form: olb_registrations, tagged "14U assessment".
+// PUBLIC — no auth. 14U assessment signup. Assessments is on the
+// production allowlist; the save path inserts into olb_registrations.
+// Same destination as the waitlist form, tagged "14U assessment".
 
 import { NextResponse } from "next/server";
 import { asWaitlistInput } from "../../../lib/onboarding/assessment-input";

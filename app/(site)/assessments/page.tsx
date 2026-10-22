@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import "../../components/olb.css";
 import { loadOpenAssessments } from "../../../lib/onboarding/assessment-data";
 import { toPublicAssessment } from "../../../lib/onboarding/assessments";
-import { isPreviewDeployment } from "../../../lib/onboarding/preview-only";
+import { previewRouteOpen } from "../../../lib/onboarding/preview-only";
 import { AssessmentPicker } from "./AssessmentPicker";
 
 export const metadata: Metadata = {
@@ -12,9 +12,9 @@ export const metadata: Metadata = {
 };
 export const dynamic = "force-dynamic";
 
-// Preview-only. Production 404s this path. Not in the site menu.
+// Assessments is on the production allowlist. Not in the site menu.
 export default async function AssessmentsPage() {
-  if (!isPreviewDeployment()) notFound();
+  if (!previewRouteOpen("assessments")) notFound();
   const assessments = (await loadOpenAssessments()).map(toPublicAssessment);
   return (
     <div className="olb-root">

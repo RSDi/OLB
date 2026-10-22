@@ -73,8 +73,8 @@ export async function joinWaitlist(input: WaitlistInput, honeypot: string): Prom
 }
 
 // PUBLIC — no auth. The 14U assessment form. Same table and Waitlist tab as
-// joinWaitlist, tagged "14U assessment". Open only on preview/dev: a
-// production deploy 404s the page and this action refuses the write.
+// joinWaitlist, tagged "14U assessment". Assessments is on the production
+// write allowlist; other guarded public writes stay blocked.
 export async function join14uAssessment(input: WaitlistInput, honeypot: string): Promise<{ error?: string }> {
   const { error } = await save14uAssessment(input, honeypot);
   return error ? { error } : {};

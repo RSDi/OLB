@@ -1,11 +1,11 @@
-// PUBLIC — no auth. Preview-only assessment signup. Production
-// (VERCEL_ENV=production) refuses the write. Same destination as the
-// waitlist form: olb_registrations, tagged with the assessment.
+// PUBLIC — no auth. Assessment signup. Assessments is on the production
+// allowlist; the save path inserts into olb_registrations. Same destination
+// as the waitlist form, tagged with the assessment.
 
 import { NextResponse } from "next/server";
 import { asWaitlistInput } from "../../../lib/onboarding/assessment-input";
 import { saveAssessment } from "../../../lib/onboarding/assessment-save";
-import { isPreviewDeployment } from "../../../lib/onboarding/preview-only";
+import { previewRouteOpen } from "../../../lib/onboarding/preview-only";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  if (!isPreviewDeployment()) {
+  if (!previewRouteOpen("assessments")) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
   return NextResponse.json({ ok: true });

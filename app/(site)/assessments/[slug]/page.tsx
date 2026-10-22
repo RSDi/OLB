@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import "../../../components/olb.css";
 import { loadAssessmentBySlug } from "../../../../lib/onboarding/assessment-data";
 import { toPublicAssessment } from "../../../../lib/onboarding/assessments";
-import { isPreviewDeployment } from "../../../../lib/onboarding/preview-only";
+import { previewRouteOpen } from "../../../../lib/onboarding/preview-only";
 import AssessmentFlow from "../AssessmentFlow";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-// Preview-only. Production 404s this path. Not in the site menu.
+// Assessments is on the production allowlist. Not in the site menu.
 export default async function AssessmentSlugPage({
   params,
   searchParams,
@@ -25,7 +25,7 @@ export default async function AssessmentSlugPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ dob?: string; grade?: string }>;
 }) {
-  if (!isPreviewDeployment()) notFound();
+  if (!previewRouteOpen("assessments")) notFound();
   const [{ slug }, q] = await Promise.all([params, searchParams]);
   const assessment = await loadAssessmentBySlug(slug);
   if (!assessment || !assessment.open) notFound();

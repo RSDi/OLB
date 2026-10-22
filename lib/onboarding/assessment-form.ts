@@ -102,7 +102,7 @@ export function assessmentSaveGate(
   env: Record<string, string | undefined> = process.env,
   assessment: PublicAssessment = BUILTIN_14U,
 ): AssessmentSaveGate | null {
-  const blocked = previewWriteBlocked(env);
+  const blocked = previewWriteBlocked("assessments", env);
   if (blocked) return { error: blocked, status: 403 };
   if (honeypot && honeypot.trim()) return { status: 200 };
   if (!assessment.open) return { error: ASSESSMENT_NOT_OPEN, status: 404 };

@@ -1,5 +1,6 @@
-// The 14U assessment form: Rachel's copy, 14U-only, preview-only, same
-// waitlist destination tagged "14U assessment".
+// The 14U assessment form: Rachel's copy, 14U-only, same waitlist
+// destination tagged "14U assessment". Assessments is on the production
+// write allowlist; other guarded paths stay blocked.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -23,7 +24,7 @@ import {
 } from "../../lib/onboarding/assessment-form.ts";
 import { ASSESSMENT_STEPS, assessmentStepProblem, assessmentStepsFor } from "../../lib/onboarding/assessment-steps.ts";
 import { BUILTIN_14U, BUILTIN_HS } from "../../lib/onboarding/assessments.ts";
-import { PRODUCTION_WRITE_BLOCKED, isPreviewDeployment, previewWriteBlocked } from "../../lib/onboarding/preview-only.ts";
+import { PRODUCTION_ALLOWED, PRODUCTION_WRITE_BLOCKED, isPreviewDeployment, previewRouteOpen, previewWriteBlocked } from "../../lib/onboarding/preview-only.ts";
 import { emptyWaitlist } from "../../lib/onboarding/waitlist-form.ts";
 import { DEFAULT_MENU, SITE_PAGES } from "../../lib/website/menu.ts";
 import { RESERVED_SLUGS } from "../../lib/website/content.ts";
@@ -157,24 +158,28 @@ test("submissions keep the waitlist source and are tagged 14U assessment", () =>
   assert.equal(assessmentNotes({ ...filled(), homeschooled: false }), "Not homeschooled, from the 14U assessment form.");
 });
 
-test("the page is preview-only, noindexed, and not on the public site", () => {
+test("the page is noindexed and not on the public site menu", () => {
   assert.equal(isPreviewDeployment({}), true);
   assert.equal(isPreviewDeployment({ VERCEL_ENV: "preview" }), true);
   assert.equal(isPreviewDeployment({ VERCEL_ENV: "development" }), true);
   assert.equal(isPreviewDeployment({ VERCEL_ENV: "production" }), false);
-  assert.equal(previewWriteBlocked({ VERCEL_ENV: "production" }), PRODUCTION_WRITE_BLOCKED);
-  assert.equal(previewWriteBlocked({ VERCEL_ENV: "preview" }), null);
+  assert.equal(previewWriteBlocked("waitlist", { VERCEL_ENV: "production" }), PRODUCTION_WRITE_BLOCKED);
+  assert.equal(previewWriteBlocked("waitlist", { VERCEL_ENV: "preview" }), null);
+  assert.equal(previewWriteBlocked("assessments", { VERCEL_ENV: "production" }), null);
+  assert.equal(previewWriteBlocked("assessments", { VERCEL_ENV: "preview" }), null);
 
   const page = readFileSync(join(import.meta.dirname, "../../app/(site)/14u-assessment/page.tsx"), "utf8");
   assert.match(page, /robots:\s*\{\s*index:\s*false,\s*follow:\s*false\s*\}/);
-  assert.match(page, /isPreviewDeployment/);
+  assert.match(page, /previewRouteOpen\("assessments"\)/);
   assert.match(page, /notFound/);
   assert.match(page, /redirect/);
   assert.match(page, /assessments\/14u|assessmentPublicPath/);
 
   const list = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/page.tsx"), "utf8");
   assert.match(list, /Which assessment\?|AssessmentPicker/);
-  assert.match(list, /isPreviewDeployment/);
+  assert.match(list, /previewRouteOpen\("assessments"\)/);
+  const slug = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/[slug]/page.tsx"), "utf8");
+  assert.match(slug, /previewRouteOpen\("assessments"\)/);
 
   const action = readFileSync(join(import.meta.dirname, "../../lib/onboarding/public-actions.ts"), "utf8");
   const save = readFileSync(join(import.meta.dirname, "../../lib/onboarding/assessment-save.ts"), "utf8");
@@ -185,7 +190,7 @@ test("the page is preview-only, noindexed, and not on the public site", () => {
   assert.match(save, /assessmentSaveGate/);
   assert.match(save, /assessmentExtra/);
   assert.match(save, /status:\s*"waitlisted"/);
-  assert.match(save, /previewWriteBlocked/);
+  assert.match(save, /previewWriteBlocked\("assessments"/);
   assert.match(api, /save14uAssessment/);
   assert.match(apiAll, /saveAssessment/);
   assert.doesNotMatch(save, /waitlist_reply/);
@@ -200,9 +205,25 @@ test("the page is preview-only, noindexed, and not on the public site", () => {
   assert.equal(JSON.stringify(DEFAULT_MENU).includes("assessment"), false);
 });
 
-test("a production save is blocked with a specific message and never looks up the database", () => {
-  const res = assessmentSaveGate(filled(), "", { VERCEL_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "not-used" });
-  assert.deepEqual(res, { error: PRODUCTION_WRITE_BLOCKED, status: 403 });
+test("production allows Assessments writes and still blocks other guarded features", () => {
+  const prod = {
+    VERCEL_ENV: "production",
+    NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "not-a-real-key",
+  };
+  assert.deepEqual([...PRODUCTION_ALLOWED], ["assessments"]);
+  assert.equal(previewRouteOpen("assessments", prod), true);
+  assert.equal(previewWriteBlocked("assessments", prod), null);
+  assert.equal(assessmentSaveGate(filled(), "", prod), null);
+
+  assert.equal(previewRouteOpen("waitlist", prod), false);
+  assert.equal(previewWriteBlocked("waitlist", prod), PRODUCTION_WRITE_BLOCKED);
+
+  const settings = readFileSync(join(import.meta.dirname, "../../app/portal/settings/page.tsx"), "utf8");
+  assert.match(settings, /fullUi \|\| isPreviewDeployment\(\)/);
+  const pairing = readFileSync(join(import.meta.dirname, "../../app/(site)/login/phone/preview/page.tsx"), "utf8");
+  assert.match(pairing, /PAIRING_UI_PREVIEW/);
+  assert.match(pairing, /notFound\(\)/);
 });
 
 test("preview validation errors are returned clearly without a generic catch", () => {

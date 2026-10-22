@@ -1,6 +1,6 @@
-// Server-only. Writes an assessment signup to the waitlist table. Preview
-// and local only: production (VERCEL_ENV=production) is refused and never
-// writes. extra.source stays waitlist_form so offer-seed and the Waitlist
+// Server-only. Writes an assessment signup to the waitlist table.
+// Assessments are on the production allowlist; other guarded writes stay
+// blocked. extra.source stays waitlist_form so offer-seed and the Waitlist
 // tab keep working; assessment_id and tag are additive.
 
 import { createAdminClient } from "../supabase/admin";
@@ -44,7 +44,7 @@ export async function saveAssessment(
 ): Promise<AssessmentSaveResult> {
   let assessment: Assessment | null = null;
   try {
-    const blocked = previewWriteBlocked(env);
+    const blocked = previewWriteBlocked("assessments", env);
     if (blocked) {
       logSaveFailure("production_write_guard");
       return { error: blocked, status: 403 };

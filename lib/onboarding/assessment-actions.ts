@@ -2,8 +2,8 @@
 
 // Settings → Assessments. Registrations permission only. Writes with the
 // service role so a missing RLS policy can't block a preview test; the
-// permission check still runs first. Production write guard is unchanged
-// (public signups still refuse on VERCEL_ENV=production).
+// permission check still runs first. Public assessment signups are on the
+// production allowlist; this admin tab stays preview-gated in Settings.
 
 import { revalidatePath } from "next/cache";
 import { requireRegistrations } from "../auth/guards";
