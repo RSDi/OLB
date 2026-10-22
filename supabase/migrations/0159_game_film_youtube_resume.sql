@@ -18,6 +18,8 @@
 
 begin;
 
+set local lock_timeout = '5s';
+
 alter table public.game_film_youtube_jobs
   add column if not exists next_attempt_at timestamptz,
   add column if not exists claimed_until timestamptz,

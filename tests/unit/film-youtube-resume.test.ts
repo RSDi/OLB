@@ -5,6 +5,7 @@ import {
   YOUTUBE_MAX_TRANSIENT_ATTEMPTS,
   YOUTUBE_RETRY_RESERVE_MS,
   YOUTUBE_STALE_MS,
+  acquireYoutubeLeaseWithClient,
   applyYoutubeLeaseAcquire,
   applyYoutubeLeaseRelease,
   canClaimYoutubeJob,
@@ -14,14 +15,22 @@ import {
   isMissingYoutubeJobExtraColumn,
   isTransientNetworkError,
   isYoutubeResumeProbe,
+  planYoutubeContinuedHandoff,
   planYoutubeFailOrRequeue,
   queryResumeOffset,
   runResumableUpload,
+  youtubeLeaseAcquireOrFilter,
+  youtubeLeaseIsHeld,
+  youtubeLeaseMatchesOrFilter,
+  youtubeManualRetryBlocked,
   youtubeManualRetryPatch,
   youtubeRetryDelayMs,
+  YOUTUBE_RETRY_LEASE_HELD,
   YoutubeAuthError,
   YoutubeSessionGoneError,
   YoutubeTransientError,
+  type YoutubeLeaseClient,
+  type YoutubeLeaseWrite,
 } from "../../lib/film/youtube-resume.ts";
 
 const CHUNK = YOUTUBE_CHUNK_ALIGN;
@@ -324,9 +333,12 @@ test("manual retry keeps a live session and restarts only when it is gone", () =
   assert.equal(keep.upload_uri, SESSION);
   assert.equal(keep.bytes_sent, 9);
   assert.equal(keep.next_attempt_at, null);
+  assert.equal("claimed_until" in keep, false);
+  assert.equal("claimed_by" in keep, false);
   const restart = youtubeManualRetryPatch({ upload_uri: null, bytes_sent: 9, bytes_total: 20, attempts: 1, started_at: null, last_progress_at: null }, 20);
   assert.equal(restart.upload_uri, null);
   assert.equal(restart.bytes_sent, 0);
+  assert.equal("claimed_until" in restart, false);
 });
 
 test("transient errors do not consume attempts or clear the session", () => {
@@ -561,4 +573,190 @@ test("probe 200 without a video id does not count as done", async () => {
     assert.equal(result.clearSession, false);
     assert.equal(result.consumeAttempt, false);
   }
+});
+
+test("manual retry refuses a live lease and does not clear claimed_*", () => {
+  const now = Date.parse("2026-10-22T12:00:00Z");
+  assert.equal(youtubeLeaseIsHeld("2026-10-22T12:04:00Z", now), true);
+  assert.equal(youtubeManualRetryBlocked({ claimed_until: "2026-10-22T12:04:00Z" }, now), YOUTUBE_RETRY_LEASE_HELD);
+  assert.equal(youtubeManualRetryBlocked({ claimed_until: "2026-10-22T11:59:00Z" }, now), null);
+  assert.equal(youtubeManualRetryBlocked({ claimed_until: null }, now), null);
+  assert.equal(youtubeManualRetryBlocked(null, now), null);
+});
+
+test("pushOne continued path re-reads transient_attempts and applies the cap", () => {
+  const job = {
+    upload_uri: SESSION,
+    bytes_sent: 100,
+    bytes_total: 200,
+    attempts: 1,
+    last_progress_at: "2026-10-22T12:00:00Z",
+    transient_attempts: 0,
+  };
+  const continued = {
+    outcome: "continued" as const,
+    bytesSent: 100,
+    uploadUri: SESSION,
+    transient: true,
+  };
+  const afterProgress = planYoutubeContinuedHandoff({ ...job, transient_attempts: 0 }, continued);
+  assert.equal(afterProgress.kind, "continue");
+  if (afterProgress.kind === "continue") {
+    assert.equal(afterProgress.jobPatch.transient_attempts, 1);
+    assert.equal(afterProgress.jobPatch.upload_uri, SESSION);
+    assert.equal(afterProgress.jobPatch.bytes_sent, 100);
+  }
+
+  const staleStartWouldHaveBeen19 = planYoutubeContinuedHandoff({ ...job, transient_attempts: 0 }, continued);
+  assert.equal(staleStartWouldHaveBeen19.kind, "continue");
+
+  const capped = planYoutubeContinuedHandoff(
+    { ...job, transient_attempts: YOUTUBE_MAX_TRANSIENT_ATTEMPTS },
+    continued
+  );
+  assert.equal(capped.kind, "capped");
+  if (capped.kind === "capped") {
+    assert.equal(capped.plan.jobPatch.upload_uri, SESSION);
+    assert.equal(capped.plan.jobPatch.bytes_sent, 100);
+    assert.equal(capped.plan.youtubeStatus, "queued");
+  }
+
+  const stallNow = Date.parse("2026-10-22T14:01:00Z");
+  const stalled = planYoutubeContinuedHandoff(
+    { ...job, transient_attempts: 1, last_progress_at: "2026-10-22T12:00:00Z" },
+    continued,
+    stallNow
+  );
+  assert.equal(stalled.kind, "capped");
+});
+
+test("401 refresh then session expired initiates with the refreshed token", async () => {
+  let initiatedWith: string | null = null;
+  let probes = 0;
+  const { io } = makeIo(({ probe }) => {
+    if (probe) {
+      probes += 1;
+      if (probes === 1) return youtubeRes(401);
+      return youtubeRes(410);
+    }
+    return youtubeRes(200, {}, { id: "vid-refreshed" });
+  });
+
+  const result = await runResumableUpload({
+    uploadUri: SESSION,
+    bytesSent: CHUNK,
+    total: TOTAL,
+    access: ACCESS,
+    signedUrl: STORAGE,
+    contentType: "video/mp4",
+    deadline: 1_000_000 + 120_000,
+    chunkBytes: CHUNK,
+    refreshAccess: async () => "test-access-refreshed",
+    initiate: async (access) => {
+      initiatedWith = access;
+      return NEW_SESSION;
+    },
+    io,
+  });
+
+  assert.equal(result.outcome, "done");
+  assert.equal(initiatedWith, "test-access-refreshed");
+  if (result.outcome === "done") assert.equal(result.uploadUri, NEW_SESSION);
+});
+
+type JobRow = {
+  upload_id: string;
+  claimed_until: string | null;
+  claimed_by: string | null;
+  bytes_sent: number;
+  updated_at: string;
+};
+
+function fakeLeaseClient(rows: JobRow[]): YoutubeLeaseClient {
+  const from = () => {
+    const state: {
+      op: "update" | "insert" | null;
+      row: Record<string, unknown> | null;
+      eqs: Array<[string, unknown]>;
+      or: string | null;
+    } = { op: null, row: null, eqs: [], or: null };
+    const api: YoutubeLeaseWrite & {
+      update: (row: Record<string, unknown>) => YoutubeLeaseWrite;
+      insert: (row: Record<string, unknown>) => YoutubeLeaseWrite;
+    } = {
+      update(row) {
+        state.op = "update";
+        state.row = row;
+        return api;
+      },
+      insert(row) {
+        state.op = "insert";
+        state.row = row;
+        return api;
+      },
+      eq(col, val) {
+        state.eqs.push([col, val]);
+        return api;
+      },
+      or(expr) {
+        state.or = expr;
+        return api;
+      },
+      select() {
+        return api;
+      },
+      async maybeSingle() {
+        if (state.op === "update") {
+          const match = rows.find((row) => {
+            if (!state.eqs.every(([col, val]) => (row as Record<string, unknown>)[col] === val)) return false;
+            if (state.or && !youtubeLeaseMatchesOrFilter(state.or, row.claimed_until)) return false;
+            return true;
+          });
+          if (!match || !state.row) return { data: null, error: null };
+          Object.assign(match, state.row);
+          return { data: { upload_id: match.upload_id, claimed_by: match.claimed_by }, error: null };
+        }
+        if (state.op === "insert" && state.row) {
+          const id = String(state.row.upload_id);
+          if (rows.some((row) => row.upload_id === id)) {
+            return { data: null, error: { message: "duplicate key value violates unique constraint", code: "23505" } };
+          }
+          const created: JobRow = {
+            upload_id: id,
+            claimed_until: (state.row.claimed_until as string | null) ?? null,
+            claimed_by: (state.row.claimed_by as string | null) ?? null,
+            bytes_sent: Number(state.row.bytes_sent ?? 0),
+            updated_at: String(state.row.updated_at ?? ""),
+          };
+          rows.push(created);
+          return { data: { upload_id: created.upload_id, claimed_by: created.claimed_by }, error: null };
+        }
+        return { data: null, error: null };
+      },
+    };
+    return api;
+  };
+  return { from };
+}
+
+test("lease query builder is exclusive and force-acquire steals a leftover lease", async () => {
+  const now = new Date("2026-10-22T12:00:00Z");
+  const until = "2026-10-22T12:05:00Z";
+  const later = "2026-10-22T12:10:00Z";
+  const rows: JobRow[] = [];
+  const client = fakeLeaseClient(rows);
+
+  assert.equal((await acquireYoutubeLeaseWithClient(client, "u1", now, until, "owner-a")).ok, true);
+  assert.equal(rows[0]?.claimed_by, "owner-a");
+  assert.equal((await acquireYoutubeLeaseWithClient(client, "u1", now, later, "owner-b")).ok, false);
+  assert.equal(rows[0]?.claimed_by, "owner-a");
+  assert.equal((await acquireYoutubeLeaseWithClient(client, "u1", now, later, "owner-b", "force")).ok, true);
+  assert.equal(rows[0]?.claimed_by, "owner-b");
+  assert.equal(rows[0]?.claimed_until, later);
+
+  const stamp = now.toISOString();
+  const filter = youtubeLeaseAcquireOrFilter(stamp);
+  assert.equal(youtubeLeaseMatchesOrFilter(filter, null), true);
+  assert.equal(youtubeLeaseMatchesOrFilter(filter, "2026-10-22T11:59:00Z"), true);
+  assert.equal(youtubeLeaseMatchesOrFilter(filter, until), false);
 });

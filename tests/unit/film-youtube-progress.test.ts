@@ -102,6 +102,7 @@ test("Object not found maps to a re-upload message and keeps the raw error", () 
 
 test("worker verifies storage, restarts a dead session, and records events", () => {
   const worker = readFileSync(join(import.meta.dirname, "../../lib/film/youtube.ts"), "utf8");
+  const uploads = readFileSync(join(import.meta.dirname, "../../lib/film/uploads.ts"), "utf8");
   const resume = readFileSync(join(import.meta.dirname, "../../lib/film/youtube-resume.ts"), "utf8");
   const complete = readFileSync(join(import.meta.dirname, "../../app/film/complete/route.ts"), "utf8");
   const inbox = readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmInbox.tsx"), "utf8");
@@ -110,6 +111,14 @@ test("worker verifies storage, restarts a dead session, and records events", () 
   assert.match(worker, /requireFilmObject/);
   assert.match(worker, /runResumableUpload/);
   assert.match(worker, /releaseYoutubeClaim/);
+  assert.match(worker, /youtubeManualRetryBlocked/);
+  assert.match(worker, /planYoutubeContinuedHandoff/);
+  assert.match(worker, /initiate: async \(currentAccess\)/);
+  assert.doesNotMatch(worker, /FilmStorageError/);
+  assert.doesNotMatch(worker, /claimed_until:\s*null/);
+  assert.match(uploads, /acquireYoutubeLeaseWithClient/);
+  assert.match(uploads, /revertYoutubeQueuedClaim/);
+  assert.match(uploads, /"force"/);
   assert.match(worker, /noteYoutubeEvent/);
   assert.match(worker, /markStalledUploads/);
   assert.match(worker, /storage_not_ready/);

@@ -157,6 +157,7 @@ test("0159 adds YouTube resume backoff and lease columns", () => {
   assert.ok(sql.includes("add column if not exists claimed_until"));
   assert.ok(sql.includes("add column if not exists claimed_by"));
   assert.ok(sql.includes("add column if not exists transient_attempts"));
+  assert.ok(sql.includes("set local lock_timeout = '5s'"));
   assert.ok(sql.includes("OLB does NOT auto-run"));
   assert.ok(sql.includes("Apply BEFORE deploying"));
   assert.ok(!sql.includes("drop table"));

@@ -48,10 +48,11 @@ import {
   YOUTUBE_LEASE_MS,
   canClaimYoutubeJob,
   classifyYoutubeFailure,
+  planYoutubeContinuedHandoff,
   planYoutubeFailOrRequeue,
   runResumableUpload,
+  youtubeManualRetryBlocked,
   youtubeManualRetryPatch,
-  youtubeRetryDelayMs,
   YoutubeAuthError,
   YoutubeSessionGoneError,
 } from "./youtube-resume.ts";
@@ -88,6 +89,8 @@ export async function retryYoutubeUpload(uploadId: string): Promise<void> {
   if (!row) throw new Error("That upload isn't there any more.");
   if (row.youtube_status === "done") return;
   const job = await getYoutubeJob(uploadId);
+  const blocked = youtubeManualRetryBlocked(job, Date.now());
+  if (blocked) throw new Error(blocked);
   const patch = youtubeManualRetryPatch(job, row.size_bytes);
   await upsertYoutubeJob(uploadId, patch);
   await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
@@ -389,19 +392,24 @@ async function pushOne(
 
   const signed = await filmStorage().signedDownloadUrl(row.storage_path, 60 * 60);
   let startedNoted = Boolean(job.upload_uri && job.started_at);
+  let access = opts.access;
   const result = await runResumableUpload({
     uploadUri: job.upload_uri,
     bytesSent: job.bytes_sent,
     total,
-    access: opts.access,
+    access,
     signedUrl: signed,
     contentType: type,
     deadline: opts.deadline,
     chunkBytes: youtubeChunkBytes(),
-    refreshAccess: opts.refreshAccess,
-    initiate: async () => {
+    refreshAccess: async () => {
+      if (!opts.refreshAccess) throw new YoutubeAuthError("YouTube login expired. Connect the channel again in Settings → Film.");
+      access = await opts.refreshAccess();
+      return access;
+    },
+    initiate: async (currentAccess) => {
       const uri = await initiateUpload(row, {
-        access: opts.access,
+        access: currentAccess,
         privacy: opts.privacy,
         madeForKids: opts.madeForKids,
         total,
@@ -437,7 +445,7 @@ async function pushOne(
 
   if (result.outcome === "done") {
     if (!result.videoId) throw new Error("YouTube finished but didn't return a video id.");
-    return finishYoutubeUpload(row, result.videoId, opts.access, total);
+    return finishYoutubeUpload(row, result.videoId, access, total);
   }
   if (result.outcome === "auth") throw new YoutubeAuthError(result.message);
   if (result.outcome === "failed") {
@@ -447,14 +455,29 @@ async function pushOne(
     throw err;
   }
 
+  const fresh = (await getYoutubeJob(row.id)) ?? job;
+  const handoff = planYoutubeContinuedHandoff(fresh, result);
+  if (handoff.kind === "capped") {
+    await upsertYoutubeJob(row.id, handoff.plan.jobPatch);
+    if (handoff.plan.event) {
+      await noteYoutubeEvent(
+        row.id,
+        handoff.plan.event.kind,
+        handoff.plan.event.message,
+        handoff.plan.event.detail,
+        handoff.plan.event.bytesSent,
+        fresh.bytes_total ?? total
+      );
+    }
+    await setFilmYoutubeStatus(row.id, {
+      youtube_status: handoff.plan.youtubeStatus,
+      youtube_error: handoff.plan.youtubeError,
+    });
+    return handoff.plan.youtubeStatus === "failed" ? "failed" : "continued";
+  }
   await upsertYoutubeJob(row.id, {
-    upload_uri: result.uploadUri,
-    bytes_sent: result.bytesSent,
+    ...handoff.jobPatch,
     bytes_total: total,
-    next_attempt_at: result.transient
-      ? new Date(Date.now() + youtubeRetryDelayMs(0)).toISOString()
-      : null,
-    transient_attempts: result.transient ? (job.transient_attempts ?? 0) + 1 : job.transient_attempts ?? 0,
   });
   await setFilmYoutubeStatus(row.id, { youtube_status: "uploading", youtube_error: null });
   return "continued";

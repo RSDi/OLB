@@ -8,7 +8,9 @@ import { createAdminClient } from "../supabase/admin";
 import {
   YOUTUBE_EXTRAS_RECHECK_MS,
   YOUTUBE_STALE_MS,
+  acquireYoutubeLeaseWithClient,
   isMissingYoutubeJobExtraColumn,
+  type YoutubeLeaseClient,
 } from "./youtube-resume.ts";
 import {
   GAME_FILM_BUCKET,
@@ -549,48 +551,40 @@ async function tryAcquireYoutubeLease(
   id: string,
   now: Date,
   leaseUntil: string,
-  owner: string
+  owner: string,
+  mode: "if-expired" | "force" = "if-expired"
 ): Promise<boolean> {
   const extras = await probeYoutubeResumeColumns();
   if (!extras) return false;
-  const admin = createAdminClient();
-  const stamp = now.toISOString();
-  const { data, error } = await admin
-    .from("game_film_youtube_jobs")
-    .update({ claimed_until: leaseUntil, claimed_by: owner, updated_at: stamp })
-    .eq("upload_id", id)
-    .or(`claimed_until.is.null,claimed_until.lt."${stamp}"`)
-    .select("upload_id, claimed_by")
-    .maybeSingle();
-  if (error && isMissingYoutubeJobExtraColumn(error.message)) {
+  const result = await acquireYoutubeLeaseWithClient(
+    createAdminClient() as unknown as YoutubeLeaseClient,
+    id,
+    now,
+    leaseUntil,
+    owner,
+    mode
+  );
+  if (result.ok) return true;
+  if (result.error && isMissingYoutubeJobExtraColumn(result.error.message)) {
     disableYoutubeJobExtras();
     return false;
   }
-  if (error) throw new Error(error.message);
-  if (data?.claimed_by === owner) return true;
-
-  const { data: created, error: insertError } = await admin
-    .from("game_film_youtube_jobs")
-    .insert({
-      upload_id: id,
-      claimed_until: leaseUntil,
-      claimed_by: owner,
-      bytes_sent: 0,
-      updated_at: stamp,
-    })
-    .select("upload_id, claimed_by")
-    .maybeSingle();
-  if (insertError) {
-    if (isMissingYoutubeJobExtraColumn(insertError.message)) {
-      disableYoutubeJobExtras();
-      return false;
-    }
-    if (insertError.code === "23505" || /duplicate key/i.test(insertError.message)) {
-      return false;
-    }
-    throw new Error(insertError.message);
+  if (result.error && (result.error.code === "23505" || /duplicate key/i.test(result.error.message))) {
+    return false;
   }
-  return created?.claimed_by === owner;
+  if (result.error) throw new Error(result.error.message);
+  return false;
+}
+
+async function revertYoutubeQueuedClaim(id: string, claimedAt: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("game_film_uploads")
+    .update({ youtube_status: "queued", youtube_error: null, youtube_updated_at: claimedAt })
+    .eq("id", id)
+    .eq("youtube_status", "uploading")
+    .eq("youtube_updated_at", claimedAt);
+  if (error) throw new Error(error.message);
 }
 
 export async function releaseYoutubeClaim(id: string, owner: string): Promise<void> {
@@ -635,13 +629,14 @@ export async function claimYoutubeWork(
     .maybeSingle();
   if (queued) {
     if (extras) {
-      const leased = await tryAcquireYoutubeLease(
-        id,
-        now,
-        new Date(now.getTime() + leaseMs).toISOString(),
-        owner
-      );
-      if (!leased) return null;
+      const leaseUntil = new Date(now.getTime() + leaseMs).toISOString();
+      const leased =
+        (await tryAcquireYoutubeLease(id, now, leaseUntil, owner)) ||
+        (await tryAcquireYoutubeLease(id, now, leaseUntil, owner, "force"));
+      if (!leased) {
+        await revertYoutubeQueuedClaim(id, stamp);
+        return null;
+      }
     }
     return queued as FilmUpload;
   }

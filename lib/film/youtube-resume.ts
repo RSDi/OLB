@@ -278,6 +278,22 @@ export function classifyYoutubeFailure(err: unknown): YoutubeFailure {
   return { kind: "fatal", message, clearSession: false, consumeAttempt: true };
 }
 
+export const YOUTUBE_RETRY_LEASE_HELD =
+  "YouTube is still uploading this file. Try again in a few minutes.";
+
+export function youtubeLeaseIsHeld(claimedUntil: string | null | undefined, now: number): boolean {
+  if (!claimedUntil) return false;
+  const at = new Date(claimedUntil).getTime();
+  return Number.isFinite(at) && at > now;
+}
+
+export function youtubeManualRetryBlocked(
+  job: { claimed_until?: string | null } | null,
+  now: number
+): string | null {
+  return youtubeLeaseIsHeld(job?.claimed_until, now) ? YOUTUBE_RETRY_LEASE_HELD : null;
+}
+
 export function youtubeManualRetryPatch(job: {
   upload_uri: string | null;
   bytes_sent: number;
@@ -293,8 +309,6 @@ export function youtubeManualRetryPatch(job: {
   started_at: string | null;
   last_progress_at: string | null;
   next_attempt_at: null;
-  claimed_until: null;
-  claimed_by: null;
   transient_attempts: number;
 } {
   if (job?.upload_uri) {
@@ -306,8 +320,6 @@ export function youtubeManualRetryPatch(job: {
       started_at: job.started_at,
       last_progress_at: job.last_progress_at,
       next_attempt_at: null,
-      claimed_until: null,
-      claimed_by: null,
       transient_attempts: 0,
     };
   }
@@ -319,8 +331,6 @@ export function youtubeManualRetryPatch(job: {
     started_at: null,
     last_progress_at: null,
     next_attempt_at: null,
-    claimed_until: null,
-    claimed_by: null,
     transient_attempts: 0,
   };
 }
@@ -414,6 +424,136 @@ export function planYoutubeFailOrRequeue(
     youtubeError: message,
     event: { kind: "error", message: "Error", detail: message, bytesSent: clear ? 0 : bytes },
   };
+}
+
+export type YoutubeContinuedHandoff =
+  | {
+      kind: "continue";
+      jobPatch: {
+        upload_uri: string;
+        bytes_sent: number;
+        next_attempt_at: string | null;
+        transient_attempts: number;
+      };
+    }
+  | { kind: "capped"; plan: YoutubeRequeuePlan };
+
+export function planYoutubeContinuedHandoff(
+  job: {
+    upload_uri: string | null;
+    bytes_sent: number;
+    bytes_total?: number | null;
+    attempts?: number;
+    last_progress_at?: string | null;
+    transient_attempts?: number | null;
+  } | null,
+  result: Extract<RunUploadResult, { outcome: "continued" }>,
+  now = Date.now()
+): YoutubeContinuedHandoff {
+  if (!result.transient) {
+    return {
+      kind: "continue",
+      jobPatch: {
+        upload_uri: result.uploadUri,
+        bytes_sent: result.bytesSent,
+        next_attempt_at: null,
+        transient_attempts: job?.transient_attempts ?? 0,
+      },
+    };
+  }
+  const nextCount = (job?.transient_attempts ?? 0) + 1;
+  if (youtubeTransientCapReached({ transient_attempts: nextCount, last_progress_at: job?.last_progress_at }, now)) {
+    return {
+      kind: "capped",
+      plan: planYoutubeFailOrRequeue(
+        new YoutubeTransientError("YouTube kept returning a temporary error."),
+        job
+          ? {
+              upload_uri: result.uploadUri,
+              bytes_sent: result.bytesSent,
+              bytes_total: job.bytes_total ?? null,
+              attempts: job.attempts ?? 0,
+              last_progress_at: job.last_progress_at,
+              transient_attempts: job.transient_attempts,
+            }
+          : { upload_uri: result.uploadUri, bytes_sent: result.bytesSent, bytes_total: null, attempts: 0 },
+        now
+      ),
+    };
+  }
+  return {
+    kind: "continue",
+    jobPatch: {
+      upload_uri: result.uploadUri,
+      bytes_sent: result.bytesSent,
+      next_attempt_at: new Date(now + youtubeRetryDelayMs(0, () => 0.5)).toISOString(),
+      transient_attempts: nextCount,
+    },
+  };
+}
+
+export function youtubeLeaseAcquireOrFilter(stamp: string): string {
+  return `claimed_until.is.null,claimed_until.lt."${stamp}"`;
+}
+
+export function youtubeLeaseAcquireRow(leaseUntil: string, owner: string, stamp: string): {
+  claimed_until: string;
+  claimed_by: string;
+  updated_at: string;
+} {
+  return { claimed_until: leaseUntil, claimed_by: owner, updated_at: stamp };
+}
+
+export function youtubeLeaseMatchesOrFilter(
+  orExpr: string,
+  claimedUntil: string | null | undefined
+): boolean {
+  const allowNull = orExpr.includes("claimed_until.is.null");
+  if (!claimedUntil) return allowNull;
+  const lt = /claimed_until\.lt\."([^"]+)"/.exec(orExpr);
+  return Boolean(lt && claimedUntil < lt[1]);
+}
+
+export type YoutubeLeaseWrite = {
+  eq: (col: string, val: unknown) => YoutubeLeaseWrite;
+  or: (expr: string) => YoutubeLeaseWrite;
+  select: (cols: string) => YoutubeLeaseWrite;
+  maybeSingle: () => Promise<{
+    data: { upload_id?: string; claimed_by?: string | null } | null;
+    error: { message: string; code?: string } | null;
+  }>;
+};
+
+export type YoutubeLeaseClient = {
+  from: (table: string) => {
+    update: (row: Record<string, unknown>) => YoutubeLeaseWrite;
+    insert: (row: Record<string, unknown>) => YoutubeLeaseWrite;
+  };
+};
+
+export async function acquireYoutubeLeaseWithClient(
+  admin: YoutubeLeaseClient,
+  id: string,
+  now: Date,
+  leaseUntil: string,
+  owner: string,
+  mode: "if-expired" | "force" = "if-expired"
+): Promise<{ ok: boolean; error?: { message: string; code?: string } }> {
+  const stamp = now.toISOString();
+  const patch = youtubeLeaseAcquireRow(leaseUntil, owner, stamp);
+  let update = admin.from("game_film_youtube_jobs").update(patch).eq("upload_id", id);
+  if (mode === "if-expired") update = update.or(youtubeLeaseAcquireOrFilter(stamp));
+  const { data, error } = await update.select("upload_id, claimed_by").maybeSingle();
+  if (error) return { ok: false, error };
+  if (data?.claimed_by === owner) return { ok: true };
+
+  const inserted = await admin
+    .from("game_film_youtube_jobs")
+    .insert({ upload_id: id, ...patch, bytes_sent: 0 })
+    .select("upload_id, claimed_by")
+    .maybeSingle();
+  if (inserted.error) return { ok: false, error: inserted.error };
+  return { ok: inserted.data?.claimed_by === owner };
 }
 
 function abortSignalForDeadline(now: number, deadline: number): AbortSignal {
@@ -614,7 +754,7 @@ export async function runResumableUpload(input: {
   contentType: string;
   deadline: number;
   chunkBytes: number;
-  initiate: () => Promise<string>;
+  initiate: (access: string) => Promise<string>;
   refreshAccess?: () => Promise<string>;
   io?: Partial<YoutubeIo>;
   onRetry?: (message: string, detail: string | null, bytesSent: number) => Promise<void>;
@@ -690,7 +830,7 @@ export async function runResumableUpload(input: {
   }
 
   if (!uri) {
-    uri = await input.initiate();
+    uri = await input.initiate(access);
     sent = 0;
   }
 
@@ -755,7 +895,7 @@ export async function runResumableUpload(input: {
           break;
         }
         if (probed.kind === "expired") {
-          uri = await input.initiate();
+          uri = await input.initiate(access);
           sent = 0;
           recovered = true;
           break;
@@ -771,7 +911,7 @@ export async function runResumableUpload(input: {
         break;
       }
       if (put.kind === "session_gone") {
-        uri = await input.initiate();
+        uri = await input.initiate(access);
         sent = 0;
         recovered = true;
         break;
@@ -805,7 +945,7 @@ export async function runResumableUpload(input: {
         return { outcome: "done", videoId: resume.videoId, bytesSent: input.total, uploadUri: uri };
       }
       if (resume.kind === "expired") {
-        uri = await input.initiate();
+        uri = await input.initiate(access);
         sent = 0;
         recovered = true;
         break;
