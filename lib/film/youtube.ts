@@ -6,15 +6,16 @@
 // Data API lets us stream 64 MiB chunks (multiple of 256 KiB; override with
 // FILM_YOUTUBE_CHUNK_BYTES) and store the session URI + byte offset on
 // game_film_youtube_jobs. Each tick spends up to ~4 minutes, then the next
-// cron continues immediately — a claimed_until lease replaces the old 4-minute
-// idle gate. after() on complete waits until the TUS object is actually
-// readable (createSignedUrl "Object not found" is a missing/incomplete file,
-// not a YouTube error), then starts the first chunks so a short clip may land
+// cron continues immediately — a claimed_until + claimed_by lease replaces
+// the old 4-minute idle gate (kept as a fallback if 0159 is not applied).
+// after() on complete waits until the TUS object is actually readable
+// (createSignedUrl "Object not found" is a missing/incomplete file, not a
+// YouTube error), then starts the first chunks so a short clip may land
 // before the next minute. Transient 5xx/429/network errors keep the session
-// and resume from YouTube's Range; only 404/410, 401, and 403 clear it.
-// Same CRON_SECRET as the other jobs.
+// and resume from YouTube's Range; only 404/410 clear it. Same CRON_SECRET
+// as the other jobs.
 
-import { FilmStorageError, requireFilmObject } from "./object.ts"; // FilmStorageError: failOrRequeue classifies storage errors via classifyYoutubeFailure
+import { requireFilmObject } from "./object.ts";
 import { getFilmTeamById, getFilmTeamBySlug } from "./teams.ts";
 import { listGamePlayerNames } from "./lineups.ts";
 import { createFilmSlackDraftIfNeeded } from "./slack-drafts.ts";
@@ -28,6 +29,7 @@ import {
   listPlaylistWork,
   listYoutubeJobs,
   listYoutubeWork,
+  probeYoutubeResumeColumns,
   releaseYoutubeClaim,
   setFilmPlaylistStatus,
   setFilmYoutubeStatus,
@@ -35,7 +37,6 @@ import {
   upsertYoutubeJob,
 } from "./uploads.ts";
 import {
-  YOUTUBE_MAX_ATTEMPTS,
   youtubeChunkBytes,
   youtubeDescription,
   youtubeInitiateHeaders,
@@ -47,6 +48,7 @@ import {
   YOUTUBE_LEASE_MS,
   canClaimYoutubeJob,
   classifyYoutubeFailure,
+  planYoutubeFailOrRequeue,
   runResumableUpload,
   youtubeManualRetryPatch,
   youtubeRetryDelayMs,
@@ -57,7 +59,6 @@ import { insertYoutubePlaylistItem } from "./youtube-playlist.ts";
 import {
   crossedMilestones,
   isYoutubeStalled,
-  youtubeEventTitle,
 } from "./youtube-progress.ts";
 import { getYoutubeConnectionSecret } from "./youtube-settings.ts";
 import { syncYoutubeVideoStatus } from "./youtube-status.ts";
@@ -129,26 +130,36 @@ export async function processYoutubeQueue(opts?: {
     result.skipped = err instanceof Error ? err.message : "Couldn't read the YouTube connection.";
     return result;
   }
-  if (!secret.refreshToken) {
+  const refreshToken = secret.refreshToken;
+  if (!refreshToken) {
     result.skipped = "YouTube isn't connected.";
     return result;
   }
 
   let access: string;
   try {
-    access = await refreshYoutubeAccess(secret.refreshToken);
+    access = await refreshYoutubeAccess(refreshToken);
   } catch (err) {
     result.skipped = err instanceof Error ? err.message : "Couldn't refresh YouTube.";
     return result;
+  }
+
+  const extras = await probeYoutubeResumeColumns();
+  if (!extras) {
+    console.error(
+      "[film-youtube] migration 0159 is not applied (next_attempt_at / claimed_until / claimed_by / transient_attempts missing). Using the 4-minute stale gate. Apply supabase/migrations/0159_game_film_youtube_resume.sql before deploy."
+    );
   }
 
   const rows = await listYoutubeWork(opts?.uploadId);
   await markStalledUploads(rows, started);
   const jobs = await listYoutubeJobs(rows.map((row) => row.id));
   const jobById = new Map(jobs.map((job) => [job.upload_id, job]));
-  const candidate = rows.find((row) => canClaim(row, started, jobById.get(row.id))) ?? null;
+  const candidate =
+    rows.find((row) => canClaim(row, started, jobById.get(row.id), extras)) ?? null;
   if (candidate) {
-    const pick = await claimYoutubeWork(candidate.id, new Date(started), YOUTUBE_LEASE_MS);
+    const owner = crypto.randomUUID();
+    const pick = await claimYoutubeWork(candidate.id, new Date(started), YOUTUBE_LEASE_MS, owner);
     if (pick) {
       result.processed = 1;
       try {
@@ -157,6 +168,7 @@ export async function processYoutubeQueue(opts?: {
           privacy: secret.privacyStatus,
           madeForKids: secret.madeForKids,
           deadline: started + budgetMs,
+          refreshAccess: () => refreshYoutubeAccess(refreshToken),
         });
         if (outcome === "done") result.done = 1;
         else if (outcome === "failed") result.failed = 1;
@@ -170,7 +182,7 @@ export async function processYoutubeQueue(opts?: {
           result.failed = 1;
         }
       } finally {
-        await releaseYoutubeClaim(pick.id);
+        await releaseYoutubeClaim(pick.id, owner);
       }
     }
   }
@@ -251,12 +263,15 @@ async function syncLiveStatusQuietly(access: string, videoId: string): Promise<v
 function canClaim(
   row: FilmUpload,
   now: number,
-  job?: { claimed_until?: string | null; next_attempt_at?: string | null } | null
+  job?: { claimed_until?: string | null; next_attempt_at?: string | null } | null,
+  extrasAvailable = true
 ): boolean {
   return canClaimYoutubeJob({
     youtubeStatus: row.youtube_status,
     claimedUntil: job?.claimed_until,
     nextAttemptAt: job?.next_attempt_at,
+    youtubeUpdatedAt: row.youtube_updated_at,
+    extrasAvailable,
     now,
   });
 }
@@ -307,54 +322,23 @@ async function markStalledUploads(rows: FilmUpload[], now: number): Promise<void
 }
 
 async function failOrRequeue(id: string, err: unknown): Promise<void> {
-  const classified = classifyYoutubeFailure(err);
-  const message = classified.message;
-  if (classified.kind === "storage_not_ready") {
-    await setFilmYoutubeStatus(id, { youtube_status: "queued", youtube_error: message });
-    return;
-  }
-  if (classified.kind === "storage_fatal") {
-    await setFilmYoutubeStatus(id, { youtube_status: "failed", youtube_error: message });
-    await noteYoutubeEvent(id, "error", youtubeEventTitle("error"), message);
-    return;
-  }
   const job = await getYoutubeJob(id);
-  if (classified.kind === "transient") {
-    const delay = youtubeRetryDelayMs(0);
-    await upsertYoutubeJob(id, {
-      next_attempt_at: new Date(Date.now() + delay).toISOString(),
-    });
+  const plan = planYoutubeFailOrRequeue(err, job);
+  await upsertYoutubeJob(id, plan.jobPatch);
+  if (plan.event) {
     await noteYoutubeEvent(
       id,
-      "retry",
-      "Retrying after a temporary YouTube error",
-      message,
-      job?.bytes_sent ?? 0,
+      plan.event.kind,
+      plan.event.message,
+      plan.event.detail,
+      plan.event.bytesSent,
       job?.bytes_total ?? null
     );
-    await setFilmYoutubeStatus(id, { youtube_status: "uploading", youtube_error: null });
-    return;
   }
-  const attempts = classified.consumeAttempt ? (job?.attempts ?? 0) + 1 : (job?.attempts ?? 0);
-  await upsertYoutubeJob(id, {
-    attempts,
-    upload_uri: classified.clearSession ? null : job?.upload_uri ?? null,
-    bytes_sent: classified.clearSession ? 0 : job?.bytes_sent ?? 0,
-    next_attempt_at: null,
+  await setFilmYoutubeStatus(id, {
+    youtube_status: plan.youtubeStatus,
+    youtube_error: plan.youtubeError,
   });
-  await noteYoutubeEvent(
-    id,
-    "error",
-    youtubeEventTitle("error"),
-    message,
-    classified.clearSession ? 0 : job?.bytes_sent ?? 0,
-    job?.bytes_total ?? null
-  );
-  if (attempts >= YOUTUBE_MAX_ATTEMPTS) {
-    await setFilmYoutubeStatus(id, { youtube_status: "failed", youtube_error: message });
-  } else {
-    await setFilmYoutubeStatus(id, { youtube_status: "queued", youtube_error: message });
-  }
 }
 
 async function finishYoutubeUpload(
@@ -385,7 +369,13 @@ async function recordProgress(uploadId: string, prevSent: number, nextSent: numb
 
 async function pushOne(
   row: FilmUpload,
-  opts: { access: string; privacy: "unlisted" | "private" | "public"; madeForKids: boolean; deadline: number }
+  opts: {
+    access: string;
+    privacy: "unlisted" | "private" | "public";
+    madeForKids: boolean;
+    deadline: number;
+    refreshAccess?: () => Promise<string>;
+  }
 ): Promise<"done" | "continued" | "failed"> {
   const total = await requireFilmObject(row);
   const type = row.content_type || "video/mp4";
@@ -408,6 +398,7 @@ async function pushOne(
     contentType: type,
     deadline: opts.deadline,
     chunkBytes: youtubeChunkBytes(),
+    refreshAccess: opts.refreshAccess,
     initiate: async () => {
       const uri = await initiateUpload(row, {
         access: opts.access,
@@ -434,7 +425,12 @@ async function pushOne(
       await noteYoutubeEvent(row.id, "retry", message, detail, bytesSent, total);
     },
     onProgress: async (prevSent, nextSent) => {
-      await upsertYoutubeJob(row.id, { bytes_sent: nextSent, bytes_total: total, next_attempt_at: null });
+      await upsertYoutubeJob(row.id, {
+        bytes_sent: nextSent,
+        bytes_total: total,
+        next_attempt_at: null,
+        transient_attempts: 0,
+      });
       await recordProgress(row.id, prevSent, nextSent, total);
     },
   });
@@ -458,6 +454,7 @@ async function pushOne(
     next_attempt_at: result.transient
       ? new Date(Date.now() + youtubeRetryDelayMs(0)).toISOString()
       : null,
+    transient_attempts: result.transient ? (job.transient_attempts ?? 0) + 1 : job.transient_attempts ?? 0,
   });
   await setFilmYoutubeStatus(row.id, { youtube_status: "uploading", youtube_error: null });
   return "continued";

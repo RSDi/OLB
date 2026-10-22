@@ -9,7 +9,9 @@ begin;
 
 alter table public.game_film_youtube_jobs
   drop column if exists next_attempt_at,
-  drop column if exists claimed_until;
+  drop column if exists claimed_until,
+  drop column if exists claimed_by,
+  drop column if exists transient_attempts;
 
 commit;
 

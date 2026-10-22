@@ -1,12 +1,14 @@
 // Resumable YouTube Data API helpers for game film.
 //
 // Transient 5xx / 429 / network errors keep the session URI and byte
-// offset. Only 404/410 on the session, 401, and 403 clear it. Before
+// offset. Only 404/410 on the session clear it. 401 refreshes the
+// access token and retries; 403 keeps the session and fails. Before
 // every resume we ask YouTube `Content-Range: bytes */total` and trust
-// the Range header. In-tick retries use 1, 2, 4, … 64s with jitter;
+// the Range header. A 308 with no Range is 0 bytes (or we probe), never
+// a skipped chunk. In-tick retries use 1, 2, 4, … 64s with jitter;
 // if the tick budget is too tight we hand off instead of failing.
 
-import { nextChunkRange, parseResumeRange, youtubeChunkHeaders } from "./youtube-meta.ts";
+import { YOUTUBE_MAX_ATTEMPTS, nextChunkRange, parseResumeRange, youtubeChunkHeaders } from "./youtube-meta.ts";
 
 function isFilmStorageError(err: unknown): err is Error & { code: "missing" | "not_ready" | "incomplete" } {
   return err instanceof Error && err.name === "FilmStorageError" && "code" in err;
@@ -14,8 +16,13 @@ function isFilmStorageError(err: unknown): err is Error & { code: "missing" | "n
 
 export const YOUTUBE_IN_TICK_TRIES = 6;
 export const YOUTUBE_RETRY_RESERVE_MS = 8_000;
+export const YOUTUBE_CHUNK_RESERVE_MS = 5_000;
 export const YOUTUBE_LEASE_MS = 5 * 60 * 1000;
+export const YOUTUBE_STALE_MS = 4 * 60 * 1000;
 export const YOUTUBE_MAX_RETRY_DELAY_MS = 64_000;
+export const YOUTUBE_MAX_TRANSIENT_ATTEMPTS = 20;
+export const YOUTUBE_TRANSIENT_STALL_MS = 2 * 60 * 60 * 1000;
+export const YOUTUBE_EXTRAS_RECHECK_MS = 60_000;
 
 export type YoutubeIo = {
   fetch: typeof fetch;
@@ -28,6 +35,7 @@ export type ResumeQueryResult =
   | { kind: "complete"; sent: number; videoId?: string }
   | { kind: "offset"; sent: number }
   | { kind: "expired" }
+  | { kind: "auth"; status: number }
   | { kind: "unknown" };
 
 export type YoutubeFailureKind =
@@ -100,7 +108,14 @@ export function canRetryInTick(
 
 export function isMissingYoutubeJobExtraColumn(message: string): boolean {
   const m = message.toLowerCase();
-  if (!m.includes("next_attempt_at") && !m.includes("claimed_until")) return false;
+  if (
+    !m.includes("next_attempt_at") &&
+    !m.includes("claimed_until") &&
+    !m.includes("claimed_by") &&
+    !m.includes("transient_attempts")
+  ) {
+    return false;
+  }
   return (
     m.includes("does not exist") ||
     m.includes("could not find") ||
@@ -121,16 +136,69 @@ export function youtubeNextAttemptReady(nextAttemptAt: string | null | undefined
   return !Number.isFinite(at) || at <= now;
 }
 
+export function canReclaimUploadingWithoutLease(
+  youtubeUpdatedAt: string | null | undefined,
+  now: number,
+  staleMs = YOUTUBE_STALE_MS
+): boolean {
+  if (!youtubeUpdatedAt) return true;
+  const at = new Date(youtubeUpdatedAt).getTime();
+  return !Number.isFinite(at) || now - at > staleMs;
+}
+
 export function canClaimYoutubeJob(input: {
   youtubeStatus: string | null;
   claimedUntil?: string | null;
   nextAttemptAt?: string | null;
+  youtubeUpdatedAt?: string | null;
+  extrasAvailable?: boolean;
   now: number;
 }): boolean {
   if (!youtubeNextAttemptReady(input.nextAttemptAt, input.now)) return false;
   if (input.youtubeStatus === "queued") return true;
   if (input.youtubeStatus !== "uploading") return false;
+  if (input.extrasAvailable === false) {
+    return canReclaimUploadingWithoutLease(input.youtubeUpdatedAt, input.now);
+  }
   return youtubeLeaseExpired(input.claimedUntil, input.now);
+}
+
+export type YoutubeLeaseRow = {
+  uploadId: string;
+  claimedUntil: string | null;
+  claimedBy: string | null;
+};
+
+export function applyYoutubeLeaseAcquire(
+  rows: Map<string, YoutubeLeaseRow>,
+  id: string,
+  now: number,
+  leaseUntil: string,
+  owner: string
+): boolean {
+  const row = rows.get(id);
+  if (row && !youtubeLeaseExpired(row.claimedUntil, now)) return false;
+  rows.set(id, { uploadId: id, claimedUntil: leaseUntil, claimedBy: owner });
+  return true;
+}
+
+export function applyYoutubeLeaseRelease(rows: Map<string, YoutubeLeaseRow>, id: string, owner: string): boolean {
+  const row = rows.get(id);
+  if (!row || row.claimedBy !== owner) return false;
+  rows.set(id, { ...row, claimedUntil: null, claimedBy: null });
+  return true;
+}
+
+export function youtubeTransientCapReached(
+  job: { transient_attempts?: number | null; last_progress_at?: string | null } | null,
+  now: number
+): boolean {
+  const count = job?.transient_attempts ?? 0;
+  if (count >= YOUTUBE_MAX_TRANSIENT_ATTEMPTS) return true;
+  const last = job?.last_progress_at;
+  if (!last || count <= 0) return false;
+  const at = new Date(last).getTime();
+  return Number.isFinite(at) && now - at >= YOUTUBE_TRANSIENT_STALL_MS;
 }
 
 export function classifyYoutubeHttpStatus(status: number): YoutubeFailureKind {
@@ -140,16 +208,22 @@ export function classifyYoutubeHttpStatus(status: number): YoutubeFailureKind {
   return "fatal";
 }
 
+const NETWORK_ERROR_RE = /fetch failed|network|econnreset|etimedout|enotfound|socket|other side closed|und_err|aborted|timeout/;
+
 export function isTransientNetworkError(err: unknown): boolean {
   if (err instanceof YoutubeTransientError) return true;
   if (isFilmStorageError(err)) return false;
   if (!(err instanceof Error)) return false;
+  if (err.name === "AbortError") return true;
   const message = err.message.toLowerCase();
-  return (
-    err.name === "TypeError" ||
-    err.name === "AbortError" ||
-    /fetch failed|network|econnreset|etimedout|enotfound|socket|other side closed|und_err/.test(message)
-  );
+  const cause = "cause" in err && err.cause instanceof Error ? err.cause : null;
+  const causeMsg = cause?.message.toLowerCase() ?? "";
+  const causeCode =
+    cause && "code" in cause ? String((cause as { code?: string }).code ?? "").toLowerCase() : "";
+  if (err.name === "TypeError") {
+    return NETWORK_ERROR_RE.test(`${message} ${causeMsg} ${causeCode}`);
+  }
+  return NETWORK_ERROR_RE.test(`${message} ${causeMsg} ${causeCode}`);
 }
 
 export function interpretResumeResponse(
@@ -162,9 +236,8 @@ export function interpretResumeResponse(
     return { kind: "complete", sent: total, videoId };
   }
   if (status === 308) return { kind: "offset", sent: parseResumeRange(rangeHeader) };
-  if (status === 404 || status === 410 || status === 401 || status === 403) {
-    return { kind: "expired" };
-  }
+  if (status === 404 || status === 410) return { kind: "expired" };
+  if (status === 401 || status === 403) return { kind: "auth", status };
   return { kind: "unknown" };
 }
 
@@ -179,7 +252,7 @@ export function classifyYoutubeFailure(err: unknown): YoutubeFailure {
     return { kind: "session_gone", message: err.message, clearSession: true, consumeAttempt: true };
   }
   if (err instanceof YoutubeAuthError) {
-    return { kind: "auth", message: err.message, clearSession: true, consumeAttempt: true };
+    return { kind: "auth", message: err.message, clearSession: false, consumeAttempt: true };
   }
   if (err instanceof YoutubeTransientError || isTransientNetworkError(err)) {
     const message = err instanceof Error ? err.message : "YouTube upload failed.";
@@ -191,13 +264,16 @@ export function classifyYoutubeFailure(err: unknown): YoutubeFailure {
     return { kind: "session_gone", message, clearSession: true, consumeAttempt: true };
   }
   if (/login expired|connect the channel again|\byoutube 401\b/.test(lower)) {
-    return { kind: "auth", message, clearSession: true, consumeAttempt: true };
+    return { kind: "auth", message, clearSession: false, consumeAttempt: true };
   }
   if (/\byoutube 403\b|youtube refused/.test(lower)) {
-    return { kind: "auth", message, clearSession: true, consumeAttempt: true };
+    return { kind: "auth", message, clearSession: false, consumeAttempt: true };
   }
   if (/\byoutube (429|5\d\d)\b|couldn't read film bytes \((429|5\d\d)\)/.test(lower)) {
     return { kind: "transient", message, clearSession: false, consumeAttempt: false };
+  }
+  if (/didn't return a video id/.test(lower)) {
+    return { kind: "fatal", message, clearSession: false, consumeAttempt: false };
   }
   return { kind: "fatal", message, clearSession: false, consumeAttempt: true };
 }
@@ -218,6 +294,8 @@ export function youtubeManualRetryPatch(job: {
   last_progress_at: string | null;
   next_attempt_at: null;
   claimed_until: null;
+  claimed_by: null;
+  transient_attempts: number;
 } {
   if (job?.upload_uri) {
     return {
@@ -229,6 +307,8 @@ export function youtubeManualRetryPatch(job: {
       last_progress_at: job.last_progress_at,
       next_attempt_at: null,
       claimed_until: null,
+      claimed_by: null,
+      transient_attempts: 0,
     };
   }
   return {
@@ -240,7 +320,110 @@ export function youtubeManualRetryPatch(job: {
     last_progress_at: null,
     next_attempt_at: null,
     claimed_until: null,
+    claimed_by: null,
+    transient_attempts: 0,
   };
+}
+
+export type YoutubeRequeuePlan = {
+  jobPatch: {
+    upload_uri: string | null;
+    bytes_sent: number;
+    attempts?: number;
+    next_attempt_at: string | null;
+    transient_attempts?: number;
+  };
+  youtubeStatus: "queued" | "uploading" | "failed";
+  youtubeError: string | null;
+  event: { kind: "retry" | "error"; message: string; detail: string | null; bytesSent: number } | null;
+};
+
+export function planYoutubeFailOrRequeue(
+  err: unknown,
+  job: {
+    upload_uri: string | null;
+    bytes_sent: number;
+    bytes_total: number | null;
+    attempts: number;
+    last_progress_at?: string | null;
+    transient_attempts?: number | null;
+  } | null,
+  now = Date.now()
+): YoutubeRequeuePlan {
+  const classified = classifyYoutubeFailure(err);
+  const message = classified.message;
+  const bytes = job?.bytes_sent ?? 0;
+  const uri = job?.upload_uri ?? null;
+  if (classified.kind === "storage_not_ready") {
+    return {
+      jobPatch: { upload_uri: uri, bytes_sent: bytes, next_attempt_at: null },
+      youtubeStatus: "queued",
+      youtubeError: message,
+      event: null,
+    };
+  }
+  if (classified.kind === "storage_fatal") {
+    return {
+      jobPatch: { upload_uri: uri, bytes_sent: bytes, next_attempt_at: null },
+      youtubeStatus: "failed",
+      youtubeError: message,
+      event: { kind: "error", message: "Error", detail: message, bytesSent: bytes },
+    };
+  }
+  if (classified.kind === "transient") {
+    const nextCount = (job?.transient_attempts ?? 0) + 1;
+    const capped = youtubeTransientCapReached({ transient_attempts: nextCount, last_progress_at: job?.last_progress_at }, now);
+    if (capped) {
+      const attempts = (job?.attempts ?? 0) + 1;
+      return {
+        jobPatch: {
+          upload_uri: uri,
+          bytes_sent: bytes,
+          attempts,
+          next_attempt_at: null,
+          transient_attempts: nextCount,
+        },
+        youtubeStatus: attempts >= YOUTUBE_MAX_ATTEMPTS ? "failed" : "queued",
+        youtubeError: message,
+        event: { kind: "error", message: "Error", detail: message, bytesSent: bytes },
+      };
+    }
+    return {
+      jobPatch: {
+        upload_uri: uri,
+        bytes_sent: bytes,
+        next_attempt_at: new Date(now + youtubeRetryDelayMs(0, () => 0.5)).toISOString(),
+        transient_attempts: nextCount,
+      },
+      youtubeStatus: "uploading",
+      youtubeError: null,
+      event: { kind: "retry", message: "Retrying after a temporary YouTube error", detail: message, bytesSent: bytes },
+    };
+  }
+  const attempts = classified.consumeAttempt ? (job?.attempts ?? 0) + 1 : (job?.attempts ?? 0);
+  const clear = classified.clearSession;
+  const failNow = !classified.consumeAttempt || attempts >= YOUTUBE_MAX_ATTEMPTS;
+  return {
+    jobPatch: {
+      upload_uri: clear ? null : uri,
+      bytes_sent: clear ? 0 : bytes,
+      attempts,
+      next_attempt_at: null,
+    },
+    youtubeStatus: failNow ? "failed" : "queued",
+    youtubeError: message,
+    event: { kind: "error", message: "Error", detail: message, bytesSent: clear ? 0 : bytes },
+  };
+}
+
+function abortSignalForDeadline(now: number, deadline: number): AbortSignal {
+  const remaining = deadline - now;
+  if (remaining <= 0) {
+    const controller = new AbortController();
+    controller.abort();
+    return controller.signal;
+  }
+  return AbortSignal.timeout(remaining);
 }
 
 function headerGet(headers: HeadersInit | undefined, name: string): string | null {
@@ -264,7 +447,8 @@ export async function queryResumeOffset(
   uploadUri: string,
   access: string,
   total: number,
-  io: YoutubeIo = defaultYoutubeIo()
+  io: YoutubeIo = defaultYoutubeIo(),
+  deadline?: number
 ): Promise<ResumeQueryResult> {
   try {
     const res = await io.fetch(uploadUri, {
@@ -274,6 +458,7 @@ export async function queryResumeOffset(
         "Content-Length": "0",
         "Content-Range": `bytes */${total}`,
       },
+      ...(deadline != null ? { signal: abortSignalForDeadline(io.now(), deadline) } : {}),
     });
     if (res.status === 200 || res.status === 201) {
       const json = (await res.json().catch(() => ({}))) as { id?: string };
@@ -281,7 +466,7 @@ export async function queryResumeOffset(
     }
     return interpretResumeResponse(res.status, res.headers.get("range"), undefined, total);
   } catch (err) {
-    if (isTransientNetworkError(err) || err instanceof TypeError) return { kind: "unknown" };
+    if (isTransientNetworkError(err)) return { kind: "unknown" };
     throw err;
   }
 }
@@ -299,7 +484,7 @@ export async function queryResumeOffsetWithRetry(
   const io = { ...defaultYoutubeIo(), ...opts.io };
   let last: ResumeQueryResult = { kind: "unknown" };
   for (let attempt = 0; attempt < YOUTUBE_IN_TICK_TRIES; attempt++) {
-    last = await queryResumeOffset(uploadUri, access, total, io);
+    last = await queryResumeOffset(uploadUri, access, total, io, opts.deadline);
     if (last.kind !== "unknown") return last;
     if (attempt >= YOUTUBE_IN_TICK_TRIES - 1) break;
     const delay = youtubeRetryDelayMs(attempt, io.random);
@@ -315,19 +500,24 @@ export async function queryResumeOffsetWithRetry(
 type PutChunkResult =
   | { kind: "complete"; videoId: string }
   | { kind: "continue"; sent: number }
+  | { kind: "need_probe" }
   | { kind: "session_gone" }
-  | { kind: "auth"; message: string }
+  | { kind: "auth"; message: string; status: number }
   | { kind: "transient"; message: string; status?: number }
   | { kind: "failed"; message: string };
 
 async function readStorageChunk(
   signedUrl: string,
   range: { start: number; end: number },
-  io: YoutubeIo
+  io: YoutubeIo,
+  deadline: number
 ): Promise<Response> {
   let chunk: Response;
   try {
-    chunk = await io.fetch(signedUrl, { headers: { Range: `bytes=${range.start}-${range.end}` } });
+    chunk = await io.fetch(signedUrl, {
+      headers: { Range: `bytes=${range.start}-${range.end}` },
+      signal: abortSignalForDeadline(io.now(), deadline),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Couldn't read film bytes.";
     throw new YoutubeTransientError(message);
@@ -341,6 +531,13 @@ async function readStorageChunk(
     }
     throw new YoutubeTransientError(`Couldn't read film bytes (${chunk.status}).`, chunk.status);
   }
+  const expected = range.end - range.start + 1;
+  if (chunk.status === 200) {
+    const len = Number(chunk.headers.get("content-length"));
+    if (Number.isFinite(len) && len !== expected) {
+      throw new YoutubeTransientError("Storage ignored the byte range.");
+    }
+  }
   if (!chunk.body) throw new YoutubeTransientError("Storage returned no body.");
   return chunk;
 }
@@ -352,9 +549,13 @@ async function putResumableChunk(input: {
   range: { start: number; end: number };
   total: number;
   contentType: string;
+  deadline: number;
   io: YoutubeIo;
 }): Promise<PutChunkResult> {
-  const chunk = await readStorageChunk(input.signedUrl, input.range, input.io);
+  if (input.io.now() >= input.deadline) {
+    return { kind: "transient", message: "Tick budget elapsed before the next chunk." };
+  }
+  const chunk = await readStorageChunk(input.signedUrl, input.range, input.io, input.deadline);
   let put: Response;
   try {
     put = await input.io.fetch(input.uploadUri, {
@@ -368,6 +569,7 @@ async function putResumableChunk(input: {
       ),
       body: chunk.body,
       duplex: "half",
+      signal: abortSignalForDeadline(input.io.now(), input.deadline),
     } as RequestInit);
   } catch (err) {
     if (isFilmStorageError(err)) throw err;
@@ -380,14 +582,15 @@ async function putResumableChunk(input: {
     return { kind: "complete", videoId: json.id };
   }
   if (put.status === 308) {
-    const sent = parseResumeRange(put.headers.get("range")) || input.range.end + 1;
-    return { kind: "continue", sent };
+    const rangeHeader = put.headers.get("range");
+    if (!rangeHeader) return { kind: "need_probe" };
+    return { kind: "continue", sent: parseResumeRange(rangeHeader) };
   }
   const kind = classifyYoutubeHttpStatus(put.status);
   const errText = await put.text().catch(() => "");
   const message = youtubeStatusMessage(put.status, errText);
   if (kind === "session_gone") return { kind: "session_gone" };
-  if (kind === "auth") return { kind: "auth", message };
+  if (kind === "auth") return { kind: "auth", message, status: put.status };
   if (kind === "transient") return { kind: "transient", message, status: put.status };
   return { kind: "failed", message };
 }
@@ -412,6 +615,7 @@ export async function runResumableUpload(input: {
   deadline: number;
   chunkBytes: number;
   initiate: () => Promise<string>;
+  refreshAccess?: () => Promise<string>;
   io?: Partial<YoutubeIo>;
   onRetry?: (message: string, detail: string | null, bytesSent: number) => Promise<void>;
   onProgress?: (prevSent: number, nextSent: number) => Promise<void>;
@@ -419,25 +623,64 @@ export async function runResumableUpload(input: {
   const io = { ...defaultYoutubeIo(), ...input.io };
   let uri = input.uploadUri;
   let sent = input.bytesSent;
+  let access = input.access;
   let transientHandoff = false;
+  let refreshed = false;
 
   const retryEvent = async (message: string, detail: string | null) => {
     if (input.onRetry) await input.onRetry(message, detail, sent);
   };
 
+  const tryRefresh = async (): Promise<boolean> => {
+    if (refreshed || !input.refreshAccess) return false;
+    refreshed = true;
+    access = await input.refreshAccess();
+    return true;
+  };
+
   if (uri) {
-    const resume = await queryResumeOffsetWithRetry(uri, input.access, input.total, {
+    const resume = await queryResumeOffsetWithRetry(uri, access, input.total, {
       deadline: input.deadline,
       io,
       onRetry: async (message, detail) => retryEvent(message, detail),
     });
     if (resume.kind === "complete") {
-      return { outcome: "done", videoId: resume.videoId ?? "", bytesSent: input.total, uploadUri: uri };
+      if (!resume.videoId) {
+        return {
+          outcome: "failed",
+          message: "YouTube finished but didn't return a video id.",
+          clearSession: false,
+          consumeAttempt: false,
+        };
+      }
+      return { outcome: "done", videoId: resume.videoId, bytesSent: input.total, uploadUri: uri };
     }
     if (resume.kind === "handoff") {
       return { outcome: "continued", bytesSent: sent, uploadUri: uri, transient: true };
     }
-    if (resume.kind === "expired") {
+    if (resume.kind === "auth") {
+      if (resume.status === 401 && (await tryRefresh())) {
+        const again = await queryResumeOffsetWithRetry(uri, access, input.total, {
+          deadline: input.deadline,
+          io,
+          onRetry: async (message, detail) => retryEvent(message, detail),
+        });
+        if (again.kind === "complete" && again.videoId) {
+          return { outcome: "done", videoId: again.videoId, bytesSent: input.total, uploadUri: uri };
+        }
+        if (again.kind === "offset") {
+          if (input.onProgress && again.sent !== sent) await input.onProgress(sent, again.sent);
+          sent = again.sent;
+        } else if (again.kind === "expired") {
+          uri = null;
+          sent = 0;
+        } else if (again.kind === "auth" || again.kind === "handoff" || again.kind === "unknown") {
+          return { outcome: "auth", message: youtubeStatusMessage(resume.status, "") };
+        }
+      } else {
+        return { outcome: "auth", message: youtubeStatusMessage(resume.status, "") };
+      }
+    } else if (resume.kind === "expired") {
       uri = null;
       sent = 0;
     } else if (resume.kind === "offset") {
@@ -451,7 +694,7 @@ export async function runResumableUpload(input: {
     sent = 0;
   }
 
-  while (io.now() < input.deadline) {
+  while (io.now() + YOUTUBE_CHUNK_RESERVE_MS < input.deadline) {
     const range = nextChunkRange(sent, input.total, input.chunkBytes);
     if (!range) break;
 
@@ -462,11 +705,12 @@ export async function runResumableUpload(input: {
       try {
         put = await putResumableChunk({
           uploadUri: uri,
-          access: input.access,
+          access,
           signedUrl: input.signedUrl,
           range,
           total: input.total,
           contentType: input.contentType,
+          deadline: input.deadline,
           io,
         });
       } catch (err) {
@@ -487,31 +731,87 @@ export async function runResumableUpload(input: {
         recovered = true;
         break;
       }
+      if (put.kind === "need_probe") {
+        const probed = await queryResumeOffsetWithRetry(uri, access, input.total, {
+          deadline: input.deadline,
+          io,
+          onRetry: async (message, detail) => retryEvent(message, detail),
+        });
+        if (probed.kind === "complete") {
+          if (!probed.videoId) {
+            return {
+              outcome: "failed",
+              message: "YouTube finished but didn't return a video id.",
+              clearSession: false,
+              consumeAttempt: false,
+            };
+          }
+          return { outcome: "done", videoId: probed.videoId, bytesSent: input.total, uploadUri: uri };
+        }
+        if (probed.kind === "offset") {
+          if (input.onProgress && probed.sent !== sent) await input.onProgress(sent, probed.sent);
+          sent = probed.sent;
+          recovered = true;
+          break;
+        }
+        if (probed.kind === "expired") {
+          uri = await input.initiate();
+          sent = 0;
+          recovered = true;
+          break;
+        }
+        if (probed.kind === "auth") {
+          return { outcome: "auth", message: youtubeStatusMessage(probed.status, "") };
+        }
+        if (probed.kind === "handoff") {
+          return { outcome: "continued", bytesSent: sent, uploadUri: uri, transient: true };
+        }
+        sent = 0;
+        recovered = true;
+        break;
+      }
       if (put.kind === "session_gone") {
         uri = await input.initiate();
         sent = 0;
         recovered = true;
         break;
       }
-      if (put.kind === "auth") return { outcome: "auth", message: put.message };
+      if (put.kind === "auth") {
+        if (put.status === 401 && (await tryRefresh())) {
+          await retryEvent("Retrying after YouTube 401", put.message);
+          continue;
+        }
+        return { outcome: "auth", message: put.message };
+      }
       if (put.kind === "failed") {
-        return { outcome: "failed", message: put.message, clearSession: false, consumeAttempt: true };
+        return { outcome: "failed", message: put.message, clearSession: false, consumeAttempt: put.message.includes("didn't return a video id") ? false : true };
       }
 
       lastTransient = put.message;
-      const resume = await queryResumeOffsetWithRetry(uri, input.access, input.total, {
+      const resume = await queryResumeOffsetWithRetry(uri, access, input.total, {
         deadline: input.deadline,
         io,
         onRetry: async (message, detail) => retryEvent(message, detail),
       });
       if (resume.kind === "complete") {
-        return { outcome: "done", videoId: resume.videoId ?? "", bytesSent: input.total, uploadUri: uri };
+        if (!resume.videoId) {
+          return {
+            outcome: "failed",
+            message: "YouTube finished but didn't return a video id.",
+            clearSession: false,
+            consumeAttempt: false,
+          };
+        }
+        return { outcome: "done", videoId: resume.videoId, bytesSent: input.total, uploadUri: uri };
       }
       if (resume.kind === "expired") {
         uri = await input.initiate();
         sent = 0;
         recovered = true;
         break;
+      }
+      if (resume.kind === "auth") {
+        return { outcome: "auth", message: youtubeStatusMessage(resume.status, "") };
       }
       if (resume.kind === "offset") {
         if (input.onProgress && resume.sent !== sent) await input.onProgress(sent, resume.sent);

@@ -155,6 +155,8 @@ test("0159 adds YouTube resume backoff and lease columns", () => {
   assert.match(sql, /after 0158/);
   assert.ok(sql.includes("add column if not exists next_attempt_at"));
   assert.ok(sql.includes("add column if not exists claimed_until"));
+  assert.ok(sql.includes("add column if not exists claimed_by"));
+  assert.ok(sql.includes("add column if not exists transient_attempts"));
   assert.ok(sql.includes("OLB does NOT auto-run"));
   assert.ok(sql.includes("Apply BEFORE deploying"));
   assert.ok(!sql.includes("drop table"));
@@ -162,6 +164,8 @@ test("0159 adds YouTube resume backoff and lease columns", () => {
   assert.ok(!sql.includes("create table"));
   assert.ok(down.includes("drop column if exists next_attempt_at"));
   assert.ok(down.includes("drop column if exists claimed_until"));
+  assert.ok(down.includes("drop column if exists claimed_by"));
+  assert.ok(down.includes("drop column if exists transient_attempts"));
 });
 
 test("0143 adds game date, opponent, and optional score columns", () => {

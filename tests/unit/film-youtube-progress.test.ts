@@ -108,7 +108,6 @@ test("worker verifies storage, restarts a dead session, and records events", () 
   const board = readFileSync(join(import.meta.dirname, "../../app/portal/film/status/FilmStatusBoard.tsx"), "utf8");
   const transfer = readFileSync(join(import.meta.dirname, "../../app/portal/film/YoutubeTransfer.tsx"), "utf8");
   assert.match(worker, /requireFilmObject/);
-  assert.match(worker, /FilmStorageError/);
   assert.match(worker, /runResumableUpload/);
   assert.match(worker, /releaseYoutubeClaim/);
   assert.match(worker, /noteYoutubeEvent/);

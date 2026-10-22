@@ -2,17 +2,24 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { YOUTUBE_CHUNK_ALIGN, YOUTUBE_CHUNK_BYTES, youtubeChunkBytes } from "../../lib/film/youtube-meta.ts";
 import {
+  YOUTUBE_MAX_TRANSIENT_ATTEMPTS,
   YOUTUBE_RETRY_RESERVE_MS,
+  YOUTUBE_STALE_MS,
+  applyYoutubeLeaseAcquire,
+  applyYoutubeLeaseRelease,
   canClaimYoutubeJob,
   canRetryInTick,
   classifyYoutubeFailure,
   interpretResumeResponse,
   isMissingYoutubeJobExtraColumn,
+  isTransientNetworkError,
   isYoutubeResumeProbe,
+  planYoutubeFailOrRequeue,
   queryResumeOffset,
   runResumableUpload,
   youtubeManualRetryPatch,
   youtubeRetryDelayMs,
+  YoutubeAuthError,
   YoutubeSessionGoneError,
   YoutubeTransientError,
 } from "../../lib/film/youtube-resume.ts";
@@ -65,9 +72,15 @@ function makeIo(onYoutube: (info: {
     },
     fetch: async (url: string | URL | Request, init?: RequestInit) => {
       const href = String(url);
-      if (href.startsWith(STORAGE)) return storageRes();
+      if (href.startsWith(STORAGE)) {
+        assert.ok(init?.signal, "storage reads must carry an AbortSignal");
+        return storageRes();
+      }
       if (href.startsWith("https://youtube.example/")) {
         const probe = isYoutubeResumeProbe(init);
+        if (!probe) {
+          assert.ok(init?.signal, "chunk PUTs must carry an AbortSignal");
+        }
         if (!probe) {
           assert.equal((init as RequestInit & { duplex?: string })?.duplex, "half");
           assert.ok(init?.body);
@@ -334,11 +347,218 @@ test("transient errors do not consume attempts or clear the session", () => {
   assert.equal(gone.consumeAttempt, true);
 });
 
-test("job extra-column errors are recognized so the worker can run before 0159", () => {
+test("job extra-column errors are recognized so the worker can fail closed before 0159", () => {
   assert.equal(
     isMissingYoutubeJobExtraColumn("Could not find the 'next_attempt_at' column of 'game_film_youtube_jobs' in the schema cache"),
     true
   );
   assert.equal(isMissingYoutubeJobExtraColumn("column claimed_until does not exist"), true);
+  assert.equal(isMissingYoutubeJobExtraColumn("column claimed_by does not exist"), true);
   assert.equal(isMissingYoutubeJobExtraColumn("column bytes_sent does not exist"), false);
+});
+
+test("308 with no Range does not skip a chunk", async () => {
+  const puts: string[] = [];
+  let initiated = 0;
+  const { io } = makeIo(({ probe, range }) => {
+    if (probe) return youtubeRes(308);
+    puts.push(range ?? "");
+    if (puts.length === 1) return youtubeRes(308);
+    return youtubeRes(200, {}, { id: "vid308" });
+  });
+
+  const result = await runResumableUpload({
+    uploadUri: SESSION,
+    bytesSent: 0,
+    total: TOTAL,
+    access: ACCESS,
+    signedUrl: STORAGE,
+    contentType: "video/mp4",
+    deadline: 1_000_000 + 120_000,
+    chunkBytes: CHUNK,
+    initiate: async () => {
+      initiated += 1;
+      return NEW_SESSION;
+    },
+    io,
+  });
+
+  assert.equal(result.outcome, "done");
+  assert.equal(initiated, 0);
+  assert.equal(puts[0], `bytes 0-${CHUNK - 1}/${TOTAL}`);
+  assert.equal(puts[1], `bytes 0-${CHUNK - 1}/${TOTAL}`);
+  assert.notEqual(puts[1], `bytes ${CHUNK}-${TOTAL - 1}/${TOTAL}`);
+});
+
+test("401 refreshes auth and keeps the session; 403 keeps the session and does not initiate", async () => {
+  let refreshed = 0;
+  let initiated = 0;
+  const puts: string[] = [];
+  const { io } = makeIo(({ probe, range }) => {
+    if (probe) return youtubeRes(308);
+    puts.push(range ?? "");
+    if (puts.length === 1) return youtubeRes(401);
+    return youtubeRes(200, {}, { id: "vid401" });
+  });
+
+  const result = await runResumableUpload({
+    uploadUri: SESSION,
+    bytesSent: 0,
+    total: TOTAL,
+    access: ACCESS,
+    signedUrl: STORAGE,
+    contentType: "video/mp4",
+    deadline: 1_000_000 + 120_000,
+    chunkBytes: CHUNK,
+    refreshAccess: async () => {
+      refreshed += 1;
+      return "test-access-refreshed";
+    },
+    initiate: async () => {
+      initiated += 1;
+      return NEW_SESSION;
+    },
+    io,
+  });
+
+  assert.equal(result.outcome, "done");
+  if (result.outcome === "done") {
+    assert.equal(result.videoId, "vid401");
+    assert.equal(result.uploadUri, SESSION);
+  }
+  assert.equal(refreshed, 1);
+  assert.equal(initiated, 0);
+
+  const forbidden = await runResumableUpload({
+    uploadUri: SESSION,
+    bytesSent: CHUNK,
+    total: TOTAL,
+    access: ACCESS,
+    signedUrl: STORAGE,
+    contentType: "video/mp4",
+    deadline: 1_000_000 + 120_000,
+    chunkBytes: CHUNK,
+    initiate: async () => {
+      initiated += 1;
+      return NEW_SESSION;
+    },
+    io: makeIo(({ probe }) => (probe ? youtubeRes(308) : youtubeRes(403))).io,
+  });
+  assert.equal(forbidden.outcome, "auth");
+  assert.equal(initiated, 0);
+  const authClass = classifyYoutubeFailure(new YoutubeAuthError("YouTube 403: quota"));
+  assert.equal(authClass.clearSession, false);
+  assert.equal(authClass.consumeAttempt, true);
+  assert.equal(interpretResumeResponse(401, null).kind, "auth");
+  assert.equal(interpretResumeResponse(403, null).kind, "auth");
+  assert.equal(interpretResumeResponse(410, null).kind, "expired");
+});
+
+test("without 0159 columns, uploading uses the 4-minute stale gate", () => {
+  const now = Date.parse("2026-10-22T12:00:00Z");
+  assert.equal(
+    canClaimYoutubeJob({
+      youtubeStatus: "uploading",
+      extrasAvailable: false,
+      youtubeUpdatedAt: "2026-10-22T11:59:00Z",
+      now,
+    }),
+    false
+  );
+  assert.equal(
+    canClaimYoutubeJob({
+      youtubeStatus: "uploading",
+      extrasAvailable: false,
+      youtubeUpdatedAt: new Date(now - YOUTUBE_STALE_MS - 1).toISOString(),
+      now,
+    }),
+    true
+  );
+  assert.equal(
+    canClaimYoutubeJob({
+      youtubeStatus: "queued",
+      extrasAvailable: false,
+      now,
+    }),
+    true
+  );
+});
+
+test("lease acquire is exclusive and release requires the owner", () => {
+  const rows = new Map();
+  const now = Date.parse("2026-10-22T12:00:00Z");
+  const until = "2026-10-22T12:05:00Z";
+  assert.equal(applyYoutubeLeaseAcquire(rows, "u1", now, until, "owner-a"), true);
+  assert.equal(applyYoutubeLeaseAcquire(rows, "u1", now, until, "owner-b"), false);
+  assert.equal(applyYoutubeLeaseRelease(rows, "u1", "owner-b"), false);
+  assert.equal(rows.get("u1")?.claimedBy, "owner-a");
+  assert.equal(applyYoutubeLeaseRelease(rows, "u1", "owner-a"), true);
+  assert.equal(rows.get("u1")?.claimedBy, null);
+  assert.equal(applyYoutubeLeaseAcquire(rows, "u1", now, until, "owner-b"), true);
+});
+
+test("failOrRequeue transient path keeps the session and caps retries", () => {
+  const job = {
+    upload_uri: SESSION,
+    bytes_sent: 100,
+    bytes_total: 200,
+    attempts: 1,
+    last_progress_at: "2026-10-22T11:00:00Z",
+    transient_attempts: 0,
+  };
+  const plan = planYoutubeFailOrRequeue(new YoutubeTransientError("YouTube 503: backend", 503), job);
+  assert.equal(plan.jobPatch.upload_uri, SESSION);
+  assert.equal(plan.jobPatch.bytes_sent, 100);
+  assert.equal(plan.jobPatch.transient_attempts, 1);
+  assert.ok(plan.jobPatch.next_attempt_at);
+  assert.equal(plan.youtubeStatus, "uploading");
+  assert.equal(plan.event?.kind, "retry");
+
+  const capped = planYoutubeFailOrRequeue(
+    new YoutubeTransientError("YouTube 503: backend", 503),
+    { ...job, transient_attempts: YOUTUBE_MAX_TRANSIENT_ATTEMPTS }
+  );
+  assert.equal(capped.jobPatch.upload_uri, SESSION);
+  assert.equal(capped.jobPatch.bytes_sent, 100);
+  assert.equal(capped.youtubeStatus, "queued");
+  assert.equal(capped.jobPatch.attempts, 2);
+
+  const auth = planYoutubeFailOrRequeue(new YoutubeAuthError("YouTube refused the upload."), job);
+  assert.equal(auth.jobPatch.upload_uri, SESSION);
+  assert.equal(auth.jobPatch.bytes_sent, 100);
+  assert.equal(auth.youtubeStatus, "queued");
+
+  const emptyId = planYoutubeFailOrRequeue(new Error("YouTube finished but didn't return a video id."), job);
+  assert.equal(emptyId.jobPatch.upload_uri, SESSION);
+  assert.equal(emptyId.jobPatch.bytes_sent, 100);
+  assert.equal(emptyId.jobPatch.attempts, 1);
+  assert.equal(emptyId.youtubeStatus, "failed");
+});
+
+test("only real network TypeErrors are transient", () => {
+  assert.equal(isTransientNetworkError(new TypeError("fetch failed")), true);
+  assert.equal(isTransientNetworkError(new TypeError("Cannot read properties of undefined")), false);
+  assert.equal(classifyYoutubeFailure(new TypeError("Cannot read properties of undefined")).kind, "fatal");
+  assert.equal(classifyYoutubeFailure(new TypeError("fetch failed")).kind, "transient");
+});
+
+test("probe 200 without a video id does not count as done", async () => {
+  const { io } = makeIo(() => youtubeRes(200, {}, {}));
+  const result = await runResumableUpload({
+    uploadUri: SESSION,
+    bytesSent: TOTAL,
+    total: TOTAL,
+    access: ACCESS,
+    signedUrl: STORAGE,
+    contentType: "video/mp4",
+    deadline: 1_000_000 + 120_000,
+    chunkBytes: CHUNK,
+    initiate: async () => NEW_SESSION,
+    io,
+  });
+  assert.equal(result.outcome, "failed");
+  if (result.outcome === "failed") {
+    assert.equal(result.clearSession, false);
+    assert.equal(result.consumeAttempt, false);
+  }
 });
