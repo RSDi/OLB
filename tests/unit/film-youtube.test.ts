@@ -15,7 +15,9 @@ import {
   youtubeWatchUrl,
   youtubePlaylistUrl,
   parseYoutubePlaylistId,
+  YOUTUBE_CHUNK_ALIGN,
   YOUTUBE_CHUNK_BYTES,
+  youtubeChunkBytes,
 } from "../../lib/film/youtube-meta.ts";
 import { youtubeAuthorizeUrl, youtubeOAuthConfigured, YOUTUBE_SCOPES } from "../../lib/film/youtube-oauth.ts";
 
@@ -92,12 +94,17 @@ test("inbox groups by team then game date and opponent", () => {
   assert.equal(groups[1]?.label, "14U White");
 });
 
-test("resumable chunks are 8 MiB and a multiple of 256 KiB", () => {
-  assert.equal(YOUTUBE_CHUNK_BYTES % (256 * 1024), 0);
-  assert.deepEqual(nextChunkRange(0, 20_000_000), { start: 0, end: YOUTUBE_CHUNK_BYTES - 1 });
-  assert.deepEqual(nextChunkRange(YOUTUBE_CHUNK_BYTES, 10_000_000), { start: YOUTUBE_CHUNK_BYTES, end: 9_999_999 });
+test("resumable chunks default to 64 MiB and are a multiple of 256 KiB", () => {
+  assert.equal(YOUTUBE_CHUNK_BYTES, 64 * 1024 * 1024);
+  assert.equal(YOUTUBE_CHUNK_BYTES % YOUTUBE_CHUNK_ALIGN, 0);
+  assert.equal(YOUTUBE_CHUNK_ALIGN, 256 * 1024);
+  assert.deepEqual(nextChunkRange(0, 200_000_000), { start: 0, end: YOUTUBE_CHUNK_BYTES - 1 });
+  assert.deepEqual(nextChunkRange(YOUTUBE_CHUNK_BYTES, 200_000_000), { start: YOUTUBE_CHUNK_BYTES, end: 2 * YOUTUBE_CHUNK_BYTES - 1 });
   assert.equal(nextChunkRange(10_000_000, 10_000_000), null);
   assert.equal(parseResumeRange("bytes=0-8388607"), 8388608);
+  assert.equal(youtubeChunkBytes({}), YOUTUBE_CHUNK_BYTES);
+  assert.equal(youtubeChunkBytes({ FILM_YOUTUBE_CHUNK_BYTES: String(256 * 1024) }), 256 * 1024);
+  assert.equal(youtubeChunkBytes({ FILM_YOUTUBE_CHUNK_BYTES: "1000" }), YOUTUBE_CHUNK_BYTES);
   const headers = youtubeChunkHeaders("tok", 0, 1023, 5000, "video/mp4");
   assert.equal(headers["Content-Range"], "bytes 0-1023/5000");
   assert.equal(youtubeInitiateHeaders("tok", 5000, "video/quicktime")["X-Upload-Content-Length"], "5000");

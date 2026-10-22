@@ -444,7 +444,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "film-status-retry",
         title: "Retry YouTube",
-        body: "On a stalled or failed card, **Retry YouTube** starts a new upload session. You need **Game film (manage)**.",
+        body: "On a stalled or failed card, **Retry YouTube** continues the upload if YouTube still has the session, or starts a new one if it expired. You need **Game film (manage)**.",
       },
     ],
   },

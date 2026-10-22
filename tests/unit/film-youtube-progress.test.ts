@@ -102,18 +102,25 @@ test("Object not found maps to a re-upload message and keeps the raw error", () 
 
 test("worker verifies storage, restarts a dead session, and records events", () => {
   const worker = readFileSync(join(import.meta.dirname, "../../lib/film/youtube.ts"), "utf8");
+  const resume = readFileSync(join(import.meta.dirname, "../../lib/film/youtube-resume.ts"), "utf8");
   const complete = readFileSync(join(import.meta.dirname, "../../app/film/complete/route.ts"), "utf8");
   const inbox = readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmInbox.tsx"), "utf8");
   const board = readFileSync(join(import.meta.dirname, "../../app/portal/film/status/FilmStatusBoard.tsx"), "utf8");
   const transfer = readFileSync(join(import.meta.dirname, "../../app/portal/film/YoutubeTransfer.tsx"), "utf8");
   assert.match(worker, /requireFilmObject/);
   assert.match(worker, /FilmStorageError/);
-  assert.match(worker, /expired: true/);
-  assert.match(worker, /upload session expired/);
+  assert.match(worker, /runResumableUpload/);
+  assert.match(worker, /releaseYoutubeClaim/);
   assert.match(worker, /noteYoutubeEvent/);
   assert.match(worker, /markStalledUploads/);
-  assert.match(worker, /code === "not_ready"/);
-  assert.doesNotMatch(worker, /if \(res\.status === 404\) return \{ sent: 0 \}/);
+  assert.match(worker, /storage_not_ready/);
+  assert.doesNotMatch(worker, /arrayBuffer\(\)/);
+  assert.match(resume, /duplex:\s*["']half["']/);
+  assert.match(resume, /kind: "expired"/);
+  assert.match(resume, /upload session expired/);
+  assert.match(resume, /kind: "unknown"/);
+  assert.doesNotMatch(resume, /arrayBuffer\(\)/);
+  assert.doesNotMatch(resume, /if \(res\.status === 404\) return \{ sent: 0 \}/);
   assert.match(complete, /waitForFilmObject/);
   assert.match(complete, /kind: "received"/);
   assert.match(inbox, /Film status/);

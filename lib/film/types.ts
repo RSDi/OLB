@@ -81,6 +81,10 @@ export interface YoutubeJob {
   started_at: string | null;
   last_progress_at: string | null;
   updated_at: string;
+  /** Between-tick backoff. Optional until 0159 is applied. */
+  next_attempt_at?: string | null;
+  /** Tick lease. Optional until 0159 is applied. */
+  claimed_until?: string | null;
 }
 
 export interface YoutubeEvent {

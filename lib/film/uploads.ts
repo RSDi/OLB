@@ -5,6 +5,7 @@
 
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "../supabase/admin";
+import { isMissingYoutubeJobExtraColumn } from "./youtube-resume.ts";
 import {
   GAME_FILM_BUCKET,
   MOVED_RETENTION_DAYS,
@@ -306,48 +307,91 @@ export async function setFilmYoutubeStatus(
   return (data as FilmUpload | null) ?? null;
 }
 
-const YOUTUBE_JOB_COLUMNS =
+const YOUTUBE_JOB_BASE_COLUMNS =
   "upload_id, upload_uri, bytes_sent, bytes_total, attempts, started_at, last_progress_at, updated_at";
+const YOUTUBE_JOB_EXTRA_COLUMNS = "next_attempt_at, claimed_until";
 const YOUTUBE_EVENT_COLUMNS = "id, upload_id, at, kind, message, detail, bytes_sent, bytes_total";
 
 export type { YoutubeEvent, YoutubeJob };
 
-export async function upsertYoutubeJob(
-  uploadId: string,
-  patch: Partial<Pick<YoutubeJob, "upload_uri" | "bytes_sent" | "bytes_total" | "attempts" | "started_at" | "last_progress_at">>
-): Promise<YoutubeJob> {
+export type YoutubeJobPatch = Partial<
+  Pick<
+    YoutubeJob,
+    | "upload_uri"
+    | "bytes_sent"
+    | "bytes_total"
+    | "attempts"
+    | "started_at"
+    | "last_progress_at"
+    | "next_attempt_at"
+    | "claimed_until"
+  >
+>;
+
+/** null = unknown (try extras); true/false after the first select or write. */
+let youtubeJobExtras: boolean | null = null;
+
+export { isMissingYoutubeJobExtraColumn };
+
+function youtubeJobColumns(): string {
+  return youtubeJobExtras === false
+    ? YOUTUBE_JOB_BASE_COLUMNS
+    : `${YOUTUBE_JOB_BASE_COLUMNS}, ${YOUTUBE_JOB_EXTRA_COLUMNS}`;
+}
+
+function disableYoutubeJobExtras(): void {
+  youtubeJobExtras = false;
+}
+
+function youtubeJobExtrasOn(): boolean {
+  return youtubeJobExtras !== false;
+}
+
+function stripYoutubeJobExtras<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
+  if (youtubeJobExtrasOn()) return row;
+  const next = { ...row };
+  delete next.next_attempt_at;
+  delete next.claimed_until;
+  return next;
+}
+
+export async function upsertYoutubeJob(uploadId: string, patch: YoutubeJobPatch): Promise<YoutubeJob> {
   const admin = createAdminClient();
-  const { data: existing } = await admin
-    .from("game_film_youtube_jobs")
-    .select(YOUTUBE_JOB_COLUMNS)
-    .eq("upload_id", uploadId)
-    .maybeSingle();
+  const existing = await getYoutubeJob(uploadId);
   const now = new Date().toISOString();
   const bytesSent = patch.bytes_sent !== undefined ? patch.bytes_sent : (existing?.bytes_sent ?? 0);
   const progressMoved =
     patch.bytes_sent !== undefined && Number(patch.bytes_sent) !== Number(existing?.bytes_sent ?? 0);
-  const next = {
+  const next = stripYoutubeJobExtras({
     upload_id: uploadId,
     upload_uri: patch.upload_uri !== undefined ? patch.upload_uri : (existing?.upload_uri ?? null),
     bytes_sent: bytesSent,
     bytes_total: patch.bytes_total !== undefined ? patch.bytes_total : (existing?.bytes_total ?? null),
     attempts: patch.attempts !== undefined ? patch.attempts : (existing?.attempts ?? 0),
-    started_at:
-      patch.started_at !== undefined ? patch.started_at : (existing?.started_at ?? null),
+    started_at: patch.started_at !== undefined ? patch.started_at : (existing?.started_at ?? null),
     last_progress_at:
       patch.last_progress_at !== undefined
         ? patch.last_progress_at
         : progressMoved
           ? now
           : (existing?.last_progress_at ?? null),
+    next_attempt_at:
+      patch.next_attempt_at !== undefined ? patch.next_attempt_at : (existing?.next_attempt_at ?? null),
+    claimed_until:
+      patch.claimed_until !== undefined ? patch.claimed_until : (existing?.claimed_until ?? null),
     updated_at: now,
-  };
+  });
   const { data, error } = await admin
     .from("game_film_youtube_jobs")
     .upsert(next, { onConflict: "upload_id" })
-    .select(YOUTUBE_JOB_COLUMNS)
+    .select(youtubeJobColumns())
     .single();
+  if (error && youtubeJobExtrasOn() && isMissingYoutubeJobExtraColumn(error.message)) {
+    disableYoutubeJobExtras();
+    return upsertYoutubeJob(uploadId, patch);
+  }
   if (error || !data) throw new Error(error?.message ?? "Couldn't save the YouTube job.");
+  youtubeJobExtras = youtubeJobExtras === false ? false : true;
   return data as YoutubeJob;
 }
 
@@ -355,10 +399,15 @@ export async function getYoutubeJob(uploadId: string): Promise<YoutubeJob | null
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("game_film_youtube_jobs")
-    .select(YOUTUBE_JOB_COLUMNS)
+    .select(youtubeJobColumns())
     .eq("upload_id", uploadId)
     .maybeSingle();
+  if (error && youtubeJobExtrasOn() && isMissingYoutubeJobExtraColumn(error.message)) {
+    disableYoutubeJobExtras();
+    return getYoutubeJob(uploadId);
+  }
   if (error) throw new Error(error.message);
+  if (data && youtubeJobExtras !== false) youtubeJobExtras = true;
   return (data as YoutubeJob | null) ?? null;
 }
 
@@ -367,9 +416,14 @@ export async function listYoutubeJobs(uploadIds: string[]): Promise<YoutubeJob[]
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("game_film_youtube_jobs")
-    .select(YOUTUBE_JOB_COLUMNS)
+    .select(youtubeJobColumns())
     .in("upload_id", uploadIds);
+  if (error && youtubeJobExtrasOn() && isMissingYoutubeJobExtraColumn(error.message)) {
+    disableYoutubeJobExtras();
+    return listYoutubeJobs(uploadIds);
+  }
   if (error) throw new Error(error.message);
+  if (data && youtubeJobExtras !== false) youtubeJobExtras = true;
   return (data as YoutubeJob[]) ?? [];
 }
 
@@ -440,10 +494,64 @@ export async function latestYoutubeEventKind(uploadId: string): Promise<YoutubeE
   return ((data as { kind?: YoutubeEventKind } | null)?.kind ?? null);
 }
 
-export async function claimYoutubeWork(id: string, now = new Date()): Promise<FilmUpload | null> {
+export async function setYoutubeLease(id: string, leaseUntil: string | null): Promise<void> {
+  if (!youtubeJobExtrasOn()) return;
+  try {
+    await upsertYoutubeJob(id, { claimed_until: leaseUntil });
+  } catch (err) {
+    if (err instanceof Error && isMissingYoutubeJobExtraColumn(err.message)) {
+      disableYoutubeJobExtras();
+      return;
+    }
+    throw err;
+  }
+}
+
+export async function releaseYoutubeClaim(id: string): Promise<void> {
+  await setYoutubeLease(id, null);
+}
+
+async function tryAcquireYoutubeLease(id: string, now: Date, leaseUntil: string): Promise<boolean> {
+  if (!youtubeJobExtrasOn()) return true;
   const admin = createAdminClient();
   const stamp = now.toISOString();
-  const staleBefore = new Date(now.getTime() - 4 * 60 * 1000).toISOString();
+  const { data, error } = await admin
+    .from("game_film_youtube_jobs")
+    .update({ claimed_until: leaseUntil, updated_at: stamp })
+    .eq("upload_id", id)
+    .or(`claimed_until.is.null,claimed_until.lt.${stamp}`)
+    .select("upload_id")
+    .maybeSingle();
+  if (error && isMissingYoutubeJobExtraColumn(error.message)) {
+    disableYoutubeJobExtras();
+    return true;
+  }
+  if (error) throw new Error(error.message);
+  if (data) return true;
+  const existing = await getYoutubeJob(id);
+  if (!existing) {
+    await upsertYoutubeJob(id, { claimed_until: leaseUntil, bytes_sent: 0 });
+    return true;
+  }
+  return !existing.claimed_until || new Date(existing.claimed_until).getTime() <= now.getTime();
+}
+
+export async function claimYoutubeWork(
+  id: string,
+  now = new Date(),
+  leaseMs = 5 * 60 * 1000
+): Promise<FilmUpload | null> {
+  const admin = createAdminClient();
+  const stamp = now.toISOString();
+  const leaseUntil = new Date(now.getTime() + leaseMs).toISOString();
+
+  if (youtubeJobExtrasOn()) {
+    const job = await getYoutubeJob(id);
+    if (job?.next_attempt_at && new Date(job.next_attempt_at).getTime() > now.getTime()) {
+      return null;
+    }
+  }
+
   const { data: queued } = await admin
     .from("game_film_uploads")
     .update({ youtube_status: "uploading", youtube_error: null, youtube_updated_at: stamp })
@@ -451,26 +559,23 @@ export async function claimYoutubeWork(id: string, now = new Date()): Promise<Fi
     .eq("youtube_status", "queued")
     .select(FILM_UPLOAD_COLUMNS)
     .maybeSingle();
-  if (queued) return queued as FilmUpload;
-  const { data: stale, error } = await admin
+  if (queued) {
+    await setYoutubeLease(id, leaseUntil);
+    return queued as FilmUpload;
+  }
+
+  const acquired = await tryAcquireYoutubeLease(id, now, leaseUntil);
+  if (!acquired) return null;
+
+  const { data: uploading, error } = await admin
     .from("game_film_uploads")
     .update({ youtube_status: "uploading", youtube_updated_at: stamp })
     .eq("id", id)
     .eq("youtube_status", "uploading")
-    .lt("youtube_updated_at", staleBefore)
     .select(FILM_UPLOAD_COLUMNS)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (stale) return stale as FilmUpload;
-  const { data: untouched } = await admin
-    .from("game_film_uploads")
-    .update({ youtube_status: "uploading", youtube_updated_at: stamp })
-    .eq("id", id)
-    .eq("youtube_status", "uploading")
-    .is("youtube_updated_at", null)
-    .select(FILM_UPLOAD_COLUMNS)
-    .maybeSingle();
-  return (untouched as FilmUpload | null) ?? null;
+  return (uploading as FilmUpload | null) ?? null;
 }
 
 export async function listYoutubeWork(uploadId?: string): Promise<FilmUpload[]> {

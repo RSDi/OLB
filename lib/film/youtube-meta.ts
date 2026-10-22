@@ -6,8 +6,18 @@ import type { FilmUpload, YoutubePrivacy, YoutubeProcessing } from "./types.ts";
 export type { YoutubePrivacy, YoutubeProcessing } from "./types.ts";
 
 export const YOUTUBE_TITLE_MAX = 100;
-export const YOUTUBE_CHUNK_BYTES = 8 * 1024 * 1024; // 8 MiB; multiple of 256 KiB
+export const YOUTUBE_CHUNK_ALIGN = 256 * 1024; // YouTube resumable PUTs must be a multiple of 256 KiB
+export const YOUTUBE_CHUNK_BYTES = 64 * 1024 * 1024; // 64 MiB default; multiple of 256 KiB
 export const YOUTUBE_MAX_ATTEMPTS = 5;
+
+/** Chunk size for YouTube resumable PUTs. Override with FILM_YOUTUBE_CHUNK_BYTES (bytes). */
+export function youtubeChunkBytes(env: Record<string, string | undefined> = process.env): number {
+  const raw = env.FILM_YOUTUBE_CHUNK_BYTES;
+  if (raw == null || raw.trim() === "") return YOUTUBE_CHUNK_BYTES;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < YOUTUBE_CHUNK_ALIGN) return YOUTUBE_CHUNK_BYTES;
+  return Math.floor(n / YOUTUBE_CHUNK_ALIGN) * YOUTUBE_CHUNK_ALIGN;
+}
 
 export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
 export type YoutubePlaylistStatus = "queued" | "done" | "failed";
