@@ -173,7 +173,7 @@ export function AssessmentWizard({
             <div className={s.body}>
               <div className={s.row2}>
                 <label className={s.field}>
-                  His first name
+                  First name
                   <input className="olb-input" autoComplete="off" value={state.athlete_first} onChange={(e) => up({ athlete_first: e.target.value })} />
                 </label>
                 <label className={s.field}>

@@ -126,6 +126,30 @@ test("each wizard step only asks for that step's answers", () => {
   assert.equal(assessmentStepProblem("contact", filled()), null);
 });
 
+test("both assessment views use the same short name labels", () => {
+  const wizard = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/AssessmentWizard.tsx"), "utf8");
+  const form = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/AssessmentForm.tsx"), "utf8");
+  for (const text of [wizard, form]) {
+    assert.match(text, /^\s+First name$/m);
+    assert.match(text, /^\s+Last name$/m);
+    assert.match(text, /^\s+Friends on Lightning$/m);
+    assert.match(text, /^\s+Notes$/m);
+    assert.doesNotMatch(text, /His first name/);
+    assert.doesNotMatch(text, /His last name/);
+  }
+});
+
+test("assessment date fields stay inside the card on a phone", () => {
+  const css = readFileSync(join(import.meta.dirname, "../../app/(site)/player-registration/wizard.module.css"), "utf8");
+  assert.match(css, /\.card\s*\{[\s\S]*?min-width:\s*0/);
+  assert.match(css, /\.field\s*\{[\s\S]*?min-width:\s*0/);
+  assert.match(css, /\.field input\[type="date"\][\s\S]*display:\s*block/);
+  assert.match(css, /\.field input\[type="date"\][\s\S]*width:\s*100%/);
+  assert.match(css, /\.field input\[type="date"\][\s\S]*max-width:\s*100%/);
+  assert.match(css, /\.field input\[type="date"\][\s\S]*min-width:\s*0/);
+  assert.match(css, /\.field input\[type="date"\][\s\S]*box-sizing:\s*border-box/);
+});
+
 test("the Programs page is the real practice-times and payment page", () => {
   assert.equal(PROGRAMS_INFO_URL, "https://omahalightningbasketball.com/programs");
 });

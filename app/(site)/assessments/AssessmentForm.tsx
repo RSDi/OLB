@@ -59,7 +59,7 @@ export default function AssessmentForm({
   );
 
   return (
-    <div className={s.wrap}>
+    <div className={`${s.wrap} ${s.full}`}>
       <div className={s.top}>
         <button type="button" className={s.linkBtn} onClick={onWizard}>
           ← Back to step by step
@@ -79,7 +79,7 @@ export default function AssessmentForm({
         <div className={s.body}>
           <div className={s.row2}>
             <label className={s.field}>
-              His first name
+              First name
               <input className="olb-input" autoComplete="off" value={state.athlete_first} onChange={(e) => up({ athlete_first: e.target.value })} />
             </label>
             <label className={s.field}>
@@ -92,15 +92,15 @@ export default function AssessmentForm({
             <input className="olb-input" type="date" value={state.athlete_dob} onChange={(e) => up({ athlete_dob: e.target.value })} />
           </label>
           {hasGradeRule(assessment) && (
-            <div>
+            <div className={s.stack}>
               <span className={s.sectionLabel}>Grade ({assessmentRuleLabel(assessment)})</span>
               {chips(GRADES.map(String), state.grade ?? "", (v) => up({ grade: v }), "Grade")}
-              <p className={s.lead} style={{ marginTop: 8 }}>
+              <p className={s.lead}>
                 {GRADES.map((g) => gradeLabel(g)).join(" · ")}
               </p>
             </div>
           )}
-          <div>
+          <div className={s.stack}>
             <span className={s.sectionLabel}>Is he homeschooled?</span>
             <div className={s.chips} role="group" aria-label="Is he homeschooled?">
               <button type="button" className={s.chip} aria-pressed={state.homeschooled === true} onClick={() => up({ homeschooled: true })}>
@@ -117,41 +117,43 @@ export default function AssessmentForm({
               </p>
             )}
           </div>
-          <div>
+          <div className={s.stack}>
             <span className={s.sectionLabel}>Has he played basketball before?</span>
             {chips(EXPERIENCE, state.experience, (v) => up({ experience: v }), "Has he played basketball before?")}
           </div>
           <label className={s.field}>
-            Any friends already playing for Lightning? (optional)
+            Friends on Lightning
             <input className="olb-input" value={state.friends} onChange={(e) => up({ friends: e.target.value })} />
           </label>
-          <div>
-            <span className={s.sectionLabel}>How did you hear about us? (optional)</span>
+          <div className={s.stack}>
+            <span className={s.sectionLabel}>How did you hear about us?</span>
             {chips(HEARD_FROM, state.heard_from, (v) => up({ heard_from: v }), "How did you hear about us?")}
           </div>
-          <span className={s.sectionLabel} style={{ marginTop: 6 }}>You</span>
-          <div className={s.row2}>
-            <label className={s.field}>
-              Your first name
-              <input className="olb-input" autoComplete="given-name" value={state.parent_first} onChange={(e) => up({ parent_first: e.target.value })} />
-            </label>
-            <label className={s.field}>
-              Last name
-              <input className="olb-input" autoComplete="family-name" value={state.parent_last} onChange={(e) => up({ parent_last: e.target.value })} />
-            </label>
-          </div>
-          <div className={s.row2}>
-            <label className={s.field}>
-              Email
-              <input className="olb-input" type="email" inputMode="email" autoComplete="email" value={state.email} onChange={(e) => up({ email: e.target.value })} />
-            </label>
-            <label className={s.field}>
-              Phone (optional)
-              <input className="olb-input" type="tel" autoComplete="tel" value={state.phone} onChange={(e) => up({ phone: e.target.value })} />
-            </label>
+          <div className={s.stack}>
+            <span className={s.sectionLabel}>You</span>
+            <div className={s.row2}>
+              <label className={s.field}>
+                Your first name
+                <input className="olb-input" autoComplete="given-name" value={state.parent_first} onChange={(e) => up({ parent_first: e.target.value })} />
+              </label>
+              <label className={s.field}>
+                Last name
+                <input className="olb-input" autoComplete="family-name" value={state.parent_last} onChange={(e) => up({ parent_last: e.target.value })} />
+              </label>
+            </div>
+            <div className={s.row2}>
+              <label className={s.field}>
+                Email
+                <input className="olb-input" type="email" inputMode="email" autoComplete="email" value={state.email} onChange={(e) => up({ email: e.target.value })} />
+              </label>
+              <label className={s.field}>
+                Phone (optional)
+                <input className="olb-input" type="tel" autoComplete="tel" value={state.phone} onChange={(e) => up({ phone: e.target.value })} />
+              </label>
+            </div>
           </div>
           <label className={s.field}>
-            Anything else we should know? (optional)
+            Notes
             <textarea className="olb-input" rows={3} value={state.notes} onChange={(e) => up({ notes: e.target.value })} style={{ height: "auto", paddingTop: 10 }} />
           </label>
           <input name="company" tabIndex={-1} autoComplete="off" aria-hidden="true" value={honeypot} onChange={(e) => onHoneypot(e.target.value)} style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} />
