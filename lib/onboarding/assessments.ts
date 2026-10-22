@@ -96,7 +96,7 @@ export const BUILTIN_14U: Assessment = {
   slug: BUILTIN_14U_SLUG,
   name: "14U assessment",
   level: ASSESSMENT_LEVEL,
-  dob_from: "2012-01-01",
+  dob_from: "2011-08-02",
   dob_to: "2013-12-31",
   grade_from: null,
   grade_to: null,
@@ -250,8 +250,21 @@ export function assessmentRuleLabel(a: PublicAssessment): string {
   return parts.join(" or ") || "any player";
 }
 
-export function eligibilityProblem(a: PublicAssessment): string {
-  if (a.slug === BUILTIN_14U_SLUG || a.level === ASSESSMENT_LEVEL) {
+export const ASSESSMENT_TOO_OLD_14U =
+  "For 14U, players must be 14 or younger on August 1, 2026 (born August 2, 2011 or later). This birthday is too old for 14U, but reach out and we'll help.";
+
+export function is14uAssessment(a: Pick<PublicAssessment, "slug" | "level">): boolean {
+  return a.slug === BUILTIN_14U_SLUG || a.level === ASSESSMENT_LEVEL;
+}
+
+export function birthdayTooOld(a: Pick<PublicAssessment, "dob_from">, dob: string): boolean {
+  if (!ISO.test(dob) || !a.dob_from || !ISO.test(a.dob_from)) return false;
+  return dob < a.dob_from;
+}
+
+export function eligibilityProblem(a: PublicAssessment, dob = ""): string {
+  if (is14uAssessment(a) && birthdayTooOld(a, dob)) return ASSESSMENT_TOO_OLD_14U;
+  if (is14uAssessment(a)) {
     return "This assessment is for 14U players only. Please check his birthday, or email lightningbasketballomaha@gmail.com.";
   }
   return `This assessment is for ${assessmentRuleLabel(a)}. Please check his birthday or grade, or email lightningbasketballomaha@gmail.com.`;

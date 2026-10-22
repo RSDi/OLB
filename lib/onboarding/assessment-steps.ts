@@ -45,14 +45,14 @@ export function assessmentStepProblem(
   if (step === "dob") {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(w.athlete_dob)) return "Please add his birthday.";
     if (!hasGradeRule(assessment) && !playerFitsAssessment(assessment, w.athlete_dob, parseGrade(w.grade))) {
-      return eligibilityProblem(assessment);
+      return eligibilityProblem(assessment, w.athlete_dob);
     }
     return null;
   }
   if (step === "grade") {
     if (parseGrade(w.grade) == null) return "Please add his grade.";
     if (!playerFitsAssessment(assessment, w.athlete_dob, parseGrade(w.grade))) {
-      return eligibilityProblem(assessment);
+      return eligibilityProblem(assessment, w.athlete_dob);
     }
     return null;
   }

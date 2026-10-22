@@ -36,7 +36,7 @@ export function assessmentProblem(w: WaitlistInput, assessment: PublicAssessment
   const base = waitlistProblem(w);
   if (base) return base;
   if (!playerFitsAssessment(assessment, w.athlete_dob, parseGrade(w.grade))) {
-    return eligibilityProblem(assessment);
+    return eligibilityProblem(assessment, w.athlete_dob);
   }
   return null;
 }

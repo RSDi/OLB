@@ -3,11 +3,14 @@ import { useState } from "react";
 import s from "../player-registration/wizard.module.css";
 import { PROGRAMS_INFO_URL } from "../../../lib/onboarding/assessment-form";
 import {
+  ASSESSMENT_TOO_OLD_14U,
   GRADES,
   assessmentRuleLabel,
   assessmentWhen,
+  birthdayTooOld,
   gradeLabel,
   hasGradeRule,
+  is14uAssessment,
   type PublicAssessment,
 } from "../../../lib/onboarding/assessments";
 import { EXPERIENCE, HEARD_FROM, type WaitlistInput } from "../../../lib/onboarding/waitlist-form";
@@ -38,6 +41,8 @@ export default function AssessmentForm({
   const up = (patch: Partial<WaitlistInput>) => onChange({ ...state, ...patch });
   const when = assessmentWhen(assessment.starts_at);
   const details = assessment.details.trim();
+  const tooOldNote =
+    is14uAssessment(assessment) && birthdayTooOld(assessment, state.athlete_dob) ? ASSESSMENT_TOO_OLD_14U : null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -89,8 +94,19 @@ export default function AssessmentForm({
           </div>
           <label className={s.field}>
             Birthday
-            <input className="olb-input" type="date" value={state.athlete_dob} onChange={(e) => up({ athlete_dob: e.target.value })} />
+            <input
+              className="olb-input"
+              type="date"
+              min={assessment.dob_from || undefined}
+              value={state.athlete_dob}
+              onChange={(e) => up({ athlete_dob: e.target.value })}
+            />
           </label>
+          {tooOldNote && (
+            <div className={`olb-alert olb-alert--error ${s.error}`} role="alert">
+              {tooOldNote}
+            </div>
+          )}
           {hasGradeRule(assessment) && (
             <div className={s.stack}>
               <span className={s.sectionLabel}>Grade ({assessmentRuleLabel(assessment)})</span>
@@ -164,7 +180,7 @@ export default function AssessmentForm({
           </div>
         )}
         <div className={s.actions}>
-          <button type="submit" className={s.primary} disabled={busy}>
+          <button type="submit" className={s.primary} disabled={busy || !!tooOldNote}>
             {busy ? "Sending…" : "Sign up for an assessment"}
           </button>
         </div>
