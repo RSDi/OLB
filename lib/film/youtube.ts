@@ -22,6 +22,7 @@ import { createFilmSlackDraftIfNeeded } from "./slack-drafts.ts";
 import { filmStorage } from "./storage.ts";
 import {
   appendYoutubeEvent,
+  applyYoutubeManualRetry,
   claimYoutubeWork,
   getFilmUpload,
   getYoutubeJob,
@@ -92,8 +93,7 @@ export async function retryYoutubeUpload(uploadId: string): Promise<void> {
   const blocked = youtubeManualRetryBlocked(job, Date.now());
   if (blocked) throw new Error(blocked);
   const patch = youtubeManualRetryPatch(job, row.size_bytes);
-  await upsertYoutubeJob(uploadId, patch);
-  await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
+  await applyYoutubeManualRetry(uploadId, patch);
   await noteYoutubeEvent(
     uploadId,
     "retry",
@@ -177,7 +177,7 @@ export async function processYoutubeQueue(opts?: {
         else if (outcome === "failed") result.failed = 1;
         else result.continued = 1;
       } catch (err) {
-        await failOrRequeue(pick.id, err);
+        await failOrRequeue(pick.id, err, owner);
         const classified = classifyYoutubeFailure(err);
         if (classified.kind === "transient" || classified.kind === "storage_not_ready") {
           result.continued = 1;
@@ -324,7 +324,8 @@ async function markStalledUploads(rows: FilmUpload[], now: number): Promise<void
   }
 }
 
-async function failOrRequeue(id: string, err: unknown): Promise<void> {
+async function failOrRequeue(id: string, err: unknown, owner?: string): Promise<void> {
+  if (owner) await releaseYoutubeClaim(id, owner);
   const job = await getYoutubeJob(id);
   const plan = planYoutubeFailOrRequeue(err, job);
   await upsertYoutubeJob(id, plan.jobPatch);

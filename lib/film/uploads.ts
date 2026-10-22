@@ -8,8 +8,10 @@ import { createAdminClient } from "../supabase/admin";
 import {
   YOUTUBE_EXTRAS_RECHECK_MS,
   YOUTUBE_STALE_MS,
+  YOUTUBE_RETRY_LEASE_HELD,
   acquireYoutubeLeaseWithClient,
   isMissingYoutubeJobExtraColumn,
+  updateYoutubeJobIfLeaseFree,
   type YoutubeLeaseClient,
 } from "./youtube-resume.ts";
 import {
@@ -551,8 +553,7 @@ async function tryAcquireYoutubeLease(
   id: string,
   now: Date,
   leaseUntil: string,
-  owner: string,
-  mode: "if-expired" | "force" = "if-expired"
+  owner: string
 ): Promise<boolean> {
   const extras = await probeYoutubeResumeColumns();
   if (!extras) return false;
@@ -561,8 +562,7 @@ async function tryAcquireYoutubeLease(
     id,
     now,
     leaseUntil,
-    owner,
-    mode
+    owner
   );
   if (result.ok) return true;
   if (result.error && isMissingYoutubeJobExtraColumn(result.error.message)) {
@@ -585,6 +585,50 @@ async function revertYoutubeQueuedClaim(id: string, claimedAt: string): Promise<
     .eq("youtube_status", "uploading")
     .eq("youtube_updated_at", claimedAt);
   if (error) throw new Error(error.message);
+}
+
+export async function applyYoutubeManualRetry(
+  uploadId: string,
+  patch: YoutubeJobPatch,
+  now = new Date()
+): Promise<YoutubeJob> {
+  const extras = await probeYoutubeResumeColumns();
+  if (extras) {
+    const existing = await getYoutubeJob(uploadId);
+    if (existing) {
+      const admin = createAdminClient();
+      const stamp = now.toISOString();
+      const result = await updateYoutubeJobIfLeaseFree(
+        admin as unknown as YoutubeLeaseClient,
+        uploadId,
+        {
+          upload_uri: patch.upload_uri !== undefined ? patch.upload_uri : existing.upload_uri,
+          bytes_sent: patch.bytes_sent !== undefined ? patch.bytes_sent : existing.bytes_sent,
+          bytes_total: patch.bytes_total !== undefined ? patch.bytes_total : existing.bytes_total,
+          attempts: patch.attempts !== undefined ? patch.attempts : existing.attempts,
+          started_at: patch.started_at !== undefined ? patch.started_at : existing.started_at,
+          last_progress_at:
+            patch.last_progress_at !== undefined ? patch.last_progress_at : existing.last_progress_at,
+          next_attempt_at: null,
+          transient_attempts: 0,
+          updated_at: stamp,
+        },
+        now
+      );
+      if (result.error && isMissingYoutubeJobExtraColumn(result.error.message)) {
+        disableYoutubeJobExtras();
+      } else {
+        if (result.error) throw new Error(result.error.message);
+        if (!result.ok) throw new Error(YOUTUBE_RETRY_LEASE_HELD);
+        const job = (await getYoutubeJob(uploadId)) ?? existing;
+        await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
+        return job;
+      }
+    }
+  }
+  const job = await upsertYoutubeJob(uploadId, patch);
+  await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
+  return job;
 }
 
 export async function releaseYoutubeClaim(id: string, owner: string): Promise<void> {
@@ -629,10 +673,12 @@ export async function claimYoutubeWork(
     .maybeSingle();
   if (queued) {
     if (extras) {
-      const leaseUntil = new Date(now.getTime() + leaseMs).toISOString();
-      const leased =
-        (await tryAcquireYoutubeLease(id, now, leaseUntil, owner)) ||
-        (await tryAcquireYoutubeLease(id, now, leaseUntil, owner, "force"));
+      const leased = await tryAcquireYoutubeLease(
+        id,
+        now,
+        new Date(now.getTime() + leaseMs).toISOString(),
+        owner
+      );
       if (!leased) {
         await revertYoutubeQueuedClaim(id, stamp);
         return null;

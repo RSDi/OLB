@@ -19,6 +19,7 @@ import {
   planYoutubeFailOrRequeue,
   queryResumeOffset,
   runResumableUpload,
+  updateYoutubeJobIfLeaseFree,
   youtubeLeaseAcquireOrFilter,
   youtubeLeaseIsHeld,
   youtubeLeaseMatchesOrFilter,
@@ -265,6 +266,23 @@ test("backoff stays within the tick budget and hands off instead of failing", as
 test("lease claiming skips a held lease and a future next_attempt_at", () => {
   const now = Date.parse("2026-10-22T12:00:00Z");
   assert.equal(canClaimYoutubeJob({ youtubeStatus: "queued", now }), true);
+  assert.equal(
+    canClaimYoutubeJob({
+      youtubeStatus: "queued",
+      claimedUntil: "2026-10-22T12:04:00Z",
+      now,
+    }),
+    false
+  );
+  assert.equal(
+    canClaimYoutubeJob({
+      youtubeStatus: "queued",
+      claimedUntil: "2026-10-22T12:04:00Z",
+      extrasAvailable: false,
+      now,
+    }),
+    true
+  );
   assert.equal(
     canClaimYoutubeJob({
       youtubeStatus: "uploading",
@@ -739,7 +757,7 @@ function fakeLeaseClient(rows: JobRow[]): YoutubeLeaseClient {
   return { from };
 }
 
-test("lease query builder is exclusive and force-acquire steals a leftover lease", async () => {
+test("lease query builder is exclusive and does not steal a live lease", async () => {
   const now = new Date("2026-10-22T12:00:00Z");
   const until = "2026-10-22T12:05:00Z";
   const later = "2026-10-22T12:10:00Z";
@@ -750,13 +768,54 @@ test("lease query builder is exclusive and force-acquire steals a leftover lease
   assert.equal(rows[0]?.claimed_by, "owner-a");
   assert.equal((await acquireYoutubeLeaseWithClient(client, "u1", now, later, "owner-b")).ok, false);
   assert.equal(rows[0]?.claimed_by, "owner-a");
-  assert.equal((await acquireYoutubeLeaseWithClient(client, "u1", now, later, "owner-b", "force")).ok, true);
-  assert.equal(rows[0]?.claimed_by, "owner-b");
-  assert.equal(rows[0]?.claimed_until, later);
+  assert.equal(rows[0]?.claimed_until, until);
 
   const stamp = now.toISOString();
   const filter = youtubeLeaseAcquireOrFilter(stamp);
   assert.equal(youtubeLeaseMatchesOrFilter(filter, null), true);
   assert.equal(youtubeLeaseMatchesOrFilter(filter, "2026-10-22T11:59:00Z"), true);
   assert.equal(youtubeLeaseMatchesOrFilter(filter, until), false);
+});
+
+test("retry/cron race cannot steal a live lease", async () => {
+  const now = new Date("2026-10-22T12:00:00Z");
+  const until = "2026-10-22T12:05:00Z";
+  const later = "2026-10-22T12:10:00Z";
+  const nowMs = now.getTime();
+  const rows: JobRow[] = [];
+  const client = fakeLeaseClient(rows);
+
+  assert.equal(youtubeManualRetryBlocked(null, nowMs), null);
+  assert.equal((await acquireYoutubeLeaseWithClient(client, "u1", now, until, "cron")).ok, true);
+
+  const retry = await updateYoutubeJobIfLeaseFree(
+    client,
+    "u1",
+    { next_attempt_at: null, transient_attempts: 0 },
+    now
+  );
+  assert.equal(retry.ok, false);
+  assert.equal(youtubeManualRetryBlocked({ claimed_until: until }, nowMs), YOUTUBE_RETRY_LEASE_HELD);
+  assert.equal(
+    canClaimYoutubeJob({
+      youtubeStatus: "queued",
+      claimedUntil: until,
+      extrasAvailable: true,
+      now: nowMs,
+    }),
+    false
+  );
+  assert.equal((await acquireYoutubeLeaseWithClient(client, "u1", now, later, "retry")).ok, false);
+  assert.equal(rows[0]?.claimed_by, "cron");
+  assert.equal(rows[0]?.claimed_until, until);
+
+  assert.equal(
+    canClaimYoutubeJob({
+      youtubeStatus: "queued",
+      claimedUntil: null,
+      extrasAvailable: true,
+      now: nowMs,
+    }),
+    true
+  );
 });

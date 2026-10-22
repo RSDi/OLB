@@ -155,7 +155,10 @@ export function canClaimYoutubeJob(input: {
   now: number;
 }): boolean {
   if (!youtubeNextAttemptReady(input.nextAttemptAt, input.now)) return false;
-  if (input.youtubeStatus === "queued") return true;
+  if (input.youtubeStatus === "queued") {
+    if (input.extrasAvailable === false) return true;
+    return youtubeLeaseExpired(input.claimedUntil, input.now);
+  }
   if (input.youtubeStatus !== "uploading") return false;
   if (input.extrasAvailable === false) {
     return canReclaimUploadingWithoutLease(input.youtubeUpdatedAt, input.now);
@@ -536,14 +539,17 @@ export async function acquireYoutubeLeaseWithClient(
   id: string,
   now: Date,
   leaseUntil: string,
-  owner: string,
-  mode: "if-expired" | "force" = "if-expired"
+  owner: string
 ): Promise<{ ok: boolean; error?: { message: string; code?: string } }> {
   const stamp = now.toISOString();
   const patch = youtubeLeaseAcquireRow(leaseUntil, owner, stamp);
-  let update = admin.from("game_film_youtube_jobs").update(patch).eq("upload_id", id);
-  if (mode === "if-expired") update = update.or(youtubeLeaseAcquireOrFilter(stamp));
-  const { data, error } = await update.select("upload_id, claimed_by").maybeSingle();
+  const { data, error } = await admin
+    .from("game_film_youtube_jobs")
+    .update(patch)
+    .eq("upload_id", id)
+    .or(youtubeLeaseAcquireOrFilter(stamp))
+    .select("upload_id, claimed_by")
+    .maybeSingle();
   if (error) return { ok: false, error };
   if (data?.claimed_by === owner) return { ok: true };
 
@@ -554,6 +560,24 @@ export async function acquireYoutubeLeaseWithClient(
     .maybeSingle();
   if (inserted.error) return { ok: false, error: inserted.error };
   return { ok: inserted.data?.claimed_by === owner };
+}
+
+export async function updateYoutubeJobIfLeaseFree(
+  admin: YoutubeLeaseClient,
+  id: string,
+  row: Record<string, unknown>,
+  now: Date
+): Promise<{ ok: boolean; error?: { message: string; code?: string } }> {
+  const stamp = now.toISOString();
+  const { data, error } = await admin
+    .from("game_film_youtube_jobs")
+    .update({ ...row, updated_at: stamp })
+    .eq("upload_id", id)
+    .or(youtubeLeaseAcquireOrFilter(stamp))
+    .select("upload_id, claimed_by")
+    .maybeSingle();
+  if (error) return { ok: false, error };
+  return { ok: Boolean(data) };
 }
 
 function abortSignalForDeadline(now: number, deadline: number): AbortSignal {
