@@ -198,6 +198,8 @@ export const RESERVED_SLUGS = [
   "invoice",
   // Public, no-login click-throughs for reviewing ideas. Not in the menu.
   "mockups",
+  // 10U–14U competitive waitlist (preview deployments only). Not in the menu.
+  "10u-14u-waitlist",
 ];
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

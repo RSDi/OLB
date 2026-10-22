@@ -11,11 +11,20 @@ import { loadSettings, seasonBoardId } from "./server";
 import { daysBetween, centralDay } from "./dates";
 import type { Intake } from "./waitlist-form";
 
+export type WaitlistIntake = Intake & {
+  first_experience?: boolean | null;
+  athlete_phone?: string;
+  athlete_email?: string;
+  father?: { first?: string; last?: string; email?: string; phone?: string };
+  mother?: { first?: string; last?: string; email?: string; phone?: string };
+};
+
 export type OfferStatus = "open" | "used" | "expired" | "withdrawn";
 
 export interface WaitlistInfo {
   fromForm: boolean;
-  intake: Intake | null;
+  tag: string | null;
+  intake: WaitlistIntake | null;
   offer: { id: string; status: OfferStatus; expires: string; sentTo: string[] } | null;
   clinicSeenOn: string | null;
   coachOk: boolean;
@@ -78,13 +87,14 @@ export async function loadWaitlistInfo(regIds: string[]): Promise<Record<string,
     db.from("olb_onboarding_waitlist").select("registration_id, clinic_seen_on, coach_ok_at").in("registration_id", regIds),
   ]);
   const out: Record<string, WaitlistInfo> = {};
-  for (const r of (regs as { id: string; extra: { source?: string; intake?: Intake } | null }[] | null) ?? []) {
+  for (const r of (regs as { id: string; extra: { source?: string; tag?: string; intake?: WaitlistIntake } | null }[] | null) ?? []) {
     const o = ((offers as { id: string; registration_id: string; status: OfferStatus; expires_at: string; sent_to: string[] }[] | null) ?? []).find(
       (x) => x.registration_id === r.id
     );
     const m = ((marks as { registration_id: string; clinic_seen_on: string | null; coach_ok_at: string | null }[] | null) ?? []).find((x) => x.registration_id === r.id);
     out[r.id] = {
       fromForm: r.extra?.source === "waitlist_form",
+      tag: r.extra?.tag ?? null,
       intake: r.extra?.intake ?? null,
       offer: o ? { id: o.id, status: o.status, expires: expiryWords(o.expires_at), sentTo: o.sent_to } : null,
       clinicSeenOn: m?.clinic_seen_on ?? null,

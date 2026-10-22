@@ -29,6 +29,9 @@ export type RegistrationExtra = {
   commitments?: { has: boolean; note: string | null };
   // The email whose code the family typed back before sending (0103).
   email_confirmed?: string | null;
+  // Waitlist forms: how they joined (0130), plus a label staff see on the card.
+  source?: string | null;
+  tag?: string | null;
   // Moved off the roster back to the waitlist: where they were
   // (lib/teams/waitlist-player.ts).
   from_roster?: {

@@ -1,0 +1,161 @@
+{
+  "capturedAt": "2026-10-22T18:40:00Z",
+  "sourceUrl": "https://www.cognitoforms.com/OmahaLightningBasketball1/_10u14uCompetitiveWaitlist",
+  "formId": "17",
+  "organizationName": "Omaha Lightning Basketball",
+  "internalName": "_10u14uCompetitiveWaitlist",
+  "title": "10u-14u Competitive Waitlist",
+  "introHtml": "<p>Our 10u-14u teams are currently waitlisted but are likely to have a few spaces open in the coming weeks, please fill out this form to be added to the waitlist. &nbsp;We will contact you when space is available.</p>",
+  "introText": "Our 10u-14u teams are currently waitlisted but are likely to have a few spaces open in the coming weeks, please fill out this form to be added to the waitlist. We will contact you when space is available.",
+  "submitButton": "Submit",
+  "paging": false,
+  "conditionalVisibilityOnForm": true,
+  "notes": [
+    "Captured from Cognito load-form/form-def (embedded modelOptions + template). Session secrets, bot challenges, and encryption keys were stripped and are not stored here.",
+    "flags.ConditionalVisibility is true on the session, but no field has a ShowWhen / VisibleWhen rule. The only conditional logic is the homeschooled required-value: the answer must be Yes.",
+    "IsThisYourFirstExperienceWithOmahaLightningBasketball defaults to false (No) and is not required.",
+    "Father/Mother Name help text says fill N/A if the fields do not apply; Email and Phone on those rows are still required with format checks."
+  ],
+  "fields": [
+    {
+      "source": "AthleteName",
+      "label": "Athlete Name",
+      "type": "name",
+      "subtype": "none",
+      "parts": ["First", "Last"],
+      "format": "[First] [Last]",
+      "required": true,
+      "requiredDependsOn": ["AthleteName.First", "AthleteName.Last"],
+      "helptext": null,
+      "choices": null,
+      "default": null
+    },
+    {
+      "source": "AthleteBirthdate",
+      "label": "Athlete Birthdate",
+      "type": "date",
+      "subtype": "date",
+      "required": true,
+      "format": "d",
+      "helptext": null,
+      "choices": null,
+      "default": null
+    },
+    {
+      "source": "IsThisYourFirstExperienceWithOmahaLightningBasketball",
+      "label": "Is this your first experience with Omaha Lightning Basketball?",
+      "type": "yesno",
+      "subtype": "radiobuttons",
+      "required": false,
+      "format": "Yes;No",
+      "helptext": null,
+      "choices": ["Yes", "No"],
+      "default": false
+    },
+    {
+      "source": "AthletePhone",
+      "label": "Athlete Phone",
+      "type": "phone",
+      "subtype": "usphone",
+      "required": false,
+      "format": "(###) ###-#### x########",
+      "helptext": null,
+      "choices": null,
+      "default": null
+    },
+    {
+      "source": "AthleteEmail",
+      "label": "Athlete Email",
+      "type": "email",
+      "subtype": "none",
+      "required": false,
+      "format": "name@address.xyz",
+      "helptext": null,
+      "choices": null,
+      "default": null
+    },
+    {
+      "source": "IsYourAthleteHomeschooled",
+      "label": "Is your athlete homeschooled?",
+      "type": "yesno",
+      "subtype": "radiobuttons",
+      "required": true,
+      "requiredValue": "Yes",
+      "requiredLogic": "Cognito required message fires unless the value is strictly true. Answering No fails validation.",
+      "format": "Yes;No",
+      "helptext": "If your son is in a co-op three or more days a week please reach out to us at LightningBasketballOmaha@gmail.com to discuss eligibility.",
+      "choices": ["Yes", "No"],
+      "default": false
+    },
+    {
+      "source": "FathersName",
+      "label": "Father's Name",
+      "type": "name",
+      "subtype": "none",
+      "parts": ["First", "Last"],
+      "format": "[First] [Last]",
+      "required": true,
+      "requiredDependsOn": ["FathersName.First", "FathersName.Last"],
+      "helptext": "Fill with N/A if these fields do not apply.",
+      "choices": null,
+      "default": null
+    },
+    {
+      "source": "FathersEmail",
+      "label": "Father's Email",
+      "type": "email",
+      "subtype": "none",
+      "required": true,
+      "format": "name@address.xyz",
+      "helptext": null,
+      "choices": null,
+      "default": null
+    },
+    {
+      "source": "FathersPhone",
+      "label": "Father's Phone",
+      "type": "phone",
+      "subtype": "usphone",
+      "required": true,
+      "format": "(###) ###-#### x########",
+      "helptext": null,
+      "choices": null,
+      "default": null
+    },
+    {
+      "source": "MothersName",
+      "label": "Mother's Name",
+      "type": "name",
+      "subtype": "none",
+      "parts": ["First", "Last"],
+      "format": "[First] [Last]",
+      "required": true,
+      "requiredDependsOn": ["MothersName.First", "MothersName.Last"],
+      "helptext": "Fill with N/A if these fields do not apply.",
+      "choices": null,
+      "default": null
+    },
+    {
+      "source": "MothersEmail",
+      "label": "Mother's Email",
+      "type": "email",
+      "subtype": "none",
+      "required": true,
+      "format": "name@address.xyz",
+      "helptext": null,
+      "choices": null,
+      "default": null
+    },
+    {
+      "source": "MothersPhone",
+      "label": "Mother's Phone",
+      "type": "phone",
+      "subtype": "usphone",
+      "required": true,
+      "format": "(###) ###-#### x########",
+      "helptext": null,
+      "choices": null,
+      "default": null
+    }
+  ]
+}

@@ -48,12 +48,22 @@ export function WorkflowPanel({ regId, name, info }: { regId: string; name: stri
       {i && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
           {(
-            [
-              ["Homeschooled", i.homeschooled ? "Yes" : "No"],
-              ["Played before", i.experience || "Not answered"],
-              ["Friends on Lightning", i.friends || "None named"],
-              ["Heard about us", i.heard_from || "Not answered"],
-            ] as [string, string][]
+            i.first_experience !== undefined || i.father || i.mother
+              ? ([
+                  ["Homeschooled", i.homeschooled ? "Yes" : "No"],
+                  ["First Lightning experience", i.first_experience === true ? "Yes" : i.first_experience === false ? "No" : "Not answered"],
+                  ...(i.athlete_phone || i.athlete_email
+                    ? ([["Athlete contact", [i.athlete_phone, i.athlete_email].filter(Boolean).join(" · ")]] as [string, string][])
+                    : []),
+                  ...(i.father ? ([["Father", [i.father.first, i.father.last, i.father.email, i.father.phone].filter(Boolean).join(" · ")]] as [string, string][]) : []),
+                  ...(i.mother ? ([["Mother", [i.mother.first, i.mother.last, i.mother.email, i.mother.phone].filter(Boolean).join(" · ")]] as [string, string][]) : []),
+                ] as [string, string][])
+              : ([
+                  ["Homeschooled", i.homeschooled ? "Yes" : "No"],
+                  ["Played before", i.experience || "Not answered"],
+                  ["Friends on Lightning", i.friends || "None named"],
+                  ["Heard about us", i.heard_from || "Not answered"],
+                ] as [string, string][])
           ).map(([label, value]) => (
             <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={{ ...capStyle, fontSize: 10 }}>{label}</span>

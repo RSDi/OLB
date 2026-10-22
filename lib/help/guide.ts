@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 20, 2026";
+export const GUIDE_UPDATED = "October 22, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -377,6 +377,19 @@ Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdr
 
 - **Waiting for you** lists emails set to **Ask me first**. Tap one to read it, **Change the words** if you like, then **Send** or **Skip**. **Send all** sends every one as it is.
 - **Announce teams** emails each family whose players are all on a team: their team, coach and practice times (when **Your team** is on).`,
+  },
+  {
+    id: "competitive-waitlist-preview",
+    title: "10U–14U competitive waitlist (preview)",
+    group: "Directory",
+    audience: "registrations",
+    preview: true,
+    keywords: ["10u", "14u", "competitive waitlist", "cognito", "preview", "join the waitlist", "see the whole form"],
+    body: `A preview-only copy of the Cognito **10u-14u Competitive Waitlist**, in the same step-by-step wizard as player registration. It is **not** on the public website. Production 404s the page and refuses the write.
+
+Families walk through an intro, one question group per step (athlete name, birthdate, first Lightning experience, athlete phone and email, homeschooled, father, mother), then a summary. **See the whole form** shows every field on one page; **← Back to step by step** returns to the wizard with the same answers.
+
+Submissions land on **Directory → Registrations → Waitlist** (\`/portal/directory/registrations?tab=waitlist\`) with status waitlisted, source waitlist_form, and the tag **10U-14U competitive waitlist** on the card.`,
   },
   {
     id: "uniforms-page",
