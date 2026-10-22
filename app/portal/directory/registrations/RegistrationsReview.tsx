@@ -250,6 +250,7 @@ function RegistrationCard({
   const [note, setNote] = useState(reg.notes ?? "");
 
   const x = reg.extra;
+  const fromForm = workflow?.fromForm || x.source === "waitlist_form";
   const commitments = commitmentsAdmin(x);
   const name = `${reg.first_name} ${reg.last_name}`.trim();
   const age = ageFromDob(reg.dob);
@@ -335,9 +336,9 @@ function RegistrationCard({
           )}
           <ContactLine phone={x.athlete_phone ?? null} email={x.athlete_email ?? null} label="Player" />
         </div>
-        {workflow?.fromForm ? (
+        {fromForm ? (
           <span className="rsd-chip rsd-chip-accent" style={{ marginLeft: "auto" }}>
-            From the waitlist form
+            {x.tag || "From the waitlist form"}
           </span>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, marginLeft: "auto" }}>
@@ -368,7 +369,7 @@ function RegistrationCard({
 
       {reg.match && <MatchNote reg={reg} />}
 
-      {!workflow?.fromForm && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+      {!fromForm && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
         {facts.map(([label, value]) => (
           <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ ...capStyle, fontSize: 10 }}>{label}</span>
@@ -437,7 +438,7 @@ function RegistrationCard({
         <SentMessages messages={reg.messages} style={{ borderTop: "1px solid var(--gw-border)", paddingTop: 12 }} />
       )}
 
-      {!workflow?.fromForm && <ReceiptSender reg={reg} />}
+      {!fromForm && <ReceiptSender reg={reg} />}
 
       {error && <ErrorNote text={error} />}
 
@@ -464,7 +465,7 @@ function RegistrationCard({
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        {!workflow?.fromForm && (
+        {!fromForm && (
           <span data-tour="registration-approve" style={{ display: "inline-flex" }}>
             <Pill variant="accent" onClick={() => run("approve", () => approveRegistration(reg.id))} disabled={busy !== null}>
               {busy === "approve" ? "Approving…" : "Approve"}
