@@ -53,6 +53,7 @@ export function WorkflowPanel({ regId, name, info }: { regId: string; name: stri
               ["Played before", i.experience || "Not answered"],
               ["Friends on Lightning", i.friends || "None named"],
               ["Heard about us", i.heard_from || "Not answered"],
+              ...(i.level ? ([["Level", i.level]] as [string, string][]) : []),
             ] as [string, string][]
           ).map(([label, value]) => (
             <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>

@@ -63,4 +63,4 @@ export function intakeOf(w: WaitlistInput) {
   };
 }
 
-export type Intake = ReturnType<typeof intakeOf>;
+export type Intake = ReturnType<typeof intakeOf> & { level?: string };

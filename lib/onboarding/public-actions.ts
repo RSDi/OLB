@@ -6,9 +6,11 @@
 
 import { createAdminClient } from "../supabase/admin";
 import { sendPushToPermission } from "../notifications/push";
+import { assessmentExtra, assessmentNotes, assessmentProblem } from "./assessment-form";
 import { composeForRegistration } from "./compose";
 import { deliver } from "./deliver";
-import { loadWords, workflowOn } from "./server";
+import { isPreviewDeployment } from "./preview-only";
+import { loadWords, seasonBoardId, workflowOn } from "./server";
 import { intakeOf, waitlistProblem, type WaitlistInput } from "./waitlist-form";
 
 export async function joinWaitlist(input: WaitlistInput, honeypot: string): Promise<{ error?: string }> {
@@ -67,6 +69,64 @@ export async function joinWaitlist(input: WaitlistInput, honeypot: string): Prom
   await deliver(db, settings, "waitlist_reply", `waitlist_reply:${reg.id}`, composeForRegistration("waitlist_reply", reg, await loadWords(db))).catch((e) => {
     console.error("[onboarding] waitlist reply failed", e);
     return "failed" as const;
+  });
+  return {};
+}
+
+// PUBLIC — no auth. The 14U assessment form. Same table and Waitlist tab as
+// joinWaitlist, tagged "14U assessment". Open only on preview/dev: a
+// production deploy 404s the page and this action refuses the write.
+export async function join14uAssessment(input: WaitlistInput, honeypot: string): Promise<{ error?: string }> {
+  if (!isPreviewDeployment()) return { error: "This assessment form isn't open here." };
+  if (honeypot && honeypot.trim()) return {}; // bot
+  const problem = assessmentProblem(input);
+  if (problem) return { error: problem };
+  const db = createAdminClient();
+  const boardId = await seasonBoardId(db);
+  if (!boardId) return { error: "The assessment isn't open on this page right now. Email lightningbasketballomaha@gmail.com and we'll add you." };
+
+  const email = input.email.trim().toLowerCase();
+  const hourAgo = new Date(Date.now() - 3600_000).toISOString();
+  const { count } = await db.from("olb_registrations").select("id", { count: "exact", head: true }).eq("parent_email", email).gte("created_at", hourAgo);
+  if ((count ?? 0) >= 6) return { error: "We've had a few from this email already. Try again in an hour, or email us." };
+
+  const first = input.athlete_first.trim().slice(0, 60);
+  const last = input.athlete_last.trim().slice(0, 60);
+  const { data: dupes } = await db
+    .from("olb_registrations")
+    .select("id")
+    .eq("board_id", boardId)
+    .in("status", ["waitlisted", "pending"])
+    .ilike("first_name", first.replace(/[%_\\]/g, (c) => `\\${c}`))
+    .ilike("last_name", last.replace(/[%_\\]/g, (c) => `\\${c}`))
+    .eq("dob", input.athlete_dob)
+    .limit(1);
+  if (dupes?.length) return {};
+
+  const parentName = `${input.parent_first.trim()} ${input.parent_last.trim()}`.trim().slice(0, 120);
+  const { data: saved, error } = await db
+    .from("olb_registrations")
+    .insert({
+      board_id: boardId,
+      first_name: first,
+      last_name: last,
+      dob: input.athlete_dob,
+      parent_name: parentName,
+      parent_email: email,
+      parent_phone: input.phone.trim().slice(0, 40) || null,
+      status: "waitlisted",
+      notes: assessmentNotes(input),
+      extra: assessmentExtra(input),
+    })
+    .select("id")
+    .single();
+  if (error || !saved) return { error: "Something went wrong saving that. Please try again." };
+
+  await sendPushToPermission("registrations", {
+    title: `New 14U assessment: ${first} ${last}`,
+    body: `From ${parentName}. Tap to see their answers.`,
+    url: "/portal/directory/registrations?tab=waitlist",
+    tag: `waitlist-${saved.id}`,
   });
   return {};
 }
