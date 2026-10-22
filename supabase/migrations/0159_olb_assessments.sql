@@ -49,7 +49,7 @@ create index if not exists olb_assessments_board_open_idx
 
 alter table public.olb_assessments enable row level security;
 
-revoke all on public.olb_assessments from anon;
+revoke all on public.olb_assessments from anon, authenticated;
 
 drop policy if exists "olb_assessments_select" on public.olb_assessments;
 create policy "olb_assessments_select" on public.olb_assessments

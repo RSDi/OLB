@@ -24,6 +24,7 @@ import {
 import { REGISTRATION_SEASON } from "../../lib/teams/registration-form.ts";
 import { assessmentExtra, assessmentProblem, is14uEligible } from "../../lib/onboarding/assessment-form.ts";
 import { emptyWaitlist } from "../../lib/onboarding/waitlist-form.ts";
+import { runDaily } from "../../lib/onboarding/cron.ts";
 
 const filled = (patch: Record<string, unknown> = {}) => {
   const w = emptyWaitlist();
@@ -171,7 +172,7 @@ test("high school uses the grade rule, 14U keeps the birthday message", () => {
 test("the migration creates olb_assessments with staff select and service-role writes", () => {
   const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0159_olb_assessments.sql"), "utf8");
   assert.match(sql, /create table if not exists public\.olb_assessments/);
-  assert.match(sql, /revoke all on public\.olb_assessments from anon;/);
+  assert.match(sql, /revoke all on public\.olb_assessments from anon, authenticated;/);
   assert.match(sql, /grant select on public\.olb_assessments to authenticated, service_role;/);
   assert.match(sql, /grant insert, update, delete on public\.olb_assessments to service_role;/);
   assert.doesNotMatch(sql, /grant select, insert, update, delete on public\.olb_assessments to authenticated/);
@@ -207,12 +208,24 @@ test("Assessment thanks and reminder match Off / Ask me first / On plus Words", 
   assert.match(cron, /daysBetween\(today, centralDay/);
   assert.match(cron, /a\.open &&/);
   assert.match(cron, /builtin-/);
-  assert.match(cron, /centralHour\(now\) === 9/);
+  assert.match(cron, /centralHour\(now\) !== 9/);
+  assert.match(cron, /if \(centralHour\(now\) !== 9\) return summary/);
   assert.match(waitlist, /waitlist-assessment-filter/);
   assert.match(waitlist, /waitlistAssessmentLabel/);
   const vercel = readFileSync(join(import.meta.dirname, "../../vercel.json"), "utf8");
   assert.match(vercel, /"17 14 \* \* \*"/);
   assert.match(vercel, /"17 15 \* \* \*"/);
+});
+
+test("the off-hour onboarding cron does no daily work and no Slack check", async () => {
+  const winterEarly = await runDaily(new Date("2026-01-15T14:17:00.000Z")); // 8 AM CT
+  const summerLate = await runDaily(new Date("2026-07-15T15:17:00.000Z")); // 10 AM CT
+  assert.equal(winterEarly.boards, 0);
+  assert.equal(winterEarly.slackChecked, 0);
+  assert.equal(winterEarly.assessmentReminders, 0);
+  assert.equal(summerLate.boards, 0);
+  assert.equal(summerLate.slackChecked, 0);
+  assert.equal(summerLate.assessmentReminders, 0);
 });
 
 test("public pages strip thanks and reminder wording", () => {

@@ -11,7 +11,7 @@
 //   countdown       10 days and 1 day before the first practice
 //   Slack           who has joined, by parent email (bot token)
 //   assessment      a reminder two days before an open assessment, only
-//                   when the America/Chicago hour is 9 (14:17 and 15:17 UTC)
+//                   at 9 AM America/Chicago (same hour as the rest)
 //   reminders       a push to the Registrations permission: the Slack link
 //                   running out, families nobody has answered, and on
 //                   Mondays a summary of what's open
@@ -40,8 +40,11 @@ export interface DailySummary {
 }
 
 export async function runDaily(now: Date = new Date()): Promise<DailySummary> {
-  const db = createAdminClient();
   const summary: DailySummary = { boards: 0, offersReminded: 0, offersClosed: 0, clinicInvites: 0, openItems: 0, countdown: 0, slackChecked: 0, assessmentReminders: 0 };
+  // Two UTC crons (14:17 and 15:17) so 9 AM CT lands year-round. The other
+  // fire would otherwise run checkSlack and the daily pushes twice.
+  if (centralHour(now) !== 9) return summary;
+  const db = createAdminClient();
   const { data: rows } = await db.from("olb_onboarding_settings").select("board_id").eq("enabled", true);
   for (const { board_id } of (rows as { board_id: string }[] | null) ?? []) {
     const settings = await loadSettings(db, board_id);
@@ -75,9 +78,7 @@ export async function runDaily(now: Date = new Date()): Promise<DailySummary> {
       }
     }
 
-    if (centralHour(now) === 9) {
-      await assessmentReminders(db, settings, words, today, summary);
-    }
+    await assessmentReminders(db, settings, words, today, summary);
     await reminders(db, settings, families, today);
   }
   return summary;
@@ -129,7 +130,7 @@ async function offers(db: Db, settings: OnboardingSettings, words: Record<string
 }
 
 // Assessment reminder: waitlisted sign-ups, two calendar days before an
-// open assessment. Caller already checked the Chicago hour is 9.
+// open assessment. Only reached when runDaily already saw 9 AM Chicago.
 async function assessmentReminders(
   db: Db,
   settings: OnboardingSettings,
