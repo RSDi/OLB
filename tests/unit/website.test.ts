@@ -21,10 +21,23 @@ import {
   siteImageUrlPrefix,
 } from "../../lib/website/content.ts";
 
+test("Programs assessments button default goes to the live 14U form", () => {
+  const src = readFileSync(join(import.meta.dirname, "../../lib/website/slots.ts"), "utf8");
+  const assessments = src.slice(src.indexOf('key: "programs.button.assessments"'), src.indexOf('key: "programs.button.register"'));
+  assert.match(assessments, /CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT/);
+  assert.match(assessments, /href: "\/assessments\/14u"/);
+  assert.doesNotMatch(assessments, /HIGH SCHOOL ASSESMENTS/);
+  assert.doesNotMatch(assessments, /OmahaLightningHighSchoolAssessments2026/);
+  const waitlist = src.slice(src.indexOf('key: "programs.button.waitlist"'), src.indexOf('key: "programs.button.assessments"'));
+  assert.match(waitlist, /CLICK HERE TO JOIN THE WAITLIST FOR THE 8U-14U SEASON!/);
+  assert.match(waitlist, /_10u14uCompetitiveWaitlist/);
+});
+
 test("menu links: site pages and web addresses are tidied, anything else refused", () => {
   assert.equal(normalizeMenuHref("/coaches"), "/coaches");
   assert.equal(normalizeMenuHref(" coaches "), "/coaches");
   assert.equal(normalizeMenuHref("/programs#u14"), "/programs#u14");
+  assert.equal(normalizeMenuHref("/assessments/14u"), "/assessments/14u");
   assert.equal(normalizeMenuHref("https://example.com/a?b=1"), "https://example.com/a?b=1");
   assert.equal(normalizeMenuHref("www.example.com"), "https://www.example.com/");
   assert.equal(normalizeMenuHref(""), null);

@@ -387,11 +387,12 @@ Lastly, we strive to provide a setting where home school students can achieve th
     key: "programs.button.assessments",
     page: "Programs",
     label: "Second button",
+    help: "The 14U assessment form on this site. High school assessments stay on Cognito until that form is rebuilt.",
     kind: "link",
     max: 120,
     default: {
-      label: "CLICK HERE TO REGISTER FOR HIGH SCHOOL ASSESMENTS",
-      href: "https://www.cognitoforms.com/OmahaLightningBasketball1/OmahaLightningHighSchoolAssessments2026",
+      label: "CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT",
+      href: "/assessments/14u",
     },
   },
   {
