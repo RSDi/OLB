@@ -60,7 +60,9 @@ ${SIGN}`,
 
 Great news! We have a spot for {player} for the {season} season.
 
-This link is just for your family, and most of the form is already filled in. It's good until {expires}:
+We've filled in {player}'s name, birthday and your contact info; you'll add your address, waiver and uniform details.
+
+This link is just for your family. It's good until {expires}:
 {link}
 
 Please don't share it, since it holds {player}'s spot. Questions? Just reply. We'd love to have you!

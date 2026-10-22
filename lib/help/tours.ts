@@ -1057,7 +1057,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "waitlist-offer",
         title: "Offer a spot",
-        body: "When a spot opens, tap **Offer a spot**, read the email over (keep {link} in it) and tap **Send the offer**. The family gets a private link with their son filled in. A check-in and a close-out follow if their switches are on.",
+        body: "When a spot opens, tap **Offer a spot**, read the email over (keep {link} in it) and tap **Send the offer**. The family gets a private link with their son's name, birthday and the parent's contact filled in. A check-in and a close-out follow if their switches are on.",
       },
       {
         target: "onboarding-held",

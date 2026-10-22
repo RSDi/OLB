@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 20, 2026";
+export const GUIDE_UPDATED = "October 22, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -367,7 +367,7 @@ Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdr
 
 **The waitlist form.** New families join at **/waitlist** on the website. It asks his name and birthday, whether he's homeschooled, whether he's played before, friends on Lightning and how they heard about us. They land on the **Waitlist** tab with their answers on the card.
 
-**Offer a spot.** On a waitlist card, tick **Seen at a clinic** and **Coach 👍** as you learn about the player. When a spot opens, tap **Offer a spot**, read the email over (change anything you like, but keep {link}), and tap **Send the offer**. The family gets a private link that opens the registration form with their son filled in. It's good for the number of days set in Settings. **+3 days** gives them longer and **Take back** stops the link. If it runs out, you get a notification and the family gets a kind close-out (when that email is on).
+**Offer a spot.** On a waitlist card, tick **Seen at a clinic** and **Coach 👍** as you learn about the player. When a spot opens, tap **Offer a spot**, read the email over (change anything you like, but keep {link}), and tap **Send the offer**. The family gets a private link that opens the registration form with their son's name and birthday and the parent's contact filled in. Homeschool from the waitlist is shown as a reminder; they still have to affirm NCHC eligibility. Notes they left stay on the waitlist card for staff. They add address, waiver, uniforms and how they'll pay (Venmo or check). It's good for the number of days set in Settings. **+3 days** gives them longer and **Take back** stops the link. If it runs out, you get a notification and the family gets a kind close-out (when that email is on).
 
 **The registration form.** While the workflow is on, the form also asks each player's uniform sizes (from Settings → Uniforms) and has each player and a parent sign the handbook. Approving the registration checks off **Handbook signature** for you.
 

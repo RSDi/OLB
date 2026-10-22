@@ -2,17 +2,12 @@
 // gets when someone presses Offer a spot on the Waitlist tab.
 
 import { createAdminClient } from "../supabase/admin";
-import { shortDay, longDay } from "./dates";
+import { longDay } from "./dates";
+import { expiryDay, offerSeedFromRow, type OfferRegRow, type OfferSeedData } from "./offer-seed";
 import { workflowOn } from "./server";
 
-export interface OfferSeedData {
-  token: string;
-  first: string;
-  last: string;
-  dob: string | null;
-  email: string | null;
-  expires: string;
-}
+export type { OfferSeedData } from "./offer-seed";
+export { expiryDay } from "./offer-seed";
 
 // The offer behind a link, for the registration page to start from: null
 // when the workflow is off, or the link ran out or was used.
@@ -24,34 +19,22 @@ export async function loadOfferSeed(token: string | undefined): Promise<OfferSee
     if (!settings) return null;
     const { data } = await db
       .from("olb_onboarding_offers")
-      .select("status, expires_at, reg:olb_registrations(first_name, last_name, dob, parent_email, status)")
+      .select("status, expires_at, reg:olb_registrations(first_name, last_name, dob, parent_email, parent_name, parent_phone, extra, status)")
       .eq("token", token)
       .eq("board_id", settings.board_id)
       .maybeSingle();
     const o = data as unknown as {
       status: string;
       expires_at: string;
-      reg: { first_name: string; last_name: string; dob: string | null; parent_email: string | null; status: string } | null;
+      reg: (OfferRegRow & { status: string }) | null;
     } | null;
     if (!o?.reg) return "expired";
     if (o.status !== "open" || new Date(o.expires_at).getTime() < Date.now() || o.reg.status !== "waitlisted") return "expired";
-    return {
-      token,
-      first: o.reg.first_name,
-      last: o.reg.last_name,
-      dob: o.reg.dob,
-      email: o.reg.parent_email,
-      expires: shortDay(expiryDay(o.expires_at)),
-    };
+    return offerSeedFromRow(token, o.expires_at, o.reg);
   } catch (e) {
     console.error("[onboarding] loading an offer failed", e);
     return null;
   }
-}
-
-// The Omaha day an offer runs out.
-export function expiryDay(expiresAt: string): string {
-  return new Date(expiresAt).toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 }
 
 export function expiryWords(expiresAt: string): string {

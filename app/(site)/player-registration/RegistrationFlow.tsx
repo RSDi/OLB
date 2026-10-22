@@ -12,27 +12,20 @@ import {
 import {
   SEASON_LABEL,
   emptyRegistration,
+  fromOfferSeed,
   kidsNames,
-  newKid,
   registrationProblem,
-  suggestedTier,
   toInputs,
   type RegistrationState,
 } from "../../../lib/teams/registration-form";
 import { DEFAULT_FEE_TIERS, type FeeTier } from "../../../lib/finances/fees";
 import { FeeTiersProvider } from "./fee-tiers";
 import { emptyExtras, extrasProblem, inputExtras, type ExtrasState, type FormExtras } from "../../../lib/onboarding/form-extras";
+import type { OfferSeedData } from "../../../lib/onboarding/offer-seed";
 
-// A spot offered from the waitlist (0130): the player and the parent's email
-// to start from, and the link's secret, sent back with the registration.
-export interface OfferSeed {
-  token: string;
-  first: string;
-  last: string;
-  dob: string | null;
-  email: string | null;
-  expires: string;
-}
+// A spot offered from the waitlist (0130): the player, the parent's contact,
+// and the link's secret, sent back with the registration.
+export type OfferSeed = OfferSeedData;
 
 function newSubmissionKey(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
@@ -63,13 +56,7 @@ export default function RegistrationFlow({
   // The season's fee tiers (Settings → Fees, 0131).
   feeTiers?: FeeTier[];
 }) {
-  const seed = offer
-    ? () => {
-        const fresh = emptyRegistration();
-        fresh.kids = [newKid({ athlete_first: offer.first, athlete_last: offer.last, athlete_dob: offer.dob ?? "", first_season: true, fee_tier: suggestedTier(offer.dob, feeTiers) ?? "" })];
-        return fresh;
-      }
-    : undefined;
+  const seed = offer ? () => fromOfferSeed(offer, feeTiers) : undefined;
   const [state, setState] = useState<RegistrationState>(seed ?? emptyRegistration);
   const [extras, setExtras] = useState<ExtrasState>(emptyExtras);
   // One key per registration, so sending twice saves it once.
@@ -167,7 +154,17 @@ export default function RegistrationFlow({
           onExtras={setExtras}
           seed={round === 0 ? seed : undefined}
           startEmail={round === 0 ? offer?.email ?? undefined : undefined}
-          banner={round === 0 && offer ? `We're holding a spot for ${offer.first} until ${offer.expires}. Start with your email and we'll walk you through it.` : null}
+          offerParent={
+            round === 0 && offer
+              ? { parentFirst: offer.parentFirst, parentLast: offer.parentLast, email: offer.email, phone: offer.phone }
+              : null
+          }
+          homeschooledContext={round === 0 ? offer?.homeschooled ?? null : null}
+          banner={
+            round === 0 && offer
+              ? `We're holding a spot for ${offer.first} until ${offer.expires}. We've filled in his name, birthday and your contact info.`
+              : null
+          }
         />
       </div>
       {view === "form" && (
@@ -185,6 +182,7 @@ export default function RegistrationFlow({
           config={config}
           extras={extras}
           onExtras={setExtras}
+          homeschooledContext={round === 0 ? offer?.homeschooled ?? null : null}
         />
       )}
     </FeeTiersProvider>
