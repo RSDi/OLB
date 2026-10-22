@@ -71,8 +71,10 @@ create policy "olb_assessments_delete" on public.olb_assessments
 
 grant select, insert, update, delete on public.olb_assessments to authenticated, service_role;
 
--- 14U is the first assessment. Same copy and birthday window the preview
--- form already uses (2012-01-01 through 2013-12-31 for the 2026 season).
+-- 14U is the first assessment. Birthday window matches the existing 14U
+-- lock (lowestEligibleLevel === 14U on season end 2026-12-31): 2012-01-01
+-- through 2013-12-31. That is not the August 1 fee window (14u fees are
+-- ages 13–14 on 2026-08-01, about 2011-08-02 through 2013-08-01).
 insert into public.olb_assessments (
   board_id, slug, name, level, dob_from, dob_to, details, open
 )

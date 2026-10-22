@@ -20,7 +20,7 @@ import {
   playerFitsAssessment,
   tableMissing,
 } from "../../lib/onboarding/assessments.ts";
-import { assessmentExtra, assessmentProblem } from "../../lib/onboarding/assessment-form.ts";
+import { assessmentExtra, assessmentProblem, is14uEligible } from "../../lib/onboarding/assessment-form.ts";
 import { emptyWaitlist } from "../../lib/onboarding/waitlist-form.ts";
 
 const filled = (patch: Record<string, unknown> = {}) => {
@@ -48,6 +48,32 @@ test("14U and high school samples are the builtin assessments", () => {
   assert.equal(BUILTIN_HS.grade_from, 9);
   assert.equal(BUILTIN_HS.grade_to, 12);
   assert.deepEqual(BUILTIN_ASSESSMENTS.map((a) => a.slug), ["14u", "high-school"]);
+});
+
+// The seed and builtin 14U window is the existing lock (lowestEligibleLevel
+// === 14U on season end 2026-12-31): 2012-01-01 through 2013-12-31. The
+// August 1 fee cutoff is a different window (2011-08-02 through 2013-08-01)
+// and is not the assessment lock — a boy born 2011-10-25 is 14U for fees
+// and 16U for the team; a boy born 2013-12-31 is 12U for fees and 14U here.
+test("the 14U seed matches the existing 14U lock, not the August 1 fee window", () => {
+  assert.equal(BUILTIN_14U.dob_from, "2012-01-01");
+  assert.equal(BUILTIN_14U.dob_to, "2013-12-31");
+  const edges = [
+    ["2011-08-02", false],
+    ["2011-10-25", false],
+    ["2011-12-31", false],
+    ["2012-01-01", true],
+    ["2013-08-02", true],
+    ["2013-12-31", true],
+    ["2014-01-01", false],
+  ] as const;
+  for (const [dob, ok] of edges) {
+    assert.equal(is14uEligible(dob), ok, dob);
+    assert.equal(playerFitsAssessment(BUILTIN_14U, dob, null), ok, dob);
+  }
+  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0159_olb_assessments.sql"), "utf8");
+  assert.match(sql, /'2012-01-01'/);
+  assert.match(sql, /'2013-12-31'/);
 });
 
 test("a player fits an assessment by birthday or grade", () => {
