@@ -25,8 +25,7 @@ function formatWhen(iso: string): string {
     month: "short",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit",
-  });
+    minute: "2-digit", timeZone: "America/Chicago" });
 }
 
 function displayOf(row: FilmUpload, job: YoutubeJob | null): YoutubeDisplayStatus | null {

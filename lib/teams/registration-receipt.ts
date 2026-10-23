@@ -172,7 +172,16 @@ const label = (text: string) =>
 
 const step = (n: number, text: string) =>
   `<tr><td valign="top" style="width:30px;padding:4px 0;"><div style="width:22px;height:22px;border-radius:100px;background:#fbcb44;font-size:12px;font-weight:800;text-align:center;line-height:22px;">${n}</div></td>` +
-  `<td style="padding:4px 0 10px;font-size:14.5px;line-height:1.55;color:#333;">${text}</td></tr>`;
+  `<td style="padding:4px 0 10px;font-size:14.5px;line-height:1.55;color:#333;">${linkify(text)}</td></tr>`;
+
+// Turn http(s) URLs in a step into links after the rest is escaped.
+function linkify(text: string): string {
+  return esc(text).replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+    const trimmed = url.replace(/[).,;:!?]+$/, "");
+    const tail = url.slice(trimmed.length);
+    return `<a href="${trimmed}" style="color:#111;font-weight:700;word-break:break-all;">${trimmed}</a>${tail}`;
+  });
+}
 
 // The opening, with the players' names in bold.
 function introHtml(r: Receipt, who: Registrant, t: EmailText): string {
@@ -230,7 +239,7 @@ ${w.uniformNote ? `<p style="margin:10px 2px 0;font-size:12.5px;line-height:1.5;
 <tr><td style="padding:24px 36px 4px;">${label("How to pay")}${pay}</td></tr>
 <tr><td style="padding:24px 36px 8px;">${label("What happens next")}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-${w.steps.map((line, i) => step(i + 1, esc(line))).join("\n")}
+${w.steps.map((line, i) => step(i + 1, line)).join("\n")}
 </table></td></tr>
 <tr><td style="padding:12px 36px 32px;"><p style="margin:0;font-size:14.5px;line-height:1.6;color:#333;">${w.closing.map((l, i) => (i === w.closing.length - 1 && i > 0 ? `<strong>${esc(l)}</strong>` : esc(l))).join("<br>")}</p></td></tr>
 <tr><td style="background:#000;padding:22px 36px;"><div style="height:3px;background:#fbcb44;border-radius:2px;margin-bottom:14px;"></div>
@@ -270,22 +279,42 @@ export function clubNoticeSubject(r: Receipt): string {
   return `New registration${names.length > 1 ? "s" : ""}: ${joinNames(names)}`;
 }
 
-export function clubNoticeText(r: Receipt, input: RegistrationInput, who: Registrant | null, confirmed: boolean, reviewUrl: string): string {
+export function clubNoticeText(
+  r: Receipt,
+  input: RegistrationInput,
+  who: Registrant | null,
+  confirmed: boolean,
+  reviewUrls: string | string[],
+): string {
   const parent = (role: string, first?: string, last?: string, email?: string, phone?: string) => {
     const name = fullName(first, last);
-    return name || email ? `${role}: ${[name, email?.trim(), phone?.trim()].filter(Boolean).join(" · ")}` : null;
+    return name || email || phone?.trim()
+      ? `${role}: ${[name, email?.trim(), phone?.trim()].filter(Boolean).join(" · ")}`
+      : null;
   };
+  const urls = (Array.isArray(reviewUrls) ? reviewUrls : [reviewUrls]).filter(Boolean);
+  const review =
+    urls.length === 0
+      ? null
+      : urls.length === 1
+        ? `Review it in the portal: ${urls[0]}`
+        : ["Review in the portal:", ...urls.map((u, i) => `• ${r.players[i]?.name ?? "Player"}: ${u}`)].join("\n");
   return [
     `${r.players.length > 1 ? `${r.players.length} players were` : "A player was"} just registered on the website.`,
     "",
-    ...r.players.map((p) => `• ${p.name} (${playerFacts(p)}): ${money(p.cents)}`),
+    ...r.players.map((p) => {
+      const uniforms = [yesNo(p.uniform) && `New uniform: ${yesNo(p.uniform)}`, yesNo(p.grays) && `Grays: ${yesNo(p.grays)}`]
+        .filter(Boolean)
+        .join(" · ");
+      return `• ${p.name}\n  Program: ${p.tier || "—"}${uniforms ? `\n  ${uniforms}` : ""}\n  Fee: ${money(p.cents)}`;
+    }),
     `Total: ${money(r.totalCents)} · Paying by ${r.payment || "—"}`,
     "",
     parent("Father", input.father_first, input.father_last, input.father_email, input.father_phone),
     parent("Mother", input.mother_first, input.mother_last, input.mother_email, input.mother_phone),
     `Registered by: ${who?.email ?? "no email on the form"}${confirmed ? " (email confirmed)" : ""}`,
     "",
-    `Review it in the portal: ${reviewUrl}`,
+    review,
   ]
     .filter((l): l is string => l !== null)
     .join("\n");

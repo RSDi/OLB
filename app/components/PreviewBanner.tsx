@@ -21,7 +21,7 @@ function EyeIcon() {
 }
 
 export function PreviewBanner({ preview }: { preview: PreviewInfo }) {
-  const until = new Date(preview.expiresAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const until = new Date(preview.expiresAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
   return (
     <div
       role="status"

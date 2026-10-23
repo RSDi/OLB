@@ -98,9 +98,9 @@ export function UniformsView({ data }: { data: UniformPage }) {
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Uniforms</h1>
         <span style={muted}>
           {[
-            data.settings.order_deadline && `Order by ${new Date(`${data.settings.order_deadline}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
+            data.settings.order_deadline && `Order by ${new Date(`${data.settings.order_deadline}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "America/Chicago" })}`,
             data.settings.try_on && `Try-on: ${data.settings.try_on}`,
-            data.settings.ordered_at && `Ordered ${new Date(data.settings.ordered_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`,
+            data.settings.ordered_at && `Ordered ${new Date(data.settings.ordered_at).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "America/Chicago" })}`,
           ]
             .filter(Boolean)
             .join(" · ")}

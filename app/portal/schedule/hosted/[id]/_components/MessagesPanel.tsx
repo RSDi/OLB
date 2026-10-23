@@ -120,7 +120,7 @@ export function MessagesPanel({ data }: { data: HostedPageData }) {
             <button type="button" onClick={() => setShown(shown === m.id ? null : m.id)} style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", color: "inherit" }}>
               <span style={{ fontSize: 13.5, fontWeight: 700 }}>{m.subject}</span>{" "}
               <span style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-                {new Date(m.sent_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · {m.sent_count}{" "}
+                {new Date(m.sent_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })} · {m.sent_count}{" "}
                 {m.sent_count === 1 ? "email" : "emails"}
               </span>
             </button>

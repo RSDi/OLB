@@ -4,6 +4,7 @@
 // and server, and pure, so tests can run it.
 
 import type { RegistrationExtra } from "./roster-logic.ts"; // explicit extension so node --test can load this file
+import { formatDisplayYmd } from "../dates/display.ts";
 import {
   ALL_RECIPIENTS,
   cleanEmail as clean,
@@ -100,7 +101,7 @@ export function waitlistCsv(rows: WaitlistRow[]): string {
     "Player", "Birthday", "Fee", "Registered", "Waitlisted", "Waitlisted by", "Note", "Contacted", "Contacted by",
     "Father", "Father email", "Father phone", "Mother", "Mother email", "Mother phone", "Player email", "Player phone", "Address",
   ];
-  const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
+  const day = (iso: string | null) => formatDisplayYmd(iso);
   const lines = rows.map((r) => {
     const x = r.extra;
     const a = x.address ?? {};

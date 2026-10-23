@@ -31,10 +31,11 @@ test("the receipt goes to one person: whoever filled the form in", () => {
 test("the receipt lists each player, the total and how to pay", () => {
   const r = receipt([input(), input({ athlete_first: "Evan", fee_tier: "8u-12u - $375.00", needs_uniform: false, needs_grays: null })]);
   assert.equal(r.totalCents, 90000);
-  assert.equal(receiptSubject(r), "You're registered: Sam and Evan for the 2026-27 season");
+  assert.equal(receiptSubject(r), "You're registered for the 2026–27 Lightning season!");
   const who = { email: "jamie@example.com", first: "Jamie" };
   const html = receiptHtml(r, who, { logoUrl: "https://example.com/logo.png", checkAddress: [] });
   assert.match(html, /Hi Jamie, thanks for registering <strong>Sam and Evan<\/strong>/);
+  assert.match(html, /We(?:'|&#39;)ve got everything we need\./);
   assert.match(html, /16u–18u · New uniform: yes · Grays: yes/);
   assert.match(html, /8u–12u · New uniform: no</);
   assert.match(html, /\$900\.00/);
@@ -43,11 +44,12 @@ test("the receipt lists each player, the total and how to pay", () => {
   assert.match(receiptHtml(r, who, { logoUrl: "x", checkAddress: ["Treasurer", "1 Main St"], checkPayee: "OLB Treasurer" }), /OLB Treasurer/);
   assert.match(receiptHtml(r, who, { logoUrl: "x", checkAddress: ["Treasurer", "1 Main St"] }), /Treasurer<br>1 Main St/);
   assert.match(receiptText(r, who, { checkAddress: [] }), /Total: \$900\.00/);
-  // What happens next: placement, then Slack. No portal sign-in yet.
-  assert.match(html, /places Sam and Evan on teams/);
-  assert.match(html, /joining our team communication platform, Slack/);
-  assert.doesNotMatch(html, /portal/i);
-  assert.match(receiptText(r, who, { checkAddress: [] }), /2\. A board member will contact you/);
+  assert.match(html, /A board member will reach out about team placement/);
+  assert.match(html, /href="https:\/\/omahalightningbasketball\.com\/programs"/);
+  assert.match(html, /Uniform sizes and costs come separately once teams are set/);
+  assert.match(html, /Omaha Lightning Basketball/);
+  assert.doesNotMatch(html, /joining our team communication platform, Slack/);
+  assert.match(receiptText(r, who, { checkAddress: [] }), /2\. Practice times and fees/);
   // Names are escaped.
   assert.match(receiptHtml(receipt([input({ athlete_first: "<b>" })]), who, { logoUrl: "x", checkAddress: [] }), /&lt;b&gt;/);
 });
@@ -55,11 +57,20 @@ test("the receipt lists each player, the total and how to pay", () => {
 test("the club's notice says who, how much and where to review it", () => {
   const r = receipt([input()]);
   assert.equal(clubNoticeSubject(r), "New registration: Sam Carter");
-  const text = clubNoticeText(r, input(), { email: "jamie@example.com", first: "Jamie" }, true, "https://example.com/portal/directory/registrations");
-  assert.match(text, /Sam Carter \(16u–18u · New uniform: yes · Grays: yes\): \$525\.00/);
+  const text = clubNoticeText(
+    r,
+    input(),
+    { email: "jamie@example.com", first: "Jamie" },
+    true,
+    "https://example.com/portal/directory/registrations?open=abc",
+  );
+  assert.match(text, /Program: 16u–18u/);
+  assert.match(text, /New uniform: yes · Grays: yes/);
+  assert.match(text, /Fee: \$525\.00/);
   assert.match(text, /Registered by: jamie@example\.com \(email confirmed\)/);
   assert.match(text, /Father: Chris Carter · chris@example\.com · 402-555-0100/);
-  assert.match(text, /portal\/directory\/registrations/);
+  assert.match(text, /Mother: Jamie Carter · Jamie@Example\.com/);
+  assert.match(text, /portal\/directory\/registrations\?open=abc/);
 });
 
 test("a saved registration's receipt goes back to the family; any other address is a test", async () => {

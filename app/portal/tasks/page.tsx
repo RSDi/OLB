@@ -563,7 +563,7 @@ function emptyCopy(bucket: Bucket, view: "all" | "projects", staff: boolean): { 
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
 }
 
 const STATUS_LABELS: Record<TicketRow["status"], string> = {

@@ -345,7 +345,7 @@ export function RequirementDialog({
           <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
             Last marked {row.status === "waived" ? "waived" : done.toLowerCase()}
             {row.marked_by_name ? ` by ${row.marked_by_name}` : ""} on{" "}
-            {new Date(row.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}.
+            {new Date(row.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" })}.
           </span>
         )}
 

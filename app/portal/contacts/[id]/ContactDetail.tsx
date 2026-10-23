@@ -636,8 +636,7 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
-    year: "numeric",
-  });
+    year: "numeric", timeZone: "America/Chicago" });
 }
 
 // A person's company, the way its own page starts, and the others there.

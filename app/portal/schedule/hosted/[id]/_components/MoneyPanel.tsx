@@ -232,7 +232,7 @@ function FinanceCard({ data }: { data: HostedPageData }) {
     <Section
       title={`Finances: ${fin.event.name}`}
       tour="hosted-finances"
-      subtitle={synced ? `Budget last updated from this plan ${new Date(synced).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.` : "The estimate isn't in the budget yet."}
+      subtitle={synced ? `Budget last updated from this plan ${new Date(synced).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/Chicago" })}.` : "The estimate isn't in the budget yet."}
       action={
         <>
           {fin.canManage && (

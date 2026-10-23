@@ -681,7 +681,7 @@ function pmStatusChip(s: "pending" | "in_progress" | "done" | "skipped") {
 
 function formatShortDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "America/Chicago" });
 }
 
 function formatEventTime(startIso: string, endIso: string | null): string {
@@ -704,7 +704,7 @@ function truncate(s: string, n: number): string {
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "America/Chicago" });
 }
 
 function countByStatus(

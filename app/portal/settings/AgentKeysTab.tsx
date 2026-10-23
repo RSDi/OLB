@@ -208,7 +208,7 @@ export function AgentKeysTab() {
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{k.name}</div>
                 <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
                   <code>{k.prefix}…</code>
-                  {k.createdAt ? ` · ${new Date(k.createdAt).toLocaleString()}` : ""}
+                  {k.createdAt ? ` · ${new Date(k.createdAt).toLocaleString("en-US", { timeZone: "America/Chicago" })}` : ""}
                   {k.scopes?.length ? ` · ${k.scopes.map((s) => AGENT_SCOPE_LABELS[s as AgentScope] ?? s).join(" · ")}` : ""}
                 </div>
               </div>

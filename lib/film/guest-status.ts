@@ -8,7 +8,7 @@ export function formatBytes(n: number): string {
 }
 
 export function formatFinishTime(ms: number, locales?: Intl.LocalesArgument): string {
-  return new Date(ms).toLocaleTimeString(locales, { hour: "numeric", minute: "2-digit" });
+  return new Date(ms).toLocaleTimeString(locales, { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
 }
 
 export function allUploadsFinished(

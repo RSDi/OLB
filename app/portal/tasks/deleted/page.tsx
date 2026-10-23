@@ -186,5 +186,5 @@ function truncate(s: string, n: number): string {
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
 }

@@ -23,15 +23,10 @@ import {
   type StaySiblingPlayer,
 } from "../../../../lib/hs-hotel-stays/logic";
 import { ComboSelect } from "../../../components/ComboSelect";
+import { formatDisplayDate } from "../../../../lib/dates/display";
 
 export function formatDate(iso: string | null): string | null {
-  if (!iso) return null;
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatDisplayDate(iso);
 }
 
 export function playerAddress(p: Pick<DirectoryPlayer, "address_line1" | "address_line2" | "city" | "state" | "postal_code">): string | null {

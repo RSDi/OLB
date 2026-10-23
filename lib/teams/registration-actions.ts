@@ -228,14 +228,14 @@ export async function createRegistrations(
   await sendPushToPermission("registrations", {
     title: clubNoticeSubject(receipt(fresh)),
     body: familyLine(fresh[0]),
-    url: "/portal/directory/registrations",
+    url: ids[0] ? `/portal/directory/registrations?open=${ids[0]}` : "/portal/directory/registrations",
     tag: `registration-${ids[0] ?? Date.now()}`,
   });
   // The receipt to whoever filled the form in, and a notice to the club.
   // Best effort: the registration is saved either way. A copy of the receipt
   // is kept on each registration, under Messages sent (sent_by empty: the
   // website sent it), and shows on the player's page once approved.
-  const sent = await sendRegistrationEmails(fresh, confirmed).catch((e) => {
+  const sent = await sendRegistrationEmails(fresh, confirmed, ids).catch((e) => {
     console.error("[notify] registration emails failed", e);
     return null;
   });
@@ -371,6 +371,7 @@ function toRow(boardId: string, input: RegistrationInput, confirmedEmail: string
     parent_phone: naless(input.father_phone) || naless(input.mother_phone) || null,
     status: "pending",
     extra: {
+      source: "player_registration",
       first_season: input.first_season,
       address: { line1: input.address_line1, line2: input.address_line2, city: input.city, state: input.state, zip: input.zip },
       athlete_phone: input.athlete_phone || null,

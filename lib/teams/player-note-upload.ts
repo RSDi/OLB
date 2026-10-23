@@ -33,6 +33,6 @@ export async function uploadNoteFile(noteId: string, picked: File): Promise<{ fi
     .upload(path, file, { upsert: false, contentType: type });
   if (error) return { error: error.message };
   // A pasted screenshot comes in as "image.png"; give it a date instead.
-  const name = file.name && file.name !== "image.png" ? file.name : `Screenshot ${new Date().toLocaleString()}.${ext}`;
+  const name = file.name && file.name !== "image.png" ? file.name : `Screenshot ${new Date().toLocaleString("en-US", { timeZone: "America/Chicago" })}.${ext}`;
   return { file: { path, name, type, size: file.size } };
 }

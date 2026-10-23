@@ -294,7 +294,7 @@ export function SentMessages({ messages, style }: { messages: SentMessage[]; sty
               {m.subject}
             </span>
             <span style={muted}>
-              {new Date(m.sent_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+              {new Date(m.sent_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" })}
               {m.sent_by_name ? ` · by ${m.sent_by_name}` : ""} · to {m.sent_to.join(", ")}
               {m.players && m.players.length > 0 ? ` · about ${m.players.join(" & ")}` : ""}
             </span>

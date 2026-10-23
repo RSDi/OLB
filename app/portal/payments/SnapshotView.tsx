@@ -57,7 +57,7 @@ export function SnapshotView({ snapshot: s }: { snapshot: Snapshot }) {
   const eventsSpend = sumSpend(s.events.map((e) => e.spend));
   const fundsTotal = s.funds.reduce((n, f) => n + f.total, 0);
   const fundraisingHeader = s.fundraisers.length > 0 ? s.moneyIn.fundraising : fundsTotal;
-  const printedOn = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const printedOn = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
 
   return (
     <div className="fin-snapshot" style={{ display: "flex", flexDirection: "column", gap: 16 }}>

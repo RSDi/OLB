@@ -253,7 +253,7 @@ function NoteItem({ note, border }: { note: PlayerNote; border: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const when = new Date(note.created_at).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+  const when = new Date(note.created_at).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
   const edited = new Date(note.updated_at).getTime() - new Date(note.created_at).getTime() > 60_000;
 
   async function run(action: () => Promise<{ error?: string }>, after?: () => void) {
