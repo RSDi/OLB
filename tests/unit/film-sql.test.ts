@@ -145,6 +145,30 @@ test("0151 stores YouTube progress and a per-film event history", () => {
   assert.ok(down.includes("drop column if exists started_at"));
 });
 
+test("0159 adds YouTube resume backoff and lease columns", () => {
+  const names = readdirSync(join(root, "supabase/migrations")).filter((n) => n.endsWith(".sql")).sort();
+  const sql = readFileSync(join(root, "supabase/migrations/0159_game_film_youtube_resume.sql"), "utf8");
+  const down = readFileSync(join(root, "supabase/removal/0159_game_film_youtube_resume_down.sql"), "utf8");
+  assert.ok(names.includes("0158_check_mailing_address.sql"));
+  assert.ok(names.includes("0159_game_film_youtube_resume.sql"));
+  assert.equal(names.filter((n) => n.startsWith("0159")).length, 1, "only one 0159 migration");
+  assert.match(sql, /after 0158/);
+  assert.ok(sql.includes("add column if not exists next_attempt_at"));
+  assert.ok(sql.includes("add column if not exists claimed_until"));
+  assert.ok(sql.includes("add column if not exists claimed_by"));
+  assert.ok(sql.includes("add column if not exists transient_attempts"));
+  assert.ok(sql.includes("set local lock_timeout = '5s'"));
+  assert.ok(sql.includes("OLB does NOT auto-run"));
+  assert.ok(sql.includes("Apply BEFORE deploying"));
+  assert.ok(!sql.includes("drop table"));
+  assert.ok(!sql.includes("to anon"));
+  assert.ok(!sql.includes("create table"));
+  assert.ok(down.includes("drop column if exists next_attempt_at"));
+  assert.ok(down.includes("drop column if exists claimed_until"));
+  assert.ok(down.includes("drop column if exists claimed_by"));
+  assert.ok(down.includes("drop column if exists transient_attempts"));
+});
+
 test("0143 adds game date, opponent, and optional score columns", () => {
   assert.ok(gameMeta.includes("add column if not exists game_date date"));
   assert.ok(gameMeta.includes("add column if not exists opponent text"));

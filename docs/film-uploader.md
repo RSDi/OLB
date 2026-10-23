@@ -74,10 +74,12 @@ Website.
 
 Vercel cannot upload a 20 GB file in one serverless run (max ~5 minutes).
 A **minute cron** (`/api/cron/film-youtube`) plus `after()` on
-`/film/complete` streams 8 MiB chunks from private Storage to YouTube's
+`/film/complete` streams 64 MiB chunks (multiple of 256 KiB; override
+with `FILM_YOUTUBE_CHUNK_BYTES`) from private Storage to YouTube's
 resumable Data API and stores the session URI + byte offset on
-`game_film_youtube_jobs`. The next tick continues. Not a Supabase Edge
-Function: same timeout class, extra moving part.
+`game_film_youtube_jobs`. The next tick continues immediately. Transient
+YouTube errors keep the session and resume from YouTube's Range header.
+Not a Supabase Edge Function: same timeout class, extra moving part.
 
 **Jeff — Google Cloud**
 

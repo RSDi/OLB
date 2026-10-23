@@ -6,6 +6,17 @@
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "../supabase/admin";
 import {
+  YOUTUBE_EXTRAS_RECHECK_MS,
+  YOUTUBE_STALE_MS,
+  YOUTUBE_RETRY_LEASE_HELD,
+  acquireYoutubeLeaseWithClient,
+  insertYoutubeJobIfAbsentWithClient,
+  isMissingYoutubeJobExtraColumn,
+  patchYoutubeJobAndReleaseWithClient,
+  updateYoutubeJobIfLeaseFree,
+  type YoutubeLeaseClient,
+} from "./youtube-resume.ts";
+import {
   GAME_FILM_BUCKET,
   MOVED_RETENTION_DAYS,
   type FilmStatus,
@@ -306,60 +317,129 @@ export async function setFilmYoutubeStatus(
   return (data as FilmUpload | null) ?? null;
 }
 
-const YOUTUBE_JOB_COLUMNS =
+const YOUTUBE_JOB_BASE_COLUMNS =
   "upload_id, upload_uri, bytes_sent, bytes_total, attempts, started_at, last_progress_at, updated_at";
+const YOUTUBE_JOB_EXTRA_COLUMNS = "next_attempt_at, claimed_until, claimed_by, transient_attempts";
 const YOUTUBE_EVENT_COLUMNS = "id, upload_id, at, kind, message, detail, bytes_sent, bytes_total";
 
 export type { YoutubeEvent, YoutubeJob };
 
-export async function upsertYoutubeJob(
-  uploadId: string,
-  patch: Partial<Pick<YoutubeJob, "upload_uri" | "bytes_sent" | "bytes_total" | "attempts" | "started_at" | "last_progress_at">>
-): Promise<YoutubeJob> {
+export type YoutubeJobPatch = Partial<
+  Pick<
+    YoutubeJob,
+    | "upload_uri"
+    | "bytes_sent"
+    | "bytes_total"
+    | "attempts"
+    | "started_at"
+    | "last_progress_at"
+    | "next_attempt_at"
+    | "claimed_until"
+    | "claimed_by"
+    | "transient_attempts"
+  >
+>;
+
+/** Cached 0159-column probe. false is rechecked so a warm instance picks up a later apply (L2). */
+let youtubeJobExtras: boolean | null = null;
+let youtubeJobExtrasCheckedAt = 0;
+
+export { isMissingYoutubeJobExtraColumn };
+
+function youtubeJobColumns(): string {
+  return youtubeJobExtras === false
+    ? YOUTUBE_JOB_BASE_COLUMNS
+    : `${YOUTUBE_JOB_BASE_COLUMNS}, ${YOUTUBE_JOB_EXTRA_COLUMNS}`;
+}
+
+function disableYoutubeJobExtras(): void {
+  youtubeJobExtras = false;
+  youtubeJobExtrasCheckedAt = Date.now();
+}
+
+function youtubeJobExtrasOn(): boolean {
+  return youtubeJobExtras !== false;
+}
+
+export function youtubeResumeColumnsKnown(): boolean | null {
+  return youtubeJobExtras;
+}
+
+function stripYoutubeJobExtras<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
+  if (youtubeJobExtrasOn()) return row;
+  const next = { ...row };
+  delete next.next_attempt_at;
+  delete next.claimed_until;
+  delete next.claimed_by;
+  delete next.transient_attempts;
+  return next;
+}
+
+export async function upsertYoutubeJob(uploadId: string, patch: YoutubeJobPatch): Promise<YoutubeJob> {
   const admin = createAdminClient();
-  const { data: existing } = await admin
-    .from("game_film_youtube_jobs")
-    .select(YOUTUBE_JOB_COLUMNS)
-    .eq("upload_id", uploadId)
-    .maybeSingle();
+  const existing = await getYoutubeJob(uploadId);
   const now = new Date().toISOString();
   const bytesSent = patch.bytes_sent !== undefined ? patch.bytes_sent : (existing?.bytes_sent ?? 0);
   const progressMoved =
     patch.bytes_sent !== undefined && Number(patch.bytes_sent) !== Number(existing?.bytes_sent ?? 0);
-  const next = {
+  const next = stripYoutubeJobExtras({
     upload_id: uploadId,
     upload_uri: patch.upload_uri !== undefined ? patch.upload_uri : (existing?.upload_uri ?? null),
     bytes_sent: bytesSent,
     bytes_total: patch.bytes_total !== undefined ? patch.bytes_total : (existing?.bytes_total ?? null),
     attempts: patch.attempts !== undefined ? patch.attempts : (existing?.attempts ?? 0),
-    started_at:
-      patch.started_at !== undefined ? patch.started_at : (existing?.started_at ?? null),
+    started_at: patch.started_at !== undefined ? patch.started_at : (existing?.started_at ?? null),
     last_progress_at:
       patch.last_progress_at !== undefined
         ? patch.last_progress_at
         : progressMoved
           ? now
           : (existing?.last_progress_at ?? null),
+    next_attempt_at:
+      patch.next_attempt_at !== undefined ? patch.next_attempt_at : (existing?.next_attempt_at ?? null),
+    claimed_until:
+      patch.claimed_until !== undefined ? patch.claimed_until : (existing?.claimed_until ?? null),
+    claimed_by: patch.claimed_by !== undefined ? patch.claimed_by : (existing?.claimed_by ?? null),
+    transient_attempts:
+      patch.transient_attempts !== undefined
+        ? patch.transient_attempts
+        : (existing?.transient_attempts ?? 0),
     updated_at: now,
-  };
+  });
   const { data, error } = await admin
     .from("game_film_youtube_jobs")
     .upsert(next, { onConflict: "upload_id" })
-    .select(YOUTUBE_JOB_COLUMNS)
+    .select(youtubeJobColumns())
     .single();
+  if (error && youtubeJobExtrasOn() && isMissingYoutubeJobExtraColumn(error.message)) {
+    disableYoutubeJobExtras();
+    return upsertYoutubeJob(uploadId, patch);
+  }
   if (error || !data) throw new Error(error?.message ?? "Couldn't save the YouTube job.");
-  return data as YoutubeJob;
+  if (youtubeJobExtras !== false) {
+    youtubeJobExtras = true;
+    youtubeJobExtrasCheckedAt = Date.now();
+  }
+  return data as unknown as YoutubeJob;
 }
 
 export async function getYoutubeJob(uploadId: string): Promise<YoutubeJob | null> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("game_film_youtube_jobs")
-    .select(YOUTUBE_JOB_COLUMNS)
+    .select(youtubeJobColumns())
     .eq("upload_id", uploadId)
     .maybeSingle();
+  if (error && youtubeJobExtrasOn() && isMissingYoutubeJobExtraColumn(error.message)) {
+    disableYoutubeJobExtras();
+    return getYoutubeJob(uploadId);
+  }
   if (error) throw new Error(error.message);
-  return (data as YoutubeJob | null) ?? null;
+  if (data && youtubeJobExtras !== false) {
+    youtubeJobExtras = true;
+    youtubeJobExtrasCheckedAt = Date.now();
+  }
+  return (data as unknown as YoutubeJob | null) ?? null;
 }
 
 export async function listYoutubeJobs(uploadIds: string[]): Promise<YoutubeJob[]> {
@@ -367,10 +447,18 @@ export async function listYoutubeJobs(uploadIds: string[]): Promise<YoutubeJob[]
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("game_film_youtube_jobs")
-    .select(YOUTUBE_JOB_COLUMNS)
+    .select(youtubeJobColumns())
     .in("upload_id", uploadIds);
+  if (error && youtubeJobExtrasOn() && isMissingYoutubeJobExtraColumn(error.message)) {
+    disableYoutubeJobExtras();
+    return listYoutubeJobs(uploadIds);
+  }
   if (error) throw new Error(error.message);
-  return (data as YoutubeJob[]) ?? [];
+  if (data && youtubeJobExtras !== false) {
+    youtubeJobExtras = true;
+    youtubeJobExtrasCheckedAt = Date.now();
+  }
+  return (data as unknown as YoutubeJob[]) ?? [];
 }
 
 export async function appendYoutubeEvent(input: {
@@ -440,10 +528,235 @@ export async function latestYoutubeEventKind(uploadId: string): Promise<YoutubeE
   return ((data as { kind?: YoutubeEventKind } | null)?.kind ?? null);
 }
 
-export async function claimYoutubeWork(id: string, now = new Date()): Promise<FilmUpload | null> {
+export async function probeYoutubeResumeColumns(): Promise<boolean> {
+  if (youtubeJobExtras === true) return true;
+  if (
+    youtubeJobExtras === false &&
+    Date.now() - youtubeJobExtrasCheckedAt < YOUTUBE_EXTRAS_RECHECK_MS
+  ) {
+    return false;
+  }
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("game_film_youtube_jobs")
+    .select(YOUTUBE_JOB_EXTRA_COLUMNS)
+    .limit(1);
+  if (error && isMissingYoutubeJobExtraColumn(error.message)) {
+    disableYoutubeJobExtras();
+    return false;
+  }
+  if (error) throw new Error(error.message);
+  youtubeJobExtras = true;
+  youtubeJobExtrasCheckedAt = Date.now();
+  return true;
+}
+
+async function tryAcquireYoutubeLease(
+  id: string,
+  now: Date,
+  leaseUntil: string,
+  owner: string
+): Promise<boolean> {
+  const extras = await probeYoutubeResumeColumns();
+  if (!extras) return false;
+  const result = await acquireYoutubeLeaseWithClient(
+    createAdminClient() as unknown as YoutubeLeaseClient,
+    id,
+    now,
+    leaseUntil,
+    owner
+  );
+  if (result.ok) return true;
+  if (result.error && isMissingYoutubeJobExtraColumn(result.error.message)) {
+    disableYoutubeJobExtras();
+    return false;
+  }
+  if (result.error && (result.error.code === "23505" || /duplicate key/i.test(result.error.message))) {
+    return false;
+  }
+  if (result.error) throw new Error(result.error.message);
+  return false;
+}
+
+async function revertYoutubeQueuedClaim(id: string, claimedAt: string): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("game_film_uploads")
+    .update({ youtube_status: "queued", youtube_error: null, youtube_updated_at: claimedAt })
+    .eq("id", id)
+    .eq("youtube_status", "uploading")
+    .eq("youtube_updated_at", claimedAt);
+  if (error) throw new Error(error.message);
+}
+
+export async function applyYoutubeManualRetry(
+  uploadId: string,
+  patch: YoutubeJobPatch,
+  now = new Date()
+): Promise<YoutubeJob> {
+  const extras = await probeYoutubeResumeColumns();
+  if (extras) {
+    const existing = await getYoutubeJob(uploadId);
+    if (existing) {
+      const admin = createAdminClient();
+      const stamp = now.toISOString();
+      const result = await updateYoutubeJobIfLeaseFree(
+        admin as unknown as YoutubeLeaseClient,
+        uploadId,
+        {
+          upload_uri: patch.upload_uri !== undefined ? patch.upload_uri : existing.upload_uri,
+          bytes_sent: patch.bytes_sent !== undefined ? patch.bytes_sent : existing.bytes_sent,
+          bytes_total: patch.bytes_total !== undefined ? patch.bytes_total : existing.bytes_total,
+          attempts: patch.attempts !== undefined ? patch.attempts : existing.attempts,
+          started_at: patch.started_at !== undefined ? patch.started_at : existing.started_at,
+          last_progress_at:
+            patch.last_progress_at !== undefined ? patch.last_progress_at : existing.last_progress_at,
+          next_attempt_at: null,
+          transient_attempts: 0,
+          updated_at: stamp,
+        },
+        now
+      );
+      if (result.error && isMissingYoutubeJobExtraColumn(result.error.message)) {
+        disableYoutubeJobExtras();
+      } else {
+        if (result.error) throw new Error(result.error.message);
+        if (!result.ok) throw new Error(YOUTUBE_RETRY_LEASE_HELD);
+        const job = (await getYoutubeJob(uploadId)) ?? existing;
+        await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
+        return job;
+      }
+    } else {
+      const stamp = now.toISOString();
+      const inserted = await insertYoutubeJobIfAbsentWithClient(
+        createAdminClient() as unknown as YoutubeLeaseClient,
+        {
+          upload_id: uploadId,
+          upload_uri: patch.upload_uri ?? null,
+          bytes_sent: patch.bytes_sent ?? 0,
+          bytes_total: patch.bytes_total ?? null,
+          attempts: patch.attempts ?? 0,
+          started_at: patch.started_at ?? null,
+          last_progress_at: patch.last_progress_at ?? null,
+          next_attempt_at: null,
+          claimed_until: null,
+          claimed_by: null,
+          transient_attempts: 0,
+          updated_at: stamp,
+        }
+      );
+      if (inserted.error && isMissingYoutubeJobExtraColumn(inserted.error.message)) {
+        disableYoutubeJobExtras();
+      } else if (inserted.conflict) {
+        const retry = await updateYoutubeJobIfLeaseFree(
+          createAdminClient() as unknown as YoutubeLeaseClient,
+          uploadId,
+          {
+            upload_uri: patch.upload_uri,
+            bytes_sent: patch.bytes_sent,
+            bytes_total: patch.bytes_total,
+            attempts: patch.attempts,
+            started_at: patch.started_at,
+            last_progress_at: patch.last_progress_at,
+            next_attempt_at: null,
+            transient_attempts: 0,
+          },
+          now
+        );
+        if (retry.error && isMissingYoutubeJobExtraColumn(retry.error.message)) {
+          disableYoutubeJobExtras();
+        } else {
+          if (retry.error) throw new Error(retry.error.message);
+          if (!retry.ok) throw new Error(YOUTUBE_RETRY_LEASE_HELD);
+        }
+      } else if (inserted.error) {
+        throw new Error(inserted.error.message);
+      }
+      if (youtubeJobExtrasOn()) {
+        const job = await getYoutubeJob(uploadId);
+        if (!job) throw new Error("Couldn't save the YouTube job.");
+        await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
+        return job;
+      }
+    }
+  }
+  const job = await upsertYoutubeJob(uploadId, patch);
+  await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
+  return job;
+}
+
+export async function patchYoutubeJobAndReleaseLease(
+  id: string,
+  owner: string,
+  patch: YoutubeJobPatch,
+  now = new Date()
+): Promise<boolean> {
+  const extras = await probeYoutubeResumeColumns();
+  if (!extras) {
+    await upsertYoutubeJob(id, patch);
+    return true;
+  }
+  const existing = await getYoutubeJob(id);
+  const result = await patchYoutubeJobAndReleaseWithClient(
+    createAdminClient() as unknown as YoutubeLeaseClient,
+    id,
+    owner,
+    {
+      upload_uri: patch.upload_uri !== undefined ? patch.upload_uri : (existing?.upload_uri ?? null),
+      bytes_sent: patch.bytes_sent !== undefined ? patch.bytes_sent : (existing?.bytes_sent ?? 0),
+      bytes_total: patch.bytes_total !== undefined ? patch.bytes_total : (existing?.bytes_total ?? null),
+      attempts: patch.attempts !== undefined ? patch.attempts : (existing?.attempts ?? 0),
+      started_at: patch.started_at !== undefined ? patch.started_at : (existing?.started_at ?? null),
+      last_progress_at:
+        patch.last_progress_at !== undefined ? patch.last_progress_at : (existing?.last_progress_at ?? null),
+      next_attempt_at: patch.next_attempt_at !== undefined ? patch.next_attempt_at : (existing?.next_attempt_at ?? null),
+      transient_attempts:
+        patch.transient_attempts !== undefined ? patch.transient_attempts : (existing?.transient_attempts ?? 0),
+    },
+    now
+  );
+  if (result.error && isMissingYoutubeJobExtraColumn(result.error.message)) {
+    disableYoutubeJobExtras();
+    await upsertYoutubeJob(id, patch);
+    return true;
+  }
+  if (result.error) throw new Error(result.error.message);
+  return result.ok;
+}
+
+export async function releaseYoutubeClaim(id: string, owner: string): Promise<void> {
+  const extras = await probeYoutubeResumeColumns();
+  if (!extras) return;
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("game_film_youtube_jobs")
+    .update({ claimed_until: null, claimed_by: null, updated_at: new Date().toISOString() })
+    .eq("upload_id", id)
+    .eq("claimed_by", owner);
+  if (error && isMissingYoutubeJobExtraColumn(error.message)) {
+    disableYoutubeJobExtras();
+    return;
+  }
+  if (error) throw new Error(error.message);
+}
+
+export async function claimYoutubeWork(
+  id: string,
+  now = new Date(),
+  leaseMs = 5 * 60 * 1000,
+  owner = crypto.randomUUID()
+): Promise<FilmUpload | null> {
   const admin = createAdminClient();
   const stamp = now.toISOString();
-  const staleBefore = new Date(now.getTime() - 4 * 60 * 1000).toISOString();
+  const extras = await probeYoutubeResumeColumns();
+
+  if (extras) {
+    const job = await getYoutubeJob(id);
+    if (job?.next_attempt_at && new Date(job.next_attempt_at).getTime() > now.getTime()) {
+      return null;
+    }
+  }
+
   const { data: queued } = await admin
     .from("game_film_uploads")
     .update({ youtube_status: "uploading", youtube_error: null, youtube_updated_at: stamp })
@@ -451,7 +764,42 @@ export async function claimYoutubeWork(id: string, now = new Date()): Promise<Fi
     .eq("youtube_status", "queued")
     .select(FILM_UPLOAD_COLUMNS)
     .maybeSingle();
-  if (queued) return queued as FilmUpload;
+  if (queued) {
+    if (extras) {
+      const leased = await tryAcquireYoutubeLease(
+        id,
+        now,
+        new Date(now.getTime() + leaseMs).toISOString(),
+        owner
+      );
+      if (!leased) {
+        await revertYoutubeQueuedClaim(id, stamp);
+        return null;
+      }
+    }
+    return queued as FilmUpload;
+  }
+
+  if (extras) {
+    const acquired = await tryAcquireYoutubeLease(
+      id,
+      now,
+      new Date(now.getTime() + leaseMs).toISOString(),
+      owner
+    );
+    if (!acquired) return null;
+    const { data: uploading, error } = await admin
+      .from("game_film_uploads")
+      .update({ youtube_status: "uploading", youtube_updated_at: stamp })
+      .eq("id", id)
+      .eq("youtube_status", "uploading")
+      .select(FILM_UPLOAD_COLUMNS)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return (uploading as FilmUpload | null) ?? null;
+  }
+
+  const staleBefore = new Date(now.getTime() - YOUTUBE_STALE_MS).toISOString();
   const { data: stale, error } = await admin
     .from("game_film_uploads")
     .update({ youtube_status: "uploading", youtube_updated_at: stamp })

@@ -183,7 +183,7 @@ const CONTRACT: Record<string, string> = {
   game_film_managers: "team_id,user_id,created_at",
   game_film_youtube:
     "id,refresh_token_enc,channel_id,channel_title,connected_at,connected_by,privacy_status,made_for_kids,updated_at",
-  game_film_youtube_jobs: "upload_id,upload_uri,bytes_sent,attempts,updated_at,started_at,last_progress_at,bytes_total",
+  game_film_youtube_jobs: "upload_id,upload_uri,bytes_sent,attempts,updated_at,started_at,last_progress_at,bytes_total,next_attempt_at,claimed_until,claimed_by,transient_attempts",
   game_film_youtube_events: "id,upload_id,at,kind,message,detail,bytes_sent,bytes_total",
   game_film_slack_drafts:
     "id,upload_id,team_id,channel_id,body,status,slack_ts,posted_channel_id,posted_at,posted_by,discarded_at,created_at,updated_at",

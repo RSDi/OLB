@@ -45,6 +45,10 @@ export type YoutubeJobView = {
   started_at: string | null;
   last_progress_at: string | null;
   updated_at: string;
+  next_attempt_at?: string | null;
+  claimed_until?: string | null;
+  claimed_by?: string | null;
+  transient_attempts?: number | null;
 };
 
 export type YoutubeEventView = {
