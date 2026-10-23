@@ -370,6 +370,18 @@
   color: var(--box-text);
 }
 
+/* Settings → Messages: the optional Our Programs hero callout. */
+.homepageMessageBody {
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.homepageMessageLink {
+  margin: 0.75em 0 0;
+  font-weight: 700;
+}
+
 /* Fit-to-width headlines (Squarespace's scaled text): each line fills the
    block, so its size is a fixed share of the block's width. The inline-block
    wrapper keeps Squarespace's spacing: on phones the surrounding line adds a
