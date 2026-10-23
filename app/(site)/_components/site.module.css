@@ -523,6 +523,14 @@
   position: relative;
 }
 
+.accordionItem[data-muted="true"] {
+  color: #8a8a8a;
+}
+
+.accordionItem[data-muted="true"] .plus {
+  color: #aaa;
+}
+
 .accordionDivider {
   height: 1px;
   background: currentColor;
@@ -555,10 +563,38 @@
   outline-offset: -2px;
 }
 
-.accordionTitle {
+.accordionLead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   flex: 1;
+  min-width: 0;
   padding-right: 24px;
+}
+
+.accordionTitle {
   overflow: hidden;
+}
+
+.pill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.pillClosed {
+  background: #eee;
+  color: #666;
+}
+
+.pillOpen {
+  background: #f9c842;
+  color: #111;
 }
 
 .plus {

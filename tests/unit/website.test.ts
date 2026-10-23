@@ -28,9 +28,9 @@ test("Programs assessments button default goes to the live 14U form", () => {
   assert.match(assessments, /href: "\/assessments\/14u"/);
   assert.doesNotMatch(assessments, /HIGH SCHOOL ASSESMENTS/);
   assert.doesNotMatch(assessments, /OmahaLightningHighSchoolAssessments2026/);
-  const waitlist = src.slice(src.indexOf('key: "programs.button.waitlist"'), src.indexOf('key: "programs.button.assessments"'));
-  assert.match(waitlist, /CLICK HERE TO JOIN THE WAITLIST FOR THE 8U-14U SEASON!/);
-  assert.match(waitlist, /_10u14uCompetitiveWaitlist/);
+  assert.match(src, /title: "8U-12U Competitive"/);
+  assert.match(src, /title: "14U Competitive"/);
+  assert.doesNotMatch(src, /Competitive \(Waitlisted\)/);
 });
 
 test("menu links: site pages and web addresses are tidied, anything else refused", () => {
