@@ -20,7 +20,16 @@ import {
   receiptText,
   registrant,
 } from "../teams/registration-receipt";
+import {
+  assessmentHtml,
+  assessmentNoticeSubject,
+  assessmentNoticeText,
+  assessmentSubject,
+  assessmentText,
+} from "../teams/assessment-receipt";
 import type { RegistrationInput } from "../teams/registration-form";
+import type { Assessment } from "../onboarding/assessments";
+import type { WaitlistInput } from "../onboarding/waitlist-form";
 import { loadEmailText } from "./registration-email-text";
 import { fetchStoredCheckMailing, resolveCheckMailing } from "../mail/check-address";
 import { createAdminClient } from "../supabase/admin";
@@ -143,4 +152,59 @@ export async function sendReceipt(input: RegistrationInput, to: string, first: s
     "registration receipt"
   );
   return ok ? { to, subject, text } : { error: "The email didn't go through. Try again in a minute." };
+}
+
+// Assessment sign-up: confirmation to the parent, notice to the club.
+// Same Resend path as the registration receipt. Best effort.
+export async function sendAssessmentEmails(
+  input: WaitlistInput,
+  assessment: Assessment,
+  registrationId: string,
+): Promise<SentReceipt | null> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[notify] RESEND_API_KEY not set — skipping assessment confirmation and club notice");
+    return null;
+  }
+  if (!process.env.MAIL_FROM?.trim()) {
+    console.warn("[notify] MAIL_FROM not set — sending as onboarding@resend.dev (only the Resend account mailbox receives it)");
+  }
+  const to = input.email.trim().toLowerCase();
+  if (!to) {
+    console.warn("[notify] assessment confirmation skipped — no recipient email on the form");
+  }
+  const site = siteUrl();
+  const from = mailFrom();
+  const t = await loadEmailText();
+  const subject = assessmentSubject(input, assessment, t);
+  const text = assessmentText(input, assessment, t);
+  const reviewUrl = `${site}/portal/directory/registrations?tab=waitlist&open=${registrationId}`;
+  const [confirmSent] = await Promise.all([
+    to
+      ? send(
+          apiKey,
+          {
+            from,
+            to: [to],
+            reply_to: mailReplyTo(),
+            subject,
+            html: assessmentHtml(input, assessment, `${site}/email/olb-logo.png`, t),
+            text,
+          },
+          "assessment confirmation",
+        )
+      : Promise.resolve(false),
+    send(
+      apiKey,
+      {
+        from,
+        to: [CLUB_EMAIL],
+        ...(to ? { reply_to: to } : {}),
+        subject: assessmentNoticeSubject(`${input.athlete_first.trim()} ${input.athlete_last.trim()}`.trim()),
+        text: assessmentNoticeText(input, assessment, reviewUrl),
+      },
+      "assessment notice",
+    ),
+  ]);
+  return confirmSent && to ? { to, subject, text } : null;
 }

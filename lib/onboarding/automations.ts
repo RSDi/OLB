@@ -40,7 +40,7 @@ export const AUTOMATIONS: AutomationDef[] = [
   { key: "open_items", label: "Weekly open items", when: "Mondays, only to approved families with something still to do" },
   { key: "countdown", label: "Practice countdown", when: "10 days and 1 day before the first practice" },
   { key: "team_announce", label: "Your team", when: "Someone presses Announce teams" },
-  { key: "assessment_thanks", label: "Assessment thanks", when: "Someone signs up for an assessment" },
+  { key: "assessment_thanks", label: "Assessment thanks", when: "No longer sent on sign-up — the confirmation goes out right away from Settings → Registration Emails. A held one on this tab can still be sent." },
   { key: "assessment_reminder", label: "Assessment reminder", when: "Two days before the assessment, at 9 AM America/Chicago" },
 ];
 

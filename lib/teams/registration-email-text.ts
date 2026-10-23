@@ -5,7 +5,7 @@
 // the players and fees, and the payment instructions stay built in.
 // Plain module, pure, safe for client and server.
 
-export type RegistrationEmail = "receipt" | "code";
+export type RegistrationEmail = "receipt" | "code" | "assessment";
 
 export interface EmailField {
   key: string;
@@ -19,6 +19,7 @@ export interface EmailField {
 
 export const REGISTRATION_EMAILS: { key: RegistrationEmail; label: string; desc: string }[] = [
   { key: "receipt", label: "Registration receipt", desc: "Sent to whoever filled in the form, as soon as they send it." },
+  { key: "assessment", label: "Assessment confirmation", desc: "Sent to whoever signed a player up for an assessment, as soon as they send it." },
   { key: "code", label: "Email code", desc: "The 6-digit code the form emails before it fills in a returning family's details." },
 ];
 
@@ -72,6 +73,52 @@ export const REGISTRATION_EMAIL_FIELDS: EmailField[] = [
   {
     key: "receipt.closing",
     email: "receipt",
+    label: "Sign-off",
+    help: "The last line is in bold.",
+    original: "Questions? Just reply to this email.\nGo Lightning!\nOmaha Lightning Basketball",
+    multiline: true,
+    max: 500,
+  },
+  {
+    key: "assessment.subject",
+    email: "assessment",
+    label: "Subject",
+    help: "{player} becomes the player's first name, {assessment} the assessment.",
+    original: "You're signed up for {assessment}!",
+    multiline: false,
+    max: 200,
+  },
+  {
+    key: "assessment.headline",
+    email: "assessment",
+    label: "Headline",
+    help: "The big line at the top.",
+    original: "You're signed up for {assessment}!",
+    multiline: false,
+    max: 80,
+  },
+  {
+    key: "assessment.intro",
+    email: "assessment",
+    label: "Opening",
+    help: "{parent} becomes the first name of whoever signed up, {player} the player's first name, {assessment} the assessment.",
+    original: "Hi {parent}, thanks for signing {player} up for {assessment} with Omaha Lightning Basketball. We've got everything we need.",
+    multiline: true,
+    max: 1000,
+  },
+  {
+    key: "assessment.next_steps",
+    email: "assessment",
+    label: "What happens next",
+    help: "One step per line; they're numbered for you.",
+    original:
+      "A board member will reach out about the assessment and what to bring.\nPractice times and fees for each program are on the Programs page (https://omahalightningbasketball.com/programs).",
+    multiline: true,
+    max: 1500,
+  },
+  {
+    key: "assessment.closing",
+    email: "assessment",
     label: "Sign-off",
     help: "The last line is in bold.",
     original: "Questions? Just reply to this email.\nGo Lightning!\nOmaha Lightning Basketball",

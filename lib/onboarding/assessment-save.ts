@@ -17,9 +17,8 @@ import {
 import { loadAssessmentBySlug } from "./assessment-data";
 import { BUILTIN_14U, type Assessment } from "./assessments";
 import { previewWriteBlocked } from "./preview-only";
-import { composeAssessmentEmail } from "./compose";
-import { deliver } from "./deliver";
-import { loadSettings, loadWords, seasonBoardId } from "./server";
+import { sendAssessmentEmails } from "../notifications/registration-receipt";
+import { seasonBoardId } from "./server";
 import { type WaitlistInput } from "./waitlist-form";
 
 export type AssessmentSaveResult = {
@@ -125,27 +124,43 @@ export async function saveAssessment(
     await sendPushToPermission("registrations", {
       title: `New ${assessment.name}: ${first} ${last}`,
       body: `From ${parentName}. Tap to see their answers.`,
-      url: "/portal/directory/registrations?tab=waitlist",
+      url: `/portal/directory/registrations?tab=waitlist&open=${saved.id}`,
       tag: `waitlist-${saved.id}`,
     });
 
-    const settings = await loadSettings(db, boardId);
-    if (settings.enabled) {
-      await deliver(
-        db,
-        settings,
-        "assessment_thanks",
-        `assessment_thanks:${saved.id}`,
-        composeAssessmentEmail(
-          "assessment_thanks",
-          { id: saved.id as string, first_name: first, parent_name: parentName, parent_email: email, extra: null },
-          assessment,
-          await loadWords(db),
-        ),
-      ).catch((e) => {
-        console.error("[assessment] thanks email failed", e);
-        return "failed" as const;
+    // Immediate confirmation + club notice, same Resend path as the
+    // registration receipt. Not the workflow's Ask-me-first draft.
+    const sent = await sendAssessmentEmails(input, assessment, saved.id as string).catch((e) => {
+      console.error("[notify] assessment emails failed", e);
+      return null;
+    });
+    if (sent) {
+      const now = new Date().toISOString();
+      const { error: logError } = await db.from("olb_registration_messages").insert({
+        registration_id: saved.id,
+        subject: sent.subject.slice(0, 200),
+        body: sent.text.slice(0, 5000),
+        sent_to: [sent.to],
+        sent_by: null,
+        sent_at: now,
       });
+      if (logError) console.warn(`[assessment] keeping a copy of the confirmation failed: ${logError.message}`);
+      // Claim the workflow dedupe key so Assessment thanks (Ask me first / On)
+      // cannot send a second email for this sign-up.
+      const { error: thanksError } = await db.from("olb_onboarding_emails").insert({
+        board_id: boardId,
+        kind: "assessment_thanks",
+        dedupe_key: `assessment_thanks:${saved.id}`,
+        to_emails: [sent.to],
+        subject: sent.subject.slice(0, 300),
+        body: sent.text.slice(0, 8000),
+        registration_ids: [saved.id],
+        status: "sent",
+        sent_at: now,
+      });
+      if (thanksError && thanksError.code !== "23505") {
+        console.warn(`[assessment] marking assessment_thanks sent failed: ${thanksError.message}`);
+      }
     }
     return { id: saved.id as string, status: 200 };
   } catch (err) {

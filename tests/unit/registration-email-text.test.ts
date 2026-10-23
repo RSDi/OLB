@@ -2,9 +2,18 @@
 // originals, saved changes, tokens, and what a save keeps.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanEmailText, codeEmail, emailText, fillTokens, REGISTRATION_EMAIL_FIELDS } from "../../lib/teams/registration-email-text.ts";
+import { cleanEmailText, codeEmail, emailText, fillTokens, REGISTRATION_EMAIL_FIELDS, REGISTRATION_EMAILS } from "../../lib/teams/registration-email-text.ts";
 import { receipt, receiptHtml, receiptSubject, receiptText } from "../../lib/teams/registration-receipt.ts";
 import type { RegistrationInput } from "../../lib/teams/registration-form.ts";
+
+test("assessment confirmation is one of the editable emails", () => {
+  assert.deepEqual(
+    REGISTRATION_EMAILS.map((e) => e.key),
+    ["receipt", "assessment", "code"],
+  );
+  assert.equal(emailText()["assessment.subject"], "You're signed up for {assessment}!");
+  assert.match(emailText()["assessment.intro"], /thanks for signing \{player\} up for \{assessment\}/);
+});
 
 test("every field starts from its original, and a saved change replaces it", () => {
   const t = emailText();

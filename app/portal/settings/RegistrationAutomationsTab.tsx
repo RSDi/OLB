@@ -98,7 +98,7 @@ export function RegistrationAutomationsTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 900 }}>
       <p style={{ ...sub, fontSize: 13, maxWidth: 640 }}>
         The registration workflow for the {tab.season} season: the family checklist, the waitlist form, spot offers, uniform sizes,
-        the handbook at registration and the automatic emails. Most emails start Off. Assessment thanks and Assessment reminder start Ask me first.
+        the handbook at registration and the automatic emails. Most emails start Off. Assessment thanks and Assessment reminder start Ask me first. Assessment confirmation now sends on sign-up from Settings → Registration Emails; leave Assessment thanks Off or Ask me first so a held draft is not sent again.
       </p>
       {error && <ErrorBox text={error} />}
       {notice && (

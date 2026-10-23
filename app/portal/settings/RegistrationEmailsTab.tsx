@@ -12,7 +12,10 @@ import {
   type RegistrationEmail,
 } from "../../../lib/teams/registration-email-text";
 import { receipt, receiptHtml, receiptSubject } from "../../../lib/teams/registration-receipt";
+import { assessmentHtml, assessmentSubject } from "../../../lib/teams/assessment-receipt";
+import { BUILTIN_14U } from "../../../lib/onboarding/assessments";
 import type { RegistrationInput } from "../../../lib/teams/registration-form";
+import type { WaitlistInput } from "../../../lib/onboarding/waitlist-form";
 import { ErrorBox } from "./TeamsSettingsTab";
 
 interface Saved {
@@ -45,6 +48,15 @@ const SAMPLE = (first: string, tier: string, uniform: boolean): RegistrationInpu
   ({ athlete_first: first, athlete_last: "Carter", fee_tier: tier, needs_uniform: uniform, needs_grays: null, payment_option: "Venmo" }) as RegistrationInput;
 const SAMPLE_RECEIPT = receipt([SAMPLE("Sam", "14u - $400.00", true), SAMPLE("Evan", "8u-12u - $375.00", false)]);
 const SAMPLE_WHO = { email: "jamie@example.com", first: "Jamie" };
+const SAMPLE_ASSESSMENT_INPUT = {
+  parent_first: "Jamie",
+  athlete_first: "Sam",
+} as WaitlistInput;
+const SAMPLE_ASSESSMENT = {
+  ...BUILTIN_14U,
+  starts_at: "2026-10-25T16:00:00.000Z",
+  place: "The gym — we'll email the address",
+};
 
 // Settings → Registration Emails: the words in the emails the registration
 // form sends (0127), the way Settings → Website edits the site. Super-admins
@@ -89,6 +101,12 @@ export function RegistrationEmailsTab({ canEdit }: { canEdit: boolean }) {
         html: `<!doctype html><html><body style="margin:0;padding:24px;font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.55;color:#111;background:#fff;">${c.html}</body></html>`,
       };
     }
+    if (email === "assessment") {
+      return {
+        subject: assessmentSubject(SAMPLE_ASSESSMENT_INPUT, SAMPLE_ASSESSMENT, current),
+        html: assessmentHtml(SAMPLE_ASSESSMENT_INPUT, SAMPLE_ASSESSMENT, "/email/olb-logo.png", current),
+      };
+    }
     return {
       subject: receiptSubject(SAMPLE_RECEIPT, current),
       html: receiptHtml(SAMPLE_RECEIPT, SAMPLE_WHO, { logoUrl: "/email/olb-logo.png", checkAddress: [] }, current),
@@ -129,7 +147,7 @@ export function RegistrationEmailsTab({ canEdit }: { canEdit: boolean }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 640, lineHeight: 1.55 }}>
-        The words in the emails the registration form sends. The layout, each family&apos;s players and fees, and how to pay stay
+        The words in the emails the registration form and the assessment forms send. The layout, each family&apos;s players and fees, and how to pay stay
         the same. {canEdit ? "Saving changes what the next email says." : "Super-admins and people with the Registrations permission can change them."}
       </div>
 
@@ -235,14 +253,14 @@ export function RegistrationEmailsTab({ canEdit }: { canEdit: boolean }) {
 
           <div data-tour="registration-emails-preview" style={{ display: "flex", flexDirection: "column", gap: 8, position: "sticky", top: 12 }}>
             <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--gw-fg-muted)" }}>
-              Preview{email === "receipt" ? " · a made-up family" : ""}
+              Preview{email === "code" ? "" : " · a made-up family"}
             </div>
             <div style={{ fontSize: 13, fontWeight: 700 }}>Subject: {preview.subject}</div>
             <iframe
               title="Email preview"
               srcDoc={preview.html}
               sandbox=""
-              style={{ width: "100%", height: email === "code" ? 320 : 760, border: "1px solid var(--gw-border)", borderRadius: 12, background: "#fff" }}
+              style={{ width: "100%", height: email === "code" ? 320 : email === "assessment" ? 680 : 760, border: "1px solid var(--gw-border)", borderRadius: 12, background: "#fff" }}
             />
           </div>
         </div>
