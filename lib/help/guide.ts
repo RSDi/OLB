@@ -1314,7 +1314,7 @@ The layout, each family's players and fees, and the Venmo and check instructions
     body: `A message on the public **Our Programs** page. Open **Settings → Messages**. Only people with the **Registrations** permission can open it.
 
 - **Show message box** turns the box on or off. Off (how it starts), the yellow band at the top of Our Programs has only the headline — the box is hidden entirely. On, families see the box in that yellow band, where the old waitlist notice was.
-- **Wording** is what they read. **Link text** and **Link address** add a tap target under the words (a site page like **/programs**, or any web address). Leave both blank for no link.
+- **Wording** is what they read. **Link text** and **Link address** add a tap target under the words (a site page like **/programs#14u**, or any web address). Leave both blank for no link. The seed link opens **14U Competitive** on Our Programs — it scrolls there and opens that row, so the page does not reload.
 - Tap **Save**. **Undo my edits** throws away what you haven't saved. The **Preview** shows the yellow page and the black box as families will see it.
 
 The box stays hidden if the messages table isn't in the database yet.`,

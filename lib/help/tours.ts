@@ -1009,7 +1009,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "registration-messages-fields",
         title: "The words and the link",
-        body: "**Wording** is what families read. **Link text** and **Link address** add a tap target under it. Tap **Save** when you're done.",
+        body: "**Wording** is what families read. **Link text** and **Link address** add a tap target under it. The seed link opens **14U Competitive** on Our Programs without reloading. Tap **Save** when you're done.",
       },
       {
         target: "registration-messages-preview",

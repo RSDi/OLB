@@ -128,7 +128,7 @@ export function RegistrationMessagesTab() {
         />
         <Input
           label="Link address"
-          help="A site page like /programs or a web address. Same practice and payment page the 14U assessment form uses, to start."
+          help="A site page like /programs#14u (opens 14U Competitive on Our Programs) or a web address."
           value={draft.link_url}
           maxLength={LINK_URL_MAX}
           onChange={(e) => setDraft((d) => ({ ...d, link_url: e.target.value }))}

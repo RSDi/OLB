@@ -11,6 +11,13 @@ export type ProgramPresentation = {
   muted?: boolean;
 };
 
+// Hash on /programs that scrolls to and opens 14U Competitive.
+export const PROGRAMS_14U_HASH = "14u";
+
+export function programAccordionHash(title: string): string | null {
+  return /^14U\b/i.test(title) ? PROGRAMS_14U_HASH : null;
+}
+
 export function programPresentation(title: string): ProgramPresentation {
   const name = title.replace(/\s*\(\s*Waitlisted\s*\)\s*/gi, "").replace(/\s+/g, " ").trim();
   if (/^14U\b/i.test(name)) {

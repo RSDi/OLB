@@ -1,5 +1,5 @@
 "use client";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import styles from "./site.module.css";
 import { cx } from "./util";
 
@@ -8,21 +8,43 @@ export type AccordionItem = {
   content: React.ReactNode;
   pill?: { label: string; tone: "open" | "closed" };
   muted?: boolean;
+  // When set, /programs#id scrolls here and opens this row.
+  id?: string;
 };
 
 // Squarespace's accordion block: one item open at a time, a plus that turns
 // into a minus, hairline dividers. A pill under the title is the program's
-// status (closed, assessments open).
+// status (closed, assessments open). A hash matching an item's id opens
+// that row (the Messages box uses #14u for 14U Competitive).
 export function Accordion({ items }: { items: AccordionItem[] }) {
   const [open, setOpen] = useState<number | null>(null);
   const id = useId();
+  const anchors = items.map((item) => item.id ?? "").join("\0");
+
+  useEffect(() => {
+    const syncFromHash = () => {
+      const hash = decodeURIComponent(location.hash.replace(/^#/, "")).toLowerCase();
+      if (!hash) return;
+      const ids = anchors.split("\0");
+      const i = ids.findIndex((anchor) => anchor && anchor.toLowerCase() === hash);
+      if (i < 0) return;
+      setOpen(i);
+      const elId = ids[i];
+      requestAnimationFrame(() => {
+        document.getElementById(elId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, [anchors]);
 
   return (
     <ul className={styles.accordion}>
       {items.map((item, i) => {
         const isOpen = open === i;
         return (
-          <li key={i} className={styles.accordionItem} data-open={isOpen} data-muted={item.muted || undefined}>
+          <li id={item.id} key={item.id ?? i} className={styles.accordionItem} data-open={isOpen} data-muted={item.muted || undefined}>
             {i === 0 && <div className={styles.accordionDivider} aria-hidden="true" />}
             <h4 className={styles.accordionHeading}>
               <button

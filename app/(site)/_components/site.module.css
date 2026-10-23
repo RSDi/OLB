@@ -533,6 +533,7 @@
 
 .accordionItem {
   position: relative;
+  scroll-margin-top: calc(var(--header-height) + 0.75rem);
 }
 
 .accordionItem[data-muted="true"] {

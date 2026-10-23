@@ -9,20 +9,22 @@ import {
   PROGRAMS_HERO_LINK_TEXT,
   PROGRAMS_HERO_LINK_URL,
   cleanHomepageMessage,
+  isProgramsPageHref,
+  programsHeroBoxHref,
   tableMissing,
   visibleHomepageMessage,
 } from "../../lib/website/homepage-message.ts";
 
-test("seed matches the 14U practice/payment link and starts hidden", () => {
-  const assessments = readFileSync(join(import.meta.dirname, "../../lib/onboarding/assessments.ts"), "utf8");
-  assert.match(assessments, /PROGRAMS_INFO_URL = "https:\/\/omahalightningbasketball\.com\/programs"/);
+test("seed starts hidden, drops the duplicate last sentence, and links to the 14U accordion", () => {
   assert.equal(DEFAULT_PROGRAMS_HERO.key, PROGRAMS_HERO_KEY);
   assert.equal(DEFAULT_PROGRAMS_HERO.enabled, false);
   assert.equal(DEFAULT_PROGRAMS_HERO.body, PROGRAMS_HERO_BODY);
   assert.equal(DEFAULT_PROGRAMS_HERO.link_text, PROGRAMS_HERO_LINK_TEXT);
   assert.equal(DEFAULT_PROGRAMS_HERO.link_url, PROGRAMS_HERO_LINK_URL);
-  assert.equal(PROGRAMS_HERO_LINK_URL, "https://omahalightningbasketball.com/programs");
+  assert.equal(PROGRAMS_HERO_LINK_URL, "/programs#14u");
   assert.match(PROGRAMS_HERO_BODY, /Now accepting two more 14U players/);
+  assert.match(PROGRAMS_HERO_BODY, /assessments will be scheduled right away\.$/);
+  assert.doesNotMatch(PROGRAMS_HERO_BODY, /See practice times and payment info/);
   assert.equal(PROGRAMS_HERO_LINK_TEXT, "Practice times and payment info");
 });
 
@@ -49,6 +51,13 @@ test("cleanHomepageMessage tidies the link and refuses a half-filled one", () =>
     link_url: "programs",
   });
   assert.deepEqual(ok, { value: { enabled: true, body: "Hello.", link_text: "Times", link_url: "/programs" } });
+  const hash = cleanHomepageMessage({
+    enabled: true,
+    body: "Hello.",
+    link_text: "Times",
+    link_url: "/programs#14u",
+  });
+  assert.deepEqual(hash, { value: { enabled: true, body: "Hello.", link_text: "Times", link_url: "/programs#14u" } });
   const missingUrl = cleanHomepageMessage({ enabled: false, body: "Hi", link_text: "Go", link_url: "" });
   assert.equal("error" in missingUrl, true);
   const missingText = cleanHomepageMessage({ enabled: false, body: "Hi", link_text: "", link_url: "/programs" });
@@ -72,8 +81,11 @@ test("migration 0160 creates olb_homepage_messages, not the waitlist email log",
   assert.match(sql, /grant select on public\.olb_homepage_messages to authenticated, service_role/);
   assert.match(sql, /grant insert, update, delete on public\.olb_homepage_messages to service_role/);
   assert.match(sql, /using \(\(select public\.is_staff\(\)\) or \(select public\.can_manage_registrations\(\)\)\)/);
-  assert.match(sql, /https:\/\/omahalightningbasketball\.com\/programs/);
+  assert.match(sql, /'\/programs#14u'/);
   assert.match(sql, /Practice times and payment info/);
+  const seedBody = sql.match(/values \(\s*'programs_hero',\s*false,\s*'([^']+)'/)?.[1] ?? "";
+  assert.match(seedBody, /assessments will be scheduled right away\.$/);
+  assert.doesNotMatch(seedBody, /See practice times and payment info/);
   assert.doesNotMatch(sql, /create table if not exists public\.olb_registration_messages/);
   const waitlist = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0115_registration_waitlist.sql"), "utf8");
   assert.match(waitlist, /create table if not exists public\.olb_registration_messages/);
@@ -93,6 +105,20 @@ test("Settings → Messages is a released Registrations tab", () => {
   const guide = readFileSync(join(import.meta.dirname, "../../lib/help/guide.ts"), "utf8");
   assert.match(guide, /id: "settings-registration-messages"/);
   assert.doesNotMatch(guide.slice(guide.indexOf('id: "settings-registration-messages"'), guide.indexOf('id: "settings-registration-automations"')), /preview: true/);
+});
+
+test("a Programs address in the box becomes #14u so the page does not reload", () => {
+  assert.equal(isProgramsPageHref("/programs#14u"), true);
+  assert.equal(isProgramsPageHref("/programs"), true);
+  assert.equal(isProgramsPageHref("https://omahalightningbasketball.com/programs"), true);
+  assert.equal(isProgramsPageHref("https://omahalightningbasketball.com/programs#14u"), true);
+  assert.equal(isProgramsPageHref("#14u"), true);
+  assert.equal(isProgramsPageHref("/assessments/14u"), false);
+  assert.equal(isProgramsPageHref("https://example.com/programs"), true);
+  assert.equal(programsHeroBoxHref("/programs"), "#14u");
+  assert.equal(programsHeroBoxHref("https://omahalightningbasketball.com/programs"), "#14u");
+  assert.equal(programsHeroBoxHref("/programs#14u"), "#14u");
+  assert.equal(programsHeroBoxHref("https://example.com/other"), "https://example.com/other");
 });
 
 test("the Programs page only shows the box when the loader returns one", () => {
