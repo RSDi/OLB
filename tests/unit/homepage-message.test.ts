@@ -83,7 +83,7 @@ test("migration 0160 creates olb_homepage_messages, not the waitlist email log",
   assert.match(sql, /using \(\(select public\.is_staff\(\)\) or \(select public\.can_manage_registrations\(\)\)\)/);
   assert.match(sql, /'\/programs#14u'/);
   assert.match(sql, /Practice times and payment info/);
-  const seedBody = sql.match(/values \(\s*'programs_hero',\s*false,\s*'([^']+)'/s)?.[1] ?? "";
+  const seedBody = sql.match(/values \(\s*'programs_hero',\s*false,\s*'([^']+)'/)?.[1] ?? "";
   assert.match(seedBody, /assessments will be scheduled right away\.$/);
   assert.doesNotMatch(seedBody, /See practice times and payment info/);
   assert.doesNotMatch(sql, /create table if not exists public\.olb_registration_messages/);
