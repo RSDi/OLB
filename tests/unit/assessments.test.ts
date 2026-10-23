@@ -201,7 +201,8 @@ test("Assessment thanks and reminder match Off / Ask me first / On plus Words", 
   assert.match(tab, /defaultMode/);
   assert.match(tab, /Assessment thanks and Assessment reminder start Ask me first/);
   assert.match(save, /assessment_thanks/);
-  assert.match(save, /composeAssessmentEmail/);
+  assert.match(save, /sendAssessmentEmails/);
+  assert.match(save, /assessment_thanks:\$\{saved\.id\}/);
   assert.doesNotMatch(save, /waitlist_reply/);
   assert.match(cron, /assessment_reminder/);
   assert.match(cron, /daysBetween\(today, centralDay/);

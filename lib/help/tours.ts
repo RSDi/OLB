@@ -969,18 +969,18 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "settings-tab-registration-emails",
         title: "Settings → Registration Emails",
-        body: "The words in the emails the registration form sends: the receipt families get, and the 6-digit code email.",
+        body: "The words in the emails the registration form and the assessment forms send: the receipt, the assessment confirmation, and the 6-digit code email.",
       },
       {
         target: "registration-emails-pick",
         click: "settings-tab-registration-emails",
         title: "Pick an email",
-        body: "**Registration receipt** goes to whoever filled in the form. **Email code** is the code the form emails first.",
+        body: "**Registration receipt** goes to whoever filled in the form. **Assessment confirmation** goes out when someone signs up for an assessment. **Email code** is the code the form emails first.",
       },
       {
         target: "registration-emails-fields",
         title: "Change the words",
-        body: "Edit any field and tap **Save**; the next email uses the new words. **{player}**, **{parent}**, **{season}** and **{teams}** fill themselves in. **Reset to original** puts a field back.",
+        body: "Edit any field and tap **Save**; the next email uses the new words. **{player}**, **{parent}**, **{season}**, **{teams}** and **{assessment}** fill themselves in. **Reset to original** puts a field back.",
       },
       {
         target: "registration-emails-preview",
