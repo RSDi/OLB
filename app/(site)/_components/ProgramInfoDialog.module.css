@@ -1,0 +1,103 @@
+.dialog {
+  border: none;
+  padding: 0;
+  margin: 0;
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+}
+
+.dialog[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.panel {
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(85vh, 720px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  color: #111;
+  border-radius: 20px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+}
+
+.bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 18px 16px 12px 22px;
+  border-bottom: 1px solid #eee;
+}
+
+.title {
+  margin: 0;
+  padding-top: 6px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.close {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #111;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus-visible {
+  background: #e8e8e8;
+}
+
+.close:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
+
+.body {
+  overflow: auto;
+  padding: 16px 22px 28px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.body :first-child {
+  margin-top: 0;
+}
+
+.body :last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 639px) {
+  .dialog[open] {
+    align-items: flex-end;
+  }
+
+  .panel {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: 20px 20px 0 0;
+  }
+}

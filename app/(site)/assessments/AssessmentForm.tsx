@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import s from "../player-registration/wizard.module.css";
-import { PROGRAMS_INFO_URL } from "../../../lib/onboarding/assessment-form";
+import { ProgramInfoLink } from "../_components/ProgramInfoDialog";
+import type { ProgramCopy } from "../../../lib/website/programs";
 import {
   ASSESSMENT_TOO_OLD_14U,
   GRADES,
@@ -27,6 +28,7 @@ export default function AssessmentForm({
   onWizard,
   honeypot,
   onHoneypot,
+  programInfo,
 }: {
   assessment: PublicAssessment;
   state: WaitlistInput;
@@ -35,6 +37,7 @@ export default function AssessmentForm({
   onWizard: () => void;
   honeypot: string;
   onHoneypot: (v: string) => void;
+  programInfo?: ProgramCopy | null;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,10 +79,8 @@ export default function AssessmentForm({
           {details || assessment.name}
           {when ? ` ${when}${assessment.place ? ` at ${assessment.place}` : ""}.` : assessment.place ? ` ${assessment.place}.` : " "}
           {" "}
-          <a href={PROGRAMS_INFO_URL} target="_blank" rel="noreferrer" className={s.linkBtn}>
-            Practice times and payment info
-          </a>
-          .
+          {programInfo ? <ProgramInfoLink title={programInfo.title} body={programInfo.body} className={s.linkBtn} /> : null}
+          {programInfo ? "." : ""}
         </p>
         <div className={s.body}>
           <div className={s.row2}>

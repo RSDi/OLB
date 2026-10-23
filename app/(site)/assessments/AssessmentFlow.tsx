@@ -7,6 +7,7 @@ import { assessmentProblem, friendlyAssessmentClientError } from "../../../lib/o
 import { type PublicAssessment } from "../../../lib/onboarding/assessments";
 import { PRODUCTION_WRITE_BLOCKED } from "../../../lib/onboarding/preview-only";
 import { emptyWaitlist, type WaitlistInput } from "../../../lib/onboarding/waitlist-form";
+import type { ProgramCopy } from "../../../lib/website/programs";
 
 // The assessment page: the step-by-step wizard to start, or the whole form
 // on one page. Both edit the same answers, so switching keeps them. The
@@ -22,10 +23,12 @@ export default function AssessmentFlow({
   assessment,
   initial,
   save,
+  programInfo,
 }: {
   assessment: PublicAssessment;
   initial?: Partial<WaitlistInput>;
   save?: (input: WaitlistInput, honeypot: string) => Promise<{ error?: string }>;
+  programInfo?: ProgramCopy | null;
 }) {
   const [state, setState] = useState<WaitlistInput>({ ...emptyWaitlist(), ...initial });
   const [honeypot, setHoneypot] = useState("");
@@ -94,6 +97,7 @@ export default function AssessmentFlow({
           }}
           honeypot={honeypot}
           onHoneypot={setHoneypot}
+          programInfo={programInfo}
         />
       </div>
       {view === "form" && (
@@ -108,6 +112,7 @@ export default function AssessmentFlow({
           }}
           honeypot={honeypot}
           onHoneypot={setHoneypot}
+          programInfo={programInfo}
         />
       )}
     </>
