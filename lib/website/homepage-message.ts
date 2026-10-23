@@ -7,15 +7,17 @@
 // olb_registration_messages — that is the waitlist email log (0115).
 
 import { normalizeMenuHref } from "./menu.ts"; // explicit extension so node --test can load this file
+import { PROGRAMS_14U_HASH } from "./programs.ts";
 
-// Same address the 14U assessment form uses (PROGRAMS_INFO_URL).
-export const PROGRAMS_HERO_LINK_URL = "https://omahalightningbasketball.com/programs";
+// The box already sits on Our Programs, so the seed link is the 14U
+// accordion on this page — not a reload of /programs.
+export const PROGRAMS_HERO_LINK_URL = `/programs#${PROGRAMS_14U_HASH}`;
 
 export const PROGRAMS_HERO_KEY = "programs_hero";
 export const HOMEPAGE_MESSAGE_TAG = "homepage-message";
 
 export const PROGRAMS_HERO_BODY =
-  "Now accepting two more 14U players. If your son is interested in being considered, sign up for an assessment below. Playing for Omaha Lightning is a commitment to a competitive team from October through February. Practices have already begun, so assessments will be scheduled right away. See practice times and payment info.";
+  "Now accepting two more 14U players. If your son is interested in being considered, sign up for an assessment below. Playing for Omaha Lightning is a commitment to a competitive team from October through February. Practices have already begun, so assessments will be scheduled right away.";
 
 export const PROGRAMS_HERO_LINK_TEXT = "Practice times and payment info";
 
@@ -73,6 +75,32 @@ export function cleanHomepageMessage(input: HomepageMessageInput): { value: Home
   if (link_text && !link_url) return { error: "Add the link address, or clear the link words." };
   if (link_url && !link_text) return { error: "Add the link words, or clear the link address." };
   return { value: { enabled: !!input.enabled, body, link_text, link_url: link_url || "" } };
+}
+
+// True when the address is Our Programs (with or without the 14U hash).
+// The first applied seed used the full /programs URL; treat that as the
+// accordion too so the box doesn't reload this page.
+export function isProgramsPageHref(href: string): boolean {
+  const v = href.trim();
+  if (!v) return false;
+  const hashOnly = v.replace(/^\//, "").toLowerCase();
+  if (hashOnly === `#${PROGRAMS_14U_HASH}` || hashOnly === "#14u-competitive") return true;
+  try {
+    const u = /^https?:\/\//i.test(v) ? new URL(v) : new URL(v, "https://omahalightningbasketball.com");
+    const path = u.pathname.replace(/\/+$/, "") || "/";
+    if (path !== "/programs") return false;
+    const hash = u.hash.replace(/^#/, "").toLowerCase();
+    return hash === "" || hash === PROGRAMS_14U_HASH || hash === "14u-competitive";
+  } catch {
+    return false;
+  }
+}
+
+// Same-page hash so the box never reloads /programs.
+export function programsHeroBoxHref(href: string): string {
+  const v = href.trim();
+  if (!v) return "";
+  return isProgramsPageHref(v) ? `#${PROGRAMS_14U_HASH}` : v;
 }
 
 // What the public page may show. Hidden when the table is missing, the

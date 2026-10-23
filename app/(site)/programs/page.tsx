@@ -7,7 +7,7 @@ import { ProgramDetails } from "../_components/ProgramDetails";
 import { Text } from "../_components/Text";
 import { getSiteContent } from "../../../lib/website/queries";
 import { getVisibleProgramsHeroMessage } from "../../../lib/website/homepage-message-data";
-import { programPresentation } from "../../../lib/website/programs";
+import { programAccordionHash, programPresentation } from "../../../lib/website/programs";
 
 export const metadata: Metadata = { title: "2026-27 Season" };
 
@@ -21,6 +21,7 @@ export default async function ProgramsPage() {
     const shown = programPresentation(p.text("title"));
     return {
       title: shown.title,
+      id: programAccordionHash(shown.title) ?? undefined,
       pill: shown.pill,
       muted: shown.muted,
       content: <ProgramDetails body={p.text("body")} />,

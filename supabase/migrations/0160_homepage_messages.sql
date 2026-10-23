@@ -43,15 +43,17 @@ drop policy if exists "olb_homepage_messages_delete" on public.olb_homepage_mess
 grant select on public.olb_homepage_messages to authenticated, service_role;
 grant insert, update, delete on public.olb_homepage_messages to service_role;
 
--- Seed is off. Link matches the 14U assessment form's practice/payment
--- button (lib/onboarding/assessments.ts PROGRAMS_INFO_URL).
+-- Seed is off. The box already sits on Our Programs, so the link is the
+-- 14U accordion on this page (#14u) — not a reload of /programs. Body
+-- omits "See practice times and payment info." so it doesn't repeat the
+-- link words.
 insert into public.olb_homepage_messages (key, enabled, body, link_text, link_url)
 values (
   'programs_hero',
   false,
-  'Now accepting two more 14U players. If your son is interested in being considered, sign up for an assessment below. Playing for Omaha Lightning is a commitment to a competitive team from October through February. Practices have already begun, so assessments will be scheduled right away. See practice times and payment info.',
+  'Now accepting two more 14U players. If your son is interested in being considered, sign up for an assessment below. Playing for Omaha Lightning is a commitment to a competitive team from October through February. Practices have already begun, so assessments will be scheduled right away.',
   'Practice times and payment info',
-  'https://omahalightningbasketball.com/programs'
+  '/programs#14u'
 )
 on conflict (key) do nothing;
 

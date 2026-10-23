@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { programCopyFromList, programPresentation } from "../../lib/website/programs.ts";
+import { programAccordionHash, programCopyFromList, programPresentation } from "../../lib/website/programs.ts";
 
 test("program titles drop Waitlisted and get the mockup pills", () => {
   const elementary = programPresentation("8U-12U Competitive (Waitlisted)");
@@ -34,6 +34,19 @@ test("the 14U accordion write-up is the same copy the assessment pop-up uses", (
     title: "14U Competitive",
     body: "14U practice times and $400",
   });
+});
+
+test("the 14U row is the #14u accordion target", () => {
+  assert.equal(programAccordionHash("14U Competitive"), "14u");
+  assert.equal(programAccordionHash("14U Competitive (Waitlisted)"), "14u");
+  assert.equal(programAccordionHash("8U-12U Competitive"), null);
+  const page = readFileSync(join(import.meta.dirname, "../../app/(site)/programs/page.tsx"), "utf8");
+  assert.match(page, /programAccordionHash/);
+  const accordion = readFileSync(join(import.meta.dirname, "../../app/(site)/_components/Accordion.tsx"), "utf8");
+  assert.match(accordion, /location\.hash/);
+  assert.match(accordion, /scrollIntoView/);
+  const box = readFileSync(join(import.meta.dirname, "../../app/(site)/_components/HomepageMessageBox.tsx"), "utf8");
+  assert.match(box, /programsHeroBoxHref/);
 });
 
 test("the Programs page shows the 14U button only and no waitlist notice", () => {
