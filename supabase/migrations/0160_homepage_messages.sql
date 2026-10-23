@@ -45,8 +45,7 @@ grant insert, update, delete on public.olb_homepage_messages to service_role;
 
 -- Seed is off. The box already sits on Our Programs, so the link is the
 -- 14U accordion on this page (#14u) — not a reload of /programs. Body
--- omits "See practice times and payment info." so it doesn't repeat the
--- link words.
+-- stops before the link words so they aren't repeated.
 insert into public.olb_homepage_messages (key, enabled, body, link_text, link_url)
 values (
   'programs_hero',
