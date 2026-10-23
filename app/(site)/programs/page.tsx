@@ -3,16 +3,20 @@ import { Accordion } from "../_components/Accordion";
 import { Button } from "../_components/Button";
 import { Block, Section } from "../_components/Section";
 import { SiteMarkdown } from "../_components/SiteMarkdown";
+import { HomepageMessageBox } from "../_components/HomepageMessageBox";
 import { Text } from "../_components/Text";
 import { getSiteContent } from "../../../lib/website/queries";
+import { getVisibleProgramsHeroMessage } from "../../../lib/website/homepage-message-data";
 import { programPresentation } from "../../../lib/website/programs";
 
 export const metadata: Metadata = { title: "2026-27 Season" };
 
 // The words and program details come from Settings → Website. Status pills
-// and which button shows are fixed to Rachel's mockup.
+// and which button shows are fixed to Rachel's mockup. The optional hero
+// box is Settings → Messages (off until someone turns it on). Off keeps
+// #241's tight phone layout.
 export default async function ProgramsPage() {
-  const content = await getSiteContent();
+  const [content, heroMessage] = await Promise.all([getSiteContent(), getVisibleProgramsHeroMessage()]);
   const programs = content.list("programs.list").map((p) => {
     const shown = programPresentation(p.text("title"));
     return {
@@ -25,13 +29,22 @@ export default async function ProgramsPage() {
   const assess = content.link("programs.button.assessments");
   return (
     <>
-      <Section height={{ minHeight: "0", padding: "8vmax 0 0" }} divider={{ height: "8vw" }} rows={[6, 6]}>
-        <Block m="1/2/6/10" d="1/4/6/22">
+      <Section
+        height={{ minHeight: "0", padding: heroMessage ? "8vmax 0 4vmax" : "8vmax 0 0" }}
+        divider={{ height: "8vw" }}
+        rows={heroMessage ? [16, 12] : [6, 6]}
+      >
+        <Block m={heroMessage ? "1/2/7/10" : "1/2/6/10"} d={heroMessage ? "1/4/6/22" : "1/4/6/22"}>
           <Text>
             <h4>{content.text("programs.intro.lead")}</h4>
             <h3>{content.text("programs.intro.title")}</h3>
           </Text>
         </Block>
+        {heroMessage && (
+          <Block m="7/2/16/10" d="6/5/12/21">
+            <HomepageMessageBox message={heroMessage} />
+          </Block>
+        )}
       </Section>
 
       <Section theme="white" height={{ minHeight: "0", padding: "5vmax 0 8vmax" }} rows={[12, 12]}>

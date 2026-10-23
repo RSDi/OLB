@@ -1306,6 +1306,20 @@ Tap the **trash** can to delete a category or a playbook.`,
 The layout, each family's players and fees, and the Venmo and check instructions stay the same.`,
   },
   {
+    id: "settings-registration-messages",
+    title: "Settings: Messages",
+    group: "Settings",
+    audience: "registrations",
+    keywords: ["messages", "homepage message", "message box", "show message box", "our programs", "programs", "wording", "link text", "link address", "yellow hero"],
+    body: `A message on the public **Our Programs** page. Open **Settings → Messages**. Only people with the **Registrations** permission can open it.
+
+- **Show message box** turns the box on or off. Off (how it starts), the yellow band at the top of Our Programs has only the headline — the box is hidden entirely. On, families see the box in that yellow band, where the old waitlist notice was.
+- **Wording** is what they read. **Link text** and **Link address** add a tap target under the words (a site page like **/programs**, or any web address). Leave both blank for no link.
+- Tap **Save**. **Undo my edits** throws away what you haven't saved. The **Preview** shows the yellow page and the black box as families will see it.
+
+The box stays hidden if the messages table isn't in the database yet.`,
+  },
+  {
     id: "settings-registration-automations",
     title: "Settings: Registration Automations",
     group: "Settings",
@@ -1430,7 +1444,7 @@ Pick a page (**Home**, **Philosophy**, **History**, **Summer**, **Programs**, **
 
 - **Text**: type the new words and tap **Save draft**. In the bigger boxes, leave a blank line between paragraphs. **\\*\\*bold\\*\\***, **\\*italic\\***, **[link words](/philosophy)** and lines starting with a dash (**-**) for a list all work. A bold line on its own gets a little space above it, like a heading.
 - **Pictures**: tap **Upload new picture** and choose a JPEG, PNG, WebP or GIF up to 10 MB (iPhone HEIC photos: export them as JPEG first). Fill in **Description** first: it's read aloud to people who can't see the picture.
-- **Buttons**: change the **Words on the button** and where it **Goes to**. On **Programs**, the only button starts as **CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT** and goes to **/assessments/14u**.
+- **Buttons**: change the **Words on the button** and where it **Goes to**. On **Programs**, the only button starts as **CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT** and goes to **/assessments/14u**. The yellow-band message box is **Settings → Messages**, not this tab.
 - **Lists** (the programs, coaches and sponsors): tap one to open it and change it; the arrows reorder, the **trash** can removes one, and **Add program**, **Add coach** or **Add sponsor** adds one at the bottom. Then **Save draft**. Once the coaches list has been changed, the Coaches page shows them in two even columns rather than the original staggered layout. On **Programs**, each name shows a status pill on the public page (closed, or assessments open) from the name — drop **(Waitlisted)** from the title if it's still there.
 - **Reset to original** saves a draft that puts the website's own words, picture or list back for that spot.
 

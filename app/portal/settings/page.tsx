@@ -44,6 +44,7 @@ import { SidebarLinksTab } from "./SidebarLinksTab";
 import { RequirementsTab } from "./RequirementsTab";
 import { EmailTemplatesTab } from "./EmailTemplatesTab";
 import { RegistrationEmailsTab } from "./RegistrationEmailsTab";
+import { RegistrationMessagesTab } from "./RegistrationMessagesTab";
 import { RegistrationAutomationsTab } from "./RegistrationAutomationsTab";
 import { AssessmentsTab } from "./AssessmentsTab";
 import { isPreviewDeployment } from "../../../lib/onboarding/preview-only";
@@ -62,7 +63,7 @@ import { Icons } from "../../components/icons";
 // the extra ones released to super-admins only. The rest stay with the
 // accounts in lib/auth/feature-preview.ts.
 // Website is released to whoever holds its grant (and super-admins).
-const RELEASED_TABS = new Set<string>(["members", "teams", "film", "season", "volunteer_roles", "requirements", "planning_roles", "email_templates", "registration_emails", "website", "release_notes", "import", "invoices"]);
+const RELEASED_TABS = new Set<string>(["members", "teams", "film", "season", "volunteer_roles", "requirements", "planning_roles", "email_templates", "registration_emails", "registration_messages", "website", "release_notes", "import", "invoices"]);
 const SUPER_ADMIN_RELEASED_TABS = new Set<string>([
   "access_profiles",
   "playbooks",
@@ -86,6 +87,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   planning_roles: "settings-planning-roles",
   email_templates: "settings-email-templates",
   registration_emails: "settings-registration-emails",
+  registration_messages: "settings-registration-messages",
   registration_automations: "settings-registration-automations",
   assessments: "settings-assessments",
   uniforms: "settings-uniforms",
@@ -117,6 +119,7 @@ type Tab =
   | "requirements"
   | "email_templates"
   | "registration_emails"
+  | "registration_messages"
   | "registration_automations"
   | "assessments"
   | "uniforms"
@@ -180,6 +183,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     sidebar_links: siteLinks,
     public_directory: siteLinks,
     registration_emails: canManageRegistrations(me),
+    registration_messages: canManageRegistrations(me),
     registration_automations: workflowOn && canManageRegistrations(me),
     assessments: canManageRegistrations(me),
     uniforms: workflowOn && canManageUniforms(me),
@@ -218,6 +222,7 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     // The words in the registration form's emails (0127): the board reads,
     // super-admins and the Registrations permission change them.
     { key: "registration_emails", label: "Registration Emails", group: "Communication", visible: true, tour: "settings-tab-registration-emails", keywords: "registration receipt code email wording confirmation" },
+    { key: "registration_messages", label: "Messages", group: "Communication", visible: canManageRegistrations(me), tour: "settings-tab-registration-messages", keywords: "homepage message box programs our programs hero wording link show" },
     // The registration workflow (0130): the preview accounts, and while the
     // workflow is switched on, whoever holds the permission.
     { key: "registration_automations", label: "Registration Automations", group: "Communication", visible: (fullUi || workflowOn) && canManageRegistrations(me), tour: "settings-tab-registration-automations", keywords: "registration workflow automatic emails waitlist offer slack handbook checklist switch" },
@@ -386,6 +391,7 @@ export default function SettingsPage() {
       {tab === "requirements" && has("requirements") && <RequirementsTab me={me} />}
       {tab === "email_templates" && has("email_templates") && <EmailTemplatesTab />}
       {tab === "registration_emails" && has("registration_emails") && <RegistrationEmailsTab canEdit={canManageRegistrations(me)} />}
+      {tab === "registration_messages" && has("registration_messages") && <RegistrationMessagesTab />}
       {tab === "registration_automations" && has("registration_automations") && <RegistrationAutomationsTab />}
       {tab === "assessments" && has("assessments") && <AssessmentsTab />}
       {tab === "uniforms" && has("uniforms") && <UniformsTab />}

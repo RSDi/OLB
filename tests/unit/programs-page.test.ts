@@ -28,6 +28,9 @@ test("the Programs page shows the 14U button only and no waitlist notice", () =>
   const page = readFileSync(join(import.meta.dirname, "../../app/(site)/programs/page.tsx"), "utf8");
   assert.match(page, /programPresentation/);
   assert.match(page, /programs\.button\.assessments/);
+  assert.match(page, /getVisibleProgramsHeroMessage/);
+  assert.match(page, /padding: heroMessage \? "8vmax 0 4vmax" : "8vmax 0 0"/);
+  assert.match(page, /rows=\{heroMessage \? \[16, 12\] : \[6, 6\]\}/);
   assert.doesNotMatch(page, /programs\.notice/);
   assert.doesNotMatch(page, /programs\.button\.waitlist/);
   assert.doesNotMatch(page, /programs\.button\.register/);

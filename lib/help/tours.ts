@@ -990,6 +990,35 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-registration-messages",
+    sectionId: "settings-registration-messages",
+    title: "Messages walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-registration-messages",
+        title: "Settings → Messages",
+        body: "The optional box on the public Our Programs page, in the yellow band at the top.",
+      },
+      {
+        target: "registration-messages-toggle",
+        click: "settings-tab-registration-messages",
+        title: "Show message box",
+        body: "**Show message box** turns it on or off. Off, the box is hidden entirely. It starts off so the live page does not change.",
+      },
+      {
+        target: "registration-messages-fields",
+        title: "The words and the link",
+        body: "**Wording** is what families read. **Link text** and **Link address** add a tap target under it. Tap **Save** when you're done.",
+      },
+      {
+        target: "registration-messages-preview",
+        title: "Preview",
+        body: "The yellow Our Programs band and the black box, as families will see them. Hidden here too while **Show message box** is off.",
+      },
+    ],
+  },
+  {
     id: "settings-registration-automations",
     sectionId: "settings-registration-automations",
     title: "Registration Automations walkthrough",

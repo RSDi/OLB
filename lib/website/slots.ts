@@ -283,7 +283,7 @@ Lastly, we strive to provide a setting where home school students can achieve th
     key: "programs.notice",
     page: "Programs",
     label: "Notice box",
-    help: "No longer shown. The waitlist notice box was removed from the Programs page.",
+    help: "No longer shown. The box on Our Programs is now Settings → Messages.",
     kind: "text",
     multiline: true,
     max: 400,
