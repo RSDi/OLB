@@ -1,51 +1,124 @@
 "use client";
 
 import { useState } from "react";
-import type { CreateInvoiceInput } from "../types";
+import {
+  OTHER_EVENT_ID,
+  OTHER_PROGRAM_ID,
+  PROGRAMS_LOAD_ERROR,
+  PROGRAMS_LOAD_RELOAD,
+  PROGRAMS_RELOAD_FIRST,
+  applyProgramSelection,
+  autoLineDescription,
+  emptyAutoFill,
+  keepAutoFill,
+  programOptionLabel,
+  resolveCreateInvoiceInput,
+  shouldShowProgramsLoadError,
+  type AutoFillFields,
+  type InvoiceEventOption,
+} from "../new-invoice";
+import type { CreateInvoiceInput, EventCustomer } from "../types";
 import { Btn, Card, Field, inputStyle } from "./parts";
 import { t } from "./theme";
 
 export function NewInvoiceForm({
   today,
+  events = [],
+  customersByEvent = {},
+  customersErrorByEvent = {},
+  eventsError = false,
   defaultEvent,
   defaultFeeCents,
   backHref,
   onCreate,
 }: {
   today: string;
+  events?: InvoiceEventOption[];
+  customersByEvent?: Record<string, EventCustomer[]>;
+  customersErrorByEvent?: Record<string, boolean>;
+  eventsError?: boolean;
   defaultEvent?: string;
   defaultFeeCents?: number;
   backHref: string;
   onCreate: (input: CreateInvoiceInput) => Promise<{ error?: string } | void>;
 }) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [event, setEvent] = useState(defaultEvent ?? "");
-  const [qty, setQty] = useState("1");
-  const [rate, setRate] = useState(defaultFeeCents ? String(defaultFeeCents / 100) : "");
-  const [desc, setDesc] = useState(defaultEvent ? `Team fee · ${defaultEvent}` : "Team fee");
+  const initialEventId = matchEventId(events, defaultEvent);
+  const initial = emptyAutoFill(defaultFeeCents, defaultEvent);
+  const [eventId, setEventId] = useState(initialEventId);
+  const [customEvent, setCustomEvent] = useState(initialEventId === OTHER_EVENT_ID ? (defaultEvent ?? "") : "");
+  const [programId, setProgramId] = useState("");
+  const [name, setName] = useState(initial.customerName);
+  const [email, setEmail] = useState(initial.customerEmail);
+  const [qty, setQty] = useState(initial.qty);
+  const [rate, setRate] = useState(initial.rate);
+  const [desc, setDesc] = useState(initial.desc);
+  const [lastAuto, setLastAuto] = useState<AutoFillFields>(initial);
   const [due, setDue] = useState("");
   const [dep, setDep] = useState("");
   const [depDue, setDepDue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const hosted = events.find((e) => e.id === eventId) ?? null;
+  const otherEvent = eventId === OTHER_EVENT_ID;
+  const otherProgram = programId === OTHER_PROGRAM_ID;
+  const customers = hosted ? (customersByEvent[hosted.id] ?? []) : [];
+  const showProgramSelect = !!hosted;
+  const showProgramName = otherEvent || otherProgram;
+  const programsError = shouldShowProgramsLoadError({
+    eventId,
+    eventsError,
+    customersErrorByEvent,
+  });
+
+  function currentFields(): AutoFillFields {
+    return { customerName: name, customerEmail: email, qty, rate, desc };
+  }
+
+  function applyFilled(next: { fields: AutoFillFields; lastAuto: AutoFillFields }) {
+    setName(next.fields.customerName);
+    setEmail(next.fields.customerEmail);
+    setQty(next.fields.qty);
+    setRate(next.fields.rate);
+    setDesc(next.fields.desc);
+    setLastAuto(next.lastAuto);
+  }
+
+  function applyEvent(nextId: string) {
+    setEventId(nextId);
+    setProgramId("");
+    setCustomEvent("");
+    const next = events.find((e) => e.id === nextId) ?? null;
+    applyFilled(keepAutoFill(currentFields(), lastAuto, applyProgramSelection(null, next)));
+  }
+
+  function applyProgram(nextId: string) {
+    setProgramId(nextId);
+    const program = nextId && nextId !== OTHER_PROGRAM_ID ? (customers.find((c) => c.id === nextId) ?? null) : null;
+    applyFilled(keepAutoFill(currentFields(), lastAuto, applyProgramSelection(program, hosted)));
+  }
+
   async function save() {
     setError(null);
-    const q = parseInt(qty, 10) || 0;
-    const unit = Math.round((parseFloat(rate.replace(/[$,]/g, "")) || 0) * 100);
-    if (!name.trim()) return setError("Enter the program name.");
-    if (!due) return setError("Pick a balance due date.");
-    setBusy(true);
-    const res = await onCreate({
-      customerName: name.trim(),
-      customerEmail: email.trim() || null,
-      eventLabel: event.trim() || null,
-      dueOn: due,
-      depositCents: Math.round((parseFloat(dep.replace(/[$,]/g, "")) || 0) * 100),
-      depositDueOn: depDue || null,
-      lines: [{ description: desc.trim() || "Team fee", qty: q, unitCents: unit }],
+    const resolved = resolveCreateInvoiceInput({
+      eventId,
+      events,
+      customEvent,
+      programId,
+      customers,
+      customName: name,
+      email,
+      desc,
+      qty,
+      rate,
+      due,
+      dep,
+      depDue,
+      programsLoadFailed: programsError,
     });
+    if ("error" in resolved) return setError(resolved.error);
+    setBusy(true);
+    const res = await onCreate(resolved.input);
     setBusy(false);
     if (res && res.error) setError(res.error);
   }
@@ -56,16 +129,63 @@ export function NewInvoiceForm({
         ‹ Invoices
       </Btn>
       <h1 style={{ fontSize: 22, margin: 0 }}>New invoice</h1>
-      <div style={{ color: t.muted, fontSize: 13 }}>One program, paid by Venmo or check. You can send it after you save.</div>
+      <div style={{ color: t.muted, fontSize: 13 }}>
+        Pick the event, then the program. Paid by Venmo or check. You can send it after you save.
+      </div>
       <Card>
-        <Field label="Program">
-          <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Program name" />
-        </Field>
-        <Field label="Program email">
-          <input style={inputStyle} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="program email" />
-        </Field>
         <Field label="Event">
-          <input style={inputStyle} value={event} onChange={(e) => setEvent(e.target.value)} placeholder="MRS 2026" />
+          <select style={inputStyle} value={eventId} onChange={(e) => applyEvent(e.target.value)}>
+            <option value="">Select an event</option>
+            {events.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.label}
+              </option>
+            ))}
+            <option value={OTHER_EVENT_ID}>Other event</option>
+          </select>
+        </Field>
+        {otherEvent && (
+          <Field label="Event name">
+            <input
+              style={inputStyle}
+              value={customEvent}
+              onChange={(e) => {
+                const v = e.target.value;
+                setCustomEvent(v);
+                if (!desc || desc === autoLineDescription(customEvent)) setDesc(autoLineDescription(v));
+              }}
+              placeholder="MRS 2026"
+            />
+          </Field>
+        )}
+        {showProgramSelect && (
+          <Field label="Program">
+            <select style={inputStyle} value={programId} onChange={(e) => applyProgram(e.target.value)}>
+              <option value="">Select a program</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {programOptionLabel(c)}
+                </option>
+              ))}
+              <option value={OTHER_PROGRAM_ID}>Other program (not registered)</option>
+            </select>
+          </Field>
+        )}
+        {programsError && <ProgramsLoadNotice />}
+        {showProgramName && (
+          <Field label="Program name">
+            <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} placeholder="Program name" />
+          </Field>
+        )}
+        <Field label="Program email">
+          <input
+            style={inputStyle}
+            type="text"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="program email"
+            disabled={!otherEvent && !programId}
+          />
         </Field>
         <Field label="Line item">
           <input style={inputStyle} value={desc} onChange={(e) => setDesc(e.target.value)} />
@@ -88,10 +208,43 @@ export function NewInvoiceForm({
           </Field>
         </div>
         {error && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{error}</div>}
-        <Btn kind="accent" onClick={save} disabled={busy}>
+        {programsError && !error && (
+          <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{PROGRAMS_RELOAD_FIRST}</div>
+        )}
+        <Btn kind="accent" onClick={save} disabled={busy || programsError}>
           {busy ? "Saving…" : "Save draft"}
         </Btn>
       </Card>
     </div>
   );
+}
+
+function ProgramsLoadNotice() {
+  return (
+    <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>
+      {PROGRAMS_LOAD_ERROR}{" "}
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          font: "inherit",
+          fontWeight: 800,
+          color: t.ink,
+          textDecoration: "underline",
+          cursor: "pointer",
+        }}
+      >
+        {PROGRAMS_LOAD_RELOAD}
+      </button>
+    </div>
+  );
+}
+
+function matchEventId(events: InvoiceEventOption[], defaultEvent?: string): string {
+  if (!defaultEvent) return "";
+  const hit = events.find((e) => e.id === defaultEvent || e.label === defaultEvent);
+  return hit?.id ?? OTHER_EVENT_ID;
 }
