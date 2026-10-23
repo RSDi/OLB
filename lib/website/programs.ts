@@ -21,3 +21,24 @@ export function programPresentation(title: string): ProgramPresentation {
   }
   return { title: name };
 }
+
+// Title + body as Settings → Website stores them. The Programs accordion
+// and the assessment "Practice times and payment info" pop-up both read
+// this so they cannot drift.
+export type ProgramCopy = {
+  title: string;
+  body: string;
+};
+
+export function programCopyFromList(
+  items: { text: (field: string) => string }[],
+  match: RegExp = /^14U\b/i,
+): ProgramCopy | null {
+  for (const item of items) {
+    const shown = programPresentation(item.text("title"));
+    if (match.test(shown.title)) {
+      return { title: shown.title, body: item.text("body") };
+    }
+  }
+  return null;
+}

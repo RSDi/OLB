@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { programPresentation } from "../../lib/website/programs.ts";
+import { programCopyFromList, programPresentation } from "../../lib/website/programs.ts";
 
 test("program titles drop Waitlisted and get the mockup pills", () => {
   const elementary = programPresentation("8U-12U Competitive (Waitlisted)");
@@ -24,9 +24,22 @@ test("program titles drop Waitlisted and get the mockup pills", () => {
   });
 });
 
+test("the 14U accordion write-up is the same copy the assessment pop-up uses", () => {
+  const items = [
+    { text: (f: string) => (f === "title" ? "8U-12U Competitive (Waitlisted)" : "elementary body") },
+    { text: (f: string) => (f === "title" ? "14U Competitive (Waitlisted)" : "14U practice times and $400") },
+    { text: (f: string) => (f === "title" ? "16U-18U Competitive" : "hs body") },
+  ];
+  assert.deepEqual(programCopyFromList(items), {
+    title: "14U Competitive",
+    body: "14U practice times and $400",
+  });
+});
+
 test("the Programs page shows the 14U button only and no waitlist notice", () => {
   const page = readFileSync(join(import.meta.dirname, "../../app/(site)/programs/page.tsx"), "utf8");
   assert.match(page, /programPresentation/);
+  assert.match(page, /ProgramDetails/);
   assert.match(page, /programs\.button\.assessments/);
   assert.match(page, /getVisibleProgramsHeroMessage/);
   assert.match(page, /padding: heroMessage \? "8vmax 0 4vmax" : "8vmax 0 0"/);

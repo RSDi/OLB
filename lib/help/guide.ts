@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 22, 2026";
+export const GUIDE_UPDATED = "October 23, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -1342,7 +1342,7 @@ Tap **Save** when you're done.`,
     group: "Settings",
     audience: "registrations",
     preview: true,
-    keywords: ["assessments", "14u", "high school", "tryout", "open", "close", "which assessment", "waitlist", "birthday", "grade"],
+    keywords: ["assessments", "14u", "high school", "tryout", "open", "close", "which assessment", "waitlist", "birthday", "grade", "practice times", "payment info"],
     body: `Assessments families can sign up for. Open **Settings → Assessments**. Only people with the **Registrations** permission can open it.
 
 - **New assessment** starts one. Give it a **Name**, an **Address** (the public page is /assessments/ plus that, like 14u), optional **Level**, a **Date and time**, a **Place**, and the **Details** families read on the first step.
@@ -1350,7 +1350,7 @@ Tap **Save** when you're done.`,
 - **Open** lets families sign up. Several assessments can be open at once (for example High school and 14U). **Close** hides it from /assessments without deleting it.
 - Optional **Thanks** and **Reminder** words override the automatic emails for that assessment only.
 
-The public page **/assessments** asks **Which assessment?** and lists only the open ones that fit the player's birthday or grade. **/assessments/14u** is the 14U form; **/14u-assessment** still goes there. The Programs page button **CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT** is the only button on that page and goes there too. Sign-ups land on the **Waitlist** tab, tagged with the assessment.`,
+The public page **/assessments** asks **Which assessment?** and lists only the open ones that fit the player's birthday or grade. **/assessments/14u** is the 14U form; **/14u-assessment** still goes there. The Programs page button **CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT** is the only button on that page and goes there too. On the form, **Practice times and payment info** opens the same 14U Competitive write-up as the Our Programs accordion (a pop-up on a computer, a sheet from the bottom on a phone) without leaving the form. Sign-ups land on the **Waitlist** tab, tagged with the assessment.`,
   },
   {
     id: "settings-uniforms",

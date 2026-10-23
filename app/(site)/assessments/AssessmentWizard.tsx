@@ -2,7 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import s from "../player-registration/wizard.module.css";
 import { ContinueButton, Question, Choice, Summary, Line, ErrorNote } from "../player-registration/wizard-parts";
-import { PROGRAMS_INFO_URL, assessmentProblem } from "../../../lib/onboarding/assessment-form";
+import { assessmentProblem } from "../../../lib/onboarding/assessment-form";
+import { ProgramInfoLink } from "../_components/ProgramInfoDialog";
+import type { ProgramCopy } from "../../../lib/website/programs";
 import { assessmentStepProblem, assessmentStepsFor, type AssessmentStep } from "../../../lib/onboarding/assessment-steps";
 import {
   ASSESSMENT_TOO_OLD_14U,
@@ -31,6 +33,7 @@ export function AssessmentWizard({
   onFullForm,
   honeypot,
   onHoneypot,
+  programInfo,
 }: {
   assessment: PublicAssessment;
   state: WaitlistInput;
@@ -39,6 +42,7 @@ export function AssessmentWizard({
   onFullForm: () => void;
   honeypot: string;
   onHoneypot: (v: string) => void;
+  programInfo?: ProgramCopy | null;
 }) {
   const [stepId, setStepId] = useState<AssessmentStep>("intro");
   const [backToSummary, setBackToSummary] = useState(false);
@@ -163,10 +167,8 @@ export function AssessmentWizard({
               {details || assessment.name}
               {when ? ` ${when}${assessment.place ? ` at ${assessment.place}` : ""}.` : assessment.place ? ` ${assessment.place}.` : " "}
               {" "}
-              <a href={PROGRAMS_INFO_URL} target="_blank" rel="noreferrer" className={s.linkBtn}>
-                Practice times and payment info
-              </a>
-              .
+              {programInfo ? <ProgramInfoLink title={programInfo.title} body={programInfo.body} className={s.linkBtn} /> : null}
+              {programInfo ? "." : ""}
             </Question>
             {actions(<ContinueButton />)}
           </form>

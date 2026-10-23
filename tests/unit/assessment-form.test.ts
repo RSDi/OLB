@@ -56,9 +56,13 @@ test("Rachel's assessment copy is used exactly", () => {
   ]) {
     const text = readFileSync(join(import.meta.dirname, "../..", file), "utf8");
     assert.match(text, /assessment\.details/);
-    assert.match(text, /PROGRAMS_INFO_URL/);
-    assert.match(text, /Practice times and payment info/);
+    assert.match(text, /ProgramInfoLink/);
+    assert.doesNotMatch(text, /PROGRAMS_INFO_URL/);
   }
+  assert.match(
+    readFileSync(join(import.meta.dirname, "../../app/(site)/_components/ProgramInfoDialog.tsx"), "utf8"),
+    /Practice times and payment info/,
+  );
 });
 
 test("the assessment uses the registration wizard and See the whole form toggle", () => {
@@ -150,7 +154,23 @@ test("assessment date fields stay inside the card on a phone", () => {
   assert.match(css, /\.field input\[type="date"\][\s\S]*box-sizing:\s*border-box/);
 });
 
-test("the Programs page is the real practice-times and payment page", () => {
+test("practice times open a pop-up of the same 14U Programs write-up", () => {
+  const wizard = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/AssessmentWizard.tsx"), "utf8");
+  const form = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/AssessmentForm.tsx"), "utf8");
+  const page = readFileSync(join(import.meta.dirname, "../../app/(site)/assessments/[slug]/page.tsx"), "utf8");
+  const dialog = readFileSync(join(import.meta.dirname, "../../app/(site)/_components/ProgramInfoDialog.tsx"), "utf8");
+  const programsPage = readFileSync(join(import.meta.dirname, "../../app/(site)/programs/page.tsx"), "utf8");
+  assert.match(page, /programCopyFromList/);
+  assert.match(page, /getSiteContent/);
+  assert.match(programsPage, /ProgramDetails/);
+  assert.match(dialog, /<dialog/);
+  assert.match(dialog, /showModal/);
+  assert.match(dialog, /aria-label="Close"/);
+  assert.match(dialog, /ProgramDetails/);
+  for (const text of [wizard, form]) {
+    assert.match(text, /ProgramInfoLink/);
+    assert.doesNotMatch(text, /target="_blank"/);
+  }
   assert.equal(PROGRAMS_INFO_URL, "https://omahalightningbasketball.com/programs");
 });
 

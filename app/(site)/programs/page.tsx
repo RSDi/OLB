@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Accordion } from "../_components/Accordion";
 import { Button } from "../_components/Button";
 import { Block, Section } from "../_components/Section";
-import { SiteMarkdown } from "../_components/SiteMarkdown";
 import { HomepageMessageBox } from "../_components/HomepageMessageBox";
+import { ProgramDetails } from "../_components/ProgramDetails";
 import { Text } from "../_components/Text";
 import { getSiteContent } from "../../../lib/website/queries";
 import { getVisibleProgramsHeroMessage } from "../../../lib/website/homepage-message-data";
@@ -23,7 +23,7 @@ export default async function ProgramsPage() {
       title: shown.title,
       pill: shown.pill,
       muted: shown.muted,
-      content: <SiteMarkdown>{p.text("body")}</SiteMarkdown>,
+      content: <ProgramDetails body={p.text("body")} />,
     };
   });
   const assess = content.link("programs.button.assessments");

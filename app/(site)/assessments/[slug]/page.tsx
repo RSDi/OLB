@@ -4,6 +4,8 @@ import "../../../components/olb.css";
 import { loadAssessmentBySlug } from "../../../../lib/onboarding/assessment-data";
 import { toPublicAssessment } from "../../../../lib/onboarding/assessments";
 import { previewRouteOpen } from "../../../../lib/onboarding/preview-only";
+import { programCopyFromList } from "../../../../lib/website/programs";
+import { getSiteContent } from "../../../../lib/website/queries";
 import AssessmentFlow from "../AssessmentFlow";
 
 export const dynamic = "force-dynamic";
@@ -27,13 +29,18 @@ export default async function AssessmentSlugPage({
 }) {
   if (!previewRouteOpen("assessments")) notFound();
   const [{ slug }, q] = await Promise.all([params, searchParams]);
-  const assessment = await loadAssessmentBySlug(slug);
+  const [assessment, content] = await Promise.all([loadAssessmentBySlug(slug), getSiteContent()]);
   if (!assessment || !assessment.open) notFound();
   const dob = typeof q.dob === "string" && /^\d{4}-\d{2}-\d{2}$/.test(q.dob) ? q.dob : "";
   const grade = typeof q.grade === "string" ? q.grade : "";
+  const programInfo = programCopyFromList(content.list("programs.list"));
   return (
     <div className="olb-root">
-      <AssessmentFlow assessment={toPublicAssessment(assessment)} initial={{ athlete_dob: dob, grade }} />
+      <AssessmentFlow
+        assessment={toPublicAssessment(assessment)}
+        initial={{ athlete_dob: dob, grade }}
+        programInfo={programInfo}
+      />
     </div>
   );
 }
