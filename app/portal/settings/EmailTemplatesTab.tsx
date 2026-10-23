@@ -183,7 +183,7 @@ export function EmailTemplatesTab() {
                     {t.body.replace(/\s+/g, " ")}
                   </span>
                   <span style={{ fontSize: 11, fontWeight: 600, color: "var(--gw-fg-muted)" }}>
-                    Updated {new Date(t.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                    Updated {new Date(t.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" })}
                     {t.updated_by_name ? ` by ${t.updated_by_name}` : ""}
                   </span>
                 </div>

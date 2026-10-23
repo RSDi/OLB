@@ -136,7 +136,7 @@ export function PublicDirectoryTab() {
             )}
             {setting.updated_at && setting.updated_by_name && (
               <div style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
-                Last changed by {setting.updated_by_name} on {new Date(setting.updated_at).toLocaleDateString()}
+                Last changed by {setting.updated_by_name} on {new Date(setting.updated_at).toLocaleDateString("en-US", { timeZone: "America/Chicago" })}
               </div>
             )}
           </div>

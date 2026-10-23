@@ -204,7 +204,7 @@ export function RegistrationEmailsTab({ canEdit }: { canEdit: boolean }) {
                       {f.key in drafts && drafts[f.key] !== live[f.key]
                         ? "Not saved yet"
                         : edited
-                        ? `Changed ${new Date(s.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}${s.updated_by_name ? ` by ${s.updated_by_name}` : ""}`
+                        ? `Changed ${new Date(s.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "America/Chicago" })}${s.updated_by_name ? ` by ${s.updated_by_name}` : ""}`
                         : "Original wording"}
                     </span>
                     {canEdit && edited && (

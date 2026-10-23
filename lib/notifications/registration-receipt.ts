@@ -67,17 +67,30 @@ export interface SentReceipt {
   text: string;
 }
 
-export async function sendRegistrationEmails(inputs: RegistrationInput[], confirmedEmail: string | null): Promise<SentReceipt | null> {
+export async function sendRegistrationEmails(
+  inputs: RegistrationInput[],
+  confirmedEmail: string | null,
+  registrationIds: string[] = [],
+): Promise<SentReceipt | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("[notify] RESEND_API_KEY not set — skipping registration receipt and club notice");
     return null;
   }
+  if (!process.env.MAIL_FROM?.trim()) {
+    console.warn("[notify] MAIL_FROM not set — sending as onboarding@resend.dev (only the Resend account mailbox receives it)");
+  }
   const r = receipt(inputs);
   const who = registrant(inputs[0], confirmedEmail);
+  if (!who) {
+    console.warn("[notify] registration receipt skipped — no recipient email on the form");
+  }
   const site = siteUrl();
   const mailing = await checkMailingForReceipt();
   const from = mailFrom();
+  const reviewUrls = registrationIds.length
+    ? registrationIds.map((id) => `${site}/portal/directory/registrations?open=${id}`)
+    : [`${site}/portal/directory/registrations`];
 
   const t = await loadEmailText();
   const subject = receiptSubject(r, t);
@@ -105,7 +118,7 @@ export async function sendRegistrationEmails(inputs: RegistrationInput[], confir
         // Reply straight to the family.
         ...(who ? { reply_to: who.email } : {}),
         subject: clubNoticeSubject(r),
-        text: clubNoticeText(r, inputs[0], who, !!confirmedEmail, `${site}/portal/directory/registrations`),
+        text: clubNoticeText(r, inputs[0], who, !!confirmedEmail, reviewUrls),
       },
       "registration notice"
     ),

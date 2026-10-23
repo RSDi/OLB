@@ -158,10 +158,10 @@ export function formatStartedAt(iso: string | null | undefined, now = Date.now()
   if (!iso) return null;
   const at = new Date(iso);
   if (!Number.isFinite(at.getTime())) return null;
-  const time = at.toLocaleString("en-US", { hour: "numeric", minute: "2-digit" });
+  const time = at.toLocaleString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/Chicago" });
   const sameDay = new Date(now).toDateString() === at.toDateString();
   if (sameDay) return `started ${time}`;
-  const day = at.toLocaleString("en-US", { month: "short", day: "numeric" });
+  const day = at.toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "America/Chicago" });
   return `started ${day}, ${time}`;
 }
 
@@ -288,6 +288,5 @@ export function formatEventWhen(iso: string): string {
     month: "short",
     day: "numeric",
     hour: "numeric",
-    minute: "2-digit",
-  });
+    minute: "2-digit", timeZone: "America/Chicago" });
 }

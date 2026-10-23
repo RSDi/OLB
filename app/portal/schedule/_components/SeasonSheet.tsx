@@ -205,7 +205,7 @@ export function SeasonSheet({
       {season.imported_from && (
         <div style={{ fontSize: 11.5, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
           Imported from {season.imported_from}
-          {season.imported_at && ` on ${new Date(season.imported_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`}.
+          {season.imported_at && ` on ${new Date(season.imported_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" })}`}.
         </div>
       )}
     </SideSheet>

@@ -19,8 +19,7 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
-  });
+    year: "numeric", timeZone: "America/Chicago" });
 }
 
 function authorLabel(name: string | null | undefined): string {

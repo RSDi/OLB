@@ -29,7 +29,9 @@ export interface PendingRegistration {
   last_name: string;
   dob: string | null;
   created_at: string;
+  parent_name: string | null;
   parent_email: string | null;
+  parent_phone: string | null;
   extra: RegistrationExtra;
   // A player already on the roster with this name.
   match: RosterMatch<RosterPlayer> | null;
@@ -52,6 +54,8 @@ interface Row {
   dob: string | null;
   created_at: string;
   parent_email: string | null;
+  parent_name: string | null;
+  parent_phone: string | null;
   extra: (RegistrationExtra & { signature_image?: unknown }) | null;
   notes: string | null;
   reviewed_at: string | null;
@@ -78,7 +82,7 @@ export async function loadRegistrations(tab: RegistrationTab): Promise<PendingRe
   const { data } = await db
     .from("olb_registrations")
     .select(
-      "id, board_id, first_name, last_name, dob, created_at, parent_email, extra, notes, reviewed_at, reviewed_by, contacted_at, contacted_by, " +
+      "id, board_id, first_name, last_name, dob, created_at, parent_name, parent_email, parent_phone, extra, notes, reviewed_at, reviewed_by, contacted_at, contacted_by, " +
         "player:olb_players(id, full_name, team:olb_teams(name, age_group))"
     )
     .eq("status", STATUS[tab])
@@ -106,7 +110,9 @@ export async function loadRegistrations(tab: RegistrationTab): Promise<PendingRe
       last_name: r.last_name,
       dob: r.dob,
       created_at: r.created_at,
+      parent_name: r.parent_name,
       parent_email: r.parent_email,
+      parent_phone: r.parent_phone,
       extra,
       match: tab === "approved" ? null : matchRoster(r, roster.filter((p) => p.board_id === r.board_id)),
       notes: r.notes,

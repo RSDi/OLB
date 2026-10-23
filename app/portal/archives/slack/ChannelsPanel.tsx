@@ -146,7 +146,7 @@ function ChannelRow({
     ? "Not synced yet"
     : channel.last_status === "error"
       ? `Last sync failed: ${channel.last_error ?? "unknown error"}`
-      : `Last synced ${new Date(channel.last_run_at).toLocaleString()}`;
+      : `Last synced ${new Date(channel.last_run_at).toLocaleString("en-US", { timeZone: "America/Chicago" })}`;
   const access = accessLabel(channel);
 
   return (

@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
@@ -42,6 +42,8 @@ import { waitlistAssessmentLabel } from "../../../../lib/onboarding/assessments"
 import { OnboardingBoard } from "./OnboardingBoard";
 import { WorkflowPanel } from "./WorkflowPanel";
 import { commitmentsAdmin } from "../../../../lib/teams/registration-commitments";
+import { registeringContacts } from "../../../../lib/teams/registration-contact";
+import { formatDisplayYmd } from "../../../../lib/dates/display";
 
 const TABS: { key: RegistrationTab; label: string }[] = [
   { key: "waiting", label: "New" },
@@ -62,6 +64,7 @@ export function RegistrationsReview({
   showOnboarding = false,
   board = null,
   waitlistInfo = null,
+  openId = null,
 }: {
   tab: RegistrationTab | "onboarding";
   counts: Record<RegistrationTab, number>;
@@ -73,7 +76,13 @@ export function RegistrationsReview({
   showOnboarding?: boolean;
   board?: Board | null;
   waitlistInfo?: Record<string, WaitlistInfo> | null;
+  // Deep link from the club's new-registration email: scroll this card into view.
+  openId?: string | null;
 }) {
+  useEffect(() => {
+    if (!openId) return;
+    document.getElementById(`reg-${openId}`)?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [openId]);
   const [compose, setCompose] = useState<PendingRegistration[] | null>(null);
   const [assessmentFilter, setAssessmentFilter] = useState("all");
   const tabs = showOnboarding ? [...TABS, { key: "onboarding" as const, label: "Onboarding" }] : TABS;
@@ -199,7 +208,7 @@ export function RegistrationsReview({
         </div>
       ) : (
         shown.map((r) => (
-          <RegistrationCard key={r.id} reg={r} tab={tab} notes={notes[r.id] ?? []} onMessage={() => setCompose([r])} workflow={waitlistInfo?.[r.id] ?? null} />
+          <RegistrationCard key={r.id} reg={r} tab={tab} notes={notes[r.id] ?? []} onMessage={() => setCompose([r])} workflow={waitlistInfo?.[r.id] ?? null} open={openId === r.id} />
         ))
       )}
 
@@ -240,7 +249,7 @@ function WaitlistTools({ registrations, onMessageAll }: { registrations: Pending
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `waitlist-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `waitlist-${formatDisplayYmd(new Date().toISOString())}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -269,12 +278,14 @@ function RegistrationCard({
   notes,
   onMessage,
   workflow,
+  open = false,
 }: {
   reg: PendingRegistration;
   tab: RegistrationTab;
   notes: PlayerNote[];
   onMessage: () => void;
   workflow: WaitlistInfo | null;
+  open?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -322,6 +333,7 @@ function RegistrationCard({
       ["Mother", x.mother],
     ] as [string, RegistrationParentAnswers | undefined][]
   ).filter(([, p]) => [p?.first, p?.last].some((s) => s?.trim() && !/^n\/?a$/i.test(s.trim())));
+  const contacts = registeringContacts(reg);
   const emails = familyEmails(reg);
 
   async function run(key: string, fn: () => Promise<{ error?: string }>, confirmText?: string) {
@@ -338,7 +350,16 @@ function RegistrationCard({
   }
 
   return (
-    <article className="rsd-card" data-tour="registration-card" style={{ padding: "18px 20px", gap: 14 }}>
+    <article
+      id={`reg-${reg.id}`}
+      className="rsd-card"
+      data-tour="registration-card"
+      style={{
+        padding: "18px 20px",
+        gap: 14,
+        boxShadow: open ? "0 0 0 2px #fbcb44" : undefined,
+      }}
+    >
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -356,10 +377,20 @@ function RegistrationCard({
             {commitments.flag && <span className="rsd-chip rsd-chip-accent">{commitments.flag}</span>}
           </div>
           <span style={muted}>
-            {[age != null && `Age ${age}`, born && `Born ${born}`, `Registered ${formatDate(reg.created_at.slice(0, 10))}`]
+            {[age != null && `Age ${age}`, born && `Born ${born}`, `Registered ${formatDate(reg.created_at)}`]
               .filter(Boolean)
               .join(" · ")}
           </span>
+          {contacts.length > 0 && (
+            <div data-tour="registration-contact" style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+              {contacts.map((c) => (
+                <div key={c.role} style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}>{c.name}</span>
+                  <ContactLine phone={c.phone} email={c.email} />
+                </div>
+              ))}
+            </div>
+          )}
           {address && (
             <MapLink
               address={address}
@@ -610,7 +641,7 @@ function WaitlistStatus({
   onSaveNote: () => void;
   onContacted: (v: boolean) => void;
 }) {
-  const since = reg.reviewed_at ? formatDate(reg.reviewed_at.slice(0, 10)) : null;
+  const since = reg.reviewed_at ? formatDate(reg.reviewed_at) : null;
   const contacted = !!reg.contacted_at;
   return (
     <div
@@ -633,7 +664,7 @@ function WaitlistStatus({
         <label data-tour="waitlist-contacted" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
           <input type="checkbox" checked={contacted} disabled={busy !== null} onChange={(e) => onContacted(e.target.checked)} />
           {contacted
-            ? `Contacted ${formatDate(reg.contacted_at!.slice(0, 10))}${reg.contacted_by_name ? ` by ${reg.contacted_by_name}` : ""}`
+            ? `Contacted ${formatDate(reg.contacted_at!)}${reg.contacted_by_name ? ` by ${reg.contacted_by_name}` : ""}`
             : "Contacted"}
         </label>
       </div>
@@ -685,7 +716,7 @@ function FromRoster({ reg }: { reg: PendingRegistration }) {
 
 // When it was removed, by whom, and why.
 function RemovedStatus({ reg }: { reg: PendingRegistration }) {
-  const when = reg.reviewed_at ? formatDate(reg.reviewed_at.slice(0, 10)) : null;
+  const when = reg.reviewed_at ? formatDate(reg.reviewed_at) : null;
   return (
     <div
       style={{
@@ -742,8 +773,8 @@ function ApprovedRow({ reg, border }: { reg: PendingRegistration; border: boolea
       </div>
       <span style={muted}>
         {[
-          reg.reviewed_at && `Approved ${formatDate(reg.reviewed_at.slice(0, 10))}${reg.reviewed_by_name ? ` by ${reg.reviewed_by_name}` : ""}`,
-          `Registered ${formatDate(reg.created_at.slice(0, 10))}`,
+          reg.reviewed_at && `Approved ${formatDate(reg.reviewed_at)}${reg.reviewed_by_name ? ` by ${reg.reviewed_by_name}` : ""}`,
+          `Registered ${formatDate(reg.created_at)}`,
         ]
           .filter(Boolean)
           .join(" · ")}

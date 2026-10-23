@@ -20,7 +20,7 @@ test("tokens fill in, and an empty name leaves no gap", () => {
 
 test("a save is trimmed and checked; the original wording or a cleared field goes back to the original", () => {
   assert.deepEqual(cleanEmailText("receipt.headline", "  Welcome!  "), { value: "Welcome!" });
-  assert.deepEqual(cleanEmailText("receipt.headline", "You're registered!"), { value: null });
+  assert.deepEqual(cleanEmailText("receipt.headline", "You're registered for the 2026–27 Lightning season!"), { value: null });
   assert.ok("error" in cleanEmailText("receipt.headline", "   "));
   assert.deepEqual(cleanEmailText("receipt.uniform_note", ""), { value: "" });
   assert.ok("error" in cleanEmailText("receipt.headline", "x".repeat(81)));

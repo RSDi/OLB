@@ -58,8 +58,7 @@ function formatDateTime(iso: string): string {
     day: "numeric",
     year: "numeric",
     hour: "numeric",
-    minute: "2-digit",
-  });
+    minute: "2-digit", timeZone: "America/Chicago" });
 }
 
 function authorLabel(name: string | null | undefined): string {

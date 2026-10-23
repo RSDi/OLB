@@ -256,7 +256,7 @@ function labelFor(s: StatusFilter): string {
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
 }
 
 function countByStatus(rows: { status: InstanceRow["status"] }[]) {

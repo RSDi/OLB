@@ -14,15 +14,15 @@ import { loadOnboardingBoard, loadWaitlistInfo, workflowEnabled } from "../../..
 // The registration workflow (0130) adds the Onboarding tab and, on the
 // Waitlist, each family's answers and Offer a spot: for the preview
 // accounts, and for everyone here while the workflow is switched on.
-export default async function RegistrationsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab: asked } = await searchParams;
+export default async function RegistrationsPage({ searchParams }: { searchParams: Promise<{ tab?: string; open?: string }> }) {
+  const { tab: asked, open } = await searchParams;
   const viewer = await getViewer();
   if (!viewer) redirect("/login");
   if (!viewer.canManageRegistrations) redirect("/portal/directory");
   const showOnboarding = viewer.seesFullUi || (await workflowEnabled());
   if (asked === "onboarding" && showOnboarding) {
     const [counts, board] = await Promise.all([countRegistrations(), loadOnboardingBoard().catch(() => null)]);
-    return <RegistrationsReview tab="onboarding" counts={counts} registrations={[]} notes={{}} showOnboarding board={board} />;
+    return <RegistrationsReview tab="onboarding" counts={counts} registrations={[]} notes={{}} showOnboarding board={board} openId={open ?? null} />;
   }
   const tab: RegistrationTab = asked === "waitlist" || asked === "approved" || asked === "removed" ? asked : "waiting";
   const [counts, registrations] = await Promise.all([countRegistrations(), loadRegistrations(tab)]);
@@ -43,6 +43,7 @@ export default async function RegistrationsPage({ searchParams }: { searchParams
       notes={Object.fromEntries(notes)}
       showOnboarding={showOnboarding}
       waitlistInfo={waitlistInfo}
+      openId={open ?? null}
     />
   );
 }

@@ -316,7 +316,7 @@ function statusChip(s: InstanceStatus) {
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "America/Chicago" });
 }
 
 function formatDateTime(iso: string): string {
@@ -326,6 +326,5 @@ function formatDateTime(iso: string): string {
     day: "numeric",
     year: "numeric",
     hour: "numeric",
-    minute: "2-digit",
-  });
+    minute: "2-digit", timeZone: "America/Chicago" });
 }
