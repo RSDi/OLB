@@ -4,6 +4,7 @@
 // so tests can run it; lib/notifications/registration-receipt.ts sends.
 
 import { SEASON_LABEL } from "./registration-form.ts"; // explicit extension so node --test can load this file
+import { emailHeadlineHtml, emailHeadlineMediaCss } from "./email-headline.ts";
 import { emailText, fillTokens, type EmailText } from "./registration-email-text.ts";
 import { assessmentWhen, type Assessment } from "../onboarding/assessments.ts";
 import { formatDisplayDate } from "../dates/display.ts";
@@ -100,14 +101,14 @@ export function assessmentHtml(
         `<div style="font-size:14.5px;line-height:1.55;color:#333;margin-top:4px;">${esc(f.value).replace(/\n/g, "<br>")}</div></td></tr>`,
     )
     .join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${emailHeadlineMediaCss(w.headline)}</style></head>
 <body style="margin:0;padding:0;background:#f3f1ea;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f1ea;"><tr><td align="center" style="padding:28px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;font-family:Inter,-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif;color:#111;">
 <tr><td align="center" style="padding:32px 32px 8px;"><img src="${esc(logoUrl)}" width="300" alt="Omaha Lightning Basketball" style="display:block;width:300px;max-width:100%;height:auto;"></td></tr>
 <tr><td style="padding:24px 36px 8px;">
 <div style="display:inline-block;background:#fbcb44;color:#000;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:100px;">${esc(assessment.name)}</div>
-<h1 style="margin:16px 0 8px;font-size:30px;line-height:1.15;font-weight:800;">${esc(w.headline)}</h1>
+${emailHeadlineHtml(w.headline)}
 <p style="margin:0;font-size:16px;line-height:1.6;color:#333;">${introHtml(input, assessment, t)}</p>
 </td></tr>
 ${rows ? `<tr><td style="padding:24px 36px 4px;">${label("The assessment")}<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e3d9;border-radius:12px;">${rows}</table></td></tr>` : ""}

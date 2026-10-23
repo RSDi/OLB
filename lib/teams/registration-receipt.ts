@@ -5,6 +5,7 @@
 
 import { SEASON_LABEL, isHighSchoolTier, joinNames, tierParts, type RegistrationInput } from "./registration-form.ts"; // explicit extension so node --test can load this file
 import type { RegistrationExtra } from "./roster-logic.ts";
+import { emailHeadlineHtml, emailHeadlineMediaCss } from "./email-headline.ts";
 import { emailText, fillTokens, type EmailText } from "./registration-email-text.ts";
 
 export const VENMO_HANDLE = "OmahaLightning-Basketball";
@@ -220,14 +221,14 @@ export function receiptHtml(r: Receipt, who: Registrant, o: ReceiptOptions, t: E
     : `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#333;">You chose <strong>check</strong>. If you haven&rsquo;t paid yet, send <strong>${total}</strong>. ${checkLine}</p>` +
       `<p style="margin:0;font-size:13.5px;line-height:1.6;color:#555;">Rather use Venmo? Send it to <a href="${VENMO_URL}" style="color:#111;font-weight:700;">@${VENMO_HANDLE}</a> with ${kids}&rsquo;s ${r.players.length > 1 ? "names" : "name"} in the note.</p>`;
 
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${emailHeadlineMediaCss(w.headline)}</style></head>
 <body style="margin:0;padding:0;background:#f3f1ea;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f1ea;"><tr><td align="center" style="padding:28px 12px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;font-family:Inter,-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif;color:#111;">
 <tr><td align="center" style="padding:32px 32px 8px;"><img src="${esc(o.logoUrl)}" width="300" alt="Omaha Lightning Basketball" style="display:block;width:300px;max-width:100%;height:auto;"></td></tr>
 <tr><td style="padding:24px 36px 8px;">
 <div style="display:inline-block;background:#fbcb44;color:#000;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:100px;">${esc(SEASON_LABEL)} season</div>
-<h1 style="margin:16px 0 8px;font-size:30px;line-height:1.15;font-weight:800;">${esc(w.headline)}</h1>
+${emailHeadlineHtml(w.headline)}
 <p style="margin:0;font-size:16px;line-height:1.6;color:#333;">${introHtml(r, who, t)}</p>
 </td></tr>
 <tr><td style="padding:24px 36px 4px;">${label("Your registration")}
