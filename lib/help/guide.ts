@@ -1336,7 +1336,7 @@ Tap **Save** when you're done.`,
 - **Open** lets families sign up. Several assessments can be open at once (for example High school and 14U). **Close** hides it from /assessments without deleting it.
 - Optional **Thanks** and **Reminder** words override the automatic emails for that assessment only.
 
-The public page **/assessments** asks **Which assessment?** and lists only the open ones that fit the player's birthday or grade. **/assessments/14u** is the 14U form; **/14u-assessment** still goes there. The Programs page button **CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT** goes there too. Sign-ups land on the **Waitlist** tab, tagged with the assessment.`,
+The public page **/assessments** asks **Which assessment?** and lists only the open ones that fit the player's birthday or grade. **/assessments/14u** is the 14U form; **/14u-assessment** still goes there. The Programs page button **CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT** is the only button on that page and goes there too. Sign-ups land on the **Waitlist** tab, tagged with the assessment.`,
   },
   {
     id: "settings-uniforms",
@@ -1430,8 +1430,8 @@ Pick a page (**Home**, **Philosophy**, **History**, **Summer**, **Programs**, **
 
 - **Text**: type the new words and tap **Save draft**. In the bigger boxes, leave a blank line between paragraphs. **\\*\\*bold\\*\\***, **\\*italic\\***, **[link words](/philosophy)** and lines starting with a dash (**-**) for a list all work. A bold line on its own gets a little space above it, like a heading.
 - **Pictures**: tap **Upload new picture** and choose a JPEG, PNG, WebP or GIF up to 10 MB (iPhone HEIC photos: export them as JPEG first). Fill in **Description** first: it's read aloud to people who can't see the picture.
-- **Buttons**: change the **Words on the button** and where it **Goes to**. On **Programs**, the second button starts as **CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT** and goes to **/assessments/14u**.
-- **Lists** (the programs, coaches and sponsors): tap one to open it and change it; the arrows reorder, the **trash** can removes one, and **Add program**, **Add coach** or **Add sponsor** adds one at the bottom. Then **Save draft**. Once the coaches list has been changed, the Coaches page shows them in two even columns rather than the original staggered layout.
+- **Buttons**: change the **Words on the button** and where it **Goes to**. On **Programs**, the only button starts as **CLICK HERE TO REGISTER FOR THE 14U ASSESSMENT** and goes to **/assessments/14u**.
+- **Lists** (the programs, coaches and sponsors): tap one to open it and change it; the arrows reorder, the **trash** can removes one, and **Add program**, **Add coach** or **Add sponsor** adds one at the bottom. Then **Save draft**. Once the coaches list has been changed, the Coaches page shows them in two even columns rather than the original staggered layout. On **Programs**, each name shows a status pill on the public page (closed, or assessments open) from the name — drop **(Waitlisted)** from the title if it's still there.
 - **Reset to original** saves a draft that puts the website's own words, picture or list back for that spot.
 
 **New pages**

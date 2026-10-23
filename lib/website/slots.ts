@@ -283,7 +283,7 @@ Lastly, we strive to provide a setting where home school students can achieve th
     key: "programs.notice",
     page: "Programs",
     label: "Notice box",
-    help: "The black box under the headline: waitlists, deadlines.",
+    help: "No longer shown. The waitlist notice box was removed from the Programs page.",
     kind: "text",
     multiline: true,
     max: 400,
@@ -310,7 +310,7 @@ Lastly, we strive to provide a setting where home school students can achieve th
       { name: "body", label: "Details", type: "markdown", required: true },
     ],
     default: [
-      { title: "8U-12U Competitive (Waitlisted)", body: `Our elementary competitive program is extremely popular and fills fast because of our amazing coaching staff and community. Our grade school program focuses on developing each individual player with fundamentals and sportsmanship while creating friendships through a common goal.
+      { title: "8U-12U Competitive", body: `Our elementary competitive program is extremely popular and fills fast because of our amazing coaching staff and community. Our grade school program focuses on developing each individual player with fundamentals and sportsmanship while creating friendships through a common goal.
 
 -Season starts first week in October and runs through February with a mid-December break.
 
@@ -335,7 +335,7 @@ Lastly, we strive to provide a setting where home school students can achieve th
 -4 qualified, Christian, volunteer coaches dedicated to investing in our elementary age group at every practice.
 
 **Registration fee: $375**` },
-      { title: "14U Competitive (Waitlisted)", body: `Our 14U competitive program is extremely popular and fills fast because of our amazing coaching staff and community. The 14U program focuses on developing each individual player while preparing them to compete at the High School level. These athletes will grow in sportsmanship, skill, athleticism, friendship, and a love for hard work as they strive for common goals in basketball and life.
+      { title: "14U Competitive", body: `Our 14U competitive program is extremely popular and fills fast because of our amazing coaching staff and community. The 14U program focuses on developing each individual player while preparing them to compete at the High School level. These athletes will grow in sportsmanship, skill, athleticism, friendship, and a love for hard work as they strive for common goals in basketball and life.
 
 -Season starts in October and runs through February with a mid-December break.
 
