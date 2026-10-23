@@ -179,6 +179,6 @@ export function assessmentNoticeText(
     ...(answers.length ? ["Answers:", ...answers.map((a) => `• ${a}`), ""] : []),
     `Review it in the portal: ${reviewUrl}`,
   ]
-    .filter((l): l is string => l !== null && l !== false)
+    .filter((l): l is string => l != null && l !== "")
     .join("\n");
 }
