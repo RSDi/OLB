@@ -25,8 +25,8 @@ export default async function ProgramsPage() {
   const assess = content.link("programs.button.assessments");
   return (
     <>
-      <Section height="medium" divider={{ height: "8vw" }} rows={[10, 8]}>
-        <Block m="1/2/10/10" d="1/5/7/23">
+      <Section height={{ minHeight: "0", padding: "8vmax 0 0" }} divider={{ height: "8vw" }} rows={[6, 6]}>
+        <Block m="1/2/6/10" d="1/4/6/22">
           <Text>
             <h4>{content.text("programs.intro.lead")}</h4>
             <h3>{content.text("programs.intro.title")}</h3>
@@ -34,16 +34,16 @@ export default async function ProgramsPage() {
         </Block>
       </Section>
 
-      <Section theme="white" height="medium" rows={[16, 14]}>
-        <Block m="1/2/4/10" d="1/2/4/11">
+      <Section theme="white" height={{ minHeight: "0", padding: "5vmax 0 8vmax" }} rows={[12, 12]}>
+        <Block m="1/2/3/10" d="1/2/3/12">
           <Text>
             <h2>{content.text("programs.heading")}</h2>
           </Text>
         </Block>
-        <Block m="4/2/12/10" d="3/15/15/26">
+        <Block m="3/2/10/10" d="3/14/11/26">
           <Accordion items={programs} />
         </Block>
-        <Block m="13/2/16/10" d="4/2/6/10" align="center">
+        <Block m="10/2/12/10" d="4/2/6/12" align="center">
           <Button href={assess.href} hover="grow">
             {assess.label}
           </Button>
