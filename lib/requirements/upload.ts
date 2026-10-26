@@ -1,5 +1,5 @@
+import { looksLikeHeic } from "document-scanner";
 import { createClient } from "../supabase/client";
-import { looksLikeHeic } from "../scan/heic";
 import { REQUIREMENT_FILES_BUCKET } from "./types";
 
 // Client-side uploader for scans of what a player handed in (a photo of the

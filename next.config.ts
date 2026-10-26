@@ -13,9 +13,9 @@ function siteImagesPattern(): URL[] {
 }
 
 const nextConfig: NextConfig = {
-  // ReelNotes ships as a workspace package of raw TS/TSX source; Next must
-  // transpile it like first-party app code.
-  transpilePackages: ["reelnotes", "@uppy/core", "@uppy/tus", "tus-js-client"],
+  // Workspace packages ship raw TS/TSX source; Next must transpile them
+  // like first-party app code.
+  transpilePackages: ["reelnotes", "document-scanner", "@uppy/core", "@uppy/tus", "tus-js-client"],
   images: { remotePatterns: siteImagesPattern() },
   // Preview hosts (*.vercel.app) can differ from the forwarded Host when
   // Vercel Authentication sits in front. Without this, Server Actions abort
