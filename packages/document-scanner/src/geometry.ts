@@ -1,4 +1,4 @@
-// Corner maths for the document scanner (app/components/DocumentScanner.tsx):
+// Corner maths for the document scanner (src/ui/DocumentScanner.tsx):
 // putting a page's four corners in order, sizing the straightened page, and
 // the perspective transform that maps it flat. Pure and safe to import from
 // client components.

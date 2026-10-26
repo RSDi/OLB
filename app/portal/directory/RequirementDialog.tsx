@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
-import { DocumentScanner } from "../../components/DocumentScanner";
+import { DocumentScanner } from "document-scanner/ui";
+import { looksLikeHeic } from "document-scanner";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Textarea } from "../../components/ui";
 import {
@@ -11,7 +12,6 @@ import {
   type MarkPlayerRequirementInput,
 } from "../../../lib/requirements/actions";
 import { doneWord, formatAmount } from "../../../lib/requirements/logic";
-import { looksLikeHeic } from "../../../lib/scan/heic";
 import type { PlayerRequirement, PlayerRequirementStatus, Requirement } from "../../../lib/requirements/types";
 import {
   REQUIREMENT_FILE_ACCEPT,

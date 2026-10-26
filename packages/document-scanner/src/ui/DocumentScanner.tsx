@@ -11,10 +11,10 @@ import {
   pageFingerprint,
   samePage,
   steadyFor,
-} from "../../lib/scan/autocapture";
-import { detectDocument, toGray } from "../../lib/scan/detect";
-import { SCAN_FILTERS, applyScanFilter, type ScanFilter } from "../../lib/scan/enhance";
-import { heicToJpeg, jpegName, looksLikeHeic } from "../../lib/scan/heic";
+} from "../autocapture";
+import { detectDocument, toGray } from "../detect";
+import { SCAN_FILTERS, applyScanFilter, type ScanFilter } from "../enhance";
+import { heicToJpeg, jpegName, looksLikeHeic } from "../heic";
 import {
   fullFrame,
   isConvexQuad,
@@ -25,8 +25,8 @@ import {
   type Point,
   type Quad,
   type RgbaImage,
-} from "../../lib/scan/geometry";
-import { buildPdf } from "../../lib/scan/pdf";
+} from "../geometry";
+import { buildPdf } from "../pdf";
 
 // A document scanner like the ones built into iPhone and Android: a live
 // camera that outlines the page it sees (and, with Auto on, takes the
@@ -201,7 +201,7 @@ function ScanButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="gw-press"
+      className="ds-press"
       style={{
         height: 40,
         padding: "0 18px",
@@ -626,7 +626,7 @@ function CameraView({
               aria-pressed={auto}
               onClick={toggleAuto}
               title={auto ? "Takes the picture once the page holds still" : "Tap the round button to take the picture"}
-              className="gw-press"
+              className="ds-press"
               style={{
                 height: 40,
                 padding: "0 16px",
@@ -909,14 +909,7 @@ type Step =
   | { kind: "corners"; photo: HTMLCanvasElement; quad: Quad; original?: File }
   | { kind: "review" };
 
-export function DocumentScanner({
-  fileName,
-  maxBytes,
-  onDone,
-  onCancel,
-  photo,
-  onPhotoUnreadable,
-}: {
+export interface DocumentScannerProps {
   // What the finished PDF is called, e.g. "Handbook signature - Wiley Fisher.pdf".
   fileName: string;
   maxBytes: number;
@@ -927,7 +920,16 @@ export function DocumentScanner({
   photo?: File;
   // This browser can't open `photo` (an iPhone HEIC photo in Chrome, say).
   onPhotoUnreadable?: (file: File) => void;
-}) {
+}
+
+export function DocumentScanner({
+  fileName,
+  maxBytes,
+  onDone,
+  onCancel,
+  photo,
+  onPhotoUnreadable,
+}: DocumentScannerProps) {
   const [step, setStep] = useState<Step>(photo ? { kind: "opening" } : { kind: "camera" });
   const [pages, setPages] = useState<ScanPage[]>([]);
   const [filter, setFilter] = useState<ScanFilter>("color");
@@ -1083,6 +1085,7 @@ export function DocumentScanner({
         overscrollBehavior: "contain",
       }}
     >
+      <style>{`.ds-press{transition:filter 200ms ease}.ds-press:active{filter:brightness(.95)}`}</style>
       {step.kind === "opening" && (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: MUTED, fontSize: 14, fontWeight: 600 }}>
           Opening the photo…

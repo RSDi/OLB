@@ -1,6 +1,7 @@
-// The document scanner's image work (lib/scan): putting corners in order,
-// finding the page in a frame, laying it flat, cleaning it up, bundling the
-// pages into a PDF, and knowing when to take the picture by itself.
+// The document scanner's image work (packages/document-scanner): putting
+// corners in order, finding the page in a frame, laying it flat, cleaning it
+// up, bundling the pages into a PDF, and knowing when to take the picture by
+// itself.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -15,12 +16,12 @@ import {
   type Point,
   type Quad,
   type RgbaImage,
-} from "../../lib/scan/geometry.ts";
-import { newSteadyTracker, pageFingerprint, samePage, steadyFor } from "../../lib/scan/autocapture.ts";
-import { jpegName, looksLikeHeic } from "../../lib/scan/heic.ts";
-import { convexHull, detectDocument, largestQuad, otsuThreshold, toGray } from "../../lib/scan/detect.ts";
-import { applyScanFilter } from "../../lib/scan/enhance.ts";
-import { buildPdf, jpegInfo } from "../../lib/scan/pdf.ts";
+} from "../../packages/document-scanner/src/geometry.ts";
+import { newSteadyTracker, pageFingerprint, samePage, steadyFor } from "../../packages/document-scanner/src/autocapture.ts";
+import { jpegName, looksLikeHeic } from "../../packages/document-scanner/src/heic.ts";
+import { convexHull, detectDocument, largestQuad, otsuThreshold, toGray } from "../../packages/document-scanner/src/detect.ts";
+import { applyScanFilter } from "../../packages/document-scanner/src/enhance.ts";
+import { buildPdf, jpegInfo } from "../../packages/document-scanner/src/pdf.ts";
 
 function near(a: Point, b: Point, within: number, what: string) {
   assert.ok(Math.hypot(a.x - b.x, a.y - b.y) <= within, `${what}: (${a.x}, ${a.y}) vs (${b.x}, ${b.y})`);

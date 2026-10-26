@@ -1,5 +1,5 @@
+import { heicToJpeg, looksLikeHeic } from "document-scanner";
 import { createClient } from "../supabase/client";
-import { heicToJpeg, looksLikeHeic } from "../scan/heic";
 import { NOTE_FILE_EXT, NOTE_FILE_MAX_BYTES, PLAYER_NOTE_FILES_BUCKET, type NoteAttachment } from "./player-notes";
 
 // Client-side uploader for attachments on player notes (0124). The bucket is
