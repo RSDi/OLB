@@ -138,6 +138,13 @@ test("invoice page keeps a separate error next to each action", () => {
   assert.match(plan, /\/portal\/schedule\/hosted\/\$\{wid\}\/bill/);
 });
 
+test("New invoice form is no longer free-text Program name / Event", () => {
+  const form = readFileSync(join(import.meta.dirname, "../../packages/invoicing/src/ui/NewInvoiceForm.tsx"), "utf8");
+  assert.match(form, /Select an event/);
+  assert.match(form, /Select a program/);
+  assert.doesNotMatch(form, /placeholder="Program name"\s*\/>\s*<\/Field>\s*<Field label="Program email">/);
+});
+
 test("invoicing without HS Schedule edit does not load the full hosted page via admin", () => {
   const hostedPage = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/page.tsx"), "utf8");
   assert.doesNotMatch(hostedPage, /createAdminClient/);
