@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 23, 2026";
+export const GUIDE_UPDATED = "October 27, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -1184,7 +1184,7 @@ These are the same teams as **Settings → Teams**, not a second list.
 - **YouTube playlist** on each team — paste a playlist link or id (the list= value), or **Or pick from the channel** if YouTube is connected. **Save playlist**. **Open playlist** checks the link. Leave blank for none. New film for that team is added after the YouTube upload finishes. A playlist miss does not mark the upload failed.
 - **YouTube title template** and **YouTube description template** — each team has its own. Placeholders fill in when a video goes up: {dot} {team} {opponent} {date} {result_line} {our_score} {their_score} {youtube_link}. {dot} is 🟢 on a win and 🔴 on a loss; it is left off on a tie or when there is no score. {result_line} is **Congrats on the win!** or **Better luck next time!** (that line is left off on a tie or when there is no score). **Reset to default** puts the club wording back. **Save template** keeps the title, description, extra-line switches, and Slack channel together.
 - **Extra lines** are off to start: **Players list** (names from that game's lineup, or the season roster if no lineup is set), **Playlist link**, **Tournament name**, and **Stats book**. When a switch is off, that extra does not appear in the title, description, or Slack text. Tournament name and stats book have no film data yet, so those lines stay empty even when on. Set a lineup with **Who played** on **Film → Edit**.
-- **Slack channel ID** — where Sparky posts after someone taps **Approve** on Film. Paste the channel ID (it starts with C), not the #name. Leave it blank and **Approve** stays off.
+- **Slack channel ID** — where Sparky posts after someone taps **Approve** on Film. Paste the channel ID (it starts with C), not the #name. Leave it blank and **Approve** stays off. Saving it also applies to posts already waiting on Film, so you can set it after the videos come in.
 - **+ New team** adds a Directory team (same as Settings → Teams) so you can give it a film page without leaving this tab. **Rename** changes the team's name everywhere.
 - **On** / **Off** shows or hides that team on **/film** and **/t/…**. Turn it on only after a code is set.
 - **Upload address** is the end of the family link, like **14u-white**.

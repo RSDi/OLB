@@ -49,6 +49,44 @@ export async function listPendingFilmSlackDrafts(teamIds?: string[]): Promise<Fi
   return ((data as DraftRow[] | null) ?? []).filter((row) => row.status === "pending" || isStalePosting(row));
 }
 
+type TeamRow = {
+  id: string;
+  name: string;
+  age_group: string | null;
+  film_slug: string | null;
+  film_slack_channel_id: string | null;
+};
+
+// The team's current channel wins over the one saved on the draft, so setting
+// or changing it in Settings → Film reaches drafts already waiting.
+function draftChannel(draft: Pick<FilmSlackDraft, "status" | "channel_id">, teamChannel: string | null | undefined) {
+  if (draft.status === "posted") return draft.channel_id;
+  return teamChannel?.trim() || draft.channel_id?.trim() || null;
+}
+
+export async function resolveFilmSlackDraftChannel(draft: FilmSlackDraft): Promise<string | null> {
+  if (!draft.team_id) return draftChannel(draft, null);
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("olb_teams")
+    .select("film_slack_channel_id")
+    .eq("id", draft.team_id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return draftChannel(draft, (data as { film_slack_channel_id: string | null } | null)?.film_slack_channel_id);
+}
+
+// Keeps unposted drafts in step with the team's Slack channel setting.
+export async function syncFilmSlackDraftChannels(teamId: string, channelId: string | null): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("game_film_slack_drafts")
+    .update({ channel_id: channelId, updated_at: new Date().toISOString() })
+    .eq("team_id", teamId)
+    .in("status", ["pending", "discarded"]);
+  if (error) throw new Error(error.message);
+}
+
 async function toDraftViews(drafts: FilmSlackDraft[]): Promise<FilmSlackDraftView[]> {
   if (drafts.length === 0) return [];
   const admin = createAdminClient();
@@ -57,23 +95,19 @@ async function toDraftViews(drafts: FilmSlackDraft[]): Promise<FilmSlackDraftVie
   const [{ data: uploads }, { data: teams }] = await Promise.all([
     admin.from("game_film_uploads").select("id, filename, team").in("id", uploadIds),
     teamIdList.length
-      ? admin.from("olb_teams").select("id, name, age_group, film_slug").in("id", teamIdList)
-      : Promise.resolve({ data: [] as { id: string; name: string; age_group: string | null; film_slug: string | null }[] }),
+      ? admin.from("olb_teams").select("id, name, age_group, film_slug, film_slack_channel_id").in("id", teamIdList)
+      : Promise.resolve({ data: [] as TeamRow[] }),
   ]);
   const uploadById = new Map(
     ((uploads as { id: string; filename: string; team: string }[] | null) ?? []).map((u) => [u.id, u])
   );
-  const teamById = new Map(
-    ((teams as { id: string; name: string; age_group: string | null; film_slug: string | null }[] | null) ?? []).map((t) => [
-      t.id,
-      t,
-    ])
-  );
+  const teamById = new Map(((teams as TeamRow[] | null) ?? []).map((t) => [t.id, t]));
   return drafts.map((draft) => {
     const upload = uploadById.get(draft.upload_id);
     const team = draft.team_id ? teamById.get(draft.team_id) : undefined;
     return {
       ...draft,
+      channel_id: draftChannel(draft, team?.film_slack_channel_id),
       filename: upload?.filename || "Film",
       team_label: team ? teamLabel(team) : upload?.team || "Team",
       team_slug: team?.film_slug || upload?.team || "",
