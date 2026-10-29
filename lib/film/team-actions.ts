@@ -21,7 +21,7 @@ import {
   slugifyFilmTeam,
   type FilmTeamRow,
 } from "./teams.ts";
-import { parseFilmSlackChannelId } from "./slack-drafts.ts";
+import { parseFilmSlackChannelId, syncFilmSlackDraftChannels } from "./slack-drafts.ts";
 import {
   DEFAULT_YOUTUBE_DESCRIPTION_TEMPLATE,
   DEFAULT_YOUTUBE_TITLE_TEMPLATE,
@@ -233,6 +233,11 @@ export async function saveFilmTeamTemplate(
     })
     .eq("id", id);
   if (error) return { error: error.message };
+  try {
+    await syncFilmSlackDraftChannels(id, channel.id);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Saved, but couldn't update waiting Slack posts." };
+  }
   refresh();
   return {};
 }

@@ -10,6 +10,7 @@ import {
   discardFilmSlackDraft,
   getFilmSlackDraft,
   markFilmSlackDraftPosted,
+  resolveFilmSlackDraftChannel,
   restoreFilmSlackDraft,
   revertFilmSlackDraftClaim,
   updateFilmSlackDraftBody,
@@ -80,7 +81,7 @@ export async function approveFilmSlackDraft(
   if (!row) return { error: "That draft isn't there any more." };
   if (row.status === "posted") return { ok: true, alreadyPosted: true };
   if (row.status === "discarded") return { error: "That draft was discarded. Restore it first." };
-  const channel = row.channel_id?.trim() || "";
+  const channel = (await resolveFilmSlackDraftChannel(row)) || "";
   if (!channel) {
     return { error: "Set this team's Slack channel ID in Settings → Film first." };
   }
