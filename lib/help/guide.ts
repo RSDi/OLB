@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 23, 2026";
+export const GUIDE_UPDATED = "October 29, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -1451,6 +1451,26 @@ Pick a page (**Home**, **Philosophy**, **History**, **Summer**, **Programs**, **
 **New pages**
 
 Make a page of your own, like a fall camp or a tryouts page. Under **Pages → New pages**, tap **Add page** and fill in its **Title**, its **Address** (filled in from the title: Fall Camp makes **/fall-camp**), an optional **Banner picture**, and the **Page text**. Save the draft, preview it, publish it, then add it to the **Menu** so people can find it. An address the site already uses can't be taken. Delete a page from the list (and publish) to take it down.`,
+  },
+  {
+    id: "settings-website-activity",
+    title: "Settings: Website Activity",
+    group: "Settings",
+    audience: "super_admin",
+    preview: true,
+    keywords: ["website activity", "analytics", "stats", "statistics", "visitors", "visits", "traffic", "page views", "google", "facebook", "where they came from", "registration funnel", "who visited"],
+    body: `See who is visiting the public club website. Open **Settings → Website Activity**.
+
+Visitors are anonymous: each browser gets a random number, and no names or addresses are kept. When someone is signed in to the portal, their visits show their name. When someone registers players, their visits (before and after) show the players they registered.
+
+- **The four numbers**: visitors (different browsers), visits, page views and registrations sent from the website, over the last 30 days.
+- **Visitors each day**: hover over or tap a day for its numbers.
+- **Player registration**: how many people opened **Player Registration**, started (asked for an email code) and registered. A big drop between two steps is where families give up.
+- **Where visitors came from**: Google, Facebook, an email, another site, or **Direct** (typed in, a bookmark, or an app that doesn't say). A link with \`?utm_source=newsletter\` on the end shows as "newsletter".
+- **Most visited pages** and **Recent registrations**: each registration says how many visits the family made first and where they first came from.
+- **Recent visits**: the latest 40 visits, page by page (Home → Programs → Player Registration), with the device and rough location. A visit ends after 30 minutes away. **Visit #3** means that browser's third visit.
+
+Visits while you preview website drafts aren't counted.`,
   },
   {
     id: "settings-release-notes",

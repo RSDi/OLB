@@ -1818,6 +1818,43 @@ export const GUIDE_TOURS: GuideTour[] = [
     ],
   },
   {
+    id: "settings-website-activity",
+    sectionId: "settings-website-activity",
+    title: "Website Activity walkthrough",
+    route: "/portal/settings",
+    steps: [
+      {
+        target: "settings-tab-website-activity",
+        title: "Settings → Website Activity",
+        body: "Who is visiting the public club website, where they came from and where they go.",
+      },
+      {
+        target: "website-activity-kpis",
+        click: "settings-tab-website-activity",
+        title: "The last 30 days",
+        body: "Visitors (different browsers), visits, page views and registrations sent from the website.",
+      },
+      {
+        target: "website-activity-funnel",
+        click: "settings-tab-website-activity",
+        title: "Player registration",
+        body: "How many people opened Player Registration, started (asked for an email code) and registered. A big drop between two steps is where families give up.",
+      },
+      {
+        target: "website-activity-sources",
+        click: "settings-tab-website-activity",
+        title: "Where visitors came from",
+        body: "Google, Facebook, an email, another site, or Direct: typed in, a bookmark or an app that doesn't say.",
+      },
+      {
+        target: "website-activity-visits",
+        click: "settings-tab-website-activity",
+        title: "Recent visits",
+        body: "Each visit page by page, with the device and rough location. A visitor signed in to the portal shows their name, and one who registered shows the players they registered.",
+      },
+    ],
+  },
+  {
     id: "settings-audit-log",
     sectionId: "settings-audit-log",
     title: "Audit Log walkthrough",
