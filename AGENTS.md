@@ -28,3 +28,15 @@ Service-role-only objects (hashed secrets, OAuth tokens, pairing codes) grant `s
 # User Guide and page help
 
 `lib/help/guide.ts` is the single source of truth for in-app help: the User Guide page (sidebar → User Guide, `/portal/guide`) and the top-bar "i" panel on every page both read it. Keep it current as features ship. Any change people can see (a new page, a renamed button or tab, new behavior, a preview feature released to everyone) updates the matching guide section in the same commit, and bumps `GUIDE_UPDATED`. Write for the people who use the page: parents, coaches and the board. Plain words, button labels quoted exactly as the UI shows them. A feature still in preview (`lib/auth/feature-preview.ts`) either stays out of the guide or gets a section marked `preview: true`, which only the preview accounts see; nobody else reads about it. Set each section's `audience` (`everyone`, `staff`, `super_admin`) so nobody reads about controls they don't have. Give a page its "i" help by listing its route in a section's `routes`. `tests/unit/help-guide.test.ts` fails when a released portal page has no section. When you release a preview page, take it off that test's `PREVIEW_ROUTES` and write its section. For a one-line hint on a single form field, use the `help` prop on `Input`/`Select` (or `<HelpTip>`), and keep those in step with the guide too. Guided tours (`lib/help/tours.ts`) retell guide sections as Next/Back callouts pointed at elements marked `data-tour="…"`: rename or move a button and update its tour step too; `tests/unit/help-tours.test.ts` fails when a step points at a `data-tour` no component carries.
+# Roadmap
+
+Every piece of development work has a card on the Roadmap board (`/portal/roadmap`), and the card follows the work. Use `npm run roadmap` (`scripts/roadmap.ts`; needs `OLB_ROADMAP_BOT_TOKEN` in `.env.local`). Run `npm run roadmap -- list` before you start, and reuse a card that already covers the work instead of adding a second one.
+
+- **Proposed**: an idea you suggest, or one Jeff mentions without asking for it to be built, goes on as `propose`. Don't build it. Only Jeff's **Approve** moves it to Planned.
+- **Planned**: approved, waiting to be built. Jeff asking for something directly in chat ("build it", "set it up") is approval too: add the card if there isn't one, and go straight to In progress with a note saying he asked in chat.
+- **In progress**: `move <id> progress --note "…"` when you start. Name the branch in the note.
+- **Preview**: `move <id> preview --preview <url>` once the PR's Vercel preview is up. Use the PR's preview URL.
+- **Released**: `move <id> released` once the PR is merged to main. The date fills itself in.
+- **Parked**: work set aside or dropped: `move <id> parked --note "why"`.
+
+A card's title and description show on the families' share link: write them for parents, in plain words, with no code or file names. Notes and history stay with the board. Changes that nobody would notice (a refactor, a test, a dependency bump) don't need a card. If the token isn't set, say so in your wrap-up and list the moves you couldn't make.
