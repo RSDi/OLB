@@ -54,6 +54,7 @@ import { InvoicesTab } from "./InvoicesTab";
 import { PlanningRolesTab } from "./PlanningRolesTab";
 import { PublicDirectoryTab } from "./PublicDirectoryTab";
 import { WebsiteTab } from "./WebsiteTab";
+import { WebsiteActivityTab } from "./WebsiteActivityTab";
 import { AccessProfilesTab } from "./AccessProfilesTab";
 import { ReleaseNotesTab } from "./ReleaseNotesTab";
 import { usePageHelp } from "../../components/PageHelp";
@@ -94,6 +95,7 @@ const TAB_HELP: Partial<Record<Tab, string>> = {
   fees: "settings-fees",
   invoices: "settings-invoices",
   website: "settings-website",
+  website_activity: "settings-website-activity",
   release_notes: "settings-release-notes",
   playbooks: "settings-playbooks",
   sidebar_links: "settings-sidebar-links",
@@ -126,6 +128,7 @@ type Tab =
   | "fees"
   | "invoices"
   | "website"
+  | "website_activity"
   | "release_notes"
   | "planning_roles"
   | "event_categories"
@@ -233,6 +236,9 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     { key: "contact_categories", label: "Contact Types", group: "Communication", visible: true, tour: "settings-tab-contact-categories", keywords: "contacts categories" },
     // The public club website's menu, page text and pictures (0120).
     { key: "website", label: "Website", group: "Website & Portal", visible: canManageWebsite(me), tour: "settings-tab-website", keywords: "public site pages pictures publish" },
+    // Visits to the public site (0161): staged rollout, the preview accounts'
+    // super-admins only, like the portal's Activity.
+    { key: "website_activity", label: "Website Activity", group: "Website & Portal", visible: fullUi && isSuperAdmin(me), tour: "settings-tab-website-activity", keywords: "analytics stats statistics visitors visits traffic page views google facebook registration funnel" },
     { key: "release_notes", label: "Release Notes", group: "Website & Portal", visible: true, tour: "settings-tab-release-notes", keywords: "release notes shipped changelog whats new show me how walkthrough demo" },
     { key: "sidebar_links", label: "Sidebar Links", group: "Website & Portal", visible: siteLinks, tour: "settings-tab-sidebar-links", keywords: "links menu" },
     // The key in the public Directory's link (0119).
@@ -398,6 +404,7 @@ export default function SettingsPage() {
       {tab === "fees" && has("fees") && <FeesTab />}
       {tab === "invoices" && has("invoices") && <InvoicesTab />}
       {tab === "website" && has("website") && <WebsiteTab />}
+      {tab === "website_activity" && has("website_activity") && <WebsiteActivityTab />}
       {tab === "release_notes" && has("release_notes") && <ReleaseNotesTab me={me} />}
       {tab === "planning_roles" && has("planning_roles") && (
         <PlanningRolesTab canChangeInvoicingHolder={isSuperAdmin(me)} />

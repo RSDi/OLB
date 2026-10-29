@@ -3,6 +3,7 @@ import { Poppins } from "next/font/google";
 import { Footer } from "./_components/Footer";
 import { Header } from "./_components/Header";
 import { PreviewBar } from "./_components/PreviewBar";
+import { WebsiteBeacon } from "./_components/WebsiteBeacon";
 import { getPreviewState, getSiteContent, getSiteMenu } from "../../lib/website/queries";
 import styles from "./_components/site.module.css";
 
@@ -33,6 +34,8 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       </main>
       <Footer verse={content.text("footer.verse")} tagline={content.text("footer.tagline")} />
       {preview.enabled && <PreviewBar changes={preview.changes} />}
+      {/* Page views for Settings → Website Activity; not while previewing drafts. */}
+      {!preview.enabled && <WebsiteBeacon />}
     </div>
   );
 }

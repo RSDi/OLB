@@ -23,6 +23,7 @@ import { cleanInputExtras, type InputExtras } from "../onboarding/form-extras";
 import { loadFormExtras, loadSettings } from "../onboarding/server";
 import { afterApprove, afterSubmit } from "../onboarding/hooks";
 import { extraCommitments, NOTE_MAX } from "./registration-commitments";
+import { logWebsiteEvents } from "../activity/website";
 
 // ─── The public form ────────────────────────────────────────────────────────
 //
@@ -69,6 +70,8 @@ export async function startRegistrationEmail(
   if (!sent) await db.from("olb_registration_codes").delete().eq("id", id);
   // Codes older than a day are no use to anyone.
   await db.from("olb_registration_codes").delete().lt("created_at", new Date(Date.now() - 86_400_000).toISOString());
+  // Website Activity: this visitor started a registration.
+  await logWebsiteEvents({ eventType: "reg_started", path: "/player-registration" });
   return { sent };
 }
 
@@ -222,6 +225,14 @@ export async function createRegistrations(
   // In the order the players were entered.
   let n = 0;
   for (let i = 0; i < rows.length; i++) ids.push(i === offered ? offer!.registration_id : ((saved[n++] as { id: string }).id));
+  // Website Activity: ties this visitor's visits to the players they
+  // registered.
+  await logWebsiteEvents({
+    eventType: "reg_submitted",
+    path: "/player-registration",
+    label: fresh.map((x) => `${x.athlete_first.trim()} ${x.athlete_last.trim()}`.trim()).join(", ").slice(0, 300),
+    meta: { registration_ids: ids },
+  });
 
   // A push notification to the super-admins and the Registrations permission,
   // whether or not email is set up.
