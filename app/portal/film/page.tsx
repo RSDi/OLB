@@ -5,6 +5,7 @@ import {
   listDiscardedFilmSlackDraftViews,
   listPendingFilmSlackDraftViews,
 } from "../../../lib/film/slack-drafts";
+import { getYoutubeConnection } from "../../../lib/film/youtube-settings";
 import { listFilmUploads, loadFilmYoutubeExtras } from "../../../lib/film/uploads";
 import { listEnabledFilmTeams } from "../../../lib/film/teams";
 import { listGameLineupsByKey, listTeamRosters } from "../../../lib/film/lineups";
@@ -84,6 +85,13 @@ export default async function FilmInboxPage() {
     lineups = {};
   }
 
+  let youtubeAuthError: string | null = null;
+  try {
+    youtubeAuthError = (await getYoutubeConnection()).authError;
+  } catch {
+    /* no banner if the connection row can't be read */
+  }
+
   return (
     <FilmInbox
       uploads={uploads}
@@ -95,6 +103,7 @@ export default async function FilmInboxPage() {
       canApproveSlack={viewer.canApproveFilmSlack}
       slackConfigured={slackBotConfigured()}
       loadError={loadError}
+      youtubeAuthError={youtubeAuthError}
       parentLinks={parentLinks}
       teamPlaylists={teamPlaylists}
       rosters={rosters}

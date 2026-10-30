@@ -11,8 +11,12 @@ export type YoutubeConnectionSecret = YoutubeConnection & {
   refreshToken: string | null;
 };
 
-const COLS =
+const BASE_COLS =
   "id, refresh_token_enc, channel_id, channel_title, connected_at, connected_by, privacy_status, made_for_kids, updated_at";
+// 0162. Read separately so the connection still loads if that migration
+// hasn't landed yet.
+const AUTH_COLS = "auth_error, auth_error_at";
+const COLS = `${BASE_COLS}, ${AUTH_COLS}`;
 
 type Row = {
   refresh_token_enc: string | null;
@@ -21,6 +25,8 @@ type Row = {
   connected_at: string | null;
   privacy_status: YoutubePrivacy;
   made_for_kids: boolean;
+  auth_error?: string | null;
+  auth_error_at?: string | null;
 };
 
 function publicView(row: Row | null): YoutubeConnection {
@@ -31,14 +37,44 @@ function publicView(row: Row | null): YoutubeConnection {
     connectedAt: row?.connected_at ?? null,
     privacyStatus: row?.privacy_status === "private" || row?.privacy_status === "public" ? row.privacy_status : "unlisted",
     madeForKids: Boolean(row?.made_for_kids),
+    authError: row?.refresh_token_enc ? row.auth_error ?? null : null,
+    authErrorAt: row?.refresh_token_enc ? row.auth_error_at ?? null : null,
   };
 }
 
 async function loadRow(): Promise<Row | null> {
   const admin = createAdminClient();
   const { data, error } = await admin.from("game_film_youtube").select(COLS).eq("id", true).maybeSingle();
-  if (error) throw new Error(error.message);
-  return (data as Row | null) ?? null;
+  if (!error) return (data as Row | null) ?? null;
+  if (!authColumnsMissing(error.message)) throw new Error(error.message);
+  const base = await admin.from("game_film_youtube").select(BASE_COLS).eq("id", true).maybeSingle();
+  if (base.error) throw new Error(base.error.message);
+  return (base.data as Row | null) ?? null;
+}
+
+function authColumnsMissing(message: string): boolean {
+  return /auth_error/.test(message);
+}
+
+/**
+ * Called by the upload cron after each token refresh. Writes only when the
+ * message changes, so a healthy connection costs no write per minute.
+ */
+export async function recordYoutubeAuthResult(
+  current: string | null,
+  next: string | null
+): Promise<void> {
+  if ((current ?? null) === (next ?? null)) return;
+  await writeAuthError(next);
+}
+
+async function writeAuthError(next: string | null): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("game_film_youtube")
+    .update({ auth_error: next, auth_error_at: next ? new Date().toISOString() : null })
+    .eq("id", true);
+  if (error && !authColumnsMissing(error.message)) throw new Error(error.message);
 }
 
 export async function getYoutubeConnection(): Promise<YoutubeConnection> {
@@ -75,9 +111,10 @@ export async function saveYoutubeConnection(input: {
       updated_at: new Date().toISOString(),
     })
     .eq("id", true)
-    .select(COLS)
+    .select(BASE_COLS)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't save the YouTube connection.");
+  await writeAuthError(null);
   return publicView(data as Row);
 }
 
@@ -94,9 +131,10 @@ export async function disconnectYoutube(): Promise<YoutubeConnection> {
       updated_at: new Date().toISOString(),
     })
     .eq("id", true)
-    .select(COLS)
+    .select(BASE_COLS)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't disconnect YouTube.");
+  await writeAuthError(null);
   return publicView(data as Row);
 }
 
@@ -115,8 +153,8 @@ export async function saveYoutubePrefs(input: {
       updated_at: new Date().toISOString(),
     })
     .eq("id", true)
-    .select(COLS)
+    .select(BASE_COLS)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't save YouTube settings.");
-  return publicView(data as Row);
+  return publicView(await loadRow());
 }

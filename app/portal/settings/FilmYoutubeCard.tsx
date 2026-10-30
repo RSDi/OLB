@@ -100,6 +100,12 @@ export function FilmYoutubeCard() {
           <div style={{ fontSize: 14, fontWeight: 700 }}>
             Connected{connection.channelTitle ? ` as ${connection.channelTitle}` : ""}.
           </div>
+          {connection.authError && (
+            <p role="alert" style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-error)", lineHeight: 1.5 }}>
+              Uploads are paused: {connection.authError}
+              {" "}Queued films send on their own once it&apos;s reconnected.
+            </p>
+          )}
           <Select
             label="Privacy"
             value={connection.privacyStatus}

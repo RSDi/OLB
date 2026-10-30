@@ -177,12 +177,12 @@ const CONTRACT: Record<string, string> = {
     "id,thread_id,gmail_message_id,from_addr,to_addrs,cc_addrs,sent_at,subject,body_text,body_html,snippet,created_at",
   email_archive_attachments: "id,message_id,filename,mime,size_bytes,storage_path,created_at",
   email_archive_links: "id,thread_id,planning_meeting_id,agenda_item_label,created_at",
-  // Game film (0142, 0143, 0144, 0145, 0147 privacy, 0148 templates / lineups / Slack drafts).
+  // Game film (0142, 0143, 0144, 0145, 0147 privacy, 0148 templates / lineups / Slack drafts, 0162 auth error).
   game_film_uploads:
     "id,team,team_id,uploader_name,filename,content_type,size_bytes,storage_path,status,created_at,moved_at,game_date,opponent,our_score,their_score,youtube_status,youtube_video_id,youtube_error,youtube_updated_at,youtube_playlist_id,youtube_playlist_status,youtube_playlist_error,youtube_playlist_item_id,youtube_playlist_updated_at,youtube_privacy,youtube_processing,youtube_synced_at",
   game_film_managers: "team_id,user_id,created_at",
   game_film_youtube:
-    "id,refresh_token_enc,channel_id,channel_title,connected_at,connected_by,privacy_status,made_for_kids,updated_at",
+    "id,refresh_token_enc,channel_id,channel_title,connected_at,connected_by,privacy_status,made_for_kids,updated_at,auth_error,auth_error_at",
   game_film_youtube_jobs: "upload_id,upload_uri,bytes_sent,attempts,updated_at,started_at,last_progress_at,bytes_total",
   game_film_youtube_events: "id,upload_id,at,kind,message,detail,bytes_sent,bytes_total",
   game_film_slack_drafts:

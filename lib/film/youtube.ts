@@ -47,7 +47,7 @@ import {
   isYoutubeStalled,
   youtubeEventTitle,
 } from "./youtube-progress.ts";
-import { getYoutubeConnectionSecret } from "./youtube-settings.ts";
+import { getYoutubeConnectionSecret, recordYoutubeAuthResult } from "./youtube-settings.ts";
 import { syncYoutubeVideoStatus } from "./youtube-status.ts";
 import type { FilmUpload, YoutubeEventKind } from "./types.ts";
 
@@ -127,8 +127,10 @@ export async function processYoutubeQueue(opts?: {
     access = await refreshYoutubeAccess(secret.refreshToken);
   } catch (err) {
     result.skipped = err instanceof Error ? err.message : "Couldn't refresh YouTube.";
+    await noteAuthResult(secret.authError, result.skipped);
     return result;
   }
+  await noteAuthResult(secret.authError, null);
 
   const rows = await listYoutubeWork(opts?.uploadId);
   await markStalledUploads(rows, started);
@@ -246,6 +248,14 @@ async function noteYoutubeEvent(
     await appendYoutubeEvent({ uploadId, kind, message, detail, bytesSent, bytesTotal });
   } catch (err) {
     console.error("[film-youtube] event:", err instanceof Error ? err.message : err);
+  }
+}
+
+async function noteAuthResult(current: string | null, next: string | null): Promise<void> {
+  try {
+    await recordYoutubeAuthResult(current, next);
+  } catch (err) {
+    console.error("[film-youtube] auth status:", err instanceof Error ? err.message : err);
   }
 }
 
