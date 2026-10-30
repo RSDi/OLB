@@ -35,6 +35,7 @@ import type { FilmSlackDraftView, FilmStatus, FilmUpload, YoutubeEvent, YoutubeJ
 import { youtubeDisplayStatus } from "../../../lib/film/youtube-progress";
 import { YoutubeTransfer } from "./YoutubeTransfer";
 import styles from "./inbox.module.css";
+import { YoutubeAuthBanner } from "./YoutubeAuthBanner";
 
 interface Props {
   uploads: FilmUpload[];
@@ -46,6 +47,7 @@ interface Props {
   canApproveSlack: boolean;
   slackConfigured: boolean;
   loadError: string | null;
+  youtubeAuthError: string | null;
   parentLinks: { slug: string; label: string }[];
   teamPlaylists: Record<string, string>;
   rosters: Record<string, FilmRosterPlayer[]>;
@@ -99,6 +101,7 @@ export function FilmInbox({
   canApproveSlack,
   slackConfigured,
   loadError,
+  youtubeAuthError,
   parentLinks,
   teamPlaylists,
   rosters,
@@ -361,6 +364,7 @@ export function FilmInbox({
       {(loadError || error) && (
         <p style={{ margin: 0, color: "var(--gw-error)", fontWeight: 600, fontSize: 13 }}>{loadError || error}</p>
       )}
+      <YoutubeAuthBanner message={youtubeAuthError} canManage={canManage} />
       {statusNote && (
         <p style={{ margin: 0, color: "var(--gw-fg-muted)", fontWeight: 600, fontSize: 13 }}>{statusNote}</p>
       )}
