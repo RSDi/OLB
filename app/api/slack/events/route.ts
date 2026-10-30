@@ -32,6 +32,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "../../../../lib/supabase/admin";
+import { exactRegex } from "../../../../lib/supabase/filters";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -156,7 +157,7 @@ export async function POST(req: NextRequest) {
     const { data: member } = await admin
       .from("members")
       .select("id")
-      .ilike("email", email)
+      .regexIMatch("email", exactRegex(email))
       .is("deleted_at", null)
       .maybeSingle();
     authorId = (member as { id: string } | null)?.id ?? null;
