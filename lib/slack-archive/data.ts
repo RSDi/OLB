@@ -163,6 +163,7 @@ export interface FailedFilesResult {
   entries: FailedFileEntry[];
   totalScanned: number; // surfaced on the page so a pagination/query regression is visible, not silent
   deletedInSlack: number; // files Slack deleted before they could be archived, counted instead of listed
+  dismissed: number; // files a super admin dismissed from the list, counted the same way
   queryError: string | null;
 }
 
@@ -214,8 +215,10 @@ export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<Fa
   const labelByChannel = new Map(channels.map((c) => [c.slack_channel_id, c.label]));
 
   const failed = rows.flatMap((r) => (r.files ?? []).filter((f) => f.error).map((f) => ({ r, f })));
+  const deletedInSlack = failed.filter(({ f }) => f.deleted_in_slack).length;
+  const dismissed = failed.filter(({ f }) => f.dismissed && !f.deleted_in_slack).length;
   const entries = failed
-    .filter(({ f }) => !f.deleted_in_slack)
+    .filter(({ f }) => !f.deleted_in_slack && !f.dismissed)
     .map(({ r, f }) => ({
       channelId: r.channel_id,
       channelLabel: labelByChannel.get(r.channel_id) ?? r.channel_id,
@@ -228,7 +231,7 @@ export async function loadAllFailedFiles(channels: ArchiveChannel[]): Promise<Fa
     }));
   entries.sort((a, b) => b.postedAt.localeCompare(a.postedAt));
 
-  return { entries, totalScanned: rows.length, deletedInSlack: failed.length - entries.length, queryError };
+  return { entries, totalScanned: rows.length, deletedInSlack, dismissed, queryError };
 }
 
 export interface ArchiveAuthor {

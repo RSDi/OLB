@@ -9,11 +9,12 @@ import { loadArchiveAdmin, loadArchiveChannels, loadAllFailedFiles } from "../..
 import { loadLatestCompressionRun } from "../../../../../lib/slack-archive/compress-actions";
 import { decodeSlackEntities } from "../../../../../lib/slack-archive/text";
 import { CompressTriggerButton } from "./CompressTriggerButton";
+import { DismissExceptionButton } from "./DismissExceptionButton";
 
 export default async function SlackArchiveExceptionsPage() {
   await loadArchiveAdmin(); // managing the archive, not reading it — super admins only
   const [channels, lastCompressionRun] = await Promise.all([loadArchiveChannels(), loadLatestCompressionRun()]);
-  const { entries: failedFiles, totalScanned, deletedInSlack, queryError } = await loadAllFailedFiles(channels);
+  const { entries: failedFiles, totalScanned, deletedInSlack, dismissed, queryError } = await loadAllFailedFiles(channels);
   const erroredChannels = channels.filter((c) => c.last_status === "error");
   const oversizedMediaCount = failedFiles.filter(
     (f) => (f.file.mimetype ?? "").match(/^(video|audio)\//) && f.file.size > 50 * 1024 * 1024,
@@ -24,6 +25,7 @@ export default async function SlackArchiveExceptionsPage() {
       : deletedInSlack === 1
         ? " 1 attachment deleted in Slack before it could be archived isn’t listed."
         : ` ${deletedInSlack} attachments deleted in Slack before they could be archived aren’t listed.`;
+  const dismissedNote = dismissed === 0 ? "" : ` ${dismissed} dismissed.`;
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -83,7 +85,7 @@ export default async function SlackArchiveExceptionsPage() {
 
       <Section
         title={`Attachments needing attention (${failedFiles.length})`}
-        subtitle={queryError ? undefined : `Scanned ${totalScanned.toLocaleString()} messages across all channels.${deletedNote}`}
+        subtitle={queryError ? undefined : `Scanned ${totalScanned.toLocaleString()} messages across all channels.${deletedNote}${dismissedNote}`}
       >
         {queryError && (
           <div className="rsd-card" style={{ padding: "12px 18px", borderColor: "rgba(229,62,62,.25)", color: "var(--gw-error)", fontSize: 12.5, fontWeight: 600 }}>
@@ -133,6 +135,7 @@ export default async function SlackArchiveExceptionsPage() {
                       </a>
                     </>
                   )}
+                  <DismissExceptionButton messageId={f.messageId} fileId={f.file.id} />
                 </div>
               </div>
             );

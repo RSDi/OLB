@@ -195,3 +195,11 @@ test("limitConcurrency never runs more than its limit at once, and runs them all
   assert.equal(peak, 2);
   assert.deepEqual(results, [1, 2, 3, 4, 5]);
 });
+
+test("archiveMessageFiles keeps a dismissed file as it is instead of trying it again", async () => {
+  const { calls, download } = recordingDownload();
+  const dismissed = saved("F1", "", { storage_path: null, error: "No downloadable URL provided by Slack for this file type.", dismissed: true });
+  const files = await archiveMessageFiles([dismissed], [{ id: "F1" } as SlackFile], download);
+  assert.deepEqual(calls, []);
+  assert.deepEqual(files, [dismissed]);
+});
