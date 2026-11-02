@@ -25,6 +25,8 @@ const PREVIEW_ROUTES = [
   "/portal/reelnotes",
   "/portal/activity",
   "/portal/roadmap",
+  // Team Playbook (0162): the coaches' plays, animated.
+  "/portal/team-playbook",
   // The registration workflow's Uniforms page (0130).
   "/portal/directory/uniforms",
   // The guide itself: no "i" needed.

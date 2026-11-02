@@ -36,6 +36,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
       roles={data.roles}
       roster={roster}
       canManage={canManage}
+      showPlaybook={!!full?.seesFullUi}
       people={people}
       teamParentIds={[...new Set(roster.flatMap((p) => p.parents.map((pa) => pa.member!.id)))]}
     />

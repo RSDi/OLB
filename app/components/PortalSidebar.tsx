@@ -57,6 +57,8 @@ const NAV: NavItem[] = [
   // What's live, in preview, being built, planned, ideas, and parked (lib/roadmap). Preview.
   { href: "/portal/roadmap", label: "Roadmap", icon: <Icons.Sparkles width={16} height={16}/>, superAdminOnly: true, previewOnly: true },
   { href: "/portal/docs", label: "Playbooks", icon: <Icons.BookOpen width={16} height={16}/>, tour: "nav-playbooks" },
+  // The coaches' plays, animated on a half court (0162). Preview for now.
+  { href: "/portal/team-playbook", label: "Team Playbook", icon: <Icons.Clipboard width={16} height={16}/>, approvedOnly: true, previewOnly: true },
   { href: "/portal/film", label: "Film", icon: <Icons.Video width={16} height={16}/>, filmOnly: true, tour: "nav-film" },
   // Every family's balance for the Treasurer (the Payments grant); a parent's
   // own balance once the Treasurer turns that on.

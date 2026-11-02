@@ -35,6 +35,7 @@ export function TeamView({
   canManage,
   people,
   teamParentIds,
+  showPlaybook = false,
 }: {
   team: TeamWithStaff;
   roles: OlbVolunteerRole[];
@@ -42,6 +43,8 @@ export function TeamView({
   canManage: boolean;
   people: AssignablePerson[];
   teamParentIds: string[];
+  // Team Playbook is in preview (lib/auth/feature-preview.ts).
+  showPlaybook?: boolean;
 }) {
   const router = useRouter();
   const [picking, setPicking] = useState<OlbVolunteerRole | null>(null);
@@ -81,6 +84,17 @@ export function TeamView({
         <Icons.ChevronLeft width={13} height={13} />
         Directory
       </Link>
+
+      {showPlaybook && (
+        <Link
+          href={`/portal/team-playbook?team=${team.id}`}
+          prefetch={false}
+          style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}
+        >
+          <Icons.Clipboard width={14} height={14} />
+          Team Playbook
+        </Link>
+      )}
 
       <section style={{ background: "var(--rsd-frame)", color: "var(--rsd-frame-fg)", borderRadius: 18, overflow: "hidden" }}>
         <div style={{ height: 8, background: hex }} />

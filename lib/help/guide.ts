@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "October 29, 2026";
+export const GUIDE_UPDATED = "November 2, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -708,6 +708,42 @@ The Product Manager bot can move a card to any column and add a **note**. The la
 **Contacts.** The **Contacts** box on a playbook links the vendors or facilities it involves — tap **+ Attach** and pick from External Contacts.
 
 Super-admins can **Delete playbook** from the bottom of its page.`,
+  },
+  {
+    id: "team-playbook",
+    title: "Team Playbook",
+    group: "Team Playbook",
+    audience: "everyone",
+    preview: true,
+    routes: ["/portal/team-playbook"],
+    keywords: ["plays", "playbook", "team playbook", "offense", "inbounds", "out of bounds", "press break", "play call", "animation", "court", "captions", "sound", "coach video", "practice"],
+    body: `The plays our coaches teach, drawn on a half court that moves.
+
+- Pick a team at the top to see its plays, then pick a play from the list.
+- **Play** runs the whole play. It stops at each step so you can read what's happening. Tap a step on the right to watch just that part. The arrows show what everyone does: a solid arrow is a cut, a dashed orange line is a pass, a zigzag is a dribble, and a line ending in a bar is a screen.
+- **Captions** shows what the coach says about each step over the court. **Sound** plays the coach's own voice from their video, and the play moves along with it. If a play has no video, your phone or computer reads the captions aloud instead.
+- **Speed** slows it down. **Trails** turns the arrows from the step before on or off.
+- The coach's video is under the court. **What the coach says** on the right is everything they say in it. Tap a line to jump there.`,
+  },
+  {
+    id: "team-playbook-coaches",
+    title: "Adding plays to the Team Playbook",
+    group: "Team Playbook",
+    audience: "coaches",
+    preview: true,
+    permission: "teams",
+    keywords: ["add a play", "upload video", "whiteboard", "draft", "share with the team", "fix this play", "draw a play", "read it again", "stop sharing"],
+    body: `Coaches and the board add plays. Families only see a play after it's shared.
+
+**From a video.** Tap **+ Add a play from a video** and choose the video: a whiteboard drawing while you talk it through works best. Add the play's name and call if you like, pick the teams it's for (none picked means every team), and paste a link to the original, such as the Slack post. Tap **Create play**. Keep the page open until the upload finishes. After that you can leave: the portal writes down what you say and draws the play, which takes a few minutes.
+
+**Check the draft.** The new play shows under **Not shared yet**. Play it next to the video under the court. If it's right, tap **Share with the team**. If it isn't, tap **Fix this play**, or **Read the video again** to start over.
+
+**Fix this play.** Change the name, call, kind of play and teams. Pick a step to change its title and caption. On the first step, drag a yellow ring to move where a player starts. On any step, drag a small orange ring to change where a player goes. **+ Move a player** and **+ Pass** add to the step. **Bend it** curves a cut. **Save** keeps your changes, and **Delete play…** removes the play and its video.
+
+**By hand.** **+ Draw a play by hand** starts a play with five players and no video, to fix up the same way.
+
+**Stop sharing** takes a play back to a draft.`,
   },
   {
     id: "film",
