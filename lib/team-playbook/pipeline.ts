@@ -195,12 +195,15 @@ const ReadSchema = z.object({
   ),
 });
 
-function prompt(row: PlayRow, frames: { sec: number }[]): string {
+function prompt(row: PlayRow, frames: { sec: number }[], intro?: string): string {
   const spots = COURT_SPOTS.map((s) => `- ${s.name}: x ${s.x}, y ${s.y}`).join("\n");
   const transcript = row.transcript?.length ? linesForPrompt(row.transcript) : "(No words: the video has no talking, or it couldn't be written down.)";
   return `You are helping a youth basketball club turn a coach's video of a play into an animated diagram for its players.
 
-You have an inventory of what is drawn on the board, written from stills of the video (at ${frames.map((f) => `${f.sec.toFixed(1)}s`).join(", ")}), and the last few stills themselves. The video is usually a coach drawing on a whiteboard or clipboard while talking, sometimes players walking through it on a court. Draw the play from the inventory and the coach's words together: the words say the order and the intent, the drawing says where.
+${
+    intro ??
+    `You have an inventory of what is drawn on the board, written from stills of the video (at ${frames.map((f) => `${f.sec.toFixed(1)}s`).join(", ")}), and the last few stills themselves. The video is usually a coach drawing on a whiteboard or clipboard while talking, sometimes players walking through it on a court. Draw the play from the inventory and the coach's words together: the words say the order and the intent, the drawing says where.`
+  }
 
 Draw the play on this half court. Units are tenths of a foot. x runs 0 (left sideline) to 500 (right sideline) as you face the basket from half court. y runs 0 (the baseline under the basket) to 470 (half court); out of bounds under the basket is y -40 to 0. Landmarks:
 ${spots}
@@ -363,3 +366,55 @@ ${linesForPrompt(row.transcript)}`,
   }
 }
 
+
+// ── Reader test ────────────────────────────────────────────────────────────
+// A model that watches the whole video with its sound, instead of stills.
+// Used only by the side-by-side test on a draft (trialRead in actions.ts):
+// nothing is saved unless a coach picks the result.
+export const TRIAL_MODEL = "google/gemini-4-argon";
+
+function videoMediaType(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase();
+  if (ext === "mov") return "video/mov";
+  if (ext === "webm") return "video/webm";
+  if (ext === "3gp") return "video/3gpp";
+  return "video/mp4";
+}
+
+const TRIAL_INTRO = `You are watching the coach's whole video of the play, with its sound. The video is usually a coach drawing on a whiteboard or clipboard while talking, sometimes players walking through it on a court. Watch the order the coach draws each line in and listen to what they say as they draw it: that order is the order of the steps. Before you draw, work out which way the court is drawn (where the basket is) and turn it so the basket is at the top.`;
+
+export async function trialReadPlay(id: string): Promise<{ diagram: PlayDiagram; model: string; seconds: number } | { error: string }> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("team_plays").select(ROW_COLS).eq("id", id).maybeSingle();
+  const row = data as PlayRow | null;
+  if (!row?.video_path) return { error: "This play has no video to watch." };
+  const { data: signed, error } = await admin.storage.from(PLAYBOOK_BUCKET).createSignedUrl(row.video_path, 60 * 60);
+  if (error || !signed?.signedUrl) return { error: error?.message ?? "Couldn't make a link to the video." };
+  const started = Date.now();
+  try {
+    const { object } = await generateObject({
+      model: TRIAL_MODEL,
+      schema: ReadSchema,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "file", data: new URL(signed.signedUrl), mediaType: videoMediaType(row.video_path) },
+            { type: "text", text: prompt(row, [], TRIAL_INTRO) },
+          ],
+        },
+      ],
+    });
+    const diagram = normalizeDiagram({
+      ...object,
+      steps: object.steps.map((s) => ({
+        ...s,
+        actions: s.actions.map((a) => ({ type: a.type, player: a.player, path: a.path ?? [], from: a.from, to: a.to, s: a.s, e: a.e })),
+      })),
+    });
+    if (!diagram) return { error: "The other reader couldn't turn the video into a play." };
+    return { diagram, model: TRIAL_MODEL, seconds: Math.round((Date.now() - started) / 1000) };
+  } catch (err) {
+    return { error: `The other reader didn't work: ${err instanceof Error ? err.message : err}` };
+  }
+}

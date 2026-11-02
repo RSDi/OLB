@@ -11,7 +11,8 @@ import { createSignedTusUpload } from "../film/tus-create.ts";
 import { tusEndpoint } from "../film/tus.ts";
 import { blankDiagram, normalizeDiagram } from "./diagram.ts";
 import { PLAY_COLS, requirePlaybookEditor, toTeamPlays } from "./data";
-import { advancePlay, readPlay, startTranscription, writeCoachNotes } from "./pipeline";
+import { advancePlay, readPlay, startTranscription, trialReadPlay, writeCoachNotes } from "./pipeline";
+import type { PlayDiagram } from "./diagram.ts";
 import { FRAME_COUNT, MAX_VIDEO_BYTES, PLAYBOOK_BUCKET, type PlayEdit, type TeamPlay } from "./types.ts";
 
 type Result<T = object> = ({ error?: undefined } & T) | { error: string };
@@ -237,6 +238,16 @@ export async function writeNotes(playId: string): Promise<Result<{ play: TeamPla
   revalidatePath(PATH);
   const play = await onePlay(playId);
   return play ? { play } : { error: "That play is gone." };
+}
+
+// The reader test: another model watches the whole video and draws the play.
+// Returned to the page to compare with the current drawing; saved only if a
+// coach picks it (savePlay).
+export async function trialRead(playId: string): Promise<Result<{ diagram: PlayDiagram; model: string; seconds: number }>> {
+  const gate = await requirePlaybookEditor();
+  if ("error" in gate) return { error: gate.error };
+  if (!(await onePlay(playId))) return { error: "That play is gone." };
+  return trialReadPlay(playId);
 }
 
 // A play typed in by hand, without a video.
