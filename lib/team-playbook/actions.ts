@@ -11,7 +11,7 @@ import { createSignedTusUpload } from "../film/tus-create.ts";
 import { tusEndpoint } from "../film/tus.ts";
 import { blankDiagram, normalizeDiagram } from "./diagram.ts";
 import { PLAY_COLS, requirePlaybookEditor, toTeamPlays } from "./data";
-import { advancePlay, startTranscription } from "./pipeline";
+import { advancePlay, readPlay, startTranscription } from "./pipeline";
 import { FRAME_COUNT, MAX_VIDEO_BYTES, PLAYBOOK_BUCKET, type PlayEdit, type TeamPlay } from "./types.ts";
 
 type Result<T = object> = ({ error?: undefined } & T) | { error: string };
@@ -163,21 +163,28 @@ export async function checkPlay(playId: string): Promise<Result<{ play: TeamPlay
   return play ? { play } : { error: "That play is gone." };
 }
 
-// Read the video again, from the start (a failed read, or a bad draft).
+// Read the video again (a failed read, or a bad draft). The coach's words
+// don't change, so a play that already has them goes straight back to being
+// read; only a play that never got its words is transcribed again.
 export async function rereadPlay(playId: string): Promise<Result<{ play: TeamPlay }>> {
   const gate = await requirePlaybookEditor();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
+  const { data: row } = await db.from("team_plays").select("transcript").eq("id", playId).maybeSingle();
+  const haveWords = Array.isArray((row as { transcript?: unknown } | null)?.transcript);
+  const patch = haveWords
+    ? { status: "reading", error: null }
+    : { status: "transcribing", error: null, assemblyai_id: null, transcript: null };
   const { data, error } = await db
     .from("team_plays")
-    .update({ status: "transcribing", error: null, assemblyai_id: null, transcript: null, updated_at: new Date().toISOString() })
+    .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", playId)
     .in("status", ["failed", "draft"])
     .not("video_path", "is", null)
     .select("id");
   if (error) return { error: error.message };
   if (!data?.length) return { error: "Only a draft or a failed play with a video can be read again." };
-  after(() => startTranscription(playId));
+  after(() => (haveWords ? readPlay(playId) : startTranscription(playId)));
   const play = await onePlay(playId);
   return play ? { play } : { error: "That play is gone." };
 }
