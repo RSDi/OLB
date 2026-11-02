@@ -9,58 +9,9 @@ import { createClient } from "../../../lib/supabase/client";
 import { tusSignedHeaders } from "../../../lib/film/tus";
 import { TUS_CHUNK_SIZE } from "../../../lib/film/types";
 import { finishVideoUpload, startVideoUpload } from "../../../lib/team-playbook/actions";
-import { FRAME_COUNT, FRAME_WIDTH, MAX_VIDEO_BYTES, PLAYBOOK_BUCKET, type PlaybookTeam, type TeamPlay } from "../../../lib/team-playbook/types";
+import { MAX_VIDEO_BYTES, PLAYBOOK_BUCKET, type PlaybookTeam, type TeamPlay } from "../../../lib/team-playbook/types";
+import { takeStills } from "./stills";
 import styles from "./playbook.module.css";
-
-interface Still {
-  blob: Blob;
-  sec: number;
-}
-
-// Evenly spaced stills from the video. A video the browser can't decode
-// (some phone formats on some computers) gives none; the play is then read
-// from the coach's words alone.
-async function takeStills(file: File): Promise<{ stills: Still[]; duration: number | null }> {
-  const url = URL.createObjectURL(file);
-  const video = document.createElement("video");
-  video.muted = true;
-  video.playsInline = true;
-  video.preload = "auto";
-  video.src = url;
-  try {
-    await new Promise<void>((resolve, reject) => {
-      video.onloadedmetadata = () => resolve();
-      video.onerror = () => reject(new Error("unreadable"));
-      setTimeout(() => reject(new Error("timeout")), 15000);
-    });
-    const duration = Number.isFinite(video.duration) ? video.duration : null;
-    if (!duration || !video.videoWidth) return { stills: [], duration };
-    const canvas = document.createElement("canvas");
-    const scale = Math.min(1, FRAME_WIDTH / video.videoWidth);
-    canvas.width = Math.round(video.videoWidth * scale);
-    canvas.height = Math.round(video.videoHeight * scale);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return { stills: [], duration };
-    const stills: Still[] = [];
-    for (let i = 0; i < FRAME_COUNT; i++) {
-      const sec = (duration * (i + 0.5)) / FRAME_COUNT;
-      await new Promise<void>((resolve) => {
-        const done = () => resolve();
-        video.onseeked = done;
-        setTimeout(done, 4000);
-        video.currentTime = sec;
-      });
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.78));
-      if (blob) stills.push({ blob, sec });
-    }
-    return { stills, duration };
-  } catch {
-    return { stills: [], duration: null };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 function sendVideo(file: File, s: { endpoint: string; token: string; uploadUrl: string }, onProgress: (f: number) => void) {
   return new Promise<void>((resolve, reject) => {
@@ -123,7 +74,8 @@ export function Uploader({
     setError(null);
     try {
       setPhase({ kind: "stills" });
-      const { stills, duration } = await takeStills(file);
+      const url = URL.createObjectURL(file);
+      const { stills, duration } = await takeStills(url).finally(() => URL.revokeObjectURL(url));
       const start = await startVideoUpload({
         fileName: file.name,
         contentType: file.type || "video/mp4",

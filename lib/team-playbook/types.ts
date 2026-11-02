@@ -9,7 +9,7 @@ export const PLAYBOOK_BUCKET = "team-playbook";
 export const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
 
 // Stills the browser takes from the video for the reader.
-export const FRAME_COUNT = 8;
+export const FRAME_COUNT = 20;
 export const FRAME_WIDTH = 960;
 
 // Signed playback links last a while so a long practice doesn't lose them.

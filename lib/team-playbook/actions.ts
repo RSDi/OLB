@@ -166,11 +166,40 @@ export async function checkPlay(playId: string): Promise<Result<{ play: TeamPlay
 // Read the video again (a failed read, or a bad draft). The coach's words
 // don't change, so a play that already has them goes straight back to being
 // read; only a play that never got its words is transcribed again.
-export async function rereadPlay(playId: string): Promise<Result<{ play: TeamPlay }>> {
+// Fresh stills for reading a play again: the browser takes them from the
+// play's video and uploads them here. Signed uploads, one per still.
+export async function startRestill(playId: string, count: number): Promise<Result<{ frames: { path: string; token: string }[] }>> {
+  const gate = await requirePlaybookEditor();
+  if ("error" in gate) return { error: gate.error };
+  if (!(await onePlay(playId))) return { error: "That play is gone." };
+  const n = Math.max(0, Math.min(FRAME_COUNT, Math.floor(Number(count) || 0)));
+  const bucket = createAdminClient().storage.from(PLAYBOOK_BUCKET);
+  const stamp = Date.now();
+  const frames: { path: string; token: string }[] = [];
+  for (let i = 0; i < n; i++) {
+    const { data, error } = await bucket.createSignedUploadUrl(`plays/${playId}/still-${stamp}-${i + 1}.jpg`);
+    if (error || !data) return { error: error?.message ?? "Couldn't start the upload." };
+    frames.push({ path: data.path, token: data.token });
+  }
+  return { frames };
+}
+
+// frames: new stills from startRestill, when the browser could take them;
+// otherwise the play keeps the stills it has.
+export async function rereadPlay(
+  playId: string,
+  frames?: { path: string; sec: number }[],
+): Promise<Result<{ play: TeamPlay }>> {
   const gate = await requirePlaybookEditor();
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
-  const { data: row } = await db.from("team_plays").select("transcript").eq("id", playId).maybeSingle();
+  const { data: row } = await db.from("team_plays").select("transcript, frame_paths").eq("id", playId).maybeSingle();
+  const prefix = `plays/${playId}/still-`;
+  const fresh = (Array.isArray(frames) ? frames : [])
+    .filter((f) => typeof f?.path === "string" && f.path.startsWith(prefix) && Number.isFinite(f.sec))
+    .slice(0, FRAME_COUNT)
+    .map((f) => ({ path: f.path, sec: Math.round(f.sec * 10) / 10 }));
+  const oldFrames = ((row as { frame_paths?: { path: string }[] } | null)?.frame_paths ?? []).map((f) => f.path);
   // An empty transcript means the words never came through: try them again too.
   const words = (row as { transcript?: unknown } | null)?.transcript;
   const haveWords = Array.isArray(words) && words.length > 0;
@@ -179,7 +208,7 @@ export async function rereadPlay(playId: string): Promise<Result<{ play: TeamPla
     : { status: "transcribing", error: null, assemblyai_id: null, transcript: null };
   const { data, error } = await db
     .from("team_plays")
-    .update({ ...patch, updated_at: new Date().toISOString() })
+    .update({ ...patch, ...(fresh.length ? { frame_paths: fresh } : {}), updated_at: new Date().toISOString() })
     .eq("id", playId)
     .in("status", ["failed", "draft"])
     .not("video_path", "is", null)
@@ -187,6 +216,12 @@ export async function rereadPlay(playId: string): Promise<Result<{ play: TeamPla
   if (error) return { error: error.message };
   if (!data?.length) return { error: "Only a draft or a failed play with a video can be read again." };
   after(() => (haveWords ? readPlay(playId) : startTranscription(playId)));
+  if (fresh.length && oldFrames.length) {
+    // The old stills aren't read any more.
+    after(async () => {
+      await createAdminClient().storage.from(PLAYBOOK_BUCKET).remove(oldFrames);
+    });
+  }
   const play = await onePlay(playId);
   return play ? { play } : { error: "That play is gone." };
 }

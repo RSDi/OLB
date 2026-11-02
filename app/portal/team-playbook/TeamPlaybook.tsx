@@ -15,6 +15,7 @@ import {
   rereadPlay,
   savePlay,
   setPlayShared,
+  startRestill,
   writeNotes,
 } from "../../../lib/team-playbook/actions";
 import { PROCESSING, type PlayEdit, type PlaybookTeam, type TeamPlay } from "../../../lib/team-playbook/types";
@@ -22,6 +23,9 @@ import { Court } from "./Court";
 import { Editor } from "./Editor";
 import { Uploader } from "./Uploader";
 import { usePlayback } from "./usePlayback";
+import { takeStills } from "./stills";
+import { createClient } from "../../../lib/supabase/client";
+import { PLAYBOOK_BUCKET } from "../../../lib/team-playbook/types";
 import styles from "./playbook.module.css";
 
 type Mode = "view" | "upload" | "edit";
@@ -105,6 +109,37 @@ export function TeamPlaybook({
     }
     if ("play" in res && res.play) replace(res.play);
     return true;
+  };
+
+  // Read the video again: fresh stills from the saved video first (more of
+  // them than older plays were read from), then the server reads it. If the
+  // browser can't take stills, the play is read from the ones it has.
+  const [rereading, setRereading] = useState<string | null>(null);
+  const reread = async (p: TeamPlay) => {
+    setBusy(true);
+    setError(null);
+    let frames: { path: string; sec: number }[] | undefined;
+    if (p.video_url) {
+      setRereading("Taking fresh stills from the video…");
+      const { stills } = await takeStills(p.video_url, true);
+      if (stills.length) {
+        const start = await startRestill(p.id, stills.length);
+        if (start.error === undefined) {
+          setRereading("Uploading the stills…");
+          const storage = createClient().storage.from(PLAYBOOK_BUCKET);
+          frames = [];
+          for (let i = 0; i < start.frames.length && i < stills.length; i++) {
+            const { error: upErr } = await storage.uploadToSignedUrl(start.frames[i].path, start.frames[i].token, stills[i].blob, {
+              contentType: "image/jpeg",
+            });
+            if (!upErr) frames.push({ path: start.frames[i].path, sec: stills[i].sec });
+          }
+        }
+      }
+    }
+    setRereading(null);
+    setBusy(false);
+    await run(() => rereadPlay(p.id, frames));
   };
 
   // Group the list by kind of play; drafts and plays being read come first.
@@ -322,8 +357,8 @@ export function TeamPlaybook({
                   </p>
                   {canEdit && (
                     <div className={styles.row}>
-                      <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} disabled={busy} onClick={() => run(() => rereadPlay(play.id))}>
-                        Read it again
+                      <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} disabled={busy} onClick={() => reread(play)}>
+                        {rereading ?? "Read it again"}
                       </button>
                       <button
                         type="button"
@@ -456,8 +491,8 @@ export function TeamPlaybook({
                       Fix this play
                     </button>
                     {play.video_url && (
-                      <button type="button" className={styles.btn} disabled={busy} onClick={() => run(() => rereadPlay(play.id))}>
-                        Read the video again
+                      <button type="button" className={styles.btn} disabled={busy} onClick={() => reread(play)}>
+                        {rereading ?? "Read the video again"}
                       </button>
                     )}
                   </div>
