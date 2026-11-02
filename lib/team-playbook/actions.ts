@@ -11,7 +11,7 @@ import { createSignedTusUpload } from "../film/tus-create.ts";
 import { tusEndpoint } from "../film/tus.ts";
 import { blankDiagram, normalizeDiagram } from "./diagram.ts";
 import { PLAY_COLS, requirePlaybookEditor, toTeamPlays } from "./data";
-import { advancePlay, readPlay, startTranscription, trialReadPlay, writeCoachNotes } from "./pipeline";
+import { advancePlay, readPlay, startTranscription, TRIAL_MAX_STILLS, trialReadPlay, writeCoachNotes } from "./pipeline";
 import type { PlayDiagram } from "./diagram.ts";
 import { FRAME_COUNT, MAX_VIDEO_BYTES, PLAYBOOK_BUCKET, type PlayEdit, type TeamPlay } from "./types.ts";
 
@@ -169,16 +169,24 @@ export async function checkPlay(playId: string): Promise<Result<{ play: TeamPlay
 // read; only a play that never got its words is transcribed again.
 // Fresh stills for reading a play again: the browser takes them from the
 // play's video and uploads them here. Signed uploads, one per still.
-export async function startRestill(playId: string, count: number): Promise<Result<{ frames: { path: string; token: string }[] }>> {
+// kind "trial": the reader test's stills (many more, deleted after the test).
+export async function startRestill(
+  playId: string,
+  count: number,
+  kind: "still" | "trial" = "still",
+): Promise<Result<{ frames: { path: string; token: string }[] }>> {
   const gate = await requirePlaybookEditor();
   if ("error" in gate) return { error: gate.error };
   if (!(await onePlay(playId))) return { error: "That play is gone." };
-  const n = Math.max(0, Math.min(FRAME_COUNT, Math.floor(Number(count) || 0)));
+  const max = kind === "trial" ? TRIAL_MAX_STILLS : FRAME_COUNT;
+  const n = Math.max(0, Math.min(max, Math.floor(Number(count) || 0)));
   const bucket = createAdminClient().storage.from(PLAYBOOK_BUCKET);
   const stamp = Date.now();
+  const signed = await Promise.all(
+    Array.from({ length: n }, (_, i) => bucket.createSignedUploadUrl(`plays/${playId}/${kind}-${stamp}-${i + 1}.jpg`)),
+  );
   const frames: { path: string; token: string }[] = [];
-  for (let i = 0; i < n; i++) {
-    const { data, error } = await bucket.createSignedUploadUrl(`plays/${playId}/still-${stamp}-${i + 1}.jpg`);
+  for (const { data, error } of signed) {
     if (error || !data) return { error: error?.message ?? "Couldn't start the upload." };
     frames.push({ path: data.path, token: data.token });
   }
@@ -243,11 +251,19 @@ export async function writeNotes(playId: string): Promise<Result<{ play: TeamPla
 // The reader test: another model watches the whole video and draws the play.
 // Returned to the page to compare with the current drawing; saved only if a
 // coach picks it (savePlay).
-export async function trialRead(playId: string): Promise<Result<{ diagram: PlayDiagram; model: string; seconds: number }>> {
+export async function trialRead(
+  playId: string,
+  frames: { path: string; sec: number }[],
+): Promise<Result<{ diagram: PlayDiagram; model: string; seconds: number; stills: number }>> {
   const gate = await requirePlaybookEditor();
   if ("error" in gate) return { error: gate.error };
   if (!(await onePlay(playId))) return { error: "That play is gone." };
-  return trialReadPlay(playId);
+  const prefix = `plays/${playId}/trial-`;
+  const clean = (Array.isArray(frames) ? frames : [])
+    .filter((f) => typeof f?.path === "string" && f.path.startsWith(prefix) && Number.isFinite(f.sec))
+    .slice(0, TRIAL_MAX_STILLS);
+  if (!clean.length) return { error: "The browser couldn't take stills from this video." };
+  return trialReadPlay(playId, clean);
 }
 
 // A play typed in by hand, without a video.
