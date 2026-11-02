@@ -15,6 +15,7 @@ import {
   rereadPlay,
   savePlay,
   setPlayShared,
+  writeNotes,
 } from "../../../lib/team-playbook/actions";
 import { PROCESSING, type PlayEdit, type PlaybookTeam, type TeamPlay } from "../../../lib/team-playbook/types";
 import { Court } from "./Court";
@@ -473,6 +474,50 @@ export function TeamPlaybook({
         </section>
 
         <aside className={styles.side}>
+          {mode === "view" && play && diagram && (diagram.about || (canEdit && play.transcript?.length)) ? (
+            <div className={styles.card}>
+              <h4 className={styles.cardTitle}>Coach&apos;s notes</h4>
+              {diagram.about ? (
+                <div className={styles.notes}>
+                  {diagram.about.why && (
+                    <div>
+                      <span className={styles.notesLabel}>Why we run it</span>
+                      <p>{diagram.about.why}</p>
+                    </div>
+                  )}
+                  {diagram.about.when && (
+                    <div>
+                      <span className={styles.notesLabel}>When we use it</span>
+                      <p>{diagram.about.when}</p>
+                    </div>
+                  )}
+                  {diagram.about.keys.length > 0 && (
+                    <div>
+                      <span className={styles.notesLabel}>What to remember</span>
+                      <ul>
+                        {diagram.about.keys.map((k, i) => (
+                          <li key={i}>{k}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className={styles.small}>Why the coaches run this play, when, and what to remember, written from what the coach says in the video.</p>
+              )}
+              {canEdit && play.transcript?.length ? (
+                <button
+                  type="button"
+                  className={styles.btn}
+                  style={{ marginTop: 10 }}
+                  disabled={busy}
+                  onClick={() => run(() => writeNotes(play.id))}
+                >
+                  {busy ? "Writing…" : diagram.about ? "Write them again" : "Write the coach's notes"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           {mode === "view" && diagram && frame && (
             <div className={styles.card}>
               <h4 className={styles.cardTitle}>Steps</h4>

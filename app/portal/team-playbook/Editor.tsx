@@ -4,7 +4,7 @@
 // ring to change where a player moves to. Saved with Save; Cancel drops it.
 
 import { useMemo, useState } from "react";
-import { type MoveKind, type PlayAction, type PlayDiagram, type Pt } from "../../../lib/team-playbook/diagram";
+import { type MoveKind, type PlayAbout, type PlayAction, type PlayDiagram, type Pt } from "../../../lib/team-playbook/diagram";
 import { prepare, stepOverview } from "../../../lib/team-playbook/engine";
 import { CATEGORIES, type PlayEdit, type PlaybookTeam, type TeamPlay } from "../../../lib/team-playbook/types";
 import { Court, type Handle } from "./Court";
@@ -49,6 +49,8 @@ export function Editor({
   }));
   const [stepIdx, setStepIdx] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Typed as-is so blank lines can be added; the play keeps the trimmed list.
+  const [keysText, setKeysText] = useState(() => (play.diagram?.about?.keys ?? []).join("\n"));
   const d = edit.diagram;
   const step = d.steps[Math.min(stepIdx, d.steps.length - 1)];
   const k = Math.min(stepIdx, d.steps.length - 1);
@@ -63,6 +65,11 @@ export function Editor({
       const next = clone(e.diagram);
       fn(next);
       return { ...e, diagram: next };
+    });
+
+  const setAbout = (patch: Partial<PlayAbout>) =>
+    change((draft) => {
+      draft.about = { ...(draft.about ?? { why: "", when: "", keys: [] }), ...patch };
     });
 
   const handles: Handle[] = [];
@@ -236,6 +243,37 @@ export function Editor({
           </div>
         </div>
       )}
+
+      <div className={styles.fields}>
+        <label className={styles.field}>
+          Why we run it
+          <textarea
+            id="tp-ed-why"
+            value={d.about?.why ?? ""}
+            onChange={(e) => setAbout({ why: e.target.value })}
+          />
+        </label>
+        <label className={styles.field}>
+          When we use it
+          <textarea
+            id="tp-ed-when"
+            value={d.about?.when ?? ""}
+            onChange={(e) => setAbout({ when: e.target.value })}
+          />
+        </label>
+        <label className={styles.field}>
+          What to remember (one per line)
+          <textarea
+            id="tp-ed-keys"
+            value={keysText}
+            onChange={(e) => {
+              setKeysText(e.target.value);
+              const keys = e.target.value.split("\n").map((k) => k.trim()).filter(Boolean);
+              setAbout({ keys });
+            }}
+          />
+        </label>
+      </div>
 
       <div className={styles.field}>
         Step

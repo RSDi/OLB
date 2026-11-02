@@ -722,6 +722,7 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 - **Play** runs the whole play. It stops at each step so you can read what's happening. Tap a step on the right to watch just that part. The arrows show what everyone does: a solid arrow is a cut, a dashed orange line is a pass, a zigzag is a dribble, and a line ending in a bar is a screen.
 - **Captions** shows what the coach says about each step over the court. **Sound** plays the coach's own voice from their video, and the play moves along with it. If a play has no video, your phone or computer reads the captions aloud instead.
 - **Speed** slows it down. **Trails** turns the arrows from the step before on or off.
+- **Coach's notes** on the right says why the coaches run the play, when we use it, and what to remember.
 - The coach's video is under the court. **What the coach says** on the right is everything they say in it. Tap a line to jump there.`,
   },
   {
@@ -738,6 +739,8 @@ Super-admins can **Delete playbook** from the bottom of its page.`,
 **Check the draft.** The new play shows under **Not shared yet**. Play it next to the video under the court. If it's right, tap **Share with the team**. If it isn't, tap **Fix this play**, or **Read the video again** to have it drawn again from the same video. If a play didn't work, **Read it again** tries once more.
 
 **Fix this play.** Change the name, call, kind of play and teams. Pick a step to change its title and caption. On the first step, drag a yellow ring to move where a player starts. On any step, drag a small orange ring to change where a player goes. **+ Move a player** and **+ Pass** add to the step. **Bend it** curves a cut. **Save** keeps your changes, and **Delete play…** removes the play and its video.
+
+**Coach's notes.** A play read from a video gets notes from what you say in it: why we run it, when we use it, and what to remember. Only what you actually say goes in, so talk through the reasons on the video. For a play added before notes existed, or to redo them, tap **Write the coach's notes** (or **Write them again**) in the Coach's notes box. The drawing stays as it is. Change the notes in **Fix this play**.
 
 **By hand.** **+ Draw a play by hand** starts a play with five players and no video, to fix up the same way.
 

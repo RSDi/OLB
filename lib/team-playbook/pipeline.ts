@@ -12,7 +12,7 @@
 import { generateObject } from "ai";
 import { z } from "zod";
 import { createAdminClient } from "../supabase/admin";
-import { COURT_SPOTS, normalizeDiagram } from "./diagram.ts";
+import { COURT_SPOTS, MAX_KEYS, normalizeAbout, normalizeDiagram, type PlayDiagram } from "./diagram.ts";
 import { linesForPrompt, wordsToLines, type AaiWord } from "./transcript.ts";
 import { CATEGORIES, PLAYBOOK_BUCKET, type PlayStatus, type TranscriptLine } from "./types.ts";
 
@@ -132,6 +132,20 @@ export async function advancePlay(id: string): Promise<void> {
 }
 
 const PointSchema = z.object({ x: z.number(), y: z.number() });
+const AboutSchema = z.object({
+  why: z
+    .string()
+    .describe("Why we run this play: what it's trying to get, in one to three plain sentences. Empty if the coach doesn't say."),
+  when: z
+    .string()
+    .describe("When we use it: the defense, the time or score, the spot on the floor. Empty if the coach doesn't say."),
+  keys: z
+    .array(z.string())
+    .describe(`Up to ${MAX_KEYS} short teaching points the coach stresses ("Sell the cut", "Wait for the screen"). Empty if none.`),
+});
+
+const ABOUT_RULES = `For the coach's notes ("about"): use only what the coach actually says: their reasons for the play, when they want it run, and what they keep telling the players to do well. Keep the coach's words where you can, written plainly for players and parents. Don't invent reasons or add general basketball advice. Leave a part empty when the coach doesn't talk about it.`;
+
 const ReadSchema = z.object({
   name: z.string().describe("The play's name as the coach says it, or a short descriptive name."),
   call: z.string().describe("What the coach calls out to run it, if they say one; otherwise empty."),
@@ -140,6 +154,7 @@ const ReadSchema = z.object({
     .array(z.object({ id: z.string().describe('"1" to "5"'), x: z.number(), y: z.number() }))
     .describe("Where each offensive player starts."),
   ball: z.string().describe("Who has the ball at the start (the inbounder on an inbounds play)."),
+  about: AboutSchema,
   steps: z.array(
     z.object({
       title: z.string().describe("2–5 words."),
@@ -185,6 +200,7 @@ Rules:
 - Keep the coach's options (for example "if that's not open, swing it") as their own steps at the end.
 - Don't add defense.
 - If something is unclear, make the simplest reading and say so in that step's note ("Check this in the video: …").
+- ${ABOUT_RULES}
 ${row.name ? `\nThe coach named it "${row.name}".` : ""}${row.call_name ? ` The call is "${row.call_name}".` : ""}
 What the coach says, with times:
 ${transcript}`;
@@ -236,5 +252,44 @@ export async function readPlay(id: string): Promise<void> {
     });
   } catch (err) {
     await fail(id, "reading", `Couldn't read the play from the video: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+// The coach's notes alone, from the saved transcript, for a play read before
+// notes existed or whose notes should be written again. The drawing isn't
+// touched. Returns the notes, or why there are none.
+export async function writeCoachNotes(id: string): Promise<{ error?: string }> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("team_plays").select("name, transcript, diagram, status").eq("id", id).maybeSingle();
+  const row = data as { name: string; transcript: TranscriptLine[] | null; diagram: PlayDiagram | null; status: PlayStatus } | null;
+  if (!row || !row.diagram) return { error: "That play isn't ready yet." };
+  if (!row.transcript?.length) return { error: "This play has no words from the coach to write notes from." };
+  const steps = row.diagram.steps.map((s, i) => `${i + 1}. ${s.title}: ${s.note}`).join("\n");
+  try {
+    const { object } = await generateObject({
+      model: MODEL,
+      schema: AboutSchema,
+      prompt: `A youth basketball coach explains a play${row.name ? ` called "${row.name}"` : ""} in a video. Write the coach's notes for the club's playbook, for players and parents.
+
+${ABOUT_RULES}
+
+The play's steps, as already drawn:
+${steps}
+
+What the coach says, with times:
+${linesForPrompt(row.transcript)}`,
+    });
+    const about = normalizeAbout(object);
+    if (!about) return { error: "The coach doesn't talk about why or when to run this play in the video. Add notes in Fix this play." };
+    const { data: fresh } = await admin.from("team_plays").select("diagram").eq("id", id).maybeSingle();
+    const diagram = normalizeDiagram((fresh as { diagram: unknown } | null)?.diagram);
+    if (!diagram) return { error: "That play isn't ready yet." };
+    const { error } = await admin
+      .from("team_plays")
+      .update({ diagram: { ...diagram, about }, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    return error ? { error: error.message } : {};
+  } catch (err) {
+    return { error: `Couldn't write the notes: ${err instanceof Error ? err.message : err}` };
   }
 }

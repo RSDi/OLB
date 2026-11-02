@@ -11,7 +11,7 @@ import { createSignedTusUpload } from "../film/tus-create.ts";
 import { tusEndpoint } from "../film/tus.ts";
 import { blankDiagram, normalizeDiagram } from "./diagram.ts";
 import { PLAY_COLS, requirePlaybookEditor, toTeamPlays } from "./data";
-import { advancePlay, readPlay, startTranscription } from "./pipeline";
+import { advancePlay, readPlay, startTranscription, writeCoachNotes } from "./pipeline";
 import { FRAME_COUNT, MAX_VIDEO_BYTES, PLAYBOOK_BUCKET, type PlayEdit, type TeamPlay } from "./types.ts";
 
 type Result<T = object> = ({ error?: undefined } & T) | { error: string };
@@ -185,6 +185,19 @@ export async function rereadPlay(playId: string): Promise<Result<{ play: TeamPla
   if (error) return { error: error.message };
   if (!data?.length) return { error: "Only a draft or a failed play with a video can be read again." };
   after(() => (haveWords ? readPlay(playId) : startTranscription(playId)));
+  const play = await onePlay(playId);
+  return play ? { play } : { error: "That play is gone." };
+}
+
+// Coach's notes from the saved transcript; the drawing stays as it is.
+export async function writeNotes(playId: string): Promise<Result<{ play: TeamPlay }>> {
+  const gate = await requirePlaybookEditor();
+  if ("error" in gate) return { error: gate.error };
+  // RLS: only an editor can see a draft, so this also checks they can reach it.
+  if (!(await onePlay(playId))) return { error: "That play is gone." };
+  const res = await writeCoachNotes(playId);
+  if (res.error) return { error: res.error };
+  revalidatePath(PATH);
   const play = await onePlay(playId);
   return play ? { play } : { error: "That play is gone." };
 }
