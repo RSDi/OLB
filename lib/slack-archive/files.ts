@@ -73,7 +73,18 @@ export interface DownloadAndStoreOptions {
   // large-files.ts currently supplies one. Returning null/undefined leaves
   // the original bytes untouched.
   transform?: (bytes: ArrayBuffer, file: SlackFile) => Promise<FileTransformResult | null | undefined>;
+  // Files Slack lists as bigger than this are left for later instead of
+  // downloaded. A download is held in memory whole, and a "Sync now" re-walk
+  // retries every file that failed before, so a channel with a few big
+  // videos ran the function out of memory. The compression sweep
+  // (scripts/slack-archive-compress-large-files.ts) picks these up, since
+  // they're saved with an error like any other failed media file.
+  maxBytes?: number;
 }
+
+// What a sync on Vercel will download: the compression sweep's own
+// threshold, so anything skipped here is something the sweep handles.
+export const SYNC_MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 export async function downloadAndStoreSlackFile(
   admin: SupabaseClient,
@@ -117,6 +128,11 @@ export async function downloadAndStoreSlackFile(
       return { ...base, error: "Hidden by Slack's plan limit before it was archived." };
     }
     return { ...base, error: "No downloadable URL provided by Slack for this file type." };
+  }
+
+  if (opts.maxBytes !== undefined && file.size > opts.maxBytes) {
+    const mb = Math.round(file.size / (1024 * 1024));
+    return { ...base, error: `Too large to copy during a sync (${mb} MB). The compression sweep saves it.` };
   }
 
   try {
@@ -190,6 +206,25 @@ export async function archiveMessageFiles(
   const files = await Promise.all(incoming.map((f) => savedById.get(f.id) ?? download(f)));
   const listed = new Set(incoming.map((f) => f.id));
   return [...files, ...[...savedById.values()].filter((f) => !listed.has(f.id))];
+}
+
+// Runs at most `limit` of the calls it wraps at once; the rest wait their
+// turn. The sync saves a whole page of messages (and their thread replies)
+// at the same time, and each download sits in memory until it's uploaded.
+export function limitConcurrency(limit: number): <T>(run: () => Promise<T>) => Promise<T> {
+  let active = 0;
+  const waiting: (() => void)[] = [];
+  return async (run) => {
+    if (active >= limit) await new Promise<void>((resolve) => waiting.push(resolve));
+    else active += 1;
+    try {
+      return await run();
+    } finally {
+      const next = waiting.shift();
+      if (next) next();
+      else active -= 1;
+    }
+  };
 }
 
 // Batched — one Storage API round trip per SIGN_BATCH_SIZE paths rather than

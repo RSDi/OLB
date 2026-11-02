@@ -40,7 +40,7 @@ import {
   type SlackMessage,
   type SlackReaction,
 } from "./slack-api";
-import { archiveMessageFiles, downloadAndStoreSlackFile, type ArchivedFile } from "./files";
+import { archiveMessageFiles, downloadAndStoreSlackFile, limitConcurrency, SYNC_MAX_FILE_BYTES, type ArchivedFile } from "./files";
 import {
   mayNeedChannelNames,
   repairedMessageText,
@@ -201,8 +201,12 @@ async function loadSavedFiles(admin: SupabaseClient, channelId: string, ts: stri
   return (data as { files: ArchivedFile[] | null } | null)?.files ?? [];
 }
 
+// Downloads in flight at once, across every sync this instance is running.
+// Each holds its file in memory until it's uploaded (see SYNC_MAX_FILE_BYTES).
+const downloadSlot = limitConcurrency(3);
+
 // Resolves the author, downloads any file attachments not already archived
-// (concurrently — each is an independent Slack fetch + Storage upload), and
+// (a few at a time — see downloadSlot), and
 // upserts the row. Shared by top-level messages, thread replies, and
 // thread-refresh replies so a future change to any of that logic only needs
 // to happen once.
@@ -215,7 +219,9 @@ async function persistMessage(
   summary: ChannelSyncSummary,
 ): Promise<void> {
   const download = async (f: SlackFile) => {
-    const result = await downloadAndStoreSlackFile(admin, f, channelId, msg.ts, token);
+    const result = await downloadSlot(() =>
+      downloadAndStoreSlackFile(admin, f, channelId, msg.ts, token, { maxBytes: SYNC_MAX_FILE_BYTES }),
+    );
     if (result.storage_path) summary.files_stored += 1;
     return result;
   };
