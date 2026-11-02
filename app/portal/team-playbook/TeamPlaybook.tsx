@@ -443,6 +443,11 @@ export function TeamPlaybook({
                     <b>Draft.</b>{" "}Only coaches and the board see it. Play it next to the coach&apos;s video above and fix anything that&apos;s
                     off, then share it with the team.
                   </p>
+                  {play.error && (
+                    <p>
+                      <b>Heads up:</b>{" "}{play.error}
+                    </p>
+                  )}
                   <div className={styles.row}>
                     <button type="button" className={`${styles.btn} ${styles.btnAccent}`} disabled={busy} onClick={() => run(() => setPlayShared(play.id, true))}>
                       Share with the team
@@ -474,7 +479,7 @@ export function TeamPlaybook({
         </section>
 
         <aside className={styles.side}>
-          {mode === "view" && play && diagram && (diagram.about || (canEdit && play.transcript?.length)) ? (
+          {mode === "view" && play && diagram && (diagram.about || (canEdit && (play.transcript || play.video_url))) ? (
             <div className={styles.card}>
               <h4 className={styles.cardTitle}>Coach&apos;s notes</h4>
               {diagram.about ? (
@@ -502,8 +507,13 @@ export function TeamPlaybook({
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : play.transcript?.length ? (
                 <p className={styles.small}>Why the coaches run this play, when, and what to remember, written from what the coach says in the video.</p>
+              ) : (
+                <p className={styles.small}>
+                  None of the coach&apos;s words came through from this video, so there&apos;s nothing to write notes from. Tap{" "}
+                  <b>Read the video again</b> below to try the words again, or add notes in <b>Fix this play</b>.
+                </p>
               )}
               {canEdit && play.transcript?.length ? (
                 <button

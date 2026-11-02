@@ -35,6 +35,7 @@ interface PlayRow {
   name: string;
   call_name: string;
   category: string;
+  error: string | null;
   video_path: string | null;
   frame_paths: { path: string; sec: number }[] | null;
   duration_sec: number | null;
@@ -44,7 +45,7 @@ interface PlayRow {
 }
 
 const ROW_COLS =
-  "id, status, name, call_name, category, video_path, frame_paths, duration_sec, assemblyai_id, transcript, updated_at";
+  "id, status, name, call_name, category, error, video_path, frame_paths, duration_sec, assemblyai_id, transcript, updated_at";
 
 async function setStatus(id: string, from: PlayStatus, patch: Record<string, unknown>): Promise<boolean> {
   const admin = createAdminClient();
@@ -71,7 +72,12 @@ export async function startTranscription(id: string): Promise<void> {
   if (!row || row.status !== "transcribing") return;
   const key = process.env.ASSEMBLYAI_API_KEY;
   if (!key || !row.video_path) {
-    if (await setStatus(id, "transcribing", { status: "reading" })) await readPlay(id);
+    // The play is still drawn from the stills; the note tells the coach why
+    // there are no captions or notes.
+    const note = !key
+      ? "The coach's words weren't written down because the transcription service isn't set up (ASSEMBLYAI_API_KEY)."
+      : "The coach's words weren't written down because the video file is missing.";
+    if (await setStatus(id, "transcribing", { status: "reading", transcript: [], error: note })) await readPlay(id);
     return;
   }
   try {
@@ -117,12 +123,14 @@ export async function advancePlay(id: string): Promise<void> {
     const t = (await res.json()) as { status: string; error?: string; words?: AaiWord[] };
     if (t.status === "error") {
       // No words isn't fatal: the stills still show the play.
-      if (await setStatus(id, "transcribing", { status: "reading", transcript: [], error: null })) await readPlay(id);
+      const note = `The coach's words couldn't be written down: ${t.error ?? "the transcription service gave no reason"}.`;
+      if (await setStatus(id, "transcribing", { status: "reading", transcript: [], error: note.slice(0, 500) })) await readPlay(id);
       return;
     }
     if (t.status !== "completed") return;
     const lines = wordsToLines(t.words ?? []);
-    if (await setStatus(id, "transcribing", { status: "reading", transcript: lines })) await readPlay(id);
+    const note = lines.length ? null : "No talking was found in this video, so there are no captions or coach's notes from it.";
+    if (await setStatus(id, "transcribing", { status: "reading", transcript: lines, error: note })) await readPlay(id);
     return;
   }
 
@@ -244,7 +252,8 @@ export async function readPlay(id: string): Promise<void> {
     if (!diagram) throw new Error("The video couldn't be turned into a play.");
     await setStatus(id, "reading", {
       status: "draft",
-      error: null,
+      // Kept when there are no words: why there are no captions or notes.
+      error: row.transcript?.length ? null : row.error,
       diagram,
       name: row.name || object.name.slice(0, 80),
       call_name: row.call_name || object.call.slice(0, 40),
