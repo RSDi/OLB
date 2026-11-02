@@ -14,7 +14,14 @@ export interface Still {
 // the canvas can be read) when it's read again. A video the browser can't
 // decode, or won't let the page read, gives none; the play is then read from
 // what it already has.
-export async function takeStills(src: string, crossOrigin = false): Promise<{ stills: Still[]; duration: number | null }> {
+//
+// opts.count may be a function of the video's length (seconds), for the
+// reader test's one-still-every-second-or-two.
+export async function takeStills(
+  src: string,
+  crossOrigin = false,
+  opts: { count?: number | ((duration: number) => number); width?: number; onProgress?: (f: number) => void } = {},
+): Promise<{ stills: Still[]; duration: number | null }> {
   const video = document.createElement("video");
   if (crossOrigin) video.crossOrigin = "anonymous";
   video.muted = true;
@@ -30,14 +37,16 @@ export async function takeStills(src: string, crossOrigin = false): Promise<{ st
     const duration = Number.isFinite(video.duration) ? video.duration : null;
     if (!duration || !video.videoWidth) return { stills: [], duration };
     const canvas = document.createElement("canvas");
-    const scale = Math.min(1, FRAME_WIDTH / video.videoWidth);
+    const scale = Math.min(1, (opts.width ?? FRAME_WIDTH) / video.videoWidth);
+    const count = Math.max(1, Math.floor(typeof opts.count === "function" ? opts.count(duration) : (opts.count ?? FRAME_COUNT)));
     canvas.width = Math.round(video.videoWidth * scale);
     canvas.height = Math.round(video.videoHeight * scale);
     const ctx = canvas.getContext("2d");
     if (!ctx) return { stills: [], duration };
     const stills: Still[] = [];
-    for (let i = 0; i < FRAME_COUNT; i++) {
-      const sec = (duration * (i + 0.5)) / FRAME_COUNT;
+    for (let i = 0; i < count; i++) {
+      const sec = (duration * (i + 0.5)) / count;
+      opts.onProgress?.(i / count);
       await new Promise<void>((resolve) => {
         const done = () => resolve();
         video.onseeked = done;

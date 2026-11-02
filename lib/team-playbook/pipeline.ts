@@ -368,53 +368,98 @@ ${linesForPrompt(row.transcript)}`,
 
 
 // ── Reader test ────────────────────────────────────────────────────────────
-// A model that watches the whole video with its sound, instead of stills.
-// Used only by the side-by-side test on a draft (trialRead in actions.ts):
-// nothing is saved unless a coach picks the result.
+// Another model reads the play, for the side-by-side test on a draft
+// (trialRead in actions.ts): nothing is saved unless a coach picks it.
+// Sending the whole video didn't work through the gateway ("invalid
+// argument"), so the browser takes a still every second or two instead,
+// about what a video model samples, and each still comes with the coach's
+// words at that moment.
 export const TRIAL_MODEL = "google/gemini-4-argon";
+export const TRIAL_MAX_STILLS = 90;
 
-function videoMediaType(path: string): string {
-  const ext = path.split(".").pop()?.toLowerCase();
-  if (ext === "mov") return "video/mov";
-  if (ext === "webm") return "video/webm";
-  if (ext === "3gp") return "video/3gpp";
-  return "video/mp4";
+const TRIAL_INTRO = `The images are stills from the coach's video, a second or two apart, in order, each labelled with its time and what the coach is saying then. Together they show the coach drawing the play line by line. The video is usually a coach drawing on a whiteboard or clipboard while talking, sometimes players walking through it on a court. The order the lines appear in is the order of the steps; the coach's words say what each line means. Before you draw, work out which way the court is drawn (where the basket is) and turn it so the basket is at the top.`;
+
+// What a provider said, as far as the error carries it.
+function errorText(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const body = (err as { responseBody?: unknown }).responseBody;
+  const extra = typeof body === "string" ? body.replace(/\s+/g, " ").slice(0, 300) : "";
+  return extra && !err.message.includes(extra) ? `${err.message} (${extra})` : err.message;
 }
 
-const TRIAL_INTRO = `You are watching the coach's whole video of the play, with its sound. The video is usually a coach drawing on a whiteboard or clipboard while talking, sometimes players walking through it on a court. Watch the order the coach draws each line in and listen to what they say as they draw it: that order is the order of the steps. Before you draw, work out which way the court is drawn (where the basket is) and turn it so the basket is at the top.`;
+function toDiagram(object: z.infer<typeof ReadSchema>) {
+  return normalizeDiagram({
+    ...object,
+    steps: object.steps.map((s) => ({
+      ...s,
+      actions: s.actions.map((a) => ({ type: a.type, player: a.player, path: a.path ?? [], from: a.from, to: a.to, s: a.s, e: a.e })),
+    })),
+  });
+}
 
-export async function trialReadPlay(id: string): Promise<{ diagram: PlayDiagram; model: string; seconds: number } | { error: string }> {
+export async function trialReadPlay(
+  id: string,
+  frames: { path: string; sec: number }[],
+): Promise<{ diagram: PlayDiagram; model: string; seconds: number; stills: number } | { error: string }> {
   const admin = createAdminClient();
-  const { data } = await admin.from("team_plays").select(ROW_COLS).eq("id", id).maybeSingle();
-  const row = data as PlayRow | null;
-  if (!row?.video_path) return { error: "This play has no video to watch." };
-  const { data: signed, error } = await admin.storage.from(PLAYBOOK_BUCKET).createSignedUrl(row.video_path, 60 * 60);
-  if (error || !signed?.signedUrl) return { error: error?.message ?? "Couldn't make a link to the video." };
+  const bucket = admin.storage.from(PLAYBOOK_BUCKET);
   const started = Date.now();
   try {
-    const { object } = await generateObject({
-      model: TRIAL_MODEL,
-      schema: ReadSchema,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "file", data: new URL(signed.signedUrl), mediaType: videoMediaType(row.video_path) },
-            { type: "text", text: prompt(row, [], TRIAL_INTRO) },
-          ],
-        },
-      ],
+    const { data } = await admin.from("team_plays").select(ROW_COLS).eq("id", id).maybeSingle();
+    const row = data as PlayRow | null;
+    if (!row) return { error: "That play is gone." };
+    const images = await Promise.all(
+      frames.map(async (f) => {
+        const { data: blob } = await bucket.download(f.path);
+        return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+      }),
+    );
+    const content: (TextPart | ImagePart)[] = [];
+    let stills = 0;
+    images.forEach((image, i) => {
+      if (!image) return;
+      stills++;
+      const sec = frames[i].sec;
+      const words = wordsNear(row.transcript, sec);
+      content.push({ type: "text", text: `${sec.toFixed(1)}s${words ? `: "${words}"` : ""}` });
+      content.push({ type: "image", image, mediaType: "image/jpeg" });
     });
-    const diagram = normalizeDiagram({
-      ...object,
-      steps: object.steps.map((s) => ({
-        ...s,
-        actions: s.actions.map((a) => ({ type: a.type, player: a.player, path: a.path ?? [], from: a.from, to: a.to, s: a.s, e: a.e })),
-      })),
-    });
+    if (!stills) return { error: "The stills didn't upload. Try again." };
+    content.push({ type: "text", text: prompt(row, [], TRIAL_INTRO) });
+
+    let object: z.infer<typeof ReadSchema>;
+    try {
+      ({ object } = await generateObject({ model: TRIAL_MODEL, schema: ReadSchema, messages: [{ role: "user", content }] }));
+    } catch (err) {
+      // Some providers refuse the answer format; ask for plain JSON instead.
+      console.warn("team-playbook: trial structured read failed, trying plain JSON", err);
+      const { text } = await generateText({
+        model: TRIAL_MODEL,
+        messages: [
+          {
+            role: "user",
+            content: [
+              ...content,
+              {
+                type: "text",
+                text: `Answer with only a JSON object, no other text, shaped like: {"name": string, "call": string, "category": one of ${JSON.stringify(CATEGORIES)}, "players": [{"id": "1", "x": number, "y": number}], "ball": string, "about": {"why": string, "when": string, "keys": [string]}, "steps": [{"title": string, "note": string, "startSec": number|null, "endSec": number|null, "actions": [{"type": "cut"|"dribble"|"screen"|"pass", "player": string|null, "path": [{"x": number, "y": number}]|null, "from": string|null, "to": string|null, "s": number|null, "e": number|null}]}]}`,
+              },
+            ],
+          },
+        ],
+      });
+      const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+      const parsed = ReadSchema.safeParse(JSON.parse(json));
+      if (!parsed.success) throw new Error(`The other reader's answer wasn't a play (${errorText(err)})`);
+      object = parsed.data;
+    }
+    const diagram = toDiagram(object);
     if (!diagram) return { error: "The other reader couldn't turn the video into a play." };
-    return { diagram, model: TRIAL_MODEL, seconds: Math.round((Date.now() - started) / 1000) };
+    return { diagram, model: TRIAL_MODEL, seconds: Math.round((Date.now() - started) / 1000), stills };
   } catch (err) {
-    return { error: `The other reader didn't work: ${err instanceof Error ? err.message : err}` };
+    return { error: `The other reader didn't work: ${errorText(err)}` };
+  } finally {
+    // The test's stills aren't kept.
+    await bucket.remove(frames.map((f) => f.path)).catch(() => {});
   }
 }

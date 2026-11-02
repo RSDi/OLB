@@ -6,7 +6,13 @@
 import { useRef, useState } from "react";
 import type { PlayDiagram } from "../../../lib/team-playbook/diagram";
 import { frameAt } from "../../../lib/team-playbook/engine";
-import { trialRead } from "../../../lib/team-playbook/actions";
+import { startRestill, trialRead } from "../../../lib/team-playbook/actions";
+import { createClient } from "../../../lib/supabase/client";
+import { PLAYBOOK_BUCKET } from "../../../lib/team-playbook/types";
+import { takeStills } from "./stills";
+
+// Matches TRIAL_MAX_STILLS on the server (lib/team-playbook/pipeline.ts).
+const TRIAL_STILLS = 90;
 import type { TeamPlay } from "../../../lib/team-playbook/types";
 import { Court } from "./Court";
 import { usePlayback } from "./usePlayback";
@@ -59,21 +65,53 @@ export function ReaderTrial({
   onClose: () => void;
 }) {
   const [state, setState] = useState<
-    { kind: "idle" } | { kind: "running" } | { kind: "done"; diagram: PlayDiagram; model: string; seconds: number } | { kind: "error"; error: string }
+    | { kind: "idle" }
+    | { kind: "running"; text: string }
+    | { kind: "done"; diagram: PlayDiagram; model: string; seconds: number; stills: number }
+    | { kind: "error"; error: string }
   >({ kind: "idle" });
 
   const start = async () => {
-    setState({ kind: "running" });
-    const res = await trialRead(play.id);
+    if (!play.video_url) return;
+    setState({ kind: "running", text: "Taking stills from the video…" });
+    // About one still every 1.5 seconds, up to TRIAL_MAX_STILLS.
+    const { stills } = await takeStills(play.video_url, true, {
+      count: (d) => Math.min(TRIAL_STILLS, Math.max(20, Math.round(d / 1.5))),
+      width: 640,
+      onProgress: (f) => setState({ kind: "running", text: `Taking stills from the video… ${Math.round(f * 100)}%` }),
+    });
+    if (!stills.length) return setState({ kind: "error", error: "This browser couldn't take stills from the video. Try Chrome on a computer." });
+    const signed = await startRestill(play.id, stills.length, "trial");
+    if (signed.error !== undefined) return setState({ kind: "error", error: signed.error });
+    const storage = createClient().storage.from(PLAYBOOK_BUCKET);
+    const frames: { path: string; sec: number }[] = [];
+    let done = 0;
+    // A few at a time.
+    for (let i = 0; i < signed.frames.length; i += 6) {
+      await Promise.all(
+        signed.frames.slice(i, i + 6).map(async (f, j) => {
+          const st = stills[i + j];
+          if (!st) return;
+          const { error } = await storage.uploadToSignedUrl(f.path, f.token, st.blob, { contentType: "image/jpeg" });
+          if (!error) frames.push({ path: f.path, sec: st.sec });
+          done++;
+          setState({ kind: "running", text: `Uploading ${done} of ${stills.length} stills…` });
+        }),
+      );
+    }
+    frames.sort((a, b) => a.sec - b.sec);
+    setState({ kind: "running", text: `Gemini is reading ${frames.length} stills… this takes a minute or two.` });
+    const res = await trialRead(play.id, frames);
     if (res.error !== undefined) setState({ kind: "error", error: res.error });
-    else setState({ kind: "done", diagram: res.diagram, model: res.model, seconds: res.seconds });
+    else setState({ kind: "done", diagram: res.diagram, model: res.model, seconds: res.seconds, stills: res.stills });
   };
 
   return (
     <div className={styles.draftBox}>
       <p>
-        <b>Test: a reader that watches the whole video.</b>{" "}Instead of stills, it watches the coach draw each line, with the sound,
-        and draws the play. Compare the two, then keep whichever follows the coach better. Nothing changes unless you pick it.
+        <b>Test: a different reader.</b>{" "}Google&apos;s Gemini follows the video a still every second or two, with the coach&apos;s
+        words at each moment, so it sees each line as it&apos;s drawn. Compare the two, then keep whichever follows the coach better.
+        Nothing changes unless you pick it.
       </p>
       {state.kind === "idle" && (
         <div className={styles.row}>
@@ -85,7 +123,7 @@ export function ReaderTrial({
           </button>
         </div>
       )}
-      {state.kind === "running" && <p className={styles.small}>Watching the video… this takes a minute or two. Stay on this page.</p>}
+      {state.kind === "running" && <p className={styles.small}>{state.text} Stay on this page.</p>}
       {state.kind === "error" && (
         <>
           <p className={styles.error}>{state.error}</p>
@@ -103,10 +141,10 @@ export function ReaderTrial({
         <>
           <div className={styles.trialGrid}>
             <MiniPlayer title="Now (from stills)" diagram={play.diagram} />
-            <MiniPlayer title="Watching the video" diagram={state.diagram} />
+            <MiniPlayer title="Gemini, following the video" diagram={state.diagram} />
           </div>
           <p className={styles.small}>
-            Drawn by {state.model} in {state.seconds} seconds.
+            Drawn by {state.model} from {state.stills} stills in {state.seconds} seconds.
           </p>
           <div className={styles.row}>
             <button
@@ -115,7 +153,7 @@ export function ReaderTrial({
               disabled={saving}
               onClick={() => onUse({ ...state.diagram, about: state.diagram.about ?? play.diagram?.about })}
             >
-              Use the video-watching version
+              Use Gemini&apos;s version
             </button>
             <button type="button" className={styles.btn} disabled={saving} onClick={onClose}>
               Keep the current one
