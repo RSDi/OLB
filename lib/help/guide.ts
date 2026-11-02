@@ -1053,7 +1053,7 @@ Jeff's agent copies a thread in. There is no "upload an .eml" button on this pag
     group: "Archives",
     audience: "super_admin",
     routes: ["/portal/archives/slack/exceptions", "/portal/slack-archive/exceptions"],
-    keywords: ["slack", "add channel", "channel id", "sync", "sync now", "refresh access", "deactivate", "exceptions", "errors", "previews", "compress", "large files"],
+    keywords: ["slack", "add channel", "channel id", "sync", "sync now", "refresh access", "deactivate", "exceptions", "errors", "dismiss", "previews", "compress", "large files"],
     body: `Super-admins choose which Slack channels are archived and keep an eye on the nightly sync.
 
 - **+ Add channel** — give it a label and its Slack channel ID (in Slack: open the channel → View channel details → the ID is at the bottom).
@@ -1061,6 +1061,7 @@ Jeff's agent copies a thread in. There is no "upload an .eml" button on this pag
 - **Refresh access** re-checks private-channel membership with Slack right away (it also happens every night).
 - **Sync now** on a channel pulls in its newest messages without waiting for tonight — click again if it says there's more to catch up. It also fills in channel names that older messages are missing (every sync does), and says how many it fixed.
 - **View all exceptions →** lists channels whose sync failed, attachments that didn't download, and videos too big to store (with **Compress large files now**).
+- An attachment there that nothing can be done about (one Slack never offered a download for, say) can be cleared with **Dismiss**. It's counted under the list instead, and later syncs leave it alone.
 - In the Photo Album, **Make previews now** creates any missing thumbnails.`,
   },
   {

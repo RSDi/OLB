@@ -30,6 +30,10 @@ export interface ArchivedFile {
   // A link to a file kept outside Slack (a Google Doc, say): permalink is the
   // file's own URL. There's no copy to keep, so this isn't an error either.
   external?: boolean;
+  // A super admin dismissed this one from the exceptions page: nothing can
+  // be done about it, so it's no longer listed there and a sync never
+  // tries it again.
+  dismissed?: boolean;
 }
 
 // Hosts Slack serves url_private from. The bot token is only ever sent to
@@ -196,13 +200,14 @@ export async function downloadAndStoreSlackFile(
 // come back, with one per file), and saving that over the stored entry is
 // what unlinked 15 photos and videos in a September 2026 re-sync. Saved
 // files Slack no longer lists at all are kept too: the archive keeps files
-// people later delete in Slack.
+// people later delete in Slack. A file someone dismissed is kept as it is
+// too, so a re-sync doesn't put it back on the exceptions page.
 export async function archiveMessageFiles(
   saved: ArchivedFile[],
   incoming: SlackFile[],
   download: (file: SlackFile) => Promise<ArchivedFile>,
 ): Promise<ArchivedFile[]> {
-  const savedById = new Map(saved.filter((f) => f.storage_path).map((f) => [f.id, f]));
+  const savedById = new Map(saved.filter((f) => f.storage_path || f.dismissed).map((f) => [f.id, f]));
   const files = await Promise.all(incoming.map((f) => savedById.get(f.id) ?? download(f)));
   const listed = new Set(incoming.map((f) => f.id));
   return [...files, ...[...savedById.values()].filter((f) => !listed.has(f.id))];
