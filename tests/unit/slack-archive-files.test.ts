@@ -4,7 +4,7 @@
 // deleted or is hiding behind the workspace's plan.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { archiveMessageFiles, downloadAndStoreSlackFile, type ArchivedFile } from "../../lib/slack-archive/files.ts";
+import { archiveMessageFiles, downloadAndStoreSlackFile, limitConcurrency, type ArchivedFile } from "../../lib/slack-archive/files.ts";
 import type { SlackFile } from "../../lib/slack-archive/slack-api.ts";
 
 function saved(id: string, name: string, overrides: Partial<ArchivedFile> = {}): ArchivedFile {
@@ -157,4 +157,41 @@ test("downloadAndStoreSlackFile still downloads Slack-hosted files with the toke
   assert.equal(photo.external, undefined);
   assert.equal(photo.storage_path, "C1/1.1/F7-roof.jpg");
   assert.deepEqual(uploads, ["C1/1.1/F7-roof.jpg"]);
+});
+
+test("downloadAndStoreSlackFile leaves a file over maxBytes for the compression sweep without fetching it", async () => {
+  const big: SlackFile = { ...slackFile("F9", "game.mov"), mimetype: "video/quicktime", size: 300 * 1024 * 1024 };
+  const realFetch = globalThis.fetch;
+  let fetched = false;
+  globalThis.fetch = (async () => {
+    fetched = true;
+    throw new Error("should not fetch");
+  }) as typeof fetch;
+  try {
+    const result = await downloadAndStoreSlackFile({} as never, big, "C1", "1700000000.000100", "xoxb-test", { maxBytes: 50 * 1024 * 1024 });
+    assert.equal(fetched, false);
+    assert.equal(result.storage_path, null);
+    assert.match(result.error ?? "", /Too large to copy during a sync \(300 MB\)/);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("limitConcurrency never runs more than its limit at once, and runs them all", async () => {
+  const slot = limitConcurrency(2);
+  let active = 0;
+  let peak = 0;
+  const results = await Promise.all(
+    [1, 2, 3, 4, 5].map((n) =>
+      slot(async () => {
+        active += 1;
+        peak = Math.max(peak, active);
+        await new Promise((r) => setTimeout(r, 5));
+        active -= 1;
+        return n;
+      }),
+    ),
+  );
+  assert.equal(peak, 2);
+  assert.deepEqual(results, [1, 2, 3, 4, 5]);
 });
