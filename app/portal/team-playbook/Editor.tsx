@@ -8,6 +8,7 @@ import { type MoveKind, type PlayAbout, type PlayAction, type PlayDiagram, type 
 import { prepare, stepOverview } from "../../../lib/team-playbook/engine";
 import { CATEGORIES, type PlayEdit, type PlaybookTeam, type TeamPlay } from "../../../lib/team-playbook/types";
 import { Court, type Handle } from "./Court";
+import { CoachesField } from "./CoachesField";
 import styles from "./playbook.module.css";
 
 const KINDS: { value: PlayAction["type"]; label: string }[] = [
@@ -211,10 +212,7 @@ export function Editor({
             ))}
           </select>
         </label>
-        <label className={styles.field}>
-          Coach
-          <input id="tp-ed-coach" value={edit.coach_name} onChange={(e) => setEdit({ ...edit, coach_name: e.target.value })} />
-        </label>
+        <CoachesField idPrefix="tp-ed-coach" value={edit.coach_name} onChange={(coach_name) => setEdit((e) => ({ ...e, coach_name }))} />
         <label className={styles.field}>
           Link to the original
           <input id="tp-ed-link" value={edit.video_link} placeholder="https://…" onChange={(e) => setEdit({ ...edit, video_link: e.target.value })} />
