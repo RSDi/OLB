@@ -171,7 +171,9 @@ export async function rereadPlay(playId: string): Promise<Result<{ play: TeamPla
   if ("error" in gate) return { error: gate.error };
   const db = await createClient();
   const { data: row } = await db.from("team_plays").select("transcript").eq("id", playId).maybeSingle();
-  const haveWords = Array.isArray((row as { transcript?: unknown } | null)?.transcript);
+  // An empty transcript means the words never came through: try them again too.
+  const words = (row as { transcript?: unknown } | null)?.transcript;
+  const haveWords = Array.isArray(words) && words.length > 0;
   const patch = haveWords
     ? { status: "reading", error: null }
     : { status: "transcribing", error: null, assemblyai_id: null, transcript: null };
