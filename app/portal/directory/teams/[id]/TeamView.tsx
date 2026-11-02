@@ -82,6 +82,15 @@ export function TeamView({
         Directory
       </Link>
 
+      <Link
+        href={`/portal/team-playbook?team=${team.id}`}
+        prefetch={false}
+        style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "var(--gw-fg)" }}
+      >
+        <Icons.Clipboard width={14} height={14} />
+        Team Playbook
+      </Link>
+
       <section style={{ background: "var(--rsd-frame)", color: "var(--rsd-frame-fg)", borderRadius: 18, overflow: "hidden" }}>
         <div style={{ height: 8, background: hex }} />
         <div
