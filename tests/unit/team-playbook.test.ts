@@ -2,7 +2,7 @@
 // animation math (engine.ts) and the caption lines (transcript.ts).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { blankDiagram, hasVideoTiming, normalizeDiagram, type PlayDiagram } from "../../lib/team-playbook/diagram.ts";
+import { blankDiagram, hasVideoTiming, normalizeAbout, normalizeDiagram, type PlayDiagram } from "../../lib/team-playbook/diagram.ts";
 import { BALL_OFFSET, frameAt, prepare, stepOverview, timeToT, tToTime } from "../../lib/team-playbook/engine.ts";
 import { linesForPrompt, wordsToLines } from "../../lib/team-playbook/transcript.ts";
 
@@ -152,4 +152,15 @@ test("caption lines break at sentences, pauses and long runs", () => {
   assert.equal(linesForPrompt(lines.slice(0, 1)), "[0.0–0.8s] One passes in.");
   const many = Array.from({ length: 30 }, (_, i) => w("go", i * 100, i * 100 + 50));
   assert.equal(wordsToLines(many).length, 3);
+});
+
+test("coach's notes are kept, trimmed, and dropped when empty", () => {
+  const d = normalizeDiagram({
+    ...horns(),
+    about: { why: "  Get our shooter a look.  ", when: "", keys: ["Sell the cut", "", 7, ...Array(10).fill("Wait")] },
+  })!;
+  assert.deepEqual(d.about, { why: "Get our shooter a look.", when: "", keys: ["Sell the cut", "Wait", "Wait", "Wait", "Wait", "Wait"] });
+  assert.equal(normalizeDiagram({ ...horns(), about: { why: " ", when: "", keys: [] } })!.about, undefined);
+  assert.equal(normalizeAbout(null), null);
+  assert.equal("about" in normalizeDiagram(horns())!, false);
 });

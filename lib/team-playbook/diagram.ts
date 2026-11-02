@@ -35,11 +35,38 @@ export interface PlayPlayer extends Pt {
   id: string; // "1"–"5"
 }
 
+// The coach's notes: the reasons behind the play, from what the coach says
+// in the video (or typed in Fix this play). Kept with the drawing so a play
+// is one record.
+export interface PlayAbout {
+  why: string; // what the play is trying to get
+  when: string; // when we run it
+  keys: string[]; // what to remember: the coach's teaching points
+}
+
 export interface PlayDiagram {
   version: 1;
   players: PlayPlayer[];
   ball: string; // who starts with the ball (the inbounder on an inbounds play)
   steps: PlayStep[];
+  about?: PlayAbout;
+}
+
+export const MAX_KEYS = 6;
+
+// Null when there's nothing in it.
+export function normalizeAbout(raw: unknown): PlayAbout | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const about: PlayAbout = {
+    why: text(o.why, 600),
+    when: text(o.when, 600),
+    keys: (Array.isArray(o.keys) ? o.keys : [])
+      .map((k) => text(k, 200))
+      .filter(Boolean)
+      .slice(0, MAX_KEYS),
+  };
+  return about.why || about.when || about.keys.length ? about : null;
 }
 
 export const COURT = { minX: 0, maxX: 500, minY: -40, maxY: 470 } as const;
@@ -183,7 +210,10 @@ export function normalizeDiagram(raw: unknown): PlayDiagram | null {
   }
 
   const ballId = playerId(o.ball);
-  return { version: 1, players, ball: known.has(ballId) ? ballId : players[0].id, steps };
+  const out: PlayDiagram = { version: 1, players, ball: known.has(ballId) ? ballId : players[0].id, steps };
+  const about = normalizeAbout(o.about);
+  if (about) out.about = about;
+  return out;
 }
 
 // True when every step knows where it is in the coach's video, so playback
