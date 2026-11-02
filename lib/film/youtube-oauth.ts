@@ -104,6 +104,11 @@ export async function exchangeYoutubeCode(
   return { refreshToken: json.refresh_token, accessToken: json.access_token };
 }
 
+// Google answers invalid_grant when the saved login was revoked or expired.
+// An OAuth app still in Testing mode loses it 7 days after Connect.
+export const YOUTUBE_LOGIN_EXPIRED =
+  "The YouTube login expired. Disconnect YouTube and Connect YouTube again in Settings → Film.";
+
 export async function refreshYoutubeAccess(
   refreshToken: string,
   env: Record<string, string | undefined> = process.env
@@ -125,6 +130,7 @@ export async function refreshYoutubeAccess(
     error_description?: string;
   };
   if (!res.ok || !json.access_token) {
+    if (json.error === "invalid_grant") throw new Error(YOUTUBE_LOGIN_EXPIRED);
     throw new Error(json.error_description || json.error || "Couldn't refresh the YouTube token.");
   }
   return json.access_token;

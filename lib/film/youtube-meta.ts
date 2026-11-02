@@ -21,6 +21,9 @@ export type YoutubeConnection = {
   connectedAt: string | null;
   privacyStatus: YoutubePrivacy;
   madeForKids: boolean;
+  /** Why the upload job last failed to sign in to YouTube; null when it's fine. */
+  authError: string | null;
+  authErrorAt: string | null;
 };
 
 export function formatFilmMdy(iso: string | null | undefined): string | null {

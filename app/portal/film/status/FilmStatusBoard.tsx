@@ -10,6 +10,7 @@ import type { FilmUpload, YoutubeEvent, YoutubeJob } from "../../../../lib/film/
 import { youtubeDisplayStatus, type YoutubeDisplayStatus } from "../../../../lib/film/youtube-progress";
 import { YoutubeTransfer } from "../YoutubeTransfer";
 import styles from "../inbox.module.css";
+import { YoutubeAuthBanner } from "../YoutubeAuthBanner";
 
 type BoardFilter = "attention" | "uploading" | "stalled" | "failed" | "done" | "all";
 
@@ -43,6 +44,7 @@ export function FilmStatusBoard({
   labels,
   canManage,
   loadError,
+  youtubeAuthError,
 }: {
   uploads: FilmUpload[];
   jobs: Record<string, YoutubeJob>;
@@ -50,6 +52,7 @@ export function FilmStatusBoard({
   labels: Record<string, string>;
   canManage: boolean;
   loadError: string | null;
+  youtubeAuthError: string | null;
 }) {
   const router = useRouter();
   const [filter, setFilter] = useState<BoardFilter>("attention");
@@ -148,6 +151,7 @@ export function FilmStatusBoard({
       {(loadError || error) && (
         <p style={{ margin: 0, color: "var(--gw-error)", fontWeight: 600, fontSize: 13 }}>{loadError || error}</p>
       )}
+      <YoutubeAuthBanner message={youtubeAuthError} canManage={canManage} />
 
       {shown.length === 0 ? (
         <EmptyState

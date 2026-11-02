@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getViewer } from "../../../../lib/auth/viewer";
 import { listEnabledFilmTeams } from "../../../../lib/film/teams";
+import { getYoutubeConnection } from "../../../../lib/film/youtube-settings";
 import { listFilmUploads, loadFilmYoutubeExtras } from "../../../../lib/film/uploads";
 import type { FilmUpload, YoutubeEvent, YoutubeJob } from "../../../../lib/film/types";
 import { FilmStatusBoard } from "./FilmStatusBoard";
@@ -44,6 +45,13 @@ export default async function FilmStatusPage() {
     /* labels stay empty; slugs still show */
   }
 
+  let youtubeAuthError: string | null = null;
+  try {
+    youtubeAuthError = (await getYoutubeConnection()).authError;
+  } catch {
+    /* no banner if the connection row can't be read */
+  }
+
   return (
     <FilmStatusBoard
       uploads={uploads}
@@ -52,6 +60,7 @@ export default async function FilmStatusPage() {
       labels={labels}
       canManage={viewer.canManageFilm}
       loadError={loadError}
+      youtubeAuthError={youtubeAuthError}
     />
   );
 }
