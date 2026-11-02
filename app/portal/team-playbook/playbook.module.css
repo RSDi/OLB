@@ -497,3 +497,7 @@
 .notes p { margin: 2px 0 0; }
 .notes ul { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
 .notesLabel { font-size: 12px; font-weight: 700; color: var(--gw-fg-muted); }
+
+/* Reader test: two drawings side by side */
+.trialGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.trialCol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }

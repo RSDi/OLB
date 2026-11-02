@@ -22,6 +22,7 @@ import { PROCESSING, type PlayEdit, type PlaybookTeam, type TeamPlay } from "../
 import { Court } from "./Court";
 import { Editor } from "./Editor";
 import { Uploader } from "./Uploader";
+import { ReaderTrial } from "./ReaderTrial";
 import { usePlayback } from "./usePlayback";
 import { takeStills } from "./stills";
 import { createClient } from "../../../lib/supabase/client";
@@ -115,6 +116,8 @@ export function TeamPlaybook({
   // them than older plays were read from), then the server reads it. If the
   // browser can't take stills, the play is read from the ones it has.
   const [rereading, setRereading] = useState<string | null>(null);
+  // The reader test is open on this play.
+  const [trialFor, setTrialFor] = useState<string | null>(null);
   const reread = async (p: TeamPlay) => {
     setBusy(true);
     setError(null);
@@ -495,8 +498,34 @@ export function TeamPlaybook({
                         {rereading ?? "Read the video again"}
                       </button>
                     )}
+                    {play.video_url && play.diagram && !trialFor && (
+                      <button type="button" className={styles.btn} disabled={busy} onClick={() => setTrialFor(play.id)}>
+                        Compare: a reader that watches the video (test)
+                      </button>
+                    )}
                   </div>
                 </div>
+              )}
+              {canEdit && play.status === "draft" && trialFor === play.id && (
+                <ReaderTrial
+                  play={play}
+                  saving={busy}
+                  onClose={() => setTrialFor(null)}
+                  onUse={async (d) => {
+                    const ok = await run(() =>
+                      savePlay(play.id, {
+                        name: play.name,
+                        call_name: play.call_name,
+                        category: play.category,
+                        team_ids: play.team_ids,
+                        coach_name: play.coach_name,
+                        video_link: play.video_link,
+                        diagram: d,
+                      }),
+                    );
+                    if (ok) setTrialFor(null);
+                  }}
+                />
               )}
               {canEdit && play.status === "shared" && (
                 <div className={styles.row}>
