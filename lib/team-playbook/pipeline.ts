@@ -9,7 +9,7 @@
 // Each move to the next status is a conditional update, so two callers never
 // read the same video twice.
 
-import { generateObject } from "ai";
+import { generateObject, generateText, type ImagePart, type TextPart } from "ai";
 import { z } from "zod";
 import { createAdminClient } from "../supabase/admin";
 import { COURT_SPOTS, MAX_KEYS, normalizeAbout, normalizeDiagram, type PlayDiagram } from "./diagram.ts";
@@ -17,6 +17,14 @@ import { linesForPrompt, wordsToLines, type AaiWord } from "./transcript.ts";
 import { CATEGORIES, PLAYBOOK_BUCKET, type PlayStatus, type TranscriptLine } from "./types.ts";
 
 const MODEL = "anthropic/claude-sonnet-5.5";
+// Reading a hand-drawn play is the hard part: the strongest model does it,
+// falling back to MODEL if it's unavailable.
+const READ_MODEL = "anthropic/claude-opus-5.5";
+// How many stills the reader looks at (the browser takes FRAME_COUNT).
+const MAX_STILLS = 24;
+// Stills shown again with the inventory when the play is drawn: the end of
+// the video, when the board has everything on it.
+const FINAL_STILLS = 4;
 export const WEBHOOK_SECRET_HEADER = "x-olb-webhook-secret";
 
 // A read that hasn't finished in this long died with its function; try again.
@@ -192,7 +200,7 @@ function prompt(row: PlayRow, frames: { sec: number }[]): string {
   const transcript = row.transcript?.length ? linesForPrompt(row.transcript) : "(No words: the video has no talking, or it couldn't be written down.)";
   return `You are helping a youth basketball club turn a coach's video of a play into an animated diagram for its players.
 
-The images are stills from the video, in order, at these times: ${frames.map((f) => `${f.sec.toFixed(1)}s`).join(", ")}. The video is usually a coach drawing on a whiteboard or clipboard while talking, sometimes players walking through it on a court.
+You have an inventory of what is drawn on the board, written from stills of the video (at ${frames.map((f) => `${f.sec.toFixed(1)}s`).join(", ")}), and the last few stills themselves. The video is usually a coach drawing on a whiteboard or clipboard while talking, sometimes players walking through it on a court. Draw the play from the inventory and the coach's words together: the words say the order and the intent, the drawing says where.
 
 Draw the play on this half court. Units are tenths of a foot. x runs 0 (left sideline) to 500 (right sideline) as you face the basket from half court. y runs 0 (the baseline under the basket) to 470 (half court); out of bounds under the basket is y -40 to 0. Landmarks:
 ${spots}
@@ -214,26 +222,78 @@ What the coach says, with times:
 ${transcript}`;
 }
 
+// What the coach says around second `sec`, for the still taken then.
+function wordsNear(lines: TranscriptLine[] | null, sec: number): string {
+  const near = (lines ?? []).filter((l) => l.end >= sec - 5 && l.start <= sec + 5).map((l) => l.text);
+  return near.length ? near.join(" ") : "";
+}
+
+async function withReadModel<T>(run: (model: string) => Promise<T>): Promise<T> {
+  try {
+    return await run(READ_MODEL);
+  } catch (err) {
+    console.warn("team-playbook: read model failed, trying the fallback", err);
+    return run(MODEL);
+  }
+}
+
+const INVENTORY_PROMPT = `These are stills from a youth basketball coach's video of a play, in order, each labelled with its time and what the coach is saying then. Before anyone draws the play, write down exactly what is on the board. Don't interpret the play yet.
+
+1. Which way the court is drawn (where the basket is) and what part of the court shows. Describe everything below as if the court were turned so the basket is at the top.
+2. Every player mark (X, O, numbers, letters): what it is and where it starts, in court terms (block, elbow, wing, corner, top of the key, slot, out of bounds under the basket), left or right.
+3. Every line the coach draws, in the order they appear across the stills: what kind (solid line with an arrow = cut, dashed line = pass, zigzag = dribble, line ending in a short bar = screen), which mark it starts at, where it ends, and the first still it shows up in.
+4. Anything written on the board (the play's name, numbers, notes).
+5. What you can't make out, and why.
+
+Be exact and plain. Don't add anything that isn't drawn.`;
+
 export async function readPlay(id: string): Promise<void> {
   const admin = createAdminClient();
   const { data } = await admin.from("team_plays").select(ROW_COLS).eq("id", id).maybeSingle();
   const row = data as PlayRow | null;
   if (!row || row.status !== "reading") return;
   try {
-    const frames = (row.frame_paths ?? []).slice(0, 12);
-    const images: { type: "image"; image: Uint8Array; mediaType: string }[] = [];
+    const frames = (row.frame_paths ?? []).slice(0, MAX_STILLS);
+    const stills: { sec: number; image: ImagePart }[] = [];
     for (const f of frames) {
       const { data: blob } = await admin.storage.from(PLAYBOOK_BUCKET).download(f.path);
-      if (blob) images.push({ type: "image", image: new Uint8Array(await blob.arrayBuffer()), mediaType: "image/jpeg" });
+      if (blob) stills.push({ sec: f.sec, image: { type: "image", image: new Uint8Array(await blob.arrayBuffer()), mediaType: "image/jpeg" } });
     }
-    if (!images.length && !row.transcript?.length) {
+    if (!stills.length && !row.transcript?.length) {
       throw new Error("There were no stills or words to read the play from.");
     }
-    const { object } = await generateObject({
-      model: MODEL,
-      schema: ReadSchema,
-      messages: [{ role: "user", content: [...images, { type: "text", text: prompt(row, frames) }] }],
-    });
+
+    // Pass 1: what's on the board, still by still, each beside what the
+    // coach is saying at that moment.
+    let inventory = "(There are no stills from this video.)";
+    if (stills.length) {
+      const content: (TextPart | ImagePart)[] = [];
+      stills.forEach((st, i) => {
+        const words = wordsNear(row.transcript, st.sec);
+        content.push({ type: "text", text: `Still ${i + 1} of ${stills.length}, at ${st.sec.toFixed(1)}s.${words ? ` The coach, around then: "${words}"` : ""}` });
+        content.push(st.image);
+      });
+      content.push({ type: "text", text: INVENTORY_PROMPT });
+      inventory = (await withReadModel((model) => generateText({ model, messages: [{ role: "user", content }] }))).text;
+    }
+
+    // Pass 2: the play, from the inventory, the words and the finished board.
+    const finalStills = stills.slice(-FINAL_STILLS).map((st) => st.image);
+    const { object } = await withReadModel((model) =>
+      generateObject({
+        model,
+        schema: ReadSchema,
+        messages: [
+          {
+            role: "user",
+            content: [
+              ...finalStills,
+              { type: "text", text: `${prompt(row, frames)}\n\nWhat's on the board (the inventory):\n${inventory}` },
+            ],
+          },
+        ],
+      }),
+    );
     const diagram = normalizeDiagram({
       ...object,
       steps: object.steps.map((s) => ({
@@ -302,3 +362,4 @@ ${linesForPrompt(row.transcript)}`,
     return { error: `Couldn't write the notes: ${err instanceof Error ? err.message : err}` };
   }
 }
+
