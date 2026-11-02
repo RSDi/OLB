@@ -11,6 +11,9 @@ import { TUS_CHUNK_SIZE } from "../../../lib/film/types";
 import { finishVideoUpload, startVideoUpload } from "../../../lib/team-playbook/actions";
 import { MAX_VIDEO_BYTES, PLAYBOOK_BUCKET, type PlaybookTeam, type TeamPlay } from "../../../lib/team-playbook/types";
 import { takeStills } from "./stills";
+import { CoachesField } from "./CoachesField";
+
+const LAST_COACHES_KEY = "olb-playbook-coaches";
 import styles from "./playbook.module.css";
 
 function sendVideo(file: File, s: { endpoint: string; token: string; uploadUrl: string }, onProgress: (f: number) => void) {
@@ -45,7 +48,15 @@ export function Uploader({
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [call, setCall] = useState("");
-  const [coach, setCoach] = useState(defaultCoach);
+  // The coaches from the last upload on this device (Cory and Mike add plays
+  // together), else the person uploading.
+  const [coach, setCoach] = useState(() => {
+    try {
+      return window.localStorage.getItem(LAST_COACHES_KEY) || defaultCoach;
+    } catch {
+      return defaultCoach;
+    }
+  });
   const [link, setLink] = useState("");
   const [teamIds, setTeamIds] = useState<string[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
@@ -104,6 +115,9 @@ export function Uploader({
         frames,
       });
       if (res.error !== undefined) throw new Error(res.error);
+      try {
+        if (coach.trim()) window.localStorage.setItem(LAST_COACHES_KEY, coach);
+      } catch {}
       onDone(res.play);
     } catch (err) {
       setError(err instanceof Error ? err.message : "The upload didn't finish. Try again.");
@@ -157,10 +171,7 @@ export function Uploader({
           Play call
           <input id="tp-up-call" value={call} onChange={(e) => setCall(e.target.value)} placeholder="e.g. Horns" disabled={busy} />
         </label>
-        <label className={styles.field}>
-          Coach
-          <input id="tp-up-coach" value={coach} onChange={(e) => setCoach(e.target.value)} disabled={busy} />
-        </label>
+        <CoachesField idPrefix="tp-up-coach" value={coach} onChange={setCoach} disabled={busy} />
         <label className={styles.field}>
           Link to the original (optional)
           <input id="tp-up-link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="e.g. the Slack post" disabled={busy} />

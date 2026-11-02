@@ -501,3 +501,9 @@
 /* Reader test: two drawings side by side */
 .trialGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .trialCol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+/* Coaches field: one name per box */
+.coachRow { display: flex; gap: 4px; align-items: center; }
+.coachRow input { flex: 1; min-width: 0; }
+.coachRow .iconBtn { margin-left: 0; }
+.linkBtn { align-self: flex-start; border: 0; background: transparent; color: var(--gw-fg); font: 600 13px var(--gw-font); padding: 2px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }

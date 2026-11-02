@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { blankDiagram, hasVideoTiming, normalizeAbout, normalizeDiagram, type PlayDiagram } from "../../lib/team-playbook/diagram.ts";
 import { BALL_OFFSET, frameAt, prepare, stepOverview, timeToT, tToTime } from "../../lib/team-playbook/engine.ts";
 import { linesForPrompt, wordsToLines } from "../../lib/team-playbook/transcript.ts";
+import { joinCoaches, splitCoaches } from "../../lib/team-playbook/coaches.ts";
 
 const horns = (): PlayDiagram => ({
   version: 1,
@@ -163,4 +164,15 @@ test("coach's notes are kept, trimmed, and dropped when empty", () => {
   assert.equal(normalizeDiagram({ ...horns(), about: { why: " ", when: "", keys: [] } })!.about, undefined);
   assert.equal(normalizeAbout(null), null);
   assert.equal("about" in normalizeDiagram(horns())!, false);
+});
+
+test("a play can be from more than one coach", () => {
+  assert.equal(joinCoaches(["Cory Eikmeier", " Mike  Jones ", ""]), "Cory Eikmeier and Mike Jones");
+  assert.equal(joinCoaches(["A", "B", "C"]), "A, B and C");
+  assert.equal(joinCoaches(["Cory"]), "Cory");
+  assert.equal(joinCoaches([]), "");
+  assert.deepEqual(splitCoaches("Cory Eikmeier and Mike Jones"), ["Cory Eikmeier", "Mike Jones"]);
+  assert.deepEqual(splitCoaches("A, B & C"), ["A", "B", "C"]);
+  assert.deepEqual(splitCoaches(""), []);
+  assert.equal(joinCoaches(splitCoaches("A, B and C")), "A, B and C");
 });
