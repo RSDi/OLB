@@ -1,6 +1,6 @@
 // Hashed keys for /api/agent/*. Plaintext is shown once when a super-admin
 // creates a key in Settings → Agent keys; only the hash is stored. Scopes
-// (0149) pick read vs email_archive:write. Same v1.<salt>.<digest> shape as
+// (0149, 0163) pick read, email_archive:write, contacts:read. Same v1.<salt>.<digest> shape as
 // family film codes.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
@@ -59,6 +59,27 @@ export function agentAuthorized(authorization: string | null, hashes: string[]):
     if (agentKeyMatches(stored, got)) ok = true;
   }
   return ok;
+}
+
+// Which answer a request gets: no matching key → unauthorized (401); a real
+// key that lacks the permission → forbidden (403).
+export function agentKeyAccess(
+  authorization: string | null,
+  keys: { hash: string; scopes: string[] }[],
+  need: string,
+): "ok" | "unauthorized" | "forbidden" {
+  const got = bearerToken(authorization);
+  if (!got || keys.length === 0) return "unauthorized";
+  let matched = false;
+  let allowed = false;
+  for (const k of keys) {
+    if (agentKeyMatches(k.hash, got)) {
+      matched = true;
+      if (Array.isArray(k.scopes) && k.scopes.includes(need)) allowed = true;
+    }
+  }
+  if (!matched) return "unauthorized";
+  return allowed ? "ok" : "forbidden";
 }
 
 export type PublicAgentKey = {

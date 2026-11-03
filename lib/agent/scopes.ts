@@ -1,12 +1,14 @@
-// Scopes on olb_agent_keys (0149). Keys from 0146 have no column yet; the
-// store treats a missing column as `{read}` so film GET still works.
+// Scopes on olb_agent_keys (0149; contacts:read 0163). Keys from 0146 have no
+// column yet; the store treats a missing column as `{read}` so film GET still
+// works.
 
-export const AGENT_SCOPES = ["read", "email_archive:write"] as const;
+export const AGENT_SCOPES = ["read", "email_archive:write", "contacts:read"] as const;
 export type AgentScope = (typeof AGENT_SCOPES)[number];
 
 export const AGENT_SCOPE_LABELS: Record<AgentScope, string> = {
   read: "Read game film",
   "email_archive:write": "Import email archive",
+  "contacts:read": "Read External Contacts",
 };
 
 export function isAgentScope(value: string): value is AgentScope {

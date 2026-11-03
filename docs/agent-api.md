@@ -1,14 +1,17 @@
 # Agent API
 
-Club agents can list game film and import emails into Archives without
+Club agents can list game film, import emails into Archives, and look up
+External Contacts without
 signing in as a person. There is no env-var token. Super-admins mint hashed
 keys in **Settings → Agent keys**, and pick permissions:
 
 - **Read game film** (`read`) — `GET /api/agent/film` and `GET /api/agent/film/health`
 - **Import email archive** (`email_archive:write`) — `POST /api/agent/email-archive`
+- **Read External Contacts** (`contacts:read`) — `GET /api/agent/contacts`
 
 A film-only key cannot import mail. Keys minted before migration 0149 behave
-as `{read}`.
+as `{read}`. Read External Contacts needs `0163_agent_contacts_read.sql`
+(after 0149).
 
 **Depends on** hashed keys (`0146_agent_keys.sql`, #208). Apply
 `0149_email_archive.sql` after 0148. 0150 (hosted tournaments, #175) is
@@ -30,7 +33,8 @@ Send it as a Bearer token:
 Authorization: Bearer olb_ag_…
 ```
 
-Wrong, missing, revoked, or missing the scope → `401 { "error": "unauthorized" }`.
+Wrong, missing, or revoked key → `401 { "error": "unauthorized" }`.
+A real key without the route's permission → `403 { "error": "forbidden" }`.
 Film routes are GET only (POST is `405`). Email archive is POST only.
 
 ## GET /api/agent/film
@@ -155,7 +159,7 @@ id, whether migration 0145 is on the live schema, and counts:
 ## POST /api/agent/email-archive
 
 Copy a Gmail thread into **Archives → Email**. Needs `email_archive:write`.
-A `{read}`-only key returns 401. Apply `0149_email_archive.sql` first.
+A key without it returns 403. Apply `0149_email_archive.sql` first.
 
 JSON body:
 
@@ -204,3 +208,81 @@ storage paths:
   "warnings": []
 }
 ```
+
+## GET /api/agent/contacts
+
+Look up **External Contacts** by email, for example to match invoice bill-to
+addresses to a program. Needs `contacts:read` (**Read External Contacts**).
+Apply `0163_agent_contacts_read.sql` first. GET only (POST is `405`).
+
+Query (send `email`, `q`, or both):
+
+- `email` — exact, case-insensitive match on a contact's email **or** other
+  email (`alt_email`). Repeat it or comma-separate it; up to 50 per call.
+  People under a program match on their own email and come back with the
+  program as `parent`, the same addresses hosted-tournament invoices use.
+- `q` — name, nickname, title, or alias contains (2+ characters). `limit`
+  caps q hits (default 25, max 100). Email hits are never capped.
+- `kind` — `person` or `company`
+- `parent_id` — a program's contact id: only people under it
+
+Deleted contacts never match. `missing` lists the requested emails (lower
+cased) that matched nothing. `matchedOn` is `email`, `alt_email`, or `q`.
+
+Responses never include phones, addresses, tax ids, account numbers,
+customer ids, notes, or key hashes.
+
+### Before (no route)
+
+```
+GET /api/agent/contacts?email=gfrecks@burnsmcd.com
+→ 404
+```
+
+### After (test data)
+
+```
+GET /api/agent/contacts?email=gfrecks@burnsmcd.com,amesvisionbb@gmail.com&email=adam.lenzen@pinnbank.com
+Authorization: Bearer olb_ag_…
+```
+
+```json
+{
+  "contacts": [
+    {
+      "id": "1111…",
+      "kind": "person",
+      "name": "Garrett Frecks",
+      "nickname": null,
+      "title": null,
+      "email": "gfrecks@burnsmcd.com",
+      "altEmail": null,
+      "matchedOn": "email",
+      "parent": { "id": "aaaa…", "name": "KC East Basketball" },
+      "category": { "id": "cccc…", "name": "Programs" },
+      "city": null,
+      "state": null,
+      "aliases": []
+    },
+    {
+      "id": "bbbb…",
+      "kind": "company",
+      "name": "Vision Basketball",
+      "nickname": null,
+      "title": null,
+      "email": "info@vision.example",
+      "altEmail": "amesvisionbb@gmail.com",
+      "matchedOn": "alt_email",
+      "parent": null,
+      "category": { "id": "cccc…", "name": "Programs" },
+      "city": "Ames",
+      "state": "IA",
+      "aliases": []
+    }
+  ],
+  "missing": ["adam.lenzen@pinnbank.com"]
+}
+```
+
+A key with only **Read game film** gets `403 { "error": "forbidden" }`.
+

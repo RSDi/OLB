@@ -109,8 +109,8 @@ export async function insertAgentKey(input: {
     .select("id, name, key_prefix, created_at, scopes")
     .single();
   if (insertWithScopes.error && columnMissing(insertWithScopes.error.message, "scopes")) {
-    if (input.scopes.includes("email_archive:write")) {
-      return { error: "Run migration 0149 (email archive) in the Supabase SQL editor first — that's what adds write scopes." };
+    if (input.scopes.some((s) => s !== "read")) {
+      return { error: "Run migration 0149 (email archive) in the Supabase SQL editor first — that's what adds permissions beyond film." };
     }
     const { data, error } = await admin
       .from("olb_agent_keys")
@@ -129,6 +129,9 @@ export async function insertAgentKey(input: {
       return { error: error?.message ?? "Couldn't create the key." };
     }
     return { key, item: publicAgentKey(data) };
+  }
+  if (insertWithScopes.error?.message.includes("olb_agent_keys_scopes_valid")) {
+    return { error: "Run migration 0163 (agent contacts) in the Supabase SQL editor first — that's what adds Read External Contacts." };
   }
   if (insertWithScopes.error || !insertWithScopes.data) {
     if (insertWithScopes.error && relationMissing(insertWithScopes.error.message, "olb_agent_keys")) {
