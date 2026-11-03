@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "November 2, 2026";
+export const GUIDE_UPDATED = "November 3, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -1584,13 +1584,14 @@ You can keep importing lists from different hotels the same way; each run attach
     audience: "super_admin",
     // No routes: Settings' default "i" stays Members; the Agent keys tab sets
     // this section via TAB_HELP (same pattern as Teams, Requirements, …).
-    keywords: ["agent", "api key", "bearer", "film", "youtube", "read-only", "hash", "email", "archive", "write"],
-    body: `Give a club agent a key so it can list game film or copy emails into Archives, without signing in as a person. Open **Settings → Agent keys**. Super-admins only.
+    keywords: ["agent", "api key", "bearer", "film", "youtube", "read-only", "hash", "email", "archive", "write", "contacts", "external contacts"],
+    body: `Give a club agent a key so it can list game film, copy emails into Archives, or look up External Contacts by email, without signing in as a person. Open **Settings → Agent keys**. Super-admins only.
 
 - **Name** — a label only you see, like **Film reader**.
-- **Permissions** — tick **Read game film** and/or **Import email archive**. A film-only key cannot import mail.
+- **Permissions** — tick **Read game film**, **Import email archive**, and/or **Read External Contacts**. A key can only do what's ticked: a film-only key cannot import mail or read contacts.
 - **Create key** makes a long key starting with **olb_ag_**. We show it once: **Copy key** now. We store a hash, so there is no reveal later. **Revoke** if it leaks; anything using it stops.
-- The agent sends **Authorization: Bearer** and that key to **GET /api/agent/film**, **GET /api/agent/film/health**, and (with import permission) **POST /api/agent/email-archive**.
+- The agent sends **Authorization: Bearer** and that key to **GET /api/agent/film**, **GET /api/agent/film/health**, and (with import permission) **POST /api/agent/email-archive**, and (with contacts permission) **GET /api/agent/contacts**.
+- Contact lookups return names, emails, program, category, city and state only: never phones, addresses, tax ids, account numbers or notes.
 - Responses never include team upload codes, YouTube tokens, or storage paths.`,
   },
   {

@@ -1,10 +1,11 @@
-// Shared 401 / service-role gates for /api/agent/*. NextResponse lives here
+// Shared 401 / 403 / service-role gates for /api/agent/*. A wrong or revoked
+// key is 401; a real key without the route's permission is 403. NextResponse lives here
 // so the hash check in ./keys.ts stays testable.
 
 import { NextResponse } from "next/server";
-import { agentAuthorized } from "./keys.ts";
+import { agentKeyAccess } from "./keys.ts";
 import { listActiveAgentKeys } from "./keys-store.ts";
-import { keyHasScope, type AgentScope } from "./scopes.ts";
+import type { AgentScope } from "./scopes.ts";
 
 export async function agentDeny(
   request: Request,
@@ -22,10 +23,9 @@ export async function agentDeny(
     if ("missingTable" in loaded) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
-    const hashes = loaded.filter((k) => keyHasScope(k.scopes, need)).map((k) => k.hash);
-    if (!agentAuthorized(request.headers.get("authorization"), hashes)) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
+    const access = agentKeyAccess(request.headers.get("authorization"), loaded, need);
+    if (access === "unauthorized") return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    if (access === "forbidden") return NextResponse.json({ error: "forbidden" }, { status: 403 });
   } catch (err) {
     console.error("[agent] key lookup", err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "Couldn't check the agent key." }, { status: 500 });

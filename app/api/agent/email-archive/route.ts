@@ -1,5 +1,5 @@
 // Import a Gmail thread into Archives → Email. Requires an agent key with
-// the `email_archive:write` scope (0149). Read-only keys (0146) get 401.
+// the `email_archive:write` scope (0149). Keys without it get 403.
 
 import { NextResponse } from "next/server";
 import { agentDeny } from "../../../../lib/agent/auth-http";
