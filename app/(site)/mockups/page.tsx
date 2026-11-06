@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Block, Section } from "../_components/Section";
 import { Text } from "../_components/Text";
+import styles from "./mockups.module.css";
 
 export const metadata: Metadata = { title: "Mock-ups" };
 
@@ -11,6 +13,12 @@ export default function MockupsIndexPage() {
         <Text>
           <h2>Mock-ups</h2>
           <p>Click-throughs for reviewing ideas. Nothing here is live, and nothing is saved.</p>
+          <ul className={styles.list}>
+            <li>
+              <Link href="/mockups/court-sponsors">Court sponsors</Link>
+              {" — "}the Sponsors page with the Missouri River Shootout court sponsorship offer and a sign-up form.
+            </li>
+          </ul>
         </Text>
       </Block>
     </Section>

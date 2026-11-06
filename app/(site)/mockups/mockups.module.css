@@ -143,3 +143,33 @@
   text-transform: uppercase;
   opacity: 0.6;
 }
+
+/* Court sponsors mock-up. */
+.anchor {
+  scroll-margin-top: calc(var(--header-height) + 44px);
+}
+
+.price {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 24px 0;
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.price span {
+  font-size: var(--fs-normal);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.benefits {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.benefits li {
+  margin: 0 0 8px;
+}
