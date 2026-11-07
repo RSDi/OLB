@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "November 3, 2026";
+export const GUIDE_UPDATED = "November 7, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -263,13 +263,13 @@ The tabs across the top are **Calendar**, **Year**, **Review** and **Template**.
     group: "Directory",
     audience: "everyone",
     routes: ["/portal/directory"],
-    keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "profile", "family", "search", "coaches & volunteers", "volunteers", "open spot", "scorekeeper", "clock", "photographer", "eligible", "ages out", "swing up", "play up", "birthday", "season end"],
+    keywords: ["players", "parents", "roster", "team", "age group", "10U", "12U", "14U", "16U", "18U", "phone", "email", "address", "contact info", "jersey", "grade", "position", "height", "profile", "family", "search", "coaches & volunteers", "volunteers", "open spot", "scorekeeper", "clock", "photographer", "eligible", "ages out", "swing up", "play up", "birthday", "season end"],
     body: `This season's players and their parents, grouped by team.
 
 - **Search** by player, parent, email or phone number (type 3 or more digits to match a phone).
 - Pick a team from the **All teams** drop-down to show just that team. You'll see the team's division, practice times and location, and who's coaching and helping out. **All teams** shows everyone; **No team yet** shows players who haven't been placed. The number next to each team is how many players are on it.
 - Coaches, other team leaders and board members can switch between **By team** and **By age group** (10U–18U), then pick one from the **All ages** drop-down.
-- Each player shows their jersey number, team, address, and their parents' phone and email. A player's own email shows too, unless it's the same as a parent's. A **New** chip means it's their first season with us.
+- Each player shows their jersey number, team, grade, position, height, address, and their parents' phone and email. Grade, position and height show only here in the portal, never on the public Directory link. A player's own email shows too, unless it's the same as a parent's. A **New** chip means it's their first season with us.
 - **For the board.** Each player also shows their age and birthday, the lowest level they're eligible for through the **Season end date**, and an **Ages out** chip when they're rostered on a level they age out of (for example **Ages out 10/25/26**). Pick a team from **Available to swing up** to list younger players who can play up to that team, and older players still age-eligible to move down, with age at season end and current team. Tick **Hide if their team plays the same weekend** to drop anyone whose own team already has a game that weekend on the HS Schedule. Age caps live in **Settings → Season**.
 - Tap an address and pick **Apple Maps** or **Google Maps** to get directions.
 - Tap a player's name to open their player page, a parent's name to open their profile, and **Team page ›** to open a team's full page.
@@ -293,7 +293,7 @@ Under **By team**, each team's coaches are listed above the players, with their 
 
 - **The header** shows the team's division, name, practice times and location, how many players it has, and how many volunteer spots are filled.
 - **Staff & volunteers** lists every job the team needs — coach, team parent, scorekeeper and so on — with the person doing it and their phone and email, or **Open spot** if nobody's signed up yet. **Leadership** marks the roles that lead the team.
-- **Roster** lists the players in jersey-number order, with their parents.
+- **Roster** lists the players in jersey-number order, with their grade, position, height and parents.
 
 Want to fill an open spot? Let the club know and the board will add you.`,
   },
@@ -306,7 +306,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     keywords: ["player", "player page", "kid", "child", "son", "siblings", "brother", "sister", "parents", "mom", "dad", "balance", "payments", "fees", "eligible", "ages out", "birthday"],
     body: `Everything about one player in one place. Open it by tapping a player's name in the Directory, on a team page, on a parent's profile, or on the Finances page.
 
-- **The top** shows their jersey number, team (tap it to open the team page), address, and the player's own phone and email (their email is left off when it's the same as a parent's, since it shows with that parent). A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**. The board also sees their age and birthday, the lowest level they're eligible for through the season end date, and **Ages out** when they're rostered on a level they age out of.
+- **The top** shows their jersey number, team (tap it to open the team page), grade, position, height, address, and the player's own phone and email (their email is left off when it's the same as a parent's, since it shows with that parent). A **New** chip means it's their first season with us. Tap the address to open it in **Apple Maps** or **Google Maps**. The board also sees their age and birthday, the lowest level they're eligible for through the season end date, and **Ages out** when they're rostered on a level they age out of.
 - **Parents** lists each parent with their phone and email. Tap a parent's name to open their profile. **Siblings** links to their brothers' and sisters' pages.
 - **Payments** shows what the family owes and has paid, with each charge and payment. You see it for your own kids once the Treasurer has opened balances to families, and the Treasurer sees it for everyone.
 
@@ -322,7 +322,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
     group: "Directory",
     audience: "registrations",
     routes: ["/portal/directory/registrations"],
-    keywords: ["registration", "registrations", "register", "sign up", "approve", "waitlist", "wait list", "not this season", "contacted", "message", "email families", "recipients", "dad", "mom", "player email", "spreadsheet", "csv", "new player", "team", "place", "put on a team", "no team yet", "roster", "edit player", "remove player", "take off the roster", "remove from team", "withdrawn", "removed", "new", "jersey", "age group", "birthday", "registration form", "cognito", "code", "email confirmed", "wizard", "commitments", "football", "debate", "attendance"],
+    keywords: ["registration", "registrations", "register", "sign up", "approve", "waitlist", "wait list", "not this season", "contacted", "message", "email families", "recipients", "dad", "mom", "player email", "spreadsheet", "csv", "new player", "team", "place", "put on a team", "no team yet", "roster", "edit player", "remove player", "take off the roster", "remove from team", "withdrawn", "removed", "new", "jersey", "age group", "grade", "position", "height", "birthday", "registration form", "cognito", "code", "email confirmed", "wizard", "commitments", "football", "debate", "attendance"],
     body: `You see this if you have the **Registrations** permission (a super-admin turns it on in Settings → Members).
 
 **New registrations.** The **Registrations** button at the top of the Directory opens registrations from the form any time, with how many are new and on the waitlist. When some are new, a yellow bar also says how many; tap **Review registrations** to see them. The page has four tabs: **New** (to review, oldest first), **Waitlist**, **Approved** and **Removed**. Each registration — from the player form or an assessment — shows the player, then the registering parent or guardian right under that line: their name, email (tap to mail) and phone (tap to call), plus a second parent when the form collected one. Dates on the card (and everywhere else on the site) are Omaha time (Central), not UTC. The card also shows the fee for their age group, how the family said they'd pay, the waiver, the homeschool answer, whether they need a uniform, and what each parent can help with. After the homeschool question, the form asks if the player has other commitments this season (football, debate, another sport or activity). **Yes** shows a **Commitments** chip on the list and on the card. The card (the player's registration detail) shows **Yes** and the optional note they wrote about conflicting days and times, or **No details given.** if they left it blank. **No** shows **None** on the card and does not show a flag on the list. After **Approve**, tap the player's name to open their page: the same **Yes** plus note, or **None**, is at the top. Only people with the **Registrations** permission see the list, the card, or the answer on the player page.
@@ -347,7 +347,7 @@ Want to fill an open spot? Let the club know and the board will add you.`,
 
 **Putting players on teams.** In the Directory, every player has a team chip showing their team (or **No team yet**). Tap it and pick a team, and the player moves there right away. Pick **No team yet** to take them off their team. Pick **No team yet** from the **All teams** drop-down at the top to see who still needs a team.
 
-**Editing a player.** On a player's page, the team chip works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number**, **Age group**, and the player's own **Email** and **Phone**. Leave Email or Phone empty to clear it. A parent's email and phone show with the parent, not here. Tap **Save**.
+**Editing a player.** On a player's page, the team chip works the same way, and **Edit player** changes their **Name**, **Birthday**, **Jersey number**, **Age group**, **Grade**, **Position**, **Height (feet)** and **Height (inches)**, and the player's own **Email** and **Phone**. Grade, position and height are for the portal only; the public Directory link never shows them. Leave Email or Phone empty to clear it. A parent's email and phone show with the parent, not here. Tap **Save**.
 
 **Taking a player off their team.** For a family that lost their spot, or a player who isn't in the program this season. On the player's page, tap **Edit player**, then **Remove from team…**, and pick where they go:
 

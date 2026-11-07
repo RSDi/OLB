@@ -95,6 +95,35 @@ export interface PlayerEdit {
   // The player's own, not a parent's.
   email: string | null;
   phone: string | null;
+  // Signed-in Directory only; the public Directory never selects these.
+  grade: string | null;
+  position: string | null;
+  height_inches: number | null;
+}
+
+// Edit player's pickers. Grade is text ("8th"), so an older value already on
+// a player still saves; position must be one of these.
+export const PLAYER_GRADES = ["2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "11th", "12th"];
+export const PLAYER_POSITIONS = ["Point guard", "Shooting guard", "Small forward", "Power forward", "Center"];
+export const HEIGHT_MIN_INCHES = 36;
+export const HEIGHT_MAX_INCHES = 96;
+
+// 70 → 5′10″.
+export function formatHeight(inches: number | null | undefined): string | null {
+  if (inches == null) return null;
+  return `${Math.floor(inches / 12)}′${inches % 12}″`;
+}
+
+// "8th" → "8th grade"; anything else as "Grade …".
+export function formatGrade(grade: string | null | undefined): string | null {
+  const g = grade?.trim();
+  if (!g) return null;
+  return /^\d{1,2}(st|nd|rd|th)$/i.test(g) ? `${g} grade` : `Grade ${g}`;
+}
+
+// The line under a player's name: "8th grade · Point guard · 5′10″".
+export function playerProfileFacts(p: { grade?: string | null; position?: string | null; height_inches?: number | null }): string[] {
+  return [formatGrade(p.grade), p.position?.trim() || null, formatHeight(p.height_inches)].filter((x): x is string => !!x);
 }
 
 // What Edit player saves, tidied, or what's wrong with it.
@@ -133,5 +162,19 @@ export function cleanPlayerEdit(input: PlayerEdit): { value: PlayerEdit } | { er
     if (!/^[\d\s()+.\-]+$/.test(phone) || digits < 7 || digits > 15) return { error: "Enter the phone number with its area code." };
   }
 
-  return { value: { full_name, dob, jersey_number, age_group, email, phone } };
+  const grade = input.grade?.trim().replace(/\s+/g, " ") || null;
+  if (grade && grade.length > 20) return { error: "Pick a grade from the list." };
+
+  const position = input.position?.trim() || null;
+  if (position && !PLAYER_POSITIONS.includes(position)) return { error: "Pick a position from the list." };
+
+  const height_inches = input.height_inches ?? null;
+  if (
+    height_inches != null &&
+    (!Number.isInteger(height_inches) || height_inches < HEIGHT_MIN_INCHES || height_inches > HEIGHT_MAX_INCHES)
+  ) {
+    return { error: "Enter a height between 3 and 8 feet." };
+  }
+
+  return { value: { full_name, dob, jersey_number, age_group, email, phone, grade, position, height_inches } };
 }

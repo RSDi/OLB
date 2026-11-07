@@ -133,6 +133,10 @@ export interface DirectoryPlayer {
   age_group: string | null;
   team_id: string | null;
   jersey_number: string | null;
+  // Signed-in Directory only (0164); the public one doesn't select them.
+  grade: string | null;
+  position: string | null;
+  height_inches: number | null;
   team: { id: string; name: string; age_group: string | null; color: string | null } | null;
   board: { season: string } | null;
   new_to_program: boolean;
@@ -153,7 +157,7 @@ export interface DirectoryPlayer {
 }
 
 const PLAYER_COLUMNS =
-  "id, team_id, jersey_number, full_name, dob, age_group, new_to_program, address_line1, address_line2, city, state, postal_code, phone, email, registration_fee, payment_method, shirt_size, waiver_signed, waiver_signed_on, directory_optin, " +
+  "id, team_id, jersey_number, grade, position, height_inches, full_name, dob, age_group, new_to_program, address_line1, address_line2, city, state, postal_code, phone, email, registration_fee, payment_method, shirt_size, waiver_signed, waiver_signed_on, directory_optin, " +
   "team:olb_teams(id, name, age_group, color), board:olb_boards(season), " +
   "parents:olb_player_parents(relationship, member:members(id, user_id, status, full_name, email, phone, volunteer_interests))";
 
