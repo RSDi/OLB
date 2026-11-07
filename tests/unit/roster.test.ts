@@ -3,7 +3,7 @@
 // and what Edit player may save.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanPlayerEdit, matchRoster, pickExistingPlayer } from "../../lib/teams/roster-logic.ts";
+import { cleanPlayerEdit, formatHeight, matchRoster, pickExistingPlayer, playerProfileFacts } from "../../lib/teams/roster-logic.ts";
 
 const roster = [
   { id: "a", full_name: "Sam Carter", dob: "2016-04-19" },
@@ -50,18 +50,21 @@ test("Edit player tidies what it saves", () => {
     age_group: "10u",
     email: " ben@example.com ",
     phone: " (555)  123-4567 ",
+    grade: " 8th ",
+    position: "Point guard",
+    height_inches: 70,
   });
   assert.deepEqual(r, {
-    value: { full_name: "Ben Foster", dob: "2017-02-28", jersey_number: "00", age_group: "10U", email: "ben@example.com", phone: "(555) 123-4567" },
+    value: { full_name: "Ben Foster", dob: "2017-02-28", jersey_number: "00", age_group: "10U", email: "ben@example.com", phone: "(555) 123-4567", grade: "8th", position: "Point guard", height_inches: 70 },
   });
-  const blank = cleanPlayerEdit({ full_name: "Ben Foster", dob: "", jersey_number: "", age_group: "", email: "", phone: " " });
-  assert.deepEqual(blank, { value: { full_name: "Ben Foster", dob: null, jersey_number: null, age_group: null, email: null, phone: null } });
-  assert.ok("value" in cleanPlayerEdit({ full_name: "Ben", dob: null, jersey_number: null, age_group: "8U", email: null, phone: "+1 555.123.4567" }));
+  const blank = cleanPlayerEdit({ full_name: "Ben Foster", dob: "", jersey_number: "", age_group: "", email: "", phone: " ", grade: "", position: "", height_inches: null });
+  assert.deepEqual(blank, { value: { full_name: "Ben Foster", dob: null, jersey_number: null, age_group: null, email: null, phone: null, grade: null, position: null, height_inches: null } });
+  assert.ok("value" in cleanPlayerEdit({ full_name: "Ben", dob: null, jersey_number: null, age_group: "8U", email: null, phone: "+1 555.123.4567", grade: "HS", position: null, height_inches: null }));
 });
 
 test("Edit player turns away what doesn't fit", () => {
   const bad = (input: Parameters<typeof cleanPlayerEdit>[0]) => "error" in cleanPlayerEdit(input);
-  const ok = { full_name: "Ben Foster", dob: null, jersey_number: null, age_group: null, email: null, phone: null };
+  const ok = { full_name: "Ben Foster", dob: null, jersey_number: null, age_group: null, email: null, phone: null, grade: null, position: null, height_inches: null };
   assert.ok(bad({ ...ok, full_name: "   " }));
   assert.ok(bad({ ...ok, dob: "2017-02-30" }));
   assert.ok(bad({ ...ok, dob: "Feb 28" }));
@@ -72,4 +75,17 @@ test("Edit player turns away what doesn't fit", () => {
   assert.ok(bad({ ...ok, email: "ben foster@example.com" }));
   assert.ok(bad({ ...ok, phone: "555-1234 ext" }));
   assert.ok(bad({ ...ok, phone: "12345" }));
+  assert.ok(bad({ ...ok, position: "Goalie" }));
+  assert.ok(bad({ ...ok, height_inches: 20 }));
+  assert.ok(bad({ ...ok, height_inches: 100 }));
+  assert.ok(bad({ ...ok, height_inches: 65.5 }));
+});
+
+test("grade, position and height read as one line", () => {
+  assert.equal(formatHeight(70), "5′10″");
+  assert.equal(formatHeight(60), "5′0″");
+  assert.equal(formatHeight(null), null);
+  assert.deepEqual(playerProfileFacts({ grade: "8th", position: "Center", height_inches: 74 }), ["8th grade", "Center", "6′2″"]);
+  assert.deepEqual(playerProfileFacts({ grade: "HS", position: null, height_inches: null }), ["Grade HS"]);
+  assert.deepEqual(playerProfileFacts({}), []);
 });

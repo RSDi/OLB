@@ -4,11 +4,14 @@ import { useRouter } from "next/navigation";
 import { Input, Pill, Select, Textarea } from "../../../../components/ui";
 import { moveOffRoster, updatePlayer, type OffRoster } from "../../../../../lib/teams/actions";
 import { AGE_GROUPS } from "../../../../../lib/teams/volunteer-options";
+import { PLAYER_GRADES, PLAYER_POSITIONS } from "../../../../../lib/teams/roster-logic";
 import type { DirectoryPlayer } from "../../_shared/data";
 import { ErrorNote, Sheet } from "../../../payments/parts";
 
 // Edit player, for the Registrations grant: the player's name, birthday,
-// jersey number, age group, own email and phone, and taking them off the roster. The team is
+// jersey number, age group, grade, position, height, own email and phone, and
+// taking them off the roster. Grade, position and height stay off the public
+// Directory. The team is
 // picked on the player's card.
 export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlayer; onClose: () => void }) {
   const router = useRouter();
@@ -18,6 +21,10 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
   const [ageGroup, setAgeGroup] = useState(p.age_group ?? "");
   const [email, setEmail] = useState(p.email ?? "");
   const [phone, setPhone] = useState(p.phone ?? "");
+  const [grade, setGrade] = useState(p.grade ?? "");
+  const [position, setPosition] = useState(p.position ?? "");
+  const [feet, setFeet] = useState(p.height_inches != null ? String(Math.floor(p.height_inches / 12)) : "");
+  const [inches, setInches] = useState(p.height_inches != null ? String(p.height_inches % 12) : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Remove from team…: open, and where they go.
@@ -25,6 +32,8 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
   const [to, setTo] = useState<OffRoster>("waitlisted");
   const [why, setWhy] = useState("");
   const groups = p.age_group && !AGE_GROUPS.includes(p.age_group) ? [p.age_group, ...AGE_GROUPS] : AGE_GROUPS;
+  // An older grade already on the player ("HS") stays pickable.
+  const grades = p.grade && !PLAYER_GRADES.includes(p.grade) ? [p.grade, ...PLAYER_GRADES] : PLAYER_GRADES;
 
   async function save() {
     setBusy(true);
@@ -36,6 +45,10 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
       age_group: ageGroup || null,
       email: email || null,
       phone: phone || null,
+      grade: grade || null,
+      position: position || null,
+      // Feet picked: feet and inches. Inches alone mean nothing.
+      height_inches: feet ? Number(feet) * 12 + Number(inches || 0) : null,
     });
     setBusy(false);
     if (res.error) return setError(res.error);
@@ -72,6 +85,47 @@ export function EditPlayerSheet({ player: p, onClose }: { player: DirectoryPlaye
           {groups.map((g) => (
             <option key={g} value={g}>
               {g}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+        <Select label="Grade" value={grade} onChange={(e) => setGrade(e.target.value)}>
+          <option value="">None</option>
+          {grades.map((g) => (
+            <option key={g} value={g}>
+              {g}
+            </option>
+          ))}
+        </Select>
+        <Select label="Position" value={position} onChange={(e) => setPosition(e.target.value)}>
+          <option value="">None</option>
+          {PLAYER_POSITIONS.map((pos) => (
+            <option key={pos} value={pos}>
+              {pos}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+        <Select
+          label="Height (feet)"
+          value={feet}
+          onChange={(e) => setFeet(e.target.value)}
+          help="Grade, position and height show only in the signed-in Directory, never on the public link."
+        >
+          <option value="">None</option>
+          {[3, 4, 5, 6, 7].map((f) => (
+            <option key={f} value={f}>
+              {f} ft
+            </option>
+          ))}
+        </Select>
+        <Select label="Height (inches)" value={inches} onChange={(e) => setInches(e.target.value)} disabled={!feet}>
+          <option value="">0 in</option>
+          {Array.from({ length: 11 }, (_, i) => i + 1).map((i) => (
+            <option key={i} value={i}>
+              {i} in
             </option>
           ))}
         </Select>

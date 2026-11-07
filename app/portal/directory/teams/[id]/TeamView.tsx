@@ -13,6 +13,7 @@ import { assignVolunteer, removeVolunteer } from "../../../../../lib/teams/volun
 import type { OlbTeamVolunteer, OlbVolunteerRole } from "../../../../../lib/teams/types";
 import type { AssignablePerson, TeamWithStaff } from "../../../../../lib/teams/volunteer-data";
 import { roleSpots, teamColorHex, teamLabel, wantsRole } from "../../../../../lib/teams/volunteer-options";
+import { playerProfileFacts } from "../../../../../lib/teams/roster-logic";
 import type { DirectoryPlayer } from "../../_shared/data";
 import { Avatar, capStyle, JerseyNumber, TeamFacts } from "../../_shared/TeamBanner";
 
@@ -315,6 +316,9 @@ export function TeamView({
                   <Link href={`/portal/directory/players/${p.id}`} prefetch={false} style={{ fontSize: 13, fontWeight: 700, color: "var(--gw-fg)", textDecoration: "none" }}>
                     {p.full_name}
                   </Link>
+                  {playerProfileFacts(p).length > 0 && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--gw-fg-muted)" }}>{playerProfileFacts(p).join(" · ")}</span>
+                  )}
                   {p.parents.length > 0 && (
                     <span style={{ fontSize: 11, fontWeight: 500, color: "var(--gw-fg-muted)" }}>
                       {p.parents.map((pa) => pa.member?.full_name).filter(Boolean).join(" & ")}

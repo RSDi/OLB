@@ -19,6 +19,7 @@ import { JerseyNumber, TeamBanner, TeamDot } from "./_shared/TeamBanner";
 import type { OlbVolunteerRole } from "../../../lib/teams/types";
 import type { TeamWithStaff } from "../../../lib/teams/volunteer-data";
 import { teamLabel } from "../../../lib/teams/volunteer-options";
+import { playerProfileFacts } from "../../../lib/teams/roster-logic";
 import type { PlayerRequirement, Requirement } from "../../../lib/requirements/types";
 import {
   doneWord,
@@ -956,6 +957,8 @@ function PlayerRow({
             </span>
           )}
         </div>
+        {/* Grade, position, height: signed-in Directory only. */}
+        {playerProfileFacts(p).length > 0 && <div style={muted}>{playerProfileFacts(p).join(" · ")}</div>}
         {canSeeBirthdates && (age != null || born || info) && (
           <div style={muted}>
             {[

@@ -7,6 +7,7 @@ import { Pill } from "../../../../components/ui";
 import { ageFromDob } from "../../../../../lib/teams/age";
 import { agesOutLabel, playerEligibility, type EligibilityContext } from "../../../../../lib/teams/eligibility";
 import { teamLabel } from "../../../../../lib/teams/volunteer-options";
+import { playerProfileFacts } from "../../../../../lib/teams/roster-logic";
 import { indexRows, rowKey } from "../../../../../lib/requirements/logic";
 import type { PlayerRequirement, Requirement } from "../../../../../lib/requirements/types";
 import { buildAccounts, formatAmount } from "../../../../../lib/finances/logic";
@@ -105,6 +106,8 @@ export function PlayerDetail({
   // Left off when it's a parent's: it shows with them below.
   const ownEmail = playerOwnEmail(p);
   const facts = [
+    // Grade, position, height: signed-in Directory only.
+    ...playerProfileFacts(p),
     age != null && `Age ${age}`,
     born && `Born ${born}`,
     info?.ageAtSeasonEnd != null && `Age ${info.ageAtSeasonEnd} at season end`,
