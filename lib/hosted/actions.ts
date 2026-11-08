@@ -16,7 +16,6 @@ import { messageHtml } from "../teams/family-mail";
 import { parseAmount } from "../finances/logic";
 import {
   DEFAULT_STEPS,
-  advance,
   cleanDays,
   daysForWeekend,
   feeLockSaveError,
@@ -35,6 +34,7 @@ import {
   slotsFor,
   toMinutes,
   uncheckBillProgramsError,
+  type PlannedGame,
   type Side,
 } from "./logic";
 import {
@@ -53,6 +53,7 @@ import {
   type StepSection,
 } from "./types";
 import { loadFeeLockState, loadHostedPage } from "./data";
+import { moveOn } from "./move-on";
 
 type Db = Awaited<ReturnType<typeof createClient>>;
 
@@ -82,6 +83,31 @@ async function gate(): Promise<{ db: Db; userId: string } | { error: string }> {
 async function nextOrder(db: Db, table: string, weekendId: string): Promise<number> {
   const { data } = await db.from(table).select("sort_order").eq("weekend_id", weekendId).order("sort_order", { ascending: false }).limit(1).maybeSingle();
   return ((data as { sort_order: number } | null)?.sort_order ?? -1) + 1;
+}
+
+// ─── Live scores (0165) ─────────────────────────────────────────────────────
+
+// Turns the public live page (/shootout) on or off for this tournament.
+export async function setLivePublic(weekendId: string, on: boolean): Promise<HostedResult> {
+  const g = await gate();
+  if ("error" in g) return g;
+  const { error } = await g.db.from("hs_hosted").update({ live_public: !!on }).eq("weekend_id", weekendId);
+  if (error) return { error: error.message.includes("live_public") ? "Live scores aren't set up in the database yet (migration 0165)." : error.message };
+  refresh(weekendId);
+  return { notice: on ? "The live page is on." : "The live page is off." };
+}
+
+// A new six-digit PIN for the scorer's tables. Every phone that had the old
+// one has to type the new one.
+export async function newScorerPin(weekendId: string): Promise<HostedResult> {
+  const g = await gate();
+  if ("error" in g) return g;
+  const { randomInt } = await import("node:crypto");
+  const pin = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const { error } = await g.db.from("hs_hosted").update({ scorer_pin: pin }).eq("weekend_id", weekendId);
+  if (error) return { error: error.message.includes("scorer_pin") ? "Live scores aren't set up in the database yet (migration 0165)." : error.message };
+  refresh(weekendId);
+  return { notice: `New PIN: ${pin}` };
 }
 
 // ─── Hosting a weekend ──────────────────────────────────────────────────────
@@ -329,6 +355,7 @@ export interface TeamInput {
   name: string;
   code: string;
   seed: string;
+  pool?: string; // "" = one pool for the whole division
   fee: string; // "" = the tournament's team fee (nothing for ours)
   ours: boolean;
   note: string;
@@ -343,6 +370,11 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
   if (input.seed.trim()) {
     seed = Math.round(Number(input.seed));
     if (!(seed >= 1 && seed <= 64)) return { error: "A seed is a number from 1 to 64." };
+  }
+  let pool: number | null = null;
+  if (input.pool?.trim()) {
+    pool = Math.round(Number(input.pool));
+    if (!(pool >= 1 && pool <= 8)) return { error: "A pool is a number from 1 to 8." };
   }
   let fee: number | null = null;
   if (input.fee.trim()) {
@@ -366,6 +398,7 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
     name,
     code: text(input.code, 12),
     seed,
+    pool,
     fee_cents: fee,
     ours: !!input.ours,
     note: text(input.note, 300),
@@ -495,15 +528,28 @@ export async function buildDivisionGames(weekendId: string, divisionId: string):
   const teams = seeded((t as HostedTeam[] | null) ?? []);
   if (teams.length < 2) return { error: `Put at least two teams in ${division.name} first.` };
   if (teams.length > 16) return { error: "A division can have up to 16 teams." };
-  const planned = division.format === "bracket" ? placementBracket(teams.length) : roundRobin(teams.length);
+  // A pool division split into pools (0165): everyone plays everyone in
+  // their own pool. Otherwise one round robin, or a bracket by seed.
+  const pools = [...new Set(teams.map((t) => t.pool))];
+  const groups: HostedTeam[][] =
+    division.format === "pool" && pools.some((p) => p != null) ? pools.sort((a, b) => (a ?? 99) - (b ?? 99)).map((p) => teams.filter((t) => t.pool === p)) : [teams];
+  const planned: (PlannedGame & { group: number })[] = [];
+  groups.forEach((grp, gi) => {
+    const list = division.format === "bracket" ? placementBracket(grp.length) : roundRobin(grp.length);
+    const offset = planned.length;
+    for (const p of list) {
+      const shift = (x: Side): Side => ("from" in x ? { ...x, game: x.game + offset } : x);
+      planned.push({ ...p, index: p.index + offset, home: shift(p.home), away: shift(p.away), group: gi });
+    }
+  });
   const ids = planned.map(() => crypto.randomUUID());
-  const side = (s: Side): { team: string | null; from: string | null } =>
-    "seed" in s ? { team: teams[s.seed].id, from: null } : "from" in s ? { team: null, from: `${s.from}:${ids[s.game]}` } : { team: null, from: null };
+  const side = (s: Side, gi: number): { team: string | null; from: string | null } =>
+    "seed" in s ? { team: groups[gi][s.seed].id, from: null } : "from" in s ? { team: null, from: `${s.from}:${ids[s.game]}` } : { team: null, from: null };
   const existing = await loadGames(g.db, weekendId);
   const start = Math.max(0, ...existing.map((x) => x.game_no));
   const rows = planned.map((p, i) => {
-    const h = side(p.home);
-    const a = side(p.away);
+    const h = side(p.home, p.group);
+    const a = side(p.away, p.group);
     return {
       id: ids[i],
       weekend_id: weekendId,
@@ -600,12 +646,8 @@ export async function updateGame(weekendId: string, id: string, patch: GamePatch
   if (row.home_team_id && row.home_team_id === row.away_team_id) return { error: "Pick two different teams." };
   const { error } = await g.db.from("hs_hosted_games").update(row).eq("id", id).eq("weekend_id", weekendId);
   if (error) return { error: error.message };
-  // Move winners and losers on, as far as the scores go.
-  for (let pass = 0; pass < 6; pass++) {
-    const moves = advance(await loadGames(g.db, weekendId));
-    if (moves.length === 0) break;
-    await Promise.all(moves.map((m) => g.db.from("hs_hosted_games").update({ home_team_id: m.home_team_id, away_team_id: m.away_team_id }).eq("id", m.id)));
-  }
+  // Move winners and losers on, and fill seats from finished pools.
+  await moveOn(g.db, weekendId);
   refresh(weekendId);
   return {};
 }

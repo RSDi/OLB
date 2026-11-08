@@ -7,11 +7,13 @@
 import { useState } from "react";
 import { Pill } from "../../../../../components/ui";
 import { formatDay, formatTime, sideLabel } from "../../../../../../lib/hosted/logic";
+import { poolStandings, poolsOf } from "../../../../../../lib/hosted/standings";
 import type { HostedDivision, HostedGame, HostedPageData } from "../../../../../../lib/hosted/types";
 import { Empty, Section, cap, sub } from "./parts";
 import { GameSheet, divisionTint } from "./SchedulePanel";
+import { LivePanel } from "./LivePanel";
 
-export function BracketsPanel({ data }: { data: HostedPageData }) {
+export function BracketsPanel({ data, showLive = false }: { data: HostedPageData; showLive?: boolean }) {
   const [open, setOpen] = useState<HostedGame | null>(null);
   const { divisions, games } = data;
   if (divisions.length === 0) {
@@ -23,13 +25,14 @@ export function BracketsPanel({ data }: { data: HostedPageData }) {
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }} data-tour="hosted-brackets">
+      {showLive && <LivePanel data={data} />}
       {divisions.map((d) => {
         const mine = games.filter((g) => g.division_id === d.id).sort((a, b) => a.round - b.round || a.game_no - b.game_no);
         return (
           <Section
             key={d.id}
             title={`${d.name}${d.code ? ` (${d.code})` : ""}`}
-            subtitle={d.format === "bracket" ? "Bracket · tap a game for its score" : "Pool · standings by wins, then point differential"}
+            subtitle={d.format === "bracket" ? "Bracket · tap a game for its score" : "Pool · tap a game for its score"}
             action={
               <Pill size="sm" variant="ghost" onClick={() => window.print()}>
                 Print
@@ -100,58 +103,54 @@ function GameBox({ data, division, game, onOpen }: { data: HostedPageData; divis
 }
 
 function Pool({ data, division, games, onOpen }: { data: HostedPageData; division: HostedDivision; games: HostedGame[]; onOpen: (g: HostedGame) => void }) {
-  const teams = data.teams.filter((t) => t.division_id === division.id);
-  const table = teams
-    .map((t) => {
-      let w = 0;
-      let l = 0;
-      let pf = 0;
-      let pa = 0;
-      for (const g of games) {
-        if (g.home_score == null || g.away_score == null) continue;
-        const home = g.home_team_id === t.id;
-        if (!home && g.away_team_id !== t.id) continue;
-        const us = home ? g.home_score : g.away_score;
-        const them = home ? g.away_score : g.home_score;
-        pf += us;
-        pa += them;
-        if (us > them) w++;
-        else if (us < them) l++;
-      }
-      return { t, w, l, pf, pa };
-    })
-    .sort((a, b) => b.w - a.w || a.l - b.l || b.pf - b.pa - (a.pf - a.pa) || a.t.name.localeCompare(b.t.name));
+  const pools = poolsOf(data.teams, division.id);
+  const name = (id: string) => data.teams.find((t) => t.id === id);
   const left = games.filter((g) => g.home_score == null).length;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 360 }}>
-          <thead>
-            <tr>
-              {["Team", "W", "L", "PF", "PA", "+/−"].map((h) => (
-                <th key={h} style={{ ...cap, textAlign: h === "Team" ? "left" : "right", padding: "6px 8px", borderBottom: "1px solid var(--gw-border)" }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {table.map(({ t, w, l, pf, pa }) => (
-              <tr key={t.id}>
-                <td style={cell}>
-                  <strong>{t.name}</strong> {t.code && <span style={{ color: "var(--gw-fg-muted)" }}>{t.code}</span>}
-                </td>
-                {[w, l, pf, pa, pf - pa].map((n, i) => (
-                  <td key={i} style={{ ...cell, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                    {i === 4 && n > 0 ? `+${n}` : n}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
+        {pools.map((p) => {
+          const st = poolStandings(data.games, data.teams, division.id, p);
+          return (
+            <div key={p ?? 0} style={{ overflowX: "auto" }}>
+              {p != null && <div style={{ ...cap, marginBottom: 4 }}>Pool {p}{st.done ? " · final" : ""}</div>}
+              <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 300 }}>
+                <thead>
+                  <tr>
+                    {["Team", "W", "L", "PF", "PA", "+/−"].map((h) => (
+                      <th key={h} style={{ ...cap, textAlign: h === "Team" ? "left" : "right", padding: "6px 8px", borderBottom: "1px solid var(--gw-border)" }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {st.rows.map((r) => {
+                    const t = name(r.teamId);
+                    return (
+                      <tr key={r.teamId}>
+                        <td style={cell}>
+                          <strong>{t?.name}</strong> {t?.code && <span style={{ color: "var(--gw-fg-muted)" }}>{t.code}</span>}
+                          {r.tied && st.done && <span style={{ color: "var(--gw-error)", fontWeight: 700 }}> · coin flip</span>}
+                        </td>
+                        {[r.w, r.l, r.pf, r.pa, r.pf - r.pa].map((n, i) => (
+                          <td key={i} style={{ ...cell, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                            {i === 4 && n > 0 ? `+${n}` : n}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
       </div>
-      <p style={sub}>{left ? `${left} of ${games.length} games still to play.` : "Every game has a score."}</p>
+      <p style={sub}>
+        {left ? `${left} of ${games.length} games still to play.` : "Every game has a score."} Standings go by record, then head to head, point differential and
+        points between the tied teams, then points scored. A tie only a coin flip settles is marked; put that team in its seat by hand.
+      </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
         {games.map((g) => (
           <GameBox key={g.id} data={data} division={division} game={g} onOpen={onOpen} />

@@ -24,6 +24,10 @@ export interface HostedPlan {
   concessions: string | null;
   rules: string | null;
   admission: string | null;
+  // The public live page shows this tournament (0165).
+  live_public: boolean;
+  // Six digits for the scorer's tables (0165). Planners only.
+  scorer_pin: string | null;
 }
 
 export type StepSection = "facility" | "teams" | "officials" | "communication" | "game_day" | "other";
@@ -69,6 +73,8 @@ export interface HostedTeam {
   name: string;
   code: string | null;
   seed: number | null;
+  // Its pool within the division (0165): HS Boys A Pool 1 and Pool 2.
+  pool: number | null;
   fee_cents: number | null;
   note: string | null;
   sort_order: number;
@@ -83,7 +89,7 @@ export interface HostedGame {
   label: string | null;
   home_team_id: string | null;
   away_team_id: string | null;
-  home_from: string | null; // "W:<game id>" / "L:<game id>"
+  home_from: string | null; // "W:<game id>" / "L:<game id>" / "P:<pool>:<place>" (0165)
   away_from: string | null;
   plays_on: string | null;
   starts_at: string | null; // HH:MM[:SS]
@@ -200,10 +206,10 @@ export interface HostedBilling {
 export type HostedResult = { error?: string; notice?: string; id?: string };
 
 export const PLAN_COLUMNS =
-  "weekend_id, hosted, short_name, finance_event_id, game_minutes, courts, days, team_fee_cents, facility, concessions, rules, admission";
+  "weekend_id, hosted, short_name, finance_event_id, game_minutes, courts, days, team_fee_cents, facility, concessions, rules, admission, live_public, scorer_pin";
 export const STEP_COLUMNS = "id, weekend_id, section, label, step_key, due_on, done_on, note, sort_order";
 export const DIVISION_COLUMNS = "id, weekend_id, name, code, format, sort_order";
-export const TEAM_COLUMNS = "id, weekend_id, division_id, opponent_id, ours, name, code, seed, fee_cents, note, sort_order";
+export const TEAM_COLUMNS = "id, weekend_id, division_id, opponent_id, ours, name, code, seed, pool, fee_cents, note, sort_order";
 export const GAME_COLUMNS =
   "id, weekend_id, division_id, game_no, round, label, home_team_id, away_team_id, home_from, away_from, plays_on, starts_at, court, home_score, away_score";
 export const MONEY_COLUMNS = "id, weekend_id, kind, category, label, qty, unit_cents, division_id, note, sort_order";

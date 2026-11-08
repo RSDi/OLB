@@ -246,7 +246,13 @@ export function GameSheet({ data, game, onClose }: { data: HostedPageData; game:
               </option>
             ))}
           </Select>
-          {side(which) && <span style={sub}>Filled in by the score of {side(which)!.replace(/^(Winner|Loser) /, "")}.</span>}
+          {side(which) && (
+            <span style={sub}>
+              {/^Pool|^\d/.test(side(which)!)
+                ? `Filled in from the standings (${side(which)}) once every game in the pool has a score. If only a coin flip settles it, pick the team here.`
+                : `Filled in by the score of ${side(which)!.replace(/^(Winner|Loser) /, "")}.`}
+            </span>
+          )}
         </div>
       ))}
       {game && (

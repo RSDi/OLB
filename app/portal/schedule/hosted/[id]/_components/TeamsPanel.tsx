@@ -137,6 +137,7 @@ function TeamList({ teams, defaultFee, onEdit }: { teams: HostedTeam[]; defaultF
             <span style={{ flex: 1, minWidth: 0, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
               <span style={{ fontSize: 13.5, fontWeight: 700 }}>{t.name}</span>
               {t.code && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--gw-fg-muted)" }}>{t.code}</span>}
+              {t.pool && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--gw-fg-muted)" }}>Pool {t.pool}</span>}
               {t.ours && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--rsd-accent)" }}>Ours</span>}
               {t.note && <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>{t.note}</span>}
             </span>
@@ -223,6 +224,7 @@ function TeamSheet({
     code: team?.code ?? "",
     division_id: team?.division_id ?? division ?? "",
     seed: team?.seed ? String(team.seed) : "",
+    pool: team?.pool ? String(team.pool) : "",
     fee: team?.fee_cents != null ? (team.fee_cents / 100).toFixed(team.fee_cents % 100 ? 2 : 0) : "",
     ours: team?.ours ?? false,
     note: team?.note ?? "",
@@ -234,6 +236,14 @@ function TeamSheet({
         <Input label="Short name" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} placeholder="KCM 1" />
         <Input label="Seed" inputMode="numeric" value={f.seed} onChange={(e) => setF({ ...f, seed: e.target.value })} placeholder="1" help="1 is the top seed. Brackets pair 1 v 8, 4 v 5, 2 v 7, 3 v 6." />
       </div>
+      <Select label="Pool" value={f.pool} onChange={(e) => setF({ ...f, pool: e.target.value })} help="For a division split into pools, like HS Boys A Pool 1 and Pool 2. Standings and Saturday seats go by pool.">
+        <option value="">One pool (the whole division)</option>
+        {[1, 2, 3, 4].map((n) => (
+          <option key={n} value={String(n)}>
+            Pool {n}
+          </option>
+        ))}
+      </Select>
       <Select label="Division" value={f.division_id} onChange={(e) => setF({ ...f, division_id: e.target.value })}>
         <option value="">Not in one yet</option>
         {divisions.map((d) => (
