@@ -67,7 +67,7 @@
   .sheets { gap: 0; display: block; }
   .sheet { box-shadow: none; break-after: page; }
   .land { page: landscape; }
-  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .wrap, .wrap * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 @media screen and (max-width: 11.5in) {
   .sheets { zoom: .5; }
