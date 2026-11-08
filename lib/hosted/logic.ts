@@ -3,6 +3,7 @@
 // Pure and safe to import from client components; tested in
 // tests/unit/hosted.test.ts.
 
+import { parseSeat, seatLabel, seatTeam } from "./standings.ts";
 import type {
   HostedDay,
   HostedDivision,
@@ -446,6 +447,8 @@ export function sideLabel(
   games: Map<string, HostedGame>
 ): string {
   if (teamId) return teamLabel(teams.get(teamId));
+  const seat = parseSeat(from);
+  if (seat) return seatLabel(seat);
   if (from) {
     const g = games.get(from.slice(2));
     return `${from[0] === "W" ? "Winner" : "Loser"} Game ${g?.game_no ?? "?"}`;
@@ -466,22 +469,33 @@ export function gameLine(
 }
 
 // When a bracket game has a score, who moves on: the winner and loser of
-// each finished game, to fill the games they feed.
-export function advance(games: HostedGame[]): { id: string; home_team_id: string | null; away_team_id: string | null }[] {
+// each finished game, to fill the games they feed. A seat fed by a pool
+// ('P:1:1', 0165) fills from the standings once that pool is done; a seat
+// only a coin flip can settle keeps whatever a person put there.
+export function advance(
+  games: HostedGame[],
+  teams: Pick<HostedTeam, "id" | "division_id" | "pool" | "name">[] = []
+): { id: string; home_team_id: string | null; away_team_id: string | null }[] {
   const byId = new Map(games.map((g) => [g.id, g]));
-  const result = (from: string | null): string | null | undefined => {
-    if (!from) return undefined;
-    const g = byId.get(from.slice(2));
-    if (!g || g.home_score == null || g.away_score == null || g.home_score === g.away_score) return null;
-    if (!g.home_team_id || !g.away_team_id) return null;
-    const homeWon = g.home_score > g.away_score;
-    return from[0] === "W" ? (homeWon ? g.home_team_id : g.away_team_id) : homeWon ? g.away_team_id : g.home_team_id;
+  const result = (g: HostedGame, from: string | null, current: string | null): string | null => {
+    if (!from) return current;
+    const seat = parseSeat(from);
+    if (seat) {
+      if (!g.division_id) return current;
+      const who = seatTeam(games, teams, g.division_id, seat);
+      return who === undefined ? current : who;
+    }
+    const src = byId.get(from.slice(2));
+    if (!src || src.home_score == null || src.away_score == null || src.home_score === src.away_score) return null;
+    if (!src.home_team_id || !src.away_team_id) return null;
+    const homeWon = src.home_score > src.away_score;
+    return from[0] === "W" ? (homeWon ? src.home_team_id : src.away_team_id) : homeWon ? src.away_team_id : src.home_team_id;
   };
   const out: { id: string; home_team_id: string | null; away_team_id: string | null }[] = [];
   for (const g of games) {
     if (!g.home_from && !g.away_from) continue;
-    const home = g.home_from ? (result(g.home_from) ?? null) : g.home_team_id;
-    const away = g.away_from ? (result(g.away_from) ?? null) : g.away_team_id;
+    const home = result(g, g.home_from, g.home_team_id);
+    const away = result(g, g.away_from, g.away_team_id);
     if (home !== g.home_team_id || away !== g.away_team_id) out.push({ id: g.id, home_team_id: home, away_team_id: away });
   }
   return out;

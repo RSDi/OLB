@@ -198,6 +198,8 @@ export const RESERVED_SLUGS = [
   "invoice",
   // Public, no-login click-throughs for reviewing ideas. Not in the menu.
   "mockups",
+  // Live scores for a tournament we host (0165): /shootout, /shootout/score.
+  "shootout",
   // 14U assessment (preview deployments only). Not in the menu.
   "14u-assessment",
   // Assessments (preview deployments only). Not in the menu.

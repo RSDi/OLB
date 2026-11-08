@@ -36,11 +36,14 @@ export function HostedView({
   tab,
   today,
   canReorderSteps = false,
+  showLive = false,
 }: {
   data: HostedPageData;
   tab: HostedTab;
   today: string;
   canReorderSteps?: boolean;
+  // Live scores (0165): Jeff-only until it's released.
+  showLive?: boolean;
 }) {
   const { weekend, plan, steps, teams, games } = data;
   const base = `/portal/schedule/hosted/${weekend.id}`;
@@ -88,7 +91,7 @@ export function HostedView({
       {tab === "plan" && <PlanPanel data={data} today={today} canReorderSteps={canReorderSteps} />}
       {tab === "teams" && <TeamsPanel data={data} />}
       {tab === "schedule" && <SchedulePanel data={data} />}
-      {tab === "brackets" && <BracketsPanel data={data} />}
+      {tab === "brackets" && <BracketsPanel data={data} showLive={showLive} />}
       {tab === "money" && <MoneyPanel data={data} />}
       {tab === "messages" && <MessagesPanel data={data} />}
     </div>

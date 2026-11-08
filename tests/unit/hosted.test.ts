@@ -50,10 +50,12 @@ const plan: HostedPlan = {
   concessions: "Fieldhouse Cafe. No outside food or drink.",
   rules: null,
   admission: null,
+  live_public: false,
+  scorer_pin: null,
 };
 
 function team(id: string, extra: Partial<HostedTeam> = {}): HostedTeam {
-  return { id, weekend_id: "w", division_id: "d", opponent_id: null, ours: false, name: id, code: null, seed: null, fee_cents: null, note: null, sort_order: 0, ...extra };
+  return { id, weekend_id: "w", division_id: "d", opponent_id: null, ours: false, name: id, code: null, seed: null, pool: null, fee_cents: null, note: null, sort_order: 0, ...extra };
 }
 
 function game(id: string, extra: Partial<HostedGame> = {}): HostedGame {
