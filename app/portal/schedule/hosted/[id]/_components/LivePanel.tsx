@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Pill } from "../../../../../components/ui";
 import { newScorerPin, setLivePublic } from "../../../../../../lib/hosted/actions";
 import type { HostedPageData } from "../../../../../../lib/hosted/types";
+import { tvSlug } from "../../../../../../lib/hosted/live-view";
 import { Said, Section, sub } from "./parts";
 import { useAct } from "./parts";
 
@@ -39,6 +40,16 @@ export function LivePanel({ data }: { data: HostedPageData }) {
             omahalightningbasketball.com/shootout
           </a>
           <span style={sub}>The address on the QR signs. It refreshes itself every 30 seconds.</span>
+        </div>
+        <div style={box}>
+          <span style={label}>TV screen</span>
+          <a href="/shootout/tv" target="_blank" rel="noreferrer" style={{ fontWeight: 800, fontSize: 15 }}>
+            omahalightningbasketball.com/shootout/tv
+          </a>
+          <span style={sub}>
+            For a TV (a Fire Stick&apos;s Silk browser works). Turns through the courts and each division. One screen only: add /courts or a division&apos;s code,
+            like /shootout/tv/{data.divisions[0] ? tvSlug(data.divisions[0]) : "hsa"}.
+          </span>
         </div>
         <div style={box}>
           <span style={label}>Scorer&apos;s table PIN</span>
