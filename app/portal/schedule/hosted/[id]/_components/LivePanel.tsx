@@ -42,13 +42,17 @@ export function LivePanel({ data }: { data: HostedPageData }) {
           <span style={sub}>The address on the QR signs. It refreshes itself every 30 seconds.</span>
         </div>
         <div style={box}>
-          <span style={label}>TV screen</span>
+          <span style={label}>TV screens</span>
           <a href="/shootout/tv" target="_blank" rel="noreferrer" style={{ fontWeight: 800, fontSize: 15 }}>
-            omahalightningbasketball.com/shootout/tv
+            Scoreboard: omahalightningbasketball.com/shootout/tv
+          </a>
+          <a href="/shootout/tv/admission" target="_blank" rel="noreferrer" style={{ fontWeight: 800, fontSize: 15 }}>
+            Admission: omahalightningbasketball.com/shootout/tv/admission
           </a>
           <span style={sub}>
-            For a TV (a Fire Stick&apos;s Silk browser works). Turns through the courts and each division. One screen only: add /courts or a division&apos;s code,
-            like /shootout/tv/{data.divisions[0] ? tvSlug(data.divisions[0]) : "hsa"}.
+            For a TV (a Fire Stick&apos;s Silk browser works); press OK on the remote for full screen. The scoreboard turns through the courts and each division;
+            add /courts or a division&apos;s code to stay on one, like /shootout/tv/{data.divisions[0] ? tvSlug(data.divisions[0]) : "hsa"}. Admission shows the prices
+            from Details, even while the live page is off.
           </span>
         </div>
         <div style={box}>

@@ -155,3 +155,25 @@
 .qr { width: 84px; height: 84px; padding: 7px; background: #fff; border-radius: 10px; flex: none; }
 .qr svg { display: block; width: 100%; height: 100%; }
 .footName { font-family: var(--rsd-font-display), "Arial Narrow", sans-serif; font-weight: 800; font-size: 30px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+
+/* ── admission ── */
+.adm { background: #000; align-items: center; padding: 44px 64px 34px; gap: 0; }
+.adm::after { content: ""; position: absolute; inset: auto 0 0; height: 8px; background: var(--bolt); }
+/* The graphic, cropped inside its own gold bars (the stage has its own). */
+.admArt { width: 1060px; height: 607px; overflow: hidden; flex: none; }
+.admArt img { display: block; width: 1060px; height: auto; margin-top: -22px; }
+.admEyebrow { margin-top: 18px; color: var(--bolt); font-size: 34px; font-weight: 800; letter-spacing: 0.3em; display: flex; align-items: center; gap: 28px; }
+.admEyebrow::before, .admEyebrow::after { content: ""; width: 180px; height: 2px; background: var(--bolt); opacity: 0.6; }
+.admPrices { margin-top: 22px; display: flex; justify-content: center; gap: 28px; width: 100%; }
+.admPrice { flex: 1 1 0; max-width: 420px; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-top: 6px solid var(--bolt); border-radius: 22px; padding: 18px 20px 20px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.admAmount { font-size: 104px; line-height: 0.95; font-weight: 800; color: var(--fg); }
+.admLabel { font-size: 30px; font-weight: 700; color: var(--muted); line-height: 1.15; }
+.admMany .admAmount { font-size: 76px; }
+.admMany .admLabel { font-size: 24px; }
+.admNone { margin-top: 30px; font-size: 48px; font-weight: 800; color: var(--muted); }
+.admFoot { margin-top: auto; width: 100%; display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; }
+.admNotes { display: flex; flex-direction: column; gap: 4px; font-size: 24px; color: var(--muted); font-weight: 600; }
+.admNotes b { color: var(--fg); font-size: 32px; font-weight: 800; }
+
+.fsHint { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); background: rgba(22, 24, 28, 0.94); border: 1px solid var(--bolt); color: var(--fg); font-size: 26px; font-weight: 700; padding: 14px 28px; border-radius: 999px; white-space: nowrap; animation: hintOut 1s ease 12s forwards; }
+@keyframes hintOut { to { opacity: 0; visibility: hidden; } }

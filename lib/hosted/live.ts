@@ -31,9 +31,12 @@ const LIVE_GAME_COLUMNS =
 
 // The tournament to show: the public one happening now or next, else the
 // last one played. Null when none is turned on (or 0165 isn't in).
-export async function findLiveWeekendId(): Promise<string | null> {
+// evenIfOff: any tournament we host, for the admission screen (prices only).
+export async function findLiveWeekendId(evenIfOff = false): Promise<string | null> {
   const db = createAdminClient();
-  const { data, error } = await db.from("hs_hosted").select("weekend_id, weekend:hs_weekends(starts_on, ends_on)").eq("hosted", true).eq("live_public", true);
+  let q = db.from("hs_hosted").select("weekend_id, weekend:hs_weekends(starts_on, ends_on)").eq("hosted", true);
+  if (!evenIfOff) q = q.eq("live_public", true);
+  const { data, error } = await q;
   if (error || !data) return null;
   const rows = (data as unknown as { weekend_id: string; weekend: { starts_on: string; ends_on: string } | { starts_on: string; ends_on: string }[] | null }[])
     .map((r) => ({ id: r.weekend_id, w: Array.isArray(r.weekend) ? r.weekend[0] : r.weekend }))
@@ -48,6 +51,30 @@ export async function findLiveWeekendId(): Promise<string | null> {
 export async function loadLive(weekendId?: string | null): Promise<LiveData | null> {
   const id = weekendId ?? (await findLiveWeekendId());
   if (!id) return null;
+  return loadWeekend(id, false);
+}
+
+// What the admission screen shows: the event, its dates and the prices.
+// Shown whether or not the live page is on; nothing on it is private.
+export interface AdmissionData {
+  event: string;
+  startsOn: string;
+  endsOn: string;
+  gameDays: string[];
+  facility: string | null;
+  admission: string | null;
+}
+
+export async function loadAdmission(): Promise<AdmissionData | null> {
+  const id = await findLiveWeekendId(true);
+  if (!id) return null;
+  const d = await loadWeekend(id, true);
+  if (!d) return null;
+  const gameDays = [...new Set(d.games.map((g) => g.plays_on).filter((x): x is string => !!x))].sort();
+  return { event: d.event, startsOn: d.startsOn, endsOn: d.endsOn, gameDays, facility: d.facility, admission: d.admission };
+}
+
+async function loadWeekend(id: string, evenIfOff: boolean): Promise<LiveData | null> {
   const db = createAdminClient();
   const [{ data: plan }, { data: w }, { data: divisions }, { data: teams }, { data: games }] = await Promise.all([
     db.from("hs_hosted").select("weekend_id, hosted, live_public, courts, game_minutes, facility, admission, concessions").eq("weekend_id", id).maybeSingle(),
@@ -58,7 +85,7 @@ export async function loadLive(weekendId?: string | null): Promise<LiveData | nu
   ]);
   const p = plan as { hosted: boolean; live_public: boolean; courts: number; game_minutes: number; facility: string | null; admission: string | null; concessions: string | null } | null;
   const wk = w as { id: string; event: string; starts_on: string; ends_on: string } | null;
-  if (!p || !p.hosted || !p.live_public || !wk) return null;
+  if (!p || !p.hosted || (!p.live_public && !evenIfOff) || !wk) return null;
   return {
     weekendId: id,
     event: wk.event || "Our tournament",
