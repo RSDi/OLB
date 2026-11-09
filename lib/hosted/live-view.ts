@@ -75,3 +75,8 @@ export function whenLabel(g: HostedGame, withDay = false): string {
 export function teamOption(t: LiveTeam, divisionName: string): string {
   return `${t.name} · ${divisionName}`;
 }
+
+// A division's address on the TV page: /shootout/tv/hsa.
+export function tvSlug(d: { code: string | null; name: string }): string {
+  return (d.code || d.name).toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
