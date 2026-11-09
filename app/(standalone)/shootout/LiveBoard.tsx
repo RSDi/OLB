@@ -131,13 +131,37 @@ export function LiveBoard({ data, now, updatedAt }: { data: LiveData; now: Clock
             {data.facility && (
               <div>
                 <b>Where</b>
-                {data.facility}
+                <MapLink place={data.facility} />
               </div>
             )}
           </div>
         </section>
       )}
     </div>
+  );
+}
+
+// The address opens the phone's maps app: Apple Maps on an iPhone, iPad or
+// Mac, Google Maps everywhere else (on Android that's the Maps app).
+function MapLink({ place }: { place: string }) {
+  const q = encodeURIComponent(place.split("\n").map((l) => l.trim()).filter(Boolean).join(", "));
+  const google = `https://www.google.com/maps/search/?api=1&query=${q}`;
+  return (
+    <a
+      className={s.mapLink}
+      href={google}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => {
+        if (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent)) {
+          e.preventDefault();
+          window.location.href = `https://maps.apple.com/?q=${q}`;
+        }
+      }}
+    >
+      <span className={s.mapAddr}>{place}</span>
+      <span className={s.mapHint}>Open in Maps ›</span>
+    </a>
   );
 }
 
