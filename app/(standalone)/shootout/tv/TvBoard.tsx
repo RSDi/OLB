@@ -4,7 +4,7 @@
 // division. Reloads the scores every 30 seconds and keeps the screen awake
 // where the browser allows it. Nothing to click: it's meant to be left on.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { HostedGame } from "../../../../lib/hosted/types";
@@ -12,10 +12,9 @@ import type { LiveData, LiveDivision } from "../../../../lib/hosted/live";
 import { poolStandings, poolsOf } from "../../../../lib/hosted/standings";
 import { gameState, isFinal, sideView, sortGames, tvSlug, whenLabel, type Clock, type SideView } from "../../../../lib/hosted/live-view";
 import bolt from "../../../(site)/_images/logo-bolt.png";
+import { useFitStage, useFullscreenOnPress, useWakeLock } from "./tv-hooks";
 import s from "./tv.module.css";
 
-const W = 1920;
-const H = 1080;
 const MAX_GAMES = 10;
 
 type Screen = { key: string; tab: string; title: string; division: LiveDivision | null };
@@ -32,7 +31,6 @@ interface Props {
 
 export function TvBoard({ data, now, clock, dates, qr, pin, seconds }: Props) {
   const router = useRouter();
-  const stage = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState(0);
   const [time, setTime] = useState<string | null>(null);
 
@@ -46,19 +44,9 @@ export function TvBoard({ data, now, clock, dates, qr, pin, seconds }: Props) {
   }, [data, pin]);
   const screen = screens.length ? screens[step % screens.length] : null;
 
-  // Fit the 1920×1080 stage to the screen.
-  useEffect(() => {
-    const fit = () => {
-      const el = stage.current;
-      if (!el) return;
-      const k = Math.min(window.innerWidth / W, window.innerHeight / H);
-      el.style.transform = `translate(-50%, -50%) scale(${k})`;
-      el.style.opacity = "1";
-    };
-    fit();
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  }, []);
+  const stage = useFitStage();
+  useWakeLock();
+  const fsHint = useFullscreenOnPress();
 
   // Next screen.
   useEffect(() => {
@@ -80,26 +68,6 @@ export function TvBoard({ data, now, clock, dates, qr, pin, seconds }: Props) {
       clearTimeout(reload);
     };
   }, [router]);
-
-  // Keep the screen from going to sleep, where the browser lets us.
-  useEffect(() => {
-    type Lock = { release: () => Promise<void> };
-    const nav = navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<Lock> } };
-    let lock: Lock | null = null;
-    const ask = () => {
-      if (document.visibilityState !== "visible" || !nav.wakeLock) return;
-      nav.wakeLock
-        .request("screen")
-        .then((l) => (lock = l))
-        .catch(() => {});
-    };
-    ask();
-    document.addEventListener("visibilitychange", ask);
-    return () => {
-      document.removeEventListener("visibilitychange", ask);
-      lock?.release().catch(() => {});
-    };
-  }, []);
 
   return (
     <div className={s.tv}>
@@ -158,6 +126,7 @@ export function TvBoard({ data, now, clock, dates, qr, pin, seconds }: Props) {
             <div className={s.qr} dangerouslySetInnerHTML={{ __html: qr }} />
           </div>
         </footer>
+        {fsHint && <div className={s.fsHint}>Press OK on the remote (or click) for full screen</div>}
       </div>
     </div>
   );

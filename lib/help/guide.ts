@@ -607,7 +607,7 @@ Hotels and places to eat themselves stay in **External Contacts** (see *Hotels a
     permission: "hs_schedule",
     preview: true,
     routes: ["/portal/schedule/hosted"],
-    keywords: ["live scores", "live page", "qr", "qr code", "signs", "poster", "table tent", "court card", "scorer", "scorer's table", "pin", "save final", "shootout", "public scores", "brackets online", "tv", "fire stick", "scoreboard"],
+    keywords: ["live scores", "live page", "qr", "qr code", "signs", "poster", "table tent", "court card", "scorer", "scorer's table", "pin", "save final", "shootout", "public scores", "brackets online", "tv", "fire stick", "scoreboard", "admission screen", "full screen"],
     body: `For a tournament we host: a public page with every score, the pool standings and the Saturday games, at **omahalightningbasketball.com/shootout**. Parents get there from QR codes on signs around the gym. No login.
 
 **Turn it on.** On the tournament plan's **Brackets** tab, the **Live scores** box has **Turn on the live page**. Until then the page says scores will be there on game day. **Turn off** takes it down again.
@@ -620,7 +620,7 @@ Hotels and places to eat themselves stay in **External Contacts** (see *Hotels a
 
 **What parents see.** What's on each court now and next, each division's pool standings and Saturday's placement games (a seat shows who holds it so far until the pool finishes), and the whole schedule with scores. **Follow a team** narrows the schedule to that team and highlights it everywhere.
 
-**On a TV.** **omahalightningbasketball.com/shootout/tv** is the same scores sized for a TV: it turns through **On the courts** and a screen for each division (standings and games), about 15 seconds each, and updates on its own. To keep one TV on one screen, add the division's code or **courts** to the address, like **/shootout/tv/hsa** or **/shootout/tv/courts**. On a Fire Stick, open the **Silk** browser, type the address, and choose full screen from Silk's menu. Set the Fire TV's screensaver to **Never** (Settings → Display & Sounds → Screensaver) so it doesn't cover the scores.`,
+**On a TV.** **omahalightningbasketball.com/shootout/tv** is the same scores sized for a TV: it turns through **On the courts** and a screen for each division (standings and games), about 15 seconds each, and updates on its own. To keep one TV on one screen, add the division's code or **courts** to the address, like **/shootout/tv/hsa** or **/shootout/tv/courts**. **omahalightningbasketball.com/shootout/tv/admission** is a TV screen for the door: the Missouri River Shootout graphic and the prices from the **Admission** text in Details (write them like "Day pass $10 · Weekend pass $15", one price per part), with a QR code for live scores. It shows even while the live page is off. On a Fire Stick, open the **Silk** browser, type the address, and press **OK** on the remote: the page goes full screen with no browser bars (Silk's menu also has full screen). Set the Fire TV's screensaver to **Never** (Settings → Display & Sounds → Screensaver) so it doesn't cover the scores.`,
   },
   {
     id: "hs-schedule-travel",

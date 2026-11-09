@@ -80,3 +80,27 @@ export function teamOption(t: LiveTeam, divisionName: string): string {
 export function tvSlug(d: { code: string | null; name: string }): string {
   return (d.code || d.name).toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
+
+// The admission text from Details (free text, like "Day pass $10 · Weekend
+// pass $15\nAges 5 and under free\nPay at the gate.") as prices for the
+// admission screen: each line, split at "·", that ends in a price or "free"
+// is a price; anything else is a note.
+export interface AdmissionPrice {
+  label: string;
+  price: string; // "$10", "Free"
+}
+
+export function admissionPrices(text: string | null): { prices: AdmissionPrice[]; notes: string[] } {
+  const prices: AdmissionPrice[] = [];
+  const notes: string[] = [];
+  for (const line of (text ?? "").split("\n")) {
+    const parts = line.split(/\s+[·•|]\s+/).map((x) => x.trim()).filter(Boolean);
+    const parsed = parts.map((p) => {
+      const m = p.match(/^(.+?)[\s:–—-]*(\$\s?\d+(?:\.\d{2})?|free)\.?$/i);
+      return m ? { label: m[1].trim(), price: /free/i.test(m[2]) ? "Free" : m[2].replace(/\s/g, "") } : null;
+    });
+    if (parts.length && parsed.every(Boolean)) prices.push(...(parsed as AdmissionPrice[]));
+    else if (line.trim()) notes.push(line.trim());
+  }
+  return { prices, notes };
+}
