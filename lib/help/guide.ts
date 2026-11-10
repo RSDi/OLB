@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "November 8, 2026";
+export const GUIDE_UPDATED = "November 10, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -119,7 +119,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     keywords: ["navigation", "menu", "sidebar", "links", "schedule", "new tab", "inside the portal", "frame", "collapse", "mobile", "phone", "ipad", "tablet", "home", "search", "info", "help", "sign out", "log out", "shortcut", "command k", "ctrl k", "scroll", "back to top", "jump to top", "tour", "walkthrough", "show me around", "take the tour", "dropdown", "drop down", "pick list", "autocomplete", "space bar"],
     body: `**Home is the Directory.** After you sign in you land on the Directory of players and parents.
 
-**The sidebar** on the left has everything you can use — you only see the parts that apply to you:
+**The sidebar** on the left has everything you can use — you only see the parts that apply to you. Right under the logo are two buttons: **Collapse** (an arrow when the sidebar is narrow) and **Settings**, so you never have to scroll to reach them.
 
 - **Directory** — players, parents, teams, coaches and volunteers.
 - **Playbooks** — how-to guides and step-by-step checklists.
@@ -130,11 +130,11 @@ export const GUIDE_SECTIONS: GuideSection[] = [
 - **Notifications** — turn on notifications for your phone or computer (see **Notifications** below).
 - **Sign out** — at the very bottom.
 
-Coaches and board members also see the **HS Schedule** and **External Contacts** (the travel coordinator does too), and board members **Settings**, just below **User Guide**.
+Coaches and board members also see the **HS Schedule** and **External Contacts** (the travel coordinator does too), and board members find the access requests waiting for them in **Settings**, under the logo — a red badge counts them.
 
 Below a thin line you may see extra links the club has added, like **Schedule**. Some open in a new browser tab, so the portal stays open where you left it. Others open right inside the portal, with the sidebar still there. If one of those doesn't look right, tap **Open in a new tab** in its bottom left corner.
 
-On a computer with a wide screen, **Collapse** (bottom of the sidebar) shrinks it to icons, and the arrow button in the same spot opens it again. On an iPad, a tablet, or a narrower window, the sidebar starts out collapsed so the page has more room. If you expand it, it stays open for this visit — a refresh starts collapsed again on those screens. If the sidebar is taller than the window, scroll it to reach the buttons at the bottom. On a phone, tap the **menu** button at the top left to open it.
+On a computer with a wide screen, **Collapse** (under the logo) shrinks the sidebar to icons, and the arrow button in the same spot opens it again. On an iPad, a tablet, or a narrower window, the sidebar starts out collapsed so the page has more room. If you expand it, it stays open for this visit — a refresh starts collapsed again on those screens. If the sidebar is taller than the window (in a car, or on a small laptop), scroll it to reach **User Guide**, **Notifications** and **Sign out** at the bottom — **Collapse** and **Settings** stay at the top. On a phone, tap the **menu** button at the top left to open it.
 
 **Search.** The search box at the top of every page finds members, playbooks and Slack messages (and, for coaches and the board, external contacts). Press **⌘K** on a Mac or **Ctrl K** on Windows to jump to it from anywhere. Type at least 2 letters, use the arrow keys and **Enter** to open a result, and **Esc** to close. Tap the **×** inside the box to clear what you typed and start over. Your last few searches are remembered under **Recent**. To find a *player*, use the search box on the Directory page instead. That one, and the other search boxes on a page, have the same **×**.
 
