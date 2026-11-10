@@ -107,6 +107,18 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Everything you can use lives here. You only see the parts that apply to you.",
       },
       {
+        target: "sidebar-collapse",
+        sidebar: true,
+        title: "Collapse",
+        body: "Right under the logo, so you never have to scroll for it. Shrinks the sidebar to icons when you want more room; tap the arrow in the same spot to open it again.",
+      },
+      {
+        target: "nav-settings",
+        sidebar: true,
+        title: "Settings",
+        body: "What's new in the portal lives here, under **Release Notes**. A **What's new** card also pops up in the bottom-right when something ships. Board members also approve new sign-ups and manage accounts here; a red badge counts access requests waiting for you.",
+      },
+      {
         target: "nav-directory",
         sidebar: true,
         title: "Directory",
@@ -148,18 +160,6 @@ export const GUIDE_TOURS: GuideTour[] = [
         sidebar: true,
         title: "User Guide",
         body: "The full guide, with a search box. Come back here any time you're not sure how something works.",
-      },
-      {
-        target: "nav-settings",
-        sidebar: true,
-        title: "Settings",
-        body: "What's new in the portal lives here, under **Release Notes**. A **What's new** card also pops up in the bottom-right when something ships. Board members also approve new sign-ups and manage accounts here; a red badge counts access requests waiting for you.",
-      },
-      {
-        target: "sidebar-collapse",
-        sidebar: true,
-        title: "Collapse",
-        body: "Shrinks the sidebar to icons when you want more room. Tap it again to expand.",
       },
       {
         target: "menu-button",

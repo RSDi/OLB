@@ -63,20 +63,22 @@ const NAV: NavItem[] = [
   // Every family's balance for the Treasurer (the Payments grant); a parent's
   // own balance once the Treasurer turns that on.
   { href: "/portal/payments", label: "Payments", icon: <Icons.Give width={16} height={16}/>, paymentsOnly: true, tour: "nav-payments" },
-  // Every approved member: Release Notes, plus any tabs their permissions add.
-  // Pinned to the bottom of the nav (BOTTOM_HREFS).
   { href: "/portal/devices", label: "Signed-in devices", icon: <Icons.Phone width={16} height={16}/>, pairingOnly: true, tour: "nav-devices" },
+  // Every approved member: Release Notes, plus any tabs their permissions add.
+  // Not in the list: it sits in the row under the logo, beside Collapse, so
+  // it's on screen without scrolling (a car or laptop screen).
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, approvedOnly: true, tour: "nav-settings" },
   // Archives: Slack, Email (board), Photo Album. Approved members.
   { href: "/portal/archives", label: "Archives", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
-  // bottom of the nav, above Settings (BOTTOM_HREFS).
+  // bottom of the nav (BOTTOM_HREFS).
   { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/>, tour: "nav-guide" },
 ];
 
 // Pinned to the bottom of the nav, below the custom links, in this order.
+// Settings lives in the row under the logo instead (SETTINGS_HREF).
 const SETTINGS_HREF = "/portal/settings";
-const BOTTOM_HREFS = ["/portal/guide", SETTINGS_HREF];
+const BOTTOM_HREFS = ["/portal/guide"];
 
 // Wordmark in the sidebar's brand block (Lightning theme).
 const BRAND = { name: "OLB", tagline: "MEMBER PORTAL" };
@@ -175,7 +177,8 @@ export function PortalSidebar({
   const pairing = viewer?.canPairDevices ?? false;
   const film = viewer?.canViewFilm ?? false;
   const visibleItems = navItems.map(item => (item.href === "/portal/payments" && seesFinances ? { ...item, label: "Finances" } : item)).filter(item => (!item.staffOnly || settings) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts) && (!item.pairingOnly || pairing) && (!item.filmOnly || film));
-  const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href));
+  const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href) && item.href !== SETTINGS_HREF);
+  const settingsItem = visibleItems.find(item => item.href === SETTINGS_HREF);
   const bottomItems = BOTTOM_HREFS
     .map(href => visibleItems.find(item => item.href === href))
     .filter((item): item is NavItem => !!item);
@@ -219,6 +222,22 @@ export function PortalSidebar({
     color: active ? "var(--rsd-accent-on)" : "var(--rsd-frame-fg-3)",
     position: "relative",
     transform: isMobile ? "scale(1.15)" : undefined, transformOrigin: "center",
+  });
+
+  // The Collapse / Settings buttons under the logo: side by side, and
+  // stacked icons in the narrow rail (big enough to tap in a car).
+  const toolStyle = (active: boolean): React.CSSProperties => ({
+    flex: c ? "none" : "1 1 0", minWidth: 0,
+    display: "flex", alignItems: "center", justifyContent: c ? "center" : "flex-start",
+    gap: 8, padding: c ? "11px 0" : (isMobile ? "12px 14px" : "9px 10px"),
+    minHeight: isMobile ? 44 : undefined,
+    borderRadius: 10,
+    background: active ? "var(--rsd-accent)" : "var(--rsd-frame-2)",
+    border: "1px solid",
+    borderColor: active ? "var(--rsd-accent)" : "var(--rsd-frame-line)",
+    color: active ? "var(--rsd-accent-on)" : "var(--rsd-frame-fg-2)",
+    fontWeight: 700, fontSize: isMobile ? 15 : 13, lineHeight: 1,
+    textDecoration: "none", whiteSpace: "nowrap",
   });
 
   // Two-word labels ("Slack Archive", "User Guide") wrap in the narrow
@@ -331,6 +350,67 @@ export function PortalSidebar({
         </div>
       </Link>
 
+      {/* Collapse / expand and Settings, right under the logo, so they're on
+          screen without scrolling the sidebar (a car or laptop screen). */}
+      {(!isMobile || settingsItem) && (
+        <div className="rsd-sidebar-tools" style={{ display: "flex", flexDirection: c ? "column" : "row", gap: 6, flexShrink: 0 }}>
+          {!isMobile && (
+            <button
+              onClick={onToggleCollapse}
+              data-tour="sidebar-collapse"
+              className="gw-press rsd-sidebar-collapse"
+              aria-expanded={!c}
+              aria-label={c ? "Expand sidebar" : "Collapse sidebar"}
+              title={c ? "Expand sidebar" : "Collapse sidebar"}
+              style={toolStyle(false)}
+            >
+              <span className="rsd-side-narrow" style={{ display: "flex", flexShrink: 0 }}>
+                <Icons.ChevronsRight width={16} height={16}/>
+              </span>
+              <span className="rsd-side-full" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ display: "flex", flexShrink: 0 }}>
+                  <Icons.ChevronsLeft width={16} height={16}/>
+                </span>
+                Collapse
+              </span>
+            </button>
+          )}
+          {settingsItem && (() => {
+            const active = isActive(settingsItem.href, settingsItem.exact);
+            return (
+              <Link
+                href={settingsItem.href}
+                prefetch={false}
+                aria-current={active ? "page" : undefined}
+                aria-label={pendingCount > 0 ? `Settings, ${pendingCount} waiting` : "Settings"}
+                title="Settings"
+                data-tour={settingsItem.tour}
+                className="gw-press rsd-sidebar-tool"
+                onClick={() => { if (isMobile) onNavigate?.(); }}
+                style={toolStyle(active)}
+              >
+                <span style={{ display: "flex", flexShrink: 0, position: "relative" }}>
+                  {settingsItem.icon}
+                  {pendingCount > 0 && (
+                    <span style={{
+                      position: "absolute", top: -7, right: -9,
+                      minWidth: 14, height: 14, borderRadius: 100, padding: "0 3px",
+                      background: "var(--rsd-error-fill)", color: "#fff",
+                      fontSize: 9, fontWeight: 800,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      lineHeight: 1,
+                    }}>
+                      {pendingCount > 9 ? "9+" : pendingCount}
+                    </span>
+                  )}
+                </span>
+                <span className="rsd-side-full" style={{ marginLeft: pendingCount > 0 ? 4 : 0 }}>{settingsItem.label}</span>
+              </Link>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Nav */}
       <nav data-tour="sidebar-nav" style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1 }}>
         {mainItems.map(renderNavItem)}
@@ -393,7 +473,7 @@ export function PortalSidebar({
           </>
         )}
 
-        {/* User Guide and Settings sit at the bottom, just above Collapse / Sign out. */}
+        {/* User Guide sits at the bottom, just above Notifications / Sign out. */}
         {bottomItems.length > 0 && (
           <div style={{ marginTop: "auto", paddingTop: 8, display: "flex", flexDirection: "column", gap: 1 }}>
             {bottomItems.map(renderNavItem)}
@@ -403,31 +483,6 @@ export function PortalSidebar({
 
       {/* Bottom */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-        {!isMobile && (
-          <button
-            onClick={onToggleCollapse}
-            data-tour="sidebar-collapse"
-            className="gw-press rsd-sidebar-collapse"
-            aria-expanded={!c}
-            title={c ? "Expand sidebar" : "Collapse sidebar"}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: c ? "center" : "flex-start",
-              gap: 10, padding: "10px 12px", borderRadius: 10, width: "100%",
-              background: "var(--rsd-frame-2)", border: "1px solid var(--rsd-frame-line)",
-              color: "var(--rsd-frame-fg-2)", fontWeight: 700, fontSize: 13,
-            }}
-          >
-            <span className="rsd-side-narrow" style={{ display: "flex", flexShrink: 0 }}>
-              <Icons.ChevronsRight width={16} height={16}/>
-            </span>
-            <span className="rsd-side-full" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ display: "flex", flexShrink: 0 }}>
-                <Icons.ChevronsLeft width={16} height={16}/>
-              </span>
-              Collapse
-            </span>
-          </button>
-        )}
         {isApproved && !previewing && (
           <button
             onClick={() => setNotificationsOpen(true)}

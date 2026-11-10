@@ -201,9 +201,12 @@ a { text-decoration: none; color: inherit; }
     padding: 7px 2px !important;
   }
   .rsd-app:not(.sidebar-expanded) .rsd-sidebar-collapse,
+  .rsd-app:not(.sidebar-expanded) .rsd-sidebar-tool,
   .rsd-app:not(.sidebar-expanded) .rsd-sidebar button {
     justify-content: center !important;
   }
+  .rsd-app:not(.sidebar-expanded) .rsd-sidebar-tools { flex-direction: column !important; }
+  .rsd-app:not(.sidebar-expanded) .rsd-sidebar-tools > * { flex: none !important; padding: 11px 0 !important; }
   .rsd-app:not(.sidebar-expanded) .rsd-side-full { display: none !important; }
   .rsd-app:not(.sidebar-expanded) .rsd-side-narrow { display: flex !important; }
   .rsd-app:not(.sidebar-expanded) .rsd-nav-item > .rsd-side-narrow { display: block !important; }
@@ -222,15 +225,20 @@ a { text-decoration: none; color: inherit; }
     padding: 7px 2px !important;
   }
   .rsd-app.sidebar-collapsed .rsd-sidebar-collapse,
+  .rsd-app.sidebar-collapsed .rsd-sidebar-tool,
   .rsd-app.sidebar-collapsed .rsd-sidebar button {
     justify-content: center !important;
   }
+  .rsd-app.sidebar-collapsed .rsd-sidebar-tools { flex-direction: column !important; }
+  .rsd-app.sidebar-collapsed .rsd-sidebar-tools > * { flex: none !important; padding: 11px 0 !important; }
   .rsd-app.sidebar-collapsed .rsd-side-full { display: none !important; }
   .rsd-app.sidebar-collapsed .rsd-side-narrow { display: flex !important; }
   .rsd-app.sidebar-collapsed .rsd-nav-item > .rsd-side-narrow { display: block !important; }
 }
 /* The sidebar scrolls when it's taller than the window (a car or laptop
-   screen), so Collapse and Sign out at the bottom stay reachable. */
+   screen). Collapse and Settings sit under the logo so they never need it. */
+.rsd-sidebar-tool:not([aria-current="page"]):hover,
+.rsd-sidebar-collapse:hover { color: var(--rsd-frame-fg) !important; }
 .rsd-app .rsd-sidebar { grid-area: sidebar; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--rsd-frame-line) transparent; }
 .rsd-app .rsd-topbar  { grid-area: topbar; }
 .rsd-app main {
