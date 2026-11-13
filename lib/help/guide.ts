@@ -607,16 +607,22 @@ Hotels and places to eat themselves stay in **External Contacts** (see *Hotels a
     permission: "hs_schedule",
     preview: true,
     routes: ["/portal/schedule/hosted"],
-    keywords: ["live scores", "live page", "qr", "qr code", "signs", "poster", "table tent", "court card", "scorer", "scorer's table", "pin", "save final", "shootout", "public scores", "brackets online", "tv", "fire stick", "scoreboard", "admission screen", "full screen"],
+    keywords: ["live scores", "live page", "qr", "qr code", "signs", "poster", "table tent", "court card", "scorer", "scorer's table", "pin", "save final", "fix", "clear this score", "edit game", "move a game", "swap", "picked by hand", "undo", "shootout", "public scores", "brackets online", "tv", "fire stick", "scoreboard", "admission screen", "full screen"],
     body: `For a tournament we host: a public page with every score, the pool standings and the Saturday games, at **omahalightningbasketball.com/shootout**. Parents get there from QR codes on signs around the gym. No login.
 
 **Turn it on.** On the tournament plan's **Brackets** tab, the **Live scores** box has **Turn on the live page**. Until then the page says scores will be there on game day. **Turn off** takes it down again.
 
-**The PIN.** **Make a PIN** gives the scorer's tables a six-digit PIN. Hand it out at the tournament desk; it isn't printed anywhere. **New PIN** replaces it, and every phone that had the old one has to type the new one.
+**The PIN.** **Make a PIN** gives the scorer's table a four-digit PIN. Hand it out at the tournament desk; it isn't printed anywhere. **New PIN** replaces it, and every phone that had the old one has to type the new one.
 
 **Print the signs.** Opens the signs, ready to print on Letter paper: a poster, a table tent for the admission tables (with the **Admission** text from Details), four cards to a sheet, and a card for each court's scorer's table. Press **Print**.
 
-**On game day.** Whoever keeps the book at a court scans that court's card, types the PIN the first time, and after each game types both scores and presses **Save final**. It's on the live page within 30 seconds. **Undo** takes it back right after; **Fix** beside an earlier game changes it. A tied score isn't accepted (check the book for overtime). You can also enter or fix any score here by tapping the game.
+**On game day.** One scorer's table keeps every court. On a phone, open **omahalightningbasketball.com/shootout/score** (or scan any court card) and type the PIN the first time. **All games** lists the day's games, with **Fri** / **Sat** at the top and **All**, **Ct 1**, **Ct 2**… to narrow it to one court. Games that have started without a final are at the top (red once they're overdue), then **Coming up**, then **Finals**. The list updates by itself, so two phones at the table stay in step.
+- **Score** opens the game: type both scores and press **Save final**. It's on the live page and the TVs within 30 seconds, and winners move on. A tied score isn't accepted (check the book for overtime).
+- **Fix** on a final changes it (**Save change**) or takes it off (**Clear this score**). If a change flips the winner, it first says which later game gets a different team, and warns when that game already has a final.
+- **Edit game** moves a game (**Day**, **Time**, **Court**) or picks its teams. If the new court and time already have a game, **Swap the two games** trades their places. A Saturday seat that fills itself from results (like **Winner of Game 3**) can be **picked by hand**; it then stays as picked even if those results change, and choosing **(fills itself)** puts it back.
+- After any save, the bar at the top says what changed, with **Undo**.
+
+You can also enter or fix any score, or move a game, on the plan's **Schedule** and **Brackets** tabs.
 
 **What parents see.** What's on each court now and next, each division's pool standings and Saturday's placement games (a seat shows who holds it so far until the pool finishes), and the whole schedule with scores. **Follow a team** narrows the schedule to that team and highlights it everywhere. Near the bottom, **Thank you to our partners** shows our sponsors' logos; each opens their website.
 

@@ -75,8 +75,9 @@ export function LivePanel({ data }: { data: HostedPageData }) {
         </div>
       </div>
       <p style={sub}>
-        On game day, whoever keeps the book at each court scans the court card, types the PIN once, and presses Save final after each game. Standings, pool seats
-        and the bracket update by themselves. Fix any score here by tapping its game.
+        On game day, the scorer&apos;s table opens omahalightningbasketball.com/shootout/score (or scans any court card) and types the PIN once. Every game on every
+        court is there: Score, Fix, and Edit game to move a game or pick its teams. Standings, pool seats and the bracket update by themselves. Fix any score here
+        by tapping its game too.
       </p>
     </Section>
   );

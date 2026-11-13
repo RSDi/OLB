@@ -167,6 +167,28 @@
 .toast { background: var(--tint); border-radius: 12px; padding: 10px 12px; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
 .link { background: none; border: 0; padding: 0; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer; color: inherit; }
 .err { color: var(--live); font-size: 14px; font-weight: 700; }
-.earlier { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px 12px; }
-.earlierRow { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
-.earlierRow:first-child { border-top: 0; }
+/* The scorer's table list */
+.tdays { display: flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 3px; }
+.tdays button { flex: 1; border: 0; background: none; padding: 8px 0; border-radius: 8px; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); cursor: pointer; }
+.tdays .tdayOn { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+.tlabel { display: flex; justify-content: space-between; align-items: center; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 800; margin: 6px 0 -4px; }
+.tcount { background: var(--live); color: #fff; border-radius: 99px; padding: 0 8px; letter-spacing: 0; }
+.tcard { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.tcardDue { border: 2px solid var(--live); }
+.tcardWhen { font-weight: 800; font-size: 14px; line-height: 1.15; white-space: nowrap; }
+.tcardWhen small, .tcardMatch small { display: block; font-weight: 600; color: var(--muted); font-size: 12px; }
+.tcardMatch { font-weight: 700; font-size: 14.5px; line-height: 1.25; }
+.won { font-weight: 800; }
+.lost { color: var(--muted); font-weight: 600; }
+.tcardAct { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.tbtn, .tbtnLight { border-radius: 10px; padding: 8px 12px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
+.tbtn { background: var(--night); color: var(--bolt); border: 0; }
+.tbtnLight { background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
+.tback { align-self: flex-start; background: none; border: 0; padding: 0; font: inherit; font-weight: 800; color: var(--fg); cursor: pointer; }
+.danger { background: none; border: 1.5px solid var(--live); color: var(--live); padding: 12px; border-radius: 14px; font: inherit; font-weight: 800; font-size: 16px; cursor: pointer; }
+.danger:disabled { opacity: 0.45; }
+.tgrid3 { display: grid; grid-template-columns: 1.1fr 1fr 0.8fr; gap: 8px; }
+.tfield { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.tfield small { display: block; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.tfield select, .tfield input { width: 100%; border: 0; background: none; color: var(--fg); font: inherit; font-weight: 800; font-size: 16px; padding: 2px 0; }
+.tbtn:focus-visible, .tbtnLight:focus-visible, .tback:focus-visible, .danger:focus-visible, .tdays button:focus-visible, .tfield:focus-within { outline: 3px solid var(--bolt); outline-offset: 2px; }
