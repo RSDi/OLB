@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "November 10, 2026";
+export const GUIDE_UPDATED = "November 13, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -1519,8 +1519,8 @@ Make a page of your own, like a fall camp or a tryouts page. Under **Pages → N
     group: "Settings",
     audience: "super_admin",
     preview: true,
-    keywords: ["website activity", "analytics", "stats", "statistics", "visitors", "visits", "traffic", "page views", "google", "facebook", "where they came from", "registration funnel", "who visited"],
-    body: `See who is visiting the public club website. Open **Settings → Website Activity**.
+    keywords: ["website activity", "analytics", "stats", "statistics", "visitors", "visits", "traffic", "page views", "google", "facebook", "where they came from", "registration funnel", "who visited", "busy times", "shootout", "missouri river shootout", "live scores"],
+    body: `See who is visiting the public club website and the Missouri River Shootout's live scores. Open **Settings → Website Activity**.
 
 Visitors are anonymous: each browser gets a random number, and no names or addresses are kept. When someone is signed in to the portal, their visits show their name. When someone registers players, their visits (before and after) show the players they registered.
 
@@ -1528,6 +1528,8 @@ Visitors are anonymous: each browser gets a random number, and no names or addre
 - **Visitors each day**: hover over or tap a day for its numbers.
 - **Player registration**: how many people opened **Player Registration**, started (asked for an email code) and registered. A big drop between two steps is where families give up.
 - **Where visitors came from**: Google, Facebook, an email, another site, or **Direct** (typed in, a bookmark, or an app that doesn't say). A link with \`?utm_source=newsletter\` on the end shows as "newsletter".
+- **Busy times**: a square for each hour of each weekday (Central time). The darker the square, the more people were on the club website then. Hover over or tap a square for its numbers. Shootout pages aren't in it.
+- **Missouri River Shootout**: the live scores page people open from the QR signs, over the last 60 days: how many people, page views, how many were on a phone, and how often they came back. **Busy times on live scores** shows each tournament day hour by hour. **Shootout pages** counts the TV screens, scorer's tables and signs separately (each TV or laptop is one device).
 - **Most visited pages** and **Recent registrations**: each registration says how many visits the family made first and where they first came from.
 - **Recent visits**: the latest 40 visits, page by page (Home → Programs → Player Registration), with the device and rough location. A visit ends after 30 minutes away. **Visit #3** means that browser's third visit.
 

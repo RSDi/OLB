@@ -36,6 +36,31 @@ export interface WebsiteRegistration {
   firstSource: string;
 }
 
+export type ShootoutArea = "shootout" | "shootout_tv" | "shootout_score" | "shootout_signs";
+
+export interface AreaTotals {
+  visitors: number;
+  visits: number;
+  views: number;
+  phones: number;
+  firstAt: string | null;
+  lastAt: string | null;
+}
+
+export interface BusyTimes {
+  // [weekday 0 = Monday … 6 = Sunday][hour 0–23], Central time: people in
+  // that hour, added up over the days in the window.
+  visitors: number[][];
+  views: number[][];
+}
+
+export interface ShootoutActivity {
+  // Last 60 days, per page group. Missing = no views.
+  areas: Partial<Record<ShootoutArea, AreaTotals>>;
+  // The live scores page, hour by hour (Central time), on days it had visitors.
+  hourly: { day: string; hour: number; visitors: number; views: number }[];
+}
+
 export interface WebsiteActivity {
   kpis: { visitors30d: number; visits30d: number; views30d: number; registrations30d: number };
   daily: { day: string; visitors: number; visits: number; views: number }[];
@@ -44,6 +69,11 @@ export interface WebsiteActivity {
   funnel: { visitors: number; opened: number; started: number; submitted: number };
   visits: WebsiteVisit[];
   registrations: WebsiteRegistration[];
+  // The club website (not the Shootout), last 30 days.
+  busy: BusyTimes;
+  shootout: ShootoutActivity;
+  // 0166's views missing or failing: the rest of the tab still loads.
+  busyError: string | null;
   // When this was read (epoch ms): the tab's "now", so rendering stays pure.
   asOf: number;
   error: string | null;
@@ -65,6 +95,16 @@ type VisitRow = {
 };
 
 const RECENT_VISITS = 40;
+const SHOOTOUT_AREAS: ShootoutArea[] = ["shootout", "shootout_tv", "shootout_score", "shootout_signs"];
+
+function grid(): number[][] {
+  return Array.from({ length: 7 }, () => Array<number>(24).fill(0));
+}
+
+// Central-time calendar date n days back, as YYYY-MM-DD.
+function chicagoDay(ms: number): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date(ms));
+}
 
 function placeOf(r: { city: string; region: string }): string {
   return [r.city, r.region].filter(Boolean).join(", ");
@@ -74,6 +114,65 @@ export async function loadWebsiteActivity(): Promise<WebsiteActivity> {
   const supabase = await createClient();
   const now = Date.now();
   const d30 = new Date(now - 30 * 86400_000).toISOString();
+
+  // Busy times and the Shootout (0166), read alongside the rest.
+  const busyPart = (async () => {
+    const [busyRes, shootHourlyRes, areasRes] = await Promise.all([
+      supabase
+        .from("website_hourly")
+        .select("weekday, hour, visitors, views")
+        .eq("area", "site")
+        .gt("day", chicagoDay(now - 30 * 86400_000))
+        .limit(1000),
+      supabase
+        .from("website_hourly")
+        .select("day, hour, visitors, views")
+        .eq("area", "shootout")
+        .gt("day", chicagoDay(now - 60 * 86400_000))
+        .order("day", { ascending: true })
+        .order("hour", { ascending: true })
+        .limit(1000),
+      supabase.from("website_areas_60d").select("area, visitors, visits, views, phones, first_at, last_at").in("area", SHOOTOUT_AREAS),
+    ]);
+    const busyFailed = [busyRes, shootHourlyRes, areasRes].find((r) => r.error)?.error;
+    const busyError = !busyFailed
+      ? null
+      : busyFailed.code === "42P01" || busyFailed.code === "PGRST205"
+      ? "Busy times and the Shootout aren't set up yet — migration 0166 hasn't been applied to this database."
+      : `Couldn't load busy times: ${busyFailed.message}${busyFailed.code ? ` (${busyFailed.code})` : ""}`;
+
+    const busy: BusyTimes = { visitors: grid(), views: grid() };
+    for (const r of (busyRes.data as { weekday: number; hour: number; visitors: number; views: number }[] | null) ?? []) {
+      const w = Number(r.weekday) - 1;
+      const h = Number(r.hour);
+      if (w < 0 || w > 6 || h < 0 || h > 23) continue;
+      busy.visitors[w][h] += Number(r.visitors);
+      busy.views[w][h] += Number(r.views);
+    }
+    const areas: ShootoutActivity["areas"] = {};
+    for (const a of (areasRes.data as
+      | { area: ShootoutArea; visitors: number; visits: number; views: number; phones: number; first_at: string | null; last_at: string | null }[]
+      | null) ?? []) {
+      areas[a.area] = {
+        visitors: Number(a.visitors),
+        visits: Number(a.visits),
+        views: Number(a.views),
+        phones: Number(a.phones),
+        firstAt: a.first_at,
+        lastAt: a.last_at,
+      };
+    }
+    const shootout: ShootoutActivity = {
+      areas,
+      hourly: ((shootHourlyRes.data as { day: string; hour: number; visitors: number; views: number }[] | null) ?? []).map((r) => ({
+        day: r.day,
+        hour: Number(r.hour),
+        visitors: Number(r.visitors),
+        views: Number(r.views),
+      })),
+    };
+    return { busy, shootout, busyError };
+  })();
 
   const [dailyRes, topRes, sourcesRes, funnelRes, visitsRes, regsRes] = await Promise.all([
     supabase.from("website_daily_30d").select("day, visitors, visits, views").order("day", { ascending: true }),
@@ -102,6 +201,8 @@ export async function loadWebsiteActivity(): Promise<WebsiteActivity> {
     : failed.code === "42P01" || failed.code === "PGRST205"
     ? "Website activity isn't set up yet — migration 0161 hasn't been applied to this database."
     : `Couldn't load website activity: ${failed.message}${failed.code ? ` (${failed.code})` : ""}`;
+
+  const { busy, shootout, busyError } = await busyPart;
 
   const visitRows = (visitsRes.data as VisitRow[] | null) ?? [];
   const regRows = (regsRes.data as { visitor_id: string; label: string; created_at: string }[] | null) ?? [];
@@ -226,6 +327,9 @@ export async function loadWebsiteActivity(): Promise<WebsiteActivity> {
     funnel,
     visits,
     registrations,
+    busy,
+    shootout,
+    busyError,
     asOf: now,
     error,
   };

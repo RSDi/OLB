@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { KpiCard } from "../../components/ui";
 import { fetchWebsiteActivity } from "./website-activity-actions";
+import { BusyTimes, Shootout } from "./WebsiteBusyTimes";
 import type { WebsiteActivity, WebsiteVisit } from "../../../lib/activity/website-queries";
 import { sitePageLabel } from "../../../lib/activity/website-rules";
 import { fmtDateTime, fmtDay, fmtDuration, lastDays, relTime } from "../../../lib/activity/paths";
@@ -317,7 +318,8 @@ export function WebsiteActivityTab() {
 
   const intro = (
     <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 620 }}>
-      Who is visiting the public club website, where they came from and where they go. Visitors stay anonymous until
+      Who is visiting the public club website and the Missouri River Shootout&apos;s live scores, where they came
+      from and where they go. Visitors stay anonymous until
       they sign in to the portal or register players; then their visits carry their name.
     </div>
   );
@@ -362,6 +364,16 @@ export function WebsiteActivityTab() {
         <KpiCard label="Registrations · 30 days" value={data.kpis.registrations30d} sub="Sent from the website" />
       </div>
       <DailyChart daily={data.daily} now={data.asOf} />
+      {data.busyError ? (
+        <div role="alert" style={{ ...muted, color: "var(--gw-error)" }}>
+          {data.busyError}
+        </div>
+      ) : (
+        <>
+          <BusyTimes busy={data.busy} />
+          <Shootout shootout={data.shootout} />
+        </>
+      )}
       <div style={{ display: "flex", gap: "var(--rsd-gap)", flexWrap: "wrap", alignItems: "flex-start" }}>
         <Funnel funnel={data.funnel} />
         <Sources sources={data.sources} />
