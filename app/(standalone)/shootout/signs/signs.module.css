@@ -12,6 +12,9 @@
 .sheet { background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.15); overflow: hidden; position: relative; }
 .port { width: 8.5in; height: 11in; }
 .land { width: 11in; height: 8.5in; }
+/* A landscape sign's content. On paper the sheet is portrait and this turns
+   it sideways, so every page prints the same way in every browser. */
+.turn { width: 11in; height: 8.5in; }
 .display { font-family: var(--rsd-font-display), "Arial Narrow", Impact, sans-serif; text-transform: uppercase; font-weight: 800; line-height: .92; }
 .gold { background: #f5c518; }
 
@@ -59,14 +62,15 @@
 .court .c { font-size: 96px; }
 .court ol { margin: 10px 0 0; padding-left: 1.2em; font-size: 17px; line-height: 1.5; }
 
-@page { size: letter; margin: 0; }
-@page landscape { size: letter landscape; margin: 0; }
+@page { size: letter portrait; margin: 0; }
 @media print {
-  .wrap { background: #fff; padding: 0; }
+  .wrap { background: #fff; padding: 0; min-height: 0; }
   .bar, .cap { display: none; }
-  .sheets { gap: 0; display: block; }
-  .sheet { box-shadow: none; break-after: page; }
-  .land { page: landscape; }
+  .sheets { gap: 0; display: block; zoom: 1; }
+  /* A hair under the page, so rounding never spills a sheet onto a blank page. */
+  .sheet, .port, .land { width: 8.5in; height: calc(11in - 2px); box-shadow: none; break-inside: avoid; break-after: page; page-break-after: always; }
+  .sheets > section:last-of-type { break-after: auto; page-break-after: auto; }
+  .turn { transform-origin: top left; transform: translateX(8.5in) rotate(90deg); }
   .wrap, .wrap * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 @media screen and (max-width: 11.5in) {

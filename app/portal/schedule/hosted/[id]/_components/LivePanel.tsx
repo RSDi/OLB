@@ -36,23 +36,21 @@ export function LivePanel({ data }: { data: HostedPageData }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         <div style={box}>
           <span style={label}>Live page</span>
-          <a href="/shootout" target="_blank" rel="noreferrer" style={{ fontWeight: 800, fontSize: 15 }}>
+          <a href="/shootout" target="_blank" rel="noreferrer" style={{ fontWeight: 800, fontSize: 15, overflowWrap: "anywhere" }}>
             omahalightningbasketball.com/shootout
           </a>
           <span style={sub}>The address on the QR signs. It refreshes itself every 30 seconds.</span>
         </div>
         <div style={box}>
           <span style={label}>TV screens</span>
-          <a href="/shootout/tv" target="_blank" rel="noreferrer" style={{ fontWeight: 800, fontSize: 15 }}>
-            Scoreboard: omahalightningbasketball.com/shootout/tv
-          </a>
-          <a href="/shootout/tv/admission" target="_blank" rel="noreferrer" style={{ fontWeight: 800, fontSize: 15 }}>
-            Admission: omahalightningbasketball.com/shootout/tv/admission
-          </a>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <TvLink name="Scoreboard" path="/shootout/tv" />
+            <TvLink name="Admission" path="/shootout/tv/admission" />
+          </div>
           <span style={sub}>
-            For a TV (a Fire Stick&apos;s Silk browser works); press OK on the remote for full screen. The scoreboard turns through the courts and each division;
-            add /courts or a division&apos;s code to stay on one, like /shootout/tv/{data.divisions[0] ? tvSlug(data.divisions[0]) : "hsa"}. Admission shows the prices
-            from Details, even while the live page is off.
+            Open one in the TV&apos;s browser (a Fire Stick&apos;s Silk works) and press OK for full screen. The scoreboard turns through the courts and divisions;
+            /shootout/tv/courts or /shootout/tv/{data.divisions[0] ? tvSlug(data.divisions[0]) : "hsa"} stays on one. Admission shows the prices from Details, even
+            with the live page off.
           </span>
         </div>
         <div style={box}>
@@ -83,5 +81,20 @@ export function LivePanel({ data }: { data: HostedPageData }) {
   );
 }
 
-const box: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px", border: "1px solid var(--gw-border)", borderRadius: 12 };
+// "Scoreboard  /shootout/tv": the name, then the short address it opens.
+function TvLink({ name, path }: { name: string; path: string }) {
+  return (
+    <a
+      href={path}
+      target="_blank"
+      rel="noreferrer"
+      style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap", textDecoration: "none", color: "inherit" }}
+    >
+      <b style={{ fontSize: 14, fontWeight: 800, minWidth: 84 }}>{name}</b>
+      <span style={{ fontSize: 13, fontWeight: 700, textDecoration: "underline", textUnderlineOffset: 3, overflowWrap: "anywhere" }}>{path}</span>
+    </a>
+  );
+}
+
+const box: React.CSSProperties = { minWidth: 0, display: "flex", flexDirection: "column", gap: 6, padding: "12px 14px", border: "1px solid var(--gw-border)", borderRadius: 12 };
 const label: React.CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--gw-fg-muted)" };

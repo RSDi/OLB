@@ -55,12 +55,15 @@ export default async function SignsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className={`${s.wrap} ${portalFontVariables}`}>
+      {/* The page itself prints with no margin, color or extra space around the sheets. */}
+      <style>{"@media print { html, body { margin: 0 !important; padding: 0 !important; height: auto !important; background: #fff !important; } }"}</style>
       <div className={s.bar}>
         <div>
           <h1>Signs for {weekend.event}</h1>
           <p>
-            Prints on Letter paper with no margins. The QR codes open {LIVE_URL.replace("https://", "")}; the court cards open score entry for that court. The PIN
-            isn&apos;t printed: hand it out at the tournament desk.
+            Press Print: every sign comes out on its own Letter page, edge to edge (the table tent and cards print sideways). If a date or web address shows at
+            the edges, turn off Headers and footers in the print box. The QR codes open {LIVE_URL.replace("https://", "")}; the court cards open score entry for
+            that court. The PIN isn&apos;t printed: hand it out at the tournament desk.
           </p>
         </div>
         <PrintButton className={s.btn} />
@@ -97,7 +100,8 @@ export default async function SignsPage({ searchParams }: { searchParams: Promis
         </section>
 
         <div className={s.cap}>Table tent · admission tables · fold on the dashed line</div>
-        <section className={`${s.sheet} ${s.land} ${s.tent}`}>
+        <section className={`${s.sheet} ${s.land}`}>
+          <div className={`${s.turn} ${s.tent}`}>
           <div className={`${s.half} ${s.flip}`}>
             <div>
               <span className={s.tag}>{weekend.event}</span>
@@ -121,10 +125,12 @@ export default async function SignsPage({ searchParams }: { searchParams: Promis
             </div>
             <Qr bolt={bolt.src} code={liveQr} />
           </div>
+          </div>
         </section>
 
         <div className={s.cap}>Four cards · bleachers, cafe tables, hotel lobby, coaches&apos; packets · cut on the dashes</div>
-        <section className={`${s.sheet} ${s.land} ${s.cards}`}>
+        <section className={`${s.sheet} ${s.land}`}>
+          <div className={`${s.turn} ${s.cards}`}>
           {["Live scores & brackets", "Who's playing next?", "Live scores & brackets", "Who's playing next?"].map((t, i) => (
             <div key={i} className={s.card}>
               <Qr bolt={bolt.src} code={liveQr} />
@@ -137,6 +143,7 @@ export default async function SignsPage({ searchParams }: { searchParams: Promis
               </div>
             </div>
           ))}
+          </div>
         </section>
 
         <div className={s.cap}>Court cards · tape one at each scorer&apos;s table · cut in half</div>
