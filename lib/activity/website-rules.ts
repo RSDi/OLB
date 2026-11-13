@@ -71,10 +71,20 @@ export function isSitePath(path: string): boolean {
 }
 
 // A public page as words: "/" → "Home", "/player-registration" → "Player
-// Registration".
+// Registration", "/shootout" → "Shootout live scores".
+// The Shootout's pages get their own names.
+const SHOOTOUT_LABELS: [RegExp, string][] = [
+  [/^\/shootout$/, "Shootout live scores"],
+  [/^\/shootout\/tv\/admission$/, "Shootout TV · Admission"],
+  [/^\/shootout\/tv(\/|$)/, "Shootout TV"],
+  [/^\/shootout\/score$/, "Shootout scorer's table"],
+  [/^\/shootout\/signs$/, "Shootout signs"],
+];
+
 export function sitePageLabel(path: string): string {
   const pathname = path.split("?")[0].replace(/\/+$/, "");
   if (!pathname) return "Home";
+  for (const [re, label] of SHOOTOUT_LABELS) if (re.test(pathname)) return label;
   return pathname
     .split("/")
     .filter(Boolean)
