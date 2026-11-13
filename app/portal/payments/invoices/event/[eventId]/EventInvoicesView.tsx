@@ -14,6 +14,7 @@ export function EventInvoicesView({
   depositDueOn,
   balanceDueOn,
   checklistHref,
+  rateLabel,
 }: {
   eventLabel: string;
   invoices: Invoice[];
@@ -23,6 +24,7 @@ export function EventInvoicesView({
   depositDueOn?: string | null;
   balanceDueOn?: string | null;
   checklistHref?: string;
+  rateLabel?: string;
 }) {
   return (
     <EventInvoices
@@ -34,6 +36,7 @@ export function EventInvoicesView({
       depositDueOn={depositDueOn}
       balanceDueOn={balanceDueOn}
       checklistHref={checklistHref}
+      rateLabel={rateLabel}
       paths={olbInvoicePaths}
     />
   );

@@ -430,7 +430,7 @@ test("createBatch refuses when the host has no team fee", async () => {
   const svc = createInvoicingService(makeAdapter({ db, feeCents: null }));
   const res = await svc.createBatch(batchInput(), false);
   assert.equal(res.ok, false);
-  if (!res.ok) assert.match(res.error, /team fee/i);
+  if (!res.ok) assert.match(res.error, /set the fee/i);
 });
 
 test("createBatch uses the server team count, not the browser's", async () => {

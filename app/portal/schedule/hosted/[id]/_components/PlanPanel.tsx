@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { Icons } from "../../../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../../../components/ui";
 import { addStep, deleteStep, moveStep, savePlan, setHosted, updateStep } from "../../../../../../lib/hosted/actions";
-import { daysForWeekend, FEE_LOCK_UNLOCK_NOTE, feeLockNote, formatDay, hostedStepBillingKey, hostedStepMoveControls, isBillingStep, isInviteProgramsStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
+import { daysForWeekend, FEE_LOCK_UNLOCK_NOTE, feeLockNote, feePerGameLine, formatDay, hostedStepBillingKey, hostedStepMoveControls, isBillingStep, isInviteProgramsStep, orderHostedSteps } from "../../../../../../lib/hosted/logic";
 import { STEP_SECTIONS, type HostedPageData, type HostedStep, type StepSection } from "../../../../../../lib/hosted/types";
 import { teamFeesAreBilled } from "../../../../../../lib/invoicing/auto-steps";
 import { ErrorNote, Said, Section, Sheet, cap, grid2, iconBtn, money, moveIconBtn, sub, useAct } from "./parts";
@@ -139,7 +139,7 @@ function Checklist({ data, today, canReorderSteps }: { data: HostedPageData; tod
                     {billingKey === "bill_programs" && billing && (
                       <>
                         <small style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600 }}>
-                          {data.plan.team_fee_cents ? `${money(data.plan.team_fee_cents)}/team` : "Set the team fee in Details"}
+                          {feePerGameLine(data.plan) ?? "Set the fee per game in Details"}
                           {billing.canView && billing.depositPerTeamCents > 0 ? ` · ${money(billing.depositPerTeamCents)}/team deposit` : ""}
                           {billing.canView ? (billing.billed ? ` · ${billing.invoiceCount} invoices in Finances` : " · not billed yet") : ""}
                         </small>
@@ -356,7 +356,8 @@ function Details({ data }: { data: HostedPageData }) {
   const { plan, weekend } = data;
   const [f, setF] = useState(() => ({
     short_name: plan.short_name ?? "",
-    team_fee: plan.team_fee_cents != null ? (plan.team_fee_cents / 100).toFixed(plan.team_fee_cents % 100 ? 2 : 0) : "",
+    game_fee: plan.game_fee_cents != null ? (plan.game_fee_cents / 100).toFixed(plan.game_fee_cents % 100 ? 2 : 0) : "",
+    games_per_team: String(plan.games_per_team ?? 3),
     game_minutes: plan.game_minutes,
     courts: plan.courts,
     days: daysForWeekend(weekend.starts_on, weekend.ends_on, plan.days),
@@ -372,21 +373,35 @@ function Details({ data }: { data: HostedPageData }) {
     <Section
       title="Details"
       tour="hosted-details"
-      subtitle="The days and courts the Schedule fills, the team fee the Money tab counts, and what the program email says."
+      subtitle="The days and courts the Schedule fills, the fee per game the Money tab counts, and what the program email says."
     >
       <div style={grid2}>
         <Input label="Short name" value={f.short_name} onChange={(e) => up({ short_name: e.target.value })} placeholder="MRS" help="How Finances and the email name it." />
         <Input
-          label="Team fee ($)"
+          label="Fee per game ($)"
           inputMode="decimal"
-          value={f.team_fee}
-          onChange={(e) => up({ team_fee: e.target.value })}
-          placeholder="240"
+          value={f.game_fee}
+          onChange={(e) => up({ game_fee: e.target.value })}
+          placeholder="105"
           readOnly={data.feeLock.locked}
           help={
             data.feeLock.locked
               ? feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)
-              : `${FEE_LOCK_UNLOCK_NOTE} What a team pays to come, unless its own fee says otherwise. Our teams pay nothing.`
+              : `${FEE_LOCK_UNLOCK_NOTE} What a visiting team pays for each game it plays. Our teams pay nothing.`
+          }
+          style={data.feeLock.locked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
+        />
+        <Input
+          label="Games per team"
+          inputMode="numeric"
+          value={f.games_per_team}
+          onChange={(e) => up({ games_per_team: e.target.value })}
+          placeholder="3"
+          readOnly={data.feeLock.locked}
+          help={
+            data.feeLock.locked
+              ? feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)
+              : "Each team gets this many unless the Teams tab gives it its own count."
           }
           style={data.feeLock.locked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
         />
@@ -448,8 +463,8 @@ function Details({ data }: { data: HostedPageData }) {
         <span style={sub}>
           {data.feeLock.locked
             ? feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)
-            : plan.team_fee_cents != null
-              ? `${FEE_LOCK_UNLOCK_NOTE} Team fee now ${money(plan.team_fee_cents)}.`
+            : plan.game_fee_cents != null
+              ? `${FEE_LOCK_UNLOCK_NOTE} Now ${feePerGameLine(plan)}.`
               : FEE_LOCK_UNLOCK_NOTE}
         </span>
         <Pill

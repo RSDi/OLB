@@ -165,13 +165,13 @@ export async function sendToBudget(weekendId: string): Promise<HostedResult> {
     description: desc(x.label),
     cents: lineTotal(x, games),
   }));
-  const paying = teams.filter((x) => teamFee(x, plan.team_fee_cents) > 0);
+  const paying = teams.filter((x) => teamFee(x, plan) > 0);
   wanted.push({
     key: "teams",
     kind: "revenue",
     category: "event",
     description: desc(`Team fees (${paying.length} ${paying.length === 1 ? "team" : "teams"})`),
-    cents: teams.reduce((n, x) => n + teamFee(x, plan.team_fee_cents), 0),
+    cents: teams.reduce((n, x) => n + teamFee(x, plan), 0),
   });
 
   for (const want of wanted) {

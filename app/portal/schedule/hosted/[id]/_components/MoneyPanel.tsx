@@ -13,7 +13,7 @@ import { Icons } from "../../../../../components/icons";
 import { Input, Pill, Select } from "../../../../../components/ui";
 import { deleteMoney, saveMoney } from "../../../../../../lib/hosted/actions";
 import { linkFinanceEvent, sendToBudget } from "../../../../../../lib/hosted/finance-actions";
-import { lineCount, lineTotal, moneySummary, teamFee } from "../../../../../../lib/hosted/logic";
+import { feePerGameLine, lineCount, lineTotal, moneySummary, teamFee } from "../../../../../../lib/hosted/logic";
 import { MONEY_CATEGORIES, type HostedMoney, type HostedPageData, type MoneyCategory, type MoneyKind } from "../../../../../../lib/hosted/types";
 import { ErrorNote, Said, Section, Sheet, cap, grid2, money, sub, useAct } from "./parts";
 
@@ -23,7 +23,7 @@ export function MoneyPanel({ data }: { data: HostedPageData }) {
   const [open, setOpen] = useState<Open>(null);
   const { plan, teams, games } = data;
   const sum = moneySummary(plan, teams, data.money, games);
-  const paying = teams.filter((t) => teamFee(t, plan.team_fee_cents) > 0);
+  const paying = teams.filter((t) => teamFee(t, plan) > 0);
 
   const block = (kind: MoneyKind) =>
     MONEY_CATEGORIES.filter((c) => c.kind === kind).map((c) => {
@@ -75,7 +75,7 @@ export function MoneyPanel({ data }: { data: HostedPageData }) {
           </div>
           <span style={sub}>
             {paying.length} of {teams.length} {teams.length === 1 ? "team" : "teams"} paying
-            {plan.team_fee_cents != null ? `, ${money(plan.team_fee_cents)} each unless a team says otherwise` : ". Set the team fee under Details on the Checklist tab"}. Change a team&apos;s fee on the Teams tab.
+            {plan.game_fee_cents != null ? `, ${feePerGameLine(plan)} unless a team says otherwise` : ". Set the fee per game under Details on the Checklist tab"}. Change a team&apos;s games or fee on the Teams tab.
           </span>
         </div>
         {block("revenue")}

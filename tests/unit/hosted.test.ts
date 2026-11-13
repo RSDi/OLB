@@ -28,6 +28,10 @@ import {
   placementBracket,
   placesLabel,
   planFeeChanged,
+  teamFeeChanged,
+  teamGames,
+  planTeamFee,
+  feePerGameLine,
   programMessage,
   roundRobin,
   seedOrder,
@@ -45,7 +49,8 @@ const plan: HostedPlan = {
   game_minutes: 75,
   courts: 4,
   days: [],
-  team_fee_cents: 24000,
+  game_fee_cents: 8000,
+  games_per_team: 3,
   facility: "5 Arena Way, Council Bluffs, IA 51501",
   concessions: "Fieldhouse Cafe. No outside food or drink.",
   rules: null,
@@ -55,7 +60,7 @@ const plan: HostedPlan = {
 };
 
 function team(id: string, extra: Partial<HostedTeam> = {}): HostedTeam {
-  return { id, weekend_id: "w", division_id: "d", opponent_id: null, ours: false, name: id, code: null, seed: null, pool: null, fee_cents: null, note: null, sort_order: 0, ...extra };
+  return { id, weekend_id: "w", division_id: "d", opponent_id: null, ours: false, name: id, code: null, seed: null, pool: null, fee_cents: null, games: null, note: null, sort_order: 0, ...extra };
 }
 
 function game(id: string, extra: Partial<HostedGame> = {}): HostedGame {
@@ -158,14 +163,17 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.equal(feeLockSaveError(1, true), "Couldn't check invoices. Try again.");
   assert.equal(uncheckBillProgramsError(0), null);
   assert.equal(uncheckBillProgramsError(1), "Void invoices first.");
-  assert.equal(planFeeChanged({ team_fee_cents: 24000 }, { team_fee_cents: 24000 }), false);
-  assert.equal(planFeeChanged({ team_fee_cents: 24000 }, { team_fee_cents: 25000 }), true);
+  assert.equal(planFeeChanged({ game_fee_cents: 10500, games_per_team: 3 }, { game_fee_cents: 10500, games_per_team: 3 }), false);
+  assert.equal(planFeeChanged({ game_fee_cents: 10500, games_per_team: 3 }, { game_fee_cents: 11000, games_per_team: 3 }), true);
+  assert.equal(planFeeChanged({ game_fee_cents: 10500, games_per_team: 3 }, { game_fee_cents: 10500, games_per_team: 4 }), true);
+  assert.equal(teamFeeChanged({ fee_cents: null, games: null, ours: false }, { fee_cents: null, games: null, ours: false }), false);
+  assert.equal(teamFeeChanged({ fee_cents: null, games: null, ours: false }, { fee_cents: null, games: 4, ours: false }), true);
   assert.equal(isBillingStep("bill_programs"), true);
   assert.equal(isBillingStep("invoices_sent"), true);
   assert.equal(isBillingStep("team_fees_collected"), true);
   assert.equal(isBillingStep("invite"), false);
   assert.equal(isBillingStep({ step_key: null, label: "Team fees collected" }), true);
-  assert.equal(FEE_LOCK_UNLOCK_NOTE, "Tick Set team fees and bill each program to lock Team fee ($).");
+  assert.equal(FEE_LOCK_UNLOCK_NOTE, "Tick Set team fees and bill each program to lock the fee and game counts.");
   assert.deepEqual(hostedTeamInvoiceKeys({ contact_id: "c1", name: "Prairie Hoops" }), ["c1"]);
   assert.deepEqual(hostedTeamInvoiceKeys({ contact_id: null, name: "Prairie Hoops" }), ["name:prairie hoops"]);
   assert.deepEqual(hostedTeamInvoiceKeys(null), []);
@@ -174,6 +182,7 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(actions, /feeLockSaveError/);
   assert.match(actions, /uncheckBillProgramsError/);
   assert.match(actions, /planFeeChanged/);
+  assert.match(actions, /teamFeeChanged/);
   assert.match(actions, /isBillingStep/);
   assert.match(actions, /That step stays on the checklist/);
   assert.match(actions, /Void its invoice first/);
@@ -332,7 +341,13 @@ test("a score moves the winner and loser on", () => {
 
 test("the money: team fees, counts times amounts, referees by games", () => {
   const teams = [team("ol", { ours: true }), team("kcm"), team("le", { fee_cents: 0 }), team("ww", { fee_cents: 16000 })];
-  assert.equal(teamFee(teams[0], 24000), 0);
+  assert.equal(teamFee(teams[0], plan), 0);
+  assert.equal(teamFee(teams[1], plan), 24000);
+  assert.equal(teamFee(team("x", { games: 4 }), plan), 32000);
+  assert.equal(teamGames(team("x"), plan), 3);
+  assert.equal(planTeamFee(plan), 24000);
+  assert.equal(planTeamFee({ game_fee_cents: null, games_per_team: 3 }), null);
+  assert.equal(feePerGameLine({ game_fee_cents: 10500, games_per_team: 3 }), "$105/game · 3 games a team ($315)");
   const line = (extra: Partial<HostedMoney>): HostedMoney => ({ id: "m", weekend_id: "w", kind: "expense", category: "other", label: "x", qty: null, unit_cents: 0, division_id: null, note: null, sort_order: 0, ...extra });
   const games = [game("a"), game("b"), game("c", { division_id: "other" })];
   const money = [
@@ -366,6 +381,6 @@ test("the program email has who's coming, the facility and the court schedule", 
   assert.doesNotMatch(body, /Maybe Club/);
   assert.match(body, /Iowa West Fieldhouse\n5 Arena Way/);
   assert.match(body, /2:00 PM {2}Court 1 {2}Game 1: HSA \(OL 1 vs KCM 1\)/);
-  assert.match(body, /\$240 per team/);
+  assert.match(body, /\$80 per game, 3 games a team \(\$240\)/);
   assert.equal(initials("Missouri River Shootout"), "MRS");
 });

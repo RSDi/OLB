@@ -6,6 +6,7 @@ import {
   batchCustomerEligible,
   clampDeposit,
   computeInvoice,
+  customerBillLines,
   effectiveMailCopies,
   eventCollection,
   invoiceAlreadyBilled,
@@ -371,7 +372,7 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
       try {
         const hostCustomers = await adapter.listEventCustomers(input.eventId);
         const feeCents = await adapter.eventFeeCents(input.eventId);
-        if (feeCents == null) return fail("Set the team fee on the tournament plan first.");
+        if (feeCents == null) return fail("Set the fee on the tournament plan first.");
         const wanted = input.customers.filter((c) => c.teamCount > 0);
         if (!wanted.length) return fail("No programs with teams to bill.");
         const db = await adapter.getServerClient();
@@ -391,9 +392,9 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
           }
           const teamCount = c.teamCount;
           const draft = existing.find((v) => v.hostCustomerId === c.id && !v.sentAt && !v.voidedAt);
-          const total = teamCount * feeCents;
+          const lines = customerBillLines(c, feeCents, input.lineDescription || `Team fee · ${input.eventLabel}`);
+          const total = lines.reduce((n, l) => n + l.qty * l.unitCents, 0);
           const depositCents = input.depositOn ? clampDeposit(input.depositPerTeamCents * teamCount, total) : 0;
-          const lines = [{ description: input.lineDescription || `Team fee · ${input.eventLabel}`, qty: teamCount, unitCents: feeCents }];
           const email = c.emails.join(", ") || null;
           let inv: Invoice;
           if (draft) {

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { hostedTeamInvoiceCustomerId, hostedTeamInvoiceKeys } from "../../lib/hosted/logic.ts";
 import { groupHostedCustomers } from "../../lib/invoicing/group-customers.ts";
 import { autoStepDone, teamFeesAreBilled } from "../../lib/invoicing/auto-steps.ts";
-import { eventCollection } from "../../packages/invoicing/src/logic.ts";
+import { batchPreviewTotals, customerBillLines, customerBillTotal, eventCollection } from "../../packages/invoicing/src/logic.ts";
 import type { Invoice } from "../../packages/invoicing/src/types.ts";
 
 test("hostedEventCustomers groups opponents by contact and counts visiting teams", () => {
@@ -148,5 +148,40 @@ test("invoicing without HS Schedule edit does not load the full hosted page via 
   assert.match(billPage, /loadHostedBillContext/);
   assert.match(billPage, /invoicesError=\{viewer\.canManageInvoicing && !listed\.ok \? listed\.error : null\}/);
   assert.match(billCtx, /HOSTED_BILL_WEEKEND_COLUMNS = "id, event"/);
-  assert.match(billCtx, /HOSTED_BILL_PLAN_COLUMNS = "weekend_id, hosted, short_name, team_fee_cents"/);
+  assert.match(billCtx, /HOSTED_BILL_PLAN_COLUMNS = "weekend_id, hosted, short_name, game_fee_cents, games_per_team"/);
+});
+
+test("Bill programs prices each team by the game", () => {
+  const [storm] = groupHostedCustomers({
+    opponents: [{ id: "o1", contact_id: "c1", name: "Sioux City Storm", status: "yes" }],
+    teams: [
+      { id: "t1", opponent_id: "o1", ours: false, name: "Storm 12U", division_id: null },
+      { id: "t2", opponent_id: "o1", ours: false, name: "Storm 13U", division_id: null, games: 4 },
+      { id: "t3", opponent_id: "o1", ours: false, name: "Storm 15U", division_id: null, fee_cents: 20000 },
+    ],
+    divisions: [],
+    contacts: [{ id: "c1", name: "Sioux City Storm", email: null, alt_email: null }],
+    people: [],
+    plan: { game_fee_cents: 10500, games_per_team: 3 },
+  });
+  assert.equal(storm.teamCount, 3);
+  assert.equal(storm.unitCount, 7);
+  assert.deepEqual(storm.lines, [
+    { description: "Storm 12U games", qty: 3, unitCents: 10500 },
+    { description: "Storm 13U games", qty: 4, unitCents: 10500 },
+    { description: "Storm 15U team fee", qty: 1, unitCents: 20000 },
+  ]);
+  assert.equal(customerBillTotal(storm, 10500), 31500 + 42000 + 20000);
+  assert.equal(batchPreviewTotals([storm], 10500).totalCents, 93500);
+  // No fee per game yet: no lines, the old teamCount × fee.
+  const [plain] = groupHostedCustomers({
+    opponents: [{ id: "o1", contact_id: "c1", name: "Storm", status: "yes" }],
+    teams: [{ id: "t1", opponent_id: "o1", ours: false, name: "Storm 12U", division_id: null }],
+    divisions: [],
+    contacts: [],
+    people: [],
+    plan: { game_fee_cents: null, games_per_team: 3 },
+  });
+  assert.equal(plain.lines, undefined);
+  assert.deepEqual(customerBillLines(plain, 24000, "Team fee"), [{ description: "Team fee", qty: 1, unitCents: 24000 }]);
 });

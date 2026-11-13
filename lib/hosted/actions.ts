@@ -29,6 +29,7 @@ import {
   placementBracket,
   placesLabel,
   planFeeChanged,
+  teamFeeChanged,
   roundRobin,
   seeded,
   slotsFor,
@@ -174,7 +175,8 @@ export interface PlanInput {
   game_minutes: number;
   courts: number;
   days: { date: string; start: string; end: string }[];
-  team_fee: string; // "240", "" = none
+  game_fee: string; // "105", "" = none
+  games_per_team: string; // "3"
   facility: string;
   concessions: string;
   rules: string;
@@ -191,16 +193,18 @@ export async function savePlan(weekendId: string, input: PlanInput): Promise<Hos
   const courts = Math.round(Number(input.courts));
   if (!(courts >= 1 && courts <= 20)) return { error: "Pick between 1 and 20 courts." };
   let fee: number | null = null;
-  if (input.team_fee.trim()) {
-    fee = parseAmount(input.team_fee);
-    if (fee == null || fee < 0) return { error: "Enter the team fee in dollars, like 240, or leave it blank." };
+  if (input.game_fee.trim()) {
+    fee = parseAmount(input.game_fee);
+    if (fee == null || fee < 0) return { error: "Enter the fee per game in dollars, like 105, or leave it blank." };
   }
+  const perTeam = Math.round(Number(input.games_per_team));
+  if (!(perTeam >= 1 && perTeam <= 20)) return { error: "Games per team is a number from 1 to 20." };
   const lock = await loadFeeLockState(weekendId);
   if (lock.locked) {
-    const { data: cur, error: curErr } = await g.db.from("hs_hosted").select("team_fee_cents").eq("weekend_id", weekendId).maybeSingle();
+    const { data: cur, error: curErr } = await g.db.from("hs_hosted").select("game_fee_cents, games_per_team").eq("weekend_id", weekendId).maybeSingle();
     if (curErr || !cur) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
-    const current = cur as { team_fee_cents: number | null };
-    if (planFeeChanged(current, { team_fee_cents: fee })) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
+    const current = cur as { game_fee_cents: number | null; games_per_team: number };
+    if (planFeeChanged(current, { game_fee_cents: fee, games_per_team: perTeam })) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
   }
   const { error } = await g.db
     .from("hs_hosted")
@@ -209,7 +213,8 @@ export async function savePlan(weekendId: string, input: PlanInput): Promise<Hos
       game_minutes: minutes,
       courts,
       days,
-      team_fee_cents: fee,
+      game_fee_cents: fee,
+      games_per_team: perTeam,
       facility: longText(input.facility, 1000),
       concessions: longText(input.concessions, 2000),
       rules: longText(input.rules, 4000),
@@ -359,7 +364,8 @@ export interface TeamInput {
   code: string;
   seed: string;
   pool?: string; // "" = one pool for the whole division
-  fee: string; // "" = the tournament's team fee (nothing for ours)
+  fee: string; // "" = fee per game × its games (nothing for ours)
+  games?: string; // "" = the tournament's games per team
   ours: boolean;
   note: string;
 }
@@ -382,18 +388,23 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
   let fee: number | null = null;
   if (input.fee.trim()) {
     fee = parseAmount(input.fee);
-    if (fee == null || fee < 0) return { error: "Enter the fee in dollars, like 240, 0 for none, or leave it blank for the team fee." };
+    if (fee == null || fee < 0) return { error: "Enter the fee in dollars, like 315, 0 for none, or leave it blank to charge by the game." };
+  }
+  let games: number | null = null;
+  if (input.games?.trim()) {
+    games = Math.round(Number(input.games));
+    if (!(games >= 0 && games <= 20)) return { error: "Games is a number from 0 to 20, or blank for the usual count." };
   }
   const lock = await loadFeeLockState(weekendId);
   if (lock.locked) {
     if (!input.id) {
-      if (fee != null || input.ours) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
+      if (fee != null || games != null || input.ours) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
     } else {
-      const { data: cur, error: curErr } = await g.db.from("hs_hosted_teams").select("fee_cents, ours").eq("id", input.id).eq("weekend_id", weekendId).maybeSingle();
+      const { data: cur, error: curErr } = await g.db.from("hs_hosted_teams").select("fee_cents, games, ours").eq("id", input.id).eq("weekend_id", weekendId).maybeSingle();
       if (curErr) return { error: curErr.message };
-      const current = cur as { fee_cents: number | null; ours: boolean } | null;
+      const current = cur as { fee_cents: number | null; games: number | null; ours: boolean } | null;
       if (!current) return { error: "That team isn't there any more." };
-      if (current.fee_cents !== fee || !!current.ours !== !!input.ours) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
+      if (teamFeeChanged(current, { fee_cents: fee, games, ours: !!input.ours })) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
     }
   }
   const row = {
@@ -403,6 +414,7 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
     seed,
     pool,
     fee_cents: fee,
+    games,
     ours: !!input.ours,
     note: text(input.note, 300),
   };

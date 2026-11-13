@@ -503,7 +503,7 @@ export function advance(
 
 // ─── Money ──────────────────────────────────────────────────────────────────
 
-// Team fee ($/team) is what invoices bill. Courts and the rest of Details
+// Fee per game × each team's games is what invoices bill. Courts and the rest of Details
 // stay a what-if planner; they don't change a program's invoice.
 export function feesAreLocked(input: { billProgramsDone: boolean; invoiceCount: number }): boolean {
   return input.billProgramsDone || input.invoiceCount > 0;
@@ -516,7 +516,7 @@ export function feeLockNote(invoiceCount: number, lookupFailed = false): string 
     : "Locked because fees are set. Uncheck Set team fees to change.";
 }
 
-export const FEE_LOCK_UNLOCK_NOTE = "Tick Set team fees and bill each program to lock Team fee ($).";
+export const FEE_LOCK_UNLOCK_NOTE = "Tick Set team fees and bill each program to lock the fee and game counts.";
 
 export function feeLockSaveError(invoiceCount: number, lookupFailed = false): string {
   if (lookupFailed) return "Couldn't check invoices. Try again.";
@@ -529,8 +529,18 @@ export function uncheckBillProgramsError(invoiceCount: number): string | null {
   return invoiceCount > 0 ? "Void invoices first." : null;
 }
 
-export function planFeeChanged(current: { team_fee_cents: number | null }, next: { team_fee_cents: number | null }): boolean {
-  return (current.team_fee_cents ?? null) !== (next.team_fee_cents ?? null);
+export type FeePlan = Pick<HostedPlan, "game_fee_cents" | "games_per_team">;
+
+export function planFeeChanged(current: FeePlan, next: FeePlan): boolean {
+  return (current.game_fee_cents ?? null) !== (next.game_fee_cents ?? null) || Number(current.games_per_team) !== Number(next.games_per_team);
+}
+
+// A team's fee, game count or ours flag changed (locked once fees are set).
+export function teamFeeChanged(
+  current: { fee_cents: number | null; games: number | null; ours: boolean },
+  next: { fee_cents: number | null; games: number | null; ours: boolean }
+): boolean {
+  return (current.fee_cents ?? null) !== (next.fee_cents ?? null) || (current.games ?? null) !== (next.games ?? null) || !!current.ours !== !!next.ours;
 }
 
 // Same host_customer_id batch billing stores (groupHostedCustomers): the
@@ -548,11 +558,29 @@ export function hostedTeamInvoiceKeys(opponent: { contact_id: string | null; nam
   return id ? [id] : [];
 }
 
-// What a team pays: its own fee, else nothing for one of ours, else the
-// tournament's team fee.
-export function teamFee(t: Pick<HostedTeam, "fee_cents" | "ours">, defaultFee: number | null): number {
+// A team's games: its own count, else the tournament's games per team.
+export function teamGames(t: Pick<HostedTeam, "games">, plan: Pick<HostedPlan, "games_per_team">): number {
+  return t.games ?? plan.games_per_team;
+}
+
+// What a team pays: its own flat fee, else nothing for one of ours, else the
+// fee per game × its games.
+export function teamFee(t: Pick<HostedTeam, "fee_cents" | "ours" | "games">, plan: FeePlan): number {
   if (t.fee_cents != null) return t.fee_cents;
-  return t.ours ? 0 : (defaultFee ?? 0);
+  if (t.ours) return 0;
+  return (plan.game_fee_cents ?? 0) * teamGames(t, plan);
+}
+
+// What a team with the usual game count pays; null until the fee is set.
+export function planTeamFee(plan: FeePlan): number | null {
+  return plan.game_fee_cents == null ? null : plan.game_fee_cents * plan.games_per_team;
+}
+
+// "$105/game · 3 games a team ($315)"
+export function feePerGameLine(plan: FeePlan): string | null {
+  if (plan.game_fee_cents == null) return null;
+  const n = plan.games_per_team;
+  return `${money(plan.game_fee_cents)}/game · ${n} ${n === 1 ? "game" : "games"} a team (${money(plan.game_fee_cents * n)})`;
 }
 
 // A line's count: what it says, or for a referee line that follows a
@@ -576,8 +604,8 @@ export interface MoneySummary {
   net: number;
 }
 
-export function moneySummary(plan: Pick<HostedPlan, "team_fee_cents">, teams: HostedTeam[], money: HostedMoney[], games: HostedGame[]): MoneySummary {
-  const fees = teams.map((t) => teamFee(t, plan.team_fee_cents));
+export function moneySummary(plan: FeePlan, teams: HostedTeam[], money: HostedMoney[], games: HostedGame[]): MoneySummary {
+  const fees = teams.map((t) => teamFee(t, plan));
   const teamFees = fees.reduce((n, f) => n + f, 0);
   const byCategory: MoneySummary["byCategory"] = [];
   for (const m of money) {
@@ -654,8 +682,10 @@ export function programMessage(input: {
     }
     out.push(`GAME / COURT SCHEDULE\n${lines.join("\n")}`);
   }
-  const fee = plan.team_fee_cents;
-  if (fee) out.push(`TEAM FEE\n${money(fee)} per team.`);
+  if (plan.game_fee_cents) {
+    const n = plan.games_per_team;
+    out.push(`TEAM FEE\n${money(plan.game_fee_cents)} per game, ${n} ${n === 1 ? "game" : "games"} a team (${money(plan.game_fee_cents * n)}).`);
+  }
   out.push("Questions? Just reply to this email.");
   return { subject: `${input.title}: ${input.dates}`, body: out.join("\n\n") };
 }

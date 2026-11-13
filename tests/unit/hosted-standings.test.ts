@@ -5,7 +5,7 @@ import { parseSeat, poolStandings, poolsOf, seatLabel, seatTeam } from "../../li
 import type { HostedGame, HostedTeam } from "../../lib/hosted/types.ts";
 
 function team(id: string, pool: number | null, extra: Partial<HostedTeam> = {}): HostedTeam {
-  return { id, weekend_id: "w", division_id: "A", opponent_id: null, ours: false, name: id, code: id, seed: null, pool, fee_cents: null, note: null, sort_order: 0, ...extra };
+  return { id, weekend_id: "w", division_id: "A", opponent_id: null, ours: false, name: id, code: id, seed: null, pool, fee_cents: null, games: null, note: null, sort_order: 0, ...extra };
 }
 
 let n = 0;

@@ -17,8 +17,8 @@ import {
   saveDivision,
   saveTeam,
 } from "../../../../../../lib/hosted/actions";
-import { feeLockNote, placementBracket, roundRobin, seeded, teamFee } from "../../../../../../lib/hosted/logic";
-import type { DivisionFormat, HostedDivision, HostedPageData, HostedTeam } from "../../../../../../lib/hosted/types";
+import { feeLockNote, placementBracket, roundRobin, seeded, teamFee, teamGames } from "../../../../../../lib/hosted/logic";
+import type { DivisionFormat, HostedDivision, HostedPageData, HostedPlan, HostedTeam } from "../../../../../../lib/hosted/types";
 import { Empty, ErrorNote, Said, Section, Sheet, grid2, iconBtn, money, sub, useAct } from "./parts";
 
 type Open = { kind: "division"; division: HostedDivision | null } | { kind: "team"; team: HostedTeam | null; division: string | null } | null;
@@ -93,7 +93,7 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
             {teams.length === 0 ? (
               <Empty>No teams yet. Edit a team below to put it here, or press + to add one.</Empty>
             ) : (
-              <TeamList teams={teams} defaultFee={data.plan.team_fee_cents} onEdit={(t) => setOpen({ kind: "team", team: t, division: t.division_id })} />
+              <TeamList teams={teams} plan={data.plan} onEdit={(t) => setOpen({ kind: "team", team: t, division: t.division_id })} />
             )}
           </Section>
         );
@@ -101,7 +101,7 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
 
       {loose.length > 0 && (
         <Section title="Not in a division yet" subtitle="Tap a team to put it in its division.">
-          <TeamList teams={loose} defaultFee={data.plan.team_fee_cents} onEdit={(t) => setOpen({ kind: "team", team: t, division: null })} />
+          <TeamList teams={loose} plan={data.plan} onEdit={(t) => setOpen({ kind: "team", team: t, division: null })} />
         </Section>
       )}
 
@@ -113,6 +113,7 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
           division={open.division}
           divisions={data.divisions}
           feesLocked={data.feeLock.locked}
+          plan={data.plan}
           lockNote={feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)}
           onClose={() => setOpen(null)}
         />
@@ -121,11 +122,12 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
   );
 }
 
-function TeamList({ teams, defaultFee, onEdit }: { teams: HostedTeam[]; defaultFee: number | null; onEdit: (t: HostedTeam) => void }) {
+function TeamList({ teams, plan, onEdit }: { teams: HostedTeam[]; plan: HostedPlan; onEdit: (t: HostedTeam) => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {teams.map((t) => {
-        const fee = teamFee(t, defaultFee);
+        const fee = teamFee(t, plan);
+        const games = teamGames(t, plan);
         return (
           <button
             key={t.id}
@@ -141,6 +143,11 @@ function TeamList({ teams, defaultFee, onEdit }: { teams: HostedTeam[]; defaultF
               {t.ours && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--rsd-accent)" }}>Ours</span>}
               {t.note && <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>{t.note}</span>}
             </span>
+            {!t.ours && t.fee_cents == null && (
+              <span style={{ fontSize: 12, fontWeight: 700, color: t.games != null ? "var(--rsd-accent)" : "var(--gw-fg-muted)", whiteSpace: "nowrap" }}>
+                {games} {games === 1 ? "game" : "games"}
+              </span>
+            )}
             <span style={{ fontSize: 12.5, fontWeight: 700, color: fee ? "var(--gw-fg)" : "var(--gw-fg-muted)", fontVariantNumeric: "tabular-nums" }}>{fee ? money(fee) : "No fee"}</span>
           </button>
         );
@@ -208,6 +215,7 @@ function TeamSheet({
   divisions,
   feesLocked,
   lockNote,
+  plan,
   onClose,
 }: {
   wid: string;
@@ -216,6 +224,7 @@ function TeamSheet({
   divisions: HostedDivision[];
   feesLocked: boolean;
   lockNote: string;
+  plan: HostedPlan;
   onClose: () => void;
 }) {
   const { busy, error, act } = useAct();
@@ -226,6 +235,7 @@ function TeamSheet({
     seed: team?.seed ? String(team.seed) : "",
     pool: team?.pool ? String(team.pool) : "",
     fee: team?.fee_cents != null ? (team.fee_cents / 100).toFixed(team.fee_cents % 100 ? 2 : 0) : "",
+    games: team?.games != null ? String(team.games) : "",
     ours: team?.ours ?? false,
     note: team?.note ?? "",
   });
@@ -252,16 +262,28 @@ function TeamSheet({
           </option>
         ))}
       </Select>
-      <Input
-        label="Fee ($)"
-        inputMode="decimal"
-        value={f.fee}
-        onChange={(e) => setF({ ...f, fee: e.target.value })}
-        placeholder="The team fee"
-        readOnly={feesLocked}
-        help={feesLocked ? lockNote : "Leave blank for the tournament's team fee; 0 for none."}
-        style={feesLocked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
-      />
+      <div style={grid2}>
+        <Input
+          label="Games"
+          inputMode="numeric"
+          value={f.games}
+          onChange={(e) => setF({ ...f, games: e.target.value })}
+          placeholder={String(plan.games_per_team)}
+          readOnly={feesLocked}
+          help={feesLocked ? lockNote : `Leave blank for the usual ${plan.games_per_team}. Change it for a team that plays more or fewer.`}
+          style={feesLocked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
+        />
+        <Input
+          label="Flat fee ($)"
+          inputMode="decimal"
+          value={f.fee}
+          onChange={(e) => setF({ ...f, fee: e.target.value })}
+          placeholder="By the game"
+          readOnly={feesLocked}
+          help={feesLocked ? lockNote : "Leave blank to charge by the game; 0 for none."}
+          style={feesLocked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
+        />
+      </div>
       <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600, color: feesLocked ? "var(--gw-fg-muted)" : undefined }}>
         <input type="checkbox" checked={f.ours} disabled={feesLocked} onChange={(e) => setF({ ...f, ours: e.target.checked })} style={{ width: 16, height: 16, accentColor: "var(--rsd-accent-fill)" }} />
         One of our teams (no fee)

@@ -135,9 +135,24 @@ export function batchCustomerEligible(
   return customer.teamCount > 0 && !invoiceAlreadyBilled(invoices, customer.id);
 }
 
+/** What createBatch bills one program: the host's lines, else one line of
+ *  teamCount × the fee. */
+export function customerBillLines(
+  customer: { teamCount: number; lines?: { description: string; qty: number; unitCents: number }[] },
+  feeCents: number,
+  description: string
+): { description: string; qty: number; unitCents: number }[] {
+  if (customer.lines?.length) return customer.lines.map((l) => ({ description: l.description, qty: Math.max(0, Math.round(l.qty)), unitCents: Math.max(0, Math.round(l.unitCents)) }));
+  return [{ description, qty: Math.max(0, customer.teamCount), unitCents: Math.max(0, Math.round(feeCents)) }];
+}
+
+export function customerBillTotal(customer: { teamCount: number; lines?: { description: string; qty: number; unitCents: number }[] }, feeCents: number): number {
+  return customerBillLines(customer, feeCents, "").reduce((n, l) => n + l.qty * l.unitCents, 0);
+}
+
 /** Preview totals for batch billing. Same programs createBatch will bill. */
 export function batchPreviewTotals(
-  customers: { id: string; teamCount: number }[],
+  customers: { id: string; teamCount: number; lines?: { description: string; qty: number; unitCents: number }[] }[],
   feeCents: number,
   depositPerTeamCents = 0,
   invoices: Pick<Invoice, "hostCustomerId" | "sentAt" | "voidedAt">[] = []
@@ -150,7 +165,7 @@ export function batchPreviewTotals(
   return {
     invoiceCount: rows.length,
     teamCount: teams,
-    totalCents: teams * fee,
+    totalCents: rows.reduce((n, c) => n + customerBillTotal(c, fee), 0),
     depositCents: teams * dep,
     alreadyBilledCount,
   };

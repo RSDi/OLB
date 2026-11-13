@@ -116,7 +116,7 @@ export async function loadHostedPage(
   ]);
 
   const finance = viewer.canViewFinances || viewer.canManageFinances ? await loadFinance(plan, weekend, viewer.canManageFinances).catch(() => null) : null;
-  const billing = await loadBilling(supabase, weekendId, programs.length, plan.team_fee_cents, !!viewer.canManageInvoicing, !!viewer.canViewInvoices);
+  const billing = await loadBilling(supabase, weekendId, programs.length, plan.game_fee_cents, !!viewer.canManageInvoicing, !!viewer.canViewInvoices);
   const feeLock = await loadFeeLockState(weekendId);
 
   return {

@@ -146,10 +146,10 @@ const CONTRACT: Record<string, string> = {
     "id,weekend_id,level_id,contact_id,name,status,our_score,their_score,note,sort_order,created_by,updated_by,created_at,updated_at",
   // Tournaments we host (0150).
   hs_hosted:
-    "weekend_id,hosted,short_name,finance_event_id,game_minutes,courts,days,team_fee_cents,facility,concessions,rules,admission,created_by,updated_by,created_at,updated_at",
+    "weekend_id,hosted,short_name,finance_event_id,game_minutes,courts,days,team_fee_cents,game_fee_cents,games_per_team,facility,concessions,rules,admission,created_by,updated_by,created_at,updated_at",
   hs_hosted_steps: "id,weekend_id,section,label,step_key,due_on,done_on,done_by,note,sort_order,created_at,updated_at",
   hs_hosted_divisions: "id,weekend_id,name,code,format,sort_order,created_at,updated_at",
-  hs_hosted_teams: "id,weekend_id,division_id,opponent_id,ours,name,code,seed,fee_cents,note,sort_order,created_at,updated_at",
+  hs_hosted_teams: "id,weekend_id,division_id,opponent_id,ours,name,code,seed,fee_cents,games,note,sort_order,created_at,updated_at",
   hs_hosted_games:
     "id,weekend_id,division_id,game_no,round,label,home_team_id,away_team_id,home_from,away_from,plays_on,starts_at,court,home_score,away_score,created_at,updated_at",
   hs_hosted_money: "id,weekend_id,kind,category,label,qty,unit_cents,division_id,note,sort_order,created_at,updated_at",

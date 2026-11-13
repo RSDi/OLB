@@ -69,8 +69,8 @@ export function olbInvoicingAdapter(): InvoicingAdapter {
     reminderJobPath: "/api/cron/invoice-reminders",
     listEventCustomers: hostedEventCustomers,
     async eventFeeCents(eventId: string) {
-      const { data } = await createAdminClient().from("hs_hosted").select("team_fee_cents").eq("weekend_id", eventId).maybeSingle();
-      const cents = (data as { team_fee_cents: number | null } | null)?.team_fee_cents;
+      const { data } = await createAdminClient().from("hs_hosted").select("game_fee_cents").eq("weekend_id", eventId).maybeSingle();
+      const cents = (data as { game_fee_cents: number | null } | null)?.game_fee_cents;
       return cents == null ? null : Number(cents);
     },
     onEventCollectionChanged: syncHostedInvoiceSteps,
