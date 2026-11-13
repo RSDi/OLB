@@ -56,6 +56,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // The Coach Cory exclamation counter lives at /exclamation; /! is its
+  // short address (some apps send it encoded).
+  async rewrites() {
+    return [
+      { source: "/!", destination: "/exclamation" },
+      { source: "/%21", destination: "/exclamation" },
+    ];
+  },
   async headers() {
     return [
       {

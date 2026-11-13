@@ -10,7 +10,7 @@ import { join, relative, sep } from "node:path";
 const APP = join(process.cwd(), "app");
 
 // Layouts that carry the beacon, and the folders they cover.
-const TRACKED = ["(site)", join("(standalone)", "shootout")];
+const TRACKED = ["(site)", join("(standalone)", "shootout"), join("(standalone)", "exclamation")];
 
 // Not public website pages: private links, the portal and its sign-in, APIs.
 const NOT_TRACKED = [

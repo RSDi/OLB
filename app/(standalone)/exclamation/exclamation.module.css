@@ -1,0 +1,41 @@
+/* The Coach Cory counter: one big gold number on the club's black. */
+
+.page {
+  --bolt: #f5c518;
+  --night: #0e0f11;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(245, 197, 24, 0.16), transparent 60%),
+    var(--night);
+  color: #fff;
+  border-top: 8px solid var(--bolt);
+  border-bottom: 8px solid var(--bolt);
+  box-sizing: border-box;
+  padding: 24px 16px;
+  text-align: center;
+  color-scheme: dark;
+}
+.inner { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 100%; }
+.bolt { width: 72px; height: auto; filter: invert(1); mix-blend-mode: screen; }
+.eyebrow {
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bolt);
+  font-weight: 700;
+}
+.count {
+  font-family: var(--rsd-font-display), "Arial Narrow", Impact, sans-serif;
+  font-weight: 800;
+  font-size: clamp(110px, 34vw, 340px);
+  line-height: 0.9;
+  color: var(--bolt);
+  text-shadow: 0 0 40px rgba(245, 197, 24, 0.35);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.bang { display: inline-block; margin-left: 0.04em; transform: rotate(8deg); }
+.caption { font-size: 15px; color: #c8cad0; font-weight: 600; }

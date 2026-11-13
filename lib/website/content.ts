@@ -180,6 +180,7 @@ export const RESERVED_SLUGS = [
   "reset-password",
   "directory",
   "roadmap",
+  "exclamation", // the Coach Cory counter (also at /!)
   "search",
   "sponsors-1",
   "new-folder",
