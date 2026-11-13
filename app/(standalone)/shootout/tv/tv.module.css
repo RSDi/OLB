@@ -159,9 +159,10 @@
 /* ── admission ── */
 .adm { background: #000; align-items: center; padding: 44px 64px 34px; gap: 0; }
 .adm::after { content: ""; position: absolute; inset: auto 0 0; height: 8px; background: var(--bolt); }
-/* The graphic, cropped inside its own gold bars (the stage has its own). */
-.admArt { width: 1060px; height: 607px; overflow: hidden; flex: none; }
-.admArt img { display: block; width: 1060px; height: auto; margin-top: -22px; }
+/* Rachel's art, its own gold bars trimmed (the stage has its own); the whole
+   picture shows, never cropped. */
+.admArt { width: 1060px; height: 600px; overflow: hidden; flex: none; border-radius: 22px; border: 1px solid var(--line); background: #000; }
+.admArt img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .admEyebrow { margin-top: 18px; color: var(--bolt); font-size: 34px; font-weight: 800; letter-spacing: 0.3em; display: flex; align-items: center; gap: 28px; }
 .admEyebrow::before, .admEyebrow::after { content: ""; width: 180px; height: 2px; background: var(--bolt); opacity: 0.6; }
 .admPrices { margin-top: 22px; display: flex; justify-content: center; gap: 28px; width: 100%; }
