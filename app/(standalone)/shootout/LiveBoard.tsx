@@ -15,6 +15,7 @@ import Image from "next/image";
 import nelson from "./tv/partners/nelson-color.png";
 import dundee from "../../(site)/_images/sponsor-dundee.png";
 import teamtime from "../../(site)/_images/sponsor-team-time.png";
+import anb from "./tv/partners/anb-color.png";
 import { goLink } from "../../../lib/sponsors/links";
 import s from "./live.module.css";
 
@@ -24,6 +25,7 @@ const PARTNERS = [
   { name: "Dundee Mergers and Acquisitions", logo: dundee, href: goLink("dundee", "live") },
   { name: "Nelson Produce + Farm", logo: nelson, href: goLink("nelson", "live") },
   { name: "Team Time", logo: teamtime, href: goLink("team-time", "live") },
+  { name: "A&B Activewear", logo: anb, href: goLink("anb", "live") },
 ];
 
 const FOLLOW_KEY = "olb-live-follow";

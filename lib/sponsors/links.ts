@@ -13,6 +13,8 @@ export const SPONSOR_LINKS: SponsorLink[] = [
   { slug: "nelson", name: "Nelson Produce + Farm", url: "https://www.nelsonproducefarm.com" },
   { slug: "dundee", name: "Dundee Mergers and Acquisitions", url: "https://dundeema.com" },
   { slug: "team-time", name: "Team Time", url: "https://www.teamtimehq.com" },
+  // Live scores and the TVs only, not the website's Sponsors page.
+  { slug: "anb", name: "A&B Activewear", url: "https://readypressco.com" },
 ];
 
 export type ClickSource = "live" | "site";

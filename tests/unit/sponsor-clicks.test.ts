@@ -27,6 +27,7 @@ test("clicks add up per sponsor: people are different browsers, split by where t
     [
       ["team-time", 3, 2, 2, 1, "2026-11-13T18:00:00Z"],
       ["dundee", 1, 1, 1, 0, "2026-11-13T16:00:00Z"],
+      ["anb", 0, 0, 0, 0, null],
       ["nelson", 0, 0, 0, 0, null],
     ]
   );

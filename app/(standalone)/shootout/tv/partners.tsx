@@ -6,12 +6,14 @@ import Image from "next/image";
 import dundee from "./partners/dundee.png";
 import nelson from "./partners/nelson.png";
 import teamtime from "./partners/teamtime.png";
+import anb from "./partners/anb.png";
 import s from "./tv.module.css";
 
 export const PARTNERS = [
   { name: "Dundee Mergers and Acquisitions", logo: dundee, strip: 50, big: 180 },
   { name: "Nelson Produce + Farm", logo: nelson, strip: 76, big: 290 },
   { name: "Team Time", logo: teamtime, strip: 44, big: 150 },
+  { name: "A&B Activewear", logo: anb, strip: 50, big: 175 },
 ];
 
 export function PartnerStrip() {

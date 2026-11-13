@@ -186,5 +186,5 @@
 .stripRule { width: 1px; height: 48px; background: var(--line); }
 .partners { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; }
 .partnersLead { margin: 0; font-size: 30px; color: var(--muted); font-weight: 600; }
-.partnersGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 36px; width: 1720px; }
-.partner { height: 380px; background: var(--panel); border: 1px solid var(--line); border-top: 6px solid var(--bolt); border-radius: 28px; display: grid; place-items: center; }
+.partnersGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; width: 1760px; }
+.partner { height: 360px; background: var(--panel); border: 1px solid var(--line); border-top: 6px solid var(--bolt); border-radius: 28px; display: grid; place-items: center; }
