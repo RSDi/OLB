@@ -149,7 +149,7 @@ function PartnersScreen() {
       <div className={s.partnersGrid}>
         {PARTNERS.map((p) => (
           <div key={p.name} className={s.partner}>
-            <Image src={p.logo} alt={p.name} style={{ height: p.big, width: "auto", maxWidth: "88%" }} sizes="640px" />
+            <Image src={p.logo} alt={p.name} style={{ height: p.big, width: "auto", maxWidth: "88%" }} unoptimized />
           </div>
         ))}
       </div>

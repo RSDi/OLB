@@ -126,7 +126,7 @@ export function LiveBoard({ data, now, updatedAt }: { data: LiveData; now: Clock
         <div className={s.partners}>
           {PARTNERS.map((p) => (
             <a key={p.name} href={p.href} target="_blank" rel="noreferrer" className={s.partner}>
-              <Image src={p.logo} alt={p.name} sizes="(max-width: 560px) 80vw, 340px" />
+              <Image src={p.logo} alt={p.name} unoptimized />
             </a>
           ))}
         </div>

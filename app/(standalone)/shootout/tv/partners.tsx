@@ -23,7 +23,7 @@ export function PartnerStrip() {
       {PARTNERS.map((p, i) => (
         <span key={p.name} className={s.stripItem}>
           {i > 0 && <i className={s.stripRule} />}
-          <Image src={p.logo} alt={p.name} style={{ height: p.strip, width: "auto" }} sizes="300px" />
+          <Image src={p.logo} alt={p.name} style={{ height: p.strip, width: "auto" }} unoptimized />
         </span>
       ))}
     </div>
