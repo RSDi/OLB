@@ -186,6 +186,8 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(actions, /isBillingStep/);
   assert.match(actions, /That step stays on the checklist/);
   assert.match(actions, /Void its invoice first/);
+  const teamsPanel = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/_components/TeamsPanel.tsx"), "utf8");
+  assert.match(teamsPanel, /Open the invoice to void it/);
   assert.match(actions, /input\.ours/);
   assert.match(actions, /curErr \|\| !cur/);
   assert.match(actions, /hostedTeamInvoiceKeys\(opponent\)/);

@@ -228,6 +228,7 @@ function TeamSheet({
   onClose: () => void;
 }) {
   const { busy, error, act } = useAct();
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [f, setF] = useState({
     name: team?.name ?? "",
     code: team?.code ?? "",
@@ -290,6 +291,11 @@ function TeamSheet({
       </label>
       <Textarea label="Note" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} rows={2} placeholder="Don't schedule at the same time as their varsity" />
       {error && <ErrorNote text={error} />}
+      {error && invoiceId && (
+        <a href={`/portal/payments/invoices/${invoiceId}`} style={{ fontSize: 13, fontWeight: 800, color: "var(--gw-fg)", textUnderlineOffset: 3 }}>
+          Open the invoice to void it →
+        </a>
+      )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <Pill variant="accent" onClick={async () => (await act(() => saveTeam(wid, { id: team?.id, ...f, division_id: f.division_id || null }))) && onClose()} disabled={busy || !f.name.trim()}>
           {busy ? "Saving…" : team ? "Save" : "Add team"}
@@ -304,7 +310,14 @@ function TeamSheet({
             style={{ marginLeft: "auto", color: "var(--gw-error)" }}
             onClick={async () => {
               if (!confirm(`Take ${team.name} out of the tournament? Its games stay, with the team left blank.`)) return;
-              if (await act(() => deleteTeam(wid, team.id))) onClose();
+              setInvoiceId(null);
+              const ok = await act(async () => {
+                const res = await deleteTeam(wid, team.id);
+                // Blocked by its program's invoice: link to it.
+                if (res.error && res.id) setInvoiceId(res.id);
+                return res;
+              });
+              if (ok) onClose();
             }}
           >
             <Icons.Trash width={12} height={12} /> Remove
