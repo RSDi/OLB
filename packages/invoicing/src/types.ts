@@ -95,12 +95,23 @@ export interface EventCollection {
   allCollected: boolean;
 }
 
+export interface BillLine {
+  description: string;
+  qty: number;
+  unitCents: number;
+}
+
 export interface EventCustomer {
   id: string;
   name: string;
   emails: string[];
   teamCount: number;
   divisions?: string;
+  /** The host's own invoice lines for this program (one per team, say).
+   *  When set, batch billing bills these instead of teamCount × the fee. */
+  lines?: BillLine[];
+  /** What the lines count, for the Bill programs page ("8 games"). */
+  unitCount?: number;
 }
 
 /** Browser may send only id + teamCount. Name and emails come from the host adapter. */

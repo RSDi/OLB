@@ -15,6 +15,7 @@ export function EventInvoices({
   depositDueOn,
   balanceDueOn,
   checklistHref,
+  rateLabel,
   paths,
 }: {
   eventLabel: string;
@@ -25,6 +26,8 @@ export function EventInvoices({
   depositDueOn?: string | null;
   balanceDueOn?: string | null;
   checklistHref?: string;
+  /** Replaces "N teams at $fee", e.g. "9 teams · 26 games at $105/game". */
+  rateLabel?: string;
   paths: InvoicingPaths;
 }) {
   const T = summary.billedCents;
@@ -39,8 +42,8 @@ export function EventInvoices({
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: t.muted }}>Finances · Event</div>
           <h1 style={{ fontSize: 22, margin: 0 }}>{eventLabel}</h1>
           <div style={{ color: t.muted, fontSize: 13, marginTop: 4 }}>
-            {summary.invoiceCount} programs · {summary.teamCount} teams
-            {feeCents != null ? ` at ${formatMoney(feeCents)}` : ""}
+            {summary.invoiceCount} programs ·{" "}
+            {rateLabel ?? `${summary.teamCount} teams${feeCents != null ? ` at ${formatMoney(feeCents)}` : ""}`}
             {depositDueOn ? ` · deposit due ${formatDay(depositDueOn, true)}` : ""}
             {balanceDueOn ? ` · balance due ${formatDay(balanceDueOn, true)}` : ""}
           </div>

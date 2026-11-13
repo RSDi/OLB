@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { batchCustomerEligible, batchPreviewTotals, formatDay, formatMoney, invoiceAlreadyBilled, reminderCopy } from "../logic";
+import { batchCustomerEligible, batchPreviewTotals, customerBillLines, customerBillTotal, formatDay, formatMoney, invoiceAlreadyBilled, reminderCopy } from "../logic";
 import type { BatchInput, EventCustomer, Invoice, ReminderSettings } from "../types";
 import { ActionBtn, Btn, Card, Field, inputStyle, LockNote } from "./parts";
 import { t } from "./theme";
@@ -23,6 +23,8 @@ export function BatchBilling({
   backHref,
   invoices = [],
   invoicesError = null,
+  rateLabel,
+  unitLabel,
   onSubmit,
 }: {
   eventId: string;
@@ -41,6 +43,10 @@ export function BatchBilling({
   backHref: string;
   invoices?: Pick<Invoice, "hostCustomerId" | "sentAt" | "voidedAt">[];
   invoicesError?: string | null;
+  /** How the host prices it, e.g. "$105/game". Default: the fee per team. */
+  rateLabel?: string;
+  /** What customers' unitCount counts, plural ("games"). */
+  unitLabel?: string;
   onSubmit: (input: BatchInput, send: boolean) => Promise<{ error?: string } | void>;
 }) {
   const [due, setDue] = useState(dueOn);
@@ -60,6 +66,10 @@ export function BatchBilling({
     ? { invoiceCount: 0, teamCount: 0, totalCents: 0, depositCents: 0, alreadyBilledCount: 0 }
     : batchPreviewTotals(customers, feeCents, depOn ? depCents : 0, invoices);
   const teams = preview.teamCount;
+  const rate = rateLabel ?? `${formatMoney(feeCents)}/team`;
+  const units = unitLabel
+    ? customers.filter((c) => !invoicesError && batchCustomerEligible(c, invoices)).reduce((n, c) => n + (c.unitCount ?? 0), 0)
+    : null;
   const G = preview.totalCents;
   const DP = preview.depositCents;
   const billed = preview.invoiceCount;
@@ -121,7 +131,7 @@ export function BatchBilling({
         }}
       >
         <span style={{ flex: 1 }}>
-          <b>{formatMoney(feeCents)}/team</b> · {depOn ? `deposit ${formatMoney(depCents)}/team due ${formatDay(depDue)}` : "no deposit"} · balance due {formatDay(due)}
+          <b>{rate}</b> · {depOn ? `deposit ${formatMoney(depCents)}/team due ${formatDay(depDue)}` : "no deposit"} · balance due {formatDay(due)}
         </span>
         <em style={{ fontStyle: "normal", fontWeight: 800 }}>{setOpen ? "Hide ▴" : "Edit ▾"}</em>
       </button>
@@ -132,8 +142,8 @@ export function BatchBilling({
             <Field label="Event">
               <input style={inputStyle} value={eventLabel} readOnly />
             </Field>
-            <Field label="Fee per team">
-              <input style={inputStyle} value={formatMoney(feeCents)} readOnly />
+            <Field label={rateLabel ? "Rate" : "Fee per team"}>
+              <input style={inputStyle} value={rate} readOnly />
             </Field>
             <Field label="Balance due">
               <input style={inputStyle} type="date" value={due} disabled={!canInvoice} onChange={(e) => setDue(e.target.value)} />
@@ -151,7 +161,7 @@ export function BatchBilling({
               <input style={inputStyle} type="date" value={depDue} disabled={!depOn || !canInvoice} onChange={(e) => setDepDue(e.target.value)} />
             </Field>
           </div>
-          <small style={{ color: t.muted }}>Programs and team counts come from the Teams tab (visiting teams). If a count is wrong, change it there and come back. Reminders: {reminderCopy(reminders, due, fromEmail).toLowerCase()}</small>
+          <small style={{ color: t.muted }}>Programs and team counts{unitLabel ? ` and ${unitLabel}` : ""} come from the Teams tab (visiting teams). If a count is wrong, change it there and come back. Reminders: {reminderCopy(reminders, due, fromEmail).toLowerCase()}</small>
         </Card>
       )}
 
@@ -159,17 +169,16 @@ export function BatchBilling({
         {customers.map((p) => {
           const billedAlready = !invoicesError && invoiceAlreadyBilled(invoices, p.id);
           const eligible = !invoicesError && batchCustomerEligible(p, invoices);
+          const lines = p.lines?.length ? customerBillLines(p, feeCents, "") : [];
           return (
+            <div key={p.id} style={{ borderBottom: "1px solid var(--inv-border, var(--gw-border, #e4e4df))", opacity: eligible || invoicesError ? 1 : 0.55 }}>
             <div
-              key={p.id}
               style={{
                 display: "grid",
                 gridTemplateColumns: "minmax(0,1fr) auto 96px",
                 gap: 8,
                 alignItems: "center",
                 padding: "10px 14px",
-                borderBottom: "1px solid var(--inv-border, var(--gw-border, #e4e4df))",
-                opacity: eligible || invoicesError ? 1 : 0.55,
               }}
             >
               <span style={{ minWidth: 0 }}>
@@ -178,6 +187,7 @@ export function BatchBilling({
               </span>
               <span style={{ fontSize: 13, fontWeight: 700, color: t.muted, whiteSpace: "nowrap" }}>
                 {p.teamCount} {p.teamCount === 1 ? "team" : "teams"}
+                {unitLabel && p.unitCount != null ? ` · ${p.unitCount} ${unitLabel}` : ""}
               </span>
               <span style={{ textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>
                 {invoicesError ? (
@@ -186,17 +196,31 @@ export function BatchBilling({
                   <small style={{ display: "block", color: t.muted, fontSize: 12 }}>already billed</small>
                 ) : (
                   <>
-                    {formatMoney(p.teamCount * feeCents)}
+                    {formatMoney(customerBillTotal(p, feeCents))}
                     <small style={{ display: "block", color: t.muted, fontSize: 12 }}>{depOn ? `deposit ${formatMoney(p.teamCount * depCents)}` : "no deposit"}</small>
                   </>
                 )}
               </span>
+            </div>
+            {lines.length > 0 && (
+              <div style={{ padding: "0 14px 10px 26px", display: "flex", flexDirection: "column", gap: 2 }}>
+                {lines.map((l, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, color: t.muted }}>
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{l.description}</span>
+                    <span style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                      {l.qty} × {formatMoney(l.unitCents)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             </div>
           );
         })}
         <div style={{ display: "flex", justifyContent: "space-between", padding: "14px 14px 6px", fontWeight: 900, fontSize: 15 }}>
           <span>
             {billed} invoices · {teams} teams
+            {units != null ? ` · ${units} ${unitLabel}` : ""}
             {preview.alreadyBilledCount > 0 ? (
               <small style={{ display: "block", fontWeight: 600, color: t.muted, fontSize: 12 }}>
                 {preview.alreadyBilledCount} already billed

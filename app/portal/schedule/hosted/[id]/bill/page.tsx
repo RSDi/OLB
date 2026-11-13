@@ -28,6 +28,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       weekendId={id}
       eventLabel={ctx.eventLabel}
       feeCents={ctx.feeCents}
+      gamesPerTeam={ctx.gamesPerTeam}
       customers={customers}
       dueOn={addDays(today, 14)}
       depositDueOn={addDays(today, 7)}

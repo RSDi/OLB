@@ -19,7 +19,9 @@ export interface HostedPlan {
   game_minutes: number;
   courts: number;
   days: HostedDay[];
-  team_fee_cents: number | null;
+  // What a visiting team pays per game, and the games each team gets (0168).
+  game_fee_cents: number | null;
+  games_per_team: number;
   facility: string | null;
   concessions: string | null;
   rules: string | null;
@@ -75,7 +77,10 @@ export interface HostedTeam {
   seed: number | null;
   // Its pool within the division (0165): HS Boys A Pool 1 and Pool 2.
   pool: number | null;
+  // A flat fee for this team; null = the fee per game × its games.
   fee_cents: number | null;
+  // Its own game count (0168); null = the plan's games per team.
+  games: number | null;
   note: string | null;
   sort_order: number;
 }
@@ -200,16 +205,17 @@ export interface HostedBilling {
   billedCents: number;
   allCollected: boolean;
   depositPerTeamCents: number;
+  // The fee per game; null until it's set.
   feeCents: number | null;
 }
 
 export type HostedResult = { error?: string; notice?: string; id?: string };
 
 export const PLAN_COLUMNS =
-  "weekend_id, hosted, short_name, finance_event_id, game_minutes, courts, days, team_fee_cents, facility, concessions, rules, admission, live_public, scorer_pin";
+  "weekend_id, hosted, short_name, finance_event_id, game_minutes, courts, days, game_fee_cents, games_per_team, facility, concessions, rules, admission, live_public, scorer_pin";
 export const STEP_COLUMNS = "id, weekend_id, section, label, step_key, due_on, done_on, note, sort_order";
 export const DIVISION_COLUMNS = "id, weekend_id, name, code, format, sort_order";
-export const TEAM_COLUMNS = "id, weekend_id, division_id, opponent_id, ours, name, code, seed, pool, fee_cents, note, sort_order";
+export const TEAM_COLUMNS = "id, weekend_id, division_id, opponent_id, ours, name, code, seed, pool, fee_cents, games, note, sort_order";
 export const GAME_COLUMNS =
   "id, weekend_id, division_id, game_no, round, label, home_team_id, away_team_id, home_from, away_from, plays_on, starts_at, court, home_score, away_score";
 export const MONEY_COLUMNS = "id, weekend_id, kind, category, label, qty, unit_cents, division_id, note, sort_order";

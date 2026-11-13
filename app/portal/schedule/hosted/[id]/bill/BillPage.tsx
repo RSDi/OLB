@@ -3,12 +3,14 @@
 import { useRouter } from "next/navigation";
 import { BatchBilling } from "invoicing/ui";
 import type { BatchInput, EventCustomer, Invoice, InvoiceClubSettings } from "invoicing";
+import { formatMoney } from "invoicing/logic";
 import { createBatchInvoicesAction } from "../../../../../../lib/invoicing/actions";
 
 export function BillPage({
   weekendId,
   eventLabel,
   feeCents,
+  gamesPerTeam,
   customers,
   dueOn,
   depositDueOn,
@@ -21,6 +23,7 @@ export function BillPage({
   weekendId: string;
   eventLabel: string;
   feeCents: number | null;
+  gamesPerTeam: number;
   customers: EventCustomer[];
   dueOn: string;
   depositDueOn: string;
@@ -34,9 +37,9 @@ export function BillPage({
   if (feeCents == null) {
     return (
       <div className="rsd-card" style={{ padding: "32px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ fontSize: 16, fontWeight: 700 }}>Set the team fee first</div>
+        <div style={{ fontSize: 16, fontWeight: 700 }}>Set the fee per game first</div>
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", lineHeight: 1.6 }}>
-          Bill programs needs the team fee on the tournament plan. Ask a coach or the board to set it, then come back here.
+          Bill programs needs the fee per game on the tournament plan (Plan → Details). Ask a coach or the board to set it, then come back here.
         </div>
         <a href={`/portal/schedule/hosted/${weekendId}`} style={{ fontSize: 13, fontWeight: 700 }}>
           Back
@@ -61,6 +64,8 @@ export function BillPage({
       fromEmail={fromEmail}
       invoices={invoices}
       invoicesError={invoicesError}
+      rateLabel={`${formatMoney(feeCents)}/game · ${gamesPerTeam} ${gamesPerTeam === 1 ? "game" : "games"} a team`}
+      unitLabel="games"
       backHref={`/portal/schedule/hosted/${weekendId}`}
       onSubmit={async (input: BatchInput, send: boolean) => {
         const res = await createBatchInvoicesAction({ ...input, eventId: weekendId }, send);
