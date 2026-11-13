@@ -8,7 +8,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { AdmissionData } from "../../../../lib/hosted/live";
 import { admissionPrices } from "../../../../lib/hosted/live-view";
-import art from "./shootout-logo.webp";
+import art from "./shootout-hero.jpg";
 import { PartnerStrip } from "./partners";
 import { useFitStage, useFullscreenOnPress, useWakeLock } from "./tv-hooks";
 import s from "./tv.module.css";
@@ -33,7 +33,7 @@ export function AdmissionBoard({ data, dates, qr }: { data: AdmissionData | null
     <div className={s.tv}>
       <div ref={stage} className={`${s.stage} ${s.adm}`}>
         <div className={s.admArt}>
-          <Image src={art} alt={data?.event ?? "Missouri River Shootout"} priority sizes="1060px" />
+          <Image src={art} alt={data?.event ?? "Missouri River Shootout"} priority unoptimized />
         </div>
         <div className={`${s.admEyebrow} ${s.display}`}>Admission</div>
         {prices.length > 0 ? (
