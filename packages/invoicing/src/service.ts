@@ -413,7 +413,13 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
           const lines = customerBillLines(c, feeCents, input.lineDescription || `Team fee · ${input.eventLabel}`);
           const total = lines.reduce((n, l) => n + l.qty * l.unitCents, 0);
           const depositCents = input.depositOn ? clampDeposit(input.depositPerTeamCents * teamCount, total) : 0;
-          const email = c.emails.join(", ") || null;
+          let emails = c.emails;
+          if (row.emails) {
+            const typed = parseEmailList(row.emails);
+            if (!typed.ok) return fail(`${c.name}: ${typed.error}`);
+            emails = typed.data;
+          }
+          const email = emails.join(", ") || null;
           let inv: Invoice;
           if (draft) {
             await updateInvoiceRow(db, draft.id, {

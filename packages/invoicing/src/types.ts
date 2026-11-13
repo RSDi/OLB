@@ -112,12 +112,17 @@ export interface EventCustomer {
   lines?: BillLine[];
   /** What the lines count, for the Bill programs page ("8 games"). */
   unitCount?: number;
+  /** Where the emails come from, to fix them for good (a contact page). */
+  emailsHref?: string;
 }
 
-/** Browser may send only id + teamCount. Name and emails come from the host adapter. */
+/** Browser may send only id + teamCount, plus emails typed on the billing
+ *  page for this invoice. Name and everything else come from the host adapter. */
 export interface BatchCustomerInput {
   id: string;
   teamCount: number;
+  /** Replaces the host's emails for this invoice only. */
+  emails?: string[];
 }
 
 export interface BatchInput {

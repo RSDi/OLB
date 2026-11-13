@@ -366,6 +366,9 @@ export interface TeamInput {
   pool?: string; // "" = one pool for the whole division
   fee: string; // "" = fee per game × its games (nothing for ours)
   games?: string; // "" = the tournament's games per team
+  // The program it comes with (hs_opponents id), so Bill programs puts it on
+  // that program's invoice. undefined = leave as is; null = none.
+  opponent_id?: string | null;
   ours: boolean;
   note: string;
 }
@@ -395,16 +398,30 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
     games = Math.round(Number(input.games));
     if (!(games >= 0 && games <= 20)) return { error: "Games is a number from 0 to 20, or blank for the usual count." };
   }
+  let opponent: string | null | undefined = input.opponent_id === undefined ? undefined : input.opponent_id || null;
+  if (input.ours) opponent = null;
+  if (opponent) {
+    const { data: opp, error: oppErr } = await g.db.from("hs_opponents").select("id").eq("id", opponent).eq("weekend_id", weekendId).maybeSingle();
+    if (oppErr) return { error: oppErr.message };
+    if (!opp) return { error: "That program isn't coming to this tournament." };
+  }
   const lock = await loadFeeLockState(weekendId);
   if (lock.locked) {
     if (!input.id) {
       if (fee != null || games != null || input.ours) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
     } else {
-      const { data: cur, error: curErr } = await g.db.from("hs_hosted_teams").select("fee_cents, games, ours").eq("id", input.id).eq("weekend_id", weekendId).maybeSingle();
+      const { data: cur, error: curErr } = await g.db
+        .from("hs_hosted_teams")
+        .select("fee_cents, games, ours, opponent_id")
+        .eq("id", input.id)
+        .eq("weekend_id", weekendId)
+        .maybeSingle();
       if (curErr) return { error: curErr.message };
-      const current = cur as { fee_cents: number | null; games: number | null; ours: boolean } | null;
+      const current = cur as { fee_cents: number | null; games: number | null; ours: boolean; opponent_id: string | null } | null;
       if (!current) return { error: "That team isn't there any more." };
       if (teamFeeChanged(current, { fee_cents: fee, games, ours: !!input.ours })) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
+      // Moving a team to another program changes who gets billed for it.
+      if (opponent !== undefined && (current.opponent_id ?? null) !== opponent) return { error: feeLockSaveError(lock.invoiceCount, lock.lookupFailed) };
     }
   }
   const row = {
@@ -417,6 +434,7 @@ export async function saveTeam(weekendId: string, input: TeamInput): Promise<Hos
     games,
     ours: !!input.ours,
     note: text(input.note, 300),
+    ...(opponent !== undefined ? { opponent_id: opponent } : {}),
   };
   const { error } = input.id
     ? await g.db.from("hs_hosted_teams").update(row).eq("id", input.id).eq("weekend_id", weekendId)

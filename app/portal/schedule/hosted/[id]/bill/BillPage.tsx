@@ -66,6 +66,7 @@ export function BillPage({
       invoicesError={invoicesError}
       rateLabel={`${formatMoney(feeCents)}/game · ${gamesPerTeam} ${gamesPerTeam === 1 ? "game" : "games"} a team`}
       unitLabel="games"
+      emailsNote="Each program's emails come from its contact in External Contacts: the contact's email, its alternate email, and the email of each person listed under it. Change sets them for this invoice only; Edit contact fixes them for next time."
       backHref={`/portal/schedule/hosted/${weekendId}`}
       onSubmit={async (input: BatchInput, send: boolean) => {
         const res = await createBatchInvoicesAction({ ...input, eventId: weekendId }, send);
