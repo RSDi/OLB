@@ -5,7 +5,22 @@
 // shows up as an error on the site.
 
 import { logWebsiteEvents, type WebsiteEvent } from "../../../lib/activity/website";
-import { isSitePath, referrerHost, visitSource } from "../../../lib/activity/website-rules";
+import { isSitePath, knownPageLabel, newPageSlug, referrerHost, visitSource } from "../../../lib/activity/website-rules";
+import { getSitePage } from "../../../lib/website/queries";
+
+// Only real pages count: the website's own, or one added in Settings →
+// Website → New pages. A mistyped address or a bot trying /cart gets the
+// "page not found" screen and isn't recorded.
+async function isRealPage(path: string): Promise<boolean> {
+  if (knownPageLabel(path)) return true;
+  const slug = newPageSlug(path);
+  if (!slug) return false;
+  try {
+    return !!(await getSitePage(slug));
+  } catch {
+    return false;
+  }
+}
 
 const MAX_EVENTS = 25;
 const MAX_PATH = 500;
@@ -33,7 +48,9 @@ export async function POST(req: Request) {
       const host = referrerHost(typeof e?.ref === "string" ? e.ref : "", ownHost);
       return [{ eventType: "page_view" as const, path, referrer: host, source: visitSource(path, host), createdAt: at }];
     });
-  if (views.length === 0) return done();
-  await logWebsiteEvents(views, { setCookies: true });
+  const real = await Promise.all(views.map((v) => isRealPage(v.path ?? "")));
+  const kept = views.filter((_, i) => real[i]);
+  if (kept.length === 0) return done();
+  await logWebsiteEvents(kept, { setCookies: true });
   return done();
 }
