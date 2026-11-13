@@ -5,6 +5,7 @@ import { createClient } from "../../../../../lib/supabase/server";
 import { churchToday } from "../../../../../lib/dates/today";
 import { viewerHsScheduleAccess } from "../../../../../lib/hs-schedule/viewer";
 import { loadHostedPage } from "../../../../../lib/hosted/data";
+import { sumClicks, type ClickRow, type SponsorClickTotals } from "../../../../../lib/sponsors/clicks";
 import { HostedView, type HostedTab } from "./_components/HostedView";
 import { StartHosting } from "./_components/StartHosting";
 
@@ -64,7 +65,22 @@ export default async function HostedTournamentPage({
   }
   if (loaded.kind === "not_hosted") return <StartHosting weekend={loaded.weekend} />;
   const active = TABS.includes(tab as HostedTab) ? (tab as HostedTab) : "plan";
-  return <HostedView data={loaded.data} tab={active} today={churchToday()} canReorderSteps={viewer.isSuperAdmin} showLive={viewer.seesFullUi} />;
+  // Sponsor clicks (0169) for the board, on the Money tab.
+  let sponsorClicks: SponsorClickTotals[] | "migration" | null = null;
+  if (viewer.isStaff && active === "money") {
+    const { data: rows, error } = await supabase.from("sponsor_clicks").select("sponsor, source, visitor_id, created_at").order("created_at", { ascending: false }).limit(20000);
+    sponsorClicks = error ? "migration" : sumClicks((rows as ClickRow[] | null) ?? []);
+  }
+  return (
+    <HostedView
+      data={loaded.data}
+      tab={active}
+      today={churchToday()}
+      canReorderSteps={viewer.isSuperAdmin}
+      showLive={viewer.seesFullUi}
+      sponsorClicks={sponsorClicks}
+    />
+  );
 }
 
 function Note({ title, children }: { title: string; children: React.ReactNode }) {

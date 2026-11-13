@@ -197,6 +197,8 @@ export const RESERVED_SLUGS = [
   "t",
   // Public invoice page (0152): /invoice/<token>.
   "invoice",
+  // Sponsor click counter (0169): /go/<sponsor> redirects to their site.
+  "go",
   // Public, no-login click-throughs for reviewing ideas. Not in the menu.
   "mockups",
   // Live scores for a tournament we host (0165): /shootout, /shootout/score.
