@@ -171,7 +171,7 @@
 .admMany .admAmount { font-size: 76px; }
 .admMany .admLabel { font-size: 24px; }
 .admNone { margin-top: 30px; font-size: 48px; font-weight: 800; color: var(--muted); }
-.admFoot { margin-top: auto; width: 100%; display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; }
+.admFoot { margin-top: auto; width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 30px; }
 .admNotes { display: flex; flex-direction: column; gap: 4px; font-size: 24px; color: var(--muted); font-weight: 600; }
 .admNotes b { color: var(--fg); font-size: 32px; font-weight: 800; }
 

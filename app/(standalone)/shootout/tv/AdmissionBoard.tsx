@@ -1,7 +1,7 @@
 "use client";
 // The admission screen for a TV at the door (/shootout/tv/admission): the
 // tournament's graphic and the prices from the plan's Admission text, with
-// the QR for live scores. Checks for price changes every few minutes.
+// the QR for live scores and the partner strip. Checks for price changes every few minutes.
 
 import { useEffect } from "react";
 import Image from "next/image";
@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import type { AdmissionData } from "../../../../lib/hosted/live";
 import { admissionPrices } from "../../../../lib/hosted/live-view";
 import art from "./shootout-logo.webp";
+import { PartnerStrip } from "./partners";
 import { useFitStage, useFullscreenOnPress, useWakeLock } from "./tv-hooks";
 import s from "./tv.module.css";
 
@@ -54,6 +55,7 @@ export function AdmissionBoard({ data, dates, qr }: { data: AdmissionData | null
             ))}
             <span>{[dates, where].filter(Boolean).join("  ·  ")}</span>
           </div>
+          <PartnerStrip />
           <div className={s.phone}>
             <div className={s.phoneText}>
               <b>Live scores on your phone</b>

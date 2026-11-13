@@ -12,19 +12,11 @@ import type { LiveData, LiveDivision } from "../../../../lib/hosted/live";
 import { poolStandings, poolsOf } from "../../../../lib/hosted/standings";
 import { gameState, isFinal, sideView, sortGames, tvSlug, whenLabel, type Clock, type SideView } from "../../../../lib/hosted/live-view";
 import bolt from "../../../(site)/_images/logo-bolt.png";
-import dundee from "./partners/dundee.png";
-import nelson from "./partners/nelson.png";
+import { PARTNERS, PartnerStrip } from "./partners";
 import { useFitStage, useFullscreenOnPress, useWakeLock } from "./tv-hooks";
 import s from "./tv.module.css";
 
 const MAX_GAMES = 10;
-
-// Our partners for the tournament, in versions made for a dark screen. Each
-// has a height that makes the two look the same size next to each other.
-const PARTNERS = [
-  { name: "Dundee Mergers and Acquisitions", logo: dundee, strip: 50, big: 180 },
-  { name: "Nelson Produce + Farm", logo: nelson, strip: 76, big: 290 },
-];
 
 type Screen = { key: string; tab: string; title: string; division: LiveDivision | null };
 
@@ -134,21 +126,8 @@ export function TvBoard({ data, now, clock, dates, qr, pin, seconds }: Props) {
                 );
               })}
           </div>
-          {screen?.key !== "partners" && (
-            <div className={s.strip}>
-              <span className={s.stripLabel}>
-                Thank you
-                <br />
-                to our partners
-              </span>
-              {PARTNERS.map((p, i) => (
-                <span key={p.name} className={s.stripItem}>
-                  {i > 0 && <i className={s.stripRule} />}
-                  <Image src={p.logo} alt={p.name} style={{ height: p.strip, width: "auto" }} sizes="300px" />
-                </span>
-              ))}
-            </div>
-          )}
+          {screen?.key !== "partners" && <PartnerStrip />}
+
           <div className={s.phone}>
             <div className={s.phoneText}>
               <b>Scores on your phone</b>
