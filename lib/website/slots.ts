@@ -23,6 +23,7 @@ import coachMicah from "../../app/(site)/_images/coach-micah-nelson.jpg";
 import coachMike from "../../app/(site)/_images/coach-mike-staffenbeal.jpg";
 import coachPhil from "../../app/(site)/_images/coach-phil-friesen.jpg";
 import coachRodney from "../../app/(site)/_images/coach-rodney-wyatt.jpg";
+import sponsorDundee from "../../app/(site)/_images/sponsor-dundee.png";
 import sponsorConverge from "../../app/(site)/_images/sponsor-converge-church.png";
 import sponsorGrainworx from "../../app/(site)/_images/sponsor-grainworx.png";
 import sponsorKrave from "../../app/(site)/_images/sponsor-krave-gym.jpg";
@@ -43,6 +44,7 @@ export const BUILTIN_IMAGES: Record<string, StaticImageData> = {
   "coach-mike-staffenbeal": coachMike,
   "coach-phil-friesen": coachPhil,
   "coach-rodney-wyatt": coachRodney,
+  "sponsor-dundee": sponsorDundee,
   "sponsor-converge-church": sponsorConverge,
   "sponsor-grainworx": sponsorGrainworx,
   "sponsor-krave-gym": sponsorKrave,
@@ -543,16 +545,8 @@ Lastly, we strive to provide a setting where home school students can achieve th
       { name: "link", label: "Web address", type: "url" },
     ],
     default: [
-      { name: "Krave Gym", logo: { builtin: "sponsor-krave-gym", alt: "" }, link: "https://elkhorn.kravegym.com" },
       { name: "Nelson Produce + Farm", logo: { builtin: "sponsor-nelson-produce-farm", alt: "" }, link: "https://www.nelsonproducefarm.com" },
-      { name: "GrainWorx", logo: { builtin: "sponsor-grainworx", alt: "" }, link: "https://www.rsdico.com/grainworx-features" },
-      { name: "Converge Church", logo: { builtin: "sponsor-converge-church", alt: "" }, link: "https://www.convergechurchomaha.org" },
-      { name: "Millard Community Church", logo: { builtin: "sponsor-millard-community-church", alt: "" }, link: "https://www.millardcommunitychurch.com" },
-      {
-        name: "Truth & Beauty Homeschool Collaborative",
-        logo: { builtin: "sponsor-truth-and-beauty", alt: "" },
-        link: "https://truthandbeautyhomeschoolcollaborative.com",
-      },
+      { name: "Dundee Mergers and Acquisitions", logo: { builtin: "sponsor-dundee", alt: "" }, link: "https://dundeema.com" },
     ],
   },
 
