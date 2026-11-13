@@ -596,3 +596,29 @@ test("invalid per-invoice reminder values are normalized on save", async () => {
   assert.equal(saved.data.reminderStartDays, 7);
   assert.equal(saved.data.reminderUntilPaid, true);
 });
+
+test("voidEventInvoices voids every live invoice for the event, drafts and sent", async () => {
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db }));
+  const made = await svc.createBatch(batchInput(), false);
+  assert.equal(made.ok, true);
+  if (!made.ok) return;
+  assert.ok(made.data.invoices.length >= 1);
+  await svc.send(made.data.invoices[0].id);
+  const res = await svc.voidEventInvoices("evt");
+  assert.equal(res.ok, true);
+  if (res.ok) assert.equal(res.data.voided, made.data.invoices.length);
+  const listed = await svc.list("evt");
+  assert.equal(listed.ok, true);
+  if (listed.ok) assert.ok(listed.data.every((v) => !!v.voidedAt));
+  // Running it again finds nothing left.
+  const again = await svc.voidEventInvoices("evt");
+  if (again.ok) assert.equal(again.data.voided, 0);
+});
+
+test("voidEventInvoices needs invoicing permission", async () => {
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db, canInvoice: false }));
+  const res = await svc.voidEventInvoices("evt");
+  assert.equal(res.ok, false);
+});
