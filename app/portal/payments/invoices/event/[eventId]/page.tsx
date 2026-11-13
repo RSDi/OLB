@@ -39,6 +39,8 @@ export default async function Page({ params }: { params: Promise<{ eventId: stri
       depositDueOn={invoices[0]?.depositDueOn}
       balanceDueOn={invoices[0]?.dueOn}
       rateLabel={rateLabel}
+      eventId={eventId}
+      canInvoice={!!viewer.canManageInvoicing}
       checklistHref={/^[0-9a-f-]{36}$/i.test(eventId) ? `/portal/schedule/hosted/${eventId}` : undefined}
     />
   );

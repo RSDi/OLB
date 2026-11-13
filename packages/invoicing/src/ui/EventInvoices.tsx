@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import type { InvoicingPaths } from "../adapter";
 import { computeInvoice, formatDay, formatMoney } from "../logic";
 import type { EventCollection, Invoice } from "../types";
-import { Btn, Progress, StatusPill } from "./parts";
+import { ActionBtn, Btn, Progress, StatusPill } from "./parts";
 import { t } from "./theme";
 
 export function EventInvoices({
@@ -16,6 +17,8 @@ export function EventInvoices({
   balanceDueOn,
   checklistHref,
   rateLabel,
+  canInvoice = false,
+  onVoidAll,
   paths,
 }: {
   eventLabel: string;
@@ -28,8 +31,31 @@ export function EventInvoices({
   checklistHref?: string;
   /** Replaces "N teams at $fee", e.g. "9 teams · 26 games at $105/game". */
   rateLabel?: string;
+  canInvoice?: boolean;
+  /** Voids every live invoice for the event; shown with a confirm. */
+  onVoidAll?: () => Promise<{ error?: string; notice?: string } | void>;
   paths: InvoicingPaths;
 }) {
+  const [busy, setBusy] = useState(false);
+  const [voidMsg, setVoidMsg] = useState<{ error?: string; notice?: string } | null>(null);
+  const live = invoices.filter((v) => !v.voidedAt);
+  const withPayments = live.filter((v) => v.payments.length > 0).length;
+  async function voidAll() {
+    if (!onVoidAll || busy) return;
+    const n = live.length;
+    const paid = withPayments ? ` ${withPayments} of them ${withPayments === 1 ? "has" : "have"} payments recorded; those drop out of the collected total too.` : "";
+    if (
+      !confirm(
+        `Void all ${n} ${n === 1 ? "invoice" : "invoices"} for ${eventLabel}? They drop out of billed and collected totals, and the programs aren't emailed.${paid} You can bill again afterward.`
+      )
+    )
+      return;
+    setBusy(true);
+    setVoidMsg(null);
+    const res = await onVoidAll();
+    setBusy(false);
+    setVoidMsg(res ?? null);
+  }
   const T = summary.billedCents;
   const P = summary.collectedCents;
   return (
@@ -48,14 +74,19 @@ export function EventInvoices({
             {balanceDueOn ? ` · balance due ${formatDay(balanceDueOn, true)}` : ""}
           </div>
         </div>
-        {checklistHref && (
-          <div style={{ marginLeft: "auto" }}>
-            <Btn sm href={checklistHref}>
-              Hosting checklist
-            </Btn>
+        {(checklistHref || (onVoidAll && live.length > 0)) && (
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {onVoidAll && live.length > 0 && <ActionBtn sm canInvoice={canInvoice} label={busy ? "Voiding…" : "Void all"} kind="ghost" onClick={voidAll} />}
+            {checklistHref && (
+              <Btn sm href={checklistHref}>
+                Hosting checklist
+              </Btn>
+            )}
           </div>
         )}
       </div>
+      {voidMsg?.error && <div style={{ color: t.error, fontWeight: 700, fontSize: 13 }}>{voidMsg.error}</div>}
+      {voidMsg?.notice && <div style={{ color: t.muted, fontWeight: 700, fontSize: 13 }}>{voidMsg.notice}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
         <Kpi label="Billed" value={formatMoney(T)} sub={`${summary.invoiceCount} invoices`} />
         <Kpi label="Collected" value={formatMoney(P)} sub={`${T ? Math.round((P / T) * 100) : 0}% · Venmo + checks`} />

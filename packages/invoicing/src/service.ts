@@ -318,6 +318,24 @@ export function createInvoicingService(adapter: InvoicingAdapter) {
       }
     },
 
+    /** Voids every live invoice for an event (drafts and sent), e.g. to
+     *  change a tournament's fees and bill again. Programs aren't emailed. */
+    async voidEventInvoices(eventId: string): Promise<Result<{ voided: number }>> {
+      const gate = await requireInvoicePermission();
+      if (!gate.ok) return gate;
+      if (!eventId) return fail("Pick an event.");
+      try {
+        const db = await adapter.getServerClient();
+        const live = (await listInvoices(db, eventId)).filter((v) => !v.voidedAt);
+        const at = new Date().toISOString();
+        for (const v of live) await updateInvoiceRow(db, v.id, { voided_at: at });
+        if (live.length) await notifyEvent(eventId);
+        return { ok: true, data: { voided: live.length } };
+      } catch (e) {
+        return fail(migrationError(e));
+      }
+    },
+
     async recordPayment(id: string, input: RecordPaymentInput): Promise<Result<Invoice>> {
       const gate = await requireInvoicePermission();
       if (!gate.ok) return gate;

@@ -76,6 +76,16 @@ export async function voidInvoiceAction(id: string) {
   return { notice: "Invoice voided." };
 }
 
+export async function voidEventInvoicesAction(eventId: string) {
+  const gate = await requireInvoicing();
+  if ("error" in gate) return { error: gate.error };
+  const res = await svc().voidEventInvoices(eventId);
+  if (!res.ok) return { error: res.error };
+  refresh(undefined, eventId);
+  const n = res.data.voided;
+  return { notice: n ? `${n} ${n === 1 ? "invoice" : "invoices"} voided.` : "Nothing left to void." };
+}
+
 export async function recordInvoicePaymentAction(id: string, input: RecordPaymentInput) {
   const gate = await requireInvoicing();
   if ("error" in gate) return { error: gate.error };

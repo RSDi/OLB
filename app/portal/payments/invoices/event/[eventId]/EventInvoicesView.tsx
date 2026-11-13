@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { EventInvoices } from "invoicing/ui";
+import { voidEventInvoicesAction } from "../../../../../../lib/invoicing/actions";
 import type { EventCollection, Invoice } from "invoicing";
 import { olbInvoicePaths } from "../../../../../../lib/invoicing/paths";
 
@@ -15,6 +17,8 @@ export function EventInvoicesView({
   balanceDueOn,
   checklistHref,
   rateLabel,
+  eventId,
+  canInvoice = false,
 }: {
   eventLabel: string;
   invoices: Invoice[];
@@ -25,7 +29,10 @@ export function EventInvoicesView({
   balanceDueOn?: string | null;
   checklistHref?: string;
   rateLabel?: string;
+  eventId: string;
+  canInvoice?: boolean;
 }) {
+  const router = useRouter();
   return (
     <EventInvoices
       eventLabel={eventLabel}
@@ -37,6 +44,12 @@ export function EventInvoicesView({
       balanceDueOn={balanceDueOn}
       checklistHref={checklistHref}
       rateLabel={rateLabel}
+      canInvoice={canInvoice}
+      onVoidAll={async () => {
+        const res = await voidEventInvoicesAction(eventId);
+        router.refresh();
+        return res;
+      }}
       paths={olbInvoicePaths}
     />
   );
