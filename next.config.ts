@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
   // like first-party app code.
   transpilePackages: ["reelnotes", "document-scanner", "@uppy/core", "@uppy/tus", "tus-js-client"],
   images: { remotePatterns: siteImagesPattern() },
+  // The signs PDF reads its fonts and logo from disk at request time.
+  outputFileTracingIncludes: { "/shootout/signs": ["./lib/hosted/signs-assets/**/*"] },
   // Preview hosts (*.vercel.app) can differ from the forwarded Host when
   // Vercel Authentication sits in front. Without this, Server Actions abort
   // as "Invalid Server Actions request" and the form shows a generic error.

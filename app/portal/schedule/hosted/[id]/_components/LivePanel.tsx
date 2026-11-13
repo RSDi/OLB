@@ -3,7 +3,6 @@
 // (/shootout) on, make the PIN for the scorer's tables, and print the signs
 // with the QR code. Jeff-only until it's released.
 
-import Link from "next/link";
 import { Pill } from "../../../../../components/ui";
 import { newScorerPin, setLivePublic } from "../../../../../../lib/hosted/actions";
 import type { HostedPageData } from "../../../../../../lib/hosted/types";
@@ -26,9 +25,10 @@ export function LivePanel({ data }: { data: HostedPageData }) {
           <Pill size="sm" variant={on ? "ghost" : "accent"} disabled={busy} onClick={() => act(() => setLivePublic(weekend.id, !on))}>
             {on ? "Turn off" : "Turn on the live page"}
           </Pill>
-          <Link href={`/shootout/signs?w=${weekend.id}`} target="_blank" style={{ fontSize: 12, fontWeight: 700, alignSelf: "center" }}>
+          {/* A PDF, so a plain link: one sign per Letter page, ready to print. */}
+          <a href={`/shootout/signs?w=${weekend.id}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, alignSelf: "center" }}>
             Print the signs
-          </Link>
+          </a>
         </>
       }
     >
