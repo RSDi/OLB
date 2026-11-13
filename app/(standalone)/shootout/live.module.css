@@ -173,15 +173,20 @@
 .tdays .tdayOn { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
 .tlabel { display: flex; justify-content: space-between; align-items: center; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 800; margin: 6px 0 -4px; }
 .tcount { background: var(--live); color: #fff; border-radius: 99px; padding: 0 8px; letter-spacing: 0; }
-.tcard { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.tcard { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 0 10px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 12px 0; overflow: hidden; }
+/* Edit game sits on its own strip under a divider, well away from Score. */
+.tcardEdit { grid-column: 1 / -1; margin: 4px -12px 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 0; border-top: 1px solid var(--line); background: var(--soft); color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left; }
+.tcardEdit b { color: var(--fg); font-weight: 800; font-size: 14px; }
+.tcardEdit:focus-visible { outline: 3px solid var(--bolt); outline-offset: -3px; }
 .tcardDue { border: 2px solid var(--live); }
-.tcardWhen { font-weight: 800; font-size: 14px; line-height: 1.15; white-space: nowrap; }
+.tcardDue .tcardEdit { border-top-color: var(--live); }
+.tcardWhen { font-weight: 800; font-size: 14px; line-height: 1.15; white-space: nowrap; padding-bottom: 8px; }
 .tcardWhen small, .tcardMatch small { display: block; font-weight: 600; color: var(--muted); font-size: 12px; }
-.tcardMatch { font-weight: 700; font-size: 14.5px; line-height: 1.25; }
+.tcardMatch { font-weight: 700; font-size: 14.5px; line-height: 1.25; padding-bottom: 8px; }
 .won { font-weight: 800; }
 .lost { color: var(--muted); font-weight: 600; }
-.tcardAct { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.tbtn, .tbtnLight { border-radius: 10px; padding: 8px 12px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
+.tcardAct { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding-bottom: 8px; }
+.tbtn, .tbtnLight { border-radius: 10px; padding: 8px 14px; min-height: 44px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; }
 .tbtn { background: var(--night); color: var(--bolt); border: 0; }
 .tbtnLight { background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
 .tback { align-self: flex-start; background: none; border: 0; padding: 0; font: inherit; font-weight: 800; color: var(--fg); cursor: pointer; }

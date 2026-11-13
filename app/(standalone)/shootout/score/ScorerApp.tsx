@@ -340,10 +340,11 @@ function GameList(props: {
               Score
             </button>
           )}
-          <button type="button" className={s.link} style={{ fontSize: 13 }} onClick={() => onEdit(g)}>
-            Edit game
-          </button>
         </div>
+        <button type="button" className={s.tcardEdit} onClick={() => onEdit(g)}>
+          <span>Wrong court or time?</span>
+          <b>✎ Edit game</b>
+        </button>
       </div>
     );
   };
