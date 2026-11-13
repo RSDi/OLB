@@ -57,6 +57,7 @@ import { WebsiteTab } from "./WebsiteTab";
 import { WebsiteActivityTab } from "./WebsiteActivityTab";
 import { AccessProfilesTab } from "./AccessProfilesTab";
 import { ReleaseNotesTab } from "./ReleaseNotesTab";
+import { CoryTab } from "./CoryTab";
 import { usePageHelp } from "../../components/PageHelp";
 import { Icons } from "../../components/icons";
 
@@ -129,6 +130,7 @@ type Tab =
   | "invoices"
   | "website"
   | "website_activity"
+  | "cory"
   | "release_notes"
   | "planning_roles"
   | "event_categories"
@@ -239,6 +241,9 @@ function visibleTabs(me: MemberLike, fullUi: boolean, workflowOn = false, financ
     // Visits to the public site (0161): staged rollout, the preview accounts'
     // super-admins only, like the portal's Activity.
     { key: "website_activity", label: "Website Activity", group: "Website & Portal", visible: fullUi && isSuperAdmin(me), tour: "settings-tab-website-activity", keywords: "analytics stats statistics visitors visits traffic page views google facebook registration funnel" },
+    // The Coach Cory exclamation counter at /! (lib/fun/cory.ts): staged
+    // rollout, saved in site_content so it needs the Website grant.
+    { key: "cory", label: "Coach Cory !", group: "Website & Portal", visible: fullUi && canManageWebsite(me), tour: "settings-tab-cory", keywords: "coach cory exclamation points counter slack fun" },
     { key: "release_notes", label: "Release Notes", group: "Website & Portal", visible: true, tour: "settings-tab-release-notes", keywords: "release notes shipped changelog whats new show me how walkthrough demo" },
     { key: "sidebar_links", label: "Sidebar Links", group: "Website & Portal", visible: siteLinks, tour: "settings-tab-sidebar-links", keywords: "links menu" },
     // The key in the public Directory's link (0119).
@@ -405,6 +410,7 @@ export default function SettingsPage() {
       {tab === "invoices" && has("invoices") && <InvoicesTab />}
       {tab === "website" && has("website") && <WebsiteTab />}
       {tab === "website_activity" && has("website_activity") && <WebsiteActivityTab />}
+      {tab === "cory" && has("cory") && <CoryTab />}
       {tab === "release_notes" && has("release_notes") && <ReleaseNotesTab me={me} />}
       {tab === "planning_roles" && has("planning_roles") && (
         <PlanningRolesTab canChangeInvoicingHolder={isSuperAdmin(me)} />

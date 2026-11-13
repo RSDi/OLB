@@ -85,6 +85,7 @@ export function sitePageLabel(path: string): string {
   const pathname = path.split("?")[0].replace(/\/+$/, "");
   if (!pathname) return "Home";
   for (const [re, label] of SHOOTOUT_LABELS) if (re.test(pathname)) return label;
+  if (/^\/(!|%21|exclamation)$/i.test(pathname)) return "Coach Cory counter";
   return pathname
     .split("/")
     .filter(Boolean)
