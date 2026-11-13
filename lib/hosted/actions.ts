@@ -458,9 +458,20 @@ async function teamHasLiveInvoice(weekendId: string, teamId: string): Promise<Ho
     }
     const keys = hostedTeamInvoiceKeys(opponent);
     if (!keys.length) return null;
-    const inv = await db.from("inv_invoices").select("id").eq("host_event_id", weekendId).in("host_customer_id", keys).is("voided_at", null).limit(1);
+    const inv = await db
+      .from("inv_invoices")
+      .select("id, number, customer_name")
+      .eq("host_event_id", weekendId)
+      .in("host_customer_id", keys)
+      .is("voided_at", null)
+      .limit(1);
     if (inv.error) return { error: inv.error.message };
-    if ((inv.data ?? []).length) return { error: "Void its invoice first." };
+    const live = ((inv.data as { id: string; number: string | null; customer_name: string | null }[] | null) ?? [])[0];
+    // The id lets the team sheet link straight to the invoice to void.
+    if (live) {
+      const which = [live.number, live.customer_name ? `for ${live.customer_name}` : null].filter(Boolean).join(" ");
+      return { error: `Void its invoice first${which ? ` (${which})` : ""}. Voiding it voids the whole program's invoice; bill them again after.`, id: live.id };
+    }
     return null;
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Void its invoice first." };
