@@ -6,6 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { knownPageLabel } from "../../lib/activity/website-rules.ts";
 
 const APP = join(process.cwd(), "app");
 
@@ -44,4 +45,24 @@ test("the tracked layouts carry the beacon", () => {
     const layout = readFileSync(join(APP, folder, "layout.tsx"), "utf8");
     assert.match(layout, /<WebsiteBeacon\b/, `${folder}/layout.tsx should render <WebsiteBeacon />`);
   }
+});
+
+// "(site)/assessments/[slug]/page.tsx" → "/assessments/x1"
+function sampleAddress(file: string): string {
+  const parts = file.split(sep).slice(0, -1).filter((p) => !/^\(.*\)$/.test(p));
+  const segs = parts.filter((p) => !p.startsWith("[[")).map((p) => (p.startsWith("[") ? "x1" : p));
+  return "/" + segs.join("/");
+}
+
+test("every tracked page has a plain name in Website Activity", () => {
+  const tracked = pages(APP).filter((f) => TRACKED.some((folder) => under(f, folder)));
+  // New pages (Settings → Website) are named from their address.
+  const unnamed = tracked.filter((f) => f !== join("(site)", "[slug]", "page.tsx") && !knownPageLabel(sampleAddress(f)));
+  assert.deepEqual(unnamed, [], "Add these pages to SITE_PAGES in lib/activity/website-rules.ts");
+});
+
+test("addresses that aren't pages have no name", () => {
+  for (const p of ["/cart", "/tv", "/lo", "/wp-login.php", "/shootout/nope"]) assert.equal(knownPageLabel(p), null, p);
+  assert.equal(knownPageLabel("/shootout/tv/courts"), "Shootout TV · Scoreboard");
+  assert.equal(knownPageLabel("/?utm_source=x"), "Home");
 });

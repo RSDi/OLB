@@ -59,7 +59,7 @@ test("pages read as words", () => {
 test("Shootout pages have their own names", () => {
   assert.equal(sitePageLabel("/shootout"), "Shootout live scores");
   assert.equal(sitePageLabel("/shootout?utm_source=sign"), "Shootout live scores");
-  assert.equal(sitePageLabel("/shootout/tv/courts"), "Shootout TV");
+  assert.equal(sitePageLabel("/shootout/tv/courts"), "Shootout TV · Scoreboard");
   assert.equal(sitePageLabel("/shootout/tv/admission"), "Shootout TV · Admission");
   assert.equal(sitePageLabel("/shootout/score"), "Shootout scorer's table");
   assert.equal(sitePageLabel("/shootout-dates"), "Shootout Dates");
