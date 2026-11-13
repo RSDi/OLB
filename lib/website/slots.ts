@@ -29,6 +29,7 @@ import sponsorGrainworx from "../../app/(site)/_images/sponsor-grainworx.png";
 import sponsorKrave from "../../app/(site)/_images/sponsor-krave-gym.jpg";
 import sponsorMillard from "../../app/(site)/_images/sponsor-millard-community-church.png";
 import sponsorNelson from "../../app/(site)/_images/sponsor-nelson-produce-farm.jpg";
+import sponsorTeamTime from "../../app/(site)/_images/sponsor-team-time.png";
 import sponsorTruthAndBeauty from "../../app/(site)/_images/sponsor-truth-and-beauty.png";
 import type { LinkValue, ListField, ListItem, SlotKind } from "./content";
 
@@ -50,6 +51,7 @@ export const BUILTIN_IMAGES: Record<string, StaticImageData> = {
   "sponsor-krave-gym": sponsorKrave,
   "sponsor-millard-community-church": sponsorMillard,
   "sponsor-nelson-produce-farm": sponsorNelson,
+  "sponsor-team-time": sponsorTeamTime,
   "sponsor-truth-and-beauty": sponsorTruthAndBeauty,
 };
 export const BUILTIN_IMAGE_IDS = Object.keys(BUILTIN_IMAGES);
@@ -547,6 +549,7 @@ Lastly, we strive to provide a setting where home school students can achieve th
     default: [
       { name: "Nelson Produce + Farm", logo: { builtin: "sponsor-nelson-produce-farm", alt: "" }, link: "https://www.nelsonproducefarm.com" },
       { name: "Dundee Mergers and Acquisitions", logo: { builtin: "sponsor-dundee", alt: "" }, link: "https://dundeema.com" },
+      { name: "Team Time", logo: { builtin: "sponsor-team-time", alt: "" }, link: "https://www.teamtimehq.com" },
     ],
   },
 
