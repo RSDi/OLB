@@ -18,7 +18,7 @@ import {
   saveTeam,
 } from "../../../../../../lib/hosted/actions";
 import { feeLockNote, placementBracket, roundRobin, seeded, teamFee, teamGames } from "../../../../../../lib/hosted/logic";
-import type { DivisionFormat, HostedDivision, HostedPageData, HostedPlan, HostedTeam } from "../../../../../../lib/hosted/types";
+import type { DivisionFormat, HostedDivision, HostedPageData, HostedPlan, HostedProgram, HostedTeam } from "../../../../../../lib/hosted/types";
 import { Empty, ErrorNote, Said, Section, Sheet, grid2, iconBtn, money, sub, useAct } from "./parts";
 
 type Open = { kind: "division"; division: HostedDivision | null } | { kind: "team"; team: HostedTeam | null; division: string | null } | null;
@@ -93,7 +93,7 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
             {teams.length === 0 ? (
               <Empty>No teams yet. Edit a team below to put it here, or press + to add one.</Empty>
             ) : (
-              <TeamList teams={teams} plan={data.plan} onEdit={(t) => setOpen({ kind: "team", team: t, division: t.division_id })} />
+              <TeamList teams={teams} plan={data.plan} programs={data.programs} onEdit={(t) => setOpen({ kind: "team", team: t, division: t.division_id })} />
             )}
           </Section>
         );
@@ -101,7 +101,7 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
 
       {loose.length > 0 && (
         <Section title="Not in a division yet" subtitle="Tap a team to put it in its division.">
-          <TeamList teams={loose} plan={data.plan} onEdit={(t) => setOpen({ kind: "team", team: t, division: null })} />
+          <TeamList teams={loose} plan={data.plan} programs={data.programs} onEdit={(t) => setOpen({ kind: "team", team: t, division: null })} />
         </Section>
       )}
 
@@ -114,6 +114,7 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
           divisions={data.divisions}
           feesLocked={data.feeLock.locked}
           plan={data.plan}
+          programs={data.programs}
           lockNote={feeLockNote(data.feeLock.invoiceCount, data.feeLock.lookupFailed)}
           onClose={() => setOpen(null)}
         />
@@ -122,12 +123,15 @@ export function TeamsPanel({ data }: { data: HostedPageData }) {
   );
 }
 
-function TeamList({ teams, plan, onEdit }: { teams: HostedTeam[]; plan: HostedPlan; onEdit: (t: HostedTeam) => void }) {
+function TeamList({ teams, plan, programs, onEdit }: { teams: HostedTeam[]; plan: HostedPlan; programs: HostedProgram[]; onEdit: (t: HostedTeam) => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       {teams.map((t) => {
         const fee = teamFee(t, plan);
         const games = teamGames(t, plan);
+        // A visiting team without a program isn't on anyone's invoice.
+        const program = t.ours ? null : programOf(t, programs);
+        const showProgram = !!program && program.name.trim().toLowerCase() !== t.name.trim().toLowerCase();
         return (
           <button
             key={t.id}
@@ -141,6 +145,8 @@ function TeamList({ teams, plan, onEdit }: { teams: HostedTeam[]; plan: HostedPl
               {t.code && <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--gw-fg-muted)" }}>{t.code}</span>}
               {t.pool && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--gw-fg-muted)" }}>Pool {t.pool}</span>}
               {t.ours && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--rsd-accent)" }}>Ours</span>}
+              {showProgram && <span style={{ fontSize: 11.5, color: "var(--gw-fg-muted)" }}>{program!.name}</span>}
+              {!t.ours && !program && <span style={{ fontSize: 11, fontWeight: 800, color: "var(--gw-error)" }}>No program</span>}
               {t.note && <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>{t.note}</span>}
             </span>
             {!t.ours && t.fee_cents == null && (
@@ -154,6 +160,11 @@ function TeamList({ teams, plan, onEdit }: { teams: HostedTeam[]; plan: HostedPl
       })}
     </div>
   );
+}
+
+// The program a team comes with, through any of that program's HS Schedule rows.
+function programOf(t: Pick<HostedTeam, "opponent_id">, programs: HostedProgram[]): HostedProgram | null {
+  return t.opponent_id ? (programs.find((p) => p.opponent_ids.includes(t.opponent_id!)) ?? null) : null;
 }
 
 function DivisionSheet({ wid, division, games, onClose }: { wid: string; division: HostedDivision | null; games: number; onClose: () => void }) {
@@ -216,6 +227,7 @@ function TeamSheet({
   feesLocked,
   lockNote,
   plan,
+  programs,
   onClose,
 }: {
   wid: string;
@@ -225,6 +237,7 @@ function TeamSheet({
   feesLocked: boolean;
   lockNote: string;
   plan: HostedPlan;
+  programs: HostedProgram[];
   onClose: () => void;
 }) {
   const { busy, error, act } = useAct();
@@ -237,9 +250,17 @@ function TeamSheet({
     pool: team?.pool ? String(team.pool) : "",
     fee: team?.fee_cents != null ? (team.fee_cents / 100).toFixed(team.fee_cents % 100 ? 2 : 0) : "",
     games: team?.games != null ? String(team.games) : "",
+    program: (team ? programOf(team, programs)?.key : null) ?? "",
     ours: team?.ours ?? false,
     note: team?.note ?? "",
   });
+  // The program's HS Schedule row to save: the team's own when its program
+  // has several, else the program's first; null for none.
+  const opponentFor = (key: string): string | null => {
+    const p = key ? programs.find((x) => x.key === key) : null;
+    if (!p) return null;
+    return team?.opponent_id && p.opponent_ids.includes(team.opponent_id) ? team.opponent_id : p.opponent_ids[0];
+  };
   return (
     <Sheet eyebrow="Teams" title={team ? team.name : "Add a team"} busy={busy} onClose={onClose}>
       <Input label="Team" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="KC Metro Mavericks 1" autoFocus={!team} />
@@ -285,6 +306,24 @@ function TeamSheet({
           style={feesLocked ? { background: "var(--gw-bg-elev)", color: "var(--gw-fg-muted)" } : undefined}
         />
       </div>
+      {!f.ours && (
+        <Select
+          label="Program"
+          value={f.program}
+          onChange={(e) => setF({ ...f, program: e.target.value })}
+          disabled={feesLocked}
+          help={feesLocked ? lockNote : "Who pays for this team: Bill programs puts it on that program's invoice. The list is the programs on the HS Schedule for this weekend."}
+        >
+          <option value="">None (not billed)</option>
+          {programs
+            .filter((p) => p.status !== "declined" || p.key === f.program)
+            .map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.status === "tentative" ? `${p.name} (tentative)` : p.name}
+              </option>
+            ))}
+        </Select>
+      )}
       <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, fontWeight: 600, color: feesLocked ? "var(--gw-fg-muted)" : undefined }}>
         <input type="checkbox" checked={f.ours} disabled={feesLocked} onChange={(e) => setF({ ...f, ours: e.target.checked })} style={{ width: 16, height: 16, accentColor: "var(--rsd-accent-fill)" }} />
         One of our teams (no fee)
@@ -297,7 +336,7 @@ function TeamSheet({
         </a>
       )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Pill variant="accent" onClick={async () => (await act(() => saveTeam(wid, { id: team?.id, ...f, division_id: f.division_id || null }))) && onClose()} disabled={busy || !f.name.trim()}>
+        <Pill variant="accent" onClick={async () => (await act(() => saveTeam(wid, { id: team?.id, ...f, division_id: f.division_id || null, opponent_id: opponentFor(f.program) }))) && onClose()} disabled={busy || !f.name.trim()}>
           {busy ? "Saving…" : team ? "Save" : "Add team"}
         </Pill>
         <Pill variant="ghost" onClick={onClose} disabled={busy}>

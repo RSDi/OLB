@@ -185,3 +185,20 @@ test("Bill programs prices each team by the game", () => {
   assert.equal(plain.lines, undefined);
   assert.deepEqual(customerBillLines(plain, 24000, "Team fee"), [{ description: "Team fee", qty: 1, unitCents: 24000 }]);
 });
+
+test("a contact-backed program links to its contact for its emails", () => {
+  const rows = groupHostedCustomers({
+    opponents: [
+      { id: "o1", contact_id: "c1", name: "Des Moines Warriors", status: "confirmed" },
+      { id: "o2", contact_id: null, name: "Walk-in Hoops", status: "confirmed" },
+    ],
+    teams: [],
+    divisions: [],
+    contacts: [{ id: "c1", name: "Des Moines Warriors", email: "dmw@example.com", alt_email: null }],
+    people: [{ parent_contact_id: "c1", email: "coach@example.com" }],
+  });
+  const dm = rows.find((r) => r.id === "c1")!;
+  assert.deepEqual(dm.emails, ["dmw@example.com", "coach@example.com"]);
+  assert.equal(dm.emailsHref, "/portal/contacts/c1");
+  assert.equal(rows.find((r) => r.id.startsWith("name:"))!.emailsHref, undefined);
+});

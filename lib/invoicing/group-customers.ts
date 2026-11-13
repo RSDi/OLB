@@ -74,6 +74,9 @@ export function groupHostedCustomers(input: {
       emails: row.emails,
       teamCount: row.teamCount,
       divisions: row.divisions,
+      // Contact-backed programs: their page in External Contacts, where the
+      // emails live (the contact's email, alt email and its people).
+      ...(row.id.startsWith("name:") ? {} : { emailsHref: `/portal/contacts/${row.id}` }),
       ...(input.plan && input.plan.game_fee_cents != null ? { lines: row.billLines, unitCount: row.games } : {}),
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

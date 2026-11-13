@@ -622,3 +622,16 @@ test("voidEventInvoices needs invoicing permission", async () => {
   const res = await svc.voidEventInvoices("evt");
   assert.equal(res.ok, false);
 });
+
+test("createBatch uses emails typed on the billing page for that invoice only", async () => {
+  const db = new MemoryDb();
+  const svc = createInvoicingService(makeAdapter({ db }));
+  const base = batchInput();
+  const first = base.customers[0];
+  const res = await svc.createBatch({ ...base, customers: [{ ...first, emails: ["New@Example.com", "two@example.com"] }] }, false);
+  assert.equal(res.ok, true);
+  if (res.ok) assert.equal(res.data.invoices[0].customerEmail, "New@Example.com, two@example.com");
+  const bad = await svc.createBatch({ ...base, customers: [{ ...first, emails: ["not-an-email"] }] }, false);
+  assert.equal(bad.ok, false);
+  if (!bad.ok) assert.match(bad.error, /not-an-email/);
+});

@@ -188,6 +188,10 @@ test("team fees lock once Set team fees is done or an invoice exists", () => {
   assert.match(actions, /Void its invoice first/);
   const teamsPanel = readFileSync(join(import.meta.dirname, "../../app/portal/schedule/hosted/[id]/_components/TeamsPanel.tsx"), "utf8");
   assert.match(teamsPanel, /Open the invoice to void it/);
+  // A team's program is checked against this weekend and locked with the fees.
+  assert.match(actions, /That program isn't coming to this tournament/);
+  assert.match(actions, /current\.opponent_id \?\? null\) !== opponent/);
+  assert.match(teamsPanel, /label="Program"/);
   assert.match(actions, /input\.ours/);
   assert.match(actions, /curErr \|\| !cur/);
   assert.match(actions, /hostedTeamInvoiceKeys\(opponent\)/);
