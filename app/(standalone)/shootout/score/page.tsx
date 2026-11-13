@@ -13,21 +13,21 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-// The scorer's table (0165) at /shootout/score?court=2, from the card taped
-// at each court: the tournament PIN once, then each game's final. Works
-// while the live page is on.
+// The scorer's table (0165) at /shootout/score: the tournament PIN once,
+// then every game on every court. ?court=2 opens on that court (the old
+// court cards); without it, all courts. Works while the live page is on.
 export default async function ScorePage({ searchParams }: { searchParams: Promise<{ court?: string }> }) {
   const { court } = await searchParams;
   const data = await loadLive();
   const n = Math.round(Number(court));
   const courts = data ? Math.max(data.courts, ...data.games.map((g) => g.court ?? 0)) : 4;
-  const pick = n >= 1 && n <= courts ? n : 1;
+  const pick = n >= 1 && n <= courts ? n : null;
   return (
     <div className={`${s.page} ${portalFontVariables}`}>
       <header className={s.head}>
         <div className={s.headInner}>
           <div className={s.eyebrow}>Scorer&apos;s table{data ? ` · ${data.event}` : ""}</div>
-          <h1 className={`${s.title} ${s.display}`}>Court {pick}</h1>
+          <h1 className={`${s.title} ${s.display}`}>All games</h1>
         </div>
       </header>
       <div style={{ height: 16 }} />
@@ -36,7 +36,7 @@ export default async function ScorePage({ searchParams }: { searchParams: Promis
           <div className={s.empty}>Score entry opens on game day. Ask the tournament desk.</div>
         </div>
       ) : (await isScorer(data.weekendId)) ? (
-        <ScorerApp data={data} court={pick} courts={courts} today={gymClock().date} />
+        <ScorerApp data={data} court={pick} courts={courts} now={gymClock()} />
       ) : (
         <PinForm weekendId={data.weekendId} />
       )}

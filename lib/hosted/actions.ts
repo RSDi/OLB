@@ -97,13 +97,13 @@ export async function setLivePublic(weekendId: string, on: boolean): Promise<Hos
   return { notice: on ? "The live page is on." : "The live page is off." };
 }
 
-// A new six-digit PIN for the scorer's tables. Every phone that had the old
+// A new four-digit PIN for the scorer's table. Every phone that had the old
 // one has to type the new one.
 export async function newScorerPin(weekendId: string): Promise<HostedResult> {
   const g = await gate();
   if ("error" in g) return g;
   const { randomInt } = await import("node:crypto");
-  const pin = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const pin = String(randomInt(0, 10_000)).padStart(4, "0");
   const { error } = await g.db.from("hs_hosted").update({ scorer_pin: pin }).eq("weekend_id", weekendId);
   if (error) return { error: error.message.includes("scorer_pin") ? "Live scores aren't set up in the database yet (migration 0165)." : error.message };
   refresh(weekendId);

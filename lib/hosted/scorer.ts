@@ -8,7 +8,10 @@ import { createAdminClient } from "../supabase/admin";
 import { clientIp } from "../film/rate-limit";
 
 export const SCORER_COOKIE = "olb_scorer";
-const MAX_FAILS = 10;
+// A four-digit PIN is quick to type at a busy table, so wrong guesses are
+// held tight: a few per phone, and a cap across every phone, per window.
+const MAX_FAILS = 5;
+const MAX_FAILS_ALL = 40;
 const WINDOW_MIN = 15;
 
 function secret(): string {
@@ -48,13 +51,10 @@ async function ipHash(): Promise<string> {
 // Wrong PINs from this address in the last few minutes: too many and it waits.
 export async function pinLocked(weekendId: string): Promise<boolean> {
   const since = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString();
-  const { count } = await createAdminClient()
-    .from("hs_hosted_pin_failures")
-    .select("id", { count: "exact", head: true })
-    .eq("weekend_id", weekendId)
-    .eq("ip_hash", await ipHash())
-    .gte("at", since);
-  return (count ?? 0) >= MAX_FAILS;
+  const db = createAdminClient();
+  const failures = () => db.from("hs_hosted_pin_failures").select("id", { count: "exact", head: true }).eq("weekend_id", weekendId).gte("at", since);
+  const [mine, all] = await Promise.all([failures().eq("ip_hash", await ipHash()), failures()]);
+  return (mine.count ?? 0) >= MAX_FAILS || (all.count ?? 0) >= MAX_FAILS_ALL;
 }
 
 export async function recordPinFailure(weekendId: string): Promise<void> {
