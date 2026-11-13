@@ -41,7 +41,7 @@ export default async function TvPage({ params, searchParams }: { params: Promise
     );
   }
   const data = await loadLive();
-  if (data && pin && pin !== "courts" && !data.divisions.some((d) => tvSlug(d) === pin)) notFound();
+  if (data && pin && pin !== "courts" && pin !== "partners" && !data.divisions.some((d) => tvSlug(d) === pin)) notFound();
   const seconds = Math.min(120, Math.max(6, Number(s) || 15));
   const days = (data?.games ?? []).map((g) => g.plays_on).filter((d): d is string => !!d).sort();
   const dates = data ? formatWeekendDates(days[0] ?? data.startsOn, days[days.length - 1] ?? data.endsOn) : "";

@@ -1,7 +1,7 @@
 "use client";
 // The live page for a TV (0165 data): a 1920×1080 stage scaled to whatever
 // screen it's on, turning through "On the courts" and a screen for each
-// division. Reloads the scores every 30 seconds and keeps the screen awake
+// division, then a thank-you to our partners. Reloads the scores every 30 seconds and keeps the screen awake
 // where the browser allows it. Nothing to click: it's meant to be left on.
 
 import { useEffect, useMemo, useState } from "react";
@@ -12,10 +12,19 @@ import type { LiveData, LiveDivision } from "../../../../lib/hosted/live";
 import { poolStandings, poolsOf } from "../../../../lib/hosted/standings";
 import { gameState, isFinal, sideView, sortGames, tvSlug, whenLabel, type Clock, type SideView } from "../../../../lib/hosted/live-view";
 import bolt from "../../../(site)/_images/logo-bolt.png";
+import dundee from "./partners/dundee.png";
+import nelson from "./partners/nelson.png";
 import { useFitStage, useFullscreenOnPress, useWakeLock } from "./tv-hooks";
 import s from "./tv.module.css";
 
 const MAX_GAMES = 10;
+
+// Our partners for the tournament, in versions made for a dark screen. Each
+// has a height that makes the two look the same size next to each other.
+const PARTNERS = [
+  { name: "Dundee Mergers and Acquisitions", logo: dundee, strip: 50, big: 180 },
+  { name: "Nelson Produce + Farm", logo: nelson, strip: 76, big: 290 },
+];
 
 type Screen = { key: string; tab: string; title: string; division: LiveDivision | null };
 
@@ -39,6 +48,7 @@ export function TvBoard({ data, now, clock, dates, qr, pin, seconds }: Props) {
     const all: Screen[] = [
       { key: "courts", tab: "Courts", title: "On the courts", division: null },
       ...data.divisions.map((d) => ({ key: tvSlug(d), tab: d.code || d.name, title: d.name, division: d })),
+      { key: "partners", tab: "Partners", title: "Thank you to our partners", division: null },
     ];
     return pin ? all.filter((x) => x.key === pin) : all;
   }, [data, pin]);
@@ -99,7 +109,13 @@ export function TvBoard({ data, now, clock, dates, qr, pin, seconds }: Props) {
             </div>
           ) : (
             <div key={screen.key} className={`${s.screen} ${s.fade}`}>
-              {screen.division ? <DivisionScreen data={data} division={screen.division} now={now} /> : <CourtsScreen data={data} now={now} />}
+              {screen.division ? (
+                <DivisionScreen data={data} division={screen.division} now={now} />
+              ) : screen.key === "partners" ? (
+                <PartnersScreen />
+              ) : (
+                <CourtsScreen data={data} now={now} />
+              )}
             </div>
           )}
         </main>
@@ -118,15 +134,45 @@ export function TvBoard({ data, now, clock, dates, qr, pin, seconds }: Props) {
                 );
               })}
           </div>
+          {screen?.key !== "partners" && (
+            <div className={s.strip}>
+              <span className={s.stripLabel}>
+                Thank you
+                <br />
+                to our partners
+              </span>
+              {PARTNERS.map((p, i) => (
+                <span key={p.name} className={s.stripItem}>
+                  {i > 0 && <i className={s.stripRule} />}
+                  <Image src={p.logo} alt={p.name} style={{ height: p.strip, width: "auto" }} sizes="300px" />
+                </span>
+              ))}
+            </div>
+          )}
           <div className={s.phone}>
             <div className={s.phoneText}>
               <b>Scores on your phone</b>
-              omahalightningbasketball.com/shootout
+              …/shootout
             </div>
             <div className={s.qr} dangerouslySetInnerHTML={{ __html: qr }} />
           </div>
         </footer>
         {fsHint && <div className={s.fsHint}>Press OK on the remote (or click) for full screen</div>}
+      </div>
+    </div>
+  );
+}
+
+function PartnersScreen() {
+  return (
+    <div className={s.partners}>
+      <p className={s.partnersLead}>This weekend is made possible by</p>
+      <div className={s.partnersGrid}>
+        {PARTNERS.map((p) => (
+          <div key={p.name} className={s.partner}>
+            <Image src={p.logo} alt={p.name} style={{ height: p.big, width: "auto", maxWidth: "88%" }} sizes="640px" />
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -11,7 +11,16 @@ import type { LiveData, LiveDivision } from "../../../lib/hosted/live";
 import { formatDay } from "../../../lib/hosted/logic";
 import { parseSeat, poolStandings, poolsOf, placeName } from "../../../lib/hosted/standings";
 import { gameState, isFinal, sideView, sortGames, whenLabel, type Clock, type SideView } from "../../../lib/hosted/live-view";
+import Image from "next/image";
+import nelson from "./tv/partners/nelson-color.png";
+import dundee from "../../(site)/_images/sponsor-dundee.png";
 import s from "./live.module.css";
+
+// Our partners for the tournament; each logo opens their site.
+const PARTNERS = [
+  { name: "Dundee Mergers and Acquisitions", logo: dundee, href: "https://dundeema.com" },
+  { name: "Nelson Produce + Farm", logo: nelson, href: "https://www.nelsonproducefarm.com" },
+];
 
 const FOLLOW_KEY = "olb-live-follow";
 
@@ -108,6 +117,19 @@ export function LiveBoard({ data, now, updatedAt }: { data: LiveData; now: Clock
           <span className={s.note}>{follow ? data.teams.find((t) => t.id === follow)?.name : "All divisions"}</span>
         </div>
         <Schedule data={data} games={sorted} now={now} follow={follow} divName={divName} />
+      </section>
+
+      <section>
+        <div className={s.secTitle}>
+          <h2 className={s.display}>Thank you to our partners</h2>
+        </div>
+        <div className={s.partners}>
+          {PARTNERS.map((p) => (
+            <a key={p.name} href={p.href} target="_blank" rel="noreferrer" className={s.partner}>
+              <Image src={p.logo} alt={p.name} sizes="(max-width: 560px) 80vw, 340px" />
+            </a>
+          ))}
+        </div>
       </section>
 
       {(data.admission || data.concessions || data.facility) && (
