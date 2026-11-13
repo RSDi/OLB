@@ -12,7 +12,7 @@ import type { HostedGame } from "../../../../lib/hosted/types";
 import type { LiveData } from "../../../../lib/hosted/live";
 import { clearTableScore, editTableGame, enterScorerPin, leaveScorer, saveTableScore, swapTableGames, type TableGamePatch } from "../../../../lib/hosted/scorer-actions";
 import { gameState, isFinal, sideView, sortGames, whenLabel, type Clock } from "../../../../lib/hosted/live-view";
-import { formatDay } from "../../../../lib/hosted/logic";
+import { formatDay, toMinutes } from "../../../../lib/hosted/logic";
 import s from "../live.module.css";
 
 export function PinForm({ weekendId }: { weekendId: string }) {
@@ -351,6 +351,7 @@ function GameList(props: {
 
   return (
     <>
+      <OnTheCourts data={data} courts={courts} now={now} divName={divName} onScore={onScore} />
       {days.length > 1 && (
         <div className={s.tdays} role="group" aria-label="Day">
           {days.map((d) => (
@@ -405,6 +406,78 @@ function GameList(props: {
           {unscheduled.map(card)}
         </>
       )}
+    </>
+  );
+}
+
+// ─── On the courts ─────────────────────────────────────────────────────────
+
+// Like the live page: today's game on each court (under way, waiting on its
+// final, or the next one), with Score and what's after it. Only Score here,
+// so a tile has one thing to tap; Edit game lives on the list below.
+function OnTheCourts(props: { data: LiveData; courts: number; now: Clock; divName: (g: HostedGame) => string; onScore: (g: HostedGame) => void }) {
+  const { data, courts, now, divName, onScore } = props;
+  const today = data.games.filter((g) => g.plays_on === now.date);
+  if (today.length === 0) return null;
+  const nums = Array.from({ length: courts }, (_, i) => i + 1).filter((c) => today.some((g) => g.court === c));
+  if (nums.length === 0) return null;
+  return (
+    <>
+      <div className={s.tlabel}>
+        <span>On the courts</span>
+      </div>
+      <div className={s.ctGrid} style={nums.length === 1 ? { gridTemplateColumns: "1fr" } : undefined}>
+        {nums.map((c) => {
+          const here = sortGames(today.filter((g) => g.court === c && !isFinal(g)));
+          const cur = here.find((g) => gameState(g, now, data.gameMinutes) !== "later") ?? here[0];
+          const next = cur ? here.find((g) => g.id !== cur.id && (toMinutes(g.starts_at) ?? 0) >= (toMinutes(cur.starts_at) ?? 0)) : undefined;
+          if (!cur) {
+            return (
+              <div key={c} className={s.ctTile}>
+                <div className={s.ctName}>
+                  <span className={s.display}>Ct {c}</span>
+                </div>
+                <span className={s.note}>No more games today.</span>
+              </div>
+            );
+          }
+          const st = gameState(cur, now, data.gameMinutes);
+          const hv = sideView(data, cur, "home");
+          const av = sideView(data, cur, "away");
+          const open = hv.open || av.open;
+          return (
+            <div key={c} className={`${s.ctTile} ${st === "waiting" ? s.tcardDue : ""}`}>
+              <div className={s.ctName}>
+                <span className={s.display}>Ct {c}</span>
+                <span className={`${s.ctState} ${st === "now" ? s.ctNow : st === "waiting" ? s.ctLate : ""}`}>{st === "now" ? "Playing" : st === "waiting" ? "Needs final" : "Up next"}</span>
+              </div>
+              <div className={s.ctTeams}>
+                {hv.name}
+                <br />
+                {av.name}
+                <small>{[whenLabel(cur), divName(cur)].filter(Boolean).join(" · ")}</small>
+              </div>
+              {open ? (
+                <span className={s.note} style={{ fontWeight: 700 }}>
+                  Teams not set yet
+                </span>
+              ) : (
+                <button type="button" className={s.tbtn} onClick={() => onScore(cur)}>
+                  Score
+                </button>
+              )}
+              {next && (
+                <div className={s.ctNext}>
+                  Next{" "}
+                  <b>
+                    {whenLabel(next)} {sideView(data, next, "home").name} vs {sideView(data, next, "away").name}
+                  </b>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 }
