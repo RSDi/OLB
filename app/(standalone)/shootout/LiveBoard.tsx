@@ -14,12 +14,14 @@ import { gameState, isFinal, sideView, sortGames, whenLabel, type Clock, type Si
 import Image from "next/image";
 import nelson from "./tv/partners/nelson-color.png";
 import dundee from "../../(site)/_images/sponsor-dundee.png";
+import teamtime from "../../(site)/_images/sponsor-team-time.png";
 import s from "./live.module.css";
 
 // Our partners for the tournament; each logo opens their site.
 const PARTNERS = [
   { name: "Dundee Mergers and Acquisitions", logo: dundee, href: "https://dundeema.com" },
   { name: "Nelson Produce + Farm", logo: nelson, href: "https://www.nelsonproducefarm.com" },
+  { name: "Team Time", logo: teamtime, href: "https://www.teamtimehq.com" },
 ];
 
 const FOLLOW_KEY = "olb-live-follow";
