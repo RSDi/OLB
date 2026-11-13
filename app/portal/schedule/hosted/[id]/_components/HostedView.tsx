@@ -5,6 +5,8 @@
 // Money (tied to Finances) and Email to the programs coming. Tabs are links
 // (?tab=), so each has its own address.
 
+import type { SponsorClickTotals } from "../../../../../../lib/sponsors/clicks";
+import { SponsorClicksPanel } from "./SponsorClicksPanel";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Icons } from "../../../../../components/icons";
@@ -37,6 +39,7 @@ export function HostedView({
   today,
   canReorderSteps = false,
   showLive = false,
+  sponsorClicks = null,
 }: {
   data: HostedPageData;
   tab: HostedTab;
@@ -44,6 +47,8 @@ export function HostedView({
   canReorderSteps?: boolean;
   // Live scores (0165): Jeff-only until it's released.
   showLive?: boolean;
+  // Sponsor clicks (0169): the board only; null for everyone else.
+  sponsorClicks?: SponsorClickTotals[] | "migration" | null;
 }) {
   const { weekend, plan, steps, teams, games } = data;
   const base = `/portal/schedule/hosted/${weekend.id}`;
@@ -93,6 +98,7 @@ export function HostedView({
       {tab === "schedule" && <SchedulePanel data={data} />}
       {tab === "brackets" && <BracketsPanel data={data} showLive={showLive} />}
       {tab === "money" && <MoneyPanel data={data} />}
+      {tab === "money" && sponsorClicks && <SponsorClicksPanel clicks={sponsorClicks} />}
       {tab === "messages" && <MessagesPanel data={data} />}
     </div>
   );

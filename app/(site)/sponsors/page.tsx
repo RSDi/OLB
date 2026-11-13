@@ -4,10 +4,12 @@ import { Gallery } from "../_components/Gallery";
 import { Block, Section } from "../_components/Section";
 import { Text } from "../_components/Text";
 import { getSiteContent } from "../../../lib/website/queries";
+import { countedLink } from "../../../lib/sponsors/links";
 
 export const metadata: Metadata = { title: "Sponsors" };
 
-// The headline, buttons and sponsors come from Settings → Website.
+// The headline, buttons and sponsors come from Settings → Website. A logo
+// for a sponsor we count (lib/sponsors/links.ts) goes through /go (0169).
 export default async function SponsorsPage() {
   const content = await getSiteContent();
   const become = content.link("sponsors.button.become");
@@ -16,7 +18,7 @@ export default async function SponsorsPage() {
     const logo = s.image("logo");
     if (!logo) return [];
     const href = s.url("link");
-    return [{ src: logo.src, alt: logo.alt || s.text("name"), href: href ?? undefined, newTab: !!href && !href.startsWith("/") }];
+    return [{ src: logo.src, alt: logo.alt || s.text("name"), href: href ? countedLink(href, "site") : undefined, newTab: !!href && !href.startsWith("/") }];
   });
   return (
     <>
