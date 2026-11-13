@@ -105,7 +105,10 @@ export async function newScorerPin(weekendId: string): Promise<HostedResult> {
   const { randomInt } = await import("node:crypto");
   const pin = String(randomInt(0, 10_000)).padStart(4, "0");
   const { error } = await g.db.from("hs_hosted").update({ scorer_pin: pin }).eq("weekend_id", weekendId);
-  if (error) return { error: error.message.includes("scorer_pin") ? "Live scores aren't set up in the database yet (migration 0165)." : error.message };
+  if (error) {
+    if (error.message.includes("scorer_pin_check")) return { error: "The database still wants a six-digit PIN. Run migration 0167, then press New PIN again." };
+    return { error: /column .*scorer_pin/.test(error.message) ? "Live scores aren't set up in the database yet (migration 0165)." : error.message };
+  }
   refresh(weekendId);
   return { notice: `New PIN: ${pin}` };
 }
