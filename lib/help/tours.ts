@@ -174,7 +174,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "page-help",
         title: "Help on every page",
-        body: "Tap **?** for help on the page you're on. **Help for this page** tells you about it, and most pages also have **Show me around**, a tour like this one for just that page. The **User Guide** is there too. In Settings, it follows the tab you're on.",
+        body: "Tap **?** for help on the page you're on. **Help for this page** puts an **ⓘ** on each part of the page to explain it, and most pages also have **Show me around**, a tour like this one for just that page. The **User Guide** is there too. In Settings, it follows the tab you're on.",
       },
       {
         title: "You're all set",
@@ -2380,6 +2380,30 @@ export function canSeeTour(tour: GuideTour, viewer: GuideViewer | null | undefin
 export function tourStepsFor(tour: GuideTour, viewer: GuideViewer | null | undefined): TourStep[] {
   if (!canSeeTour(tour, viewer)) return [];
   return tour.steps.filter((s) => !s.audience || canSeeAudience(s.audience, viewer));
+}
+
+// Help mode (? → Help for this page): the parts of a page that get an ⓘ,
+// taken from the page's own tour so the two never drift apart. One per
+// element on this page: steps in the sidebar, on another page, or a card in
+// the middle of the screen are left out. `step` is the step's place in
+// tourStepsFor(tour, viewer), so "Show me how" starts the tour right there.
+export interface HelpSpot {
+  anchor: string;
+  title: string;
+  body: string;
+  step: number;
+}
+
+export function helpSpotsFor(tour: GuideTour, viewer: GuideViewer | null | undefined): HelpSpot[] {
+  const seen = new Set<string>();
+  const spots: HelpSpot[] = [];
+  tourStepsFor(tour, viewer).forEach((s, step) => {
+    if (!s.target || s.sidebar || seen.has(s.target)) return;
+    if (s.route && s.route !== tour.route) return;
+    seen.add(s.target);
+    spots.push({ anchor: s.target, title: s.title, body: s.body, step });
+  });
+  return spots;
 }
 
 export function getTour(id: string): GuideTour | undefined {
