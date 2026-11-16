@@ -29,6 +29,7 @@ import { sendPlayerMessage } from "../../../../../lib/teams/player-message-actio
 import type { PlayerNote } from "../../../../../lib/teams/player-notes";
 import { PlayerNotes } from "../../_shared/PlayerNotes";
 import { commitmentsAdmin, type CommitmentsStored } from "../../../../../lib/teams/registration-commitments";
+import type { PlayerUniform } from "../../../../../lib/onboarding/uniform-data";
 
 const cap: React.CSSProperties = {
   fontSize: 11,
@@ -59,6 +60,7 @@ export function PlayerDetail({
   messages,
   notes,
   commitments: storedCommitments,
+  uniform = null,
 }: {
   player: DirectoryPlayer;
   siblings: DirectoryPlayer[];
@@ -83,6 +85,8 @@ export function PlayerDetail({
   // Commitments from the form. Passed only for the Registrations grant
   // (same rule as the list); null for everyone else.
   commitments: CommitmentsStored | null;
+  // Uniform (0130): for whoever the Uniforms page opens for; null otherwise.
+  uniform?: PlayerUniform | null;
 }) {
   const [openReq, setOpenReq] = useState<Requirement | null>(null);
   const [editing, setEditing] = useState(false);
@@ -248,6 +252,8 @@ export function PlayerDetail({
         )}
       </div>
 
+      {uniform && <UniformCard uniform={uniform} />}
+
       {notes && <PlayerNotes owner={{ playerId: p.id }} notes={notes} />}
 
       {messages.length > 0 && (
@@ -318,5 +324,52 @@ export function PlayerDetail({
         <ChargeDialog account={account} kind={openMoney} onClose={() => setOpenMoney(null)} />
       )}
     </>
+  );
+}
+
+// What the player needs and the sizes picked for them (0130). Sizes change on
+// the Uniforms page.
+function UniformCard({ uniform: u }: { uniform: PlayerUniform }) {
+  const answer =
+    u.needsUniform === true ? "Needs a uniform" : u.needsUniform === false ? "Has a uniform" : "Didn't say whether they need a uniform";
+  return (
+    <div className="rsd-card" data-tour="player-uniform" style={{ padding: "16px 20px", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <span style={cap}>Uniform</span>
+        <Link
+          href="/portal/directory/uniforms"
+          style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}
+        >
+          Uniforms page
+          <Icons.ChevronRight width={12} height={12} />
+        </Link>
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gw-fg)" }}>
+        {answer}
+        {u.needsGrays === true && " · needs grays"}
+      </div>
+      {u.items.length === 0 ? (
+        <div style={muted}>No uniform items for this player.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {u.items.map((i) => (
+            <div key={i.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
+              <span style={{ fontWeight: 600, minWidth: 120 }}>{i.name}</span>
+              {i.size ? (
+                <span className="rsd-chip rsd-chip-mute">
+                  {i.size}
+                  {i.confirmed && " ✓"}
+                </span>
+              ) : (
+                <span className="rsd-chip rsd-chip-error">No size yet</span>
+              )}
+              {i.confirmed && <span style={muted}>Confirmed at try-on</span>}
+              {i.charged && <span style={muted}>Charged</span>}
+              {!i.needed && <span style={muted}>Optional</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
