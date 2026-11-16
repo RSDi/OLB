@@ -6,6 +6,7 @@
 // only (lib/hs-planning-import/actions.ts).
 
 import { useMemo, useState } from "react";
+import { SettingsText } from "./SettingsLink";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "./icons";
@@ -545,6 +546,7 @@ function SeasonPreview({
 
 function Summary({ summary }: { summary: ApplySummary }) {
   const lines: string[] = [];
+  // Each line renders through SettingsText, so a Settings tab mention links.
   if (summary.typesCreated.length)
     lines.push(
       `Added the contact type${summary.typesCreated.length > 1 ? "s" : ""} ${summary.typesCreated.join(" and ")}, which coaches can see (Settings → Contact Types).`
@@ -565,7 +567,7 @@ function Summary({ summary }: { summary: ApplySummary }) {
       {lines.map((l) => (
         <div key={l} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, lineHeight: 1.5 }}>
           <Icons.CheckCircle width={16} height={16} style={{ color: "var(--gw-success)", flexShrink: 0, marginTop: 2 }} />
-          {l}
+          <SettingsText text={l} />
         </div>
       ))}
       {summary.errors.map((e) => (

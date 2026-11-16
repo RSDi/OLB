@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState, useTransition } from "react";
+import { SettingsLink } from "../../../components/SettingsLink";
 import { useRouter } from "next/navigation";
 import { FilterSelect } from "../../../components/FilterControls";
 import { Icons } from "../../../components/icons";
@@ -92,7 +93,7 @@ export function TemplateEditor({
         The board&apos;s year, month by month: {monthlyCount} monthly tasks, {yearRoundCount} year-round duties and{" "}
         {agendaCount} board meeting topics. Each season
         sent to Review starts as a copy of this, so changes here shape next season, not the ones already sent.
-        Link a playbook to any task that has one. Roles are managed in Settings → Planning Roles.
+        Link a playbook to any task that has one. Roles are managed in <SettingsLink tab="planning_roles">Settings → Planning Roles</SettingsLink>.
       </p>
 
       {roles.length > 0 && (

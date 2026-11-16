@@ -386,3 +386,22 @@
 .paused strong {
   color: var(--gw-error);
 }
+
+.channelForm {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--gw-border);
+  background: var(--gw-bg-elev);
+}
+
+.channelRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.channelRow input {
+  flex: 1;
+  min-width: 0;
+}

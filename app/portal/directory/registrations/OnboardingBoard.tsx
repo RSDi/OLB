@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { SettingsLink } from "../../../components/SettingsLink";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Input, Pill, Textarea } from "../../../components/ui";
@@ -26,7 +27,7 @@ export function OnboardingBoard({ board }: { board: Board | null }) {
       <div className="rsd-card" style={{ padding: "32px 24px", textAlign: "center", gap: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 700 }}>The registration workflow is off</div>
         <div style={{ ...muted, fontSize: 13 }}>
-          Turn it on in <Link href="/portal/settings?tab=registration_automations">Settings → Registration Automations</Link> to see families
+          Turn it on in <SettingsLink tab="registration_automations">Settings → Registration Automations</SettingsLink> to see families
           here from the waitlist to their team.
         </div>
       </div>
@@ -47,7 +48,8 @@ export function OnboardingBoard({ board }: { board: Board | null }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {board.paused && (
         <div role="status" style={{ padding: "10px 14px", borderRadius: 10, background: "var(--gw-error-bg)", fontSize: 13, fontWeight: 600 }}>
-          Automatic emails are paused in Settings → Registration Automations.
+          Automatic emails are paused in{" "}
+          <SettingsLink tab="registration_automations">Settings → Registration Automations</SettingsLink>.
         </div>
       )}
 

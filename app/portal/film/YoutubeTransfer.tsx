@@ -1,5 +1,6 @@
 "use client";
 
+import { SettingsText } from "../../components/SettingsLink";
 import type { FilmUpload, YoutubeEvent, YoutubeJob } from "../../../lib/film/types";
 import {
   formatEventWhen,
@@ -69,7 +70,9 @@ export function YoutubeTransfer({
       )}
       {mapped && display === "failed" && (
         <div>
-          <p className={styles.errorText}>{mapped.message}</p>
+          <p className={styles.errorText}>
+            <SettingsText text={mapped.message} />
+          </p>
           {mapped.raw && mapped.raw !== mapped.message && (
             <details className={styles.details} data-tour="film-youtube-error-details">
               <summary>Details</summary>

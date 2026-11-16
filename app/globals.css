@@ -2129,3 +2129,20 @@ main::-webkit-scrollbar-track { background: transparent; }
   body:has(.fin-snapshot) .fin-snapshot-section-toggle { cursor: default !important; }
   .fin-snapshot, .fin-snapshot * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* "← Back to Film": shown when a Settings → … link brought you here. */
+.rsd-settings-back {
+  margin-bottom: 12px;
+}
+.rsd-settings-back a {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--gw-border);
+  background: var(--gw-surface);
+  color: var(--gw-fg);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}

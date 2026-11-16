@@ -21,14 +21,17 @@ type DraftRow = FilmSlackDraft;
 
 export function parseFilmSlackChannelId(raw: unknown): { ok: true; id: string | null } | { ok: false; error: string } {
   if (raw == null) return { ok: true, id: null };
-  if (typeof raw !== "string") return { ok: false, error: "Paste a Slack channel ID, like C0123456789." };
-  const s = raw.trim();
+  if (typeof raw !== "string") return { ok: false, error: "Paste the Slack channel link or ID, like C0123456789." };
+  let s = raw.trim();
   if (!s) return { ok: true, id: null };
+  // A pasted channel link (Slack: channel name → Copy link) carries the ID.
+  const link = s.match(/\/archives\/([CG][A-Z0-9]{8,})/i);
+  if (link) s = link[1];
   if (/^#[A-Za-z0-9_-]+$/.test(s)) {
     return { ok: false, error: "Use the channel ID (starts with C), not the #name." };
   }
   if (!/^[CG][A-Z0-9]{8,}$/i.test(s)) {
-    return { ok: false, error: "That doesn't look like a Slack channel ID. It usually starts with C." };
+    return { ok: false, error: "That doesn't look like a Slack channel. Paste the channel link (channel name → Copy link) or its ID." };
   }
   return { ok: true, id: s };
 }

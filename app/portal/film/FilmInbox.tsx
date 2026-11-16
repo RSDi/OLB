@@ -33,6 +33,8 @@ import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob, YoutubeP
 import { youtubeDisplayStatus } from "../../../lib/film/youtube-progress";
 import { YoutubeTransfer } from "./YoutubeTransfer";
 import { FilmPlayer } from "./FilmPlayer";
+import { SettingsLink, SettingsText } from "../../components/SettingsLink";
+import { setFilmTeamSlackChannel } from "../../../lib/film/team-actions";
 import type { FilmMarker } from "../../../lib/film/player-logic";
 import styles from "./inbox.module.css";
 
@@ -315,7 +317,7 @@ export function FilmInbox({
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
       {youtubePaused && uploads.some((u) => u.youtube_status === "queued" || u.youtube_status === "uploading") && (
         <div role="alert" className={styles.paused}>
-          <strong>YouTube uploads are paused.</strong> {youtubePaused}
+          <strong>YouTube uploads are paused.</strong> <SettingsText text={youtubePaused} />
         </div>
       )}
 
@@ -365,6 +367,7 @@ export function FilmInbox({
               key={draft.id}
               draft={draft}
               canApproveSlack={canApproveSlack}
+              canManage={canManage}
               slackConfigured={slackConfigured}
               busy={busy === draft.id}
               onRun={(fn) => void run(draft.id, fn)}
@@ -385,6 +388,7 @@ export function FilmInbox({
               draft={draft}
               discarded
               canApproveSlack={canApproveSlack}
+              canManage={canManage}
               slackConfigured={slackConfigured}
               busy={busy === draft.id}
               onRun={(fn) => void run(draft.id, fn)}
@@ -440,7 +444,9 @@ export function FilmInbox({
       </div>
 
       {(loadError || error) && (
-        <p style={{ margin: 0, color: "var(--gw-error)", fontWeight: 600, fontSize: 13 }}>{loadError || error}</p>
+        <p style={{ margin: 0, color: "var(--gw-error)", fontWeight: 600, fontSize: 13 }}>
+          <SettingsText text={loadError || error || ""} />
+        </p>
       )}
       {statusNote && (
         <p style={{ margin: 0, color: "var(--gw-fg-muted)", fontWeight: 600, fontSize: 13 }}>{statusNote}</p>
@@ -904,7 +910,14 @@ function FilmGameEditor({
         <span className={styles.label}>YouTube playlist</span>
         <p className={styles.hint}>
           Optional for this video. Leave blank to use the team playlist
-          {teamPlaylistId ? " from Settings → Film" : ""}. Paste a playlist link or id.
+          {teamPlaylistId ? (
+            <>
+              {" "}from <SettingsLink tab="film">Settings → Film</SettingsLink>
+            </>
+          ) : (
+            ""
+          )}
+          . Paste a playlist link or id.
         </p>
         <input
           className={styles.input}
@@ -919,7 +932,11 @@ function FilmGameEditor({
           enterKeyHint="done"
         />
       </label>
-      {error && <p className={styles.error}>{error}</p>}
+      {error && (
+        <p className={styles.error}>
+          <SettingsText text={error} />
+        </p>
+      )}
       <div className={styles.actions}>
         <Pill size="sm" variant="accent" type="submit" disabled={saving}>
           {saving ? "Saving…" : "Save"}
@@ -936,6 +953,7 @@ function SlackDraftCard({
   draft,
   discarded = false,
   canApproveSlack,
+  canManage,
   slackConfigured,
   busy,
   onRun,
@@ -943,12 +961,14 @@ function SlackDraftCard({
   draft: FilmSlackDraftView;
   discarded?: boolean;
   canApproveSlack: boolean;
+  canManage: boolean;
   slackConfigured: boolean;
   busy: boolean;
   onRun: (fn: (id: string) => Promise<{ error?: string }>) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState(draft.body);
+  const [channelDraft, setChannelDraft] = useState("");
   const noChannel = !draft.channel_id?.trim();
   const approveBlocked = noChannel || !slackConfigured;
 
@@ -1011,9 +1031,42 @@ function SlackDraftCard({
               </span>
             </div>
           )}
-          {canApproveSlack && !discarded && noChannel && (
+          {canApproveSlack && !discarded && noChannel && canManage && draft.team_id && (
+            <form
+              className={styles.channelForm}
+              data-tour="film-slack-channel"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const teamId = draft.team_id;
+                if (!teamId) return;
+                onRun(() => setFilmTeamSlackChannel(teamId, channelDraft));
+              }}
+            >
+              <label className={styles.field}>
+                <span className={styles.label}>Slack channel for {draft.team_label}</span>
+                <span className={styles.hint}>
+                  Where Sparky posts this. In Slack, click the channel name → Copy link, and paste it
+                  here. Saved for the team, so next time it&apos;s ready to approve.
+                </span>
+                <span className={styles.channelRow}>
+                  <input
+                    className={styles.input}
+                    value={channelDraft}
+                    onChange={(e) => setChannelDraft(e.target.value)}
+                    placeholder="https://….slack.com/archives/C0123456789"
+                    autoComplete="off"
+                  />
+                  <Pill size="sm" variant="accent" type="submit" disabled={busy || !channelDraft.trim()}>
+                    Save
+                  </Pill>
+                </span>
+              </label>
+            </form>
+          )}
+          {canApproveSlack && !discarded && noChannel && !(canManage && draft.team_id) && (
             <p className={styles.hint}>
-              Approve is off until this team has a Slack channel ID in Settings → Film.
+              Approve is off until this team has a Slack channel. Someone who manages film can add it here
+              or in <SettingsLink tab="film">Settings → Film</SettingsLink>.
             </p>
           )}
           {canApproveSlack && !discarded && !noChannel && !slackConfigured && (

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { SettingsLink } from "../../components/SettingsLink";
 import { getViewer } from "../../../lib/auth/viewer";
 import { slackBotConfigured } from "../../../lib/notifications/slack";
 import {
@@ -31,8 +32,9 @@ export default async function FilmInboxPage({
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gw-fg)", marginBottom: 6 }}>Film unavailable</div>
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
           You need the <strong>Game film</strong> permission, <strong>Teams &amp; volunteers</strong>, or to be a
-          video manager for a team, to open this. A super-admin can grant it in Settings → Members or Settings →
-          Film.
+          video manager for a team, to open this. A super-admin can grant it in{" "}
+          <SettingsLink tab="members">Settings → Members</SettingsLink> or{" "}
+          <SettingsLink tab="film">Settings → Film</SettingsLink>.
         </div>
       </div>
     );
