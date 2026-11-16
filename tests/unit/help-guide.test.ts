@@ -27,6 +27,8 @@ const PREVIEW_ROUTES = [
   "/portal/roadmap",
   // The registration workflow's Uniforms page (0130).
   "/portal/directory/uniforms",
+  // Stats from the scorebook (0172), in preview.
+  "/portal/stats",
   // The guide itself: no "i" needed.
   "/portal/guide",
 ];
