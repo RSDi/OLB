@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Input, Pill, Textarea } from "../../../components/ui";
 import { ErrorNote, capStyle } from "../../payments/parts";
+import { SlackChannelsPanel } from "./SlackChannelsPanel";
 import { muted } from "../_shared/PlayerParts";
 import { announceTeams, sendHeldEmail, skipHeldEmail } from "../../../../lib/onboarding/actions";
 import { AUTOMATIONS } from "../../../../lib/onboarding/automations";
@@ -54,6 +55,8 @@ export function OnboardingBoard({ board }: { board: Board | null }) {
       )}
 
       {board.held.length > 0 && <HeldEmails emails={board.held} />}
+
+      {board.slack && <SlackChannelsPanel panel={board.slack} />}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span style={{ ...muted, fontSize: 13 }}>

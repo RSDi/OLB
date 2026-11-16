@@ -9,7 +9,8 @@
 //   clinic invite   waitlisted families, once clinic details are set
 //   open items      Mondays, to approved families with something to do
 //   countdown       10 days and 1 day before the first practice
-//   Slack           who has joined, by parent email (bot token)
+//   Slack           who has joined, by parent email (bot token), and when
+//                   switched on, adding them to their channels (0175)
 //   assessment      a reminder two days before an open assessment, only
 //                   at 9 AM America/Chicago (same hour as the rest)
 //   reminders       a push to the Registrations permission: the Slack link
@@ -27,6 +28,7 @@ import { openItems } from "./checklist";
 import { expiryWords } from "./offers";
 import { loadAssessments } from "./assessment-data";
 import { loadSettings, loadWords, offerUrl, type Db } from "./server";
+import { addFamiliesToChannels, loadChannelSettings, lookupSlackUsers } from "./slack-channels";
 
 export interface DailySummary {
   boards: number;
@@ -36,11 +38,12 @@ export interface DailySummary {
   openItems: number;
   countdown: number;
   slackChecked: number;
+  slackChannelsAdded: number;
   assessmentReminders: number;
 }
 
 export async function runDaily(now: Date = new Date()): Promise<DailySummary> {
-  const summary: DailySummary = { boards: 0, offersReminded: 0, offersClosed: 0, clinicInvites: 0, openItems: 0, countdown: 0, slackChecked: 0, assessmentReminders: 0 };
+  const summary: DailySummary = { boards: 0, offersReminded: 0, offersClosed: 0, clinicInvites: 0, openItems: 0, countdown: 0, slackChecked: 0, slackChannelsAdded: 0, assessmentReminders: 0 };
   // Two UTC crons (14:17 and 15:17) so 9 AM CT lands year-round. The other
   // fire would otherwise run checkSlack and the daily pushes twice.
   if (centralHour(now) !== 9) return summary;
@@ -56,6 +59,7 @@ export async function runDaily(now: Date = new Date()): Promise<DailySummary> {
     await clinicInvites(db, settings, words, summary);
     summary.slackChecked += await checkSlack(db, settings);
     const families = await loadFamilies(db, settings);
+    summary.slackChannelsAdded += await addToChannels(db, settings, families);
 
     if (weekday(today) === 1) {
       for (const f of families) {
@@ -177,29 +181,21 @@ async function clinicInvites(db: Db, settings: OnboardingSettings, words: Record
 // Who has joined Slack, for each family's parents, with the bot token
 // (users:read.email). Asks again each day until they've joined.
 export async function checkSlack(db: Db, settings: OnboardingSettings): Promise<number> {
-  const token = process.env.SLACK_BOT_TOKEN;
-  if (!token) return 0;
   const families = await loadFamilies(db, settings);
   const emails = [...new Set(families.filter((f) => f.registrations.some((r) => r.status === "approved")).flatMap((f) => f.emails))];
-  if (emails.length === 0) return 0;
-  const { data: known } = await db.from("olb_onboarding_slack").select("email, joined").in("email", emails);
-  const joined = new Set(((known as { email: string; joined: boolean }[] | null) ?? []).filter((k) => k.joined).map((k) => k.email));
-  let checked = 0;
-  for (const email of emails) {
-    if (joined.has(email)) continue;
-    const res = await fetch(`https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(email)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => null);
-    const body = res ? ((await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; user?: { id?: string; deleted?: boolean } }) : {};
-    if (!res?.ok || (body.ok === false && body.error !== "users_not_found")) {
-      console.warn(`[onboarding] Slack lookup stopped: ${body.error ?? res?.status ?? "network error"}`);
-      break;
-    }
-    const isIn = body.ok === true && !!body.user?.id && !body.user.deleted;
-    await db.from("olb_onboarding_slack").upsert({ email, slack_user_id: isIn ? body.user!.id : null, joined: isIn, checked_at: new Date().toISOString() });
-    checked++;
-  }
-  return checked;
+  return lookupSlackUsers(db, emails);
+}
+
+// Slack channels for new families (0175), when switched on: parents of
+// approved families who are on Slack go in their team's channel and the
+// channels every family gets.
+async function addToChannels(db: Db, settings: OnboardingSettings, families: Awaited<ReturnType<typeof loadFamilies>>): Promise<number> {
+  const { auto } = await loadChannelSettings(db, settings.board_id);
+  if (!auto) return 0;
+  const approved = families.filter((f) => f.registrations.some((r) => r.status === "approved"));
+  const res = await addFamiliesToChannels(db, settings.board_id, approved);
+  if (res.problem) console.warn(`[onboarding] Slack channels: ${res.problem}`);
+  return res.added;
 }
 
 async function reminders(db: Db, settings: OnboardingSettings, families: Awaited<ReturnType<typeof loadFamilies>>, today: string) {

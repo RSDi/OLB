@@ -10,6 +10,7 @@ import { expiryWords } from "./offers";
 import { loadSettings, seasonBoardId } from "./server";
 import { daysBetween, centralDay } from "./dates";
 import type { Intake } from "./waitlist-form";
+import { familyChannelStatus, loadChannelSettings, type PersonChannels } from "./slack-channels";
 
 export type OfferStatus = "open" | "used" | "expired" | "withdrawn";
 
@@ -48,6 +49,15 @@ export interface OnboardingBoard {
   columns: { key: string; label: string; cards: BoardCard[] }[];
   quiet: BoardCard[];
   firstPractice: string | null;
+  // Slack channels for new families (0175): preview accounts only.
+  slack?: SlackPanel;
+}
+
+export interface SlackPanel {
+  auto: boolean;
+  configured: boolean;
+  families: { id: string; title: string; people: PersonChannels[] }[];
+  done: number;
 }
 
 const QUIET_DAYS = 14;
@@ -94,7 +104,7 @@ export async function loadWaitlistInfo(regIds: string[]): Promise<Record<string,
   return out;
 }
 
-export async function loadOnboardingBoard(): Promise<OnboardingBoard | null> {
+export async function loadOnboardingBoard(opts: { slack?: boolean } = {}): Promise<OnboardingBoard | null> {
   const db = createAdminClient();
   const boardId = await seasonBoardId(db);
   if (!boardId) return null;
@@ -170,7 +180,25 @@ export async function loadOnboardingBoard(): Promise<OnboardingBoard | null> {
     if (approved && open.length && age(f.createdAt) >= QUIET_DAYS && !f.lastSeenAt) quiet.push({ ...card, meta: `${open.length} open, checklist never opened` });
   }
 
+  let slack: SlackPanel | undefined;
+  if (opts.slack) {
+    const approved = families.filter((f) => f.registrations.some((r) => r.status === "approved"));
+    const [chan, status] = await Promise.all([loadChannelSettings(db, boardId), familyChannelStatus(db, boardId, approved)]);
+    const byId = new Map(approved.map((f) => [f.id, f]));
+    const open = status.filter((s) => !s.done);
+    slack = {
+      auto: chan.auto,
+      configured: chan.everyone.length > 0 || status.some((s) => s.people.some((p) => p.added.length + p.missing.length > 0)),
+      families: open.map((s) => {
+        const f = byId.get(s.familyId)!;
+        return { id: s.familyId, title: `${f.registrations[0]?.last_name ?? ""} family · ${f.playerNames}`, people: s.people };
+      }),
+      done: status.length - open.length,
+    };
+  }
+
   return {
+    slack,
     enabled: true,
     paused: settings.paused,
     held: ((held as { id: string; kind: string; status: "waiting" | "failed"; to_emails: string[]; subject: string; body: string; created_at: string; error: string | null }[] | null) ?? []).map((h) => ({

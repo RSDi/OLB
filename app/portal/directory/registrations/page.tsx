@@ -21,7 +21,7 @@ export default async function RegistrationsPage({ searchParams }: { searchParams
   if (!viewer.canManageRegistrations) redirect("/portal/directory");
   const showOnboarding = viewer.seesFullUi || (await workflowEnabled());
   if (asked === "onboarding" && showOnboarding) {
-    const [counts, board] = await Promise.all([countRegistrations(), loadOnboardingBoard().catch(() => null)]);
+    const [counts, board] = await Promise.all([countRegistrations(), loadOnboardingBoard({ slack: viewer.seesFullUi }).catch(() => null)]);
     return <RegistrationsReview tab="onboarding" counts={counts} registrations={[]} notes={{}} showOnboarding board={board} openId={open ?? null} />;
   }
   const tab: RegistrationTab = asked === "waitlist" || asked === "approved" || asked === "removed" ? asked : "waiting";
