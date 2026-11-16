@@ -418,7 +418,9 @@ Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdr
 - The table counts how many of each size of each item families picked on the registration form.
 - **Players** lists everyone on the roster with their sizes. Change one at try-on and it's marked confirmed ✓. A red box means they need a size and don't have one; **Missing a size** shows just those players.
 - **Download order sheet** saves every item, size and player as a spreadsheet for the vendor.
-- **Mark ordered and add charges** puts each sized item's price on the family's Payments account, once. Items with no price yet aren't charged.`,
+- **Mark ordered and add charges** puts each sized item's price on the family's Payments account, once. Items with no price yet aren't charged.
+
+Each player's own page in the Directory has a **Uniform** card too: whether they need a uniform (and grays), each item with its size (✓ once confirmed at try-on), **No size yet** in red when one is missing, and whether it's been charged. Change sizes on the Uniforms page.`,
   },
   {
     id: "player-notes",

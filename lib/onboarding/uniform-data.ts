@@ -74,3 +74,52 @@ export async function loadUniformPage(): Promise<UniformPage | null> {
     pending: sizeRows.filter((s) => !s.player_id).length,
   };
 }
+
+export interface PlayerUniform {
+  // From the registration form: null when not answered or no registration.
+  needsUniform: boolean | null;
+  needsGrays: boolean | null;
+  items: { id: string; name: string; needed: boolean; size: string | null; confirmed: boolean; charged: boolean }[];
+}
+
+// One player's uniform, for their Directory page: what the form said, and
+// each item they need or picked a size for. Null when the season's board
+// isn't set up.
+export async function loadPlayerUniform(playerId: string): Promise<PlayerUniform | null> {
+  const db = createAdminClient();
+  const boardId = await seasonBoardId(db);
+  if (!boardId) return null;
+  const { items: all } = await loadUniforms(db, boardId);
+  const items = all.filter((i) => i.active);
+  const [{ data: reg }, { data: sizes }] = await Promise.all([
+    db
+      .from("olb_registrations")
+      .select("extra, created_at")
+      .eq("board_id", boardId)
+      .eq("player_id", playerId)
+      .neq("status", "rejected")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    db.from("olb_uniform_sizes").select("item_id, size, confirmed_at, charge_id").eq("board_id", boardId).eq("player_id", playerId),
+  ]);
+  const extra = (reg as { extra: { needs_uniform?: boolean | null; needs_grays?: boolean | null; fee_tier?: string } | null } | null)?.extra ?? null;
+  const needed = new Set(
+    extra
+      ? itemsFor({ needs_uniform: extra.needs_uniform ?? null, needs_grays: extra.needs_grays ?? null, fee_tier: extra.fee_tier ?? "" }, items)
+          .filter((i) => i.who !== "optional")
+          .map((i) => i.id)
+      : []
+  );
+  const bySize = new Map(((sizes as { item_id: string; size: string; confirmed_at: string | null; charge_id: string | null }[] | null) ?? []).map((s) => [s.item_id, s]));
+  return {
+    needsUniform: extra?.needs_uniform ?? null,
+    needsGrays: extra?.needs_grays ?? null,
+    items: items
+      .filter((i) => needed.has(i.id) || bySize.has(i.id))
+      .map((i) => {
+        const s = bySize.get(i.id);
+        return { id: i.id, name: i.name, needed: needed.has(i.id), size: s?.size ?? null, confirmed: !!s?.confirmed_at, charged: !!s?.charge_id };
+      }),
+  };
+}
