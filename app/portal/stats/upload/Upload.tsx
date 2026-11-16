@@ -8,6 +8,7 @@ import { PHOTO_MAX_PX, SCOREBOOK_BUCKET, type StatsTeam } from "../../../../lib/
 import s from "../stats.module.css";
 
 type Status =
+  | { kind: "preparing" }
   | { kind: "waiting" }
   | { kind: "uploading" }
   | { kind: "reading" }
@@ -19,17 +20,38 @@ interface Item {
   name: string;
   preview: string;
   file: File;
+  jpeg?: Blob;
   status: Status;
 }
 
-// Any photo the browser can open (iPhone photos arrive as JPEG; Safari also
-// opens HEIC) becomes a JPEG no bigger than PHOTO_MAX_PX on the long side.
+function looksHeic(file: File): boolean {
+  return /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
+}
+
+// iPhone photos (HEIC) are decoded by heic-to, loaded only when one is picked;
+// everything else by the browser.
+async function decode(file: File): Promise<ImageBitmap> {
+  if (looksHeic(file)) {
+    const { heicTo } = await import("heic-to");
+    return heicTo({ blob: file, type: "bitmap" });
+  }
+  try {
+    return await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    // Some HEIC files arrive with no type and an odd name.
+    const { heicTo, isHeic } = await import("heic-to");
+    if (await isHeic(file)) return heicTo({ blob: file, type: "bitmap" });
+    throw new Error("unreadable");
+  }
+}
+
+// Any photo becomes a JPEG no bigger than PHOTO_MAX_PX on the long side.
 async function toJpeg(file: File): Promise<Blob> {
   let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    bitmap = await decode(file);
   } catch {
-    throw new Error("This browser can't open that photo. On a Mac, open it in Preview and choose File → Export as JPEG, or upload it from your phone.");
+    throw new Error("Couldn't open that photo. Try a JPEG, or upload it from your phone.");
   }
   const scale = Math.min(1, PHOTO_MAX_PX / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -63,21 +85,36 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
     };
   }, []);
 
-  const set = (key: string, status: Status) => setItems((all) => all.map((it) => (it.key === key ? { ...it, status } : it)));
+  const patch = (key: string, p: Partial<Item>) => setItems((all) => all.map((it) => (it.key === key ? { ...it, ...p } : it)));
+  const set = (key: string, status: Status) => patch(key, { status });
+
+  // Each photo is turned into a JPEG as soon as it's added: the thumbnail
+  // shows the page, and a photo that can't be opened says so right away.
+  async function prepare(item: Item) {
+    try {
+      const jpeg = await toJpeg(item.file);
+      patch(item.key, { jpeg, preview: URL.createObjectURL(jpeg), status: { kind: "waiting" } });
+    } catch (err) {
+      set(item.key, { kind: "failed", message: err instanceof Error ? err.message : String(err) });
+    }
+  }
 
   function add(files: FileList | null) {
     if (!files?.length) return;
-    const next = [...files]
+    const next: Item[] = [...files]
       .filter((f) => f.type.startsWith("image/") || /\.(heic|heif|jpe?g|png)$/i.test(f.name))
       .map((file) => ({
         key: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
         name: file.name,
-        preview: URL.createObjectURL(file),
+        preview: "",
         file,
-        status: { kind: "waiting" } as Status,
+        status: { kind: "preparing" },
       }));
     setItems((all) => [...all, ...next]);
     if (input.current) input.current.value = "";
+    void (async () => {
+      for (const it of next) await prepare(it);
+    })();
   }
 
   async function readOne(item: Item) {
@@ -92,7 +129,7 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
     let bookId: string | undefined;
     let gameId: string | undefined;
     try {
-      const jpeg = await toJpeg(item.file);
+      const jpeg = item.jpeg ?? (await toJpeg(item.file));
       const start = await startBook({ teamId: team });
       if (start.error !== undefined) throw new Error(start.error);
       bookId = start.bookId;
@@ -163,8 +200,12 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
         <div>
           {items.map((it) => (
             <div key={it.key} className={s.upItem}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={it.preview} alt="" className={s.thumb} />
+              {it.preview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={it.preview} alt="" className={s.thumb} />
+              ) : (
+                <div className={s.thumb} aria-hidden="true" />
+              )}
               <div style={{ flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 2 }}>
                 <span style={{ fontWeight: 600, fontSize: 14, overflowWrap: "anywhere" }}>{it.name}</span>
                 <StatusText status={it.status} />
@@ -185,7 +226,7 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
       )}
 
       <div className={s.actions}>
-        <button type="button" className={`${s.btn} ${s.btnAccent}`} disabled={busy || pending === 0 || !team} onClick={readAll}>
+        <button type="button" className={`${s.btn} ${s.btnAccent}`} disabled={busy || pending === 0 || !team || items.some((i) => i.status.kind === "preparing")} onClick={readAll}>
           {busy ? "Reading…" : pending > 1 ? `Read ${pending} books` : pending === 1 && items.some((i) => i.status.kind === "failed") ? "Try again" : "Read the book"}
         </button>
       </div>
@@ -195,6 +236,8 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
 
 function StatusText({ status }: { status: Status }) {
   switch (status.kind) {
+    case "preparing":
+      return <span className={s.muted}>Opening the photo…</span>;
     case "waiting":
       return <span className={s.muted}>Ready to read</span>;
     case "uploading":
