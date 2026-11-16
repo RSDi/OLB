@@ -24,7 +24,7 @@ import {
 import type { GuideViewer } from "../../lib/help/guide";
 
 // `part` starts a tour with parts at that part (1 = the first).
-export type StartTour = (tourId: string, opts?: { part?: number }) => void;
+export type StartTour = (tourId: string, opts?: { part?: number; step?: number }) => void;
 
 export const TourContext = createContext<{ start: StartTour }>({ start: () => {} });
 
@@ -156,6 +156,8 @@ interface Props {
   tourId: string;
   // Start at this part (1 = the first) of a tour with parts.
   startPart?: number;
+  // Start at this step (its place in tourStepsFor): help mode's Show me how.
+  startStep?: number;
   viewer: GuideViewer | null;
   onClose: () => void;
   // The current step points into the sidebar (true) or not (false), so the
@@ -163,14 +165,20 @@ interface Props {
   onSidebarStep: (inSidebar: boolean) => void;
 }
 
-export function GuidedTour({ tourId, startPart, viewer, onClose, onSidebarStep }: Props) {
+export function GuidedTour({ tourId, startPart, startStep, viewer, onClose, onSidebarStep }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const tour = getTour(tourId);
   const steps = useMemo(() => (tour ? tourStepsFor(tour, viewer) : []), [tour, viewer]);
 
   // Started at a later part: count from there, and Back stops there.
-  const [startIndex] = useState(() => (startPart ? partStartIndex(steps, startPart) : 0));
+  const [startIndex] = useState(() =>
+    startStep !== undefined && startStep >= 0 && startStep < steps.length
+      ? startStep
+      : startPart
+        ? partStartIndex(steps, startPart)
+        : 0,
+  );
   const [index, setIndex] = useState(startIndex);
   const [dir, setDir] = useState<1 | -1>(1);
   // The last step whose element was found. Until it matches `index` only the

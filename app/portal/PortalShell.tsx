@@ -13,6 +13,7 @@ import { PortalSidebar, type SidebarViewer } from "../components/PortalSidebar";
 import { PortalTopBar } from "../components/PortalTopBar";
 import { GlobalSearch } from "../components/GlobalSearch";
 import { InfoPanel } from "../components/InfoPanel";
+import { HelpMode } from "../components/HelpMode";
 import { GuidedTour, TourContext, type StartTour } from "../components/GuidedTour";
 import { ScrollToTopButton } from "../components/ScrollToTopButton";
 import { WhatsNewToast } from "../components/WhatsNewToast";
@@ -24,6 +25,7 @@ import {
   WELCOME_TOUR_ID,
   WELCOME_TOUR_SEEN_KEY,
   autoStartsWelcomeTour,
+  helpSpotsFor,
   tourForPath,
 } from "../../lib/help/tours";
 import { RELEASES_SEEN_EVENT } from "../../lib/release-notes/model";
@@ -111,12 +113,24 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
   // …and "Show me around" in that panel runs its guided tour
   // (lib/help/tours.ts). `key` restarts a tour that's started again.
   const pageTour = tourForPath(pathname, viewer, viewSection);
-  const [tour, setTour] = useState<{ id: string; part?: number; key: number } | null>(null);
+  const [tour, setTour] = useState<{ id: string; part?: number; step?: number; key: number } | null>(null);
+  // Help mode (? → Help for this page on a page with a tour): an ⓘ on each
+  // part the tour points at (app/components/HelpMode.tsx).
+  const pageSpots = useMemo(() => (pageTour ? helpSpotsFor(pageTour, viewer) : []), [pageTour, viewer]);
+  // The page it was turned on for: going to another page turns it off.
+  const [helpModeAt, setHelpModeAt] = useState<string | null>(null);
+  const helpMode = helpModeAt !== null && helpModeAt === pathname;
+  const exitHelpMode = useCallback(() => setHelpModeAt(null), []);
+  const helpModeFallback = useCallback(() => {
+    setHelpModeAt(null);
+    setInfoOpen(true);
+  }, []);
 
   const startTour = useCallback<StartTour>((id, opts) => {
     setInfoOpen(false);
     setSearchOpen(false);
-    setTour({ id, part: opts?.part, key: Date.now() });
+    setHelpModeAt(null);
+    setTour({ id, part: opts?.part, step: opts?.step, key: Date.now() });
   }, []);
   const tourControls = useMemo(() => ({ start: startTour }), [startTour]);
 
@@ -295,7 +309,9 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
             onSearchClick={() => setSearchOpen(true)}
             inlineSearchRef={inlineSearchRef}
             help={{
-              onPageHelp: pageHelp ? () => setInfoOpen(true) : undefined,
+              onPageHelp: pageHelp
+                ? () => (pageSpots.length > 0 ? setHelpModeAt(pathname) : setInfoOpen(true))
+                : undefined,
               onPageTour: pageTour ? () => startTour(pageTour.id) : undefined,
               onUserGuide: () => router.push("/portal/guide"),
               onReleaseNotes:
@@ -335,11 +351,21 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
             onClose={() => setInfoOpen(false)}
             onStartTour={pageTour ? () => startTour(pageTour.id) : undefined}
           />
+          {helpMode && pageTour && (
+            <HelpMode
+              spots={pageSpots}
+              onExit={exitHelpMode}
+              onWholePage={() => setInfoOpen(true)}
+              onShowMe={spot => startTour(pageTour.id, { step: spot.step })}
+              onNothingShowing={helpModeFallback}
+            />
+          )}
           {tour && (
             <GuidedTour
               key={tour.key}
               tourId={tour.id}
               startPart={tour.part}
+              startStep={tour.step}
               viewer={viewer}
               onClose={() => setTour(null)}
               onSidebarStep={onTourSidebarStep}
