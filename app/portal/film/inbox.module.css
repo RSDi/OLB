@@ -371,3 +371,18 @@
   font-weight: 800;
   color: var(--gw-fg-muted);
 }
+
+.paused {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--gw-error);
+  background: color-mix(in srgb, var(--gw-error) 8%, transparent);
+  color: var(--gw-fg);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.paused strong {
+  color: var(--gw-error);
+}

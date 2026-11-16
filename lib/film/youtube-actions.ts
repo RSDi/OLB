@@ -12,6 +12,7 @@ import {
   getYoutubeConnection,
   getYoutubeConnectionSecret,
   saveYoutubePrefs,
+  getYoutubeWorkerError,
   type YoutubeConnection,
 } from "./youtube-settings.ts";
 import type { YoutubeChannelPlaylist, YoutubePrivacy } from "./youtube-meta.ts";
@@ -27,7 +28,13 @@ function refresh() {
 
 export async function loadYoutubeSettings(): Promise<
   | { error: string }
-  | { configured: boolean; connection: YoutubeConnection; playlists: YoutubeChannelPlaylist[]; playlistError: string | null }
+  | {
+      configured: boolean;
+      connection: YoutubeConnection;
+      playlists: YoutubeChannelPlaylist[];
+      playlistError: string | null;
+      workerError: string | null;
+    }
 > {
   const gate = await requireFilmManage();
   if ("error" in gate) return { error: gate.error };
@@ -49,7 +56,8 @@ export async function loadYoutubeSettings(): Promise<
             : "Couldn't list playlists. Disconnect and Connect YouTube again after adding the YouTube scope.";
       }
     }
-    return { configured: youtubeOAuthConfigured(), connection, playlists, playlistError };
+    const workerError = connection.connected ? ((await getYoutubeWorkerError())?.error ?? null) : null;
+    return { configured: youtubeOAuthConfigured(), connection, playlists, playlistError, workerError };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Couldn't load YouTube settings." };
   }
