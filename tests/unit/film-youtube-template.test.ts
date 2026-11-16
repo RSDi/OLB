@@ -161,7 +161,7 @@ test("YouTube insert updates the description after the watch link exists and nev
   assert.match(settings, />Playlist link</);
   assert.match(settings, />Tournament name</);
   assert.match(settings, />Stats book</);
-  assert.match(settings, /Slack channel ID/);
+  assert.match(settings, /label="Slack channel"/);
   assert.match(inbox, />Pending Slack posts</);
   assert.match(inbox, />Discarded Slack posts</);
   assert.match(inbox, />Approve</);

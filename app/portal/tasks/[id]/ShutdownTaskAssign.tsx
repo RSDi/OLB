@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { SettingsLink } from "../../../components/SettingsLink";
 import { useRouter } from "next/navigation";
 import { assignShutdownTask } from "../../../../lib/shutdown/actions";
 import { ComboSelect } from "../../../components/ComboSelect";
@@ -48,7 +49,7 @@ export function ShutdownTaskAssign({
       </span>
       {teamMembers.length === 0 ? (
         <span style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
-          No Building Shutdown team members yet — add some in Settings → Teams.
+          No Building Shutdown team members yet — add some in <SettingsLink tab="teams">Settings → Teams</SettingsLink>.
         </span>
       ) : (
         <ComboSelect

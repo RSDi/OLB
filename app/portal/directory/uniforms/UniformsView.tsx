@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { SettingsLink } from "../../../components/SettingsLink";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pill } from "../../../components/ui";
@@ -86,7 +87,7 @@ export function UniformsView({ data }: { data: UniformPage }) {
       <div className="rsd-card" style={{ padding: "32px 24px", textAlign: "center", gap: 8 }}>
         <div style={{ fontSize: 14, fontWeight: 700 }}>No uniform items yet</div>
         <div style={muted}>
-          Add the jersey, shorts and anything else in <Link href="/portal/settings?tab=uniforms">Settings → Uniforms</Link>.
+          Add the jersey, shorts and anything else in <SettingsLink tab="uniforms">Settings → Uniforms</SettingsLink>.
         </div>
       </div>
     );

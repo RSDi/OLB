@@ -242,6 +242,28 @@ export async function saveFilmTeamTemplate(
   return {};
 }
 
+/** The Film page's "Slack channel" box on a waiting post: sets just the team's channel. */
+export async function setFilmTeamSlackChannel(id: string, raw: string): Promise<{ error?: string }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  const channel = parseFilmSlackChannelId(raw);
+  if (!channel.ok) return { error: channel.error };
+  if (!channel.id) return { error: "Paste the Slack channel link or ID." };
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("olb_teams")
+    .update({ film_slack_channel_id: channel.id, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  try {
+    await syncFilmSlackDraftChannels(id, channel.id);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Saved, but couldn't update waiting Slack posts." };
+  }
+  refresh();
+  return {};
+}
+
 export async function setFilmTeamCode(
   id: string,
   code: string

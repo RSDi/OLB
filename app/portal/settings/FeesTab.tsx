@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { SettingsLink } from "../../components/SettingsLink";
 import Link from "next/link";
 import { Input, Pill } from "../../components/ui";
 import { ErrorBox } from "./TeamsSettingsTab";
@@ -147,7 +148,7 @@ export function FeesTab() {
           <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 13.5, fontWeight: 700 }}>Comp coaches&apos; kids</span>
             <span style={sub}>
-              A player whose parent is a head or assistant coach (Settings → Teams) keeps the registration fee on their account, with a
+              A player whose parent is a head or assistant coach (<SettingsLink tab="teams">Settings → Teams</SettingsLink>) keeps the registration fee on their account, with a
               &quot;Coach&apos;s kid&quot; credit taking it off. Turn this off for next season and nothing already given changes.
             </span>
           </span>

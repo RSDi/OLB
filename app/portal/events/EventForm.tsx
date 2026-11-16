@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition, type CSSProperties } from "react";
+import { SettingsText } from "../../components/SettingsLink";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../components/ui";
@@ -272,9 +273,13 @@ export function EventForm({
           ))}
         </Select>
         <span style={{ fontSize: 11, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-          {categories.length === 0
-            ? "No categories yet — add some in Settings → Event Categories."
-            : "Manage available categories in Settings → Event Categories."}
+          <SettingsText
+            text={
+              categories.length === 0
+                ? "No categories yet — add some in Settings → Event Categories."
+                : "Manage available categories in Settings → Event Categories."
+            }
+          />
         </span>
       </div>
 

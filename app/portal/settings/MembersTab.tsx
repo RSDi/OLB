@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useTransition } from "react";
+import { SettingsLink } from "../../components/SettingsLink";
 import { Icons } from "../../components/icons";
 import { ClearSearchButton, Input, Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
@@ -1397,7 +1398,7 @@ function AccessPanel({
         <div style={{ fontSize: 12, color: "var(--gw-fg-muted)" }}>
           On the <strong style={{ color: "var(--gw-fg)" }}>{access.profile.name}</strong> profile
           {extras > 0 ? `, plus ${extras === 1 ? "1 extra" : `${extras} extras`}` : ""}. Greyed ticks come from the
-          profile (change them in Settings → Access Profiles); tick anything else to give it to just this person.
+          profile (change them in <SettingsLink tab="access_profiles">Settings → Access Profiles</SettingsLink>); tick anything else to give it to just this person.
         </div>
       )}
       {PERMISSION_GROUPS.map((g) => {

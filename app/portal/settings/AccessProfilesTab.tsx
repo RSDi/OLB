@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { SettingsLink } from "../../components/SettingsLink";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
 import { createClient } from "../../../lib/supabase/client";
@@ -172,7 +173,7 @@ export function AccessProfilesTab() {
         }}
       >
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, maxWidth: 480 }}>
-          A profile is a set of permissions you give someone in one step, in Settings → Members. Changes here reach
+          A profile is a set of permissions you give someone in one step, in <SettingsLink tab="members">Settings → Members</SettingsLink>. Changes here reach
           everyone on the profile right away. Board-based profiles also get everything Board can do.
         </div>
         {!adding && (

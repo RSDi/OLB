@@ -1,5 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
+import { SettingsText } from "../../../components/SettingsLink";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../../components/ui";
@@ -268,8 +269,8 @@ export function TemplateForm({
             >
               {!anyAssetsInArea
                 ? areaId
-                  ? "No assets in this area yet. Add some in Settings → Assets to enable per-asset PM."
-                  : "No assets registered yet. Add some in Settings → Assets to enable per-asset PM."
+                  ? <SettingsText text="No assets in this area yet. Add some in Settings → Assets to enable per-asset PM." />
+                  : <SettingsText text="No assets registered yet. Add some in Settings → Assets to enable per-asset PM." />
                 : !perAsset
                 ? "One instance per generation. Pick a per-asset option above to spawn a sub-task per matching asset."
                 : assetType

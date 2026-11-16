@@ -5,6 +5,7 @@
 // parents, then every other member (a volunteer doesn't have to be a parent).
 
 import { useMemo, useState } from "react";
+import { SettingsLink } from "../../../../components/SettingsLink";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../../../components/icons";
@@ -558,7 +559,7 @@ function Picker({
           </div>
         )}
         <div style={{ fontSize: 12, fontWeight: 500, color: "var(--gw-fg-muted)", lineHeight: 1.5 }}>
-          Not listed? Add them in Settings → Members (no email needed), then assign them here.
+          Not listed? Add them in <SettingsLink tab="members">Settings → Members</SettingsLink> (no email needed), then assign them here.
         </div>
       </div>
     </div>

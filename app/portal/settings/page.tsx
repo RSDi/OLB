@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import {
@@ -21,6 +22,7 @@ import {
 } from "../../../lib/auth/permissions";
 import { seesFullUi } from "../../../lib/auth/feature-preview";
 import { loadGrants } from "../../../lib/auth/load-grants";
+import { backLabel, safeBackPath } from "../../../lib/settings-links";
 import { MembersTab } from "./MembersTab";
 import { AreasTab } from "./AreasTab";
 import { PrioritiesTab } from "./PrioritiesTab";
@@ -282,6 +284,8 @@ export default function SettingsPage() {
   const [filter, setFilter] = useState("");
   // The phone's full-screen menu.
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Where a "Settings → …" link came from, for the "← Back" link.
+  const [backTo, setBackTo] = useState<string | null>(null);
 
   // While the phone menu is open, the page behind it stays put and Esc
   // closes it.
@@ -335,6 +339,7 @@ export default function SettingsPage() {
       // queue (D1) — and someone off the board lands on the first tab they
       // have (Release Notes, unless a grant opens another).
       const wanted = new URLSearchParams(window.location.search).get("tab");
+      setBackTo(safeBackPath(new URLSearchParams(window.location.search).get("back")));
       const mine = visibleTabs(memberLike!, preview, on, booksOn);
       const linked = mine.find((t) => t.key === wanted);
       const landing: Tab = canApproveMembers(memberLike)
@@ -429,9 +434,24 @@ export default function SettingsPage() {
     </>
   );
 
+  const back = backTo ? (
+    <div className="rsd-settings-back" data-tour="settings-back">
+      <Link href={backTo} className="gw-press">
+        {backLabel(backTo)}
+      </Link>
+    </div>
+  ) : null;
+
   // Staged rollout: everyone else only gets the released tabs, and no menu
   // at all when that leaves just one.
-  if (shownTabs.length <= 1) return content;
+  if (shownTabs.length <= 1) {
+    return (
+      <>
+        {back}
+        {content}
+      </>
+    );
+  }
 
   const current = shownTabs.find((t) => t.key === tab);
 
@@ -522,7 +542,10 @@ export default function SettingsPage() {
           <div className="rsd-settings-sheet-body">{menu(true)}</div>
         </div>
       )}
-      <div className="rsd-settings-body">{content}</div>
+      <div className="rsd-settings-body">
+        {back}
+        {content}
+      </div>
     </div>
   );
 }

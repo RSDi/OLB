@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { SettingsText } from "../../components/SettingsLink";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icons } from "../../components/icons";
@@ -559,7 +560,7 @@ function DueDate({ account, date, fallback }: { account: Account; date: string |
           Use the season&apos;s date
         </Pill>
       )}
-      {!date && <span style={{ color: "var(--gw-fg-muted)" }}>{fallback ? `The season's date: ${formatDay(fallback)}` : "No season date set (Settings → Fees)"}</span>}
+      {!date && <span style={{ color: "var(--gw-fg-muted)" }}>{fallback ? `The season's date: ${formatDay(fallback)}` : <SettingsText text="No season date set (Settings → Fees)" />}</span>}
       {error && <span style={{ color: "var(--gw-error)" }}>{error}</span>}
     </div>
   );

@@ -3,7 +3,7 @@
 // slug and hashed code, turn a team on or off, and assign video managers.
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { SettingsLink } from "../../components/SettingsLink";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../components/ui";
 import { copyText } from "../../../lib/copy-text";
@@ -112,9 +112,7 @@ export function FilmSettingsTab() {
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5, maxWidth: 560 }}>
           {season ? `${season} season. ` : ""}
           These are the same teams as{" "}
-          <Link href="/portal/settings?tab=teams" prefetch={false} style={{ color: "var(--gw-fg)", fontWeight: 700 }}>
-            Settings → Teams
-          </Link>
+          <SettingsLink tab="teams">Settings → Teams</SettingsLink>
           . Turn a team on, set its family upload address and code, and optionally pick video managers who can
           open <strong>Film</strong> for that team only. Type a short word for the code (like <strong>white14</strong>)
           — we store it hashed and show it once.
@@ -164,7 +162,7 @@ export function FilmSettingsTab() {
       ) : !season ? (
         <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>No season set up yet.</div>
       ) : teams.length === 0 ? (
-        <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>No teams yet. Add one here, or in Settings → Teams.</div>
+        <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>No teams yet. Add one here, or in <SettingsLink tab="teams">Settings → Teams</SettingsLink>.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {teams.map((t) => (
@@ -477,8 +475,8 @@ function TeamCard({
 
       <div data-tour="film-settings-slack" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <Input
-          label="Slack channel ID"
-          help="Where Sparky posts after someone taps Approve on Film. Paste the channel ID (starts with C), not the #name. Leave blank to keep Approve off."
+          label="Slack channel"
+          help="Where Sparky posts after someone taps Approve on Film. In Slack, click the channel name → Copy link, and paste it here (the channel ID, starting with C, works too). Leave blank to keep Approve off."
           value={slackChannelId}
           onChange={(e) => setSlackChannelId(e.target.value)}
           placeholder="C0123456789"
