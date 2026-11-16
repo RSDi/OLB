@@ -850,7 +850,7 @@ This page does not replace **Film**. Play, download, edit, Slack, and playlists 
 **Add a game**
 
 1. After the game, take a photo of our page of the book: the whole page, from straight above. A shadow over the right-hand columns is fine.
-2. Tap **Upload scorebooks**, pick the team, and drop the photos on the box (or tap it to take or choose them). One photo is one game, so you can add a whole day at once. Tap **Read the book** (or **Read 2 books**). Each one takes about a minute.
+2. Tap **Upload scorebooks**, pick the team, and drop the photos on the box, paste them (⌘V), or tap it to take or choose them. A photo someone sent you in Messages on a Mac: click it, press ⌘C, then press ⌘V on this page (macOS won't let the browser open one dragged straight out of Messages). One photo is one game, so you can add a whole day at once. Tap **Read the book** (or **Read 2 books**). Each one takes about a minute.
 3. Tap **Check it**. We fill in the date, every player's marks for each quarter, their rebounds (the R marks) and fouls. Players are matched to the team's roster by jersey number.
 4. **Marks vs the book** adds up the marks and compares them with the scores the book wrote down: each quarter, the final, each player's total and free throws. Anything that doesn't match is listed in yellow. Look at the photo and fix the marks: **2** and **3** are baskets, **1** a made free throw, **0** a missed one.
 5. Type the **Opponent** (it isn't on our page) and **Their final score** if you know it. Pick who any unmatched player is, or untick **Played** for someone who didn't play.
