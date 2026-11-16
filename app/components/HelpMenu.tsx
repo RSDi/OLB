@@ -18,6 +18,7 @@ export function HelpMenu({
   onPageTour,
   onUserGuide,
   onReleaseNotes,
+  onHelpCenter,
   canAsk = false,
 }: {
   // Absent when the page has no guide section / no tour / the viewer can't
@@ -26,6 +27,8 @@ export function HelpMenu({
   onPageTour?: () => void;
   onUserGuide: () => void;
   onReleaseNotes?: () => void;
+  // Short how-tos (/portal/help-center).
+  onHelpCenter?: () => void;
   // Signed in: Ask for help and My requests.
   canAsk?: boolean;
 }) {
@@ -70,6 +73,7 @@ export function HelpMenu({
   if (onPageTour) rows.push({ key: "tour", label: "Show me around", Icon: Icons.Sparkles, onClick: onPageTour });
   rows.push({ key: "guide", label: "User Guide", Icon: Icons.BookOpen, onClick: onUserGuide });
   if (onReleaseNotes) rows.push({ key: "notes", label: "Release Notes", Icon: Icons.FileText, onClick: onReleaseNotes });
+  if (onHelpCenter) rows.push({ key: "center", label: "Help Center", Icon: Icons.Help, onClick: onHelpCenter });
   const askRows: Row[] = canAsk
     ? [
         { key: "ask", label: "Ask for help", Icon: Icons.LifeBuoy, onClick: () => setAsking(true) },

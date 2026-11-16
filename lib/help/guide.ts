@@ -142,9 +142,22 @@ On a computer with a wide screen, **Collapse** (under the logo) shrinks the side
 
 **Back to the top.** On a long page, once you scroll down a yellow round button with an up arrow appears in the bottom right corner. Tap it to jump back to the top of the page.
 
-**Help on every page.** Tap the **?** button in the top-right corner. **Help for this page** turns on help mode: a dashed outline and an **ⓘ** show on each part of the page. Tap an **ⓘ** to read what that part does, then **Show me how** to be walked through it from there, or **Read in User Guide** for the whole page. **Whole page** in the bar at the bottom does the same, and **Done** (or **Esc**) turns help mode off. On a page without help mode, **Help for this page** opens that page's part of this guide. **Show me around** gives you a tour of it, **User Guide** opens this guide, and **Release Notes** (for the board and anyone who can open Settings) lists what's new. Below those, **Ask for help** sends the board a question, a problem or an idea, and **My requests** shows their replies (see *Ask for help*). Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
+**Help on every page.** Tap the **?** button in the top-right corner. **Help for this page** turns on help mode: a dashed outline and an **ⓘ** show on each part of the page. Tap an **ⓘ** to read what that part does, then **Show me how** to be walked through it from there, or **Read in User Guide** for the whole page. **Whole page** in the bar at the bottom does the same, and **Done** (or **Esc**) turns help mode off. On a page without help mode, **Help for this page** opens that page's part of this guide. **Show me around** gives you a tour of it, **User Guide** opens this guide, and **Release Notes** lists what's new, and **Help Center** has quick how-tos (see *Help Center*). Below those, **Ask for help** sends the board a question, a problem or an idea, and **My requests** shows their replies (see *Ask for help*). Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
 
 **Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, tap **?** on that page and then **Show me around** (in Settings, it's for the tab you're on), or press **Show me around** next to a section's title below.`,
+  },
+  {
+    id: "help-center",
+    title: "Help Center",
+    group: "Getting started",
+    audience: "everyone",
+    routes: ["/portal/help-center"],
+    keywords: ["help center", "how to", "how do i", "faq", "questions", "answers", "show me how"],
+    body: `Tap **?** in the top-right corner, then **Help Center**, for quick answers to the things people do most: signing in, getting notifications, finding a phone number, seeing your balance, finding old photos, and more. You only see the ones that apply to you.
+
+Type in **Search how-tos** to narrow the list, then tap a question for its steps. **▶ Show me how** walks you through it on the real page, and **Read more in the User Guide** opens the full section here.
+
+Can't find what you need? Tap **?**, then **Ask for help**.`,
   },
   {
     id: "ask-for-help",
