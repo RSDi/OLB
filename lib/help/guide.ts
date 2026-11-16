@@ -3,7 +3,7 @@
 // Two places read it:
 //   1. /portal/guide (sidebar → User Guide) renders every section the viewer
 //      can use, with search and a table of contents.
-//   2. The top-bar "i" button opens the section whose `routes` best match the
+//   2. "?" → "Help for this page" in the top bar opens the section whose `routes` best match the
 //      current page, with a link through to that spot in the full guide.
 //
 // KEEP IT CURRENT: any change people can see (a new page, a renamed button, a
@@ -142,9 +142,9 @@ On a computer with a wide screen, **Collapse** (under the logo) shrinks the side
 
 **Back to the top.** On a long page, once you scroll down a yellow round button with an up arrow appears in the bottom right corner. Tap it to jump back to the top of the page.
 
-**Help on every page.** Tap the **ⓘ** button in the top bar to read about the page you're on, then **Open the User Guide** for the full guide. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
+**Help on every page.** Tap the **?** button in the top-right corner. **Help for this page** tells you about the page you're on, **Show me around** gives you a tour of it, **User Guide** opens this guide, and **Release Notes** (for the board and anyone who can open Settings) lists what's new. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
 
-**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, tap **ⓘ** on that page and then **Show me around** (in Settings, it's for the tab you're on), or press **Show me around** next to a section's title below.`,
+**Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, tap **?** on that page and then **Show me around** (in Settings, it's for the tab you're on), or press **Show me around** next to a section's title below.`,
   },
   {
     id: "install-app",
@@ -255,7 +255,7 @@ The tabs across the top are **Calendar**, **Year**, **Review** and **Template**.
 
 **Who changed what.** The top of each meeting says who last edited it and when, and each task note says who wrote it. **History** lists every change, newest first, with who made it and what changed (added lines in green, removed ones crossed out). Open a version with **See the whole meeting as of this version**, and **Restore this version** puts the date, status, agenda and minutes back to how they were; the restore is saved as a new change, so it can be undone too.
 
-**Walk me through it.** For a guided tour of all of this, press **Show me around** next to this section's title, or tap **ⓘ** on Planning and then **Show me around**.`,
+**Walk me through it.** For a guided tour of all of this, press **Show me around** next to this section's title, or tap **?** on Planning and then **Show me around**.`,
   },
   {
     id: "directory",
@@ -503,7 +503,7 @@ If the camera won't open, allow it for this site in your browser's settings, or 
 
 Requirements start over each season, since each season has its own roster. The list itself is set up in **Settings → Requirements**.
 
-**Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title, or tap **ⓘ** on **Settings → Requirements** and then **Show me around**.`,
+**Walk me through it.** For a hands-on walkthrough in three parts (setting a requirement up, checking players off with a scan, and seeing how many are in and who's left), press **Show me around** next to this section's title, or tap **?** on **Settings → Requirements** and then **Show me around**.`,
   },
   {
     id: "hotel-registration",
@@ -573,7 +573,7 @@ Hotels and places to eat themselves stay in **External Contacts** (see *Hotels a
 
 **Seasons.** Use the arrows beside the season's name to move between seasons, or tap the name (**2026–27 ▾**) for the list of them all. A tag beside it says whether it's **This season**, a **Past season** or the **Next season**, and the season's notes from Season settings show under it (**more** for the rest). On the newest season, the board sees **+** in place of the right arrow to start the next one. On a computer the column headings (the season, **Where**, **Event**, our teams) stay at the top as you scroll. **⋯** beside the gear has **Print** (the grid on landscape pages, with what's showing at the top) and **Copy link** (the schedule as you're seeing it, filters and all). Pick a season under **Compare with** in **View** to put its same weekend beside each row, so you can see what we did a year ago. The gear (**Season settings**) next to **Add weekend** opens **Our teams** (a column each on the schedule): **Add team**, the arrows to reorder, the eye to hide or show one in a tap, and the pencil to rename one or link it to its team in the Directory. Below them are the season's **Notes**, with **Save notes** once you've typed. The board can also **Start 2027–28 from 2026–27** there (the same weekends a year on, with the teams that came now on the fence), add any other season with **New season** (it starts on the season after the newest one: pick **Copy 2026–27** for the same weekends a year on, or **Start empty**), or delete the season. With no seasons at all, the board presses **Start 2026–27** on the empty page. A season with no weekends yet offers **Add weekend** right there, and **Season settings** first when it has no teams of ours yet; **Compare with…** shows once it has weekends.
 
-**Walk me through it.** Press **Show me around** next to this section's title, or tap **ⓘ** on the HS Schedule and then **Show me around**.`,
+**Walk me through it.** Press **Show me around** next to this section's title, or tap **?** on the HS Schedule and then **Show me around**.`,
   },
   {
     id: "hosted-tournament",
@@ -1453,7 +1453,7 @@ While the registration workflow is on, families pick a size for each item on the
 - **A fundraiser hour earns** and **Balances due by** (shown on every family's balance unless you give a family its own date on Finances).
 - **Weekly balance reminder**: an email every week to each family that still owes, until they've paid. Pick **Day it goes**, **When it starts** (**As soon as a family owes**, or some days before, on or after their due date), **Who gets it** (Dads, Moms, Guardians, Players), and its **Subject** and **Message**, or **Start from a template**. **{balance}** becomes what the family owes, **{due_date}** their due date, **{family}** their last name and **{player}** their players' names. **Email me a test** sends it to you as one family that owes would get it. Turn on **Send the weekly reminder** and tap **Save reminder**. **Recent weeks** shows how many families it went to. A family with a credit or nothing owed never gets it, and you can take one family off it on Finances.
 
-Tap **Save**. **Show me around** here walks the whole setup, from this tab through importing the spreadsheet, Nelson's shifts, clinics and the Snapshot to who can see it. Each Finances tab has its own walkthrough under the **i** too.`,
+Tap **Save**. **Show me around** here walks the whole setup, from this tab through importing the spreadsheet, Nelson's shifts, clinics and the Snapshot to who can see it. Each Finances tab has its own walkthrough under **?** → **Show me around** too.`,
   },
   {
     id: "settings-invoices",
