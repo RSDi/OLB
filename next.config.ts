@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
   // like first-party app code.
   transpilePackages: ["reelnotes", "document-scanner", "@uppy/core", "@uppy/tus", "tus-js-client"],
   images: { remotePatterns: siteImagesPattern() },
+  // Stats converts iPhone (HEIC) scorebook photos with heic-convert, whose
+  // decoder loads its WebAssembly from its own files: leave it to Node.
+  serverExternalPackages: ["heic-convert", "heic-decode", "libheif-js"],
   // The signs PDF reads its fonts and logo from disk at request time.
   outputFileTracingIncludes: { "/shootout/signs": ["./lib/hosted/signs-assets/**/*"] },
   // Preview hosts (*.vercel.app) can differ from the forwarded Host when
