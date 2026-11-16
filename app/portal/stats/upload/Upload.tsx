@@ -88,7 +88,7 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
       set(item.key, {
         kind: "failed",
         message:
-          "Your browser couldn't read this file. Photos dragged straight out of Messages often can't be read: drag it to your Desktop (or save it to Photos) first, then add it from there.",
+          "Your browser isn't allowed to read this file (macOS blocks photos dragged straight out of Messages). Instead, click the photo in Messages, press ⌘C, come back here and press ⌘V.",
       });
       return;
     }
@@ -116,6 +116,37 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
       for (const it of next) await prepare(it);
     })();
   }
+
+  // Paste (⌘V) adds photos too. macOS won't let a browser read a photo
+  // dragged out of Messages, but a photo copied there (⌘C) arrives on the
+  // clipboard as the image itself.
+  const addRef = useRef(add);
+  useEffect(() => {
+    addRef.current = add;
+  });
+  const pasted = useRef(0);
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const data = e.clipboardData;
+      if (!data) return;
+      const files = Array.from(data.items ?? [])
+        .filter((i) => i.kind === "file" && i.type.startsWith("image/"))
+        .map((i) => i.getAsFile())
+        .filter((f): f is File => !!f);
+      const list = files.length ? files : Array.from(data.files ?? []).filter((f) => f.type.startsWith("image/"));
+      if (!list.length || busy) return;
+      e.preventDefault();
+      addRef.current(
+        list.map((f) => {
+          pasted.current += 1;
+          const ext = (f.type.split("/")[1] ?? "png").replace("jpeg", "jpg");
+          return new File([f], `Pasted photo ${pasted.current}.${ext}`, { type: f.type });
+        }),
+      );
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [busy]);
 
   async function readOne(item: Item) {
     if (item.status.kind === "failed" && item.status.bookId) {
@@ -200,7 +231,8 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
         }}
       >
         <input ref={input} type="file" accept="image/*,.heic,.heif" multiple hidden onChange={(e) => add(e.target.files)} disabled={busy} />
-        <strong>Drop photos here, or tap to take or choose them</strong>
+        <strong>Drop photos here, paste them (⌘V), or tap to take or choose them</strong>
+        <span>From Messages: click the photo, press ⌘C, then ⌘V here.</span>
         <span>Whole page in the frame, shot from straight above. A shadow over the right-hand columns is fine.</span>
       </label>
 
