@@ -72,6 +72,7 @@ const PAGE_META: Record<string, { title: string; subtitle: string }> = {
   "/portal/archives/album":            { title: "Photo Album",    subtitle: "Archives" },
   "/portal/archives/email":            { title: "Email",          subtitle: "Archives" },
   "/portal/guide":       { title: "User Guide",   subtitle: "Help" },
+  "/portal/help-requests": { title: "Help Requests", subtitle: "Help" },
   "/portal/search":      { title: "Search",       subtitle: "" },
   "/portal/search/log":  { title: "Search log",   subtitle: "Search" },
   "/portal/activity":    { title: "Activity",     subtitle: "Super-admin" },
@@ -301,6 +302,7 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
                 viewer?.status === "approved" && !previewing && (viewer.isStaff || viewer.canOpenSettings)
                   ? () => router.push("/portal/settings?tab=release_notes")
                   : undefined,
+              canAsk: !!viewer && !previewing,
             }}
           />
           {/* Mobile overlay */}

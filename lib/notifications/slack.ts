@@ -26,6 +26,7 @@ async function postSlackMessage(
   text: string,
   blocks: SlackBlock[],
   context: string,
+  threadTs?: string,
 ): Promise<{ ts: string; channel: string } | null> {
   const token = process.env.SLACK_BOT_TOKEN;
   if (!token) return null; // caller already guarded; defensive
@@ -36,7 +37,7 @@ async function postSlackMessage(
       "Content-Type": "application/json; charset=utf-8",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ channel, text, blocks }),
+    body: JSON.stringify(threadTs ? { channel, text, blocks, thread_ts: threadTs } : { channel, text, blocks }),
   });
 
   // Slack returns HTTP 200 even on logical failures (invalid_auth,
@@ -367,6 +368,82 @@ export async function sendShutdownCoverRequestSlack({
     event,
     "shutdown cover request",
   );
+}
+
+// Ask for help (? → Ask for help): each new request in #olb-help, or the
+// channel SLACK_HELP_CHANNEL names (a channel ID or "#name"). The bot has to
+// be a member of that channel. Returns where it landed, so replies can go
+// in the same thread.
+export function helpChannel(): string {
+  return (process.env.SLACK_HELP_CHANNEL ?? "").trim() || "#olb-help";
+}
+
+export async function sendHelpRequestSlack({
+  requestId,
+  askerName,
+  body,
+  pageTitle,
+  pageUrl,
+  attached,
+}: {
+  requestId: string;
+  askerName: string;
+  body: string;
+  pageTitle: string | null;
+  pageUrl: string | null;
+  attached: string[];
+}): Promise<{ ts: string; channel: string } | null> {
+  if (!slackBotConfigured()) {
+    console.warn("[slack] SLACK_BOT_TOKEN not set — skipping help request message");
+    return null;
+  }
+  const fallback = `${askerName} asked for help`;
+  const where = pageUrl
+    ? `<${pageUrl}|${slackEscape(pageTitle || pageUrl)}>`
+    : slackEscape(pageTitle || "unknown page");
+  const fields = [
+    { type: "mrkdwn", text: `*From*\n${slackEscape(askerName)}` },
+    { type: "mrkdwn", text: `*Page*\n${where}` },
+    ...(attached.length ? [{ type: "mrkdwn", text: `*Attached*\n${slackEscape(attached.join(", "))}` }] : []),
+  ];
+  const blocks: SlackBlock[] = [
+    { type: "header", text: { type: "plain_text", text: "Ask for help", emoji: false } },
+    { type: "section", fields },
+    { type: "section", text: { type: "mrkdwn", text: blockquote(body) } },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: { type: "plain_text", text: "Open in portal" },
+          url: `${siteUrl()}/portal/help-requests?open=${requestId}`,
+        },
+      ],
+    },
+  ];
+  return postSlackMessage(helpChannel(), fallback, blocks, `help request ${requestId}`);
+}
+
+/** A reply on a help request, posted in its Slack thread. */
+export async function sendHelpReplySlack({
+  channel,
+  threadTs,
+  authorName,
+  fromAsker,
+  body,
+  closed,
+}: {
+  channel: string;
+  threadTs: string;
+  authorName: string;
+  fromAsker: boolean;
+  body: string;
+  closed?: boolean;
+}): Promise<void> {
+  if (!slackBotConfigured()) return;
+  const lead = fromAsker ? `${authorName} wrote back` : `${authorName} replied`;
+  const text = `*${slackEscape(lead)}*${closed ? " and closed it" : ""}\n${blockquote(body)}`;
+  await postSlackMessage(channel, lead, [{ type: "section", text: { type: "mrkdwn", text } }], "help reply", threadTs);
 }
 
 function siteUrl(): string {
