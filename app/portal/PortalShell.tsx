@@ -100,7 +100,7 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
   const pathname = usePathname();
   const router = useRouter();
   const previewing = preview !== null;
-  // The top-bar "i" shows the User Guide section for this page, when the
+  // "Help for this page" in the top-bar "?" menu shows the User Guide section for this page, when the
   // viewer can see one (lib/help/guide.ts), or for the open view on a page
   // with views of its own, like a Settings tab (usePageHelp).
   const [viewSection, setViewSection] = useState<string | null>(null);
@@ -291,7 +291,15 @@ export function PortalShell({ viewer, pendingMembersCount, sidebarLinks, preview
             onMenuClick={() => setMobileOpen(v => !v)}
             onSearchClick={() => setSearchOpen(true)}
             inlineSearchRef={inlineSearchRef}
-            onInfoClick={pageHelp ? () => setInfoOpen(true) : undefined}
+            help={{
+              onPageHelp: pageHelp ? () => setInfoOpen(true) : undefined,
+              onPageTour: pageTour ? () => startTour(pageTour.id) : undefined,
+              onUserGuide: () => router.push("/portal/guide"),
+              onReleaseNotes:
+                viewer?.status === "approved" && !previewing && (viewer.isStaff || viewer.canOpenSettings)
+                  ? () => router.push("/portal/settings?tab=release_notes")
+                  : undefined,
+            }}
           />
           {/* Mobile overlay */}
           {mobileOpen && (

@@ -6,7 +6,7 @@
 // Where tours start:
 //   - "Take the tour" at the top of the User Guide, and "Show me around" on a
 //     guide section that has one.
-//   - "Show me around" in the top-bar "i" panel, for the page you're on (on
+//   - "Show me around" in the top-bar "?" menu and "Help for this page" panel, for the page you're on (on
 //     Settings, the open tab: see usePageHelp in app/components/PageHelp.tsx).
 //   - "Show me how →" on a Settings → Release Notes entry that changed
 //     something this person can use (a `releaseOnly` tour).
@@ -84,7 +84,7 @@ export interface GuideTour {
   route: string;
   steps: TourStep[];
   // Written for one release note's "Show me how →": walks to just what that
-  // release changed. Kept off the ⓘ panel and the guide's section buttons,
+  // release changed. Kept off the ? menu and the guide's section buttons,
   // which start the screen's full tour.
   releaseOnly?: boolean;
 }
@@ -174,11 +174,11 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "page-help",
         title: "Help on every page",
-        body: "Tap **ⓘ** to read about the page you're on. Most pages also have **Show me around** there, a tour like this one for just that page. In Settings, it follows the tab you're on.",
+        body: "Tap **?** for help on the page you're on. **Help for this page** tells you about it, and most pages also have **Show me around**, a tour like this one for just that page. The **User Guide** is there too. In Settings, it follows the tab you're on.",
       },
       {
         title: "You're all set",
-        body: "Want a closer look at a page? Tap **ⓘ** and then **Show me around**. Or open the **User Guide** and pick a section.",
+        body: "Want a closer look at a page? Tap **?** and then **Show me around**. Or tap **?**, then **User Guide**, and pick a section.",
       },
     ],
   },
@@ -733,7 +733,7 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "settings-tabs",
         audience: "super_admin",
         title: "The Settings menu",
-        body: "Settings is sorted into groups down this menu: People & Access, Facilities & Equipment, Work & Events, Communication, Website & Portal and System. Type in **Find a setting…** to narrow it. On a phone, tap **Change ›** to see the menu. Tap **ⓘ** on any page, then **Show me around**, for a walkthrough of that page.",
+        body: "Settings is sorted into groups down this menu: People & Access, Facilities & Equipment, Work & Events, Communication, Website & Portal and System. Type in **Find a setting…** to narrow it. On a phone, tap **Change ›** to see the menu. Tap **?** on any page, then **Show me around**, for a walkthrough of that page.",
       },
       {
         target: "members-status",
@@ -2211,7 +2211,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       },
       {
         title: "That's Planning",
-        body: "Take this tour again with **Show me around** in the **ⓘ** panel on Planning, or from the **User Guide**.",
+        body: "Take this tour again with **?** → **Show me around** on Planning, or from the **User Guide**.",
       },
     ],
   },

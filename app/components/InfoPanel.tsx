@@ -1,5 +1,5 @@
 "use client";
-// The per-page help panel. Opened by the "i" button in the top bar; shows the
+// The per-page help panel. Opened by "?" → "Help for this page" in the top bar; shows the
 // User Guide section for the current page (markdown), with a link through to
 // the full guide at that section, and "Show me around" when the page has a
 // guided tour (lib/help/tours.ts). Mirrors the GlobalSearch modal: backdrop +

@@ -75,8 +75,8 @@ export function GuideView({
       </h1>
       <p style={{ fontSize: 14, color: "var(--gw-fg-muted)", lineHeight: 1.55, margin: "0 0 20px" }}>
         How to get around the OLB member portal and get things done. You&apos;ll only see the parts
-        that apply to you. The <strong>ⓘ</strong> button in the top bar of any page opens the
-        section for that page.
+        that apply to you. Tap <strong>?</strong> in the top-right corner of any page, then{" "}
+        <strong>Help for this page</strong>, to open the section for that page.
       </p>
       <button
         type="button"

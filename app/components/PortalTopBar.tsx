@@ -2,6 +2,7 @@
 import { forwardRef, useEffect, useState, type ReactNode } from "react";
 import { Icons } from "./icons";
 import { TopbarSearch, type TopbarSearchHandle } from "./TopbarSearch";
+import { HelpMenu } from "./HelpMenu";
 
 interface PortalTopBarProps {
   title: string;
@@ -13,9 +14,9 @@ interface PortalTopBarProps {
   // inline TopbarSearch renders instead.
   onSearchClick?: () => void;
   inlineSearchRef?: React.Ref<TopbarSearchHandle>;
-  // Opens the per-page help panel. Provided only when the current page has a
-  // doc (PortalShell decides); when absent the "i" button is hidden.
-  onInfoClick?: () => void;
+  // The "?" help menu's rows (HelpMenu). PortalShell decides which ones this
+  // page has; without `help` the button is hidden.
+  help?: React.ComponentProps<typeof HelpMenu>;
 }
 
 export function PortalTopBar({
@@ -25,7 +26,7 @@ export function PortalTopBar({
   onMenuClick,
   onSearchClick,
   inlineSearchRef,
-  onInfoClick,
+  help,
 }: PortalTopBarProps) {
   const [variant, setVariant] = useState<"pill" | "inline" | null>(null);
 
@@ -128,28 +129,7 @@ export function PortalTopBar({
         {variant === "pill" && onSearchClick && (
           <PillTrigger onClick={onSearchClick} />
         )}
-        {onInfoClick && (
-          <button
-            onClick={onInfoClick}
-            className="gw-press"
-            aria-label="About this page"
-            title="About this page"
-            data-tour="page-help"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 100,
-              background: "var(--rsd-topbar-2)",
-              border: "1px solid var(--rsd-topbar-line)",
-              color: "var(--rsd-topbar-fg)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Icons.Info width={16} height={16} />
-          </button>
-        )}
+        {help && <HelpMenu {...help} />}
         <button
           className="gw-press"
           aria-label="Notifications"
