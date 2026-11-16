@@ -48,7 +48,8 @@ import {
   isYoutubeStalled,
   youtubeEventTitle,
 } from "./youtube-progress.ts";
-import { getYoutubeConnectionSecret } from "./youtube-settings.ts";
+import { getYoutubeConnectionSecret, recordYoutubeWorkerHealth } from "./youtube-settings.ts";
+import { youtubeWorkerProblem } from "./youtube-health.ts";
 import { syncYoutubeVideoStatus } from "./youtube-status.ts";
 import type { FilmUpload, YoutubeEventKind } from "./types.ts";
 
@@ -130,7 +131,7 @@ export async function processYoutubeQueue(opts?: {
 
   if (!youtubeOAuthConfigured()) {
     result.skipped = "YouTube OAuth env vars are not set.";
-    return result;
+    return noteSkip(result);
   }
 
   let secret;
@@ -138,11 +139,11 @@ export async function processYoutubeQueue(opts?: {
     secret = await getYoutubeConnectionSecret();
   } catch (err) {
     result.skipped = err instanceof Error ? err.message : "Couldn't read the YouTube connection.";
-    return result;
+    return noteSkip(result);
   }
   if (!secret.refreshToken) {
     result.skipped = "YouTube isn't connected.";
-    return result;
+    return noteSkip(result);
   }
 
   let access: string;
@@ -150,8 +151,9 @@ export async function processYoutubeQueue(opts?: {
     access = await refreshYoutubeAccess(secret.refreshToken);
   } catch (err) {
     result.skipped = err instanceof Error ? err.message : "Couldn't refresh YouTube.";
-    return result;
+    return noteSkip(result);
   }
+  await recordYoutubeWorkerHealth(null);
 
   const rows = await listYoutubeWork(opts?.uploadId);
   await markStalledUploads(rows, started);
@@ -180,6 +182,13 @@ export async function processYoutubeQueue(opts?: {
   if (Date.now() < started + budgetMs) {
     await processPlaylistQueue({ access, uploadId: opts?.uploadId });
   }
+  return result;
+}
+
+async function noteSkip(result: YoutubeTickResult): Promise<YoutubeTickResult> {
+  const problem = result.skipped ? youtubeWorkerProblem(result.skipped) : undefined;
+  if (problem !== undefined) await recordYoutubeWorkerHealth(problem);
+  if (result.skipped) console.error("[film-youtube] skipped:", result.skipped);
   return result;
 }
 

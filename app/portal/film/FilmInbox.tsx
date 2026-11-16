@@ -46,6 +46,8 @@ interface Props {
   canApproveSlack: boolean;
   slackConfigured: boolean;
   loadError: string | null;
+  /** Set when the upload worker can't reach YouTube (login expired, not connected). */
+  youtubePaused?: string | null;
   parentLinks: { slug: string; label: string }[];
   teamPlaylists: Record<string, string>;
   rosters: Record<string, FilmRosterPlayer[]>;
@@ -123,6 +125,7 @@ export function FilmInbox({
   canApproveSlack,
   slackConfigured,
   loadError,
+  youtubePaused = null,
   parentLinks,
   teamPlaylists,
   rosters,
@@ -310,6 +313,12 @@ export function FilmInbox({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
+      {youtubePaused && uploads.some((u) => u.youtube_status === "queued" || u.youtube_status === "uploading") && (
+        <div role="alert" className={styles.paused}>
+          <strong>YouTube uploads are paused.</strong> {youtubePaused}
+        </div>
+      )}
+
       {teams.length > 0 && (
         <div role="tablist" aria-label="Team" className={styles.teamTabs} data-tour="film-team-filter">
           {[["all", { label: "Every team", count: rows.length }] as const, ...teams].map(([slug, t]) => (

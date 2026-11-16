@@ -78,6 +78,7 @@ export async function saveYoutubeConnection(input: {
     .select(COLS)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't save the YouTube connection.");
+  await recordYoutubeWorkerHealth(null);
   return publicView(data as Row);
 }
 
@@ -119,4 +120,44 @@ export async function saveYoutubePrefs(input: {
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't save YouTube settings.");
   return publicView(data as Row);
+}
+
+/**
+ * Why the upload worker can't reach YouTube right now (null when it can).
+ * Read on its own so a missing column never breaks the worker or Settings.
+ */
+export async function getYoutubeWorkerError(): Promise<{ error: string; at: string | null } | null> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("game_film_youtube")
+      .select("refresh_token_enc, worker_error, worker_error_at")
+      .eq("id", true)
+      .maybeSingle();
+    if (error || !data) return null;
+    const row = data as { refresh_token_enc: string | null; worker_error: string | null; worker_error_at: string | null };
+    if (!row.worker_error) return null;
+    return { error: row.worker_error, at: row.worker_error_at };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Records the worker's last check. `error` null clears it. Writes only when
+ * the message changes, so a healthy every-minute tick doesn't touch the row.
+ */
+export async function recordYoutubeWorkerHealth(error: string | null, now = new Date()): Promise<void> {
+  try {
+    const current = await getYoutubeWorkerError();
+    if ((current?.error ?? null) === error) return;
+    const admin = createAdminClient();
+    const stamp = now.toISOString();
+    const patch = error
+      ? { worker_error: error, worker_error_at: stamp }
+      : { worker_error: null, worker_error_at: null, worker_ok_at: stamp };
+    await admin.from("game_film_youtube").update(patch).eq("id", true);
+  } catch {
+    // Health is advisory; never block the upload worker on it.
+  }
 }

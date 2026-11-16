@@ -18,6 +18,10 @@ const OUTCOMES: Record<string, string> = {
   preview: "Can't connect YouTube while previewing as someone else.",
 };
 
+function connectYoutube() {
+  window.location.href = "/api/film/youtube/connect?next=" + encodeURIComponent("/portal/settings?tab=film");
+}
+
 export function FilmYoutubeCard() {
   const [configured, setConfigured] = useState(false);
   const [connection, setConnection] = useState<YoutubeConnection | null>(null);
@@ -25,6 +29,7 @@ export function FilmYoutubeCard() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [workerError, setWorkerError] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -38,6 +43,7 @@ export function FilmYoutubeCard() {
       }
       setConfigured(res.configured);
       setConnection(res.connection);
+      setWorkerError(res.workerError);
       setLoading(false);
     });
   }, []);
@@ -100,6 +106,11 @@ export function FilmYoutubeCard() {
           <div style={{ fontSize: 14, fontWeight: 700 }}>
             Connected{connection.channelTitle ? ` as ${connection.channelTitle}` : ""}.
           </div>
+          {workerError && (
+            <p role="alert" style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--gw-error)" }}>
+              Uploads are paused: {workerError}
+            </p>
+          )}
           <Select
             label="Privacy"
             value={connection.privacyStatus}
@@ -120,7 +131,15 @@ export function FilmYoutubeCard() {
             />
             Made for kids
           </label>
-          <div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Pill
+              size="sm"
+              variant={workerError ? "accent" : "ghost"}
+              disabled={busy}
+              onClick={connectYoutube}
+            >
+              Connect again
+            </Pill>
             <Pill size="sm" variant="ghost" disabled={busy} onClick={() => void disconnect()}>
               Disconnect YouTube
             </Pill>
@@ -132,10 +151,7 @@ export function FilmYoutubeCard() {
             size="sm"
             variant="accent"
             disabled={busy}
-            onClick={() => {
-              window.location.href =
-                "/api/film/youtube/connect?next=" + encodeURIComponent("/portal/settings?tab=film");
-            }}
+            onClick={connectYoutube}
           >
             Connect YouTube
           </Pill>

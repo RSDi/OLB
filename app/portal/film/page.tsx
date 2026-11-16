@@ -11,6 +11,7 @@ import { listGameLineupsByKey, listTeamRosters } from "../../../lib/film/lineups
 import type { FilmRosterPlayer } from "../../../lib/film/lineups";
 import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob } from "../../../lib/film/types";
 import { listFilmMarkers } from "../../../lib/film/markers";
+import { getYoutubeWorkerError } from "../../../lib/film/youtube-settings";
 import { parseTimecode, type FilmMarker } from "../../../lib/film/player-logic";
 import { FilmInbox } from "./FilmInbox";
 
@@ -97,6 +98,8 @@ export default async function FilmInboxPage({
   } catch {
     markers = {};
   }
+  const youtubePaused = (await getYoutubeWorkerError())?.error ?? null;
+
   const momentId = typeof params.v === "string" ? params.v : "";
   const initialMoment =
     momentId && uploads.some((u) => u.id === momentId)
@@ -114,6 +117,7 @@ export default async function FilmInboxPage({
       canApproveSlack={viewer.canApproveFilmSlack}
       slackConfigured={slackBotConfigured()}
       loadError={loadError}
+      youtubePaused={youtubePaused}
       parentLinks={parentLinks}
       teamPlaylists={teamPlaylists}
       rosters={rosters}
