@@ -413,7 +413,7 @@ Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdr
     preview: true,
     routes: ["/portal/directory/uniforms"],
     keywords: ["uniforms", "jersey", "jerseys", "shorts", "grays", "warm-ups", "sizes", "try-on", "order", "vendor", "order sheet"],
-    body: `For whoever runs uniforms (the **Uniforms** permission) and people with **Registrations**. Open it from the Onboarding tab or Settings → Uniforms.
+    body: `For whoever runs uniforms (the **Uniforms** permission) and people with **Registrations**. Open it with the **Uniforms** button at the top of the Directory, next to **Registrations**. It's also linked from the Onboarding tab and Settings → Uniforms.
 
 - The table counts how many of each size of each item families picked on the registration form.
 - **Players** lists everyone on the roster with their sizes. Change one at try-on and it's marked confirmed ✓. A red box means they need a size and don't have one; **Missing a size** shows just those players.

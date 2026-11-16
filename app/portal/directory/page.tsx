@@ -7,6 +7,8 @@ import { countPlayerNotes } from "../../../lib/teams/player-note-data";
 import { createClient } from "../../../lib/supabase/server";
 import { loadDirectoryHotelStays, loadHotelStayPlayers } from "../../../lib/hs-hotel-stays/data";
 import { loadEligibilityContext } from "../../../lib/teams/eligibility-data";
+import { getViewer } from "../../../lib/auth/viewer";
+import { workflowEnabled } from "../../../lib/onboarding/board-data";
 
 export default async function DirectoryPage({
   searchParams,
@@ -39,6 +41,10 @@ export default async function DirectoryPage({
   // Notes on players (0124), for a chip on their card: the board and the
   // Registrations grant.
   const noteCounts = viewer.isStaff || viewer.canManageRegistrations ? await countPlayerNotes() : null;
+  // The Uniforms page (0130): the same people it opens for.
+  const full = await getViewer();
+  const uniformsOk = !!full && (full.isSuperAdmin || full.canManageRegistrations || full.permissions.includes("uniforms"));
+  const showUniforms = uniformsOk && (full!.seesFullUi || (await workflowEnabled()));
   // Birthdates and eligibility are board-only (members.role admin / super_admin).
   const eligibility = viewer.isStaff ? await loadEligibilityContext() : null;
 
@@ -65,6 +71,7 @@ export default async function DirectoryPage({
       canEmail={viewer.canEmailFamilies}
       canSlack={viewer.canSlackDm}
       registrations={registrations}
+      showUniforms={showUniforms}
       noteCounts={noteCounts}
     />
   );

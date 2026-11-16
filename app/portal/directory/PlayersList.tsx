@@ -97,6 +97,7 @@ export function PlayersList({
   canEmail,
   canSlack,
   registrations,
+  showUniforms = false,
   noteCounts,
 }: {
   players: DirectoryPlayer[];
@@ -126,6 +127,8 @@ export function PlayersList({
   canSlack: boolean;
   // New, waitlisted and removed registrations; null without the grant.
   registrations: { waiting: number; waitlist: number; removed: number } | null;
+  // The Uniforms page (0130) link: for whoever that page opens for.
+  showUniforms?: boolean;
   // Notes on each player (0124), for the board and the Registrations grant;
   // null for everyone else.
   noteCounts: Record<string, number> | null;
@@ -357,6 +360,7 @@ export function PlayersList({
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             {registrations && <RegistrationsLink counts={registrations} />}
+            {showUniforms && <UniformsLink />}
             {canViewAges && (
               <div
                 role="group"
@@ -824,6 +828,35 @@ function RegistrationsLink({ counts }: { counts: { waiting: number; waitlist: nu
     >
       Registrations
       {detail && <span style={{ fontWeight: 600, color: "var(--gw-fg-muted)" }}>{detail}</span>}
+      <Icons.ChevronRight width={12} height={12} />
+    </Link>
+  );
+}
+
+// The Uniforms page: sizes, the vendor order sheet and charges.
+function UniformsLink() {
+  return (
+    <Link
+      href="/portal/directory/uniforms"
+      prefetch={false}
+      data-tour="directory-uniforms-link"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        height: 38,
+        padding: "0 14px",
+        borderRadius: 10,
+        border: "1px solid var(--gw-border)",
+        background: "var(--gw-bg-elev)",
+        color: "var(--gw-fg)",
+        fontSize: 12,
+        fontWeight: 700,
+        textDecoration: "none",
+        whiteSpace: "nowrap",
+      }}
+    >
+      Uniforms
       <Icons.ChevronRight width={12} height={12} />
     </Link>
   );
