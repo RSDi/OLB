@@ -350,14 +350,14 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "Videos families uploaded from their phones, grouped by team and game. Each one goes to YouTube on its own. You only step in when a card needs you.",
       },
       {
+        target: "film-team-filter",
+        title: "Team tabs",
+        body: "The tabs at the top pick a team. **Every team** shows all of them; the number is how many videos each has.",
+      },
+      {
         target: "film-filter",
         title: "Needs attention",
         body: "**All** is everything. **Needs attention** shows only the videos that need someone: YouTube failed or stalled, not in the playlist, never sent, or missing the date, opponent, or score.",
-      },
-      {
-        target: "film-team-filter",
-        title: "By team",
-        body: "When more than one team has film, tap a team name to see only that team's games.",
       },
       {
         target: "film-steps",

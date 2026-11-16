@@ -180,12 +180,19 @@ export function FilmInbox({
   const grouped = useMemo(() => groupUploadsByTeamAndGame(shown, labels), [shown, labels]);
 
   const teams = useMemo(() => {
-    const seen = new Map<string, string>();
+    const seen = new Map<string, { label: string; count: number }>();
+    for (const t of parentLinks) seen.set(t.slug, { label: t.label, count: 0 });
     for (const u of rows) {
-      if (!seen.has(u.team)) seen.set(u.team, labels[u.team] || u.team);
+      const entry = seen.get(u.team) ?? { label: labels[u.team] || u.team, count: 0 };
+      entry.count += 1;
+      seen.set(u.team, entry);
     }
-    return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [rows, labels]);
+    return [...seen.entries()].sort((a, b) => a[1].label.localeCompare(b[1].label));
+  }, [rows, labels, parentLinks]);
+
+  function pickTeam(slug: string) {
+    setTeamFilter(slug);
+  }
 
   async function run(id: string, fn: (id: string) => Promise<{ error?: string }>) {
     setBusy(id);
@@ -244,6 +251,23 @@ export function FilmInbox({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
+      {teams.length > 0 && (
+        <div role="tablist" aria-label="Team" className={styles.teamTabs} data-tour="film-team-filter">
+          {[["all", { label: "Every team", count: rows.length }] as const, ...teams].map(([slug, t]) => (
+            <button
+              key={slug}
+              type="button"
+              role="tab"
+              aria-selected={teamFilter === slug}
+              className={styles.teamTab}
+              onClick={() => pickTeam(slug)}
+            >
+              {t.label} <span className={styles.teamCount}>{t.count}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <p style={{ margin: 0, fontSize: 14, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
         Videos families upload from their phones, listed by team and game. Each one goes{" "}
         <strong>Uploaded → On YouTube → Ready → In playlist</strong>{" "}
@@ -364,24 +388,6 @@ export function FilmInbox({
         </span>
       </div>
 
-      {teams.length > 1 && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} data-tour="film-team-filter">
-          <Pill size="sm" variant={teamFilter === "all" ? "dark" : "light"} onClick={() => setTeamFilter("all")}>
-            Every team
-          </Pill>
-          {teams.map(([slug, label]) => (
-            <Pill
-              key={slug}
-              size="sm"
-              variant={teamFilter === slug ? "dark" : "light"}
-              onClick={() => setTeamFilter(slug)}
-            >
-              {label}
-            </Pill>
-          ))}
-        </div>
-      )}
-
       {(loadError || error) && (
         <p style={{ margin: 0, color: "var(--gw-error)", fontWeight: 600, fontSize: 13 }}>{loadError || error}</p>
       )}
@@ -398,7 +404,7 @@ export function FilmInbox({
               ? "When a family uploads from a team page, it shows up here."
               : filter === "attention"
                 ? "Nothing needs you right now."
-                : "Try All, or another team."
+                : "Nothing for this team yet. Try All, or another team."
           }
         />
       ) : (
