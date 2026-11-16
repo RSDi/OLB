@@ -29,6 +29,7 @@ function upload(partial: Partial<FilmUpload> & Pick<FilmUpload, "id" | "team" | 
     status: "holding",
     created_at: "2026-10-17T00:00:00Z",
     moved_at: null,
+    file_deleted_at: null,
     game_date: "2026-10-17",
     opponent: "Elkhorn",
     our_score: 45,

@@ -15,6 +15,12 @@ export const FILM_SESSION_MAX_AGE_S = 7 * 24 * 60 * 60;
 
 export const SIGNED_DOWNLOAD_TTL_S = 6 * 60 * 60;
 export const MOVED_RETENTION_DAYS = 30;
+// The phone's original is deleted this many days after YouTube reports Ready.
+export const ORIGINAL_KEEP_DAYS = 30;
+// Uploads that never went to YouTube are queued by the cron after this long
+// (gives the phone and /film/complete first go), up to this many days back.
+export const UNSENT_SWEEP_AFTER_MS = 6 * 60 * 60 * 1000;
+export const UNSENT_SWEEP_MAX_DAYS = 30;
 export const SLACK_DRAFT_RETAIN_DAYS = 30;
 
 export type FilmStatus = "holding" | "moved";
@@ -41,6 +47,8 @@ export interface FilmUpload {
   status: FilmStatus;
   created_at: string;
   moved_at: string | null;
+  // Set when the original file was deleted after YouTube had it.
+  file_deleted_at: string | null;
   game_date: string | null;
   opponent: string | null;
   our_score: number | null;

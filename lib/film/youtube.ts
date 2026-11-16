@@ -24,6 +24,7 @@ import {
   latestYoutubeEventKind,
   listPlaylistWork,
   listYoutubeJobs,
+  listUnsentUploads,
   listYoutubeWork,
   setFilmPlaylistStatus,
   setFilmYoutubeStatus,
@@ -69,6 +70,28 @@ export async function enqueueYoutubeIfConnected(uploadId: string): Promise<{ que
   await upsertYoutubeJob(uploadId, { upload_uri: null, bytes_sent: 0, bytes_total: row.size_bytes });
   await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
   return { queued: true };
+}
+
+/**
+ * Queue recent uploads that never went to YouTube (the phone's finish call
+ * was lost, or YouTube wasn't connected yet). Called from the cron so nobody
+ * has to tap Send to YouTube. A file that never finished landing fails with
+ * the "isn't in storage" message, which is what the coach needs to see.
+ */
+export async function enqueueUnsentUploads(now = new Date()): Promise<number> {
+  if (!youtubeOAuthConfigured()) return 0;
+  const conn = await getYoutubeConnectionSecret().catch(() => null);
+  if (!conn?.refreshToken) return 0;
+  const rows = await listUnsentUploads(now);
+  let queued = 0;
+  for (const row of rows) {
+    const result = await enqueueYoutubeIfConnected(row.id).catch(() => ({ queued: false }));
+    if (result.queued) {
+      queued += 1;
+      await noteYoutubeEvent(row.id, "retry", "Sent to YouTube automatically", null, 0, row.size_bytes);
+    }
+  }
+  return queued;
 }
 
 export async function retryYoutubeUpload(uploadId: string): Promise<void> {

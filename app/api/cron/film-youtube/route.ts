@@ -1,11 +1,12 @@
 // Vercel Cron: resume YouTube uploads for game film. Every minute. Auth is
 // Bearer CRON_SECRET. maxDuration 300s; the worker stops around 240s so a
 // 20 GB file continues on the next tick.
+// Before the tick, recent uploads that never went to YouTube are queued.
 // After the upload tick, a light videos.list part=status pass copies each
 // video's real privacy and processing onto the film row. Read-only.
 
 import { NextResponse } from "next/server";
-import { processYoutubeQueue, YOUTUBE_TICK_BUDGET_MS } from "../../../../lib/film/youtube";
+import { enqueueUnsentUploads, processYoutubeQueue, YOUTUBE_TICK_BUDGET_MS } from "../../../../lib/film/youtube";
 import { syncYoutubeVideoStatus, YOUTUBE_STATUS_CRON_LIMIT } from "../../../../lib/film/youtube-status";
 
 export const runtime = "nodejs";
@@ -26,6 +27,10 @@ export async function GET(request: Request) {
   }
 
   try {
+    const swept = await enqueueUnsentUploads().catch((err) => {
+      console.error("film-youtube sweep:", err instanceof Error ? err.message : err);
+      return 0;
+    });
     const result = await processYoutubeQueue({ budgetMs: YOUTUBE_TICK_BUDGET_MS });
     let status;
     try {
@@ -37,7 +42,7 @@ export async function GET(request: Request) {
         skipped: err instanceof Error ? err.message : "status sync failed",
       };
     }
-    return NextResponse.json({ timestamp: new Date().toISOString(), ...result, status });
+    return NextResponse.json({ timestamp: new Date().toISOString(), ...result, swept, status });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "youtube push failed" },
