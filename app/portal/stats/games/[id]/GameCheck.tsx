@@ -124,7 +124,7 @@ export function GameCheck({ view }: { view: GameView }) {
           </label>
           <label className={s.field}>
             Opponent
-            <input value={opponent} onChange={(e) => setOpponent(e.target.value)} placeholder="Not on our page — type it" maxLength={80} />
+            <input value={opponent} onChange={(e) => setOpponent(e.target.value)} placeholder="If you know it (not on our page)" maxLength={80} />
           </label>
           <label className={s.field}>
             Their final score

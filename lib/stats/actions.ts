@@ -219,7 +219,6 @@ export async function saveGame(gameId: string, edit: GameEdit, finish: boolean):
   const date = /^\d{4}-\d{2}-\d{2}$/.test(edit.game_date ?? "") ? edit.game_date : null;
   if (!date) return { error: "Pick the game's date." };
   const opponent = clean(edit.opponent, 80);
-  if (finish && !opponent) return { error: "Add who you played before saving." };
   const db = await createClient();
   const { data: g } = await db.from("stats_games").select("team_id, quarter_scores").eq("id", gameId).maybeSingle();
   const game = g as { team_id: string | null; quarter_scores: BookScores } | null;
