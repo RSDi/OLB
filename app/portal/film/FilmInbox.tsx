@@ -6,8 +6,6 @@ import { EmptyState, Pill } from "../../components/ui";
 import { Icons } from "../../components/icons";
 import {
   deleteFilmUpload,
-  markFilmMoved,
-  restoreFilmHolding,
   signedFilmDownload,
   updateFilmGameFields,
   updateFilmPlaylistOverride,
@@ -31,7 +29,8 @@ import {
   youtubePlaylistUrl,
   youtubeWatchUrl,
 } from "../../../lib/film/youtube-meta";
-import type { FilmSlackDraftView, FilmStatus, FilmUpload, YoutubeEvent, YoutubeJob, YoutubePlaylistStatus } from "../../../lib/film/types";
+import { filmFlowView } from "../../../lib/film/flow";
+import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob, YoutubePlaylistStatus } from "../../../lib/film/types";
 import { youtubeDisplayStatus } from "../../../lib/film/youtube-progress";
 import { YoutubeTransfer } from "./YoutubeTransfer";
 import styles from "./inbox.module.css";
@@ -52,7 +51,7 @@ interface Props {
   lineups: Record<string, string[]>;
 }
 
-type Filter = "all" | FilmStatus;
+type Filter = "all" | "attention";
 
 function formatBytes(n: number | null): string {
   if (n == null) return "—";
@@ -146,11 +145,37 @@ export function FilmInbox({
     [uploads, patches]
   );
 
+  const attention = useMemo(() => {
+    const ids = new Set<string>();
+    for (const u of rows) {
+      const job = jobs[u.id];
+      const display = youtubeDisplayStatus({
+        youtubeStatus: u.youtube_status,
+        lastProgressAt: job?.last_progress_at,
+        youtubeUpdatedAt: u.youtube_updated_at,
+      });
+      const view = filmFlowView({
+        row: u,
+        display,
+        playlistId: (u.youtube_playlist_id || teamPlaylists[u.team] || "").trim() || null,
+        missingDetails:
+          missingFilmGameLabels({
+            gameDate: u.game_date,
+            opponent: u.opponent,
+            ourScore: u.our_score,
+            theirScore: u.their_score,
+          }).length > 0,
+      });
+      if (view.needsAttention) ids.add(u.id);
+    }
+    return ids;
+  }, [rows, jobs, teamPlaylists]);
+
   const shown = useMemo(() => {
-    let list = filter === "all" ? rows : rows.filter((u) => u.status === filter);
+    let list = filter === "all" ? rows : rows.filter((u) => attention.has(u.id));
     if (teamFilter !== "all") list = list.filter((u) => u.team === teamFilter);
     return list;
-  }, [filter, teamFilter, rows]);
+  }, [filter, teamFilter, rows, attention]);
 
   const grouped = useMemo(() => groupUploadsByTeamAndGame(shown, labels), [shown, labels]);
 
@@ -220,16 +245,15 @@ export function FilmInbox({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
       <p style={{ margin: 0, fontSize: 14, color: "var(--gw-fg-muted)", fontWeight: 500, lineHeight: 1.5 }}>
-        Videos families upload from their phones, listed by team and game. <strong>Play</strong> watches
-        them here. After YouTube is connected in <strong>Settings → Film</strong>, new uploads go up
-        unlisted in the background, then into that team&apos;s playlist if one is set. A playlist miss
-        does not mark the YouTube upload failed. Each YouTube card shows the privacy YouTube actually
-        has — <strong>Public</strong>, <strong>Unlisted</strong>, or <strong>Private</strong> — and
-        whether YouTube is still processing it. That can differ from the default in Settings (Google
-        sometimes forces Private). <strong>Refresh YouTube status</strong> reads it from YouTube; you don&apos;t need Studio. Slack posts wait here for <strong>Approve</strong> — anyone with{" "}
-        <strong>Teams &amp; volunteers</strong> can tap it. Nothing goes out on its own. Discarded
-        posts can be restored for 30 days. Files marked <strong>Moved</strong> are deleted after 30
-        days. The board{" "}
+        Videos families upload from their phones, listed by team and game. Each one goes{" "}
+        <strong>Uploaded → On YouTube → Ready → In playlist</strong>{" "}
+        on its own; the line on each card shows where it is. You only step in when a card says{" "}
+        <strong>Needs attention</strong>. We keep the original file until YouTube has had it for 30
+        days, then delete it — the video stays on YouTube.{" "}
+        <strong>Play</strong> watches a file here before it&apos;s on YouTube.{" "}
+        <strong>Refresh YouTube status</strong> reads privacy and processing from YouTube.{" "}
+        Slack posts wait here for <strong>Approve</strong> — anyone with{" "}
+        <strong>Teams &amp; volunteers</strong> can tap it. The board{" "}
         <a href="/portal/film/status" className={styles.statusLink} data-tour="film-status-link">
           Film status
         </a>{" "}
@@ -324,9 +348,9 @@ export function FilmInbox({
       )}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }} data-tour="film-filter">
-        {(["all", "holding", "moved"] as Filter[]).map((key) => (
+        {(["all", "attention"] as Filter[]).map((key) => (
           <Pill key={key} size="sm" variant={filter === key ? "dark" : "light"} onClick={() => setFilter(key)}>
-            {key === "all" ? "All" : key === "holding" ? "Holding" : "Moved"}
+            {key === "all" ? "All" : `Needs attention (${attention.size})`}
           </Pill>
         ))}
         <span data-tour="film-youtube-status">
@@ -372,7 +396,9 @@ export function FilmInbox({
           body={
             uploads.length === 0
               ? "When a family uploads from a team page, it shows up here."
-              : "Try All, or another team."
+              : filter === "attention"
+                ? "Nothing needs you right now."
+                : "Try All, or another team."
           }
         />
       ) : (
@@ -406,8 +432,6 @@ export function FilmInbox({
                       onDownload={() => void download(row.id)}
                       onRetryYoutube={() => void run(row.id, retryFilmYoutube)}
                       onRetryPlaylist={() => void run(row.id, retryFilmPlaylist)}
-                      onMoved={() => void run(row.id, markFilmMoved)}
-                      onHolding={() => void run(row.id, restoreFilmHolding)}
                       onPatched={(patch) => setPatches((prev) => ({ ...prev, [row.id]: patch }))}
                       onDelete={() => {
                         if (confirm(`Delete ${row.filename}? This cannot be undone.`)) {
@@ -440,8 +464,6 @@ function FilmRow({
   onDownload,
   onRetryYoutube,
   onRetryPlaylist,
-  onMoved,
-  onHolding,
   onDelete,
   onPatched,
 }: {
@@ -458,12 +480,11 @@ function FilmRow({
   onDownload: () => void;
   onRetryYoutube: () => void;
   onRetryPlaylist: () => void;
-  onMoved: () => void;
-  onHolding: () => void;
   onDelete: () => void;
   onPatched: (patch: GamePatch) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [more, setMore] = useState(false);
   const display = youtubeDisplayStatus({
     youtubeStatus: row.youtube_status,
     lastProgressAt: job?.last_progress_at,
@@ -496,6 +517,16 @@ function FilmRow({
     !!effectivePlaylist &&
     row.youtube_playlist_status !== "done" &&
     row.youtube_playlist_status !== "queued";
+  const flow = filmFlowView({ row, display, playlistId: effectivePlaylist, missingDetails: missing.length > 0 });
+  const onYoutube = row.youtube_status === "done" && !!row.youtube_video_id;
+  const badgeClass =
+    flow.badge.tone === "done"
+      ? "rsd-chip-success"
+      : flow.badge.tone === "problem"
+        ? "rsd-chip-error"
+        : flow.badge.tone === "active"
+          ? "rsd-chip-accent"
+          : "rsd-chip-mute";
   return (
     <div
       data-tour="film-row"
@@ -514,6 +545,19 @@ function FilmRow({
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
             {row.uploader_name} · {formatBytes(row.size_bytes)} · {formatWhen(row.created_at)}
           </div>
+          <ol className={styles.steps} data-tour="film-steps" aria-label="Progress">
+            {flow.steps.map((step) => (
+              <li key={step.key} className={styles.step} data-state={step.state}>
+                <span className={styles.stepDot} aria-hidden="true">
+                  {step.state === "done" ? "✓" : step.state === "problem" ? "!" : ""}
+                </span>
+                {step.label}
+                <span className={styles.srOnly}>
+                  {step.state === "done" ? " (done)" : step.state === "active" ? " (in progress)" : step.state === "problem" ? " (needs attention)" : " (not yet)"}
+                </span>
+              </li>
+            ))}
+          </ol>
           {missing.length > 0 && !editing && (
             <p className={styles.missing}>Missing: {missing.join(", ")}</p>
           )}
@@ -551,21 +595,10 @@ function FilmRow({
               {row.youtube_synced_at ? ` · Checked ${formatWhen(row.youtube_synced_at)}` : ""}
             </div>
           )}
+          <p className={styles.originalNote}>{flow.originalNote}</p>
         </div>
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 800,
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-            alignSelf: "flex-start",
-            padding: "4px 8px",
-            borderRadius: 100,
-            background: row.status === "moved" ? "var(--gw-success-bg)" : "var(--gw-bg-elev)",
-            color: row.status === "moved" ? "var(--gw-success)" : "var(--gw-fg-muted)",
-          }}
-        >
-          {row.status === "moved" ? "Moved" : "Holding"}
+        <span className={`rsd-chip ${badgeClass}`} style={{ alignSelf: "flex-start" }} data-tour="film-badge">
+          {flow.badge.text}
         </span>
       </div>
       {editing ? (
@@ -581,26 +614,25 @@ function FilmRow({
           }}
         />
       ) : (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <span data-tour="film-play">
-            <Pill size="sm" variant="accent" onClick={onPlay} disabled={busy}>
-              Play
-            </Pill>
-          </span>
-          <span data-tour="film-download">
-            <Pill size="sm" onClick={onDownload} disabled={busy}>
-              Download
-            </Pill>
-          </span>
-          {row.youtube_status === "done" && row.youtube_video_id && (
-            <Pill
-              size="sm"
-              onClick={() => window.open(youtubeWatchUrl(row.youtube_video_id!), "_blank", "noopener,noreferrer")}
-            >
-              YouTube
-            </Pill>
-          )}
-          {canManage && (display === "failed" || display === "stalled" || !row.youtube_status) && (
+        <div className={styles.actions}>
+          {onYoutube ? (
+            <span data-tour="film-play">
+              <Pill
+                size="sm"
+                variant="accent"
+                onClick={() => window.open(youtubeWatchUrl(row.youtube_video_id!), "_blank", "noopener,noreferrer")}
+              >
+                Watch on YouTube
+              </Pill>
+            </span>
+          ) : !flow.originalGone ? (
+            <span data-tour="film-play">
+              <Pill size="sm" variant="accent" onClick={onPlay} disabled={busy}>
+                Play
+              </Pill>
+            </span>
+          ) : null}
+          {canManage && (display === "failed" || display === "stalled" || (!row.youtube_status && !flow.originalGone)) && (
             <span data-tour="film-youtube-retry">
               <Pill size="sm" onClick={onRetryYoutube} disabled={busy}>
                 {display === "failed" || display === "stalled" ? "Retry YouTube" : "Send to YouTube"}
@@ -621,24 +653,33 @@ function FilmRow({
               </Pill>
             </span>
           )}
-          {canManage && row.status === "holding" && (
-            <span data-tour="film-moved">
-              <Pill size="sm" onClick={onMoved} disabled={busy}>
-                Mark moved
-              </Pill>
-            </span>
-          )}
-          {canManage && row.status === "moved" && (
-            <Pill size="sm" onClick={onHolding} disabled={busy}>
-              Back to holding
+          <span data-tour="film-more">
+            <Pill size="sm" variant="ghost" onClick={() => setMore((v) => !v)}>
+              {more ? "Less" : "More"}
             </Pill>
-          )}
-          {canManage && (
-            <span data-tour="film-delete">
-              <Pill size="sm" variant="ghost" onClick={onDelete} disabled={busy}>
-                Delete
-              </Pill>
-            </span>
+          </span>
+          {more && (
+            <>
+              {onYoutube && !flow.originalGone && (
+                <Pill size="sm" onClick={onPlay} disabled={busy}>
+                  Play original
+                </Pill>
+              )}
+              {!flow.originalGone && (
+                <span data-tour="film-download">
+                  <Pill size="sm" onClick={onDownload} disabled={busy}>
+                    Download original
+                  </Pill>
+                </span>
+              )}
+              {canManage && (
+                <span data-tour="film-delete">
+                  <Pill size="sm" variant="ghost" onClick={onDelete} disabled={busy}>
+                    Delete
+                  </Pill>
+                </span>
+              )}
+            </>
           )}
         </div>
       )}

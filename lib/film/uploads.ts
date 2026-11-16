@@ -8,6 +8,9 @@ import { createAdminClient } from "../supabase/admin";
 import {
   GAME_FILM_BUCKET,
   MOVED_RETENTION_DAYS,
+  ORIGINAL_KEEP_DAYS,
+  UNSENT_SWEEP_AFTER_MS,
+  UNSENT_SWEEP_MAX_DAYS,
   type FilmStatus,
   type FilmUpload,
   type YoutubePlaylistStatus,
@@ -21,7 +24,7 @@ import {
 import { storageObjectName } from "./validation.ts";
 
 export const FILM_UPLOAD_COLUMNS =
-  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at";
+  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at";
 
 export function filmStoragePath(team: string, uploadId: string, filename: string): string {
   const now = new Date();
@@ -233,6 +236,52 @@ export async function listExpiredMovedUploads(now = new Date()): Promise<FilmUpl
     .eq("status", "moved")
     .not("moved_at", "is", null)
     .lt("moved_at", cutoff);
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload[]) ?? [];
+}
+
+/** Originals YouTube has had (and reported Ready) for ORIGINAL_KEEP_DAYS. */
+export async function listExpiredYoutubeOriginals(now = new Date()): Promise<FilmUpload[]> {
+  const cutoff = new Date(now.getTime() - ORIGINAL_KEEP_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .select(FILM_UPLOAD_COLUMNS)
+    .eq("youtube_status", "done")
+    .eq("youtube_processing", "processed")
+    .not("youtube_video_id", "is", null)
+    .is("file_deleted_at", null)
+    .neq("status", "moved")
+    .lt("youtube_updated_at", cutoff)
+    .limit(50);
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload[]) ?? [];
+}
+
+export async function markFilmOriginalDeleted(id: string, now = new Date()): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("game_film_uploads")
+    .update({ file_deleted_at: now.toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Uploads that never went to YouTube (recent ones only), oldest first. */
+export async function listUnsentUploads(now = new Date(), limit = 5): Promise<FilmUpload[]> {
+  const newest = new Date(now.getTime() - UNSENT_SWEEP_AFTER_MS).toISOString();
+  const oldest = new Date(now.getTime() - UNSENT_SWEEP_MAX_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .select(FILM_UPLOAD_COLUMNS)
+    .is("youtube_status", null)
+    .is("file_deleted_at", null)
+    .eq("status", "holding")
+    .lt("created_at", newest)
+    .gt("created_at", oldest)
+    .order("created_at", { ascending: true })
+    .limit(limit);
   if (error) throw new Error(error.message);
   return (data as FilmUpload[]) ?? [];
 }

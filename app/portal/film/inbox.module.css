@@ -262,3 +262,75 @@
 .statusLink {
   font-weight: 700;
 }
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gw-fg-muted);
+}
+
+.step + .step::before {
+  content: "→";
+  margin-right: 2px;
+  color: var(--gw-fg-muted);
+  font-weight: 600;
+}
+
+.stepDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  border: 1.5px solid var(--gw-border);
+  flex: none;
+}
+
+.step[data-state="done"] { color: var(--gw-fg); }
+.step[data-state="done"] .stepDot { background: var(--gw-success); border-color: var(--gw-success); color: #fff; }
+.step[data-state="active"] { color: var(--gw-fg); }
+.step[data-state="active"] .stepDot { border-color: var(--rsd-accent, var(--gw-fg)); border-style: dashed; }
+.step[data-state="problem"] { color: var(--gw-error); }
+.step[data-state="problem"] .stepDot { background: var(--gw-error); border-color: var(--gw-error); color: #fff; }
+
+.originalNote {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gw-fg-muted);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

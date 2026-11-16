@@ -347,12 +347,12 @@ export const GUIDE_TOURS: GuideTour[] = [
     steps: [
       {
         title: "Game film",
-        body: "Videos families uploaded from their phones, grouped by team and game. Play them here, or wait for YouTube if that's connected.",
+        body: "Videos families uploaded from their phones, grouped by team and game. Each one goes to YouTube on its own. You only step in when a card needs you.",
       },
       {
         target: "film-filter",
-        title: "Holding or moved",
-        body: "**All** is everything. **Holding** is still waiting to be copied off. **Moved** is already saved elsewhere.",
+        title: "Needs attention",
+        body: "**All** is everything. **Needs attention** shows only the videos that need someone: YouTube failed or stalled, not in the playlist, never sent, or missing the date, opponent, or score.",
       },
       {
         target: "film-team-filter",
@@ -360,14 +360,19 @@ export const GUIDE_TOURS: GuideTour[] = [
         body: "When more than one team has film, tap a team name to see only that team's games.",
       },
       {
-        target: "film-play",
-        title: "Play",
-        body: "**Play** watches the video on this page. It works on a phone. **Close player** puts the player away.",
+        target: "film-steps",
+        title: "Where it is",
+        body: "Each card shows **Uploaded → On YouTube → Ready → In playlist**. A check is done, a red **!** needs you. The badge on the right sums it up: **Done**, **In progress**, **Waiting**, **Not on YouTube**, or **Needs attention**.",
       },
       {
-        target: "film-download",
-        title: "Download",
-        body: "Opens a temporary link to the file. Save it before you mark it moved.",
+        target: "film-play",
+        title: "Watch",
+        body: "Once it's on YouTube, **Watch on YouTube** opens it. Before that, **Play** watches the phone's file on this page.",
+      },
+      {
+        target: "film-more",
+        title: "More",
+        body: "**More** shows **Play original**, **Download original**, and **Delete**. We keep the original file until YouTube has had the video for 30 days, then delete it. The video stays on YouTube.",
       },
       {
         target: "film-edit",
@@ -408,16 +413,6 @@ export const GUIDE_TOURS: GuideTour[] = [
         target: "film-lineup",
         title: "Who played",
         body: "On **Edit**, tick **Who played** for that game's lineup. Leave it empty and the YouTube players line uses the season roster.",
-      },
-      {
-        target: "film-moved",
-        title: "Mark moved",
-        body: "Once the video is on YouTube or a drive, tap **Mark moved**. Files marked moved are deleted after 30 days. You only see this with **Game film (manage)**.",
-      },
-      {
-        target: "film-delete",
-        title: "Delete",
-        body: "**Delete** removes the file for good. Same permission as **Mark moved**.",
       },
     ],
   },
