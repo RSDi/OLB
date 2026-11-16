@@ -4,6 +4,7 @@ import { SettingsLink } from "../../components/SettingsLink";
 import { Input, Pill, Textarea } from "../../components/ui";
 import { Icons } from "../../components/icons";
 import { ErrorBox } from "./TeamsSettingsTab";
+import { SlackChannelsCard } from "./SlackChannelsCard";
 import {
   loadAutomationsTab,
   resetWorkflowWords,
@@ -217,6 +218,8 @@ export function RegistrationAutomationsTab() {
           placeholder="Mondays in July, 6–7:30pm at …"
         />
       </div>
+
+      <SlackChannelsCard />
 
       <div
         data-tour="automations-save"

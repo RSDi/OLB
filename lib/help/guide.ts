@@ -401,7 +401,8 @@ Add a line on why if you like, and tap **Move to the waitlist** or **Mark withdr
 **The Onboarding tab** shows every family from **Waitlist** to **Offered**, **Registered**, **Ready** and **On a team**. On each family, **$ H S U** turn green as the fee is paid, the handbook is signed, they join Slack and their uniform sizes are in. **Gone quiet** lists anyone you haven't heard from in two weeks. On a phone, the stages show as buttons across the top, each with how many families are in it. Tap one to see those families. It opens on the first stage that has anyone in it.
 
 - **Waiting for you** lists emails set to **Ask me first**. Tap one to read it, **Change the words** if you like, then **Send** or **Skip**. **Send all** sends every one as it is.
-- **Announce teams** emails each family whose players are all on a team: their team, coach and practice times (when **Your team** is on).`,
+- **Announce teams** emails each family whose players are all on a team: their team, coach and practice times (when **Your team** is on).
+- **Slack channels** lists approved families whose parents aren't in all their Slack channels yet: their team's channel and the ones every family joins. **Add to Slack channels** adds that family now; **Add everyone** does every family. A parent who hasn't joined Slack yet is added once they do. If Slack says no (say, the club's Slack app isn't in a private channel), the reason shows in red under the parent. Pick the channels in **Settings → Registration Automations**.`,
   },
   {
     id: "uniforms-page",
@@ -1459,7 +1460,7 @@ The box stays hidden if the messages table isn't in the database yet.`,
     group: "Settings",
     audience: "registrations",
     preview: true,
-    keywords: ["registration automations", "workflow", "switch", "pause", "automatic emails", "ask me first", "off", "on", "approve automatically", "slack invite link", "handbook link", "parent meeting", "first practice", "clinic details", "offer days"],
+    keywords: ["registration automations", "workflow", "switch", "pause", "automatic emails", "ask me first", "off", "on", "approve automatically", "slack invite link", "slack channels", "lightning family", "photos videos", "team channel", "handbook link", "parent meeting", "first practice", "clinic details", "offer days"],
     body: `The switches for the registration workflow. Only people with the **Registrations** permission can open it.
 
 - **Use the new registration workflow** turns everything on or off. Off, registration works exactly the way it always has. What families already sent is kept either way.
@@ -1467,6 +1468,7 @@ The box stays hidden if the messages table isn't in the database yet.`,
 - Each automatic email has **Off**, **Ask me first** or **On**. Most start **Off**. **Assessment reminder** starts **Ask me first** (two days before, at 9 AM America/Chicago). The family confirmation for an assessment sign-up now goes out right away; change those words in **Settings → Registration Emails**, not here. **Assessment thanks** on this tab is leftover (it used to hold a draft). Leave it **Off** or **Ask me first** so a held one is not sent again. **Ask me first** holds each remaining email on the Onboarding tab until someone taps **Send**. Tap **Words** to change an email's subject and words, with a preview for a made-up family. **Reset to original** puts the original words back. Optional reminder words on **Settings → Assessments** override the reminder for that assessment only.
 - **Approve families who register from an offer link** and **Approve returning families** approve those registrations without waiting in **New**.
 - **Links and dates**: the handbook link (with one, families sign the handbook on the form), the Slack invite link and the day it runs out (you'll get a reminder a week before), how long offer links last, the parent meeting, the first practice and the clinic details. The emails and family checklists use them.
+- **Slack channels for new families**: once a parent of an approved family joins Slack, the club's Slack app adds them to their team's channel and to the channels listed under **Every family joins** (like #lightning-family and #photos-videos). To add a channel, open it in Slack, click its name, copy the link at the bottom and paste it in. Under **Each team's channel**, paste each team's channel; blank uses the team's channel from **Settings → Film**. A private channel needs the club's Slack app added to it first. **Add parents on their own** does it every morning at 9; off, it happens only when someone presses **Add to Slack channels** on the Onboarding tab. This card has its own **Save Slack channels** button.
 
 Tap **Save** when you're done.`,
   },
