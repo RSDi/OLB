@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "../../../../lib/supabase/client";
 import { readBook, startBook } from "../../../../lib/stats/actions";
 import { PHOTO_MAX_PX, SCOREBOOK_BUCKET, type StatsTeam } from "../../../../lib/stats/types";
@@ -47,6 +47,21 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
   const [items, setItems] = useState<Item[]>([]);
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const [over, setOver] = useState(false);
+
+  // A photo dropped anywhere on this page is taken as a photo to read, not
+  // opened by the browser (which would leave the page).
+  useEffect(() => {
+    const keep = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
+    };
+    window.addEventListener("dragover", keep);
+    window.addEventListener("drop", keep);
+    return () => {
+      window.removeEventListener("dragover", keep);
+      window.removeEventListener("drop", keep);
+    };
+  }, []);
 
   const set = (key: string, status: Status) => setItems((all) => all.map((it) => (it.key === key ? { ...it, status } : it)));
 
@@ -125,9 +140,22 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
         </select>
       </label>
 
-      <label className={s.drop}>
+      <label
+        className={s.drop}
+        style={over ? { borderColor: "var(--gw-fg)", background: "var(--gw-bg-elev)" } : undefined}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!busy) setOver(true);
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setOver(false);
+          if (!busy) add(e.dataTransfer.files);
+        }}
+      >
         <input ref={input} type="file" accept="image/*,.heic,.heif" multiple hidden onChange={(e) => add(e.target.files)} disabled={busy} />
-        <strong>Take a photo or choose photos</strong>
+        <strong>Drop photos here, or tap to take or choose them</strong>
         <span>Whole page in the frame, shot from straight above. A shadow over the right-hand columns is fine.</span>
       </label>
 
