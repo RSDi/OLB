@@ -142,9 +142,21 @@ On a computer with a wide screen, **Collapse** (under the logo) shrinks the side
 
 **Back to the top.** On a long page, once you scroll down a yellow round button with an up arrow appears in the bottom right corner. Tap it to jump back to the top of the page.
 
-**Help on every page.** Tap the **?** button in the top-right corner. **Help for this page** tells you about the page you're on, **Show me around** gives you a tour of it, **User Guide** opens this guide, and **Release Notes** (for the board and anyone who can open Settings) lists what's new. Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
+**Help on every page.** Tap the **?** button in the top-right corner. **Help for this page** tells you about the page you're on, **Show me around** gives you a tour of it, **User Guide** opens this guide, and **Release Notes** (for the board and anyone who can open Settings) lists what's new. Below those, **Ask for help** sends the board a question, a problem or an idea, and **My requests** shows their replies (see *Ask for help*). Some form fields also have a small **ⓘ** next to their label — hover or tap it for a quick tip.
 
 **Guided tours.** A tour walks you around step by step, pointing at each button and explaining what it does. Press **Next** and **Back** (or the ← and → keys) to move along, and **Skip tour** or **Esc** to stop. Start the welcome tour any time with **Take the tour** at the top of this guide (if your account is new, it starts by itself the first time you open the portal). For a tour of just one page, tap **?** on that page and then **Show me around** (in Settings, it's for the tab you're on), or press **Show me around** next to a section's title below.`,
+  },
+  {
+    id: "ask-for-help",
+    title: "Ask for help",
+    group: "Getting started",
+    audience: "everyone",
+    keywords: ["ask for help", "help", "question", "problem", "bug", "broken", "stuck", "idea", "suggestion", "feedback", "report", "screenshot", "record screen", "video", "my requests", "reply", "support", "contact"],
+    body: `Stuck, something not working, or have an idea? Tap **?** in the top-right corner and choose **Ask for help**. Tell us what you were trying to do and press **Send**. We see which page you were on, so you don't have to explain where.
+
+**Show us.** Press **Attach screenshot**, or paste a screenshot straight into the box. On a computer, **Record screen** records what you do (your browser asks what to share, and whether to use your microphone so you can talk us through it). Press **Stop** in the bar at the bottom when you're done. On a phone, use the phone's own screen recorder, then **Attach video**. You can also drag a picture or video onto the box. Screenshots can be up to 5 MB and videos up to 50 MB.
+
+**Getting an answer.** The board gets your message and replies in the portal. When they do, a dot shows on **?**. Tap **?**, then **My requests**, to read the reply and write back. Writing back on a closed request opens it again.`,
   },
   {
     id: "install-app",
@@ -1096,6 +1108,19 @@ Jeff's agent copies a thread in. There is no "upload an .eml" button on this pag
 - **View all exceptions →** lists channels whose sync failed, attachments that didn't download, and videos too big to store (with **Compress large files now**).
 - An attachment there that nothing can be done about (one Slack never offered a download for, say) can be cleared with **Dismiss**. It's counted under the list instead, and later syncs leave it alone.
 - In the Photo Album, **Make previews now** creates any missing thumbnails.`,
+  },
+  {
+    id: "help-requests",
+    title: "Help Requests",
+    group: "Help Requests",
+    audience: "staff",
+    routes: ["/portal/help-requests"],
+    keywords: ["help requests", "ask for help", "support", "questions", "problems", "bugs", "ideas", "reply", "close", "slack", "olb-help"],
+    body: `**Help Requests** in the sidebar lists everything people sent with **?** → **Ask for help**. Each new one is also posted in **#olb-help** on Slack, with an **Open in portal** button that brings you straight to it.
+
+**Open** shows what still needs handling; **Needs a reply** marks the ones where the person wrote last. Tap one to read it with its page, browser, and any screenshot or video. Write in the box and press **Send**, or **Reply and close** if that settles it. The reply shows under the person's **My requests**, with a dot on their **?**, and in the Slack thread.
+
+**Close** puts a request under **Closed** without replying; **Reopen** brings it back. If the person writes back on a closed request, it opens again by itself.`,
   },
   {
     id: "activity",

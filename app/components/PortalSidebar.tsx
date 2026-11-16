@@ -19,6 +19,8 @@ interface NavItem {
   exact?: boolean;
   staffOnly?: boolean;
   superAdminOnly?: boolean;
+  // The board only (isStaff), not everyone who can open Settings.
+  boardOnly?: boolean;
   // Any approved member (plus super admins) — hidden from pending/denied accounts.
   approvedOnly?: boolean;
   // Staged rollout: only shown to accounts in lib/auth/feature-preview.ts.
@@ -70,6 +72,8 @@ const NAV: NavItem[] = [
   { href: "/portal/settings", label: "Settings", icon: <Icons.Cog width={16} height={16}/>, approvedOnly: true, tour: "nav-settings" },
   // Archives: Slack, Email (board), Photo Album. Approved members.
   { href: "/portal/archives", label: "Archives", icon: <Icons.MessageSquare width={16} height={16}/>, approvedOnly: true, tour: "nav-slack-archive" },
+  // What people sent with ? → Ask for help, for the board to answer (0173).
+  { href: "/portal/help-requests", label: "Help Requests", icon: <Icons.LifeBuoy width={16} height={16}/>, boardOnly: true, tour: "nav-help-requests" },
   // How-to for everything above; content in lib/help/guide.ts. Pinned to the
   // bottom of the nav (BOTTOM_HREFS).
   { href: "/portal/guide", label: "User Guide", icon: <Icons.Info width={16} height={16}/>, tour: "nav-guide" },
@@ -176,7 +180,7 @@ export function PortalSidebar({
   const seesFinances = viewer?.seesFinances ?? false;
   const pairing = viewer?.canPairDevices ?? false;
   const film = viewer?.canViewFilm ?? false;
-  const visibleItems = navItems.map(item => (item.href === "/portal/payments" && seesFinances ? { ...item, label: "Finances" } : item)).filter(item => (!item.staffOnly || settings) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts) && (!item.pairingOnly || pairing) && (!item.filmOnly || film));
+  const visibleItems = navItems.map(item => (item.href === "/portal/payments" && seesFinances ? { ...item, label: "Finances" } : item)).filter(item => (!item.staffOnly || settings) && (!item.boardOnly || isStaff) && (!item.superAdminOnly || isSuperAdmin) && (!item.approvedOnly || isApproved) && (!item.previewOnly || fullUi) && (!item.paymentsOnly || seesPayments) && (!item.scheduleOnly || planner) && (!item.contactsOnly || contacts) && (!item.pairingOnly || pairing) && (!item.filmOnly || film));
   const mainItems = visibleItems.filter(item => !BOTTOM_HREFS.includes(item.href) && item.href !== SETTINGS_HREF);
   const settingsItem = visibleItems.find(item => item.href === SETTINGS_HREF);
   const bottomItems = BOTTOM_HREFS

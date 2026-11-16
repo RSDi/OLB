@@ -2,17 +2,23 @@
 // The top-bar "?" menu: one place for help on every page. "Help for this page"
 // opens the User Guide section for the page you're on (InfoPanel), "Show me
 // around" runs that page's guided tour, then the whole User Guide and Release
-// Notes. Rows a page has nothing for are left out. Mirrors Operations' ? menu.
+// Notes. Under a line, Ask for help (to the board, and #olb-help in Slack)
+// and My requests, with a dot on ? when the board has replied. Rows a page
+// has nothing for are left out. Mirrors Operations' ? menu.
 import { useEffect, useRef, useState } from "react";
 import { Icons } from "./icons";
+import { countMyUnreadHelp } from "../../lib/help-requests/actions";
+import { AskForHelpDialog } from "./help/AskForHelpDialog";
+import { MyHelpRequestsDialog } from "./help/MyHelpRequestsDialog";
 
-type Row = { key: string; label: string; Icon: typeof Icons.Info; onClick: () => void };
+type Row = { key: string; label: string; Icon: typeof Icons.Info; onClick: () => void; badge?: number };
 
 export function HelpMenu({
   onPageHelp,
   onPageTour,
   onUserGuide,
   onReleaseNotes,
+  canAsk = false,
 }: {
   // Absent when the page has no guide section / no tour / the viewer can't
   // open Release Notes yet; that row is then left out.
@@ -20,8 +26,14 @@ export function HelpMenu({
   onPageTour?: () => void;
   onUserGuide: () => void;
   onReleaseNotes?: () => void;
+  // Signed in: Ask for help and My requests.
+  canAsk?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [mine, setMine] = useState(false);
+  // Board replies on my requests I haven't opened (the dot on ?).
+  const [unread, setUnread] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,11 +52,30 @@ export function HelpMenu({
     };
   }, [open]);
 
+  // On load, and again when My requests closes. A failed count shows no dot.
+  useEffect(() => {
+    if (!canAsk || mine) return;
+    let live = true;
+    countMyUnreadHelp().then(
+      n => live && setUnread(n),
+      () => live && setUnread(0),
+    );
+    return () => {
+      live = false;
+    };
+  }, [canAsk, mine]);
+
   const rows: Row[] = [];
   if (onPageHelp) rows.push({ key: "page", label: "Help for this page", Icon: Icons.Info, onClick: onPageHelp });
   if (onPageTour) rows.push({ key: "tour", label: "Show me around", Icon: Icons.Sparkles, onClick: onPageTour });
   rows.push({ key: "guide", label: "User Guide", Icon: Icons.BookOpen, onClick: onUserGuide });
   if (onReleaseNotes) rows.push({ key: "notes", label: "Release Notes", Icon: Icons.FileText, onClick: onReleaseNotes });
+  const askRows: Row[] = canAsk
+    ? [
+        { key: "ask", label: "Ask for help", Icon: Icons.LifeBuoy, onClick: () => setAsking(true) },
+        { key: "mine", label: "My requests", Icon: Icons.Inbox, onClick: () => setMine(true), badge: unread },
+      ]
+    : [];
 
   return (
     <div ref={wrapRef} style={{ position: "relative", flexShrink: 0 }}>
@@ -52,7 +83,7 @@ export function HelpMenu({
         type="button"
         className="gw-press"
         data-tour="page-help"
-        aria-label="Help"
+        aria-label={unread > 0 ? `Help · ${unread} new ${unread === 1 ? "reply" : "replies"}` : "Help"}
         title="Help"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -67,9 +98,24 @@ export function HelpMenu({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          position: "relative",
         }}
       >
         <Icons.Help width={16} height={16} />
+        {unread > 0 && (
+          <span
+            style={{
+              position: "absolute",
+              top: 1,
+              right: 1,
+              width: 9,
+              height: 9,
+              borderRadius: 9,
+              background: "var(--rsd-accent)",
+              border: "2px solid var(--rsd-topbar)",
+            }}
+          />
+        )}
       </button>
       {open && (
         <div
@@ -88,7 +134,36 @@ export function HelpMenu({
             padding: 6,
           }}
         >
-          {rows.map(row => (
+          {rows.map(renderRow)}
+          {askRows.length > 0 && (
+            <div role="separator" style={{ height: 1, background: "var(--gw-border)", margin: "4px 6px" }} />
+          )}
+          {askRows.map(renderRow)}
+        </div>
+      )}
+      {asking && (
+        <AskForHelpDialog
+          onClose={() => setAsking(false)}
+          onShowMine={() => {
+            setAsking(false);
+            setMine(true);
+          }}
+        />
+      )}
+      {mine && (
+        <MyHelpRequestsDialog
+          onClose={() => setMine(false)}
+          onAsk={() => {
+            setMine(false);
+            setAsking(true);
+          }}
+        />
+      )}
+    </div>
+  );
+
+  function renderRow(row: Row) {
+    return (
             <button
               key={row.key}
               type="button"
@@ -119,10 +194,22 @@ export function HelpMenu({
                 <row.Icon width={16} height={16} />
               </span>
               {row.label}
+              {!!row.badge && (
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--rsd-accent-on)",
+                    background: "var(--rsd-accent)",
+                    borderRadius: 20,
+                    padding: "0 7px",
+                  }}
+                >
+                  {row.badge}
+                </span>
+              )}
             </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+    );
+  }
 }
