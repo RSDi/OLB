@@ -60,6 +60,9 @@ const NAV: NavItem[] = [
   // The coaches' plays, animated on a half court (0162). Approved members.
   { href: "/portal/team-playbook", label: "Team Playbook", icon: <Icons.Clipboard width={16} height={16}/>, approvedOnly: true },
   { href: "/portal/film", label: "Film", icon: <Icons.Video width={16} height={16}/>, filmOnly: true, tour: "nav-film" },
+  // Player stats read from photos of the scorebook (0172): coaches and the
+  // board. Preview.
+  { href: "/portal/stats", label: "Stats", icon: <Icons.Activity width={16} height={16}/>, previewOnly: true },
   // Every family's balance for the Treasurer (the Payments grant); a parent's
   // own balance once the Treasurer turns that on.
   { href: "/portal/payments", label: "Payments", icon: <Icons.Give width={16} height={16}/>, paymentsOnly: true, tour: "nav-payments" },

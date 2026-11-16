@@ -826,6 +826,31 @@ Share the team upload link and code with families, not this inbox. Super-admins 
 This page does not replace **Film**. Play, download, edit, Slack, and playlists stay on **Film**.`,
   },
   {
+    id: "stats",
+    title: "Stats from the scorebook",
+    group: "Stats",
+    audience: "coaches",
+    preview: true,
+    routes: ["/portal/stats"],
+    keywords: ["stats", "statistics", "scorebook", "score book", "box score", "points", "rebounds", "fouls", "free throws", "3-pointers", "season averages", "player stats", "photo", "upload scorebooks", "check the book"],
+    body: `Player stats read from photos of the scorebook. For coaches and the board.
+
+**Add a game**
+
+1. After the game, take a photo of our page of the book: the whole page, from straight above. A shadow over the right-hand columns is fine.
+2. Tap **Upload scorebooks**, pick the team, and choose the photos. One photo is one game, so you can add a whole day at once. Tap **Read the book** (or **Read 2 books**). Each one takes about a minute.
+3. Tap **Check it**. We fill in the date, every player's marks for each quarter, their rebounds (the R marks) and fouls. Players are matched to the team's roster by jersey number.
+4. **Marks vs the book** adds up the marks and compares them with the scores the book wrote down: each quarter, the final, each player's total and free throws. Anything that doesn't match is listed in yellow. Look at the photo and fix the marks: **2** and **3** are baskets, **1** a made free throw, **0** a missed one.
+5. Type the **Opponent** (it isn't on our page) and **Their final score** if you know it. Pick who any unmatched player is, or untick **Played** for someone who didn't play.
+6. Tap **Save stats**. The game now counts in the season. **Save for later** keeps it on the Stats page under **To check**.
+
+**What you see**
+
+- **Stats** shows one team at a time (the tabs across the top): games, points and rebounds a game, free throws, and **Season averages** for every player.
+- A game shows the **Box score**, **Who scored when** (points in each quarter), **Watch film** when Film has video of the same team, date and opponent, and the **Scorebook photo**. **Edit stats** changes it; **Take off the season** puts it back under **To check**; **Delete game** removes it and its photo.
+- A player's page shows their averages, **Points by quarter**, **Free throws by half**, every game, and **Through the years** across the teams they've played on.`,
+  },
+  {
     id: "payments",
     title: "Finances: recording what families pay",
     group: "Finances",
