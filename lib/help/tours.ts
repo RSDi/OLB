@@ -367,7 +367,7 @@ export const GUIDE_TOURS: GuideTour[] = [
       {
         target: "film-play",
         title: "Watch",
-        body: "Once it's on YouTube, **Watch on YouTube** opens it. Before that, **Play** watches the phone's file on this page.",
+        body: "**Watch** plays the video here from YouTube, with skips (−15, −5, +5, +15), frame steps, speeds from 0.25× to 2×, and **+ Mark** to name a moment you can jump back to. **Copy link to this moment** shares a spot. Before it's on YouTube, **Play** tries the phone's file.",
       },
       {
         target: "film-more",

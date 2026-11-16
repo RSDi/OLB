@@ -1,0 +1,220 @@
+.panel {
+  padding: 12px;
+  position: sticky;
+  top: 8px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.screen {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 64vh;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+.frame,
+.frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+
+.error,
+.note {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.error {
+  color: var(--gw-error);
+}
+
+.note {
+  color: var(--gw-fg-muted);
+  word-break: break-all;
+}
+
+.timeline {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--gw-border);
+  cursor: pointer;
+  overflow: visible;
+}
+
+.timelineFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 7px;
+  background: var(--rsd-accent-fill, var(--gw-fg));
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--gw-fg);
+  pointer-events: none;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.clock {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 800;
+  min-width: 92px;
+}
+
+.group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--gw-border);
+}
+
+.btn {
+  min-width: 40px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gw-fg);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--gw-bg-elev);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn[aria-pressed="true"],
+.primary {
+  background: var(--gw-bg-elev);
+  box-shadow: 0 0 0 1px var(--gw-border);
+}
+
+.markerBar,
+.markForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.markInput {
+  flex: 1 1 220px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--gw-border);
+  border-radius: 10px;
+  background: var(--gw-bg-elev);
+  color: var(--gw-fg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.markerItem {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--gw-border);
+  border-radius: 100px;
+  background: var(--gw-bg-elev);
+  overflow: hidden;
+}
+
+.markerItem[data-active] {
+  border-color: var(--gw-fg);
+}
+
+.markerJump,
+.markerRemove {
+  border: none;
+  background: transparent;
+  color: var(--gw-fg);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.markerJump {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.markerTime {
+  font-variant-numeric: tabular-nums;
+  color: var(--gw-fg-muted);
+}
+
+.markerRemove {
+  padding: 0 10px 0 4px;
+  color: var(--gw-fg-muted);
+}
+
+.title {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 14px;
+  font-weight: 800;
+  word-break: break-word;
+}
+
+.keys {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gw-fg-muted);
+}
+
+@media (max-width: 640px) {
+  .keys {
+    display: none;
+  }
+}

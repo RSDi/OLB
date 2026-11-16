@@ -10,11 +10,18 @@ import { listEnabledFilmTeams } from "../../../lib/film/teams";
 import { listGameLineupsByKey, listTeamRosters } from "../../../lib/film/lineups";
 import type { FilmRosterPlayer } from "../../../lib/film/lineups";
 import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob } from "../../../lib/film/types";
+import { listFilmMarkers } from "../../../lib/film/markers";
+import { parseTimecode, type FilmMarker } from "../../../lib/film/player-logic";
 import { FilmInbox } from "./FilmInbox";
 
 export const dynamic = "force-dynamic";
 
-export default async function FilmInboxPage() {
+export default async function FilmInboxPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ v?: string; t?: string }>;
+}) {
+  const params = await searchParams;
   const viewer = await getViewer();
   if (!viewer) redirect("/login?next=/portal/film");
   if (!viewer.canViewFilm) {
@@ -84,6 +91,18 @@ export default async function FilmInboxPage() {
     lineups = {};
   }
 
+  let markers: Record<string, FilmMarker[]> = {};
+  try {
+    markers = await listFilmMarkers(uploads.map((u) => u.id));
+  } catch {
+    markers = {};
+  }
+  const momentId = typeof params.v === "string" ? params.v : "";
+  const initialMoment =
+    momentId && uploads.some((u) => u.id === momentId)
+      ? { id: momentId, t: parseTimecode(params.t ?? "0") ?? 0 }
+      : null;
+
   return (
     <FilmInbox
       uploads={uploads}
@@ -99,6 +118,8 @@ export default async function FilmInboxPage() {
       teamPlaylists={teamPlaylists}
       rosters={rosters}
       lineups={lineups}
+      markers={markers}
+      initialMoment={initialMoment}
     />
   );
 }

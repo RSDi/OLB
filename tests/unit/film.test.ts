@@ -329,7 +329,9 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(client, /churchToday/);
   assert.match(client, /formatFilmGameLine/);
   assert.match(client, /gameDate: snapshot\.gameDate/);
-  const inbox = readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmInbox.tsx"), "utf8");
+  const inbox =
+    readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmInbox.tsx"), "utf8") +
+    readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmPlayer.tsx"), "utf8");
   assert.match(inbox, /formatFilmInboxHeading/);
   assert.match(inbox, />Play</);
   assert.match(inbox, /playsInline/);
