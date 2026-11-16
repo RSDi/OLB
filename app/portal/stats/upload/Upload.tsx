@@ -21,6 +21,9 @@ interface Item {
   preview: string;
   file: File;
   jpeg?: Blob;
+  // An iPhone photo this browser can't open: it goes up as it is and the
+  // server converts it.
+  raw?: boolean;
   status: Status;
 }
 
@@ -28,30 +31,14 @@ function looksHeic(file: File): boolean {
   return /hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name);
 }
 
-// iPhone photos (HEIC) are decoded by heic-to, loaded only when one is picked;
-// everything else by the browser.
-async function decode(file: File): Promise<ImageBitmap> {
-  if (looksHeic(file)) {
-    const { heicTo } = await import("heic-to");
-    return heicTo({ blob: file, type: "bitmap" });
-  }
-  try {
-    return await createImageBitmap(file, { imageOrientation: "from-image" });
-  } catch {
-    // Some HEIC files arrive with no type and an odd name.
-    const { heicTo, isHeic } = await import("heic-to");
-    if (await isHeic(file)) return heicTo({ blob: file, type: "bitmap" });
-    throw new Error("unreadable");
-  }
-}
-
-// Any photo becomes a JPEG no bigger than PHOTO_MAX_PX on the long side.
-async function toJpeg(file: File): Promise<Blob> {
+// A photo the browser can open becomes a JPEG no bigger than PHOTO_MAX_PX on
+// the long side. Null: the browser can't open it.
+async function toJpeg(file: File): Promise<Blob | null> {
   let bitmap: ImageBitmap;
   try {
-    bitmap = await decode(file);
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   } catch {
-    throw new Error("Couldn't open that photo. Try a JPEG, or upload it from your phone.");
+    return null;
   }
   const scale = Math.min(1, PHOTO_MAX_PX / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -59,9 +46,7 @@ async function toJpeg(file: File): Promise<Blob> {
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
-  if (!blob) throw new Error("Couldn't prepare the photo.");
-  return blob;
+  return new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
 }
 
 export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam: string }) {
@@ -91,12 +76,10 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
   // Each photo is turned into a JPEG as soon as it's added: the thumbnail
   // shows the page, and a photo that can't be opened says so right away.
   async function prepare(item: Item) {
-    try {
-      const jpeg = await toJpeg(item.file);
-      patch(item.key, { jpeg, preview: URL.createObjectURL(jpeg), status: { kind: "waiting" } });
-    } catch (err) {
-      set(item.key, { kind: "failed", message: err instanceof Error ? err.message : String(err) });
-    }
+    const jpeg = await toJpeg(item.file);
+    if (jpeg) patch(item.key, { jpeg, preview: URL.createObjectURL(jpeg), status: { kind: "waiting" } });
+    else if (looksHeic(item.file)) patch(item.key, { raw: true, status: { kind: "waiting" } });
+    else set(item.key, { kind: "failed", message: "Couldn't open that photo. Try a JPEG, or upload it from your phone." });
   }
 
   function add(files: FileList | null) {
@@ -129,14 +112,15 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
     let bookId: string | undefined;
     let gameId: string | undefined;
     try {
-      const jpeg = item.jpeg ?? (await toJpeg(item.file));
-      const start = await startBook({ teamId: team });
+      const jpeg = item.raw ? null : (item.jpeg ?? (await toJpeg(item.file)));
+      if (!item.raw && !jpeg) throw new Error("Couldn't open that photo. Try a JPEG, or upload it from your phone.");
+      const start = await startBook({ teamId: team, heic: !jpeg });
       if (start.error !== undefined) throw new Error(start.error);
       bookId = start.bookId;
       gameId = start.gameId;
       const { error } = await createClient()
         .storage.from(SCOREBOOK_BUCKET)
-        .uploadToSignedUrl(start.path, start.token, jpeg, { contentType: "image/jpeg" });
+        .uploadToSignedUrl(start.path, start.token, jpeg ?? item.file, { contentType: jpeg ? "image/jpeg" : "image/heic" });
       if (error) throw new Error(`The photo didn't upload: ${error.message}`);
       set(item.key, { kind: "reading" });
       const res = await readBook(start.bookId);
@@ -208,7 +192,7 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
               )}
               <div style={{ flex: 1, minWidth: 180, display: "flex", flexDirection: "column", gap: 2 }}>
                 <span style={{ fontWeight: 600, fontSize: 14, overflowWrap: "anywhere" }}>{it.name}</span>
-                <StatusText status={it.status} />
+                <StatusText status={it.status} raw={it.raw} />
               </div>
               {it.status.kind === "done" && (
                 <Link href={`/portal/stats/games/${it.status.gameId}`} className={`${s.btn} ${s.btnAccent}`}>
@@ -234,12 +218,12 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
   );
 }
 
-function StatusText({ status }: { status: Status }) {
+function StatusText({ status, raw }: { status: Status; raw?: boolean }) {
   switch (status.kind) {
     case "preparing":
       return <span className={s.muted}>Opening the photo…</span>;
     case "waiting":
-      return <span className={s.muted}>Ready to read</span>;
+      return <span className={s.muted}>{raw ? "iPhone photo: ready to read (we convert it as it's read)" : "Ready to read"}</span>;
     case "uploading":
       return <span className={s.muted}>Uploading…</span>;
     case "reading":

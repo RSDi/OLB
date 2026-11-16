@@ -10,6 +10,7 @@ import { createClient } from "../supabase/server";
 import { createAdminClient } from "../supabase/admin";
 import { loadRoster, requireStatsEditor } from "./data";
 import { readScorebook, type BookRead } from "./read";
+import { heicToJpeg, isHeicPath } from "./photo";
 import { PERIODS, lineTotals, matchPlayer, normalizeMarks, parseBookDate, type BookScores } from "./marks.ts";
 import { SCOREBOOK_BUCKET } from "./types.ts";
 
@@ -37,7 +38,9 @@ function refresh(gameId?: string) {
 
 // Step 1: a draft game, a row for the photo, and a signed upload so the
 // browser sends the JPEG straight to Storage.
-export async function startBook(input: { teamId: string }): Promise<Result<{ gameId: string; bookId: string; path: string; token: string }>> {
+// heic: the photo goes up as the phone took it (a HEIC the browser couldn't
+// open); readBook converts it to a JPEG first.
+export async function startBook(input: { teamId: string; heic?: boolean }): Promise<Result<{ gameId: string; bookId: string; path: string; token: string }>> {
   const gate = await requireStatsEditor();
   if ("error" in gate) return gate;
   if (!UUID.test(input.teamId ?? "")) return { error: "Pick a team first." };
@@ -53,7 +56,7 @@ export async function startBook(input: { teamId: string }): Promise<Result<{ gam
   if (error || !game) return { error: error?.message ?? "Couldn't start the game." };
   const gameId = (game as { id: string }).id;
   const bookId = randomUUID();
-  const path = `${gameId}/${bookId}.jpg`;
+  const path = `${gameId}/${bookId}.${input.heic ? "heic" : "jpg"}`;
   const { error: bookErr } = await db
     .from("stats_books")
     .insert({ id: bookId, game_id: gameId, photo_path: path, created_by: gate.userId });
@@ -77,9 +80,24 @@ export async function readBook(bookId: string): Promise<Result<{ gameId: string 
 
   let read: BookRead;
   try {
-    const { data: blob, error } = await createAdminClient().storage.from(SCOREBOOK_BUCKET).download(book.photo_path);
+    const storage = createAdminClient().storage.from(SCOREBOOK_BUCKET);
+    const { data: blob, error } = await storage.download(book.photo_path);
     if (error || !blob) throw new Error("The photo didn't upload.");
-    read = await readScorebook(new Uint8Array(await blob.arrayBuffer()));
+    let jpeg: Uint8Array = new Uint8Array(await blob.arrayBuffer());
+    if (isHeicPath(book.photo_path)) {
+      try {
+        jpeg = await heicToJpeg(jpeg);
+      } catch (err) {
+        throw new Error(`the iPhone photo couldn't be converted (${err instanceof Error ? err.message : String(err)}).`);
+      }
+      const jpgPath = book.photo_path.replace(/\.hei[cf]$/i, ".jpg");
+      const { error: upErr } = await storage.upload(jpgPath, jpeg, { contentType: "image/jpeg", upsert: true });
+      if (upErr) throw new Error(`the converted photo didn't save (${upErr.message}).`);
+      await db.from("stats_books").update({ photo_path: jpgPath }).eq("id", bookId);
+      await storage.remove([book.photo_path]);
+      book.photo_path = jpgPath;
+    }
+    read = await readScorebook(jpeg);
   } catch (err) {
     const message = `Couldn't read the book: ${err instanceof Error ? err.message : String(err)}`.slice(0, 500);
     await db.from("stats_books").update({ status: "failed", error: message, updated_at: new Date().toISOString() }).eq("id", bookId);
