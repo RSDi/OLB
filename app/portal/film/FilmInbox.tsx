@@ -27,12 +27,13 @@ import {
   groupUploadsByTeamAndGame,
   youtubeLiveStatusLine,
   youtubePlaylistUrl,
-  youtubeWatchUrl,
 } from "../../../lib/film/youtube-meta";
 import { filmFlowView } from "../../../lib/film/flow";
 import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob, YoutubePlaylistStatus } from "../../../lib/film/types";
 import { youtubeDisplayStatus } from "../../../lib/film/youtube-progress";
 import { YoutubeTransfer } from "./YoutubeTransfer";
+import { FilmPlayer } from "./FilmPlayer";
+import type { FilmMarker } from "../../../lib/film/player-logic";
 import styles from "./inbox.module.css";
 
 interface Props {
@@ -49,6 +50,30 @@ interface Props {
   teamPlaylists: Record<string, string>;
   rosters: Record<string, FilmRosterPlayer[]>;
   lineups: Record<string, string[]>;
+  markers: Record<string, FilmMarker[]>;
+  /** From a shared link: open this video at this second. */
+  initialMoment: { id: string; t: number } | null;
+}
+
+type Playing = {
+  id: string;
+  title: string;
+  startAt: number;
+  source: { kind: "youtube"; videoId: string } | { kind: "file"; url: string };
+};
+
+function onYoutubeNow(u: FilmUpload): boolean {
+  return u.youtube_status === "done" && !!u.youtube_video_id;
+}
+
+function playerTitle(u: FilmUpload): string {
+  const game = formatFilmInboxHeading({
+    gameDate: u.game_date,
+    opponent: u.opponent,
+    ourScore: u.our_score,
+    theirScore: u.their_score,
+  });
+  return `${game} · ${u.filename}`;
 }
 
 type Filter = "all" | "attention";
@@ -102,6 +127,8 @@ export function FilmInbox({
   teamPlaylists,
   rosters,
   lineups,
+  markers: initialMarkers,
+  initialMoment,
 }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
@@ -110,7 +137,17 @@ export function FilmInbox({
   const [statusBusy, setStatusBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusNote, setStatusNote] = useState<string | null>(null);
-  const [playing, setPlaying] = useState<{ id: string; url: string; name: string } | null>(null);
+  const [playing, setPlaying] = useState<Playing | null>(() => {
+    const row = initialMoment ? uploads.find((u) => u.id === initialMoment.id) : null;
+    if (!row || !initialMoment || !onYoutubeNow(row)) return null;
+    return {
+      id: row.id,
+      title: playerTitle(row),
+      startAt: initialMoment.t,
+      source: { kind: "youtube", videoId: row.youtube_video_id! },
+    };
+  });
+  const [markers, setMarkers] = useState<Record<string, FilmMarker[]>>(initialMarkers);
   const [patches, setPatches] = useState<Record<string, GamePatch>>({});
   const [, startTransition] = useTransition();
 
@@ -237,17 +274,39 @@ export function FilmInbox({
     window.open(result.url, "_blank", "noopener,noreferrer");
   }
 
-  async function play(row: FilmUpload) {
-    setBusy(row.id);
+  async function play(row: FilmUpload, opts?: { original?: boolean; startAt?: number }) {
     setError(null);
+    const startAt = opts?.startAt ?? 0;
+    if (onYoutubeNow(row) && !opts?.original) {
+      setPlaying({ id: row.id, title: playerTitle(row), startAt, source: { kind: "youtube", videoId: row.youtube_video_id! } });
+      return;
+    }
+    setBusy(row.id);
     const result = await signedFilmDownload(row.id);
     setBusy(null);
     if (result.error || !result.url) {
       setError(result.error ?? "Couldn't make a play link.");
       return;
     }
-    setPlaying({ id: row.id, url: result.url, name: row.filename });
+    setPlaying({ id: row.id, title: playerTitle(row), startAt, source: { kind: "file", url: result.url } });
   }
+
+  // A shared link to a video not on YouTube yet needs a signed file URL.
+  useEffect(() => {
+    if (!initialMoment || playing) return;
+    const row = uploads.find((u) => u.id === initialMoment.id);
+    if (!row || onYoutubeNow(row) || row.file_deleted_at) return;
+    let cancelled = false;
+    void signedFilmDownload(row.id).then((result) => {
+      if (cancelled || !result.url) return;
+      setPlaying({ id: row.id, title: playerTitle(row), startAt: initialMoment.t, source: { kind: "file", url: result.url } });
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Only on first load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 960 }}>
@@ -341,34 +400,17 @@ export function FilmInbox({
       )}
 
       {playing && (
-        <div
-          data-tour="film-player"
-          className="rsd-card"
-          style={{
-            padding: 12,
-            position: "sticky",
-            top: 8,
-            zIndex: 4,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
-        >
-          <video
-            key={playing.url}
-            src={playing.url}
-            controls
-            playsInline
-            preload="metadata"
-            style={{ width: "100%", maxHeight: "70vh", borderRadius: 12, background: "#000" }}
-          />
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ fontWeight: 800, fontSize: 14, wordBreak: "break-word" }}>{playing.name}</div>
-            <Pill size="sm" onClick={() => setPlaying(null)}>
-              Close player
-            </Pill>
-          </div>
-        </div>
+        <FilmPlayer
+          key={`${playing.id}:${playing.source.kind}`}
+          uploadId={playing.id}
+          title={playing.title}
+          source={playing.source}
+          startAt={playing.startAt}
+          markers={markers[playing.id] ?? []}
+          canManage={canManage}
+          onClose={() => setPlaying(null)}
+          onMarkersChange={(next) => setMarkers((prev) => ({ ...prev, [playing.id]: next }))}
+        />
       )}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }} data-tour="film-filter">
@@ -434,7 +476,9 @@ export function FilmInbox({
                       canManage={canManage}
                       roster={row.team_id ? rosters[row.team_id] ?? [] : []}
                       lineupPlayerIds={lineups[filmLineupKey(row.team_id, row.game_date, row.opponent) ?? ""] ?? []}
+                      markerCount={markers[row.id]?.length ?? 0}
                       onPlay={() => void play(row)}
+                      onPlayOriginal={() => void play(row, { original: true })}
                       onDownload={() => void download(row.id)}
                       onRetryYoutube={() => void run(row.id, retryFilmYoutube)}
                       onRetryPlaylist={() => void run(row.id, retryFilmPlaylist)}
@@ -466,7 +510,9 @@ function FilmRow({
   canManage,
   roster,
   lineupPlayerIds,
+  markerCount,
   onPlay,
+  onPlayOriginal,
   onDownload,
   onRetryYoutube,
   onRetryPlaylist,
@@ -482,7 +528,9 @@ function FilmRow({
   canManage: boolean;
   roster: FilmRosterPlayer[];
   lineupPlayerIds: string[];
+  markerCount: number;
   onPlay: () => void;
+  onPlayOriginal: () => void;
   onDownload: () => void;
   onRetryYoutube: () => void;
   onRetryPlaylist: () => void;
@@ -623,12 +671,8 @@ function FilmRow({
         <div className={styles.actions}>
           {onYoutube ? (
             <span data-tour="film-play">
-              <Pill
-                size="sm"
-                variant="accent"
-                onClick={() => window.open(youtubeWatchUrl(row.youtube_video_id!), "_blank", "noopener,noreferrer")}
-              >
-                Watch on YouTube
+              <Pill size="sm" variant="accent" onClick={onPlay}>
+                {markerCount > 0 ? `Watch · ${markerCount} marker${markerCount === 1 ? "" : "s"}` : "Watch"}
               </Pill>
             </span>
           ) : !flow.originalGone ? (
@@ -667,7 +711,7 @@ function FilmRow({
           {more && (
             <>
               {onYoutube && !flow.originalGone && (
-                <Pill size="sm" onClick={onPlay} disabled={busy}>
+                <Pill size="sm" onClick={onPlayOriginal} disabled={busy}>
                   Play original
                 </Pill>
               )}

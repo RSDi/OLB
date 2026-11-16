@@ -17,6 +17,8 @@ import {
   updateFilmUploadPlaylist,
 } from "./uploads.ts";
 import { parseYoutubePlaylistId } from "./youtube-meta.ts";
+import { deleteFilmMarkerRow, insertFilmMarker } from "./markers.ts";
+import { parseMarkerInput, type FilmMarker } from "./player-logic.ts";
 import { processYoutubeQueue, queuePlaylistIfNeeded, retryPlaylistAdd, YOUTUBE_KICK_BUDGET_MS } from "./youtube.ts";
 import { after } from "next/server";
 
@@ -149,3 +151,38 @@ export async function deleteFilmUpload(
   return { ok: true };
 }
 
+
+export async function addFilmMarker(
+  uploadId: string,
+  input: { atSeconds: unknown; label: unknown }
+): Promise<{ error?: string; marker?: FilmMarker }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  const row = await getFilmUpload(uploadId);
+  if (!row) return { error: "That upload isn't there any more." };
+  const parsed = parseMarkerInput(input);
+  if (!parsed.ok) return { error: parsed.error };
+  try {
+    const marker = await insertFilmMarker({
+      uploadId,
+      atSeconds: parsed.atSeconds,
+      label: parsed.label,
+      createdBy: gate.userId,
+    });
+    return { marker };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Couldn't save the marker." };
+  }
+}
+
+export async function removeFilmMarker(id: string): Promise<{ error?: string; ok?: true }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  try {
+    const row = await deleteFilmMarkerRow(id);
+    if (!row) return { error: "That marker isn't there any more." };
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Couldn't remove the marker." };
+  }
+}
