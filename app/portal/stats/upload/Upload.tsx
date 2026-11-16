@@ -20,6 +20,9 @@ interface Item {
   name: string;
   preview: string;
   file: File;
+  // The photo's bytes, read when it's added. Uploading these (never the
+  // File itself) means an upload can't go up empty.
+  bytes?: Blob;
   jpeg?: Blob;
   // An iPhone photo this browser can't open: it goes up as it is and the
   // server converts it.
@@ -33,7 +36,7 @@ function looksHeic(file: File): boolean {
 
 // A photo the browser can open becomes a JPEG no bigger than PHOTO_MAX_PX on
 // the long side. Null: the browser can't open it.
-async function toJpeg(file: File): Promise<Blob | null> {
+async function toJpeg(file: Blob): Promise<Blob | null> {
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
@@ -76,15 +79,29 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
   // Each photo is turned into a JPEG as soon as it's added: the thumbnail
   // shows the page, and a photo that can't be opened says so right away.
   async function prepare(item: Item) {
-    const jpeg = await toJpeg(item.file);
-    if (jpeg) patch(item.key, { jpeg, preview: URL.createObjectURL(jpeg), status: { kind: "waiting" } });
-    else if (looksHeic(item.file)) patch(item.key, { raw: true, status: { kind: "waiting" } });
+    let bytes: Blob;
+    try {
+      const buf = await item.file.arrayBuffer();
+      if (!buf.byteLength) throw new Error("empty");
+      bytes = new Blob([buf], { type: item.file.type || (looksHeic(item.file) ? "image/heic" : "image/jpeg") });
+    } catch {
+      set(item.key, {
+        kind: "failed",
+        message:
+          "Your browser couldn't read this file. Photos dragged straight out of Messages often can't be read: drag it to your Desktop (or save it to Photos) first, then add it from there.",
+      });
+      return;
+    }
+    const jpeg = await toJpeg(bytes);
+    if (jpeg) patch(item.key, { bytes, jpeg, preview: URL.createObjectURL(jpeg), status: { kind: "waiting" } });
+    else if (looksHeic(item.file)) patch(item.key, { bytes, raw: true, status: { kind: "waiting" } });
     else set(item.key, { kind: "failed", message: "Couldn't open that photo. Try a JPEG, or upload it from your phone." });
   }
 
-  function add(files: FileList | null) {
-    if (!files?.length) return;
-    const next: Item[] = [...files]
+  function add(list: FileList | File[] | null) {
+    const files = list ? Array.from(list) : [];
+    if (!files.length) return;
+    const next: Item[] = files
       .filter((f) => f.type.startsWith("image/") || /\.(heic|heif|jpe?g|png)$/i.test(f.name))
       .map((file) => ({
         key: `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`,
@@ -112,7 +129,8 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
     let bookId: string | undefined;
     let gameId: string | undefined;
     try {
-      const jpeg = item.raw ? null : (item.jpeg ?? (await toJpeg(item.file)));
+      if (!item.bytes) throw new Error("Remove this photo and add it again.");
+      const jpeg = item.raw ? null : (item.jpeg ?? (await toJpeg(item.bytes)));
       if (!item.raw && !jpeg) throw new Error("Couldn't open that photo. Try a JPEG, or upload it from your phone.");
       const start = await startBook({ teamId: team, heic: !jpeg });
       if (start.error !== undefined) throw new Error(start.error);
@@ -120,7 +138,7 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
       gameId = start.gameId;
       const { error } = await createClient()
         .storage.from(SCOREBOOK_BUCKET)
-        .uploadToSignedUrl(start.path, start.token, jpeg ?? item.file, { contentType: jpeg ? "image/jpeg" : "image/heic" });
+        .uploadToSignedUrl(start.path, start.token, jpeg ?? item.bytes, { contentType: jpeg ? "image/jpeg" : "image/heic" });
       if (error) throw new Error(`The photo didn't upload: ${error.message}`);
       set(item.key, { kind: "reading" });
       const res = await readBook(start.bookId);
@@ -172,7 +190,13 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
         onDrop={(e) => {
           e.preventDefault();
           setOver(false);
-          if (!busy) add(e.dataTransfer.files);
+          if (busy) return;
+          // Every dropped file, read from items when the browser offers them.
+          const fromItems = Array.from(e.dataTransfer.items ?? [])
+            .filter((i) => i.kind === "file")
+            .map((i) => i.getAsFile())
+            .filter((f): f is File => !!f);
+          add(fromItems.length >= e.dataTransfer.files.length ? fromItems : e.dataTransfer.files);
         }}
       >
         <input ref={input} type="file" accept="image/*,.heic,.heif" multiple hidden onChange={(e) => add(e.target.files)} disabled={busy} />
@@ -199,7 +223,7 @@ export function Upload({ teams, initialTeam }: { teams: StatsTeam[]; initialTeam
                   Check it
                 </Link>
               )}
-              {it.status.kind === "waiting" && !busy && (
+              {(it.status.kind === "waiting" || (it.status.kind === "failed" && !it.status.bookId)) && !busy && (
                 <button type="button" className={s.btn} onClick={() => setItems((all) => all.filter((x) => x.key !== it.key))}>
                   Remove
                 </button>
