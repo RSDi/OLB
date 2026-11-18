@@ -13,6 +13,9 @@ export function s3FilmStorage(): FilmStorageProvider {
     mintUpload(): Promise<MintedUpload> {
       return notImplemented();
     },
+    resignUpload(): Promise<{ bucket: string; endpoint: string; token: string }> {
+      return notImplemented();
+    },
     signedDownloadUrl(): Promise<string> {
       return notImplemented();
     },

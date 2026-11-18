@@ -1,8 +1,12 @@
 "use client";
 // Parent upload page: shared-code gate, then Uppy + TUS. The server creates
 // the TUS upload; this page PATCHes file bytes straight to Supabase Storage.
+// Phones drop uploads when the screen locks or another app comes forward, so
+// the page keeps the screen awake, retries when it comes back, and remembers
+// each upload it started (lib/film/resume.ts): picking the same video again
+// carries on from where Storage stopped.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Uppy from "@uppy/core";
@@ -12,6 +16,16 @@ import { churchToday } from "../../../lib/dates/today";
 import { formatFilmGameLine } from "../../../lib/film/game-meta";
 import { allUploadsFinished, formatBytes, formatFinishTime, isLargeFilmFile } from "../../../lib/film/guest-status";
 import { MAX_UPLOAD_BYTES, TUS_CHUNK_SIZE } from "../../../lib/film/types";
+import {
+  fileFingerprint,
+  findSavedUpload,
+  friendlyUploadError,
+  parseSavedUploads,
+  removeSavedUpload,
+  resumeStorageKey,
+  upsertSavedUpload,
+  type SavedUpload,
+} from "../../../lib/film/resume";
 import styles from "../../film/film.module.css";
 
 interface Props {
@@ -32,7 +46,30 @@ type FileUi = {
   opponent?: string | null;
   ourScore?: number | null;
   theirScore?: number | null;
+  /** Game line from the server when this file picked up an earlier upload. */
+  gameLine?: string | null;
+  resumed?: boolean;
 };
+
+/** No progress for this long while the page is showing → restart the request. */
+const STALL_MS = 45_000;
+/** Automatic retries in a row without progress before leaving it to Retry. */
+const MAX_AUTO_RETRIES = 5;
+
+type WakeLockLike = { release: () => Promise<void> };
+
+function subscribeStorage(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  return () => window.removeEventListener("storage", onChange);
+}
+
+function readSavedRaw(team: string): string | null {
+  try {
+    return window.localStorage.getItem(resumeStorageKey(team));
+  } catch {
+    return null;
+  }
+}
 
 function digitsOnly(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, 3);
@@ -47,6 +84,48 @@ type TokenRes = {
   uploadUrl: string;
   contentType: string;
 };
+
+type ResumeRes = {
+  uploadId: string;
+  bucket: string;
+  path: string;
+  endpoint: string;
+  token: string;
+  contentType: string;
+  gameLine: string | null;
+};
+
+function readSaved(team: string): SavedUpload[] {
+  try {
+    return parseSavedUploads(window.localStorage.getItem(resumeStorageKey(team)));
+  } catch {
+    return [];
+  }
+}
+
+function writeSaved(team: string, list: SavedUpload[]) {
+  try {
+    if (list.length === 0) window.localStorage.removeItem(resumeStorageKey(team));
+    else window.localStorage.setItem(resumeStorageKey(team), JSON.stringify(list));
+  } catch {
+    // Private mode or storage full: uploads still work, they just can't resume.
+  }
+}
+
+async function fetchResume(uploadId: string): Promise<ResumeRes | null> {
+  try {
+    const res = await fetch("/film/upload-token/resume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uploadId }),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json().catch(() => null)) as ResumeRes | null;
+    return body?.token ? body : null;
+  } catch {
+    return null;
+  }
+}
 
 export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) {
   const [unlocked, setUnlocked] = useState(initiallyUnlocked);
@@ -67,6 +146,14 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
   const ourScoreRef = useRef(ourScore);
   const theirScoreRef = useRef(theirScore);
   const inputRef = useRef<HTMLInputElement>(null);
+  const filesRef = useRef<FileUi[]>([]);
+  const lastProgressRef = useRef(new Map<string, number>());
+  const retryingRef = useRef(new Set<string>());
+  const autoRetriesRef = useRef(new Map<string, number>());
+
+  useEffect(() => {
+    filesRef.current = files;
+  }, [files]);
 
   useEffect(() => {
     nameRef.current = uploaderName;
@@ -122,6 +209,8 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
       progress: { bytesUploaded: number; bytesTotal: number | null }
     ) => {
       if (!file) return;
+      lastProgressRef.current.set(file.id, Date.now());
+      autoRetriesRef.current.delete(file.id);
       patch(file.id, {
         bytes: progress.bytesUploaded,
         total: progress.bytesTotal ?? 0,
@@ -135,8 +224,10 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
         finishedAt: Date.now(),
         ...(typeof file.size === "number" ? { bytes: file.size, total: file.size } : {}),
       });
+      lastProgressRef.current.delete(file.id);
       const uploadId = file.meta?.filmUploadId;
       if (typeof uploadId === "string" && uploadId) {
+        writeSaved(team, removeSavedUpload(readSaved(team), uploadId));
         void fetch("/film/complete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -146,7 +237,8 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
     };
     const onError = (file: { id: string } | undefined, error: { message?: string }) => {
       if (!file) return;
-      patch(file.id, { status: "error", error: error.message ?? "Upload failed." });
+      lastProgressRef.current.delete(file.id);
+      patch(file.id, { status: "error", error: friendlyUploadError(error.message) });
     };
     const onRemoved = (file: { id: string }) => {
       setFiles((cur) => cur.filter((f) => f.id !== file.id));
@@ -165,12 +257,45 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
       uppy.off("file-removed", onRemoved);
       uppy.cancelAll();
     };
-  }, [uppy]);
+  }, [team, uppy]);
+
+  /** Point an Uppy file at an upload the server already has. */
+  const applyResume = useCallback(
+    (fileId: string, body: ResumeRes, uploadUrl: string) => {
+      const file = uppy.getFile(fileId);
+      if (!file) return;
+      uppy.getPlugin("Tus")?.setOptions({ endpoint: body.endpoint });
+      uppy.setFileState(fileId, { tus: { uploadUrl } });
+      uppy.setFileMeta(fileId, {
+        bucketName: body.bucket,
+        objectName: body.path,
+        contentType: body.contentType || file.type,
+        cacheControl: "3600",
+        filmToken: body.token,
+        filmUploadId: body.uploadId,
+      });
+    },
+    [uppy]
+  );
 
   const mintFile = useCallback(
     async (fileId: string): Promise<boolean> => {
       const file = uppy.getFile(fileId);
       if (!file) return false;
+      const fingerprint = typeof file.meta.filmFingerprint === "string" ? file.meta.filmFingerprint : "";
+      const saved = fingerprint ? findSavedUpload(readSaved(team), fingerprint) : null;
+      if (saved) {
+        const resumed = await fetchResume(saved.uploadId);
+        if (resumed) {
+          applyResume(fileId, resumed, saved.uploadUrl);
+          setFormError(null);
+          setFiles((cur) =>
+            cur.map((f) => (f.id === fileId ? { ...f, resumed: true, gameLine: resumed.gameLine } : f))
+          );
+          return true;
+        }
+        writeSaved(team, removeSavedUpload(readSaved(team), saved.uploadId));
+      }
       const name = nameRef.current.trim();
       if (!name) {
         setFormError("Put your name in first, so the coaches know who sent it.");
@@ -214,6 +339,18 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
         filmToken: body.token,
         filmUploadId: body.uploadId,
       });
+      if (fingerprint) {
+        writeSaved(
+          team,
+          upsertSavedUpload(readSaved(team), {
+            fingerprint,
+            uploadId: body.uploadId,
+            uploadUrl: body.uploadUrl,
+            name: file.name,
+            savedAt: Date.now(),
+          })
+        );
+      }
       setFiles((cur) =>
         cur.map((f) =>
           f.id === fileId
@@ -229,22 +366,30 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
       );
       return true;
     },
-    [uppy]
+    [applyResume, team, uppy]
   );
 
   const addNativeFiles = useCallback(
     (list: FileList | File[]) => {
       const incoming = Array.from(list);
       if (incoming.length === 0) return;
-      const ids: string[] = [];
-      for (const file of incoming) {
-        try {
-          ids.push(uppy.addFile({ name: file.name, type: file.type, data: file }));
-        } catch (err) {
-          setFormError(err instanceof Error ? err.message : "That file couldn't be added.");
-        }
-      }
       void (async () => {
+        const ids: string[] = [];
+        for (const file of incoming) {
+          let fingerprint = "";
+          try {
+            fingerprint = await fileFingerprint(file);
+          } catch {
+            // No fingerprint: this upload just can't be picked back up later.
+          }
+          try {
+            ids.push(
+              uppy.addFile({ name: file.name, type: file.type, data: file, meta: { filmFingerprint: fingerprint } })
+            );
+          } catch (err) {
+            setFormError(err instanceof Error ? err.message : "That file couldn't be added.");
+          }
+        }
         let ready = 0;
         for (const id of ids) {
           if (await mintFile(id)) ready += 1;
@@ -258,20 +403,123 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
   const retryFile = useCallback(
     async (fileId: string) => {
       const file = uppy.getFile(fileId);
-      if (!file) return;
-      setFiles((cur) =>
-        cur.map((f) => (f.id === fileId ? { ...f, status: "uploading", error: undefined } : f))
-      );
-      const hasUrl = Boolean(file.tus?.uploadUrl && file.meta.filmToken);
-      if (!hasUrl && !(await mintFile(fileId))) return;
+      if (!file || retryingRef.current.has(fileId)) return;
+      retryingRef.current.add(fileId);
       try {
+        setFiles((cur) =>
+          cur.map((f) => (f.id === fileId ? { ...f, status: "uploading", error: undefined } : f))
+        );
+        const uploadId = typeof file.meta.filmUploadId === "string" ? file.meta.filmUploadId : "";
+        const uploadUrl = file.tus?.uploadUrl;
+        // The signed token runs out after a couple of hours; get a fresh one
+        // for the same upload so Storage carries on from its offset.
+        const fresh = uploadId && uploadUrl ? await fetchResume(uploadId) : null;
+        if (fresh && uploadUrl) applyResume(fileId, fresh, uploadUrl);
+        else if (!(await mintFile(fileId))) return;
+        lastProgressRef.current.set(fileId, Date.now());
         await uppy.retryUpload(fileId);
       } catch {
         // upload-error handler records the failure
+      } finally {
+        retryingRef.current.delete(fileId);
       }
     },
-    [mintFile, uppy]
+    [applyResume, mintFile, uppy]
   );
+
+  const active = files.some((f) => f.status === "uploading" || f.status === "waiting");
+
+  // Coming back to the page (or back online): pick up anything that failed
+  // while the phone was locked or in another app, and restart a request
+  // that went quiet.
+  useEffect(() => {
+    const revive = () => {
+      if (document.visibilityState !== "visible" || !navigator.onLine) return;
+      const now = Date.now();
+      for (const f of filesRef.current) {
+        if (f.status === "error") {
+          // Give up retrying on our own after a few tries with no progress;
+          // the Retry button still works.
+          const tries = autoRetriesRef.current.get(f.id) ?? 0;
+          if (tries >= MAX_AUTO_RETRIES) continue;
+          autoRetriesRef.current.set(f.id, tries + 1);
+          void retryFile(f.id);
+        }
+        else if (f.status === "uploading") {
+          const last = lastProgressRef.current.get(f.id) ?? now;
+          if (now - last > STALL_MS) {
+            lastProgressRef.current.set(f.id, now);
+            const file = uppy.getFile(f.id);
+            if (file && !file.isPaused) {
+              uppy.pauseResume(f.id);
+              uppy.pauseResume(f.id);
+            }
+          }
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", revive);
+    window.addEventListener("online", revive);
+    const timer = window.setInterval(revive, 15_000);
+    return () => {
+      document.removeEventListener("visibilitychange", revive);
+      window.removeEventListener("online", revive);
+      window.clearInterval(timer);
+    };
+  }, [retryFile, uppy]);
+
+  // Keep the screen on while anything is uploading. iPhones stop a web
+  // upload when the screen locks; this stops the auto-lock (iOS 16.4+).
+  const [screenAwake, setScreenAwake] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const wl = (navigator as Navigator & {
+      wakeLock?: { request: (type: "screen") => Promise<WakeLockLike> };
+    }).wakeLock;
+    if (!wl) return;
+    let lock: WakeLockLike | null = null;
+    let cancelled = false;
+    const acquire = async () => {
+      if (cancelled || lock || document.visibilityState !== "visible") return;
+      try {
+        lock = await wl.request("screen");
+        if (cancelled) {
+          void lock.release();
+          lock = null;
+          return;
+        }
+        setScreenAwake(true);
+        (lock as unknown as EventTarget).addEventListener?.("release", () => {
+          lock = null;
+          setScreenAwake(false);
+        });
+      } catch {
+        setScreenAwake(false);
+      }
+    };
+    void acquire();
+    // The browser drops the lock whenever the page is hidden; take it back.
+    const onVisible = () => void acquire();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      if (lock) void lock.release();
+      lock = null;
+      setScreenAwake(false);
+    };
+  }, [active]);
+
+  // Uploads this phone started earlier and didn't finish (page closed, phone
+  // locked). Shown as a reminder to pick the same video again.
+  const savedRaw = useSyncExternalStore(
+    subscribeStorage,
+    () => readSavedRaw(team),
+    () => null
+  );
+  const pendingNames = parseSavedUploads(savedRaw)
+    .filter((s) => !files.some((f) => f.name === s.name && f.status !== "error"))
+    .map((s) => s.name);
 
   const allDone = allUploadsFinished(files);
   const largeFileNote = files.some((f) => isLargeFilmFile(f.total || f.bytes));
@@ -337,8 +585,19 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
               </p>
             ) : (
               <p className={styles.note}>
-                Keep this page open and keep your phone plugged in until every video finishes. A full
-                game can take a while on cellular — Wi-Fi is better.
+                Keep this page open on the screen and your phone plugged in until every video finishes.
+                {screenAwake
+                  ? " The screen stays on while it uploads."
+                  : " If the phone locks or you switch apps, the upload pauses — come back to this page and it carries on."}{" "}
+                Wi-Fi is much faster than cellular.
+              </p>
+            )}
+            {pendingNames.length > 0 && (
+              <p className={styles.sizeHint} role="status">
+                {pendingNames.length === 1
+                  ? `${pendingNames[0]} didn't finish last time. `
+                  : `${pendingNames.length} videos didn't finish last time. `}
+                Pick the same video again and it carries on from where it stopped — no need to start over.
               </p>
             )}
             <div className={styles.card}>
@@ -461,7 +720,7 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
                   {files.map((f) => {
                     const pct = f.total > 0 ? Math.min(100, Math.round((f.bytes / f.total) * 100)) : 0;
                     const size = formatBytes(f.total || f.bytes);
-                    const gameLine = formatFilmGameLine({
+                    const gameLine = f.gameLine ?? formatFilmGameLine({
                       gameDate: f.gameDate,
                       opponent: f.opponent,
                       ourScore: f.ourScore,
@@ -508,7 +767,10 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
                     return (
                       <div key={f.id} className={styles.fileRow}>
                         <div className={styles.fileMeta}>
-                          <span>{f.name}</span>
+                          <span>
+                            {f.name}
+                            {f.resumed ? " · picking up where it stopped" : ""}
+                          </span>
                           <span>
                             {`${pct}% · ${formatBytes(f.bytes)} / ${formatBytes(f.total)}`}
                           </span>

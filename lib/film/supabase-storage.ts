@@ -39,6 +39,18 @@ export function supabaseFilmStorage(): FilmStorageProvider {
         uploadUrl,
       };
     },
+    async resignUpload(path) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set.");
+      const admin = createAdminClient();
+      const { data, error } = await admin.storage
+        .from(GAME_FILM_BUCKET)
+        .createSignedUploadUrl(path, { upsert: false });
+      if (error || !data) {
+        throw new Error(error?.message ?? "Couldn't mint an upload token.");
+      }
+      return { bucket: GAME_FILM_BUCKET, endpoint: tusEndpoint(url), token: data.token };
+    },
     async signedDownloadUrl(path, expiresInSeconds): Promise<string> {
       const admin = createAdminClient();
       const { data, error } = await admin.storage
