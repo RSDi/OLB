@@ -80,7 +80,7 @@ function playerTitle(u: FilmUpload): string {
   return `${game} · ${u.filename}`;
 }
 
-type Filter = "all" | "attention";
+type Filter = "all" | "attention" | "progress";
 
 function formatBytes(n: number | null): string {
   if (n == null) return "—";
@@ -187,8 +187,11 @@ export function FilmInbox({
     [uploads, patches]
   );
 
-  const attention = useMemo(() => {
+  // Which cards say Needs attention and which say In progress, from the same
+  // view the cards themselves use.
+  const { attention, inProgress } = useMemo(() => {
     const ids = new Set<string>();
+    const active = new Set<string>();
     for (const u of rows) {
       const job = jobs[u.id];
       const display = youtubeDisplayStatus({
@@ -209,21 +212,28 @@ export function FilmInbox({
           }).length > 0,
       });
       if (view.needsAttention) ids.add(u.id);
+      if (view.badge.text === "In progress") active.add(u.id);
     }
-    return ids;
+    return { attention: ids, inProgress: active };
   }, [rows, jobs, teamPlaylists]);
 
-  // The Needs attention count follows the team tab, like the list does.
-  const attentionCount = useMemo(
-    () => rows.filter((u) => attention.has(u.id) && (teamFilter === "all" || u.team === teamFilter)).length,
-    [rows, attention, teamFilter]
-  );
+  // The filter counts follow the team tab, like the list does.
+  const { attentionCount, progressCount } = useMemo(() => {
+    const onTab = rows.filter((u) => teamFilter === "all" || u.team === teamFilter);
+    return {
+      attentionCount: onTab.filter((u) => attention.has(u.id)).length,
+      progressCount: onTab.filter((u) => inProgress.has(u.id)).length,
+    };
+  }, [rows, attention, inProgress, teamFilter]);
 
   const shown = useMemo(() => {
-    let list = filter === "all" ? rows : rows.filter((u) => attention.has(u.id));
+    let list =
+      filter === "attention" ? rows.filter((u) => attention.has(u.id))
+      : filter === "progress" ? rows.filter((u) => inProgress.has(u.id))
+      : rows;
     if (teamFilter !== "all") list = list.filter((u) => u.team === teamFilter);
     return list;
-  }, [filter, teamFilter, rows, attention]);
+  }, [filter, teamFilter, rows, attention, inProgress]);
 
   const grouped = useMemo(() => groupUploadsByTeamAndGame(shown, labels), [shown, labels]);
 
@@ -433,9 +443,13 @@ export function FilmInbox({
       )}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }} data-tour="film-filter">
-        {(["all", "attention"] as Filter[]).map((key) => (
+        {(["all", "attention", "progress"] as Filter[]).map((key) => (
           <Pill key={key} size="sm" variant={filter === key ? "dark" : "light"} onClick={() => setFilter(key)}>
-            {key === "all" ? "All" : `Needs attention (${attentionCount})`}
+            {key === "all"
+              ? "All"
+              : key === "attention"
+                ? `Needs attention (${attentionCount})`
+                : `In progress (${progressCount})`}
           </Pill>
         ))}
         <span data-tour="film-youtube-status">
@@ -467,6 +481,8 @@ export function FilmInbox({
               ? "When a family uploads from a team page, it shows up here."
               : filter === "attention"
                 ? "Nothing needs you right now."
+                : filter === "progress"
+                  ? "Nothing is on its way to YouTube right now."
                 : "Nothing for this team yet. Try All, or another team."
           }
         />
