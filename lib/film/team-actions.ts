@@ -76,6 +76,7 @@ export async function loadFilmSettings(): Promise<
       teams: teams.map((t) => ({
         id: t.id,
         boardId: t.boardId,
+        ageGroup: t.ageGroup,
         slug: t.slug,
         label: t.label,
         enabled: t.enabled,
