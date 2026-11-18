@@ -63,11 +63,19 @@ const nextConfig: NextConfig = {
   },
   // The Coach Cory exclamation counter lives at /exclamation; /! is its
   // short address (some apps send it encoded).
+  // Safari Favorites request /apple-touch-icon.png at the site root. beforeFiles
+  // wins over the public site's /[slug] catch-all, which would return HTML.
   async rewrites() {
-    return [
-      { source: "/!", destination: "/exclamation" },
-      { source: "/%21", destination: "/exclamation" },
-    ];
+    return {
+      beforeFiles: [
+        { source: "/apple-touch-icon.png", destination: "/apple-icon.png" },
+        { source: "/apple-touch-icon-precomposed.png", destination: "/apple-icon.png" },
+      ],
+      afterFiles: [
+        { source: "/!", destination: "/exclamation" },
+        { source: "/%21", destination: "/exclamation" },
+      ],
+    };
   },
   async headers() {
     return [
