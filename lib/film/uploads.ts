@@ -22,6 +22,7 @@ import {
   type YoutubeStatus,
 } from "./types.ts";
 import { storageObjectName } from "./validation.ts";
+import { YOUTUBE_LEASE_MS } from "./youtube-meta.ts";
 
 export const FILM_UPLOAD_COLUMNS =
   "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at";
@@ -492,7 +493,7 @@ export async function latestYoutubeEventKind(uploadId: string): Promise<YoutubeE
 export async function claimYoutubeWork(id: string, now = new Date()): Promise<FilmUpload | null> {
   const admin = createAdminClient();
   const stamp = now.toISOString();
-  const staleBefore = new Date(now.getTime() - 4 * 60 * 1000).toISOString();
+  const staleBefore = new Date(now.getTime() - YOUTUBE_LEASE_MS).toISOString();
   const { data: queued } = await admin
     .from("game_film_uploads")
     .update({ youtube_status: "uploading", youtube_error: null, youtube_updated_at: stamp })
@@ -520,6 +521,19 @@ export async function claimYoutubeWork(id: string, now = new Date()): Promise<Fi
     .select(FILM_UPLOAD_COLUMNS)
     .maybeSingle();
   return (untouched as FilmUpload | null) ?? null;
+}
+
+// A run that stops partway (time's up, or a dropped connection after some
+// progress) hands the video back so the next minute's run continues it,
+// instead of waiting out the lease.
+export async function releaseYoutubeClaim(id: string, now = new Date()): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("game_film_uploads")
+    .update({ youtube_updated_at: new Date(now.getTime() - YOUTUBE_LEASE_MS - 1000).toISOString() })
+    .eq("id", id)
+    .eq("youtube_status", "uploading");
+  if (error) throw new Error(error.message);
 }
 
 export async function listYoutubeWork(uploadId?: string): Promise<FilmUpload[]> {

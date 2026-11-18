@@ -164,7 +164,7 @@ test("Film inbox plays in-app and Settings has Connect YouTube", () => {
   assert.match(complete, /enqueueYoutubeIfConnected/);
   assert.match(complete, /after\(/);
   assert.match(cron, /processYoutubeQueue/);
-  assert.match(cron, /maxDuration = 300/);
+  assert.match(cron, /maxDuration = 800/);
   assert.match(vercel, /\/api\/cron\/film-youtube/);
   assert.match(vercel, /\* \* \* \* \*/);
   const queue = readFileSync(join(import.meta.dirname, "../../lib/film/youtube.ts"), "utf8");

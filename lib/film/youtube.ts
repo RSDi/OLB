@@ -16,6 +16,8 @@ import { getFilmTeamById, getFilmTeamBySlug } from "./teams.ts";
 import { listGamePlayerNames } from "./lineups.ts";
 import { createFilmSlackDraftIfNeeded } from "./slack-drafts.ts";
 import { filmStorage } from "./storage.ts";
+import { openFilmByteStream, type ByteReader } from "./byte-stream.ts";
+import { isTransientFilmError } from "./transient.ts";
 import {
   appendYoutubeEvent,
   claimYoutubeWork,
@@ -26,12 +28,14 @@ import {
   listYoutubeJobs,
   listUnsentUploads,
   listYoutubeWork,
+  releaseYoutubeClaim,
   setFilmPlaylistStatus,
   setFilmYoutubeStatus,
   teamYoutubePlaylistId,
   upsertYoutubeJob,
 } from "./uploads.ts";
 import {
+  YOUTUBE_LEASE_MS,
   YOUTUBE_MAX_ATTEMPTS,
   nextChunkRange,
   parseResumeRange,
@@ -55,8 +59,9 @@ import type { FilmUpload, YoutubeEventKind } from "./types.ts";
 
 const INITIATE_URL = "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status";
 const VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos?part=snippet";
-const STALE_MS = 4 * 60 * 1000;
-export const YOUTUBE_TICK_BUDGET_MS = 240_000;
+// One cron run works up to 10 minutes (route maxDuration is 800 s), then the
+// next minute's run picks up where it stopped.
+export const YOUTUBE_TICK_BUDGET_MS = 600_000;
 export const YOUTUBE_KICK_BUDGET_MS = 20_000;
 
 export async function enqueueYoutubeIfConnected(uploadId: string): Promise<{ queued: boolean }> {
@@ -99,17 +104,13 @@ export async function retryYoutubeUpload(uploadId: string): Promise<void> {
   const row = await getFilmUpload(uploadId);
   if (!row) throw new Error("That upload isn't there any more.");
   if (row.youtube_status === "done") return;
+  // A fresh set of tries. The YouTube session and the bytes it already has
+  // are kept: the run asks YouTube where it got to, and starts over only if
+  // the session is gone.
   const job = await getYoutubeJob(uploadId);
-  await upsertYoutubeJob(uploadId, {
-    upload_uri: null,
-    bytes_sent: 0,
-    bytes_total: row.size_bytes,
-    attempts: job?.attempts ?? 0,
-    started_at: null,
-    last_progress_at: null,
-  });
+  await upsertYoutubeJob(uploadId, { attempts: 0, bytes_total: row.size_bytes });
   await setFilmYoutubeStatus(uploadId, { youtube_status: "queued", youtube_error: null });
-  await noteYoutubeEvent(uploadId, "retry", "Retry started", null, 0, row.size_bytes);
+  await noteYoutubeEvent(uploadId, "retry", "Retry started", null, job?.bytes_sent ?? 0, row.size_bytes);
 }
 
 export type YoutubeTickResult = {
@@ -263,7 +264,7 @@ function canClaim(row: FilmUpload, now: number): boolean {
   if (row.youtube_status === "queued") return true;
   if (row.youtube_status !== "uploading") return false;
   if (!row.youtube_updated_at) return true;
-  return now - new Date(row.youtube_updated_at).getTime() > STALE_MS;
+  return now - new Date(row.youtube_updated_at).getTime() > YOUTUBE_LEASE_MS;
 }
 
 async function noteYoutubeEvent(
@@ -324,8 +325,12 @@ async function failOrRequeue(id: string, err: unknown): Promise<void> {
   }
   const job = await getYoutubeJob(id);
   const attempts = (job?.attempts ?? 0) + 1;
-  await upsertYoutubeJob(id, { attempts, upload_uri: null, bytes_sent: 0 });
-  await noteYoutubeEvent(id, "error", youtubeEventTitle("error"), message, 0, job?.bytes_total ?? null);
+  // A dropped connection keeps the YouTube session and its bytes; the next
+  // run resumes. Anything else (an expired session, a refusal) starts over.
+  const keep = isTransientFilmError(err);
+  await upsertYoutubeJob(id, keep ? { attempts } : { attempts, upload_uri: null, bytes_sent: 0 });
+  const sent = keep ? job?.bytes_sent ?? 0 : 0;
+  await noteYoutubeEvent(id, "error", youtubeEventTitle("error"), message, sent, job?.bytes_total ?? null);
   if (attempts >= YOUTUBE_MAX_ATTEMPTS) {
     await setFilmYoutubeStatus(id, { youtube_status: "failed", youtube_error: message });
   } else {
@@ -408,43 +413,64 @@ async function pushOne(
   }
 
   let bytesSent = job.bytes_sent;
+  let progressed = false;
   const storage = filmStorage();
+  let source: ByteReader | null = null;
 
-  while (Date.now() < opts.deadline) {
-    const range = nextChunkRange(bytesSent, total);
-    if (!range) break;
-    const signed = await storage.signedDownloadUrl(row.storage_path, 60 * 60);
-    const chunk = await fetch(signed, { headers: { Range: `bytes=${range.start}-${range.end}` } });
-    if (!chunk.ok && chunk.status !== 206) {
-      if (chunk.status === 404) throw new FilmStorageError("Object not found", "missing");
-      throw new Error(`Couldn't read film bytes (${chunk.status}).`);
+  try {
+    while (Date.now() < opts.deadline) {
+      const range = nextChunkRange(bytesSent, total);
+      if (!range) break;
+      // One open read per run, from where YouTube says it is. Reopen only if
+      // YouTube kept fewer bytes than we sent.
+      if (!source || source.position !== range.start) {
+        source?.close();
+        const signed = await storage.signedDownloadUrl(row.storage_path, 60 * 60);
+        source = await openFilmByteStream(signed, range.start);
+      }
+      const piece = await source.read(range.end - range.start + 1, opts.deadline);
+      if ("timedOut" in piece) break;
+      if ("ended" in piece) throw new FilmStorageError(`Storage object is incomplete (${bytesSent} of ${total} bytes).`, "incomplete");
+      const buf = piece.bytes;
+      const put = await fetch(job.upload_uri!, {
+        method: "PUT",
+        headers: youtubeChunkHeaders(opts.access, range.start, range.start + buf.length - 1, total, type),
+        body: new Uint8Array(buf),
+      });
+      if (put.status === 200 || put.status === 201) {
+        const json = (await put.json().catch(() => ({}))) as { id?: string };
+        if (!json.id) throw new Error("YouTube finished but didn't return a video id.");
+        return finishYoutubeUpload(row, json.id, opts.access, total);
+      }
+      if (put.status === 308) {
+        const prev = bytesSent;
+        bytesSent = parseResumeRange(put.headers.get("range")) || range.start + buf.length;
+        // Progress resets the count of failed tries.
+        await upsertYoutubeJob(row.id, progressed || !job.attempts
+          ? { bytes_sent: bytesSent, bytes_total: total }
+          : { bytes_sent: bytesSent, bytes_total: total, attempts: 0 });
+        progressed = true;
+        await recordProgress(row.id, prev, bytesSent, total);
+        continue;
+      }
+      if (put.status === 404 || put.status === 410) {
+        throw new Error("YouTube upload session expired.");
+      }
+      const errText = await put.text().catch(() => "");
+      throw new Error(youtubeErrorMessage(put.status, errText));
     }
-    const buf = Buffer.from(await chunk.arrayBuffer());
-    const put = await fetch(job.upload_uri!, {
-      method: "PUT",
-      headers: youtubeChunkHeaders(opts.access, range.start, range.start + buf.length - 1, total, type),
-      body: buf,
-    });
-    if (put.status === 200 || put.status === 201) {
-      const json = (await put.json().catch(() => ({}))) as { id?: string };
-      if (!json.id) throw new Error("YouTube finished but didn't return a video id.");
-      return finishYoutubeUpload(row, json.id, opts.access, total);
-    }
-    if (put.status === 308) {
-      const prev = bytesSent;
-      bytesSent = parseResumeRange(put.headers.get("range")) || range.start + buf.length;
-      await upsertYoutubeJob(row.id, { bytes_sent: bytesSent, bytes_total: total });
-      await recordProgress(row.id, prev, bytesSent, total);
-      continue;
-    }
-    if (put.status === 404 || put.status === 410) {
-      throw new Error("YouTube upload session expired.");
-    }
-    const errText = await put.text().catch(() => "");
-    throw new Error(youtubeErrorMessage(put.status, errText));
+  } catch (err) {
+    // A dropped connection after this run moved the file along: note it and
+    // let the next run resume, without spending one of the tries.
+    if (!progressed || !isTransientFilmError(err)) throw err;
+    const message = err instanceof Error ? err.message : "Connection dropped";
+    await noteYoutubeEvent(row.id, "error", youtubeEventTitle("error"), `${message} (will resume)`, bytesSent, total);
+  } finally {
+    source?.close();
   }
 
   await setFilmYoutubeStatus(row.id, { youtube_status: "uploading", youtube_error: null });
+  await releaseYoutubeClaim(row.id);
   return "continued";
 }
 
