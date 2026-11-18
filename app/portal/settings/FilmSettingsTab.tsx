@@ -330,8 +330,24 @@ function TeamCard({
           </Pill>
         </div>
         {(!team.hasCode || !enabled) && (
-          <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            Families can use this once a code is set and the team is On.
+          <div
+            role="status"
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--gw-error)",
+              background: "var(--gw-error-bg)",
+              borderRadius: 8,
+              padding: "8px 10px",
+            }}
+          >
+            Not live yet. Families who open this link see “page not found” until{" "}
+            {!team.hasCode && !enabled
+              ? "you set an upload code and turn the team On"
+              : !team.hasCode
+                ? "you set an upload code"
+                : "you turn the team On"}
+            .
           </div>
         )}
       </div>
