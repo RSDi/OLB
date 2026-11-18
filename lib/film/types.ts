@@ -137,6 +137,9 @@ export interface MintedUpload {
 export interface FilmStorageProvider {
   id: "supabase" | "r2" | "s3";
   mintUpload(input: { path: string; contentType: string; sizeBytes: number }): Promise<MintedUpload>;
+  /** A fresh signed token for an upload already started at this path, so the
+   * phone can carry on from where Storage stopped instead of starting over. */
+  resignUpload(path: string): Promise<{ bucket: string; endpoint: string; token: string }>;
   signedDownloadUrl(path: string, expiresInSeconds: number): Promise<string>;
   deleteObject(path: string): Promise<void>;
   objectExists(path: string): Promise<boolean>;
