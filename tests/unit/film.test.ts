@@ -53,6 +53,7 @@ const approved = (perms: string[]): MemberLike => ({
 function team(partial: Partial<FilmTeamRow> & Pick<FilmTeamRow, "id" | "slug">): FilmTeamRow {
   return {
     boardId: "board",
+    ageGroup: "14U",
     label: "14U White",
     enabled: true,
     hasCode: true,

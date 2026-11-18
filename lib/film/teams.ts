@@ -13,6 +13,7 @@ export const SLUG_MAX = 40;
 export type FilmTeamRow = FilmTeam & {
   id: string;
   boardId: string;
+  ageGroup: string | null;
   enabled: boolean;
   hasCode: boolean;
   hasSlug: boolean;
@@ -74,6 +75,7 @@ function toFilmTeam(row: TeamQueryRow): FilmTeamRow {
     boardId: row.board_id,
     slug,
     label: teamLabel(row),
+    ageGroup: row.age_group?.trim() || null,
     enabled: !!row.film_enabled,
     hasCode: !!row.film_code_hash,
     hasSlug: !!stored,
