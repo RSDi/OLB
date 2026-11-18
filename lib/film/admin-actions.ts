@@ -3,6 +3,7 @@
 // permissions (film_view / film_manage). Super-admins hold both.
 
 import { revalidatePath } from "next/cache";
+import { filmFileErrorMessage } from "./file-error.ts";
 import { requireFilmAccess, requireFilmManage } from "../auth/guards";
 import { SIGNED_DOWNLOAD_TTL_S } from "./types.ts";
 import { filmStorage } from "./storage.ts";
@@ -44,7 +45,7 @@ export async function signedFilmDownload(
     const url = await filmStorage().signedDownloadUrl(row.storage_path, SIGNED_DOWNLOAD_TTL_S);
     return { url, filename: row.filename };
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Couldn't make a download link." };
+    return { error: filmFileErrorMessage(err, row.filename) };
   }
 }
 
