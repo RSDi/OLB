@@ -213,6 +213,12 @@ export function FilmInbox({
     return ids;
   }, [rows, jobs, teamPlaylists]);
 
+  // The Needs attention count follows the team tab, like the list does.
+  const attentionCount = useMemo(
+    () => rows.filter((u) => attention.has(u.id) && (teamFilter === "all" || u.team === teamFilter)).length,
+    [rows, attention, teamFilter]
+  );
+
   const shown = useMemo(() => {
     let list = filter === "all" ? rows : rows.filter((u) => attention.has(u.id));
     if (teamFilter !== "all") list = list.filter((u) => u.team === teamFilter);
@@ -429,7 +435,7 @@ export function FilmInbox({
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }} data-tour="film-filter">
         {(["all", "attention"] as Filter[]).map((key) => (
           <Pill key={key} size="sm" variant={filter === key ? "dark" : "light"} onClick={() => setFilter(key)}>
-            {key === "all" ? "All" : `Needs attention (${attention.size})`}
+            {key === "all" ? "All" : `Needs attention (${attentionCount})`}
           </Pill>
         ))}
         <span data-tour="film-youtube-status">
