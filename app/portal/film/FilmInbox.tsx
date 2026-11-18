@@ -30,7 +30,7 @@ import {
 } from "../../../lib/film/youtube-meta";
 import { filmFlowView } from "../../../lib/film/flow";
 import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob, YoutubePlaylistStatus } from "../../../lib/film/types";
-import { youtubeDisplayStatus } from "../../../lib/film/youtube-progress";
+import { filmFileMissing, youtubeDisplayStatus } from "../../../lib/film/youtube-progress";
 import { YoutubeTransfer } from "./YoutubeTransfer";
 import { FilmPlayer } from "./FilmPlayer";
 import { SettingsLink, SettingsText } from "../../components/SettingsLink";
@@ -610,6 +610,8 @@ function FilmRow({
     row.youtube_playlist_status !== "queued";
   const flow = filmFlowView({ row, display, playlistId: effectivePlaylist, missingDetails: missing.length > 0 });
   const onYoutube = row.youtube_status === "done" && !!row.youtube_video_id;
+  // The phone upload never finished: nothing to send, play, or download.
+  const noFile = filmFileMissing(row);
   const badgeClass =
     flow.badge.tone === "done"
       ? "rsd-chip-success"
@@ -712,14 +714,14 @@ function FilmRow({
                 {markerCount > 0 ? `Watch · ${markerCount} marker${markerCount === 1 ? "" : "s"}` : "Watch"}
               </Pill>
             </span>
-          ) : !flow.originalGone ? (
+          ) : !flow.originalGone && !noFile ? (
             <span data-tour="film-play">
               <Pill size="sm" variant="accent" onClick={onPlay} disabled={busy}>
                 Play
               </Pill>
             </span>
           ) : null}
-          {canManage && (display === "failed" || display === "stalled" || (!row.youtube_status && !flow.originalGone)) && (
+          {canManage && !noFile && (display === "failed" || display === "stalled" || (!row.youtube_status && !flow.originalGone)) && (
             <span data-tour="film-youtube-retry">
               <Pill size="sm" onClick={onRetryYoutube} disabled={busy}>
                 {display === "failed" || display === "stalled" ? "Retry YouTube" : "Send to YouTube"}
@@ -752,7 +754,7 @@ function FilmRow({
                   Play original
                 </Pill>
               )}
-              {!flow.originalGone && (
+              {!flow.originalGone && !noFile && (
                 <span data-tour="film-download">
                   <Pill size="sm" onClick={onDownload} disabled={busy}>
                     Download original

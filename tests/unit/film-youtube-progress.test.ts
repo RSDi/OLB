@@ -128,3 +128,12 @@ test("worker verifies storage, restarts a dead session, and records events", () 
   assert.match(transfer, /youtubeProgressLine/);
   assert.match(transfer, /mapYoutubeError/);
 });
+
+test("a failed upload whose file never arrived is marked missing; others are not", async () => {
+  const { filmFileMissing } = await import("../../lib/film/youtube-progress.ts");
+  assert.equal(filmFileMissing({ youtube_status: "failed", youtube_error: "Object not found" }), true);
+  assert.equal(filmFileMissing({ youtube_status: "failed", youtube_error: "Couldn't read film bytes (404)." }), true);
+  assert.equal(filmFileMissing({ youtube_status: "failed", youtube_error: "terminated" }), false);
+  assert.equal(filmFileMissing({ youtube_status: "queued", youtube_error: "Object not found" }), false);
+  assert.equal(filmFileMissing({ youtube_status: "done", youtube_error: null }), false);
+});
