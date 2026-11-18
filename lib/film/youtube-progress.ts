@@ -208,17 +208,31 @@ export function youtubeEventTitle(kind: YoutubeEventKind): string {
   }
 }
 
+// The storage error that means the phone upload never finished: there is
+// no file to send, play, or download.
+function isMissingFileText(lower: string): boolean {
+  return (
+    lower.includes("object not found") ||
+    lower.includes("the resource was not found") ||
+    /couldn't read film bytes \(404\)/.test(lower) ||
+    /couldn.t make a download link/.test(lower)
+  );
+}
+
+// A failed upload whose file never arrived. Retry YouTube, Play and
+// Download can't work on these, so the card hides them.
+export function filmFileMissing(row: { youtube_status: string | null; youtube_error: string | null }): boolean {
+  if (row.youtube_status !== "failed") return false;
+  const lower = (row.youtube_error ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  return !!lower && isMissingFileText(lower);
+}
+
 export function mapYoutubeError(raw: string | null | undefined): YoutubeErrorView | null {
   const text = (raw ?? "").replace(/\s+/g, " ").trim();
   if (!text) return null;
   const lower = text.toLowerCase();
 
-  if (
-    lower.includes("object not found") ||
-    lower.includes("the resource was not found") ||
-    /couldn't read film bytes \(404\)/.test(lower) ||
-    /couldn.t make a download link/.test(lower)
-  ) {
+  if (isMissingFileText(lower)) {
     return {
       message: "The video file isn't in storage; the upload from the phone may not have finished. Ask the uploader to re-upload.",
       raw: text,
