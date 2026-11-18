@@ -1,5 +1,5 @@
 // Vercel Cron: resume YouTube uploads for game film. Every minute. Auth is
-// Bearer CRON_SECRET. maxDuration 300s; the worker stops around 240s so a
+// Bearer CRON_SECRET. maxDuration 800s; the worker stops around 600s so a
 // 20 GB file continues on the next tick.
 // Before the tick, recent uploads that never went to YouTube are queued.
 // After the upload tick, a light videos.list part=status pass copies each
@@ -10,7 +10,7 @@ import { enqueueUnsentUploads, processYoutubeQueue, YOUTUBE_TICK_BUDGET_MS } fro
 import { syncYoutubeVideoStatus, YOUTUBE_STATUS_CRON_LIMIT } from "../../../../lib/film/youtube-status";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 export async function GET(request: Request) {
   const expectedSecret = process.env.CRON_SECRET;

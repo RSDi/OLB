@@ -8,6 +8,10 @@ export type { YoutubePrivacy, YoutubeProcessing } from "./types.ts";
 export const YOUTUBE_TITLE_MAX = 100;
 export const YOUTUBE_CHUNK_BYTES = 8 * 1024 * 1024; // 8 MiB; multiple of 256 KiB
 export const YOUTUBE_MAX_ATTEMPTS = 5;
+// A worker run owns a video for at most this long. Longer than one cron run
+// (YOUTUBE_TICK_BUDGET_MS plus slack), so two runs never push the same file.
+// A run that stops partway hands the video back early (releaseYoutubeClaim).
+export const YOUTUBE_LEASE_MS = 12 * 60 * 1000;
 
 export type YoutubeStatus = "queued" | "uploading" | "done" | "failed";
 export type YoutubePlaylistStatus = "queued" | "done" | "failed";

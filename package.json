@@ -43,6 +43,7 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.12.4",
+    "undici": "^6.26.0",
     "unpdf": "^1.8.1",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
