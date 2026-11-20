@@ -141,7 +141,8 @@ test("Film inbox plays in-app and Settings has Connect YouTube", () => {
     readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmInbox.tsx"), "utf8") +
     readFileSync(join(import.meta.dirname, "../../app/portal/film/FilmPlayer.tsx"), "utf8");
   const settings = readFileSync(join(import.meta.dirname, "../../app/portal/settings/FilmYoutubeCard.tsx"), "utf8");
-  const complete = readFileSync(join(import.meta.dirname, "../../app/film/complete/route.ts"), "utf8");
+  const complete = readFileSync(join(import.meta.dirname, "../../app/film/complete/route.ts"), "utf8") +
+    readFileSync(join(import.meta.dirname, "../../lib/film/upload-start.ts"), "utf8");
   const cron = readFileSync(join(import.meta.dirname, "../../app/api/cron/film-youtube/route.ts"), "utf8");
   const vercel = readFileSync(join(import.meta.dirname, "../../vercel.json"), "utf8");
   assert.match(inbox, />Play</);

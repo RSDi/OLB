@@ -14,6 +14,7 @@ import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob } from ".
 import { listFilmMarkers } from "../../../lib/film/markers";
 import { getYoutubeWorkerError } from "../../../lib/film/youtube-settings";
 import { parseTimecode, type FilmMarker } from "../../../lib/film/player-logic";
+import { canUseStaffUploader } from "../../../lib/film/staff-upload";
 import { FilmInbox } from "./FilmInbox";
 
 export const dynamic = "force-dynamic";
@@ -121,6 +122,7 @@ export default async function FilmInboxPage({
       loadError={loadError}
       youtubePaused={youtubePaused}
       parentLinks={parentLinks}
+      canStaffUpload={canUseStaffUploader(viewer)}
       teamPlaylists={teamPlaylists}
       rosters={rosters}
       lineups={lineups}

@@ -29,6 +29,8 @@ const PREVIEW_ROUTES = [
   "/portal/directory/uniforms",
   // Stats from the scorebook (0172), in preview.
   "/portal/stats",
+  // The staff film uploader, pick any team (Jeff-only preview).
+  "/portal/film/upload",
   // The guide itself: no "i" needed.
   "/portal/guide",
 ];
