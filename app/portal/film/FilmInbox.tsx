@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { EmptyState, Pill } from "../../components/ui";
@@ -53,6 +54,8 @@ interface Props {
   /** Set when the upload worker can't reach YouTube (login expired, not connected). */
   youtubePaused?: string | null;
   parentLinks: { slug: string; label: string }[];
+  // Preview: the staff uploader (/portal/film/upload).
+  canStaffUpload?: boolean;
   teamPlaylists: Record<string, string>;
   rosters: Record<string, FilmRosterPlayer[]>;
   lineups: Record<string, string[]>;
@@ -132,6 +135,7 @@ export function FilmInbox({
   loadError,
   youtubePaused = null,
   parentLinks,
+  canStaffUpload = false,
   teamPlaylists,
   rosters,
   lineups,
@@ -372,6 +376,15 @@ export function FilmInbox({
         </a>{" "}
         page lists in-progress, stalled, failed, and done uploads across teams.
       </p>
+
+      {canStaffUpload && (
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
+          <Link href="/portal/film/upload" className={styles.statusLink}>
+            Upload film
+          </Link>{" "}
+          <span style={{ color: "var(--gw-fg-muted)" }}>— pick any team and upload, no code needed.</span>
+        </p>
+      )}
 
       {slackDrafts.length > 0 && (
         <section data-tour="film-slack-drafts" style={{ display: "flex", flexDirection: "column", gap: 10 }}>

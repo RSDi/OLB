@@ -303,9 +303,13 @@ test("signed TUS headers send x-signature once and never a bearer or apikey", ()
 });
 
 test("the guest uploader uses a server-created TUS URL and does not double-set headers", () => {
-  const client = readFileSync(join(import.meta.dirname, "../../app/t/[team]/TeamUpload.tsx"), "utf8");
+  const client =
+    readFileSync(join(import.meta.dirname, "../../app/t/[team]/TeamUpload.tsx"), "utf8") +
+    readFileSync(join(import.meta.dirname, "../../app/film/FilmUploader.tsx"), "utf8");
   const mint = readFileSync(join(import.meta.dirname, "../../lib/film/supabase-storage.ts"), "utf8");
-  const route = readFileSync(join(import.meta.dirname, "../../app/film/upload-token/route.ts"), "utf8");
+  const route =
+    readFileSync(join(import.meta.dirname, "../../app/film/upload-token/route.ts"), "utf8") +
+    readFileSync(join(import.meta.dirname, "../../lib/film/upload-start.ts"), "utf8");
   const settings = readFileSync(join(import.meta.dirname, "../../app/portal/settings/FilmSettingsTab.tsx"), "utf8");
   assert.match(client, /tusSignedHeaders/);
   assert.match(client, /allowedFileTypes: \["video\/\*".*\.mov/);

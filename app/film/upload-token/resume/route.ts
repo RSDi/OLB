@@ -9,10 +9,8 @@ import { NextResponse } from "next/server";
 import { FILM_COOKIE, parseFilmSession, sessionMatchesTeam } from "../../../../lib/film/session";
 import { getFilmTeamBySlug } from "../../../../lib/film/teams";
 import { TOKEN_LIMIT, clientIp, rateLimitTake } from "../../../../lib/film/rate-limit";
-import { filmStorage } from "../../../../lib/film/storage";
 import { getFilmUpload } from "../../../../lib/film/uploads";
-import { formatFilmGameLine } from "../../../../lib/film/game-meta";
-import { resumeRefusal } from "../../../../lib/film/resume";
+import { resumeFilmUpload } from "../../../../lib/film/upload-start";
 
 export async function POST(request: Request) {
   const store = await cookies();
@@ -41,31 +39,7 @@ export async function POST(request: Request) {
   if (!id) return NextResponse.json({ error: "Send the upload id." }, { status: 400 });
 
   const row = await getFilmUpload(id).catch(() => null);
-  const refusal = resumeRefusal(row, team.slug);
-  if (refusal || !row) {
-    return NextResponse.json({ error: refusal ?? "That upload can't be picked back up." }, { status: 409 });
-  }
-
-  let signed;
-  try {
-    signed = await filmStorage().resignUpload(row.storage_path);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Couldn't pick the upload back up.";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-
-  return NextResponse.json({
-    uploadId: row.id,
-    bucket: signed.bucket,
-    path: row.storage_path,
-    endpoint: signed.endpoint,
-    token: signed.token,
-    contentType: row.content_type,
-    gameLine: formatFilmGameLine({
-      gameDate: row.game_date,
-      opponent: row.opponent,
-      ourScore: row.our_score,
-      theirScore: row.their_score,
-    }),
-  });
+  const resumed = await resumeFilmUpload(row, team.slug);
+  if (!resumed.ok) return NextResponse.json({ error: resumed.error }, { status: resumed.status });
+  return NextResponse.json(resumed.data);
 }
