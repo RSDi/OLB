@@ -5,7 +5,8 @@ import { cookies } from "next/headers";
 import { after, NextResponse } from "next/server";
 import { FILM_COOKIE, parseFilmSession, sessionMatchesTeam } from "../../../lib/film/session";
 import { getFilmTeamBySlug } from "../../../lib/film/teams";
-import { appendYoutubeEvent, getFilmUpload } from "../../../lib/film/uploads";
+import { appendYoutubeEvent, getFilmUpload, saveFilmUploadStats } from "../../../lib/film/uploads";
+import { uploadStatsRow, type UploadStatsInput } from "../../../lib/film/upload-stats";
 import { waitForFilmObject } from "../../../lib/film/object";
 import { enqueueYoutubeIfConnected, processYoutubeQueue, YOUTUBE_KICK_BUDGET_MS } from "../../../lib/film/youtube";
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
   if (!session || !sessionMatchesTeam(session, team)) {
     return NextResponse.json({ error: "Unlock this team with the shared code first." }, { status: 401 });
   }
-  let body: { uploadId?: unknown };
+  let body: { uploadId?: unknown; stats?: UploadStatsInput };
   try {
     body = await request.json();
   } catch {
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "That upload isn't on this team." }, { status: 404 });
   }
   after(async () => {
+    await saveFilmUploadStats(id, uploadStatsRow(body.stats));
     try {
       const info = await waitForFilmObject(row.storage_path, { expectedBytes: row.size_bytes });
       if (info.exists) {

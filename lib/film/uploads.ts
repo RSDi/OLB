@@ -23,6 +23,7 @@ import {
 } from "./types.ts";
 import { storageObjectName } from "./validation.ts";
 import { YOUTUBE_LEASE_MS } from "./youtube-meta.ts";
+import { formatUploadStats, type UploadStatsRow } from "./upload-stats.ts";
 
 export const FILM_UPLOAD_COLUMNS =
   "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at";
@@ -74,6 +75,44 @@ export async function insertHoldingUpload(input: {
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't log the upload.");
   return data as FilmUpload;
+}
+
+/**
+ * What the parent's phone measured (0176), as a one-line summary per upload
+ * id. Read apart from FILM_UPLOAD_COLUMNS so the Film page still loads if
+ * the migration hasn't run yet: any error just means no summaries.
+ */
+export async function loadFilmUploadStats(ids: string[]): Promise<Record<string, string>> {
+  if (ids.length === 0) return {};
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("game_film_uploads")
+      .select("id, upload_seconds, upload_mbps, video_width, video_height, video_duration_s")
+      .in("id", ids);
+    if (error || !data) return {};
+    const out: Record<string, string> = {};
+    for (const row of data as ({ id: string } & UploadStatsRow)[]) {
+      const line = formatUploadStats(row);
+      if (line) out[row.id] = line;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Save what the phone measured. Never throws: these numbers are a nice-to-have. */
+export async function saveFilmUploadStats(id: string, stats: UploadStatsRow): Promise<void> {
+  const fields = Object.fromEntries(Object.entries(stats).filter(([, v]) => v !== null));
+  if (Object.keys(fields).length === 0) return;
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin.from("game_film_uploads").update(fields).eq("id", id);
+    if (error) console.warn("film upload stats:", error.message);
+  } catch (err) {
+    console.warn("film upload stats:", err instanceof Error ? err.message : err);
+  }
 }
 
 export async function listFilmUploads(teamIds?: string[]): Promise<FilmUpload[]> {

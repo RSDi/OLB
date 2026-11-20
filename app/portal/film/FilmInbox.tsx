@@ -42,6 +42,8 @@ interface Props {
   uploads: FilmUpload[];
   jobs: Record<string, YoutubeJob>;
   events: Record<string, YoutubeEvent[]>;
+  /** "4K · uploaded in 61 min at 14 Mbps", from what the parent's phone measured. */
+  uploadStats?: Record<string, string>;
   slackDrafts: FilmSlackDraftView[];
   discardedDrafts: FilmSlackDraftView[];
   canManage: boolean;
@@ -121,6 +123,7 @@ export function FilmInbox({
   uploads,
   jobs,
   events,
+  uploadStats = {},
   slackDrafts,
   discardedDrafts,
   canManage,
@@ -507,6 +510,7 @@ export function FilmInbox({
                       row={row}
                       job={jobs[row.id] ?? null}
                       events={events[row.id] ?? []}
+                      uploadStatsLine={uploadStats[row.id] ?? null}
                       teamPlaylistId={teamPlaylists[row.team] ?? null}
                       busy={busy === row.id}
                       playing={playing?.id === row.id}
@@ -541,6 +545,7 @@ function FilmRow({
   row,
   job,
   events,
+  uploadStatsLine,
   teamPlaylistId,
   busy,
   playing,
@@ -559,6 +564,7 @@ function FilmRow({
   row: FilmUpload;
   job: YoutubeJob | null;
   events: YoutubeEvent[];
+  uploadStatsLine: string | null;
   teamPlaylistId: string | null;
   busy: boolean;
   playing: boolean;
@@ -638,6 +644,11 @@ function FilmRow({
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
             {row.uploader_name} · {formatBytes(row.size_bytes)} · {formatWhen(row.created_at)}
           </div>
+          {uploadStatsLine && (
+            <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 2 }}>
+              {uploadStatsLine}
+            </div>
+          )}
           <ol className={styles.steps} data-tour="film-steps" aria-label="Progress">
             {flow.steps.map((step) => (
               <li key={step.key} className={styles.step} data-state={step.state}>
