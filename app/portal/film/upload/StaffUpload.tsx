@@ -39,10 +39,11 @@ export function StaffUpload({ teams, defaultName, loadError }: Props) {
         <FilmUploader
           tokenUrl="/api/film/staff-upload"
           completeUrl="/api/film/staff-upload/complete"
+          resumeUrl="/api/film/staff-upload/resume"
+          resumeScope="staff"
           prepare={prepare}
           defaultName={defaultName}
           doneMessage="All videos uploaded."
-          keepOpenNote="Keep this page open until every video finishes. You can switch teams between videos."
           before={
             <label className={styles.field}>
               <span className={styles.label}>Team</span>

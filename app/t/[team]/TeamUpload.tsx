@@ -74,7 +74,12 @@ export function TeamUpload({ team, label, unlocked: initiallyUnlocked }: Props) 
             </button>
           </form>
         ) : (
-          <FilmUploader tokenUrl="/film/upload-token" completeUrl="/film/complete" />
+          <FilmUploader
+            tokenUrl="/film/upload-token"
+            completeUrl="/film/complete"
+            resumeUrl="/film/upload-token/resume"
+            resumeScope={team}
+          />
         )}
       </div>
     </div>

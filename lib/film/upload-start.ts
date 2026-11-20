@@ -10,6 +10,8 @@ import { appendYoutubeEvent, filmStoragePath, insertHoldingUpload, newUploadId }
 import { waitForFilmObject } from "./object.ts";
 import { enqueueYoutubeIfConnected, processYoutubeQueue, YOUTUBE_KICK_BUDGET_MS } from "./youtube.ts";
 import { GAME_FILM_BUCKET, type FilmUpload } from "./types.ts";
+import { formatFilmGameLine } from "./game-meta.ts";
+import { resumeRefusal } from "./resume.ts";
 
 export type StartedFilmUpload = {
   uploadId: string;
@@ -108,4 +110,39 @@ export async function kickFilmUploadComplete(row: FilmUpload): Promise<void> {
   } catch (err) {
     console.error("film-complete youtube kick:", err instanceof Error ? err.message : err);
   }
+}
+
+// Re-sign a token for an upload this browser already started, so it can ask
+// Storage how far it got and send only the rest. teamSlug: the team the
+// caller may resume for (the family session's team, or the row's own team
+// for the staff uploader).
+export async function resumeFilmUpload(
+  row: FilmUpload | null,
+  teamSlug: string
+): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; status: number; error: string }> {
+  const refusal = resumeRefusal(row, teamSlug);
+  if (refusal || !row) return { ok: false, status: 409, error: refusal ?? "That upload can't be picked back up." };
+  let signed;
+  try {
+    signed = await filmStorage().resignUpload(row.storage_path);
+  } catch (err) {
+    return { ok: false, status: 500, error: err instanceof Error ? err.message : "Couldn't pick the upload back up." };
+  }
+  return {
+    ok: true,
+    data: {
+      uploadId: row.id,
+      bucket: signed.bucket,
+      path: row.storage_path,
+      endpoint: signed.endpoint,
+      token: signed.token,
+      contentType: row.content_type,
+      gameLine: formatFilmGameLine({
+        gameDate: row.game_date,
+        opponent: row.opponent,
+        ourScore: row.our_score,
+        theirScore: row.their_score,
+      }),
+    },
+  };
 }

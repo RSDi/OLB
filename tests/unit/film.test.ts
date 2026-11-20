@@ -320,11 +320,15 @@ test("the guest uploader uses a server-created TUS URL and does not double-set h
   assert.match(client, /isLargeFilmFile/);
   assert.match(client, /✓ Uploaded/);
   assert.match(client, /All videos uploaded — you can close this page\./);
-  assert.match(client, /Keep this page open and keep your phone plugged in/);
+  assert.match(client, /Keep this page open on the screen and your phone plugged in/);
+  assert.match(client, /wakeLock/);
+  assert.match(client, /\/film\/upload-token\/resume/);
   assert.match(client, />\s*Retry\s*</);
   assert.match(client, /allUploadsFinished/);
   assert.match(client, /retryUpload/);
   assert.match(client, /setFileState\(fileId, \{ tus: \{ uploadUrl: body\.uploadUrl \} \}\)/);
+  assert.match(client, /setFileState\(fileId, \{ tus: \{ uploadUrl \} \}\)/);
+  assert.match(client, /applyResume\(fileId, resumed, saved\.uploadUrl\)/);
   assert.match(client, />Your name</);
   assert.match(client, />Game date</);
   assert.match(client, />Opponent</);
