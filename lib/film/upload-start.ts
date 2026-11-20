@@ -6,7 +6,8 @@
 
 import { validateUploadInput } from "./validation.ts";
 import { filmStorage } from "./storage.ts";
-import { appendYoutubeEvent, filmStoragePath, insertHoldingUpload, newUploadId } from "./uploads.ts";
+import { appendYoutubeEvent, filmStoragePath, insertHoldingUpload, newUploadId, saveFilmUploadStats } from "./uploads.ts";
+import { uploadStatsRow, type UploadStatsInput } from "./upload-stats.ts";
 import { waitForFilmObject } from "./object.ts";
 import { enqueueYoutubeIfConnected, processYoutubeQueue, YOUTUBE_KICK_BUDGET_MS } from "./youtube.ts";
 import { GAME_FILM_BUCKET, type FilmUpload } from "./types.ts";
@@ -88,7 +89,9 @@ export async function startFilmUpload(
 }
 
 // Run inside after(): the browser has finished TUS for this row.
-export async function kickFilmUploadComplete(row: FilmUpload): Promise<void> {
+// stats: what the browser measured (upload time, speed, resolution).
+export async function kickFilmUploadComplete(row: FilmUpload, stats?: UploadStatsInput): Promise<void> {
+  await saveFilmUploadStats(row.id, uploadStatsRow(stats));
   try {
     const info = await waitForFilmObject(row.storage_path, { expectedBytes: row.size_bytes });
     if (info.exists) {

@@ -6,7 +6,7 @@ import {
   listDiscardedFilmSlackDraftViews,
   listPendingFilmSlackDraftViews,
 } from "../../../lib/film/slack-drafts";
-import { listFilmUploads, loadFilmYoutubeExtras } from "../../../lib/film/uploads";
+import { listFilmUploads, loadFilmUploadStats, loadFilmYoutubeExtras } from "../../../lib/film/uploads";
 import { listEnabledFilmTeams } from "../../../lib/film/teams";
 import { listGameLineupsByKey, listTeamRosters } from "../../../lib/film/lineups";
 import type { FilmRosterPlayer } from "../../../lib/film/lineups";
@@ -44,12 +44,14 @@ export default async function FilmInboxPage({
   let uploads: FilmUpload[] = [];
   let jobs: Record<string, YoutubeJob> = {};
   let events: Record<string, YoutubeEvent[]> = {};
+  let uploadStats: Record<string, string> = {};
   let slackDrafts: FilmSlackDraftView[] = [];
   let discardedDrafts: FilmSlackDraftView[] = [];
   let loadError: string | null = null;
   const teamScope = viewer.canViewAllFilm ? undefined : viewer.filmTeamIds;
   try {
     uploads = await listFilmUploads(teamScope);
+    uploadStats = await loadFilmUploadStats(uploads.map((u) => u.id));
     try {
       const extras = await loadFilmYoutubeExtras(uploads.map((u) => u.id));
       jobs = extras.jobs;
@@ -114,6 +116,7 @@ export default async function FilmInboxPage({
       uploads={uploads}
       jobs={jobs}
       events={events}
+      uploadStats={uploadStats}
       slackDrafts={slackDrafts}
       discardedDrafts={discardedDrafts}
       canManage={viewer.canManageFilm}

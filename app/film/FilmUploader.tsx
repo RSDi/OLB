@@ -17,6 +17,18 @@ import { formatFilmGameLine } from "../../lib/film/game-meta";
 import { allUploadsFinished, formatBytes, formatFinishTime, isLargeFilmFile } from "../../lib/film/guest-status";
 import { MAX_UPLOAD_BYTES, TUS_CHUNK_SIZE } from "../../lib/film/types";
 import {
+  averageMbps,
+  currentMbps,
+  formatMbps,
+  formatTimeLeft,
+  newSpeedMeter,
+  recordProgress,
+  secondsLeft,
+  videoSizeAdvice,
+  type SpeedMeter,
+  type VideoProbe,
+} from "../../lib/film/upload-stats";
+import {
   fileFingerprint,
   findSavedUpload,
   friendlyUploadError,
@@ -44,7 +56,52 @@ type FileUi = {
   /** Game line from the server when this file picked up an earlier upload. */
   gameLine?: string | null;
   resumed?: boolean;
+  /** Recent upload speed and the time-left guess from it. */
+  mbps?: number | null;
+  secondsLeft?: number | null;
+  /** "This video is 4K…" when the file is bigger than it needs to be. */
+  sizeAdvice?: string | null;
 };
+
+/** Read a video's resolution and length without playing it. */
+function probeVideo(file: File): Promise<VideoProbe | null> {
+  return new Promise((resolve) => {
+    let url = "";
+    try {
+      url = URL.createObjectURL(file);
+    } catch {
+      resolve(null);
+      return;
+    }
+    const video = document.createElement("video");
+    let settled = false;
+    const done = (result: VideoProbe | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      video.removeAttribute("src");
+      video.load();
+      URL.revokeObjectURL(url);
+      resolve(result);
+    };
+    const timer = window.setTimeout(() => done(null), 8000);
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadedmetadata = () =>
+      done(
+        video.videoWidth > 0
+          ? {
+              width: video.videoWidth,
+              height: video.videoHeight,
+              durationSeconds: Number.isFinite(video.duration) ? video.duration : 0,
+            }
+          : null
+      );
+    video.onerror = () => done(null);
+    video.src = url;
+  });
+}
 
 /** No progress for this long while the page is showing → restart the request. */
 const STALL_MS = 45_000;
@@ -168,6 +225,8 @@ export function FilmUploader({
   const lastProgressRef = useRef(new Map<string, number>());
   const retryingRef = useRef(new Set<string>());
   const autoRetriesRef = useRef(new Map<string, number>());
+  const metersRef = useRef(new Map<string, SpeedMeter>());
+  const probesRef = useRef(new Map<string, VideoProbe>());
 
   useEffect(() => {
     filesRef.current = files;
@@ -230,12 +289,18 @@ export function FilmUploader({
       progress: { bytesUploaded: number; bytesTotal: number | null }
     ) => {
       if (!file) return;
-      lastProgressRef.current.set(file.id, Date.now());
+      const now = Date.now();
+      lastProgressRef.current.set(file.id, now);
       autoRetriesRef.current.delete(file.id);
+      const meter = metersRef.current.get(file.id) ?? newSpeedMeter();
+      metersRef.current.set(file.id, recordProgress(meter, progress.bytesUploaded, now));
+      const total = progress.bytesTotal ?? 0;
       patch(file.id, {
         bytes: progress.bytesUploaded,
-        total: progress.bytesTotal ?? 0,
+        total,
         status: "uploading",
+        mbps: currentMbps(meter),
+        secondsLeft: secondsLeft(meter, total),
       });
     };
     const onSuccess = (file: { id: string; size?: number | null; meta?: Record<string, unknown> } | undefined) => {
@@ -249,12 +314,26 @@ export function FilmUploader({
       const uploadId = file.meta?.filmUploadId;
       if (typeof uploadId === "string" && uploadId) {
         writeSaved(scope, removeSavedUpload(readSaved(scope), uploadId));
+        const meter = metersRef.current.get(file.id);
+        const probe = probesRef.current.get(file.id);
+        const resumed = filesRef.current.find((f) => f.id === file.id)?.resumed === true;
         void fetch(completeUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uploadId }),
+          body: JSON.stringify({
+            uploadId,
+            stats: {
+              activeSeconds: meter && averageMbps(meter) ? meter.activeMs / 1000 : undefined,
+              sentBytes: meter && averageMbps(meter) ? meter.sentBytes : undefined,
+              resumed,
+              videoWidth: probe?.width,
+              videoHeight: probe?.height,
+              videoDurationSeconds: probe?.durationSeconds,
+            },
+          }),
         });
       }
+      metersRef.current.delete(file.id);
     };
     const onError = (file: { id: string } | undefined, error: { message?: string }) => {
       if (!file) return;
@@ -420,9 +499,17 @@ export function FilmUploader({
             // No fingerprint: this upload just can't be picked back up later.
           }
           try {
-            ids.push(
-              uppy.addFile({ name: file.name, type: file.type, data: file, meta: { filmFingerprint: fingerprint } })
-            );
+            const id = uppy.addFile({ name: file.name, type: file.type, data: file, meta: { filmFingerprint: fingerprint } });
+            ids.push(id);
+            // Check the resolution alongside the upload; never hold it up.
+            void probeVideo(file).then((probe) => {
+              if (!probe) return;
+              probesRef.current.set(id, probe);
+              const advice = videoSizeAdvice(probe, file.size);
+              if (advice.message) {
+                setFiles((cur) => cur.map((f) => (f.id === id ? { ...f, sizeAdvice: advice.message } : f)));
+              }
+            });
           } catch (err) {
             setFormError(err instanceof Error ? err.message : "That file couldn't be added.");
           }
@@ -559,7 +646,7 @@ export function FilmUploader({
     .map((s) => s.name);
 
   const allDone = allUploadsFinished(files);
-  const largeFileNote = files.some((f) => isLargeFilmFile(f.total || f.bytes));
+  const largeFileNote = files.some((f) => isLargeFilmFile(f.total || f.bytes) && !f.sizeAdvice);
 
   return (
     <>
@@ -762,6 +849,14 @@ export function FilmUploader({
                   <div className={styles.bar} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
                     <div className={styles.barFill} style={{ width: `${pct}%` }} />
                   </div>
+                  <p className={styles.fileDetail} aria-live="polite">
+                    {f.status === "waiting"
+                      ? "Starting…"
+                      : f.secondsLeft != null && f.mbps
+                        ? `${formatTimeLeft(f.secondsLeft)} · ${formatMbps(f.mbps)}`
+                        : "Working out time left…"}
+                  </p>
+                  {f.sizeAdvice && <p className={styles.sizeHint}>{f.sizeAdvice}</p>}
                 </div>
               );
             })}

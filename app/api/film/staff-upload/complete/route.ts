@@ -6,6 +6,7 @@ import { after, NextResponse } from "next/server";
 import { getViewer } from "../../../../../lib/auth/viewer";
 import { canUseStaffUploader } from "../../../../../lib/film/staff-upload";
 import { getFilmUpload } from "../../../../../lib/film/uploads";
+import type { UploadStatsInput } from "../../../../../lib/film/upload-stats";
 import { kickFilmUploadComplete } from "../../../../../lib/film/upload-start";
 
 export const maxDuration = 60;
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   if (!canUseStaffUploader(viewer)) {
     return NextResponse.json({ error: "You can't upload film from here." }, { status: 403 });
   }
-  let body: { uploadId?: unknown };
+  let body: { uploadId?: unknown; stats?: UploadStatsInput };
   try {
     body = await request.json();
   } catch {
@@ -25,6 +26,6 @@ export async function POST(request: Request) {
   if (!id) return NextResponse.json({ error: "Send the upload id." }, { status: 400 });
   const row = await getFilmUpload(id);
   if (!row) return NextResponse.json({ error: "That upload wasn't found." }, { status: 404 });
-  after(() => kickFilmUploadComplete(row));
+  after(() => kickFilmUploadComplete(row, body.stats));
   return NextResponse.json({ ok: true, status: row.status });
 }
