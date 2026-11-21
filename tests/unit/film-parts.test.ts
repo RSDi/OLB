@@ -132,8 +132,8 @@ test("uploads say which part, or nothing", () => {
   assert.equal(validateUploadInput({ ...base, part: "halftime" }, "2026-11-22").ok, false);
 });
 
-test("0181's check lists exactly the codes in parts.ts", () => {
-  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0181_film_game_parts.sql"), "utf8");
+test("0182's check lists exactly the codes in parts.ts", () => {
+  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0182_film_game_parts.sql"), "utf8");
   const listed = /part in \(([^)]+)\)/.exec(sql)![1].split(",").map((s) => s.trim().replace(/'/g, ""));
   assert.deepEqual(listed, FILM_PARTS.map((p) => p.code));
   assert.match(sql, /add column if not exists part text/);

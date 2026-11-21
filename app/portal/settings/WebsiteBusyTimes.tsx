@@ -96,7 +96,7 @@ export function BusyTimes({ busy }: { busy: WebsiteActivity["busy"] }) {
   }, [busy]);
   return (
     <div className="rsd-card" data-tour="website-activity-busy">
-      <CardHead title="Busy times" sub="When people visit the club website, by weekday and hour (Central), last 30 days. Shootout pages aren't included." />
+      <CardHead title="Busy times" sub="When people visit the club website, by weekday and hour (Central), last 30 days. Shootout and team film pages aren't included." />
       <HeatGrid
         rows={rows}
         ariaLabel="Club website visitors by weekday and hour"

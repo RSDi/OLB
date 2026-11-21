@@ -1,7 +1,7 @@
-// Which part of a game a video is (0181): a half, a quarter or overtime.
+// Which part of a game a video is (0182): a half, a quarter or overtime.
 // Null is the whole game, or the uploader didn't say. Pure, so the client,
 // the server and tests share it. Keep the codes in step with the check in
-// supabase/migrations/0181_film_game_parts.sql.
+// supabase/migrations/0182_film_game_parts.sql.
 
 export const FILM_PARTS = [
   { code: "h1", label: "1st half" },
