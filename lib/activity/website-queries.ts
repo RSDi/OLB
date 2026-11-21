@@ -78,7 +78,7 @@ export interface FilmActivity {
   teams: (FilmTotals & { teamPage: string })[];
   // Games by plays.
   games: { uploadId: string; teamPage: string; label: string; plays: number; visitors: number; lastAt: string }[];
-  // 0180 missing or failing: the rest of the tab still loads.
+  // 0181 missing or failing: the rest of the tab still loads.
   error: string | null;
 }
 
@@ -197,7 +197,7 @@ export async function loadWebsiteActivity(): Promise<WebsiteActivity> {
     return { busy, shootout, busyError };
   })();
 
-  // Team film (0180).
+  // Team film (0181).
   const filmPart = (async (): Promise<FilmActivity> => {
     const [totalsRes, teamsRes, gamesRes] = await Promise.all([
       supabase.from("website_film_totals_30d").select("visitors, visits, views, plays, players, phones").maybeSingle(),
@@ -216,7 +216,7 @@ export async function loadWebsiteActivity(): Promise<WebsiteActivity> {
     const error = !failed
       ? null
       : failed.code === "42P01" || failed.code === "PGRST205"
-      ? "Team film numbers aren't set up yet — migration 0180 hasn't been applied to this database."
+      ? "Team film numbers aren't set up yet — migration 0181 hasn't been applied to this database."
       : `Couldn't load team film numbers: ${failed.message}${failed.code ? ` (${failed.code})` : ""}`;
     type Row = { visitors: number; visits: number; views: number; plays: number; players: number; phones: number };
     const num = (r: Partial<Row> | null | undefined): FilmTotals => ({
