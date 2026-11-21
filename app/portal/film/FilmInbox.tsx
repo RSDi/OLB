@@ -37,6 +37,7 @@ import { FilmPlayer } from "./FilmPlayer";
 import { SettingsLink, SettingsText } from "../../components/SettingsLink";
 import { setFilmTeamSlackChannel } from "../../../lib/film/team-actions";
 import type { FilmMarker } from "../../../lib/film/player-logic";
+import { EVENT_NAME_MAX } from "../../../lib/film/watch";
 import styles from "./inbox.module.css";
 
 interface Props {
@@ -62,6 +63,8 @@ interface Props {
   markers: Record<string, FilmMarker[]>;
   /** From a shared link: open this video at this second. */
   initialMoment: { id: string; t: number } | null;
+  /** Preview: the tournament field that groups games on the team film page. */
+  showEvents?: boolean;
 }
 
 type Playing = {
@@ -120,7 +123,7 @@ function digitsOnly(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, 3);
 }
 
-type GamePatch = Pick<FilmUpload, "game_date" | "opponent" | "our_score" | "their_score" | "youtube_playlist_id">;
+type GamePatch = Pick<FilmUpload, "game_date" | "opponent" | "our_score" | "their_score" | "youtube_playlist_id" | "event_name">;
 
 export function FilmInbox({
   uploads,
@@ -141,6 +144,7 @@ export function FilmInbox({
   lineups,
   markers: initialMarkers,
   initialMoment,
+  showEvents = false,
 }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
@@ -161,6 +165,17 @@ export function FilmInbox({
   });
   const [markers, setMarkers] = useState<Record<string, FilmMarker[]>>(initialMarkers);
   const [patches, setPatches] = useState<Record<string, GamePatch>>({});
+  // Tournament names already used per team, newest first, for the edit form.
+  const eventOptions = useMemo(() => {
+    const out: Record<string, string[]> = {};
+    for (const u of uploads) {
+      const name = (patches[u.id]?.event_name ?? u.event_name)?.trim();
+      if (!name) continue;
+      const list = (out[u.team] ??= []);
+      if (!list.some((x) => x.toLowerCase() === name.toLowerCase())) list.push(name);
+    }
+    return out;
+  }, [uploads, patches]);
   const [, startTransition] = useTransition();
 
   const live = useMemo(
@@ -531,6 +546,7 @@ export function FilmInbox({
                       roster={row.team_id ? rosters[row.team_id] ?? [] : []}
                       lineupPlayerIds={lineups[filmLineupKey(row.team_id, row.game_date, row.opponent) ?? ""] ?? []}
                       markerCount={markers[row.id]?.length ?? 0}
+                      eventOptions={showEvents ? eventOptions[row.team] ?? [] : null}
                       onPlay={() => void play(row)}
                       onPlayOriginal={() => void play(row, { original: true })}
                       onDownload={() => void download(row.id)}
@@ -566,6 +582,7 @@ function FilmRow({
   roster,
   lineupPlayerIds,
   markerCount,
+  eventOptions,
   onPlay,
   onPlayOriginal,
   onDownload,
@@ -585,6 +602,8 @@ function FilmRow({
   roster: FilmRosterPlayer[];
   lineupPlayerIds: string[];
   markerCount: number;
+  /** Null hides the tournament field. */
+  eventOptions: string[] | null;
   onPlay: () => void;
   onPlayOriginal: () => void;
   onDownload: () => void;
@@ -724,6 +743,7 @@ function FilmRow({
           teamPlaylistId={teamPlaylistId}
           roster={roster}
           lineupPlayerIds={lineupPlayerIds}
+          eventOptions={eventOptions}
           onCancel={() => setEditing(false)}
           onSaved={(patch) => {
             onPatched(patch);
@@ -805,6 +825,7 @@ function FilmGameEditor({
   teamPlaylistId,
   roster,
   lineupPlayerIds,
+  eventOptions,
   onCancel,
   onSaved,
 }: {
@@ -812,12 +833,14 @@ function FilmGameEditor({
   teamPlaylistId: string | null;
   roster: FilmRosterPlayer[];
   lineupPlayerIds: string[];
+  eventOptions: string[] | null;
   onCancel: () => void;
   onSaved: (patch: GamePatch) => void;
 }) {
   const router = useRouter();
   const [gameDate, setGameDate] = useState(row.game_date ?? "");
   const [opponent, setOpponent] = useState(row.opponent ?? "");
+  const [eventName, setEventName] = useState(row.event_name ?? "");
   const [ourScore, setOurScore] = useState(row.our_score == null ? "" : String(row.our_score));
   const [theirScore, setTheirScore] = useState(row.their_score == null ? "" : String(row.their_score));
   const [playlistDraft, setPlaylistDraft] = useState(row.youtube_playlist_id ?? "");
@@ -835,6 +858,7 @@ function FilmGameEditor({
       ourScore,
       theirScore,
       playerIds: pickedPlayers,
+      ...(eventOptions ? { eventName } : {}),
     });
     if (result.error) {
       setSaving(false);
@@ -858,6 +882,7 @@ function FilmGameEditor({
       our_score: result.upload?.our_score ?? row.our_score,
       their_score: result.upload?.their_score ?? row.their_score,
       youtube_playlist_id: playlistId,
+      event_name: result.upload ? result.upload.event_name : row.event_name,
     });
     startTransition(() => router.refresh());
   }
@@ -893,6 +918,31 @@ function FilmGameEditor({
           maxLength={OPPONENT_MAX}
         />
       </label>
+      {eventOptions && (
+        <label className={styles.field}>
+          <span className={styles.label}>Tournament</span>
+          <p className={styles.hint}>
+            Optional. Games with the same name show together on the team film page. Leave blank to group by weekend.
+          </p>
+          <input
+            className={styles.input}
+            value={eventName}
+            onChange={(e) => setEventName(e.target.value)}
+            placeholder="Heartland Hoops Classic"
+            autoComplete="off"
+            autoCapitalize="words"
+            maxLength={EVENT_NAME_MAX}
+            list={eventOptions.length ? `film-events-${row.id}` : undefined}
+          />
+          {eventOptions.length > 0 && (
+            <datalist id={`film-events-${row.id}`}>
+              {eventOptions.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          )}
+        </label>
+      )}
       {roster.length > 0 && (
         <fieldset className={styles.scoreFields} data-tour="film-lineup">
           <legend className={styles.label}>Who played</legend>

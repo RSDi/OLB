@@ -98,6 +98,8 @@ export function FilmPlayer({
   canManage,
   onClose,
   onMarkersChange,
+  momentPath = filmMomentPath,
+  fileErrorText,
 }: {
   uploadId: string;
   title: string;
@@ -107,6 +109,10 @@ export function FilmPlayer({
   canManage: boolean;
   onClose: () => void;
   onMarkersChange: (next: FilmMarker[]) => void;
+  /** Where "Copy link to this moment" points. Defaults to the portal Film page. */
+  momentPath?: (uploadId: string, atSeconds: number) => string;
+  /** Shown when the browser can't decode the original file. */
+  fileErrorText?: string;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -290,7 +296,7 @@ export function FilmPlayer({
 
   async function copyMoment() {
     const t = ctrlRef.current?.time() ?? now;
-    const url = `${window.location.origin}${filmMomentPath(uploadId, t)}`;
+    const url = `${window.location.origin}${momentPath(uploadId, t)}`;
     try {
       await navigator.clipboard.writeText(url);
       setNote(`Link to ${formatTimecode(t)} copied.`);
@@ -371,7 +377,8 @@ export function FilmPlayer({
             className={styles.frame}
             onError={() =>
               setLoadError(
-                "This browser can't play the phone's original file (iPhone HDR video often won't play in Chrome). It will play here once it's on YouTube. Try Safari, or Download original under More."
+                fileErrorText ??
+                  "This browser can't play the phone's original file (iPhone HDR video often won't play in Chrome). It will play here once it's on YouTube. Try Safari, or Download original under More."
               )
             }
           />

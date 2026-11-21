@@ -195,6 +195,7 @@ export const RESERVED_SLUGS = [
   // Game-film uploader (0142): /film landing and /t/<team> upload pages.
   "film",
   "t",
+  "watch",
   // Public invoice page (0152): /invoice/<token>.
   "invoice",
   // Sponsor click counter (0169): /go/<sponsor> redirects to their site.

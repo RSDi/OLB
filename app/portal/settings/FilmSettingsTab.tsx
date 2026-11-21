@@ -24,6 +24,7 @@ import {
   removeFilmManager,
   renameFilmTeam,
   saveFilmTeamPage,
+  saveFilmTeamWatch,
   saveFilmTeamPlaylist,
   saveFilmTeamTemplate,
   setFilmTeamCode,
@@ -66,7 +67,7 @@ function ErrorBox({ text }: { text: string }) {
   );
 }
 
-export function FilmSettingsTab() {
+export function FilmSettingsTab({ fullUi = false }: { fullUi?: boolean }) {
   const [season, setSeason] = useState<string | null>(null);
   const [teams, setTeams] = useState<FilmSettingsTeam[]>([]);
   const [members, setMembers] = useState<FilmMemberOption[]>([]);
@@ -200,6 +201,7 @@ export function FilmSettingsTab() {
               open={openId === t.id}
               onToggle={() => setOpenId(openId === t.id ? null : t.id)}
               tourToggle={tourToggle}
+              showWatch={fullUi}
             />
           )}
         />
@@ -278,6 +280,7 @@ function TeamCard({
   open,
   onToggle,
   tourToggle,
+  showWatch,
 }: {
   team: FilmSettingsTeam;
   members: FilmMemberOption[];
@@ -287,8 +290,11 @@ function TeamCard({
   open: boolean;
   onToggle: () => void;
   tourToggle: boolean;
+  showWatch: boolean;
 }) {
   const [slug, setSlug] = useState(team.slug);
+  const [watchOn, setWatchOn] = useState(team.watchPublic);
+  const [watchCopied, setWatchCopied] = useState(false);
   const [enabled, setEnabled] = useState(team.enabled);
   const [name, setName] = useState(team.label);
   const [renaming, setRenaming] = useState(false);
@@ -310,6 +316,7 @@ function TeamCard({
   const [includePlaylistLink, setIncludePlaylistLink] = useState(team.includePlaylistLink);
   const [slackChannelId, setSlackChannelId] = useState(team.slackChannelId ?? "");
   const uploadUrl = filmUploadUrl(origin, team.slug);
+  const watchUrl = origin && team.hasSlug ? `${origin}/watch/${team.slug}` : "";
   const parsedDraft = parseYoutubePlaylistId(playlistDraft);
   const selectedPlaylistId = parsedDraft.ok ? parsedDraft.id ?? "" : "";
 
@@ -480,6 +487,55 @@ function TeamCard({
           </div>
         )}
       </div>
+
+      {showWatch && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+            Team film page (preview)
+          </div>
+          <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
+            One link where families watch every game, grouped by tournament and weekend. Anyone with the link can
+            watch, so share it with the team only.
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <Pill
+              size="sm"
+              variant={watchOn ? "accent" : "light"}
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  const next = !watchOn;
+                  const res = await saveFilmTeamWatch(team.id, next);
+                  if (!res.error) setWatchOn(next);
+                  return res;
+                })
+              }
+            >
+              {watchOn ? "On" : "Off"}
+            </Pill>
+            {watchOn && watchUrl && (
+              <>
+                <a href={watchUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, overflowWrap: "anywhere" }}>
+                  {watchUrl}
+                </a>
+                <Pill
+                  size="sm"
+                  variant="light"
+                  onClick={() => {
+                    void copyText(watchUrl).then((ok) => {
+                      if (!ok) return;
+                      setWatchCopied(true);
+                      setTimeout(() => setWatchCopied(false), 1500);
+                    });
+                  }}
+                >
+                  {watchCopied ? "Copied" : "Copy"}
+                </Pill>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <div data-tour="film-settings-code" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gw-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>

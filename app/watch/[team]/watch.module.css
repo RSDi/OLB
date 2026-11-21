@@ -1,0 +1,487 @@
+/* Team film page (/watch/<team>). Lightning theme tokens from globals.css. */
+
+.page {
+  min-height: 100vh;
+  background: var(--gw-bg);
+  color: var(--gw-fg);
+}
+
+.top {
+  background: #0b0b0c;
+  color: #fff;
+}
+
+.topInner,
+.inner {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.topInner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-block: 14px;
+}
+
+.bolt {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex: none;
+}
+
+.team {
+  min-width: 0;
+  flex: 1;
+}
+
+.top .eyebrow {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.teamName {
+  margin: 0;
+  font-family: var(--rsd-display);
+  font-size: calc(22px * var(--rsd-display-scale, 1));
+  line-height: 1.1;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.share {
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--rsd-accent-fill);
+  color: var(--rsd-accent-fill-on);
+  cursor: pointer;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-block: 22px 48px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gw-fg-muted);
+}
+
+.meta {
+  font-size: 13px;
+  color: var(--gw-fg-muted);
+  font-weight: 500;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 32px;
+  align-items: flex-end;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gw-fg-muted);
+}
+
+.stat b {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat b.big {
+  font-family: var(--rsd-display);
+  font-size: calc(30px * var(--rsd-display-scale, 1));
+  line-height: 1;
+}
+
+/* Featured latest game */
+.featured {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 20px;
+  align-items: center;
+  background: var(--gw-bg-elev);
+  border: 1px solid var(--gw-border);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.featuredInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.featuredTitle,
+.playerTitle {
+  margin: 0;
+  font-family: var(--rsd-display);
+  font-size: calc(24px * var(--rsd-display-scale, 1));
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.chip {
+  border: 1px solid var(--gw-border);
+  background: var(--gw-bg);
+  color: var(--gw-fg);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--gw-fg);
+}
+
+.chipTime {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.watch {
+  margin-top: 8px;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font: inherit;
+  font-weight: 700;
+  background: var(--rsd-accent-fill);
+  color: var(--rsd-accent-fill-on);
+  cursor: pointer;
+}
+
+/* Thumbnails */
+.thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 30% 20%, #26261f, #0b0b0c);
+  cursor: pointer;
+}
+
+.thumbImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.court {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #ffd100;
+  stroke-width: 0.7;
+  opacity: 0.35;
+}
+
+.play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: rgba(255, 209, 0, 0.95);
+  display: grid;
+  place-items: center;
+  transition: transform 0.15s;
+}
+
+.thumbBig .play {
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+}
+
+.play svg {
+  width: 40%;
+  height: 40%;
+  margin-left: 8%;
+  fill: #0b0b0c;
+}
+
+.thumb:hover .play {
+  transform: scale(1.08);
+}
+
+.scoreTag {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+/* Player */
+.playerWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-margin-top: 12px;
+}
+
+.playerHead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid var(--gw-border);
+  padding-top: 20px;
+}
+
+.seg {
+  display: inline-flex;
+  background: var(--gw-bg-elev);
+  border: 1px solid var(--gw-border);
+  border-radius: 10px;
+  padding: 3px;
+}
+
+.seg button {
+  border: 0;
+  background: transparent;
+  color: var(--gw-fg-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--rsd-accent-fill);
+  color: var(--rsd-accent-fill-on);
+}
+
+.search {
+  flex: 1 1 180px;
+  max-width: 280px;
+  margin-left: auto;
+  border: 1px solid var(--gw-border);
+  background: var(--gw-bg-elev);
+  color: var(--gw-fg);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 14px;
+}
+
+/* Sections */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.sectionTitle {
+  min-width: 0;
+  flex: 1;
+}
+
+.sectionTitle h3 {
+  margin: 0;
+  font-family: var(--rsd-display);
+  font-size: calc(20px * var(--rsd-display-scale, 1));
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.dates {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gw-fg-muted);
+}
+
+.record {
+  font-family: var(--rsd-display);
+  font-size: calc(18px * var(--rsd-display-scale, 1));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--rsd-accent-bg);
+  border: 1px solid var(--rsd-accent-line);
+  border-radius: 999px;
+  padding: 0 12px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.game {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wl {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.win {
+  background: var(--gw-success-bg);
+  color: var(--gw-success);
+}
+
+.loss {
+  background: var(--gw-error-bg);
+  color: var(--gw-error);
+}
+
+.opp {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  text-align: center;
+  padding: 60px 16px;
+  color: var(--gw-fg-muted);
+}
+
+.empty strong {
+  color: var(--gw-fg);
+  font-size: 16px;
+}
+
+.none {
+  color: var(--gw-fg-muted);
+  text-align: center;
+  padding: 24px 0;
+}
+
+.footer {
+  margin-top: 24px;
+  font-size: 12.5px;
+  color: var(--gw-fg-faint);
+  text-align: center;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  overflow-wrap: anywhere;
+  background: #0b0b0c;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 10px;
+  z-index: 30;
+}
+
+@media (max-width: 720px) {
+  .featured {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .search {
+    max-width: none;
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play {
+    transition: none;
+  }
+}

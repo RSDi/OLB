@@ -9,6 +9,7 @@ import { SIGNED_DOWNLOAD_TTL_S } from "./types.ts";
 import { filmStorage } from "./storage.ts";
 import { churchToday } from "../dates/today.ts";
 import { parseFilmGameFields } from "./game-meta.ts";
+import { EVENT_NAME_MAX, cleanEventName } from "./watch.ts";
 import { parseFilmLineupPlayerIds, saveGameLineup } from "./lineups.ts";
 import {
   deleteFilmUploadRow,
@@ -79,8 +80,19 @@ export async function updateFilmGameFields(
     ourScore?: unknown;
     theirScore?: unknown;
     playerIds?: unknown;
+    eventName?: unknown;
   }
-): Promise<{ error?: string; ok?: true; upload?: { game_date: string | null; opponent: string | null; our_score: number | null; their_score: number | null } }> {
+): Promise<{
+  error?: string;
+  ok?: true;
+  upload?: {
+    game_date: string | null;
+    opponent: string | null;
+    our_score: number | null;
+    their_score: number | null;
+    event_name: string | null;
+  };
+}> {
   const gate = await requireFilmManage();
   if ("error" in gate) return { error: gate.error };
   if (!id || typeof id !== "string") return { error: "That upload isn't there any more." };
@@ -90,7 +102,13 @@ export async function updateFilmGameFields(
     ? parseFilmLineupPlayerIds(input.playerIds)
     : null;
   if (lineup && !lineup.ok) return { error: lineup.error };
-  const row = await updateFilmUploadGame(id, parsed);
+  let eventName: string | null | undefined;
+  if (Object.prototype.hasOwnProperty.call(input, "eventName")) {
+    const cleaned = cleanEventName(input.eventName);
+    if (!cleaned.ok) return { error: `Keep the tournament name under ${EVENT_NAME_MAX} characters.` };
+    eventName = cleaned.value;
+  }
+  const row = await updateFilmUploadGame(id, { ...parsed, eventName });
   if (!row) return { error: "That upload isn't there any more." };
   if (lineup && row.team_id && row.game_date) {
     try {
@@ -107,6 +125,7 @@ export async function updateFilmGameFields(
       opponent: row.opponent,
       our_score: row.our_score,
       their_score: row.their_score,
+      event_name: row.event_name,
     },
   };
 }

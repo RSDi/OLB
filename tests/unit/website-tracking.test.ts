@@ -22,6 +22,7 @@ const NOT_TRACKED = [
   join("(standalone)", "roadmap"), // a private share link
   "film", // coaches' film upload, behind a team code
   "t", // coaches' film upload, behind a team code
+  "watch", // a team's game film page, shared with that team's families only
   "invoice", // a family's private invoice link
 ];
 
