@@ -104,7 +104,7 @@ export const SITE_PAGES: [RegExp, string][] = [
   [/^\/mockups\/court-sponsors$/, "Mock-up: court sponsors (not live)"],
   // Reached at /! too, which keeps that address in the browser.
   [/^\/(exclamation|!|%21)$/, "Coach Cory's exclamation counter"],
-  [/^\/watch$/, "Team film · All teams"],
+  [/^\/watch$/, "Team film · No team picked"],
   [/^\/shootout$/, "Shootout live scores"],
   [/^\/shootout\/tv\/admission$/, "Shootout TV · Admission"],
   [new RegExp(`^/shootout/tv(/${PAGE})?$`), "Shootout TV · Scoreboard"],
@@ -118,12 +118,14 @@ function pathnameOf(path: string): string {
 
 // The name of one of the website's own pages, or null when the address isn't
 // one (a New page, or an address that doesn't exist).
-// "/watch/hs-jv" → "Team film · HS JV". Short words (hs, jv, 14u) read as
-// initials; the rest are capitalized.
+// "/watch/hs-jv-3f9a0c7e1b2d" → "Team film · HS JV": the link's random key
+// is dropped. Short words (hs, jv, 14u) read as initials; the rest are
+// capitalized.
 export function teamFilmLabel(path: string): string | null {
   const m = /^\/watch\/([a-z0-9-]+)$/i.exec(pathnameOf(path));
   if (!m) return null;
   const words = m[1]
+    .replace(/-[0-9a-f]{12}$/i, "")
     .split("-")
     .filter(Boolean)
     .map((w) => (w.length <= 3 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)));

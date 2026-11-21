@@ -82,7 +82,7 @@ export interface GuideViewer {
   canManageInvoicing?: boolean;
 }
 
-export const GUIDE_UPDATED = "November 20, 2026";
+export const GUIDE_UPDATED = "November 21, 2026";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
@@ -841,14 +841,15 @@ Share the team upload link and code with families, not this inbox. Super-admins 
     preview: true,
     permission: "film_view",
     alsoPermissions: ["film_manage", "teams"],
-    keywords: ["team film page", "watch page", "switch team", "all teams", "watch", "public link", "families", "tournament", "weekend", "share film", "instead of youtube"],
+    keywords: ["team film page", "watch page", "new link", "link key", "watch", "public link", "families", "tournament", "weekend", "share film", "instead of youtube"],
     body: `One link per team where families watch every game, instead of a new post for each one. Families don't sign in: anyone with the link can watch, so share it with the team only.
 
 **Turning it on**
 
-- In **Settings → Film**, open a team and find **Team film page (preview)**. Tap **Off** to turn it **On**. The link shows next to it (it ends in **/watch/** and the team's upload address). **Copy** copies it.
+- In **Settings → Film**, open a team and find **Team film page (preview)**. Tap **Off** to turn it **On**. The link shows next to it: **/watch/**, the team's upload address, and a random key on the end, so nobody can guess it from the team name. **Copy** copies it.
 - Tap **On** again to turn it off. The link then shows "page not found".
-- Each team gets its own link. **Switch team** at the top of the page moves to any other team whose page is On, and the page ending in **/watch** lists every one of them, if you'd rather send one link to the whole program.
+- Each team gets its own link, and a team's page shows only that team. There's no list of teams: the page ending in just **/watch** tells families to ask their coach for the link.
+- If a link gets passed around, tap **New link**. The old link stops working right away, so send families the new one.
 
 **What families see**
 
@@ -857,7 +858,7 @@ Share the team upload link and code with families, not this inbox. Super-admins 
 - **All games**, **Tournaments** and **Other games** filter the list, and **Search opponent** finds a team.
 - A game plays in the same player as **Film**, with speeds, frame steps and the markers you added. **Copy link to this moment** copies a link to that game on the team page at that second.
 - Games play from YouTube once they're there (public or unlisted only). Before that they play from the phone's original file.
-- Visits count in **Settings → Website Activity** like the club website's pages: each team's page shows under **Most visited pages** as **Team film ·** and the team (for example **Team film · HS JV**), and the list of all teams as **Team film · All teams**. Opening a game counts toward its team's page. The four numbers at the top include these visits too.
+- Visits count in **Settings → Website Activity** like the club website's pages: each team's page shows under **Most visited pages** as **Team film ·** and the team (for example **Team film · HS JV**), and the bare **/watch** page as **Team film · No team picked**. Opening a game counts toward its team's page. The four numbers at the top include these visits too.
 
 **Grouping games into tournaments**
 

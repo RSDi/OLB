@@ -59,6 +59,7 @@ function team(partial: Partial<FilmTeamRow> & Pick<FilmTeamRow, "id" | "slug">):
     hasCode: true,
     hasSlug: true,
     watchPublic: false,
+    watchToken: "0123456789ab",
     codeVersion: 1,
     codeHash: hashFilmCode(partial.id, "white-code"),
     suggestedCode: "white14",

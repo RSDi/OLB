@@ -2,6 +2,7 @@
 // Settings → Film: enable Directory teams for family uploads, set/rotate
 // hashed codes, and assign per-team video managers.
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireFilmManage } from "../auth/guards.ts";
 import { createAdminClient } from "../supabase/admin.ts";
@@ -93,6 +94,7 @@ export async function loadFilmSettings(): Promise<
         includePlaylistLink: t.includePlaylistLink,
         slackChannelId: t.slackChannelId,
         watchPublic: t.watchPublic,
+        watchToken: t.watchToken,
         managers: managersByTeam.get(t.id) ?? [],
       })),
     };
@@ -169,7 +171,7 @@ export async function saveFilmTeamPage(
   return {};
 }
 
-/** Turn a team's film page (/watch/<slug>) on or off. */
+/** Turn a team's film page (/watch/<slug>-<key>) on or off. */
 export async function saveFilmTeamWatch(id: string, on: boolean): Promise<{ error?: string }> {
   const gate = await requireFilmManage();
   if ("error" in gate) return { error: gate.error };
@@ -186,6 +188,24 @@ export async function saveFilmTeamWatch(id: string, on: boolean): Promise<{ erro
   if (error) return { error: error.message };
   refresh();
   return {};
+}
+
+/** Give a team's film page a new link. The old link stops working. */
+export async function newFilmTeamWatchLink(id: string): Promise<{ error?: string; watchToken?: string }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  const token = randomBytes(6).toString("hex");
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("olb_teams")
+    .update({ film_watch_token: token, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error) return { error: error.message };
+  if (!data) return { error: "That team isn't there any more." };
+  refresh();
+  return { watchToken: token };
 }
 
 async function otherTeamCodeHashes(exceptId: string): Promise<{ id: string; codeHash: string | null }[]> {
