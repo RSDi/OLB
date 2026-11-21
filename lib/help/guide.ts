@@ -863,7 +863,9 @@ Share the team upload link and code with families, not this inbox. Super-admins 
 
 **Grouping games into tournaments**
 
-On **Film**, **Edit** a video and fill in **Tournament** (for example *Heartland Hoops Classic*), then **Save**. Names you've already used for that team are suggested as you type. Games with the same name a few days apart show together. Leave it blank to group the game by weekend.`,
+On **Film**, **Edit** a video and pick its **Tournament**, then **Save**. The list has the team's tournaments from the **HS Schedule** (with their dates) and names already used on Film for that team. Pick **Other…** to type a new name, or **None** to group the game by weekend.
+
+When the game date falls on a tournament weekend in the HS Schedule, that tournament is picked for you, and the form says it came from the HS Schedule. Changing the date changes the pick until you choose one yourself. Games with the same tournament a few days apart show together.`,
   },
   {
     id: "film-streamed-games",
@@ -878,7 +880,7 @@ On **Film**, **Edit** a video and fill in **Tournament** (for example *Heartland
 
 **Adding a streamed game**
 
-- On **Film**, tap **Add streamed game**. Paste the stream's YouTube link, pick the team, and fill in the game date and opponent. Tournament and score are optional.
+- On **Film**, tap **Add streamed game**. Paste the stream's YouTube link, pick the team, and fill in the game date and opponent. The **Tournament** is picked from the HS Schedule when the date matches; score is optional.
 - Tap **Add to team page**. The game shows on the team film page right away with a red **Streamed** mark, and the player says a better recording is on the way.
 - On Film the card says **Streamed**. It doesn't go in a playlist, and **More → Watch the stream on YouTube** opens it. You can add jump-to points to it like any other game.
 

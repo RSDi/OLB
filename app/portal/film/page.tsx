@@ -15,6 +15,8 @@ import { listFilmMarkers } from "../../../lib/film/markers";
 import { getYoutubeWorkerError } from "../../../lib/film/youtube-settings";
 import { parseTimecode, type FilmMarker } from "../../../lib/film/player-logic";
 import { canUseStaffUploader } from "../../../lib/film/staff-upload";
+import { listScheduledTournaments } from "../../../lib/film/tournaments-data";
+import type { ScheduledTournament } from "../../../lib/film/tournaments";
 import { FilmInbox } from "./FilmInbox";
 
 export const dynamic = "force-dynamic";
@@ -105,6 +107,20 @@ export default async function FilmInboxPage({
   }
   const youtubePaused = (await getYoutubeWorkerError())?.error ?? null;
 
+  // Preview: the HS Schedule's tournaments, for the Tournament dropdown.
+  let scheduledTournaments: Record<string, ScheduledTournament[]> = {};
+  if (viewer.seesFullUi) {
+    try {
+      const { teams } = await listDirectoryFilmTeams();
+      scheduledTournaments = await listScheduledTournaments([
+        ...uploads.map((u) => u.team_id).filter((id): id is string => !!id),
+        ...teams.map((t) => t.id),
+      ]);
+    } catch {
+      scheduledTournaments = {};
+    }
+  }
+
   // Preview: streamed games go on teams that have a film address.
   let streamTeams: { id: string; label: string; slug: string }[] | null = null;
   if (viewer.seesFullUi && viewer.canManageFilm) {
@@ -146,6 +162,7 @@ export default async function FilmInboxPage({
       initialMoment={initialMoment}
       showEvents={viewer.seesFullUi}
       streamTeams={streamTeams}
+      scheduledTournaments={scheduledTournaments}
     />
   );
 }
