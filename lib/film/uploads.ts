@@ -26,7 +26,7 @@ import { YOUTUBE_LEASE_MS } from "./youtube-meta.ts";
 import { formatUploadStats, type UploadStatsRow } from "./upload-stats.ts";
 
 export const FILM_UPLOAD_COLUMNS =
-  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at";
+  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at, event_name";
 
 export function filmStoragePath(team: string, uploadId: string, filename: string): string {
   const now = new Date();
@@ -149,6 +149,8 @@ export async function updateFilmUploadGame(
     opponent: string | null;
     ourScore: number | null;
     theirScore: number | null;
+    /** Left alone when undefined. */
+    eventName?: string | null;
   }
 ): Promise<FilmUpload | null> {
   const admin = createAdminClient();
@@ -159,6 +161,7 @@ export async function updateFilmUploadGame(
       opponent: fields.opponent,
       our_score: fields.ourScore,
       their_score: fields.theirScore,
+      ...(fields.eventName !== undefined ? { event_name: fields.eventName } : {}),
     })
     .eq("id", id)
     .select(FILM_UPLOAD_COLUMNS)

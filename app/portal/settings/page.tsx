@@ -401,7 +401,7 @@ export default function SettingsPage() {
       {tab === "types" && has("types") && <TypesTab me={me} />}
       {tab === "supplies" && has("supplies") && <SuppliesTab me={me} />}
       {tab === "teams" && has("teams") && <TeamsSettingsTab />}
-      {tab === "film" && has("film") && <FilmSettingsTab />}
+      {tab === "film" && has("film") && <FilmSettingsTab fullUi={fullUi} />}
       {tab === "season" && has("season") && <SeasonTab />}
       {tab === "volunteer_roles" && has("volunteer_roles") && <VolunteerRolesTab />}
       {tab === "requirements" && has("requirements") && <RequirementsTab me={me} />}

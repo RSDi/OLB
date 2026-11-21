@@ -131,6 +131,7 @@ export default async function FilmInboxPage({
       lineups={lineups}
       markers={markers}
       initialMoment={initialMoment}
+      showEvents={viewer.seesFullUi}
     />
   );
 }

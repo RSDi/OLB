@@ -834,6 +834,34 @@ Families don't sign in here. They open the team upload link they were sent (the 
 Share the team upload link and code with families, not this inbox. Super-admins and anyone with **Game film (manage)** set those codes and connect YouTube in **Settings → Film**.`
   },
   {
+    id: "film-team-page",
+    title: "Team film page",
+    group: "Film",
+    audience: "super_admin",
+    preview: true,
+    permission: "film_view",
+    alsoPermissions: ["film_manage", "teams"],
+    keywords: ["team film page", "watch page", "watch", "public link", "families", "tournament", "weekend", "share film", "instead of youtube"],
+    body: `One link per team where families watch every game, instead of a new post for each one. Families don't sign in: anyone with the link can watch, so share it with the team only.
+
+**Turning it on**
+
+- In **Settings → Film**, open a team and find **Team film page (preview)**. Tap **Off** to turn it **On**. The link shows next to it (it ends in **/watch/** and the team's upload address). **Copy** copies it.
+- Tap **On** again to turn it off. The link then shows "page not found".
+
+**What families see**
+
+- The team's record, how many games are on film, how many tournaments, and the date of the latest game.
+- The latest game at the top with its jump-to points, then every game grouped newest first: by tournament when a game has one, otherwise by weekend (Friday to Sunday) or by the day of a weekday game. Each group shows its dates and its win–loss record.
+- **All games**, **Tournaments** and **Other games** filter the list, and **Search opponent** finds a team.
+- A game plays in the same player as **Film**, with speeds, frame steps and the markers you added. **Copy link to this moment** copies a link to that game on the team page at that second.
+- Games play from YouTube once they're there (public or unlisted only). Before that they play from the phone's original file.
+
+**Grouping games into tournaments**
+
+On **Film**, **Edit** a video and fill in **Tournament** (for example *Heartland Hoops Classic*), then **Save**. Names you've already used for that team are suggested as you type. Games with the same name a few days apart show together. Leave it blank to group the game by weekend.`,
+  },
+  {
     id: "film-status",
     title: "Film status",
     group: "Film",

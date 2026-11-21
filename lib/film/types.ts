@@ -53,6 +53,8 @@ export interface FilmUpload {
   opponent: string | null;
   our_score: number | null;
   their_score: number | null;
+  // Tournament or event name a coach typed; the team film page groups by it.
+  event_name: string | null;
   youtube_status: YoutubeStatus | null;
   youtube_video_id: string | null;
   youtube_error: string | null;

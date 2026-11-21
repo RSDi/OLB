@@ -22,6 +22,7 @@ import { youtubeAuthorizeUrl, youtubeOAuthConfigured, YOUTUBE_SCOPES } from "../
 function upload(partial: Partial<FilmUpload> & Pick<FilmUpload, "id" | "team" | "filename">): FilmUpload {
   return {
     team_id: null,
+    event_name: null,
     uploader_name: "Pat",
     content_type: "video/quicktime",
     size_bytes: 12,

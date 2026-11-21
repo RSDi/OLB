@@ -92,6 +92,7 @@ export async function loadFilmSettings(): Promise<
         includeTournament: t.includeTournament,
         includePlaylistLink: t.includePlaylistLink,
         slackChannelId: t.slackChannelId,
+        watchPublic: t.watchPublic,
         managers: managersByTeam.get(t.id) ?? [],
       })),
     };
@@ -162,6 +163,25 @@ export async function saveFilmTeamPage(
       film_enabled: input.enabled,
       updated_at: new Date().toISOString(),
     })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  refresh();
+  return {};
+}
+
+/** Turn a team's film page (/watch/<slug>) on or off. */
+export async function saveFilmTeamWatch(id: string, on: boolean): Promise<{ error?: string }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  const admin = createAdminClient();
+  const { data: row } = await admin.from("olb_teams").select("film_slug").eq("id", id).maybeSingle();
+  if (!row) return { error: "That team isn't there any more." };
+  if (on && !(row as { film_slug: string | null }).film_slug?.trim()) {
+    return { error: "Save an address for this team before turning its film page on." };
+  }
+  const { error } = await admin
+    .from("olb_teams")
+    .update({ film_watch_public: on, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: error.message };
   refresh();
