@@ -10,6 +10,7 @@ import { filmStorage } from "./storage.ts";
 import { churchToday } from "../dates/today.ts";
 import { parseFilmGameFields } from "./game-meta.ts";
 import { EVENT_NAME_MAX, cleanEventName } from "./watch.ts";
+import { parseFilmPart } from "./parts.ts";
 import { parseFilmLineupPlayerIds, saveGameLineup } from "./lineups.ts";
 import {
   attachToMatchingStream,
@@ -84,6 +85,7 @@ export async function updateFilmGameFields(
     eventName?: unknown;
     /** Edit showed the "Replaces streamed game" field: leave the link to it. */
     keepStream?: boolean;
+    part?: unknown;
   }
 ): Promise<{
   error?: string;
@@ -94,6 +96,7 @@ export async function updateFilmGameFields(
     our_score: number | null;
     their_score: number | null;
     event_name: string | null;
+    part: string | null;
   };
 }> {
   const gate = await requireFilmManage();
@@ -111,8 +114,14 @@ export async function updateFilmGameFields(
     if (!cleaned.ok) return { error: `Keep the tournament name under ${EVENT_NAME_MAX} characters.` };
     eventName = cleaned.value;
   }
+  let part: string | null | undefined;
+  if (Object.prototype.hasOwnProperty.call(input, "part")) {
+    const picked = parseFilmPart(input.part);
+    if (!picked.ok) return { error: picked.error };
+    part = picked.part;
+  }
   const before = await getFilmUpload(id);
-  const row = await updateFilmUploadGame(id, { ...parsed, eventName });
+  const row = await updateFilmUploadGame(id, { ...parsed, eventName, part });
   if (!row) return { error: "That upload isn't there any more." };
   // A recording whose new date or opponent matches a streamed game takes its
   // place. Only on a change, so a coach who picked "None" on Edit keeps it.
@@ -139,6 +148,7 @@ export async function updateFilmGameFields(
       our_score: row.our_score,
       their_score: row.their_score,
       event_name: row.event_name,
+      part: row.part,
     },
   };
 }

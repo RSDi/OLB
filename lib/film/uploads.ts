@@ -29,7 +29,7 @@ import { tournamentForDate } from "./tournaments.ts";
 import { listScheduledTournaments } from "./tournaments-data.ts";
 
 export const FILM_UPLOAD_COLUMNS =
-  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at, event_name, streamed, replaces_stream_id";
+  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at, event_name, streamed, replaces_stream_id, part";
 
 export function filmStoragePath(team: string, uploadId: string, filename: string): string {
   const now = new Date();
@@ -55,6 +55,8 @@ export async function insertHoldingUpload(input: {
   opponent: string | null;
   ourScore: number | null;
   theirScore: number | null;
+  /** Which part of the game (lib/film/parts.ts); null for the whole game. */
+  part?: string | null;
 }): Promise<FilmUpload> {
   // The HS Schedule's tournament on the game date, so families don't have to say.
   let eventName: string | null = null;
@@ -82,6 +84,7 @@ export async function insertHoldingUpload(input: {
       our_score: input.ourScore,
       their_score: input.theirScore,
       event_name: eventName,
+      part: input.part ?? null,
     })
     .select(FILM_UPLOAD_COLUMNS)
     .single();
@@ -299,6 +302,8 @@ export async function updateFilmUploadGame(
     theirScore: number | null;
     /** Left alone when undefined. */
     eventName?: string | null;
+    /** Left alone when undefined. */
+    part?: string | null;
   }
 ): Promise<FilmUpload | null> {
   const admin = createAdminClient();
@@ -310,6 +315,7 @@ export async function updateFilmUploadGame(
       our_score: fields.ourScore,
       their_score: fields.theirScore,
       ...(fields.eventName !== undefined ? { event_name: fields.eventName } : {}),
+      ...(fields.part !== undefined ? { part: fields.part } : {}),
     })
     .eq("id", id)
     .select(FILM_UPLOAD_COLUMNS)

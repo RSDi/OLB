@@ -5,6 +5,7 @@
 import { churchToday } from "../dates/today.ts";
 import { parseFilmGameFields, type FilmGameFields } from "./game-meta.ts";
 import { MAX_UPLOAD_BYTES } from "./types.ts";
+import { parseFilmPart, type FilmPart } from "./parts.ts";
 
 export const VIDEO_MIME_TYPES = new Set([
   "video/mp4",
@@ -39,7 +40,7 @@ const NAME_MAX = 80;
 const FILENAME_MAX = 200;
 
 export type UploadValidation =
-  | { ok: true; uploaderName: string; filename: string; contentType: string; sizeBytes: number } & FilmGameFields
+  | ({ ok: true; uploaderName: string; filename: string; contentType: string; sizeBytes: number; part: FilmPart | null } & FilmGameFields)
   | { ok: false; error: string };
 
 function extOf(filename: string): string {
@@ -84,6 +85,7 @@ export function validateUploadInput(
     opponent?: unknown;
     ourScore?: unknown;
     theirScore?: unknown;
+    part?: unknown;
   },
   today = churchToday()
 ): UploadValidation {
@@ -102,6 +104,8 @@ export function validateUploadInput(
   }
   const game = parseFilmGameFields(input, today);
   if (!game.ok) return game;
+  const part = parseFilmPart(input.part);
+  if (!part.ok) return part;
   return {
     ok: true,
     uploaderName,
@@ -112,6 +116,7 @@ export function validateUploadInput(
     opponent: game.opponent,
     ourScore: game.ourScore,
     theirScore: game.theirScore,
+    part: part.part,
   };
 }
 

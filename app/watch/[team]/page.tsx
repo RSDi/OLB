@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { parseTimecode } from "../../../lib/film/player-logic";
 import { getWatchTeam, loadWatchPage } from "../../../lib/film/watch-data";
+import { gameParts } from "../../../lib/film/watch";
 import { WatchPage } from "./WatchPage";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +33,9 @@ export default async function TeamWatchPage({
   const asked = typeof query.v === "string" ? query.v : "";
   const v = data.replacedBy[asked] ?? asked;
   const initial =
-    v && data.games.some((g) => g.id === v) ? { id: v, t: parseTimecode(query.t ?? "0") ?? 0 } : null;
+    v && data.games.some((g) => gameParts(g).some((p) => p.id === v))
+      ? { id: v, t: parseTimecode(query.t ?? "0") ?? 0 }
+      : null;
 
   return (
     <WatchPage

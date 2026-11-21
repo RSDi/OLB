@@ -37,6 +37,7 @@ export async function startFilmUpload(
     opponent: body.opponent,
     ourScore: body.ourScore,
     theirScore: body.theirScore,
+    part: body.part,
   });
   if (!checked.ok) return { ok: false, status: 400, error: checked.error };
 
@@ -67,6 +68,7 @@ export async function startFilmUpload(
       opponent: checked.opponent,
       ourScore: checked.ourScore,
       theirScore: checked.theirScore,
+      part: checked.part,
     });
   } catch (err) {
     return { ok: false, status: 500, error: err instanceof Error ? err.message : "Couldn't log the upload." };
