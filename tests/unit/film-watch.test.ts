@@ -171,8 +171,8 @@ test("0177 adds the watch toggle and tournament name without new tables", () => 
   assert.doesNotMatch(sql, /create table/i);
 });
 
-test("0180 keeps team film out of the website numbers and adds plays", () => {
-  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0180_film_activity.sql"), "utf8");
+test("0181 keeps team film out of the website numbers and adds plays", () => {
+  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0181_film_activity.sql"), "utf8");
   assert.match(sql, /'film_play'/);
   for (const view of ["website_visits", "website_daily_30d", "website_top_pages_30d", "website_funnel_30d"]) {
     const body = sql.split(`create or replace view public.${view}`)[1]?.split(";")[0] ?? "";
