@@ -6,7 +6,7 @@ import { timingSafeEqual } from "node:crypto";
 import { listFilmMarkers } from "./markers.ts";
 import { getFilmTeamBySlug, listDirectoryFilmTeams, type FilmTeamRow } from "./teams.ts";
 import { getFilmUpload, listFilmUploads } from "./uploads.ts";
-import { parseWatchPageKey, toWatchGames, watchPageKey, watchSource, watchStreamSwaps, type WatchGame } from "./watch.ts";
+import { formatDay, parseWatchPageKey, toWatchGames, watchPageKey, watchSource, watchStreamSwaps, type WatchGame } from "./watch.ts";
 import type { FilmMarker } from "./player-logic.ts";
 import type { FilmUpload } from "./types.ts";
 
@@ -84,4 +84,19 @@ export async function getWatchFileUpload(pageKey: string, uploadId: string): Pro
   const source = watchSource(row);
   if (!source || source.kind !== "file") return null;
   return row;
+}
+
+/**
+ * "vs KC East · Nov 14" for a play on a team film page, or null when the
+ * page isn't on or the game isn't that team's. The label is read here, not
+ * taken from the browser.
+ */
+export async function watchPlayLabel(pageKey: string, uploadId: string): Promise<string | null> {
+  const team = await getWatchTeam(pageKey);
+  if (!team) return null;
+  const row = await getFilmUpload(uploadId);
+  if (!row || row.team_id !== team.id) return null;
+  const day = row.game_date ? formatDay(row.game_date) : formatDay(row.created_at.slice(0, 10));
+  const score = row.our_score != null && row.their_score != null ? ` ${row.our_score}–${row.their_score}` : "";
+  return `${row.opponent ? `vs ${row.opponent}` : "Game"}${score} · ${day}`.slice(0, 120);
 }

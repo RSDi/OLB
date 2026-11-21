@@ -859,7 +859,7 @@ Share the team upload link and code with families, not this inbox. Super-admins 
 - A game plays in the same player as **Film**, with speeds, frame steps and the markers you added. **Copy link to this moment** copies a link to that game on the team page at that second.
 - Games play from YouTube once they're there (public or unlisted only). Before that they play from the phone's original file.
 - A game added from a livestream shows a red **Streamed** mark until its recording replaces it (see *Streamed games*).
-- Visits count in **Settings → Website Activity** like the club website's pages: each team's page shows under **Most visited pages** as **Team film ·** and the team (for example **Team film · HS JV**), and the bare **/watch** page as **Team film · No team picked**. Opening a game counts toward its team's page. The four numbers at the top include these visits too.
+- **Settings → Website Activity** has a **Team film** section, separate from the club website's numbers: over the last 30 days, how many **People** opened a team film page, how many **Plays** (someone starting a game) and how many people pressed play, **Page views**, and how many were **On a phone**. **By team** lists each team's people, views and plays. **Most played games** lists games by plays, with how many people played each and when it was last played. A game counts as played once it actually starts, not when the page opens.
 
 **Grouping games into tournaments**
 

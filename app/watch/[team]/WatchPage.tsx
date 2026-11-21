@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { FilmPlayer } from "../../portal/film/FilmPlayer";
+import { recordFilmPlay } from "../../(site)/_components/WebsiteBeacon";
 import { formatTimecode, type FilmMarker } from "../../../lib/film/player-logic";
 import {
   formatDay,
@@ -227,6 +228,7 @@ export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }
                   onClose={close}
                   onMarkersChange={() => {}}
                   momentPath={(id, t) => watchGamePath(pageKey, id, t)}
+                  onFirstPlay={() => recordFilmPlay(current.id)}
                   fileErrorText="This game is still being processed and won't play in this browser yet. Try Safari, or check back in a few hours."
                 />
               </div>

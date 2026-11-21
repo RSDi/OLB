@@ -61,6 +61,27 @@ export interface ShootoutActivity {
   hourly: { day: string; hour: number; visitors: number; views: number }[];
 }
 
+export interface FilmTotals {
+  visitors: number;
+  visits: number;
+  views: number;
+  plays: number;
+  // People who pressed play at least once.
+  players: number;
+  phones: number;
+}
+
+export interface FilmActivity {
+  // Last 30 days, all team film pages together.
+  totals: FilmTotals;
+  // One row per team ("/watch/hs-jv", without the link's key), busiest first.
+  teams: (FilmTotals & { teamPage: string })[];
+  // Games by plays.
+  games: { uploadId: string; teamPage: string; label: string; plays: number; visitors: number; lastAt: string }[];
+  // 0180 missing or failing: the rest of the tab still loads.
+  error: string | null;
+}
+
 export interface WebsiteActivity {
   kpis: { visitors30d: number; visits30d: number; views30d: number; registrations30d: number };
   daily: { day: string; visitors: number; visits: number; views: number }[];
@@ -72,6 +93,8 @@ export interface WebsiteActivity {
   // The club website (not the Shootout), last 30 days.
   busy: BusyTimes;
   shootout: ShootoutActivity;
+  // Team film pages (/watch), kept out of the numbers above.
+  film: FilmActivity;
   // 0166's views missing or failing: the rest of the tab still loads.
   busyError: string | null;
   // When this was read (epoch ms): the tab's "now", so rendering stays pure.
@@ -174,6 +197,53 @@ export async function loadWebsiteActivity(): Promise<WebsiteActivity> {
     return { busy, shootout, busyError };
   })();
 
+  // Team film (0180).
+  const filmPart = (async (): Promise<FilmActivity> => {
+    const [totalsRes, teamsRes, gamesRes] = await Promise.all([
+      supabase.from("website_film_totals_30d").select("visitors, visits, views, plays, players, phones").maybeSingle(),
+      supabase
+        .from("website_film_teams_30d")
+        .select("team_page, visitors, visits, views, plays, players, phones")
+        .order("visitors", { ascending: false })
+        .limit(60),
+      supabase
+        .from("website_film_games_30d")
+        .select("upload_id, team_page, label, plays, visitors, last_at")
+        .order("plays", { ascending: false })
+        .limit(20),
+    ]);
+    const failed = [totalsRes, teamsRes, gamesRes].find((r) => r.error)?.error;
+    const error = !failed
+      ? null
+      : failed.code === "42P01" || failed.code === "PGRST205"
+      ? "Team film numbers aren't set up yet — migration 0180 hasn't been applied to this database."
+      : `Couldn't load team film numbers: ${failed.message}${failed.code ? ` (${failed.code})` : ""}`;
+    type Row = { visitors: number; visits: number; views: number; plays: number; players: number; phones: number };
+    const num = (r: Partial<Row> | null | undefined): FilmTotals => ({
+      visitors: Number(r?.visitors ?? 0),
+      visits: Number(r?.visits ?? 0),
+      views: Number(r?.views ?? 0),
+      plays: Number(r?.plays ?? 0),
+      players: Number(r?.players ?? 0),
+      phones: Number(r?.phones ?? 0),
+    });
+    return {
+      totals: num(totalsRes.data as Row | null),
+      teams: ((teamsRes.data as (Row & { team_page: string })[] | null) ?? []).map((r) => ({ ...num(r), teamPage: r.team_page })),
+      games: (
+        (gamesRes.data as { upload_id: string; team_page: string; label: string; plays: number; visitors: number; last_at: string }[] | null) ?? []
+      ).map((g) => ({
+        uploadId: g.upload_id,
+        teamPage: g.team_page,
+        label: g.label,
+        plays: Number(g.plays),
+        visitors: Number(g.visitors),
+        lastAt: g.last_at,
+      })),
+      error,
+    };
+  })();
+
   const [dailyRes, topRes, sourcesRes, funnelRes, visitsRes, regsRes] = await Promise.all([
     supabase.from("website_daily_30d").select("day, visitors, visits, views").order("day", { ascending: true }),
     supabase.from("website_top_pages_30d").select("page, views, visitors").order("views", { ascending: false }).limit(15),
@@ -202,7 +272,7 @@ export async function loadWebsiteActivity(): Promise<WebsiteActivity> {
     ? "Website activity isn't set up yet — migration 0161 hasn't been applied to this database."
     : `Couldn't load website activity: ${failed.message}${failed.code ? ` (${failed.code})` : ""}`;
 
-  const { busy, shootout, busyError } = await busyPart;
+  const [{ busy, shootout, busyError }, film] = await Promise.all([busyPart, filmPart]);
 
   const visitRows = (visitsRes.data as VisitRow[] | null) ?? [];
   const regRows = (regsRes.data as { visitor_id: string; label: string; created_at: string }[] | null) ?? [];
@@ -329,6 +399,7 @@ export async function loadWebsiteActivity(): Promise<WebsiteActivity> {
     registrations,
     busy,
     shootout,
+    film,
     busyError,
     asOf: now,
     error,

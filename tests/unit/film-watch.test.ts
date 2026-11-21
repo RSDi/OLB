@@ -170,3 +170,19 @@ test("0177 adds the watch toggle and tournament name without new tables", () => 
   assert.match(sql, /add column if not exists event_name text/);
   assert.doesNotMatch(sql, /create table/i);
 });
+
+test("0180 keeps team film out of the website numbers and adds plays", () => {
+  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0180_film_activity.sql"), "utf8");
+  assert.match(sql, /'film_play'/);
+  for (const view of ["website_visits", "website_daily_30d", "website_top_pages_30d", "website_funnel_30d"]) {
+    const body = sql.split(`create or replace view public.${view}`)[1]?.split(";")[0] ?? "";
+    assert.match(body, /path not like '\/watch%'/, `${view} leaves out /watch`);
+  }
+  assert.match(sql, /then 'film'/);
+  for (const view of ["website_film_teams_30d", "website_film_games_30d", "website_film_totals_30d"]) {
+    assert.match(sql, new RegExp(`create or replace view public\\.${view}\\s+with \\(security_invoker = true\\)`));
+    assert.match(sql, new RegExp(`public\\.${view}[\\s\\S]*to authenticated, service_role`));
+  }
+  // A new link (new key) keeps counting on the same team row.
+  assert.match(sql, /regexp_replace\(split_part\(path, '\?', 1\), '-\[0-9a-f\]\{12\}\$', ''\)/);
+});
