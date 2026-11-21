@@ -1,49 +1,81 @@
-// Which part of a game a video is (0182): a half, a quarter or overtime.
-// Null is the whole game, or the uploader didn't say. Pure, so the client,
-// the server and tests share it. Keep the codes in step with the check in
-// supabase/migrations/0182_film_game_parts.sql.
+// What a video of a game is (0183): a free note like "2nd half" or "Bench
+// angle". Null is the whole game, or the uploader didn't say. Pure, so the
+// client, the server and tests share it.
+//
+// The usual words still sort in play order (halves and quarters, then
+// overtime); anything else keeps upload order after them.
 
-export const FILM_PARTS = [
-  { code: "h1", label: "1st half" },
-  { code: "h2", label: "2nd half" },
-  { code: "q1", label: "1st quarter" },
-  { code: "q2", label: "2nd quarter" },
-  { code: "q3", label: "3rd quarter" },
-  { code: "q4", label: "4th quarter" },
-  { code: "ot", label: "Overtime" },
-  { code: "ot2", label: "2nd overtime" },
-  { code: "ot3", label: "3rd overtime" },
+export const FILM_PART_MAX = 60;
+
+/** Offered as you type. Any other note is fine too. */
+export const FILM_PART_SUGGESTIONS = [
+  "1st half",
+  "2nd half",
+  "1st quarter",
+  "2nd quarter",
+  "3rd quarter",
+  "4th quarter",
+  "Overtime",
+  "2nd overtime",
 ] as const;
 
-export type FilmPart = (typeof FILM_PARTS)[number]["code"];
+// 0182 stored codes; a row read before 0183 ran may still have one.
+const OLD_CODES: Record<string, string> = {
+  h1: "1st half",
+  h2: "2nd half",
+  q1: "1st quarter",
+  q2: "2nd quarter",
+  q3: "3rd quarter",
+  q4: "4th quarter",
+  ot: "Overtime",
+  ot2: "2nd overtime",
+  ot3: "3rd overtime",
+};
 
-const ORDER: Record<string, number> = { h1: 10, q1: 11, q2: 12, h2: 20, q3: 21, q4: 22, ot: 30, ot2: 31, ot3: 32 };
-
-/** "h2" → "2nd half"; null for the whole game or anything unknown. */
-export function filmPartLabel(code: string | null | undefined): string | null {
-  return FILM_PARTS.find((p) => p.code === code)?.label ?? null;
+/** The note as people read it; null when there isn't one. */
+export function filmPartLabel(raw: string | null | undefined): string | null {
+  const s = raw?.trim();
+  if (!s) return null;
+  return OLD_CODES[s] ?? s;
 }
 
-/**
- * A part from a form or request. Blank means the whole game (null);
- * anything not on the list is refused.
- */
-export function parseFilmPart(raw: unknown): { ok: true; part: FilmPart | null } | { ok: false; error: string } {
-  if (raw == null || raw === "") return { ok: true, part: null };
-  const found = FILM_PARTS.find((p) => p.code === raw);
-  return found ? { ok: true, part: found.code } : { ok: false, error: "Pick which part of the game this is." };
+/** A note from a form or request: trimmed, spaces collapsed, blank = null. */
+export function parseFilmPart(raw: unknown): { ok: true; part: string | null } | { ok: false; error: string } {
+  if (raw == null) return { ok: true, part: null };
+  if (typeof raw !== "string") return { ok: false, error: "Say what this video is in words." };
+  const s = raw.replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
+  if (!s) return { ok: true, part: null };
+  if (s.length > FILM_PART_MAX) return { ok: false, error: `Keep what this video is under ${FILM_PART_MAX} characters.` };
+  return { ok: true, part: OLD_CODES[s] ?? s };
 }
 
-/**
- * Game order: halves and quarters in play order, then overtimes, then
- * videos that didn't say, by upload time.
- */
+const ORDINAL: Record<string, number> = { "1st": 1, first: 1, "2nd": 2, second: 2, "3rd": 3, third: 3, "4th": 4, fourth: 4 };
+
+/** Where a note falls in a game: lower plays first; 90 = doesn't say. */
+export function filmPartRank(raw: string | null | undefined): number {
+  const s = filmPartLabel(raw)?.toLowerCase();
+  if (!s) return 90;
+  const half = /\b(1st|2nd|first|second)\s+half\b/.exec(s);
+  if (half) return ORDINAL[half[1]] === 1 ? 10 : 20;
+  const quarter = /\b(1st|2nd|3rd|4th|first|second|third|fourth)\s+(quarter|qtr)\b/.exec(s) ?? /\bq([1-4])\b/.exec(s);
+  if (quarter) {
+    const n = ORDINAL[quarter[1]] ?? Number(quarter[1]);
+    return n <= 2 ? 10 + n : 20 + n;
+  }
+  if (/\b(ot|overtime)\b/.test(s)) {
+    const nth = /\b(2nd|3rd|second|third)\s+(ot|overtime)\b/.exec(s);
+    return 30 + (nth ? ORDINAL[nth[1]] : 0);
+  }
+  return 50;
+}
+
+/** Game order: the usual words in play order, then other notes, then none; ties by upload time. */
 export function compareFilmParts(
   a: { part?: string | null; createdAt: string },
   b: { part?: string | null; createdAt: string }
 ): number {
-  const oa = a.part ? ORDER[a.part] ?? 50 : 90;
-  const ob = b.part ? ORDER[b.part] ?? 50 : 90;
+  const oa = filmPartRank(a.part);
+  const ob = filmPartRank(b.part);
   if (oa !== ob) return oa - ob;
   return a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
 }

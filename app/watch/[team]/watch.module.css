@@ -701,3 +701,27 @@
     transition: none;
   }
 }
+
+/* A game's other links (Hudl, a stats sheet): open in a new tab. */
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.links a {
+  border: 1px solid var(--gw-border);
+  background: var(--gw-bg-elev);
+  color: var(--gw-fg);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.links a:hover {
+  border-color: var(--gw-fg);
+}

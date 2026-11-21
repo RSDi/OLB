@@ -8,6 +8,8 @@ import { getFilmTeamBySlug, listDirectoryFilmTeams, type FilmTeamRow } from "./t
 import { getFilmUpload, listFilmUploads } from "./uploads.ts";
 import { formatDay, parseWatchPageKey, watchGames, watchPageKey, watchSource, type WatchGame } from "./watch.ts";
 import type { FilmMarker } from "./player-logic.ts";
+import { listFilmLinks } from "./links-data.ts";
+import type { FilmLink } from "./links.ts";
 import type { FilmUpload } from "./types.ts";
 
 function sameToken(a: string, b: string): boolean {
@@ -64,7 +66,13 @@ export async function loadWatchPage(pageKey: string): Promise<{
   // A team from an earlier season still lists itself.
   if (!teams.some((t) => t.pageKey === ownKey)) teams = [{ pageKey: ownKey, label: team.label }, ...teams];
   const uploads = await listFilmUploads([team.id]);
-  const { games, redirect } = watchGames(uploads);
+  let links: Record<string, FilmLink[]> = {};
+  try {
+    links = await listFilmLinks(uploads.map((u) => u.id));
+  } catch {
+    links = {};
+  }
+  const { games, redirect } = watchGames(uploads, links);
   const replacedBy = Object.fromEntries(redirect);
   let markers: Record<string, FilmMarker[]> = {};
   try {
