@@ -4,7 +4,7 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { listFilmMarkers } from "./markers.ts";
-import { getFilmTeamBySlug, type FilmTeamRow } from "./teams.ts";
+import { getFilmTeamBySlug, listDirectoryFilmTeams, type FilmTeamRow } from "./teams.ts";
 import { getFilmUpload, listFilmUploads } from "./uploads.ts";
 import { formatDay, parseWatchPageKey, toWatchGames, watchPageKey, watchSource, watchStreamSwaps, type WatchGame } from "./watch.ts";
 import type { FilmMarker } from "./player-logic.ts";
@@ -29,9 +29,24 @@ export async function getWatchTeam(pageKey: string): Promise<FilmTeamRow | null>
   return team;
 }
 
+export type WatchTeamLink = { pageKey: string; label: string };
+
+/**
+ * This season's teams with their film page on, in Directory order, for the
+ * team switcher. Anyone with one team's link can reach the others this way;
+ * the links still can't be guessed from outside.
+ */
+export async function listWatchTeams(): Promise<WatchTeamLink[]> {
+  const { teams } = await listDirectoryFilmTeams();
+  return teams
+    .filter((t) => t.hasSlug && t.watchPublic && t.watchToken)
+    .map((t) => ({ pageKey: watchPageKey(t.slug, t.watchToken), label: t.label }));
+}
+
 export async function loadWatchPage(pageKey: string): Promise<{
   team: FilmTeamRow;
   pageKey: string;
+  teams: WatchTeamLink[];
   games: WatchGame[];
   markers: Record<string, FilmMarker[]>;
   /** A streamed game's id → the recording that replaced it, for old links. */
@@ -39,6 +54,15 @@ export async function loadWatchPage(pageKey: string): Promise<{
 } | null> {
   const team = await getWatchTeam(pageKey);
   if (!team) return null;
+  const ownKey = watchPageKey(team.slug, team.watchToken);
+  let teams: WatchTeamLink[] = [];
+  try {
+    teams = await listWatchTeams();
+  } catch {
+    teams = [];
+  }
+  // A team from an earlier season still lists itself.
+  if (!teams.some((t) => t.pageKey === ownKey)) teams = [{ pageKey: ownKey, label: team.label }, ...teams];
   const uploads = await listFilmUploads([team.id]);
   const games = toWatchGames(uploads);
   const replacedBy = Object.fromEntries(watchStreamSwaps(uploads).redirect);
@@ -48,7 +72,7 @@ export async function loadWatchPage(pageKey: string): Promise<{
   } catch {
     markers = {};
   }
-  return { team, pageKey: watchPageKey(team.slug, team.watchToken), games, markers, replacedBy };
+  return { team, pageKey: ownKey, teams, games, markers, replacedBy };
 }
 
 /** An upload the team page may play from the original file, or null. */

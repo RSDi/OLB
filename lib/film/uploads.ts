@@ -25,6 +25,8 @@ import { storageObjectName } from "./validation.ts";
 import { YOUTUBE_LEASE_MS } from "./youtube-meta.ts";
 import { formatUploadStats, type UploadStatsRow } from "./upload-stats.ts";
 import { STREAM_FILENAME, findStreamToReplace } from "./streams.ts";
+import { tournamentForDate } from "./tournaments.ts";
+import { listScheduledTournaments } from "./tournaments-data.ts";
 
 export const FILM_UPLOAD_COLUMNS =
   "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at, event_name, streamed, replaces_stream_id";
@@ -54,6 +56,14 @@ export async function insertHoldingUpload(input: {
   ourScore: number | null;
   theirScore: number | null;
 }): Promise<FilmUpload> {
+  // The HS Schedule's tournament on the game date, so families don't have to say.
+  let eventName: string | null = null;
+  try {
+    const scheduled = await listScheduledTournaments([input.teamId]);
+    eventName = tournamentForDate(scheduled[input.teamId] ?? [], input.gameDate)?.name ?? null;
+  } catch (err) {
+    console.warn("film tournament from schedule:", err instanceof Error ? err.message : err);
+  }
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("game_film_uploads")
@@ -71,6 +81,7 @@ export async function insertHoldingUpload(input: {
       opponent: input.opponent,
       our_score: input.ourScore,
       their_score: input.theirScore,
+      event_name: eventName,
     })
     .select(FILM_UPLOAD_COLUMNS)
     .single();
