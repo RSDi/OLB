@@ -80,6 +80,7 @@ function Thumb({ game, onPlay, big }: { game: WatchGame; onPlay: () => void; big
           <path d="M154 18 Q112 45 154 72" />
         </svg>
       )}
+      {game.streamed && <span className={styles.streamTag}>Streamed</span>}
       {score && <span className={styles.scoreTag}>{score}</span>}
       <span className={styles.play} aria-hidden="true">
         <svg viewBox="0 0 24 24">
@@ -201,6 +202,12 @@ export function WatchPage({ pageKey, teamLabel, games, markers, initial }: Props
                   <div className={styles.meta}>
                     {formatWeekday(current.gameDate)}, {formatDay(current.gameDate)}
                   </div>
+                  {current.streamed && (
+                    <p className={styles.streamNote}>
+                      <span className={styles.streamDot} aria-hidden="true" />
+                      From the livestream. A better recording is on the way and will replace it here.
+                    </p>
+                  )}
                 </div>
                 <FilmPlayer
                   key={current.id}
@@ -230,6 +237,7 @@ export function WatchPage({ pageKey, teamLabel, games, markers, initial }: Props
                   <h2 className={styles.featuredTitle}>{gameTitle(latest)}</h2>
                   <div className={styles.meta}>
                     {formatWeekday(latest.gameDate)}, {formatDay(latest.gameDate)}
+                    {latest.streamed ? " · Streamed" : ""}
                   </div>
                   {(markers[latest.id]?.length ?? 0) > 0 && (
                     <div className={styles.chips}>
@@ -310,6 +318,7 @@ export function WatchPage({ pageKey, teamLabel, games, markers, initial }: Props
                         </div>
                         <div className={styles.meta}>
                           {formatWeekday(g.gameDate)}, {formatDay(g.gameDate)}
+                          {g.streamed ? " · Streamed" : ""}
                           {count > 0 ? ` · ${count} jump-to point${count === 1 ? "" : "s"}` : ""}
                         </div>
                       </div>

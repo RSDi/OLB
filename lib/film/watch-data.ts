@@ -6,7 +6,7 @@ import { timingSafeEqual } from "node:crypto";
 import { listFilmMarkers } from "./markers.ts";
 import { getFilmTeamBySlug, type FilmTeamRow } from "./teams.ts";
 import { getFilmUpload, listFilmUploads } from "./uploads.ts";
-import { parseWatchPageKey, toWatchGames, watchPageKey, watchSource, type WatchGame } from "./watch.ts";
+import { parseWatchPageKey, toWatchGames, watchPageKey, watchSource, watchStreamSwaps, type WatchGame } from "./watch.ts";
 import type { FilmMarker } from "./player-logic.ts";
 import type { FilmUpload } from "./types.ts";
 
@@ -34,18 +34,21 @@ export async function loadWatchPage(pageKey: string): Promise<{
   pageKey: string;
   games: WatchGame[];
   markers: Record<string, FilmMarker[]>;
+  /** A streamed game's id → the recording that replaced it, for old links. */
+  replacedBy: Record<string, string>;
 } | null> {
   const team = await getWatchTeam(pageKey);
   if (!team) return null;
   const uploads = await listFilmUploads([team.id]);
   const games = toWatchGames(uploads);
+  const replacedBy = Object.fromEntries(watchStreamSwaps(uploads).redirect);
   let markers: Record<string, FilmMarker[]> = {};
   try {
     markers = await listFilmMarkers(games.map((g) => g.id));
   } catch {
     markers = {};
   }
-  return { team, pageKey: watchPageKey(team.slug, team.watchToken), games, markers };
+  return { team, pageKey: watchPageKey(team.slug, team.watchToken), games, markers, replacedBy };
 }
 
 /** An upload the team page may play from the original file, or null. */

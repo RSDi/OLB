@@ -53,3 +53,35 @@ export async function deleteFilmMarkerRow(id: string): Promise<{ upload_id: stri
   if (error) throw new Error(error.message);
   return (data as { upload_id: string } | null) ?? null;
 }
+
+/**
+ * Move a stream's jump-to points onto its recording at new times (the
+ * caller shifts them). Inserts first, then deletes the stream's own, so a
+ * failure part-way leaves points on both rather than on neither.
+ */
+export async function moveFilmMarkers(input: {
+  fromUploadId: string;
+  toUploadId: string;
+  markers: { id: string; at_seconds: number; label: string }[];
+  dropIds: string[];
+  createdBy: string;
+}): Promise<number> {
+  const admin = createAdminClient();
+  if (input.markers.length > 0) {
+    const { error } = await admin.from("game_film_markers").insert(
+      input.markers.map((m) => ({
+        upload_id: input.toUploadId,
+        at_seconds: m.at_seconds,
+        label: m.label,
+        created_by: input.createdBy,
+      }))
+    );
+    if (error) throw new Error(error.message);
+  }
+  const ids = [...input.markers.map((m) => m.id), ...input.dropIds];
+  if (ids.length > 0) {
+    const { error } = await admin.from("game_film_markers").delete().eq("upload_id", input.fromUploadId).in("id", ids);
+    if (error) throw new Error(error.message);
+  }
+  return input.markers.length;
+}

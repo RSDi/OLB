@@ -6,7 +6,11 @@ import { ORIGINAL_KEEP_DAYS, MOVED_RETENTION_DAYS, type FilmUpload } from "./typ
 import type { YoutubeDisplayStatus } from "./youtube-progress.ts";
 
 export type FilmStepState = "done" | "active" | "todo" | "problem";
-export type FilmStep = { key: "uploaded" | "youtube" | "ready" | "playlist"; label: string; state: FilmStepState };
+export type FilmStep = {
+  key: "uploaded" | "youtube" | "ready" | "playlist" | "streamed";
+  label: string;
+  state: FilmStepState;
+};
 export type FilmBadgeTone = "done" | "active" | "waiting" | "problem";
 
 export type FilmFlowView = {
@@ -34,12 +38,14 @@ export function filmFlowView(input: {
     | "youtube_updated_at"
     | "youtube_processing"
     | "youtube_playlist_status"
-  >;
+  > &
+    Partial<Pick<FilmUpload, "streamed">>;
   display: YoutubeDisplayStatus | null;
   playlistId: string | null;
   missingDetails?: boolean;
 }): FilmFlowView {
   const { row, display, playlistId } = input;
+  if (row.streamed) return streamedFlowView(row, !!input.missingDetails);
   const onYoutube = row.youtube_status === "done" && !!row.youtube_video_id;
 
   const youtube: FilmStepState =
@@ -101,3 +107,25 @@ export function filmFlowView(input: {
 }
 
 type FilmViewBadge = FilmFlowView["badge"];
+
+// A streamed game (0179): the livestream on YouTube, no file, no playlist.
+// It waits for the recording rather than for anyone to step in.
+function streamedFlowView(row: Pick<FilmUpload, "youtube_processing">, missingDetails: boolean): FilmFlowView {
+  const p = row.youtube_processing;
+  const ready: FilmStepState =
+    p === "processed" ? "done"
+    : p === "failed" || p === "rejected" || p === "deleted" || p === "missing" ? "problem"
+    : "active";
+  const steps: FilmStep[] = [
+    { key: "streamed", label: "Streamed", state: "done" },
+    { key: "ready", label: "Ready", state: ready },
+  ];
+  const problem = ready === "problem";
+  return {
+    steps,
+    badge: problem ? { text: "Needs attention", tone: "problem" } : { text: "Streamed", tone: "waiting" },
+    needsAttention: problem || missingDetails,
+    originalGone: true,
+    originalNote: "The livestream on YouTube. A recording of this game replaces it once it's on YouTube.",
+  };
+}

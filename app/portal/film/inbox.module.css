@@ -405,3 +405,11 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Streamed games (preview): the line saying a stream and its recording go together */
+.streamLine {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gw-fg);
+}

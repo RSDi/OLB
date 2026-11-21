@@ -2,6 +2,7 @@
 // they group into tournaments and weekends. Pure, so tests and the client
 // share it.
 
+import { streamSwaps } from "./streams.ts";
 import type { FilmUpload } from "./types.ts";
 
 export const EVENT_NAME_MAX = 80;
@@ -17,6 +18,8 @@ export interface WatchGame {
   eventName: string | null;
   createdAt: string;
   source: WatchSource;
+  /** From the livestream; the full recording hasn't replaced it yet. */
+  streamed?: boolean;
 }
 
 export interface WatchSection {
@@ -41,6 +44,15 @@ export function cleanEventName(raw: unknown): { ok: true; value: string | null }
   return { ok: true, value: value || null };
 }
 
+/** Hidden rows and stream → recording links for the team page. */
+export function watchStreamSwaps(uploads: FilmUpload[]) {
+  return streamSwaps(
+    uploads,
+    (u) => watchSource(u)?.kind === "youtube",
+    (u) => watchSource(u) != null
+  );
+}
+
 /** How the watch page plays this upload, or null when it can't. */
 export function watchSource(u: Pick<
   FilmUpload,
@@ -59,9 +71,15 @@ export function watchSource(u: Pick<
   return null;
 }
 
+/**
+ * The team page's games. A streamed game shows until its recording is on
+ * YouTube; then the recording shows in its place (see streams.ts).
+ */
 export function toWatchGames(uploads: FilmUpload[]): WatchGame[] {
+  const { hidden } = watchStreamSwaps(uploads);
   const out: WatchGame[] = [];
   for (const u of uploads) {
+    if (hidden.has(u.id)) continue;
     const source = watchSource(u);
     if (!source) continue;
     out.push({
@@ -73,6 +91,7 @@ export function toWatchGames(uploads: FilmUpload[]): WatchGame[] {
       eventName: u.event_name ?? null,
       createdAt: u.created_at,
       source,
+      ...(u.streamed ? { streamed: true } : {}),
     });
   }
   return out;

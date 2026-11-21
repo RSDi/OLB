@@ -70,6 +70,11 @@ export interface FilmUpload {
   youtube_privacy: YoutubePrivacy | null;
   youtube_processing: YoutubeProcessing | null;
   youtube_synced_at: string | null;
+  // A livestream link (no file): youtube_video_id is the stream. Shows as
+  // "Streamed" until a recording replaces it (0179).
+  streamed: boolean;
+  // On a recording: the streamed game it replaces once it's on YouTube.
+  replaces_stream_id: string | null;
 }
 
 export type YoutubeEventKind =

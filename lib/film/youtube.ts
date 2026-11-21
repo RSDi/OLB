@@ -202,6 +202,8 @@ async function resolvePlaylistId(row: FilmUpload): Promise<string | null> {
 export async function queuePlaylistIfNeeded(uploadId: string): Promise<void> {
   const row = await getFilmUpload(uploadId);
   if (!row?.youtube_video_id || row.youtube_status !== "done") return;
+  // A streamed game stays on the channel it streamed on; only recordings go in playlists.
+  if (row.streamed) return;
   if (row.youtube_playlist_status === "done") return;
   const playlistId = await resolvePlaylistId(row);
   if (!playlistId) return;
@@ -215,6 +217,7 @@ export async function retryPlaylistAdd(uploadId: string): Promise<void> {
   if (row.youtube_status !== "done" || !row.youtube_video_id) {
     throw new Error("Send the video to YouTube before adding it to a playlist.");
   }
+  if (row.streamed) throw new Error("A streamed game doesn't go in a playlist. Its recording will.");
   const playlistId = await resolvePlaylistId(row);
   if (!playlistId) throw new Error("Set a playlist on this video or on the team in Settings → Film.");
   await setFilmPlaylistStatus(uploadId, { youtube_playlist_status: "queued", youtube_playlist_error: null });

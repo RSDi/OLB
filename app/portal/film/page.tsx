@@ -7,7 +7,7 @@ import {
   listPendingFilmSlackDraftViews,
 } from "../../../lib/film/slack-drafts";
 import { listFilmUploads, loadFilmUploadStats, loadFilmYoutubeExtras } from "../../../lib/film/uploads";
-import { listEnabledFilmTeams } from "../../../lib/film/teams";
+import { listDirectoryFilmTeams, listEnabledFilmTeams } from "../../../lib/film/teams";
 import { listGameLineupsByKey, listTeamRosters } from "../../../lib/film/lineups";
 import type { FilmRosterPlayer } from "../../../lib/film/lineups";
 import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob } from "../../../lib/film/types";
@@ -105,6 +105,19 @@ export default async function FilmInboxPage({
   }
   const youtubePaused = (await getYoutubeWorkerError())?.error ?? null;
 
+  // Preview: streamed games go on teams that have a film address.
+  let streamTeams: { id: string; label: string; slug: string }[] | null = null;
+  if (viewer.seesFullUi && viewer.canManageFilm) {
+    try {
+      const { teams } = await listDirectoryFilmTeams();
+      streamTeams = teams
+        .filter((t) => t.hasSlug && (viewer.canViewAllFilm || viewer.filmTeamIds.includes(t.id)))
+        .map((t) => ({ id: t.id, label: t.label, slug: t.slug }));
+    } catch {
+      streamTeams = null;
+    }
+  }
+
   const momentId = typeof params.v === "string" ? params.v : "";
   const initialMoment =
     momentId && uploads.some((u) => u.id === momentId)
@@ -132,6 +145,7 @@ export default async function FilmInboxPage({
       markers={markers}
       initialMoment={initialMoment}
       showEvents={viewer.seesFullUi}
+      streamTeams={streamTeams}
     />
   );
 }

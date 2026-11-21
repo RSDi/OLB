@@ -24,9 +24,10 @@ import {
 import { storageObjectName } from "./validation.ts";
 import { YOUTUBE_LEASE_MS } from "./youtube-meta.ts";
 import { formatUploadStats, type UploadStatsRow } from "./upload-stats.ts";
+import { STREAM_FILENAME, findStreamToReplace } from "./streams.ts";
 
 export const FILM_UPLOAD_COLUMNS =
-  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at, event_name";
+  "id, team, team_id, uploader_name, filename, content_type, size_bytes, storage_path, status, created_at, moved_at, file_deleted_at, game_date, opponent, our_score, their_score, youtube_status, youtube_video_id, youtube_error, youtube_updated_at, youtube_playlist_id, youtube_playlist_status, youtube_playlist_error, youtube_playlist_item_id, youtube_playlist_updated_at, youtube_privacy, youtube_processing, youtube_synced_at, event_name, streamed, replaces_stream_id";
 
 export function filmStoragePath(team: string, uploadId: string, filename: string): string {
   const now = new Date();
@@ -74,6 +75,142 @@ export async function insertHoldingUpload(input: {
     .select(FILM_UPLOAD_COLUMNS)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Couldn't log the upload.");
+  const row = data as FilmUpload;
+  // The recording of a game that was streamed takes the stream's place.
+  try {
+    const streamId = await attachToMatchingStream(row);
+    if (streamId) row.replaces_stream_id = streamId;
+  } catch (err) {
+    console.warn("film stream match:", err instanceof Error ? err.message : err);
+  }
+  return row;
+}
+
+/** Streamed games for one team on one day, and which already have a recording. */
+async function openStreamsFor(teamId: string, gameDate: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .select("id, team_id, game_date, opponent, streamed")
+    .eq("streamed", true)
+    .eq("team_id", teamId)
+    .eq("game_date", gameDate);
+  if (error) throw new Error(error.message);
+  const streams = (data as Pick<FilmUpload, "id" | "team_id" | "game_date" | "opponent" | "streamed">[] | null) ?? [];
+  if (streams.length === 0) return { streams, taken: [] as string[] };
+  const { data: recs, error: recError } = await admin
+    .from("game_film_uploads")
+    .select("replaces_stream_id")
+    .in(
+      "replaces_stream_id",
+      streams.map((s) => s.id)
+    );
+  if (recError) throw new Error(recError.message);
+  const taken = ((recs as { replaces_stream_id: string | null }[] | null) ?? [])
+    .map((r) => r.replaces_stream_id)
+    .filter((id): id is string => !!id);
+  return { streams, taken };
+}
+
+/**
+ * Point a recording at the streamed game it replaces, when one clearly
+ * matches (findStreamToReplace). Returns the stream's id, or null.
+ */
+export async function attachToMatchingStream(
+  row: Pick<FilmUpload, "id" | "team_id" | "game_date" | "opponent" | "streamed" | "replaces_stream_id">
+): Promise<string | null> {
+  if (row.streamed || row.replaces_stream_id || !row.team_id || !row.game_date) return null;
+  const { streams, taken } = await openStreamsFor(row.team_id, row.game_date);
+  const streamId = findStreamToReplace(streams, taken, {
+    teamId: row.team_id,
+    gameDate: row.game_date,
+    opponent: row.opponent,
+  });
+  if (!streamId) return null;
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("game_film_uploads")
+    .update({ replaces_stream_id: streamId })
+    .eq("id", row.id)
+    .is("replaces_stream_id", null);
+  // Another recording got there first (one per stream): leave this one apart.
+  if (error) return null;
+  return streamId;
+}
+
+/** Set or clear which streamed game a recording replaces. */
+export async function setReplacesStream(id: string, streamId: string | null): Promise<FilmUpload | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .update({ replaces_stream_id: streamId })
+    .eq("id", id)
+    .select(FILM_UPLOAD_COLUMNS)
+    .maybeSingle();
+  if (error) {
+    if (error.code === "23505") throw new Error("Another recording already replaces that stream.");
+    throw new Error(error.message);
+  }
+  return (data as FilmUpload | null) ?? null;
+}
+
+/** The recording that replaces this stream, if any. */
+export async function getStreamRecording(streamId: string): Promise<FilmUpload | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .select(FILM_UPLOAD_COLUMNS)
+    .eq("replaces_stream_id", streamId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as FilmUpload | null) ?? null;
+}
+
+/**
+ * A streamed game: a row with the stream as its YouTube video and no file.
+ * file_deleted_at is set so nothing tries to send, play or clean up a file,
+ * and the playlist step is skipped (the stream lives on the club channel).
+ */
+export async function insertStreamedGame(input: {
+  team: string;
+  teamId: string;
+  addedBy: string;
+  videoId: string;
+  gameDate: string;
+  opponent: string | null;
+  ourScore: number | null;
+  theirScore: number | null;
+  eventName: string | null;
+}): Promise<FilmUpload> {
+  const id = newUploadId();
+  const now = new Date().toISOString();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("game_film_uploads")
+    .insert({
+      id,
+      team: input.team,
+      team_id: input.teamId,
+      uploader_name: input.addedBy,
+      filename: STREAM_FILENAME,
+      content_type: null,
+      size_bytes: null,
+      storage_path: `streams/${id}`,
+      status: "holding",
+      file_deleted_at: now,
+      game_date: input.gameDate,
+      opponent: input.opponent,
+      our_score: input.ourScore,
+      their_score: input.theirScore,
+      event_name: input.eventName,
+      youtube_status: "done",
+      youtube_video_id: input.videoId,
+      youtube_updated_at: now,
+      streamed: true,
+    })
+    .select(FILM_UPLOAD_COLUMNS)
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "Couldn't add the streamed game.");
   return data as FilmUpload;
 }
 

@@ -858,11 +858,40 @@ Share the team upload link and code with families, not this inbox. Super-admins 
 - **All games**, **Tournaments** and **Other games** filter the list, and **Search opponent** finds a team.
 - A game plays in the same player as **Film**, with speeds, frame steps and the markers you added. **Copy link to this moment** copies a link to that game on the team page at that second.
 - Games play from YouTube once they're there (public or unlisted only). Before that they play from the phone's original file.
+- A game added from a livestream shows a red **Streamed** mark until its recording replaces it (see *Streamed games*).
 - Visits count in **Settings → Website Activity** like the club website's pages: each team's page shows under **Most visited pages** as **Team film ·** and the team (for example **Team film · HS JV**), and the bare **/watch** page as **Team film · No team picked**. Opening a game counts toward its team's page. The four numbers at the top include these visits too.
 
 **Grouping games into tournaments**
 
 On **Film**, **Edit** a video and fill in **Tournament** (for example *Heartland Hoops Classic*), then **Save**. Names you've already used for that team are suggested as you type. Games with the same name a few days apart show together. Leave it blank to group the game by weekend.`,
+  },
+  {
+    id: "film-streamed-games",
+    title: "Streamed games",
+    group: "Film",
+    audience: "super_admin",
+    preview: true,
+    permission: "film_manage",
+    alsoPermissions: ["teams"],
+    keywords: ["stream", "streamed", "livestream", "live", "youtube link", "replace", "recording", "jump-to points", "line up", "tip-off"],
+    body: `When a game is livestreamed on YouTube, families can watch it on the team film page the same day. When someone uploads the full recording later, the recording takes the stream's place.
+
+**Adding a streamed game**
+
+- On **Film**, tap **Add streamed game**. Paste the stream's YouTube link, pick the team, and fill in the game date and opponent. Tournament and score are optional.
+- Tap **Add to team page**. The game shows on the team film page right away with a red **Streamed** mark, and the player says a better recording is on the way.
+- On Film the card says **Streamed**. It doesn't go in a playlist, and **More → Watch the stream on YouTube** opens it. You can add jump-to points to it like any other game.
+
+**When the recording is uploaded**
+
+- A recording uploaded for the same team, the same day and the same opponent finds the stream on its own. If the uploader left the opponent blank, it finds the stream only when that team streamed one game that day.
+- Its card says **Replaces the streamed game**. Families keep watching the stream until the recording is on YouTube. Then the recording shows in the stream's place, the **Streamed** mark comes off, and links people shared to the stream open the recording.
+- If it picked the wrong game, or didn't find one, open the recording's **Edit** and set **Replaces streamed game** (or **None**), then **Save**.
+- The stream stays on YouTube. Deleting it from Film doesn't touch the video.
+
+**Moving jump-to points to the recording**
+
+The stream and the recording start at different moments, so points marked on the stream don't carry over on their own. On the recording, tap **Line up jump-to points**, type the tip-off time in the stream and in the recording (for example *6:41* and *0:54*), and tap **Move jump-to points**. Each point moves to the same moment in the recording. Points from before the recording starts, like warm-ups, are left off.`,
   },
   {
     id: "film-status",
