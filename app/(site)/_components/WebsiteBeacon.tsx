@@ -14,7 +14,7 @@ const ENDPOINT = "/api/website-activity";
 const FLUSH_MS = 300;
 const MAX_QUEUE = 25;
 
-type QueuedView = { path: string; ts: number; ref?: string };
+type QueuedView = { path: string; ts: number; ref?: string; kind?: "film_play"; upload?: string };
 
 let queue: QueuedView[] = [];
 let lastPath = "";
@@ -50,11 +50,21 @@ function record() {
   lastPath = path;
   queue.push(firstView && document.referrer ? { path, ts: Date.now(), ref: document.referrer } : { path, ts: Date.now() });
   firstView = false;
+  schedule();
+}
+
+function schedule() {
   if (queue.length >= MAX_QUEUE) flush();
   else {
     clearTimeout(timer);
     timer = setTimeout(flush, FLUSH_MS);
   }
+}
+
+/** A game started playing on a team film page (counts as a play, not a page view). */
+export function recordFilmPlay(uploadId: string) {
+  queue.push({ path: window.location.pathname, ts: Date.now(), kind: "film_play", upload: uploadId });
+  schedule();
 }
 
 export function WebsiteBeacon() {

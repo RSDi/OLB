@@ -100,6 +100,7 @@ export function FilmPlayer({
   onMarkersChange,
   momentPath = filmMomentPath,
   fileErrorText,
+  onFirstPlay,
 }: {
   uploadId: string;
   title: string;
@@ -113,6 +114,8 @@ export function FilmPlayer({
   momentPath?: (uploadId: string, atSeconds: number) => string;
   /** Shown when the browser can't decode the original file. */
   fileErrorText?: string;
+  /** Called once, the first time the video is actually playing. */
+  onFirstPlay?: () => void;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -222,6 +225,17 @@ export function FilmPlayer({
     }, 250);
     return () => clearInterval(t);
   }, [ready]);
+
+  const firstPlayRef = useRef(onFirstPlay);
+  useEffect(() => {
+    firstPlayRef.current = onFirstPlay;
+  }, [onFirstPlay]);
+  const playedRef = useRef(false);
+  useEffect(() => {
+    if (paused || !ready || playedRef.current) return;
+    playedRef.current = true;
+    firstPlayRef.current?.();
+  }, [paused, ready]);
 
   const seekBy = useCallback((delta: number) => {
     const c = ctrlRef.current;

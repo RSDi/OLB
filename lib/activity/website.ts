@@ -22,7 +22,8 @@ const VISIT_MAX_AGE = 30 * 60;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type WebsiteEventType = "page_view" | "reg_started" | "reg_submitted";
+// film_play: a game started playing on a team film page (0180).
+export type WebsiteEventType = "page_view" | "reg_started" | "reg_submitted" | "film_play";
 
 export interface WebsiteEvent {
   eventType: WebsiteEventType;
