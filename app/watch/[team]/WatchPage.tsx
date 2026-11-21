@@ -18,6 +18,7 @@ import {
   type WatchGame,
   type WatchSection,
 } from "../../../lib/film/watch";
+import { TeamSwitcher } from "./TeamSwitcher";
 import styles from "./watch.module.css";
 
 type Filter = "all" | "events" | "other";
@@ -26,6 +27,8 @@ interface Props {
   /** The /watch/<key> segment: the team's address plus its link key. */
   pageKey: string;
   teamLabel: string;
+  /** Every team with its film page on, for the team switcher. */
+  teams: { pageKey: string; label: string }[];
   games: WatchGame[];
   markers: Record<string, FilmMarker[]>;
   initial: { id: string; t: number } | null;
@@ -91,7 +94,7 @@ function Thumb({ game, onPlay, big }: { game: WatchGame; onPlay: () => void; big
   );
 }
 
-export function WatchPage({ pageKey, teamLabel, games, markers, initial }: Props) {
+export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }: Props) {
   const [playing, setPlaying] = useState<{ id: string; t: number } | null>(initial);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -147,7 +150,7 @@ export function WatchPage({ pageKey, teamLabel, games, markers, initial }: Props
           <Image src="/email/olb-bolt.png" alt="" width={40} height={40} className={styles.bolt} />
           <div className={styles.team}>
             <div className={styles.eyebrow}>Omaha Lightning · Game film</div>
-            <h1 className={styles.teamName}>{teamLabel}</h1>
+            <TeamSwitcher pageKey={pageKey} teamLabel={teamLabel} teams={teams} />
           </div>
           <button type="button" className={styles.share} onClick={() => void copyPage()}>
             Copy link

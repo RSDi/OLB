@@ -841,14 +841,14 @@ Share the team upload link and code with families, not this inbox. Super-admins 
     preview: true,
     permission: "film_view",
     alsoPermissions: ["film_manage", "teams"],
-    keywords: ["team film page", "watch page", "new link", "link key", "watch", "public link", "families", "tournament", "weekend", "share film", "instead of youtube"],
+    keywords: ["team film page", "watch page", "new link", "link key", "switch team", "watch", "public link", "families", "tournament", "weekend", "share film", "instead of youtube"],
     body: `One link per team where families watch every game, instead of a new post for each one. Families don't sign in: anyone with the link can watch, so share it with the team only.
 
 **Turning it on**
 
 - In **Settings → Film**, open a team and find **Team film page (preview)**. Tap **Off** to turn it **On**. The link shows next to it: **/watch/**, the team's upload address, and a random key on the end, so nobody can guess it from the team name. **Copy** copies it.
 - Tap **On** again to turn it off. The link then shows "page not found".
-- Each team gets its own link, and a team's page shows only that team. There's no list of teams: the page ending in just **/watch** tells families to ask their coach for the link.
+- Each team gets its own link. Tap the team's name at the top of the page to switch to another team whose page is On; each opens that team's own link. So anyone with one team's link can reach the others, but nobody can guess them from outside. The page ending in just **/watch** has no list: it tells families to ask their coach for the link.
 - If a link gets passed around, tap **New link**. The old link stops working right away, so send families the new one.
 
 **What families see**
@@ -865,7 +865,7 @@ Share the team upload link and code with families, not this inbox. Super-admins 
 
 On **Film**, **Edit** a video and pick its **Tournament**, then **Save**. The list has the team's tournaments from the **HS Schedule** (with their dates) and names already used on Film for that team. Pick **Other…** to type a new name, or **None** to group the game by weekend.
 
-When the game date falls on a tournament weekend in the HS Schedule, that tournament is picked for you, and the form says it came from the HS Schedule. Changing the date changes the pick until you choose one yourself. Games with the same tournament a few days apart show together.`,
+Family uploads get it on their own: when the game date falls on a tournament weekend in the HS Schedule, the upload is filed under that tournament, and **Edit** can change it. In **Edit** too, when the date falls on a tournament weekend, that tournament is picked for you, and the form says it came from the HS Schedule. Changing the date changes the pick until you choose one yourself. Games with the same tournament a few days apart show together.`,
   },
   {
     id: "film-streamed-games",
