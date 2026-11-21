@@ -26,3 +26,14 @@ test("the dropdown lists the schedule newest first, then names used on Film", ()
   assert.equal(matchTournament(choices, "Spring League"), null);
   assert.equal(matchTournament(choices, ""), null);
 });
+
+test("0180 backfills only games with no tournament, by the same schedule rule", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0180_film_event_backfill.sql"), "utf8");
+  assert.match(sql, /where u\.event_name is null/);
+  assert.match(sql, /u\.game_date between w\.starts_on and w\.ends_on/);
+  assert.match(sql, /w\.status not in \('canceled', 'off'\)/);
+  assert.match(sql, /left\(regexp_replace\(btrim\(w\.event\), '\\s\+', ' ', 'g'\), 80\)/);
+  assert.doesNotMatch(sql, /create (table|function|sequence)/i);
+});
