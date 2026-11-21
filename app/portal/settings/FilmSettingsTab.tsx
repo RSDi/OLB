@@ -8,6 +8,7 @@ import { Icons } from "../../components/icons";
 import { Input, Pill, Select, Textarea } from "../../components/ui";
 import { copyText } from "../../../lib/copy-text";
 import { filmUploadUrl } from "../../../lib/film/upload-url";
+import { watchPageKey, watchPagePath } from "../../../lib/film/watch";
 import {
   filmTeamStatus,
   filterFilmTeams,
@@ -25,6 +26,7 @@ import {
   renameFilmTeam,
   saveFilmTeamPage,
   saveFilmTeamWatch,
+  newFilmTeamWatchLink,
   saveFilmTeamPlaylist,
   saveFilmTeamTemplate,
   setFilmTeamCode,
@@ -295,6 +297,7 @@ function TeamCard({
   const [slug, setSlug] = useState(team.slug);
   const [watchOn, setWatchOn] = useState(team.watchPublic);
   const [watchCopied, setWatchCopied] = useState(false);
+  const [watchToken, setWatchToken] = useState(team.watchToken);
   const [enabled, setEnabled] = useState(team.enabled);
   const [name, setName] = useState(team.label);
   const [renaming, setRenaming] = useState(false);
@@ -316,7 +319,8 @@ function TeamCard({
   const [includePlaylistLink, setIncludePlaylistLink] = useState(team.includePlaylistLink);
   const [slackChannelId, setSlackChannelId] = useState(team.slackChannelId ?? "");
   const uploadUrl = filmUploadUrl(origin, team.slug);
-  const watchUrl = origin && team.hasSlug ? `${origin}/watch/${team.slug}` : "";
+  const watchUrl =
+    origin && team.hasSlug && watchToken ? `${origin}${watchPagePath(watchPageKey(team.slug, watchToken))}` : "";
   const parsedDraft = parseYoutubePlaylistId(playlistDraft);
   const selectedPlaylistId = parsedDraft.ok ? parsedDraft.id ?? "" : "";
 
@@ -494,9 +498,9 @@ function TeamCard({
             Team film page (preview)
           </div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
-            One link where families watch every game, grouped by tournament and weekend. Anyone with the link can
-            watch, so share it with the team only. Families can switch to any other team whose page is On, and{" "}
-            {origin ? <code style={{ fontSize: 12 }}>{origin}/watch</code> : "/watch"} lists them all.
+            One link where families watch every game, grouped by tournament and weekend. The link ends in a random
+            key so nobody can guess it from the team name. Anyone with the link can watch, so share it with the team
+            only. If it gets passed around, tap New link: the old link stops working.
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <Pill
@@ -531,6 +535,21 @@ function TeamCard({
                   }}
                 >
                   {watchCopied ? "Copied" : "Copy"}
+                </Pill>
+                <Pill
+                  size="sm"
+                  variant="light"
+                  disabled={busy}
+                  onClick={() => {
+                    if (!window.confirm("Make a new link for this team's film page? The old link stops working, so send families the new one.")) return;
+                    void run(async () => {
+                      const res = await newFilmTeamWatchLink(team.id);
+                      if (!res.error && res.watchToken) setWatchToken(res.watchToken);
+                      return res;
+                    });
+                  }}
+                >
+                  New link
                 </Pill>
               </>
             )}

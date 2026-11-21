@@ -29,6 +29,8 @@ export type FilmTeamRow = FilmTeam & {
   includePlaylistLink: boolean;
   slackChannelId: string | null;
   watchPublic: boolean;
+  /** Random key in the team film page link (/watch/<slug>-<key>). */
+  watchToken: string;
 };
 
 type TeamQueryRow = {
@@ -49,6 +51,7 @@ type TeamQueryRow = {
   film_include_playlist_link: boolean | null;
   film_slack_channel_id: string | null;
   film_watch_public: boolean | null;
+  film_watch_token: string | null;
 };
 
 export function slugifyFilmTeam(name: string): string {
@@ -93,11 +96,12 @@ function toFilmTeam(row: TeamQueryRow): FilmTeamRow {
     includePlaylistLink: !!row.film_include_playlist_link,
     slackChannelId: row.film_slack_channel_id?.trim() || null,
     watchPublic: !!row.film_watch_public,
+    watchToken: row.film_watch_token?.trim() || "",
   };
 }
 
 const TEAM_COLS =
-  "id, board_id, name, age_group, film_slug, film_enabled, film_code_hash, film_code_version, youtube_playlist_id, film_youtube_title_template, film_youtube_description_template, film_include_stats_book, film_include_players, film_include_tournament, film_include_playlist_link, film_slack_channel_id, film_watch_public";
+  "id, board_id, name, age_group, film_slug, film_enabled, film_code_hash, film_code_version, youtube_playlist_id, film_youtube_title_template, film_youtube_description_template, film_include_stats_book, film_include_players, film_include_tournament, film_include_playlist_link, film_slack_channel_id, film_watch_public, film_watch_token";
 
 async function currentBoardId(): Promise<string | null> {
   const admin = createAdminClient();

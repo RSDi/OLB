@@ -1,4 +1,4 @@
-// GET /watch/<team>/play?v=<upload id> — the team film page plays a game
+// GET /watch/<team>-<key>/play?v=<upload id> — the team film page plays a game
 // that isn't on YouTube yet from the original file. Redirects to a short-
 // lived signed Storage URL; the page's <video> tag follows it.
 

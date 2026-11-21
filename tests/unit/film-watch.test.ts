@@ -9,6 +9,9 @@ import {
   seasonRecord,
   toWatchGames,
   watchGamePath,
+  watchPageKey,
+  watchPagePath,
+  parseWatchPageKey,
   watchSource,
   weekendKey,
   type WatchGame,
@@ -138,8 +141,27 @@ test("uploads without a game date fall back to the upload day", () => {
 });
 
 test("share links point at the team page", () => {
-  assert.equal(watchGamePath("6b-black", "u1"), "/watch/6b-black?v=u1");
-  assert.equal(watchGamePath("6b-black", "u1", 75.9), "/watch/6b-black?v=u1&t=75");
+  const key = watchPageKey("6b-black", "3f9a0c7e1b2d");
+  assert.equal(key, "6b-black-3f9a0c7e1b2d");
+  assert.equal(watchPagePath(key), "/watch/6b-black-3f9a0c7e1b2d");
+  assert.equal(watchGamePath(key, "u1"), "/watch/6b-black-3f9a0c7e1b2d?v=u1");
+  assert.equal(watchGamePath(key, "u1", 75.9), "/watch/6b-black-3f9a0c7e1b2d?v=u1&t=75");
+});
+
+test("team page links need the random key", () => {
+  assert.deepEqual(parseWatchPageKey("6b-black-3f9a0c7e1b2d"), { slug: "6b-black", token: "3f9a0c7e1b2d" });
+  assert.deepEqual(parseWatchPageKey("HS-JV-3F9A0C7E1B2D"), { slug: "hs-jv", token: "3f9a0c7e1b2d" });
+  for (const bad of ["6b-black", "hs-jv", "3f9a0c7e1b2d", "-3f9a0c7e1b2d", "6b-black-3f9a0c7e1b", "6b-black-3f9a0c7e1b2g", ""]) {
+    assert.equal(parseWatchPageKey(bad), null, bad);
+  }
+});
+
+test("0178 gives every team its own link key", () => {
+  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0178_film_watch_token.sql"), "utf8");
+  assert.match(sql, /add column if not exists film_watch_token text not null/);
+  assert.match(sql, /gen_random_uuid\(\)/);
+  assert.match(sql, /\^\[0-9a-f\]\{12\}\$/);
+  assert.doesNotMatch(sql, /create table/i);
 });
 
 test("0177 adds the watch toggle and tournament name without new tables", () => {

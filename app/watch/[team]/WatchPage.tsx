@@ -5,7 +5,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { FilmPlayer } from "../../portal/film/FilmPlayer";
 import { formatTimecode, type FilmMarker } from "../../../lib/film/player-logic";
 import {
@@ -15,6 +14,7 @@ import {
   groupWatchGames,
   seasonRecord,
   watchGamePath,
+  watchPagePath,
   type WatchGame,
   type WatchSection,
 } from "../../../lib/film/watch";
@@ -23,10 +23,9 @@ import styles from "./watch.module.css";
 type Filter = "all" | "events" | "other";
 
 interface Props {
-  slug: string;
+  /** The /watch/<key> segment: the team's address plus its link key. */
+  pageKey: string;
   teamLabel: string;
-  /** Every team with its film page on, for the team switcher. */
-  teams: { slug: string; label: string }[];
   games: WatchGame[];
   markers: Record<string, FilmMarker[]>;
   initial: { id: string; t: number } | null;
@@ -91,8 +90,7 @@ function Thumb({ game, onPlay, big }: { game: WatchGame; onPlay: () => void; big
   );
 }
 
-export function WatchPage({ slug, teamLabel, teams, games, markers, initial }: Props) {
-  const router = useRouter();
+export function WatchPage({ pageKey, teamLabel, games, markers, initial }: Props) {
   const [playing, setPlaying] = useState<{ id: string; t: number } | null>(initial);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -116,17 +114,17 @@ export function WatchPage({ slug, teamLabel, teams, games, markers, initial }: P
 
   function open(g: WatchGame, t = 0) {
     setPlaying({ id: g.id, t });
-    window.history.replaceState(null, "", watchGamePath(slug, g.id));
+    window.history.replaceState(null, "", watchGamePath(pageKey, g.id));
     requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
   function close() {
     setPlaying(null);
-    window.history.replaceState(null, "", `/watch/${encodeURIComponent(slug)}`);
+    window.history.replaceState(null, "", watchPagePath(pageKey));
   }
 
   async function copyPage() {
-    const url = `${window.location.origin}/watch/${encodeURIComponent(slug)}`;
+    const url = `${window.location.origin}${watchPagePath(pageKey)}`;
     setNote((await copyText(url)) ? "Team film link copied." : url);
   }
 
@@ -150,24 +148,6 @@ export function WatchPage({ slug, teamLabel, teams, games, markers, initial }: P
             <div className={styles.eyebrow}>Omaha Lightning · Game film</div>
             <h1 className={styles.teamName}>{teamLabel}</h1>
           </div>
-          {teams.length > 1 && (
-            <label className={styles.switcher}>
-              <span className={styles.switcherLabel}>Switch team</span>
-              <select
-                id="watch-team"
-                value={slug}
-                onChange={(e) => {
-                  if (e.target.value !== slug) router.push(`/watch/${encodeURIComponent(e.target.value)}`);
-                }}
-              >
-                {teams.map((t) => (
-                  <option key={t.slug} value={t.slug}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <button type="button" className={styles.share} onClick={() => void copyPage()}>
             Copy link
           </button>
@@ -229,14 +209,14 @@ export function WatchPage({ slug, teamLabel, teams, games, markers, initial }: P
                   source={
                     current.source.kind === "youtube"
                       ? { kind: "youtube", videoId: current.source.videoId }
-                      : { kind: "file", url: `/watch/${encodeURIComponent(slug)}/play?v=${encodeURIComponent(current.id)}` }
+                      : { kind: "file", url: `${watchPagePath(pageKey)}/play?v=${encodeURIComponent(current.id)}` }
                   }
                   startAt={playing?.t ?? 0}
                   markers={markers[current.id] ?? []}
                   canManage={false}
                   onClose={close}
                   onMarkersChange={() => {}}
-                  momentPath={(id, t) => watchGamePath(slug, id, t)}
+                  momentPath={(id, t) => watchGamePath(pageKey, id, t)}
                   fileErrorText="This game is still being processed and won't play in this browser yet. Try Safari, or check back in a few hours."
                 />
               </div>

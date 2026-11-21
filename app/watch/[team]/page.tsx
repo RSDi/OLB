@@ -7,8 +7,8 @@ import { WatchPage } from "./WatchPage";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ team: string }> }): Promise<Metadata> {
-  const { team: slug } = await params;
-  const team = await getWatchTeam(slug).catch(() => null);
+  const { team: key } = await params;
+  const team = await getWatchTeam(key).catch(() => null);
   return { title: { absolute: team ? `${team.label} film — Omaha Lightning` : "Game film — Omaha Lightning" } };
 }
 
@@ -19,10 +19,10 @@ export default async function TeamWatchPage({
   params: Promise<{ team: string }>;
   searchParams: Promise<{ v?: string; t?: string }>;
 }) {
-  const [{ team: slug }, query] = await Promise.all([params, searchParams]);
+  const [{ team: key }, query] = await Promise.all([params, searchParams]);
   let data;
   try {
-    data = await loadWatchPage(slug);
+    data = await loadWatchPage(key);
   } catch {
     notFound();
   }
@@ -34,9 +34,8 @@ export default async function TeamWatchPage({
 
   return (
     <WatchPage
-      slug={data.team.slug}
+      pageKey={data.pageKey}
       teamLabel={data.team.label}
-      teams={data.teams}
       games={data.games}
       markers={data.markers}
       initial={initial}

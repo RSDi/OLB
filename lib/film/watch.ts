@@ -1,4 +1,4 @@
-// Team film page (/watch/<slug>): which games show, how they play, and how
+// Team film page (/watch/<slug>-<key>): which games show, how they play, and how
 // they group into tournaments and weekends. Pure, so tests and the client
 // share it.
 
@@ -216,9 +216,34 @@ export function seasonRecord(games: WatchGame[]): { wins: number; losses: number
   return { wins, losses };
 }
 
+// The team page's address is the team's upload address plus a random key,
+// "/watch/hs-jv-3f9a0c7e1b2d", so it can't be guessed from the team name.
+export const WATCH_TOKEN_RE = /^[0-9a-f]{12}$/;
+
+/** "hs-jv" + "3f9a0c7e1b2d" → "hs-jv-3f9a0c7e1b2d", the /watch/<key> segment. */
+export function watchPageKey(slug: string, token: string): string {
+  return `${slug}-${token}`;
+}
+
+/** The team page path, "/watch/hs-jv-3f9a0c7e1b2d". */
+export function watchPagePath(pageKey: string): string {
+  return `/watch/${encodeURIComponent(pageKey)}`;
+}
+
+/** Splits a /watch/<key> segment back into slug and token, or null. */
+export function parseWatchPageKey(raw: string): { slug: string; token: string } | null {
+  const key = raw.trim().toLowerCase();
+  const cut = key.lastIndexOf("-");
+  if (cut <= 0) return null;
+  const slug = key.slice(0, cut);
+  const token = key.slice(cut + 1);
+  if (!WATCH_TOKEN_RE.test(token)) return null;
+  return { slug, token };
+}
+
 /** Public link to a game on the team page, optionally at a moment. */
-export function watchGamePath(slug: string, uploadId: string, atSeconds?: number): string {
-  const base = `/watch/${encodeURIComponent(slug)}?v=${encodeURIComponent(uploadId)}`;
+export function watchGamePath(pageKey: string, uploadId: string, atSeconds?: number): string {
+  const base = `${watchPagePath(pageKey)}?v=${encodeURIComponent(uploadId)}`;
   if (atSeconds == null) return base;
   return `${base}&t=${Math.max(0, Math.floor(atSeconds))}`;
 }

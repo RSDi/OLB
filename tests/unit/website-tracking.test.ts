@@ -65,8 +65,9 @@ test("addresses that aren't pages have no name", () => {
   for (const p of ["/cart", "/tv", "/lo", "/wp-login.php", "/shootout/nope"]) assert.equal(knownPageLabel(p), null, p);
   assert.equal(knownPageLabel("/shootout/tv/courts"), "Shootout TV · Scoreboard");
   assert.equal(knownPageLabel("/?utm_source=x"), "Home");
-  assert.equal(knownPageLabel("/watch"), "Team film · All teams");
+  assert.equal(knownPageLabel("/watch"), "Team film · No team picked");
   assert.equal(knownPageLabel("/watch/hs-jv?v=abc"), "Team film · HS JV");
+  assert.equal(knownPageLabel("/watch/hs-jv-3f9a0c7e1b2d?v=abc"), "Team film · HS JV");
   assert.equal(knownPageLabel("/watch/14u-white"), "Team film · 14U White");
   assert.equal(knownPageLabel("/watch/hs-jv/play"), null);
 });
