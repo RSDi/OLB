@@ -33,6 +33,8 @@ import { filmFlowView } from "../../../lib/film/flow";
 import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob, YoutubePlaylistStatus } from "../../../lib/film/types";
 import { filmFileMissing, youtubeDisplayStatus } from "../../../lib/film/youtube-progress";
 import { YoutubeTransfer } from "./YoutubeTransfer";
+import { AddStreamForm, LineUpMarkers } from "./StreamParts";
+import { setRecordingStream } from "../../../lib/film/stream-actions";
 import { FilmPlayer } from "./FilmPlayer";
 import { SettingsLink, SettingsText } from "../../components/SettingsLink";
 import { setFilmTeamSlackChannel } from "../../../lib/film/team-actions";
@@ -65,6 +67,8 @@ interface Props {
   initialMoment: { id: string; t: number } | null;
   /** Preview: the tournament field that groups games on the team film page. */
   showEvents?: boolean;
+  /** Preview: teams a streamed game can be added to. Null hides streamed games' controls. */
+  streamTeams?: { id: string; label: string; slug: string }[] | null;
 }
 
 type Playing = {
@@ -145,6 +149,7 @@ export function FilmInbox({
   markers: initialMarkers,
   initialMoment,
   showEvents = false,
+  streamTeams = null,
 }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
@@ -165,6 +170,7 @@ export function FilmInbox({
   });
   const [markers, setMarkers] = useState<Record<string, FilmMarker[]>>(initialMarkers);
   const [patches, setPatches] = useState<Record<string, GamePatch>>({});
+  const [addingStream, setAddingStream] = useState(false);
   // Tournament names already used per team, newest first, for the edit form.
   const eventOptions = useMemo(() => {
     const out: Record<string, string[]> = {};
@@ -258,6 +264,25 @@ export function FilmInbox({
   }, [filter, teamFilter, rows, attention, inProgress]);
 
   const grouped = useMemo(() => groupUploadsByTeamAndGame(shown, labels), [shown, labels]);
+
+  // Streamed games and the recordings that replace them (0179).
+  const { streamsById, recordingByStream } = useMemo(() => {
+    const streams = new Map<string, FilmUpload>();
+    const recs = new Map<string, FilmUpload>();
+    for (const u of rows) if (u.streamed) streams.set(u.id, u);
+    for (const u of rows) if (u.replaces_stream_id && streams.has(u.replaces_stream_id)) recs.set(u.replaces_stream_id, u);
+    return { streamsById: streams, recordingByStream: recs };
+  }, [rows]);
+
+  // Streams a recording could replace: same team, not taken by another one.
+  function streamOptionsFor(row: FilmUpload): FilmUpload[] | null {
+    if (!streamTeams || row.streamed) return null;
+    return [...streamsById.values()].filter((s) => {
+      if (s.team_id !== row.team_id) return false;
+      const taken = recordingByStream.get(s.id);
+      return !taken || taken.id === row.id;
+    });
+  }
 
   const teams = useMemo(() => {
     const seen = new Map<string, { label: string; count: number }>();
@@ -391,6 +416,28 @@ export function FilmInbox({
         </a>{" "}
         page lists in-progress, stalled, failed, and done uploads across teams.
       </p>
+
+      {streamTeams && canManage && streamTeams.length > 0 && (
+        addingStream ? (
+          <AddStreamForm
+            teams={streamTeams}
+            eventOptions={eventOptions}
+            initialTeamId={streamTeams.find((t) => t.slug === teamFilter)?.id ?? null}
+            onClose={() => setAddingStream(false)}
+          />
+        ) : (
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 500, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span data-tour="film-add-stream">
+              <Pill size="sm" variant="accent" onClick={() => setAddingStream(true)}>
+                Add streamed game
+              </Pill>
+            </span>
+            <span style={{ color: "var(--gw-fg-muted)" }}>
+              — put a livestream on the team film page now; the recording replaces it later.
+            </span>
+          </p>
+        )
+      )}
 
       {canStaffUpload && (
         <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
@@ -547,6 +594,10 @@ export function FilmInbox({
                       lineupPlayerIds={lineups[filmLineupKey(row.team_id, row.game_date, row.opponent) ?? ""] ?? []}
                       markerCount={markers[row.id]?.length ?? 0}
                       eventOptions={showEvents ? eventOptions[row.team] ?? [] : null}
+                      stream={row.replaces_stream_id ? streamsById.get(row.replaces_stream_id) ?? null : null}
+                      replacedBy={row.streamed ? recordingByStream.get(row.id) ?? null : null}
+                      streamMarkerCount={row.replaces_stream_id ? markers[row.replaces_stream_id]?.length ?? 0 : 0}
+                      streamOptions={streamOptionsFor(row)}
                       onPlay={() => void play(row)}
                       onPlayOriginal={() => void play(row, { original: true })}
                       onDownload={() => void download(row.id)}
@@ -554,7 +605,8 @@ export function FilmInbox({
                       onRetryPlaylist={() => void run(row.id, retryFilmPlaylist)}
                       onPatched={(patch) => setPatches((prev) => ({ ...prev, [row.id]: patch }))}
                       onDelete={() => {
-                        if (confirm(`Delete ${row.filename}? This cannot be undone.`)) {
+                        const what = row.streamed ? "this streamed game from Film (the video stays on YouTube)" : row.filename;
+                        if (confirm(`Delete ${what}? This cannot be undone.`)) {
                           void run(row.id, deleteFilmUpload);
                         }
                       }}
@@ -583,6 +635,10 @@ function FilmRow({
   lineupPlayerIds,
   markerCount,
   eventOptions,
+  stream,
+  replacedBy,
+  streamMarkerCount,
+  streamOptions,
   onPlay,
   onPlayOriginal,
   onDownload,
@@ -604,6 +660,14 @@ function FilmRow({
   markerCount: number;
   /** Null hides the tournament field. */
   eventOptions: string[] | null;
+  /** On a recording: the streamed game it replaces. */
+  stream: FilmUpload | null;
+  /** On a streamed game: the recording that replaces it. */
+  replacedBy: FilmUpload | null;
+  /** Jump-to points still on the stream this recording replaces. */
+  streamMarkerCount: number;
+  /** Streams this recording could replace, for Edit. Null hides the field. */
+  streamOptions: FilmUpload[] | null;
   onPlay: () => void;
   onPlayOriginal: () => void;
   onDownload: () => void;
@@ -628,7 +692,8 @@ function FilmRow({
         })
       : null;
   const effectivePlaylist = (row.youtube_playlist_id || teamPlaylistId || "").trim() || null;
-  const pl = playlistLabel(
+  // A stream lives on the club channel; it never goes in a team playlist.
+  const pl = row.streamed ? null : playlistLabel(
     row.youtube_playlist_status,
     effectivePlaylist,
     row.youtube_status === "done" && !!row.youtube_video_id
@@ -641,6 +706,7 @@ function FilmRow({
   });
   const canRetryPlaylist =
     canManage &&
+    !row.streamed &&
     row.youtube_status === "done" &&
     !!row.youtube_video_id &&
     !!effectivePlaylist &&
@@ -672,10 +738,29 @@ function FilmRow({
     >
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 15, wordBreak: "break-word" }}>{row.filename}</div>
-          <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
-            {row.uploader_name} · {formatBytes(row.size_bytes)} · {formatWhen(row.created_at)}
+          <div style={{ fontWeight: 800, fontSize: 15, wordBreak: "break-word", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {row.filename}
+            {row.streamed && !replacedBy && <span className="rsd-chip rsd-chip-error">Streamed</span>}
           </div>
+          <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
+            {row.streamed
+              ? `Added by ${row.uploader_name} · ${formatWhen(row.created_at)}`
+              : `${row.uploader_name} · ${formatBytes(row.size_bytes)} · ${formatWhen(row.created_at)}`}
+          </div>
+          {row.streamed && replacedBy && (
+            <div className={styles.streamLine} data-tour="film-stream-replaced">
+              {onYoutubeNow(replacedBy)
+                ? "Replaced by the recording on the team film page."
+                : "The recording is uploaded. Families watch this stream until the recording is on YouTube."}
+            </div>
+          )}
+          {stream && (
+            <div className={styles.streamLine} data-tour="film-replaces-stream">
+              {onYoutube
+                ? "Replaces the streamed game on the team film page."
+                : "Replaces the streamed game once it's on YouTube. Families watch the stream until then."}
+            </div>
+          )}
           {uploadStatsLine && (
             <div style={{ fontSize: 12, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 2 }}>
               {uploadStatsLine}
@@ -740,6 +825,7 @@ function FilmRow({
       {editing ? (
         <FilmGameEditor
           row={row}
+          streamOptions={streamOptions}
           teamPlaylistId={teamPlaylistId}
           roster={roster}
           lineupPlayerIds={lineupPlayerIds}
@@ -786,6 +872,9 @@ function FilmRow({
               </Pill>
             </span>
           )}
+          {canManage && stream && streamMarkerCount > 0 && (
+            <LineUpMarkers recordingId={row.id} streamMarkerCount={streamMarkerCount} />
+          )}
           <span data-tour="film-more">
             <Pill size="sm" variant="ghost" onClick={() => setMore((v) => !v)}>
               {more ? "Less" : "More"}
@@ -793,6 +882,17 @@ function FilmRow({
           </span>
           {more && (
             <>
+              {row.streamed && row.youtube_video_id && (
+                <a
+                  href={`https://www.youtube.com/watch?v=${encodeURIComponent(row.youtube_video_id)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.statusLink}
+                  style={{ fontSize: 13, fontWeight: 700 }}
+                >
+                  Watch the stream on YouTube
+                </a>
+              )}
               {onYoutube && !flow.originalGone && (
                 <Pill size="sm" onClick={onPlayOriginal} disabled={busy}>
                   Play original
@@ -822,6 +922,7 @@ function FilmRow({
 
 function FilmGameEditor({
   row,
+  streamOptions,
   teamPlaylistId,
   roster,
   lineupPlayerIds,
@@ -830,6 +931,7 @@ function FilmGameEditor({
   onSaved,
 }: {
   row: FilmUpload;
+  streamOptions: FilmUpload[] | null;
   teamPlaylistId: string | null;
   roster: FilmRosterPlayer[];
   lineupPlayerIds: string[];
@@ -845,6 +947,7 @@ function FilmGameEditor({
   const [theirScore, setTheirScore] = useState(row.their_score == null ? "" : String(row.their_score));
   const [playlistDraft, setPlaylistDraft] = useState(row.youtube_playlist_id ?? "");
   const [pickedPlayers, setPickedPlayers] = useState<string[]>(lineupPlayerIds);
+  const [streamId, setStreamId] = useState(row.replaces_stream_id ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -859,11 +962,20 @@ function FilmGameEditor({
       theirScore,
       playerIds: pickedPlayers,
       ...(eventOptions ? { eventName } : {}),
+      ...(streamOptions && streamOptions.length > 0 ? { keepStream: true } : {}),
     });
     if (result.error) {
       setSaving(false);
       setError(result.error);
       return;
+    }
+    if (streamOptions && streamId !== (row.replaces_stream_id ?? "")) {
+      const linked = await setRecordingStream(row.id, streamId || null);
+      if (linked.error) {
+        setSaving(false);
+        setError(linked.error);
+        return;
+      }
     }
     let playlistId = row.youtube_playlist_id;
     if (playlistDraft !== (row.youtube_playlist_id ?? "")) {
@@ -941,6 +1053,28 @@ function FilmGameEditor({
               ))}
             </datalist>
           )}
+        </label>
+      )}
+      {streamOptions && streamOptions.length > 0 && (
+        <label className={styles.field} data-tour="film-edit-stream">
+          <span className={styles.label}>Replaces streamed game</span>
+          <p className={styles.hint}>
+            Pick the stream this is the recording of. Families watch the stream until this is on YouTube, then this
+            takes its place.
+          </p>
+          <select className={styles.input} value={streamId} onChange={(e) => setStreamId(e.target.value)}>
+            <option value="">None</option>
+            {streamOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {formatFilmInboxHeading({
+                  gameDate: s.game_date,
+                  opponent: s.opponent,
+                  ourScore: s.our_score,
+                  theirScore: s.their_score,
+                })}
+              </option>
+            ))}
+          </select>
         </label>
       )}
       {roster.length > 0 && (

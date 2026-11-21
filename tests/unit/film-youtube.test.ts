@@ -47,6 +47,8 @@ function upload(partial: Partial<FilmUpload> & Pick<FilmUpload, "id" | "team" | 
     youtube_privacy: null,
     youtube_processing: null,
     youtube_synced_at: null,
+    streamed: false,
+    replaces_stream_id: null,
     ...partial,
   };
 }

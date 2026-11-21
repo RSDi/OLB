@@ -28,7 +28,9 @@ export default async function TeamWatchPage({
   }
   if (!data) notFound();
 
-  const v = typeof query.v === "string" ? query.v : "";
+  // A link shared while the game was streamed opens the recording now.
+  const asked = typeof query.v === "string" ? query.v : "";
+  const v = data.replacedBy[asked] ?? asked;
   const initial =
     v && data.games.some((g) => g.id === v) ? { id: v, t: parseTimecode(query.t ?? "0") ?? 0 } : null;
 

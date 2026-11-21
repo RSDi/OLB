@@ -267,6 +267,48 @@
   border-radius: 6px;
 }
 
+/* A game from the livestream, until the recording replaces it */
+.streamTag {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #b42318;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.streamTag::before,
+.streamDot {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.streamNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #b42318;
+}
+
+.streamDot {
+  display: inline-block;
+}
+
 /* Player */
 .playerWrap {
   display: flex;

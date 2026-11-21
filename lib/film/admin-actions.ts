@@ -12,6 +12,7 @@ import { parseFilmGameFields } from "./game-meta.ts";
 import { EVENT_NAME_MAX, cleanEventName } from "./watch.ts";
 import { parseFilmLineupPlayerIds, saveGameLineup } from "./lineups.ts";
 import {
+  attachToMatchingStream,
   deleteFilmUploadRow,
   getFilmUpload,
   setFilmStatus,
@@ -81,6 +82,8 @@ export async function updateFilmGameFields(
     theirScore?: unknown;
     playerIds?: unknown;
     eventName?: unknown;
+    /** Edit showed the "Replaces streamed game" field: leave the link to it. */
+    keepStream?: boolean;
   }
 ): Promise<{
   error?: string;
@@ -108,8 +111,18 @@ export async function updateFilmGameFields(
     if (!cleaned.ok) return { error: `Keep the tournament name under ${EVENT_NAME_MAX} characters.` };
     eventName = cleaned.value;
   }
+  const before = await getFilmUpload(id);
   const row = await updateFilmUploadGame(id, { ...parsed, eventName });
   if (!row) return { error: "That upload isn't there any more." };
+  // A recording whose new date or opponent matches a streamed game takes its
+  // place. Only on a change, so a coach who picked "None" on Edit keeps it.
+  if (!input.keepStream && before && (before.game_date !== row.game_date || (before.opponent ?? "") !== (row.opponent ?? ""))) {
+    try {
+      await attachToMatchingStream(row);
+    } catch {
+      // A coach can still pick the stream on Edit.
+    }
+  }
   if (lineup && row.team_id && row.game_date) {
     try {
       await saveGameLineup(row.team_id, row.game_date, row.opponent, lineup.ids);
