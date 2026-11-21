@@ -495,7 +495,8 @@ function TeamCard({
           </div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 500 }}>
             One link where families watch every game, grouped by tournament and weekend. Anyone with the link can
-            watch, so share it with the team only.
+            watch, so share it with the team only. Families can switch to any other team whose page is On, and{" "}
+            {origin ? <code style={{ fontSize: 12 }}>{origin}/watch</code> : "/watch"} lists them all.
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <Pill

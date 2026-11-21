@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { FilmPlayer } from "../../portal/film/FilmPlayer";
 import { formatTimecode, type FilmMarker } from "../../../lib/film/player-logic";
 import {
@@ -24,6 +25,8 @@ type Filter = "all" | "events" | "other";
 interface Props {
   slug: string;
   teamLabel: string;
+  /** Every team with its film page on, for the team switcher. */
+  teams: { slug: string; label: string }[];
   games: WatchGame[];
   markers: Record<string, FilmMarker[]>;
   initial: { id: string; t: number } | null;
@@ -88,7 +91,8 @@ function Thumb({ game, onPlay, big }: { game: WatchGame; onPlay: () => void; big
   );
 }
 
-export function WatchPage({ slug, teamLabel, games, markers, initial }: Props) {
+export function WatchPage({ slug, teamLabel, teams, games, markers, initial }: Props) {
+  const router = useRouter();
   const [playing, setPlaying] = useState<{ id: string; t: number } | null>(initial);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -146,6 +150,24 @@ export function WatchPage({ slug, teamLabel, games, markers, initial }: Props) {
             <div className={styles.eyebrow}>Omaha Lightning · Game film</div>
             <h1 className={styles.teamName}>{teamLabel}</h1>
           </div>
+          {teams.length > 1 && (
+            <label className={styles.switcher}>
+              <span className={styles.switcherLabel}>Switch team</span>
+              <select
+                id="watch-team"
+                value={slug}
+                onChange={(e) => {
+                  if (e.target.value !== slug) router.push(`/watch/${encodeURIComponent(e.target.value)}`);
+                }}
+              >
+                {teams.map((t) => (
+                  <option key={t.slug} value={t.slug}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button type="button" className={styles.share} onClick={() => void copyPage()}>
             Copy link
           </button>

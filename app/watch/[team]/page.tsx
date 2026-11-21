@@ -36,6 +36,7 @@ export default async function TeamWatchPage({
     <WatchPage
       slug={data.team.slug}
       teamLabel={data.team.label}
+      teams={data.teams}
       games={data.games}
       markers={data.markers}
       initial={initial}
