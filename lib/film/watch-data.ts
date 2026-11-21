@@ -2,7 +2,7 @@
 // checking the team has its watch page on; nothing here needs a login.
 
 import { listFilmMarkers } from "./markers.ts";
-import { getFilmTeamBySlug, type FilmTeamRow } from "./teams.ts";
+import { getFilmTeamBySlug, listDirectoryFilmTeams, type FilmTeamRow } from "./teams.ts";
 import { getFilmUpload, listFilmUploads } from "./uploads.ts";
 import { toWatchGames, watchSource, type WatchGame } from "./watch.ts";
 import type { FilmMarker } from "./player-logic.ts";
@@ -15,13 +15,30 @@ export async function getWatchTeam(slug: string): Promise<FilmTeamRow | null> {
   return team;
 }
 
+export type WatchTeamLink = { slug: string; label: string };
+
+/** This season's teams with their film page on, in Directory order. */
+export async function listWatchTeams(): Promise<WatchTeamLink[]> {
+  const { teams } = await listDirectoryFilmTeams();
+  return teams.filter((t) => t.hasSlug && t.watchPublic).map((t) => ({ slug: t.slug, label: t.label }));
+}
+
 export async function loadWatchPage(slug: string): Promise<{
   team: FilmTeamRow;
+  teams: WatchTeamLink[];
   games: WatchGame[];
   markers: Record<string, FilmMarker[]>;
 } | null> {
   const team = await getWatchTeam(slug);
   if (!team) return null;
+  let teams: WatchTeamLink[] = [];
+  try {
+    teams = await listWatchTeams();
+  } catch {
+    teams = [];
+  }
+  // A team from an earlier season still lists itself.
+  if (!teams.some((t) => t.slug === team.slug)) teams = [{ slug: team.slug, label: team.label }, ...teams];
   const uploads = await listFilmUploads([team.id]);
   const games = toWatchGames(uploads);
   let markers: Record<string, FilmMarker[]> = {};
@@ -30,7 +47,7 @@ export async function loadWatchPage(slug: string): Promise<{
   } catch {
     markers = {};
   }
-  return { team, games, markers };
+  return { team, teams, games, markers };
 }
 
 /** An upload the team page may play from the original file, or null. */

@@ -841,13 +841,14 @@ Share the team upload link and code with families, not this inbox. Super-admins 
     preview: true,
     permission: "film_view",
     alsoPermissions: ["film_manage", "teams"],
-    keywords: ["team film page", "watch page", "watch", "public link", "families", "tournament", "weekend", "share film", "instead of youtube"],
+    keywords: ["team film page", "watch page", "switch team", "all teams", "watch", "public link", "families", "tournament", "weekend", "share film", "instead of youtube"],
     body: `One link per team where families watch every game, instead of a new post for each one. Families don't sign in: anyone with the link can watch, so share it with the team only.
 
 **Turning it on**
 
 - In **Settings → Film**, open a team and find **Team film page (preview)**. Tap **Off** to turn it **On**. The link shows next to it (it ends in **/watch/** and the team's upload address). **Copy** copies it.
 - Tap **On** again to turn it off. The link then shows "page not found".
+- Each team gets its own link. **Switch team** at the top of the page moves to any other team whose page is On, and the page ending in **/watch** lists every one of them, if you'd rather send one link to the whole program.
 
 **What families see**
 

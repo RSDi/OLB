@@ -51,6 +51,38 @@
   text-wrap: balance;
 }
 
+.switcher {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.switcherLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.switcher select {
+  max-width: 200px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  background: #1c1c1f;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.topInner {
+  flex-wrap: wrap;
+}
+
 .share {
   flex: none;
   border: 0;
@@ -425,6 +457,36 @@
   font-variant-numeric: tabular-nums;
 }
 
+.teamList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.teamLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--gw-border);
+  border-radius: 12px;
+  background: var(--gw-bg-elev);
+  color: var(--gw-fg);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.teamLink:hover {
+  border-color: var(--gw-fg);
+}
+
+.teamLink span {
+  color: var(--gw-fg-muted);
+  font-size: 20px;
+  line-height: 1;
+}
+
 .empty {
   display: flex;
   flex-direction: column;
@@ -470,6 +532,16 @@
 }
 
 @media (max-width: 720px) {
+  .switcher {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .switcher select {
+    max-width: none;
+    width: 100%;
+  }
+
   .featured {
     grid-template-columns: minmax(0, 1fr);
   }
