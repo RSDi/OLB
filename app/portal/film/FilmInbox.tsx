@@ -34,12 +34,13 @@ import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob, YoutubeP
 import { filmFileMissing, youtubeDisplayStatus } from "../../../lib/film/youtube-progress";
 import { YoutubeTransfer } from "./YoutubeTransfer";
 import { AddStreamForm, LineUpMarkers } from "./StreamParts";
+import { TournamentField, useTournamentPick } from "./TournamentField";
+import type { ScheduledTournament } from "../../../lib/film/tournaments";
 import { setRecordingStream } from "../../../lib/film/stream-actions";
 import { FilmPlayer } from "./FilmPlayer";
 import { SettingsLink, SettingsText } from "../../components/SettingsLink";
 import { setFilmTeamSlackChannel } from "../../../lib/film/team-actions";
 import type { FilmMarker } from "../../../lib/film/player-logic";
-import { EVENT_NAME_MAX } from "../../../lib/film/watch";
 import styles from "./inbox.module.css";
 
 interface Props {
@@ -69,6 +70,8 @@ interface Props {
   showEvents?: boolean;
   /** Preview: teams a streamed game can be added to. Null hides streamed games' controls. */
   streamTeams?: { id: string; label: string; slug: string }[] | null;
+  /** Preview: the HS Schedule's tournaments by team id, for the Tournament dropdown. */
+  scheduledTournaments?: Record<string, ScheduledTournament[]>;
 }
 
 type Playing = {
@@ -150,6 +153,7 @@ export function FilmInbox({
   initialMoment,
   showEvents = false,
   streamTeams = null,
+  scheduledTournaments = {},
 }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
@@ -422,6 +426,7 @@ export function FilmInbox({
           <AddStreamForm
             teams={streamTeams}
             eventOptions={eventOptions}
+            scheduledTournaments={scheduledTournaments}
             initialTeamId={streamTeams.find((t) => t.slug === teamFilter)?.id ?? null}
             onClose={() => setAddingStream(false)}
           />
@@ -598,6 +603,7 @@ export function FilmInbox({
                       replacedBy={row.streamed ? recordingByStream.get(row.id) ?? null : null}
                       streamMarkerCount={row.replaces_stream_id ? markers[row.replaces_stream_id]?.length ?? 0 : 0}
                       streamOptions={streamOptionsFor(row)}
+                      scheduled={row.team_id ? scheduledTournaments[row.team_id] ?? [] : []}
                       onPlay={() => void play(row)}
                       onPlayOriginal={() => void play(row, { original: true })}
                       onDownload={() => void download(row.id)}
@@ -639,6 +645,7 @@ function FilmRow({
   replacedBy,
   streamMarkerCount,
   streamOptions,
+  scheduled,
   onPlay,
   onPlayOriginal,
   onDownload,
@@ -668,6 +675,8 @@ function FilmRow({
   streamMarkerCount: number;
   /** Streams this recording could replace, for Edit. Null hides the field. */
   streamOptions: FilmUpload[] | null;
+  /** The HS Schedule's tournaments for this team. */
+  scheduled: ScheduledTournament[];
   onPlay: () => void;
   onPlayOriginal: () => void;
   onDownload: () => void;
@@ -826,6 +835,7 @@ function FilmRow({
         <FilmGameEditor
           row={row}
           streamOptions={streamOptions}
+          scheduled={scheduled}
           teamPlaylistId={teamPlaylistId}
           roster={roster}
           lineupPlayerIds={lineupPlayerIds}
@@ -923,6 +933,7 @@ function FilmRow({
 function FilmGameEditor({
   row,
   streamOptions,
+  scheduled,
   teamPlaylistId,
   roster,
   lineupPlayerIds,
@@ -932,6 +943,7 @@ function FilmGameEditor({
 }: {
   row: FilmUpload;
   streamOptions: FilmUpload[] | null;
+  scheduled: ScheduledTournament[];
   teamPlaylistId: string | null;
   roster: FilmRosterPlayer[];
   lineupPlayerIds: string[];
@@ -942,7 +954,8 @@ function FilmGameEditor({
   const router = useRouter();
   const [gameDate, setGameDate] = useState(row.game_date ?? "");
   const [opponent, setOpponent] = useState(row.opponent ?? "");
-  const [eventName, setEventName] = useState(row.event_name ?? "");
+  const tournament = useTournamentPick(row.event_name, scheduled, row.game_date ?? "");
+  const eventName = tournament.value;
   const [ourScore, setOurScore] = useState(row.our_score == null ? "" : String(row.our_score));
   const [theirScore, setTheirScore] = useState(row.their_score == null ? "" : String(row.their_score));
   const [playlistDraft, setPlaylistDraft] = useState(row.youtube_playlist_id ?? "");
@@ -1013,7 +1026,10 @@ function FilmGameEditor({
           className={styles.input}
           type="date"
           value={gameDate}
-          onChange={(e) => setGameDate(e.target.value)}
+          onChange={(e) => {
+            setGameDate(e.target.value);
+            tournament.follow(e.target.value);
+          }}
           required
         />
       </label>
@@ -1031,29 +1047,15 @@ function FilmGameEditor({
         />
       </label>
       {eventOptions && (
-        <label className={styles.field}>
-          <span className={styles.label}>Tournament</span>
-          <p className={styles.hint}>
-            Optional. Games with the same name show together on the team film page. Leave blank to group by weekend.
-          </p>
-          <input
-            className={styles.input}
-            value={eventName}
-            onChange={(e) => setEventName(e.target.value)}
-            placeholder="Heartland Hoops Classic"
-            autoComplete="off"
-            autoCapitalize="words"
-            maxLength={EVENT_NAME_MAX}
-            list={eventOptions.length ? `film-events-${row.id}` : undefined}
-          />
-          {eventOptions.length > 0 && (
-            <datalist id={`film-events-${row.id}`}>
-              {eventOptions.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
-          )}
-        </label>
+        <TournamentField
+          id={`film-event-${row.id}`}
+          value={eventName}
+          onChange={tournament.pick}
+          gameDate={gameDate}
+          scheduled={scheduled}
+          used={eventOptions}
+          auto={tournament.auto}
+        />
       )}
       {streamOptions && streamOptions.length > 0 && (
         <label className={styles.field} data-tour="film-edit-stream">

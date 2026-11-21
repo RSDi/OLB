@@ -8,8 +8,9 @@ import { useRouter } from "next/navigation";
 import { Pill } from "../../components/ui";
 import { addStreamedGame, lineUpStreamMarkers } from "../../../lib/film/stream-actions";
 import { OPPONENT_MAX } from "../../../lib/film/game-meta";
-import { EVENT_NAME_MAX } from "../../../lib/film/watch";
 import { churchToday } from "../../../lib/dates/today";
+import type { ScheduledTournament } from "../../../lib/film/tournaments";
+import { TournamentField, useTournamentPick } from "./TournamentField";
 import styles from "./inbox.module.css";
 
 function digitsOnly(raw: string): string {
@@ -19,12 +20,15 @@ function digitsOnly(raw: string): string {
 export function AddStreamForm({
   teams,
   eventOptions,
+  scheduledTournaments,
   initialTeamId,
   onClose,
 }: {
   teams: { id: string; label: string; slug: string }[];
   /** Tournament names already used, by team slug. */
   eventOptions: Record<string, string[]>;
+  /** The HS Schedule's tournaments by team id. */
+  scheduledTournaments: Record<string, ScheduledTournament[]>;
   initialTeamId: string | null;
   onClose: (added: boolean) => void;
 }) {
@@ -36,7 +40,8 @@ export function AddStreamForm({
   const [opponent, setOpponent] = useState("");
   const [ourScore, setOurScore] = useState("");
   const [theirScore, setTheirScore] = useState("");
-  const [eventName, setEventName] = useState("");
+  const tournament = useTournamentPick("", scheduledTournaments[teamId] ?? [], gameDate);
+  const eventName = tournament.value;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const slug = teams.find((t) => t.id === teamId)?.slug ?? "";
@@ -84,7 +89,15 @@ export function AddStreamForm({
       </label>
       <label className={styles.field}>
         <span className={styles.label}>Team</span>
-        <select className={styles.input} value={teamId} onChange={(e) => setTeamId(e.target.value)} required>
+        <select
+          className={styles.input}
+          value={teamId}
+          onChange={(e) => {
+            setTeamId(e.target.value);
+            tournament.follow(gameDate, scheduledTournaments[e.target.value] ?? []);
+          }}
+          required
+        >
           {teams.map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
@@ -94,7 +107,12 @@ export function AddStreamForm({
       </label>
       <label className={styles.field}>
         <span className={styles.label}>Game date</span>
-        <input className={styles.input} type="date" value={gameDate} onChange={(e) => setGameDate(e.target.value)} required />
+        <input className={styles.input} type="date" value={gameDate} onChange={(e) => {
+            setGameDate(e.target.value);
+            tournament.follow(e.target.value, scheduledTournaments[teamId] ?? []);
+          }}
+          required
+        />
       </label>
       <label className={styles.field}>
         <span className={styles.label}>Opponent</span>
@@ -109,26 +127,16 @@ export function AddStreamForm({
           maxLength={OPPONENT_MAX}
         />
       </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Tournament</span>
-        <input
-          className={styles.input}
-          value={eventName}
-          onChange={(e) => setEventName(e.target.value)}
-          placeholder="Heartland Hoops Classic"
-          autoComplete="off"
-          autoCapitalize="words"
-          maxLength={EVENT_NAME_MAX}
-          list={events.length ? "film-stream-events" : undefined}
-        />
-        {events.length > 0 && (
-          <datalist id="film-stream-events">
-            {events.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-        )}
-      </label>
+      <TournamentField
+        id="film-stream-event"
+        value={eventName}
+        onChange={tournament.pick}
+        auto={tournament.auto}
+        gameDate={gameDate}
+        scheduled={scheduledTournaments[teamId] ?? []}
+        used={events}
+        key={teamId}
+      />
       <fieldset className={styles.scoreFields}>
         <legend className={styles.label}>Score</legend>
         <p className={styles.hint}>Optional — leave blank if you don&apos;t have it.</p>
