@@ -10,6 +10,7 @@ import {
   signedFilmDownload,
   updateFilmGameFields,
   updateFilmPlaylistOverride,
+  saveFilmLinks,
 } from "../../../lib/film/admin-actions";
 import {
   approveFilmSlackDraft,
@@ -35,7 +36,8 @@ import { filmFileMissing, youtubeDisplayStatus } from "../../../lib/film/youtube
 import { YoutubeTransfer } from "./YoutubeTransfer";
 import { AddStreamForm, LineUpMarkers } from "./StreamParts";
 import { TournamentField, useTournamentPick } from "./TournamentField";
-import { FILM_PARTS, filmPartLabel } from "../../../lib/film/parts";
+import { FILM_PART_MAX, FILM_PART_SUGGESTIONS, filmPartLabel } from "../../../lib/film/parts";
+import { FILM_LINK_MAX, FILM_LINK_NOTE_MAX, type FilmLink, type FilmLinkInput } from "../../../lib/film/links";
 import type { ScheduledTournament } from "../../../lib/film/tournaments";
 import { setRecordingStream } from "../../../lib/film/stream-actions";
 import { FilmPlayer } from "./FilmPlayer";
@@ -65,6 +67,8 @@ interface Props {
   rosters: Record<string, FilmRosterPlayer[]>;
   lineups: Record<string, string[]>;
   markers: Record<string, FilmMarker[]>;
+  /** Links on each video's game (0183), in order. */
+  links?: Record<string, FilmLink[]>;
   /** From a shared link: open this video at this second. */
   initialMoment: { id: string; t: number } | null;
   /** Preview: the tournament field that groups games on the team film page. */
@@ -154,6 +158,7 @@ export function FilmInbox({
   rosters,
   lineups,
   markers: initialMarkers,
+  links = {},
   initialMoment,
   showEvents = false,
   streamTeams = null,
@@ -602,6 +607,7 @@ export function FilmInbox({
                       roster={row.team_id ? rosters[row.team_id] ?? [] : []}
                       lineupPlayerIds={lineups[filmLineupKey(row.team_id, row.game_date, row.opponent) ?? ""] ?? []}
                       markerCount={markers[row.id]?.length ?? 0}
+                      links={links[row.id] ?? []}
                       eventOptions={showEvents ? eventOptions[row.team] ?? [] : null}
                       stream={row.replaces_stream_id ? streamsById.get(row.replaces_stream_id) ?? null : null}
                       replacedBy={row.streamed ? recordingByStream.get(row.id) ?? null : null}
@@ -644,6 +650,7 @@ function FilmRow({
   roster,
   lineupPlayerIds,
   markerCount,
+  links,
   eventOptions,
   stream,
   replacedBy,
@@ -669,6 +676,7 @@ function FilmRow({
   roster: FilmRosterPlayer[];
   lineupPlayerIds: string[];
   markerCount: number;
+  links: FilmLink[];
   /** Null hides the tournament field. */
   eventOptions: string[] | null;
   /** On a recording: the streamed game it replaces. */
@@ -755,6 +763,11 @@ function FilmRow({
             {row.filename}
             {row.streamed && !replacedBy && <span className="rsd-chip rsd-chip-error">Streamed</span>}
             {filmPartLabel(row.part) && <span className="rsd-chip rsd-chip-mute">{filmPartLabel(row.part)}</span>}
+            {links.length > 0 && (
+              <span className="rsd-chip rsd-chip-mute" title={links.map((l) => l.note || l.url).join("\n")}>
+                {links.length} link{links.length === 1 ? "" : "s"}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
             {row.streamed
@@ -845,6 +858,7 @@ function FilmRow({
           roster={roster}
           lineupPlayerIds={lineupPlayerIds}
           eventOptions={eventOptions}
+          links={links}
           onCancel={() => setEditing(false)}
           onSaved={(patch) => {
             onPatched(patch);
@@ -943,10 +957,12 @@ function FilmGameEditor({
   roster,
   lineupPlayerIds,
   eventOptions,
+  links,
   onCancel,
   onSaved,
 }: {
   row: FilmUpload;
+  links: FilmLink[];
   streamOptions: FilmUpload[] | null;
   scheduled: ScheduledTournament[];
   teamPlaylistId: string | null;
@@ -966,7 +982,8 @@ function FilmGameEditor({
   const [playlistDraft, setPlaylistDraft] = useState(row.youtube_playlist_id ?? "");
   const [pickedPlayers, setPickedPlayers] = useState<string[]>(lineupPlayerIds);
   const [streamId, setStreamId] = useState(row.replaces_stream_id ?? "");
-  const [part, setPart] = useState(row.part ?? "");
+  const [part, setPart] = useState(filmPartLabel(row.part) ?? "");
+  const [linkRows, setLinkRows] = useState<FilmLinkInput[]>(() => links.map((l) => ({ url: l.url, note: l.note })));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -994,6 +1011,15 @@ function FilmGameEditor({
       if (linked.error) {
         setSaving(false);
         setError(linked.error);
+        return;
+      }
+    }
+    const linksBefore = JSON.stringify(links.map((l) => ({ url: l.url, note: l.note })));
+    if (JSON.stringify(linkRows) !== linksBefore) {
+      const saved = await saveFilmLinks(row.id, linkRows);
+      if (saved.error) {
+        setSaving(false);
+        setError(saved.error);
         return;
       }
     }
@@ -1055,19 +1081,73 @@ function FilmGameEditor({
         />
       </label>
       <label className={styles.field} data-tour="film-edit-part">
-        <span className={styles.label}>Part of the game</span>
+        <span className={styles.label}>What&apos;s in this video</span>
         <p className={styles.hint}>
-          For a game in more than one video. The team film page shows them as one game, in this order.
+          Optional, for a game in more than one video: 2nd half, Bench angle, anything. The team film page shows a
+          game&apos;s videos together, halves and quarters in play order.
         </p>
-        <select className={styles.input} value={part} onChange={(e) => setPart(e.target.value)}>
-          <option value="">Whole game</option>
-          {FILM_PARTS.map((p) => (
-            <option key={p.code} value={p.code}>
-              {p.label}
-            </option>
+        <input
+          className={styles.input}
+          value={part}
+          onChange={(e) => setPart(e.target.value)}
+          placeholder="Whole game"
+          autoComplete="off"
+          autoCapitalize="sentences"
+          maxLength={FILM_PART_MAX}
+          list={`film-part-suggestions-${row.id}`}
+        />
+        <datalist id={`film-part-suggestions-${row.id}`}>
+          {FILM_PART_SUGGESTIONS.map((label) => (
+            <option key={label} value={label} />
           ))}
-        </select>
+        </datalist>
       </label>
+      <fieldset className={styles.scoreFields} data-tour="film-edit-links">
+        <legend className={styles.label}>Links</legend>
+        <p className={styles.hint}>
+          Other videos or pages for this game, each with a note on what it is: a livestream, another camera angle, Hudl,
+          the stats sheet. YouTube links play on the team film page; others open in a new tab.
+        </p>
+        {linkRows.map((l, i) => (
+          <div key={i} className={styles.linkRow}>
+            <input
+              className={styles.input}
+              value={l.note}
+              onChange={(e) => setLinkRows((prev) => prev.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)))}
+              placeholder="What it is, like 2nd half or Bench angle"
+              aria-label={`Link ${i + 1} note`}
+              autoComplete="off"
+              maxLength={FILM_LINK_NOTE_MAX}
+            />
+            <input
+              className={styles.input}
+              value={l.url}
+              onChange={(e) => setLinkRows((prev) => prev.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)))}
+              placeholder="https://…"
+              aria-label={`Link ${i + 1} address`}
+              inputMode="url"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+            />
+            <Pill
+              size="sm"
+              variant="ghost"
+              aria-label={`Remove link ${i + 1}`}
+              onClick={() => setLinkRows((prev) => prev.filter((_, j) => j !== i))}
+            >
+              Remove
+            </Pill>
+          </div>
+        ))}
+        {linkRows.length < FILM_LINK_MAX && (
+          <div>
+            <Pill size="sm" onClick={() => setLinkRows((prev) => [...prev, { url: "", note: "" }])}>
+              + Add link
+            </Pill>
+          </div>
+        )}
+      </fieldset>
       {eventOptions && (
         <TournamentField
           id={`film-event-${row.id}`}

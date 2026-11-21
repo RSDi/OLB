@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { FILM_PARTS, compareFilmParts, filmPartLabel, parseFilmPart } from "../../lib/film/parts.ts";
+import { compareFilmParts, filmPartLabel, filmPartRank, parseFilmPart } from "../../lib/film/parts.ts";
+import { cleanFilmLinkUrl, filmLinkYoutubeId, parseFilmLinks, type FilmLink } from "../../lib/film/links.ts";
 import { watchGames } from "../../lib/film/watch.ts";
 import { youtubeTitle } from "../../lib/film/youtube-meta.ts";
 import { validateUploadInput } from "../../lib/film/validation.ts";
@@ -45,26 +46,73 @@ function row(partial: Partial<FilmUpload> & Pick<FilmUpload, "id">): FilmUpload 
   };
 }
 
-test("parts parse, label and sort in play order", () => {
+test("a video's note is free text; the usual words sort in play order", () => {
   assert.deepEqual(parseFilmPart(""), { ok: true, part: null });
-  assert.deepEqual(parseFilmPart("h2"), { ok: true, part: "h2" });
-  assert.equal(parseFilmPart("h3").ok, false);
+  assert.deepEqual(parseFilmPart("  Bench   angle "), { ok: true, part: "Bench angle" });
+  assert.deepEqual(parseFilmPart("h2"), { ok: true, part: "2nd half" }, "an old code becomes its words");
+  assert.equal(parseFilmPart("x".repeat(61)).ok, false);
   assert.equal(filmPartLabel("ot"), "Overtime");
+  assert.equal(filmPartLabel("Bench angle"), "Bench angle");
   assert.equal(filmPartLabel(null), null);
+  assert.equal(filmPartRank("Q1"), 11);
+  assert.equal(filmPartRank("3rd quarter"), 23);
+  assert.equal(filmPartRank("Bench angle"), 50);
   const sorted = [
     { part: null, createdAt: "1" },
-    { part: "ot", createdAt: "2" },
-    { part: "h2", createdAt: "3" },
-    { part: "h1", createdAt: "4" },
+    { part: "Bench angle", createdAt: "2" },
+    { part: "Overtime", createdAt: "3" },
+    { part: "2nd half", createdAt: "4" },
+    { part: "First half", createdAt: "5" },
   ].sort(compareFilmParts);
-  assert.deepEqual(sorted.map((p) => p.part), ["h1", "h2", "ot", null]);
+  assert.deepEqual(sorted.map((p) => p.part), ["First half", "2nd half", "Overtime", "Bench angle", null]);
+});
+
+test("links: whole web addresses only, blanks dropped, YouTube ones spotted", () => {
+  assert.equal(cleanFilmLinkUrl("hudl.com/video/123"), "https://hudl.com/video/123");
+  assert.equal(cleanFilmLinkUrl("not a link"), null);
+  assert.equal(cleanFilmLinkUrl("javascript:alert(1)"), null);
+  assert.deepEqual(
+    parseFilmLinks([
+      { url: " youtu.be/AAAAAAAAAAA ", note: " 2nd half " },
+      { url: "", note: "" },
+      { url: "https://hudl.com/x", note: "Hudl" },
+    ]),
+    {
+      ok: true,
+      links: [
+        { url: "https://youtu.be/AAAAAAAAAAA", note: "2nd half" },
+        { url: "https://hudl.com/x", note: "Hudl" },
+      ],
+    }
+  );
+  assert.equal(parseFilmLinks([{ url: "", note: "Bench angle" }]).ok, false);
+  assert.equal(filmLinkYoutubeId("https://www.youtube.com/watch?v=BBBBBBBBBBB"), "BBBBBBBBBBB");
+  assert.equal(filmLinkYoutubeId("https://hudl.com/watch?v=BBBBBBBBBBB"), null);
+});
+
+test("a game's YouTube links play as more videos; other links show as links", () => {
+  const link = (id: string, upload_id: string, url: string, note: string, position: number): FilmLink => ({ id, upload_id, url, note, position });
+  const { games } = watchGames(
+    [row({ id: "a", part: "1st half" })],
+    {
+      a: [
+        link("l1", "a", "https://youtu.be/CCCCCCCCCCC", "2nd half (parent's phone)", 0),
+        link("l2", "a", "https://www.hudl.com/video/9", "", 1),
+      ],
+    }
+  );
+  assert.deepEqual(games[0].parts!.map((p) => [p.id, p.label, p.source.kind]), [
+    ["a", "1st half", "youtube"],
+    ["l1", "2nd half (parent's phone)", "youtube"],
+  ]);
+  assert.deepEqual(games[0].links, [{ url: "https://www.hudl.com/video/9", label: "hudl.com" }]);
 });
 
 test("a game's videos show as one game with parts in order", () => {
   const { games } = watchGames([
-    row({ id: "b", part: "h2", our_score: 50, their_score: 44 }),
-    row({ id: "a", part: "h1" }),
-    row({ id: "c", part: "ot", opponent: "iowa elite" }),
+    row({ id: "b", part: "2nd half", our_score: 50, their_score: 44 }),
+    row({ id: "a", part: "1st half" }),
+    row({ id: "c", part: "Overtime", opponent: "iowa elite" }),
     row({ id: "other", opponent: "KC Pride" }),
   ]);
   assert.equal(games.length, 2);
@@ -126,15 +174,21 @@ test("the part goes on the end of the YouTube title, even when it's cut short", 
 test("uploads say which part, or nothing", () => {
   const base = { uploaderName: "Pat", filename: "a.mov", contentType: "video/quicktime", sizeBytes: 10, gameDate: "2026-11-22" };
   const ok = validateUploadInput({ ...base, part: "q3" }, "2026-11-22");
-  assert.ok(ok.ok && ok.part === "q3");
+  assert.ok(ok.ok && ok.part === "3rd quarter");
+  const free = validateUploadInput({ ...base, part: "Halftime show" }, "2026-11-22");
+  assert.ok(free.ok && free.part === "Halftime show");
   const none = validateUploadInput(base, "2026-11-22");
   assert.ok(none.ok && none.part === null);
-  assert.equal(validateUploadInput({ ...base, part: "halftime" }, "2026-11-22").ok, false);
+  assert.equal(validateUploadInput({ ...base, part: "x".repeat(61) }, "2026-11-22").ok, false);
 });
 
-test("0182's check lists exactly the codes in parts.ts", () => {
-  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0182_film_game_parts.sql"), "utf8");
-  const listed = /part in \(([^)]+)\)/.exec(sql)![1].split(",").map((s) => s.trim().replace(/'/g, ""));
-  assert.deepEqual(listed, FILM_PARTS.map((p) => p.code));
-  assert.match(sql, /add column if not exists part text/);
+test("0183 frees the note, turns old codes into words, and adds service-role links", () => {
+  const sql = readFileSync(join(import.meta.dirname, "../../supabase/migrations/0183_film_game_links.sql"), "utf8");
+  assert.match(sql, /drop constraint if exists game_film_uploads_part_check/);
+  for (const code of ["h1", "h2", "q1", "q2", "q3", "q4", "ot", "ot2", "ot3"]) {
+    assert.match(sql, new RegExp(`when '${code}'\\s+then '${filmPartLabel(code)}'`), code);
+  }
+  assert.match(sql, /create table if not exists public\.game_film_links/);
+  assert.match(sql, /grant select, insert, update, delete on public\.game_film_links to service_role;/);
+  assert.doesNotMatch(sql, /game_film_links to [^;]*authenticated/);
 });

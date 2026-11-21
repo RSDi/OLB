@@ -11,6 +11,8 @@ import { churchToday } from "../dates/today.ts";
 import { parseFilmGameFields } from "./game-meta.ts";
 import { EVENT_NAME_MAX, cleanEventName } from "./watch.ts";
 import { parseFilmPart } from "./parts.ts";
+import { parseFilmLinks, type FilmLink } from "./links.ts";
+import { replaceFilmLinks } from "./links-data.ts";
 import { parseFilmLineupPlayerIds, saveGameLineup } from "./lineups.ts";
 import {
   attachToMatchingStream,
@@ -176,6 +178,27 @@ export async function updateFilmPlaylistOverride(
   }
   refresh();
   return { ok: true, youtube_playlist_id: row.youtube_playlist_id };
+}
+
+/** Replace a game video's links (each a link and a note), in this order. */
+export async function saveFilmLinks(
+  id: string,
+  raw: unknown
+): Promise<{ error?: string; ok?: true; links?: FilmLink[] }> {
+  const gate = await requireFilmManage();
+  if ("error" in gate) return { error: gate.error };
+  if (!id || typeof id !== "string") return { error: "That upload isn't there any more." };
+  const parsed = parseFilmLinks(raw);
+  if (!parsed.ok) return { error: parsed.error };
+  const row = await getFilmUpload(id);
+  if (!row) return { error: "That upload isn't there any more." };
+  try {
+    const links = await replaceFilmLinks(id, parsed.links, gate.userId ?? null);
+    refresh();
+    return { ok: true, links };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Couldn't save the links." };
+  }
 }
 
 export async function deleteFilmUpload(

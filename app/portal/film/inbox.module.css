@@ -413,3 +413,22 @@
   font-weight: 700;
   color: var(--gw-fg);
 }
+
+/* Links on a game (Edit → Links): note, address, remove. */
+.linkRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .linkRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .linkRow > :nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

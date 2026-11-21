@@ -4,6 +4,7 @@
 
 import { sameOpponent, streamSwaps } from "./streams.ts";
 import { compareFilmParts, filmPartLabel } from "./parts.ts";
+import { filmLinkHost, filmLinkYoutubeId, type FilmLink } from "./links.ts";
 import type { FilmUpload } from "./types.ts";
 
 export const EVENT_NAME_MAX = 80;
@@ -35,6 +36,8 @@ export interface WatchGame {
   /** From the livestream; the full recording hasn't replaced it yet. */
   streamed?: boolean;
   parts?: WatchPart[];
+  /** Links that aren't YouTube videos (Hudl, a stats sheet), opened in a new tab. */
+  links?: { url: string; label: string }[];
 }
 
 /** A game's videos, or just itself for a game built without parts. */
@@ -92,7 +95,10 @@ export function watchSource(u: Pick<
  * A recording linked to a stream by hand (streams.ts) follows the same rule
  * even when the opponents are typed differently.
  */
-export function watchGames(uploads: FilmUpload[]): { games: WatchGame[]; redirect: Map<string, string> } {
+export function watchGames(
+  uploads: FilmUpload[],
+  linksByUpload: Record<string, FilmLink[]> = {}
+): { games: WatchGame[]; redirect: Map<string, string> } {
   const { hidden, redirect } = streamSwaps(
     uploads,
     (u) => watchSource(u)?.kind === "youtube",
@@ -127,13 +133,26 @@ export function watchGames(uploads: FilmUpload[]): { games: WatchGame[]; redirec
     rows.sort((a, b) =>
       compareFilmParts({ part: a.u.part, createdAt: a.u.created_at }, { part: b.u.part, createdAt: b.u.created_at })
     );
-    const many = rows.length > 1;
+    // Links added on any of the game's videos (0183), in each video's order.
+    const gameLinks = rows.flatMap((r) => linksByUpload[r.u.id] ?? []);
+    const ytLinks = gameLinks
+      .map((l) => ({ l, videoId: filmLinkYoutubeId(l.url) }))
+      .filter((x): x is { l: FilmLink; videoId: string } => !!x.videoId);
+    const otherLinks = gameLinks.filter((l) => !filmLinkYoutubeId(l.url));
+    const many = rows.length + ytLinks.length > 1;
     const parts: WatchPart[] = rows.map((r, i) => ({
       id: r.u.id,
       label: filmPartLabel(r.u.part) ?? (many ? `Video ${i + 1}` : null),
       source: r.source,
       ...(r.u.streamed ? { streamed: true } : {}),
     }));
+    ytLinks.forEach(({ l, videoId }, i) => {
+      parts.push({
+        id: l.id,
+        label: l.note || `Video ${rows.length + i + 1}`,
+        source: { kind: "youtube", videoId },
+      });
+    });
     const first = rows[0].u;
     const pick = <T,>(f: (u: FilmUpload) => T | null | undefined): T | null => {
       for (const r of rows) {
@@ -155,13 +174,14 @@ export function watchGames(uploads: FilmUpload[]): { games: WatchGame[]; redirec
       source: parts[0].source,
       ...(parts.every((p) => p.streamed) ? { streamed: true } : {}),
       parts,
+      ...(otherLinks.length ? { links: otherLinks.map((l) => ({ url: l.url, label: l.note || filmLinkHost(l.url) })) } : {}),
     });
   }
   return { games, redirect };
 }
 
-export function toWatchGames(uploads: FilmUpload[]): WatchGame[] {
-  return watchGames(uploads).games;
+export function toWatchGames(uploads: FilmUpload[], linksByUpload: Record<string, FilmLink[]> = {}): WatchGame[] {
+  return watchGames(uploads, linksByUpload).games;
 }
 
 export function gameResult(g: Pick<WatchGame, "ourScore" | "theirScore">): "w" | "l" | null {

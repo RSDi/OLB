@@ -12,6 +12,8 @@ import { listGameLineupsByKey, listTeamRosters } from "../../../lib/film/lineups
 import type { FilmRosterPlayer } from "../../../lib/film/lineups";
 import type { FilmSlackDraftView, FilmUpload, YoutubeEvent, YoutubeJob } from "../../../lib/film/types";
 import { listFilmMarkers } from "../../../lib/film/markers";
+import { listFilmLinks } from "../../../lib/film/links-data";
+import type { FilmLink } from "../../../lib/film/links";
 import { getYoutubeWorkerError } from "../../../lib/film/youtube-settings";
 import { parseTimecode, type FilmMarker } from "../../../lib/film/player-logic";
 import { canUseStaffUploader } from "../../../lib/film/staff-upload";
@@ -105,6 +107,12 @@ export default async function FilmInboxPage({
   } catch {
     markers = {};
   }
+  let links: Record<string, FilmLink[]> = {};
+  try {
+    links = await listFilmLinks(uploads.map((u) => u.id));
+  } catch {
+    links = {};
+  }
   const youtubePaused = (await getYoutubeWorkerError())?.error ?? null;
 
   // Preview: the HS Schedule's tournaments, for the Tournament dropdown.
@@ -159,6 +167,7 @@ export default async function FilmInboxPage({
       rosters={rosters}
       lineups={lineups}
       markers={markers}
+      links={links}
       initialMoment={initialMoment}
       showEvents={viewer.seesFullUi}
       streamTeams={streamTeams}

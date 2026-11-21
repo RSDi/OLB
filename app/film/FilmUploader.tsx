@@ -38,7 +38,7 @@ import {
   upsertSavedUpload,
   type SavedUpload,
 } from "../../lib/film/resume";
-import { FILM_PARTS, filmPartLabel } from "../../lib/film/parts";
+import { FILM_PART_MAX, FILM_PART_SUGGESTIONS, filmPartLabel } from "../../lib/film/parts";
 import styles from "./film.module.css";
 
 type FileUi = {
@@ -720,19 +720,26 @@ export function FilmUploader({
           />
         </label>
         <label className={styles.field}>
-          <span className={styles.label}>Part of the game</span>
+          <span className={styles.label}>What&apos;s in this video</span>
           <p className={styles.hint}>
-            Only if the game is in more than one video. Pick the part, then add that video; change it before adding the
-            next one.
+            Optional. Only if the game is in more than one video, like 2nd half or Bench angle. Type it, then add that
+            video; change it before adding the next one.
           </p>
-          <select className={styles.input} value={part} onChange={(e) => setPart(e.target.value)}>
-            <option value="">Whole game</option>
-            {FILM_PARTS.map((p) => (
-              <option key={p.code} value={p.code}>
-                {p.label}
-              </option>
+          <input
+            className={styles.input}
+            value={part}
+            onChange={(e) => setPart(e.target.value)}
+            placeholder="Whole game"
+            autoComplete="off"
+            autoCapitalize="sentences"
+            maxLength={FILM_PART_MAX}
+            list="film-part-suggestions"
+          />
+          <datalist id="film-part-suggestions">
+            {FILM_PART_SUGGESTIONS.map((label) => (
+              <option key={label} value={label} />
             ))}
-          </select>
+          </datalist>
         </label>
         <fieldset className={styles.scoreFields}>
           <legend className={styles.label}>Score</legend>

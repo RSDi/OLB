@@ -46,9 +46,11 @@ function gameTitle(g: WatchGame): string {
 /** " · 1st half, 2nd half" when a game has more than one video. */
 function partsLine(g: WatchGame): string {
   const parts = gameParts(g);
-  if (parts.length < 2) return "";
+  const links = g.links?.length ?? 0;
+  const linkText = links ? ` · ${links} link${links === 1 ? "" : "s"}` : "";
+  if (parts.length < 2) return linkText;
   const labels = parts.map((p) => p.label);
-  return labels.length <= 3 ? ` · ${labels.join(", ")}` : ` · ${labels.length} videos`;
+  return (labels.length <= 3 ? ` · ${labels.join(", ")}` : ` · ${labels.length} videos`) + linkText;
 }
 
 function scoreLabel(g: WatchGame): string | null {
@@ -240,6 +242,16 @@ export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }
                             <span className={styles.partCount}>{markers[part.id].length}</span>
                           )}
                         </button>
+                      ))}
+                    </div>
+                  )}
+                  {current.links && current.links.length > 0 && (
+                    <div className={styles.links} aria-label="More for this game">
+                      {current.links.map((l) => (
+                        <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer">
+                          {l.label}
+                          <span aria-hidden="true"> ↗</span>
+                        </a>
                       ))}
                     </div>
                   )}
