@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icons } from "../../components/icons";
 import { Input, Pill, Select } from "../../components/ui";
 import { resolveAvatarUrl } from "../../../lib/members/avatar";
+import { memberEditSaveFields, type MemberEditSaveFields } from "../../../lib/members/edit-fields";
 import type { RelationshipKind } from "../../../lib/auth/member-actions";
 
 // Lightweight shapes — the caller can pass any object with these fields.
@@ -44,15 +45,9 @@ export function MemberEditForm({
   relationships: EditFormRelationship[];
   pending: boolean;
   onCancel: () => void;
-  onSave: (fields: {
-    full_name: string | null;
-    nickname: string | null;
-    avatar_url: string | null;
-    phone: string | null;
-    birthday: string | null;
-    email: string | null;
-    membership_status: string;
-  }) => void | Promise<void>;
+  // membership_status is omitted when the host didn't load it — see
+  // lib/members/edit-fields.
+  onSave: (fields: MemberEditSaveFields) => void | Promise<void>;
   onAddRelationship: (relatedId: string, kind: RelationshipKind) => void | Promise<void>;
   onRemoveRelationship: (relatedId: string, kind: RelationshipKind) => void | Promise<void>;
   // Optional — host passes this when soft-delete is allowed (super-admin
@@ -69,7 +64,9 @@ export function MemberEditForm({
   const [phone, setPhone] = useState(member.phone ?? "");
   const [birthday, setBirthday] = useState(member.birthday ?? "");
   const [email, setEmail] = useState(member.email ?? "");
-  const [membershipStatus, setMembershipStatus] = useState(member.membership_status ?? "regular");
+  // Null when the host didn't load it: the dropdown shows "Unknown" and Save
+  // leaves the stored value alone unless an admin picks one.
+  const [membershipStatus, setMembershipStatus] = useState<string | null>(member.membership_status ?? null);
   // Preview: the typed URL, else the member's Gravatar (by email).
   const previewAvatar = resolveAvatarUrl({ avatar_url: avatarUrl, email: member.email });
 
@@ -84,15 +81,9 @@ export function MemberEditForm({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    await onSave({
-      full_name: fullName.trim() || null,
-      nickname: nickname.trim() || null,
-      avatar_url: avatarUrl.trim() || null,
-      phone: phone.trim() || null,
-      birthday: birthday || null,
-      email: email.trim() || null,
-      membership_status: membershipStatus,
-    });
+    await onSave(
+      memberEditSaveFields({ fullName, nickname, avatarUrl, phone, birthday, email, membershipStatus })
+    );
   }
 
   const myLinks = relationships.filter((r) => r.member_id === member.id);
@@ -232,10 +223,15 @@ export function MemberEditForm({
         </div>
         <Select
           label="Membership status"
-          value={membershipStatus}
-          onChange={(e) => setMembershipStatus(e.target.value)}
+          value={membershipStatus ?? ""}
+          onChange={(e) => setMembershipStatus(e.target.value || null)}
           disabled={pending}
         >
+          {membershipStatus === null && (
+            <option value="" disabled>
+              Unknown
+            </option>
+          )}
           <option value="visiting">Visiting</option>
           <option value="regular">Regular</option>
           <option value="moved">Moved</option>
