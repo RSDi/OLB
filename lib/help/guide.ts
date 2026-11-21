@@ -857,6 +857,7 @@ Share the team upload link and code with families, not this inbox. Super-admins 
 - **All games**, **Tournaments** and **Other games** filter the list, and **Search opponent** finds a team.
 - A game plays in the same player as **Film**, with speeds, frame steps and the markers you added. **Copy link to this moment** copies a link to that game on the team page at that second.
 - Games play from YouTube once they're there (public or unlisted only). Before that they play from the phone's original file.
+- Visits count in **Settings → Website Activity** like the club website's pages: each team's page shows under **Most visited pages** as **Team film ·** and the team (for example **Team film · HS JV**), and the list of all teams as **Team film · All teams**. Opening a game counts toward its team's page. The four numbers at the top include these visits too.
 
 **Grouping games into tournaments**
 

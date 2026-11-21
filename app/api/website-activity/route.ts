@@ -5,13 +5,23 @@
 // shows up as an error on the site.
 
 import { logWebsiteEvents, type WebsiteEvent } from "../../../lib/activity/website";
-import { isSitePath, knownPageLabel, newPageSlug, referrerHost, visitSource } from "../../../lib/activity/website-rules";
+import { isSitePath, knownPageLabel, newPageSlug, referrerHost, teamFilmLabel, visitSource } from "../../../lib/activity/website-rules";
+import { getWatchTeam } from "../../../lib/film/watch-data";
 import { getSitePage } from "../../../lib/website/queries";
 
 // Only real pages count: the website's own, or one added in Settings →
 // Website → New pages. A mistyped address or a bot trying /cart gets the
 // "page not found" screen and isn't recorded.
 async function isRealPage(path: string): Promise<boolean> {
+  // A team film page counts only while that team's page is on.
+  if (teamFilmLabel(path)) {
+    const slug = path.split("?")[0].split("/")[2] ?? "";
+    try {
+      return !!(await getWatchTeam(slug));
+    } catch {
+      return false;
+    }
+  }
   if (knownPageLabel(path)) return true;
   const slug = newPageSlug(path);
   if (!slug) return false;

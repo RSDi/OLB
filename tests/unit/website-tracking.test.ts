@@ -11,7 +11,7 @@ import { knownPageLabel } from "../../lib/activity/website-rules.ts";
 const APP = join(process.cwd(), "app");
 
 // Layouts that carry the beacon, and the folders they cover.
-const TRACKED = ["(site)", join("(standalone)", "shootout"), join("(standalone)", "exclamation")];
+const TRACKED = ["(site)", join("(standalone)", "shootout"), join("(standalone)", "exclamation"), "watch"];
 
 // Not public website pages: private links, the portal and its sign-in, APIs.
 const NOT_TRACKED = [
@@ -22,7 +22,6 @@ const NOT_TRACKED = [
   join("(standalone)", "roadmap"), // a private share link
   "film", // coaches' film upload, behind a team code
   "t", // coaches' film upload, behind a team code
-  "watch", // a team's game film page, shared with that team's families only
   "invoice", // a family's private invoice link
 ];
 
@@ -66,4 +65,8 @@ test("addresses that aren't pages have no name", () => {
   for (const p of ["/cart", "/tv", "/lo", "/wp-login.php", "/shootout/nope"]) assert.equal(knownPageLabel(p), null, p);
   assert.equal(knownPageLabel("/shootout/tv/courts"), "Shootout TV · Scoreboard");
   assert.equal(knownPageLabel("/?utm_source=x"), "Home");
+  assert.equal(knownPageLabel("/watch"), "Team film · All teams");
+  assert.equal(knownPageLabel("/watch/hs-jv?v=abc"), "Team film · HS JV");
+  assert.equal(knownPageLabel("/watch/14u-white"), "Team film · 14U White");
+  assert.equal(knownPageLabel("/watch/hs-jv/play"), null);
 });
