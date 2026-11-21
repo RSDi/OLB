@@ -6,7 +6,7 @@ import { timingSafeEqual } from "node:crypto";
 import { listFilmMarkers } from "./markers.ts";
 import { getFilmTeamBySlug, listDirectoryFilmTeams, type FilmTeamRow } from "./teams.ts";
 import { getFilmUpload, listFilmUploads } from "./uploads.ts";
-import { formatDay, parseWatchPageKey, toWatchGames, watchPageKey, watchSource, watchStreamSwaps, type WatchGame } from "./watch.ts";
+import { formatDay, parseWatchPageKey, watchGames, watchPageKey, watchSource, type WatchGame } from "./watch.ts";
 import type { FilmMarker } from "./player-logic.ts";
 import type { FilmUpload } from "./types.ts";
 
@@ -49,7 +49,7 @@ export async function loadWatchPage(pageKey: string): Promise<{
   teams: WatchTeamLink[];
   games: WatchGame[];
   markers: Record<string, FilmMarker[]>;
-  /** A streamed game's id → the recording that replaced it, for old links. */
+  /** A streamed video's id → the recording that replaced it, for old links. */
   replacedBy: Record<string, string>;
 } | null> {
   const team = await getWatchTeam(pageKey);
@@ -64,11 +64,11 @@ export async function loadWatchPage(pageKey: string): Promise<{
   // A team from an earlier season still lists itself.
   if (!teams.some((t) => t.pageKey === ownKey)) teams = [{ pageKey: ownKey, label: team.label }, ...teams];
   const uploads = await listFilmUploads([team.id]);
-  const games = toWatchGames(uploads);
-  const replacedBy = Object.fromEntries(watchStreamSwaps(uploads).redirect);
+  const { games, redirect } = watchGames(uploads);
+  const replacedBy = Object.fromEntries(redirect);
   let markers: Record<string, FilmMarker[]> = {};
   try {
-    markers = await listFilmMarkers(games.map((g) => g.id));
+    markers = await listFilmMarkers(games.flatMap((g) => (g.parts ?? []).map((p) => p.id)));
   } catch {
     markers = {};
   }

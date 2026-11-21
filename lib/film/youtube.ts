@@ -11,6 +11,7 @@
 // before the next minute. A 404 on the resumable URI starts a new session
 // instead of PUTting to a dead URL. Same CRON_SECRET as the other jobs.
 
+import { filmPartLabel } from "./parts.ts";
 import { FilmStorageError, requireFilmObject } from "./object.ts";
 import { getFilmTeamById, getFilmTeamBySlug } from "./teams.ts";
 import { listGamePlayerNames } from "./lineups.ts";
@@ -569,6 +570,7 @@ async function filmYoutubeContext(row: FilmUpload): Promise<{
       titleTemplate: team?.youtubeTitleTemplate,
       descriptionTemplate: team?.youtubeDescriptionTemplate,
       uploaderName: row.uploader_name,
+      partLabel: filmPartLabel(row.part),
     },
   };
 }

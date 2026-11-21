@@ -75,6 +75,9 @@ export interface FilmUpload {
   streamed: boolean;
   // On a recording: the streamed game it replaces once it's on YouTube.
   replaces_stream_id: string | null;
+  // Which part of the game: h1/h2, q1–q4, ot… (lib/film/parts.ts). Null is
+  // the whole game (0182).
+  part: string | null;
 }
 
 export type YoutubeEventKind =

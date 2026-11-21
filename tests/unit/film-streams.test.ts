@@ -8,7 +8,7 @@ import {
   sameOpponent,
   shiftStreamMarkers,
 } from "../../lib/film/streams.ts";
-import { toWatchGames, watchStreamSwaps } from "../../lib/film/watch.ts";
+import { toWatchGames, watchGames } from "../../lib/film/watch.ts";
 import { filmFlowView } from "../../lib/film/flow.ts";
 import type { FilmUpload } from "../../lib/film/types.ts";
 
@@ -44,6 +44,7 @@ function row(partial: Partial<FilmUpload> & Pick<FilmUpload, "id">): FilmUpload 
     youtube_synced_at: null,
     streamed: false,
     replaces_stream_id: null,
+    part: null,
     ...partial,
   };
 }
@@ -108,7 +109,7 @@ test("families watch the stream until the recording is on YouTube", () => {
   games = toWatchGames([s, onYoutube]);
   assert.deepEqual(games.map((g) => [g.id, !!g.streamed]), [["r1", false]]);
   // Links shared while it was streamed open the recording.
-  assert.equal(watchStreamSwaps([s, onYoutube]).redirect.get("s1"), "r1");
+  assert.equal(watchGames([s, onYoutube]).redirect.get("s1"), "r1");
 });
 
 test("a recording shows from its file when the stream won't play", () => {

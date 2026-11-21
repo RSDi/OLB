@@ -174,6 +174,7 @@ test("video validation accepts iPhone .mov / HEVC and rejects non-video", () => 
     opponent: "Elkhorn",
     ourScore: 45,
     theirScore: 38,
+    part: null,
   });
   assert.equal(validateUploadInput({
     uploaderName: " ",
@@ -208,6 +209,7 @@ test("game date defaults to Chicago today; opponent and scores are optional", ()
     opponent: null,
     ourScore: null,
     theirScore: null,
+    part: null,
   });
   assert.equal(parseFilmGameFields({ gameDate: "2026-02-31" }, today).ok, false);
   assert.equal(parseFilmGameFields({ gameDate: today, opponent: "x".repeat(81) }, today).ok, false);

@@ -38,6 +38,7 @@ import {
   upsertSavedUpload,
   type SavedUpload,
 } from "../../lib/film/resume";
+import { FILM_PARTS, filmPartLabel } from "../../lib/film/parts";
 import styles from "./film.module.css";
 
 type FileUi = {
@@ -53,6 +54,8 @@ type FileUi = {
   opponent?: string | null;
   ourScore?: number | null;
   theirScore?: number | null;
+  /** "2nd half" when the video is one part of the game. */
+  partLabel?: string | null;
   /** Game line from the server when this file picked up an earlier upload. */
   gameLine?: string | null;
   resumed?: boolean;
@@ -211,6 +214,7 @@ export function FilmUploader({
   const [opponent, setOpponent] = useState("");
   const [ourScore, setOurScore] = useState("");
   const [theirScore, setTheirScore] = useState("");
+  const [part, setPart] = useState("");
   const [files, setFiles] = useState<FileUi[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -219,6 +223,7 @@ export function FilmUploader({
   const opponentRef = useRef(opponent);
   const ourScoreRef = useRef(ourScore);
   const theirScoreRef = useRef(theirScore);
+  const partRef = useRef(part);
   const prepareRef = useRef(prepare);
   const inputRef = useRef<HTMLInputElement>(null);
   const filesRef = useRef<FileUi[]>([]);
@@ -247,6 +252,9 @@ export function FilmUploader({
   useEffect(() => {
     theirScoreRef.current = theirScore;
   }, [theirScore]);
+  useEffect(() => {
+    partRef.current = part;
+  }, [part]);
   useEffect(() => {
     prepareRef.current = prepare;
   }, [prepare]);
@@ -413,6 +421,7 @@ export function FilmUploader({
         opponent: opponentRef.current.trim() || null,
         ourScore: ourScoreRef.current.trim() || null,
         theirScore: theirScoreRef.current.trim() || null,
+        part: partRef.current || null,
       };
       setFormError(null);
       const res = await fetch(tokenUrl, {
@@ -428,6 +437,7 @@ export function FilmUploader({
           opponent: snapshot.opponent,
           ourScore: snapshot.ourScore,
           theirScore: snapshot.theirScore,
+          part: snapshot.part,
         }),
       });
       const body = (await res.json().catch(() => ({}))) as TokenRes & { error?: string };
@@ -469,6 +479,7 @@ export function FilmUploader({
                 opponent: snapshot.opponent,
                 ourScore: snapshot.ourScore ? Number(snapshot.ourScore) : null,
                 theirScore: snapshot.theirScore ? Number(snapshot.theirScore) : null,
+                partLabel: filmPartLabel(snapshot.part),
               }
             : f
         )
@@ -708,6 +719,21 @@ export function FilmUploader({
             maxLength={80}
           />
         </label>
+        <label className={styles.field}>
+          <span className={styles.label}>Part of the game</span>
+          <p className={styles.hint}>
+            Only if the game is in more than one video. Pick the part, then add that video; change it before adding the
+            next one.
+          </p>
+          <select className={styles.input} value={part} onChange={(e) => setPart(e.target.value)}>
+            <option value="">Whole game</option>
+            {FILM_PARTS.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <fieldset className={styles.scoreFields}>
           <legend className={styles.label}>Score</legend>
           <p className={styles.hint}>Optional — leave blank if the game isn&apos;t over.</p>
@@ -792,12 +818,13 @@ export function FilmUploader({
             {files.map((f) => {
               const pct = f.total > 0 ? Math.min(100, Math.round((f.bytes / f.total) * 100)) : 0;
               const size = formatBytes(f.total || f.bytes);
-              const gameLine = f.gameLine ?? formatFilmGameLine({
+              const baseLine = f.gameLine ?? formatFilmGameLine({
                 gameDate: f.gameDate,
                 opponent: f.opponent,
                 ourScore: f.ourScore,
                 theirScore: f.theirScore,
               });
+              const gameLine = [baseLine, f.partLabel].filter(Boolean).join(" · ") || null;
               const tagged = f.tag ? `${f.tag} · ${f.name}` : f.name;
               if (f.status === "done") {
                 return (

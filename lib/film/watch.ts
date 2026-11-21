@@ -2,13 +2,27 @@
 // they group into tournaments and weekends. Pure, so tests and the client
 // share it.
 
-import { streamSwaps } from "./streams.ts";
+import { sameOpponent, streamSwaps } from "./streams.ts";
+import { compareFilmParts, filmPartLabel } from "./parts.ts";
 import type { FilmUpload } from "./types.ts";
 
 export const EVENT_NAME_MAX = 80;
 
 export type WatchSource = { kind: "youtube"; videoId: string } | { kind: "file" };
 
+/** One video of a game: the whole game, or a half, quarter or overtime. */
+export interface WatchPart {
+  id: string;
+  /** "2nd half", or "Video 2" when a game's videos don't say; null when it's the only one. */
+  label: string | null;
+  source: WatchSource;
+  streamed?: boolean;
+}
+
+/**
+ * One game on the team page. Its videos are `parts`, in play order; `id` and
+ * `source` are the first part's, for the card's thumbnail and keys.
+ */
 export interface WatchGame {
   id: string;
   gameDate: string; // YYYY-MM-DD
@@ -20,6 +34,12 @@ export interface WatchGame {
   source: WatchSource;
   /** From the livestream; the full recording hasn't replaced it yet. */
   streamed?: boolean;
+  parts?: WatchPart[];
+}
+
+/** A game's videos, or just itself for a game built without parts. */
+export function gameParts(g: WatchGame): WatchPart[] {
+  return g.parts && g.parts.length > 0 ? g.parts : [{ id: g.id, label: null, source: g.source, streamed: g.streamed }];
 }
 
 export interface WatchSection {
@@ -44,15 +64,6 @@ export function cleanEventName(raw: unknown): { ok: true; value: string | null }
   return { ok: true, value: value || null };
 }
 
-/** Hidden rows and stream → recording links for the team page. */
-export function watchStreamSwaps(uploads: FilmUpload[]) {
-  return streamSwaps(
-    uploads,
-    (u) => watchSource(u)?.kind === "youtube",
-    (u) => watchSource(u) != null
-  );
-}
-
 /** How the watch page plays this upload, or null when it can't. */
 export function watchSource(u: Pick<
   FilmUpload,
@@ -72,29 +83,85 @@ export function watchSource(u: Pick<
 }
 
 /**
- * The team page's games. A streamed game shows until its recording is on
- * YouTube; then the recording shows in its place (see streams.ts).
+ * The team page's games, and where a streamed video's old links go.
+ *
+ * Videos of the same game (same day, same opponent) become one game with
+ * parts in play order: halves, quarters, overtime, then videos that didn't
+ * say. Within a game, the livestream shows until a recording of it is on
+ * YouTube; then the recordings show and the stream's links open the first.
+ * A recording linked to a stream by hand (streams.ts) follows the same rule
+ * even when the opponents are typed differently.
  */
-export function toWatchGames(uploads: FilmUpload[]): WatchGame[] {
-  const { hidden } = watchStreamSwaps(uploads);
-  const out: WatchGame[] = [];
+export function watchGames(uploads: FilmUpload[]): { games: WatchGame[]; redirect: Map<string, string> } {
+  const { hidden, redirect } = streamSwaps(
+    uploads,
+    (u) => watchSource(u)?.kind === "youtube",
+    (u) => watchSource(u) != null
+  );
+  type Row = { u: FilmUpload; source: WatchSource };
+  const groups: Row[][] = [];
   for (const u of uploads) {
     if (hidden.has(u.id)) continue;
     const source = watchSource(u);
     if (!source) continue;
-    out.push({
-      id: u.id,
-      gameDate: u.game_date ?? u.created_at.slice(0, 10),
-      opponent: u.opponent,
-      ourScore: u.our_score,
-      theirScore: u.their_score,
-      eventName: u.event_name ?? null,
-      createdAt: u.created_at,
-      source,
-      ...(u.streamed ? { streamed: true } : {}),
+    const date = u.game_date ?? u.created_at.slice(0, 10);
+    const group = u.opponent?.trim()
+      ? groups.find((g) => {
+          const first = g[0].u;
+          return (first.game_date ?? first.created_at.slice(0, 10)) === date && sameOpponent(first.opponent, u.opponent);
+        })
+      : undefined;
+    if (group) group.push({ u, source });
+    else groups.push([{ u, source }]);
+  }
+
+  const games: WatchGame[] = [];
+  for (let rows of groups) {
+    let dropped: Row[] = [];
+    if (rows.some((r) => !r.u.streamed && r.source.kind === "youtube")) {
+      dropped = rows.filter((r) => r.u.streamed);
+      rows = rows.filter((r) => !r.u.streamed);
+    } else if (rows.some((r) => r.u.streamed)) {
+      rows = rows.filter((r) => r.u.streamed);
+    }
+    rows.sort((a, b) =>
+      compareFilmParts({ part: a.u.part, createdAt: a.u.created_at }, { part: b.u.part, createdAt: b.u.created_at })
+    );
+    const many = rows.length > 1;
+    const parts: WatchPart[] = rows.map((r, i) => ({
+      id: r.u.id,
+      label: filmPartLabel(r.u.part) ?? (many ? `Video ${i + 1}` : null),
+      source: r.source,
+      ...(r.u.streamed ? { streamed: true } : {}),
+    }));
+    const first = rows[0].u;
+    const pick = <T,>(f: (u: FilmUpload) => T | null | undefined): T | null => {
+      for (const r of rows) {
+        const v = f(r.u);
+        if (v != null) return v;
+      }
+      return null;
+    };
+    // The stream's links (shared while it was streamed) open the recording.
+    for (const st of dropped) redirect.set(st.u.id, parts[0].id);
+    games.push({
+      id: parts[0].id,
+      gameDate: first.game_date ?? first.created_at.slice(0, 10),
+      opponent: first.opponent,
+      ourScore: pick((u) => u.our_score),
+      theirScore: pick((u) => u.their_score),
+      eventName: pick((u) => u.event_name),
+      createdAt: rows.reduce((min, r) => (r.u.created_at < min ? r.u.created_at : min), first.created_at),
+      source: parts[0].source,
+      ...(parts.every((p) => p.streamed) ? { streamed: true } : {}),
+      parts,
     });
   }
-  return out;
+  return { games, redirect };
+}
+
+export function toWatchGames(uploads: FilmUpload[]): WatchGame[] {
+  return watchGames(uploads).games;
 }
 
 export function gameResult(g: Pick<WatchGame, "ourScore" | "theirScore">): "w" | "l" | null {

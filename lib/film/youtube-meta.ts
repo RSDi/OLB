@@ -137,6 +137,8 @@ export type YoutubeTemplateInput = {
   extras?: YoutubeTemplateExtras;
   titleTemplate?: string | null;
   descriptionTemplate?: string | null;
+  /** "2nd half" when the video is one part of the game (0181). */
+  partLabel?: string | null;
 };
 
 export type FilmResultKind = "win" | "loss" | "tie" | "none";
@@ -212,9 +214,11 @@ export function renderYoutubeTemplate(template: string, values: Record<string, s
 export function youtubeTitle(input: YoutubeTemplateInput): string {
   const values = youtubeTemplateValues(input);
   const template = input.titleTemplate?.trim() || DEFAULT_YOUTUBE_TITLE_TEMPLATE;
-  const title = renderYoutubeTemplate(template, values) || values.team;
-  if (title.length <= YOUTUBE_TITLE_MAX) return title;
-  return title.slice(0, YOUTUBE_TITLE_MAX - 1).trimEnd() + "…";
+  const base = renderYoutubeTemplate(template, values) || values.team;
+  // A part goes on the end, and stays there when a long title is cut short.
+  const suffix = input.partLabel?.trim() ? ` (${input.partLabel.trim()})` : "";
+  if (base.length + suffix.length <= YOUTUBE_TITLE_MAX) return base + suffix;
+  return base.slice(0, YOUTUBE_TITLE_MAX - suffix.length - 1).trimEnd() + "…" + suffix;
 }
 
 export function youtubeDescription(input: YoutubeTemplateInput): string {

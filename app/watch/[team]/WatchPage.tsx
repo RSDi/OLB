@@ -14,8 +14,10 @@ import {
   gameResult,
   groupWatchGames,
   seasonRecord,
+  gameParts,
   watchGamePath,
   watchPagePath,
+  type WatchPart,
   type WatchGame,
   type WatchSection,
 } from "../../../lib/film/watch";
@@ -39,6 +41,14 @@ function gameTitle(g: WatchGame): string {
   const opp = g.opponent ?? "Opponent";
   if (g.ourScore != null && g.theirScore != null) return `Lightning ${g.ourScore}, ${opp} ${g.theirScore}`;
   return g.opponent ? `Lightning vs ${g.opponent}` : `Game on ${formatDay(g.gameDate)}`;
+}
+
+/** " · 1st half, 2nd half" when a game has more than one video. */
+function partsLine(g: WatchGame): string {
+  const parts = gameParts(g);
+  if (parts.length < 2) return "";
+  const labels = parts.map((p) => p.label);
+  return labels.length <= 3 ? ` · ${labels.join(", ")}` : ` · ${labels.length} videos`;
 }
 
 function scoreLabel(g: WatchGame): string | null {
@@ -108,8 +118,18 @@ export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }
   const hasOther = sections.some((s) => s.kind !== "event");
   const latest = sections[0]?.games[sections[0].games.length - 1] ?? null;
   const latestSection = sections[0] ?? null;
-  const byId = useMemo(() => new Map(games.map((g) => [g.id, g])), [games]);
-  const current = playing ? byId.get(playing.id) ?? null : null;
+  // Every video by id, with the game it belongs to.
+  const byPart = useMemo(() => {
+    const map = new Map<string, { game: WatchGame; part: WatchPart }>();
+    for (const g of games) for (const part of gameParts(g)) map.set(part.id, { game: g, part });
+    return map;
+  }, [games]);
+  const found = playing ? byPart.get(playing.id) ?? null : null;
+  const current = found?.game ?? null;
+  const currentPart = found?.part ?? null;
+  const currentParts = current ? gameParts(current) : [];
+  // Jump-to points across a game's videos, in play order.
+  const gameMarkers = (g: WatchGame) => gameParts(g).flatMap((p) => markers[p.id] ?? []);
 
   useEffect(() => {
     if (!note) return;
@@ -117,9 +137,9 @@ export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }
     return () => clearTimeout(t);
   }, [note]);
 
-  function open(g: WatchGame, t = 0) {
-    setPlaying({ id: g.id, t });
-    window.history.replaceState(null, "", watchGamePath(pageKey, g.id));
+  function open(g: WatchGame, t = 0, partId = gameParts(g)[0].id) {
+    setPlaying({ id: partId, t });
+    window.history.replaceState(null, "", watchGamePath(pageKey, partId));
     requestAnimationFrame(() => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
@@ -206,6 +226,23 @@ export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }
                   <div className={styles.meta}>
                     {formatWeekday(current.gameDate)}, {formatDay(current.gameDate)}
                   </div>
+                  {currentParts.length > 1 && (
+                    <div className={styles.parts} role="group" aria-label="Part of the game">
+                      {currentParts.map((part) => (
+                        <button
+                          key={part.id}
+                          type="button"
+                          aria-pressed={part.id === currentPart?.id}
+                          onClick={() => open(current, 0, part.id)}
+                        >
+                          {part.label}
+                          {(markers[part.id]?.length ?? 0) > 0 && (
+                            <span className={styles.partCount}>{markers[part.id].length}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {current.streamed && (
                     <p className={styles.streamNote}>
                       <span className={styles.streamDot} aria-hidden="true" />
@@ -214,16 +251,16 @@ export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }
                   )}
                 </div>
                 <FilmPlayer
-                  key={current.id}
-                  uploadId={current.id}
-                  title={gameTitle(current)}
+                  key={currentPart!.id}
+                  uploadId={currentPart!.id}
+                  title={currentPart!.label ? `${gameTitle(current)} · ${currentPart!.label}` : gameTitle(current)}
                   source={
-                    current.source.kind === "youtube"
-                      ? { kind: "youtube", videoId: current.source.videoId }
-                      : { kind: "file", url: `${watchPagePath(pageKey)}/play?v=${encodeURIComponent(current.id)}` }
+                    currentPart!.source.kind === "youtube"
+                      ? { kind: "youtube", videoId: currentPart!.source.videoId }
+                      : { kind: "file", url: `${watchPagePath(pageKey)}/play?v=${encodeURIComponent(currentPart!.id)}` }
                   }
                   startAt={playing?.t ?? 0}
-                  markers={markers[current.id] ?? []}
+                  markers={markers[currentPart!.id] ?? []}
                   canManage={false}
                   onClose={close}
                   onMarkersChange={() => {}}
@@ -243,11 +280,17 @@ export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }
                   <div className={styles.meta}>
                     {formatWeekday(latest.gameDate)}, {formatDay(latest.gameDate)}
                     {latest.streamed ? " · Streamed" : ""}
+                    {partsLine(latest)}
                   </div>
-                  {(markers[latest.id]?.length ?? 0) > 0 && (
+                  {gameMarkers(latest).length > 0 && (
                     <div className={styles.chips}>
-                      {markers[latest.id].slice(0, 6).map((m) => (
-                        <button key={m.id} type="button" className={styles.chip} onClick={() => open(latest, m.at_seconds)}>
+                      {gameMarkers(latest).slice(0, 6).map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className={styles.chip}
+                          onClick={() => open(latest, m.at_seconds, m.upload_id)}
+                        >
                           <span className={styles.chipTime}>{formatTimecode(m.at_seconds)}</span> {m.label}
                         </button>
                       ))}
@@ -308,7 +351,7 @@ export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }
                 <div className={styles.grid}>
                   {s.games.map((g) => {
                     const r = gameResult(g);
-                    const count = markers[g.id]?.length ?? 0;
+                    const count = gameMarkers(g).length;
                     return (
                       <div key={g.id} className={styles.game}>
                         <Thumb game={g} onPlay={() => open(g)} />
@@ -324,6 +367,7 @@ export function WatchPage({ pageKey, teamLabel, teams, games, markers, initial }
                         <div className={styles.meta}>
                           {formatWeekday(g.gameDate)}, {formatDay(g.gameDate)}
                           {g.streamed ? " · Streamed" : ""}
+                          {partsLine(g)}
                           {count > 0 ? ` · ${count} jump-to point${count === 1 ? "" : "s"}` : ""}
                         </div>
                       </div>

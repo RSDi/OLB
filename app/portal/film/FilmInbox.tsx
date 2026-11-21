@@ -35,6 +35,7 @@ import { filmFileMissing, youtubeDisplayStatus } from "../../../lib/film/youtube
 import { YoutubeTransfer } from "./YoutubeTransfer";
 import { AddStreamForm, LineUpMarkers } from "./StreamParts";
 import { TournamentField, useTournamentPick } from "./TournamentField";
+import { FILM_PARTS, filmPartLabel } from "../../../lib/film/parts";
 import type { ScheduledTournament } from "../../../lib/film/tournaments";
 import { setRecordingStream } from "../../../lib/film/stream-actions";
 import { FilmPlayer } from "./FilmPlayer";
@@ -130,7 +131,10 @@ function digitsOnly(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, 3);
 }
 
-type GamePatch = Pick<FilmUpload, "game_date" | "opponent" | "our_score" | "their_score" | "youtube_playlist_id" | "event_name">;
+type GamePatch = Pick<
+  FilmUpload,
+  "game_date" | "opponent" | "our_score" | "their_score" | "youtube_playlist_id" | "event_name" | "part"
+>;
 
 export function FilmInbox({
   uploads,
@@ -750,6 +754,7 @@ function FilmRow({
           <div style={{ fontWeight: 800, fontSize: 15, wordBreak: "break-word", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {row.filename}
             {row.streamed && !replacedBy && <span className="rsd-chip rsd-chip-error">Streamed</span>}
+            {filmPartLabel(row.part) && <span className="rsd-chip rsd-chip-mute">{filmPartLabel(row.part)}</span>}
           </div>
           <div style={{ fontSize: 13, color: "var(--gw-fg-muted)", fontWeight: 600, marginTop: 4 }}>
             {row.streamed
@@ -961,6 +966,7 @@ function FilmGameEditor({
   const [playlistDraft, setPlaylistDraft] = useState(row.youtube_playlist_id ?? "");
   const [pickedPlayers, setPickedPlayers] = useState<string[]>(lineupPlayerIds);
   const [streamId, setStreamId] = useState(row.replaces_stream_id ?? "");
+  const [part, setPart] = useState(row.part ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -976,6 +982,7 @@ function FilmGameEditor({
       playerIds: pickedPlayers,
       ...(eventOptions ? { eventName } : {}),
       ...(streamOptions && streamOptions.length > 0 ? { keepStream: true } : {}),
+      part,
     });
     if (result.error) {
       setSaving(false);
@@ -1008,6 +1015,7 @@ function FilmGameEditor({
       their_score: result.upload?.their_score ?? row.their_score,
       youtube_playlist_id: playlistId,
       event_name: result.upload ? result.upload.event_name : row.event_name,
+      part: result.upload ? result.upload.part : row.part,
     });
     startTransition(() => router.refresh());
   }
@@ -1045,6 +1053,20 @@ function FilmGameEditor({
           enterKeyHint="next"
           maxLength={OPPONENT_MAX}
         />
+      </label>
+      <label className={styles.field} data-tour="film-edit-part">
+        <span className={styles.label}>Part of the game</span>
+        <p className={styles.hint}>
+          For a game in more than one video. The team film page shows them as one game, in this order.
+        </p>
+        <select className={styles.input} value={part} onChange={(e) => setPart(e.target.value)}>
+          <option value="">Whole game</option>
+          {FILM_PARTS.map((p) => (
+            <option key={p.code} value={p.code}>
+              {p.label}
+            </option>
+          ))}
+        </select>
       </label>
       {eventOptions && (
         <TournamentField
